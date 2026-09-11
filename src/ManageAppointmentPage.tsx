@@ -84,7 +84,10 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
   const cancelCommand = useRef<{ fingerprint: string; key: string } | null>(null);
 
   async function loadAppointment() {
-    const result = await api<{ appointment: ManagedAppointment }>(`/api/manage/${encodeURIComponent(token)}`);
+    const result = await api<{ appointment: ManagedAppointment }>('/api/manage/view', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
     setAppointment(result.appointment);
     setDate((current) => current || result.appointment.local_date);
     return result.appointment;
@@ -95,8 +98,16 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     async function load() {
       setLoading(true);
       setNotice('');
+      if (!token) {
+        setNotice('Bu randevu yönetim bağlantısı geçerli değil.');
+        setLoading(false);
+        return;
+      }
       try {
-        const result = await api<{ appointment: ManagedAppointment }>(`/api/manage/${encodeURIComponent(token)}`);
+        const result = await api<{ appointment: ManagedAppointment }>('/api/manage/view', {
+          method: 'POST',
+          body: JSON.stringify({ token }),
+        });
         if (cancelled) return;
         setAppointment(result.appointment);
         setDate(result.appointment.local_date);
@@ -116,8 +127,10 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     setNotice('');
     setSelectedSlot(null);
     try {
-      const params = new URLSearchParams({ date, staffId: 'any' });
-      const result = await api<{ slots: ManagedSlot[] }>(`/api/manage/${encodeURIComponent(token)}/slots?${params}`);
+      const result = await api<{ slots: ManagedSlot[] }>('/api/manage/slots', {
+        method: 'POST',
+        body: JSON.stringify({ token, date, staffId: 'any' }),
+      });
       setSlots(result.slots);
       setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : 'Bu gün için uygun saat bulunamadı.');
     } catch (error) {
@@ -138,10 +151,10 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     setBusy(true);
     setNotice('');
     try {
-      await api(`/api/manage/${encodeURIComponent(token)}/reschedule`, {
+      await api('/api/manage/reschedule', {
         method: 'POST',
         headers: { 'Idempotency-Key': rescheduleCommand.current.key },
-        body: JSON.stringify({ staffId: selectedSlot.staff_id, startsAt: selectedSlot.starts_at }),
+        body: JSON.stringify({ token, staffId: selectedSlot.staff_id, startsAt: selectedSlot.starts_at }),
       });
       rescheduleCommand.current = null;
       setSlots([]);
@@ -172,10 +185,10 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     setBusy(true);
     setNotice('');
     try {
-      await api(`/api/manage/${encodeURIComponent(token)}/cancel`, {
+      await api('/api/manage/cancel', {
         method: 'POST',
         headers: { 'Idempotency-Key': cancelCommand.current.key },
-        body: JSON.stringify({ reason: cleanReason || null }),
+        body: JSON.stringify({ token, reason: cleanReason || null }),
       });
       cancelCommand.current = null;
       setSlots([]);
@@ -224,7 +237,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
             <div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div>
             <div><dt>Ücret</dt><dd>{money(appointment.price_minor, appointment.currency)}</dd></div>
           </dl>
-          <p className="manage-security-note">Bu sayfanın adresi randevunuzu değiştirme yetkisi verir. Bağlantıyı yalnız güvendiğiniz kişilerle paylaşın.</p>
+          <p className="manage-security-note">Bu sayfanın bağlantısı randevunuzu değiştirme yetkisi verir. Bağlantıyı yalnız güvendiğiniz kişilerle paylaşın.</p>
         </section>
 
         <section className="manage-card">
