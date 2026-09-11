@@ -25,7 +25,7 @@ Do not redesign completed phases unless a failing test proves a regression or th
 - `/bookings` → `src/BookingPage.tsx`
 - `/public-booking` → `src/PublicBookingSettingsPage.tsx` — owner/manager public-page settings
 - `/r/:slug` → `src/PublicBookingPage.tsx` — customer-facing self-booking, no login
-- `/m/:token` → `src/ManageAppointmentPage.tsx` — bearer-capability appointment management
+- `/m#<token>` → `src/ManageAppointmentPage.tsx` — bearer-capability appointment management; secret is a URL fragment and is not sent in the HTTP request
 - Route selection lives in `src/main.tsx`.
 
 ### Worker
@@ -34,7 +34,7 @@ Do not redesign completed phases unless a failing test proves a regression or th
 - `worker/availability.ts` — Phase 4 member availability API
 - `worker/bookings.ts` — Phase 5 member booking API
 - `worker/public-booking.ts` — Phase 6 settings + anonymous public API
-- `worker/customer-manage.ts` — Phase 7 capability bootstrap/view/reschedule/cancel API
+- `worker/customer-manage.ts` — Phase 7 capability bootstrap/view/reschedule/cancel API; management token is accepted only in POST bodies
 - `worker/app.ts` mounts feature routers.
 
 ## Database migration order
@@ -67,8 +67,9 @@ Never edit an already-stable merged migration to implement a new phase. Append a
 - Public booking is opt-in and defaults to disabled.
 - Public booking can create only a currently valid public slot and requires phone or email.
 - Public-created CRM matches may reuse an existing customer ID but never mutate that existing customer row.
-- Management URL is a bearer capability: possession grants access to exactly one appointment.
+- Management capability possession grants access to exactly one appointment.
 - Plain management tokens are never stored in PostgreSQL; only SHA-256 hashes are stored.
+- Management tokens do not appear in HTTP URL paths/query strings. Browser links keep the secret after `#`; API calls send it only in POST bodies.
 - Capability table has no anon/authenticated direct table grants.
 - Existing issued management capability remains valid if the business later disables public booking.
 - Customer reschedule preserves the booked appointment duration/buffer snapshots and obeys current schedule, blocks, staff eligibility, notice and horizon.
@@ -89,9 +90,9 @@ Anonymous booking surface exposes sanitized business/catalog/staff/live-slot dat
 
 Public booking confirmation generates a 256-bit browser-side capability token. Booking creation remains Phase 6 idempotent; capability provisioning uses the same original booking idempotency key to prove the appointment belongs to that public create command. Provisioning can therefore be retried after a network interruption without duplicating the booking.
 
-The plain token exists only in the customer URL/browser. PostgreSQL stores `SHA-256(token)` in `appointment_management_capabilities`.
+The plain token exists only in browser memory and the `/m#<token>` fragment. URL fragments are not sent to the server in the page request. PostgreSQL stores `SHA-256(token)` in `appointment_management_capabilities`. Management API calls carry the token in a POST JSON body so normal request paths/query logs do not contain the bearer secret.
 
-Anonymous management RPCs support only:
+Anonymous management RPC surface supports only:
 
 - sanitized single-appointment read
 - reschedule slot computation for that appointment
@@ -121,6 +122,17 @@ CI builds disposable PostgreSQL 17, applies every migration in order, then runs:
 Phase 7 regression coverage includes hashed-only capability storage, direct-table denial, invalid-token isolation, management after public-page disable, snapshot-safe reschedule, mutation idempotency, public audit provenance and cancellation slot release.
 
 Do not merge around a red SQL gate.
+
+## Product roadmap after Phase 7
+
+Stay close to the original competitor-equivalent appointment SaaS goal. Prioritize:
+
+1. calendar operator UI
+2. booking confirmations/reminders and management-link delivery
+3. UX/mobile polish
+4. deployable MVP hardening
+
+Do not expand into payments, advanced CRM, loyalty, AI or broad ERP functionality before the MVP unless the product scope is explicitly changed.
 
 ## Scope intentionally NOT implemented yet
 
