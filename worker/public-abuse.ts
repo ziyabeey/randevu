@@ -6,7 +6,7 @@ export type PublicAbuseEnv = {
   COOKIE_SECURE?: string;
 };
 
-type AbuseContext = Context<{ Bindings: PublicAbuseEnv }>;
+type AbuseContext = Context<any>;
 
 export type PublicAbuseIdentity = {
   gateSecret: string;
