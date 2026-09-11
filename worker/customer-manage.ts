@@ -52,12 +52,15 @@ function first<T>(items: T[] | null): T | null {
   return items?.[0] ?? null;
 }
 
-function validToken(value: string) {
-  return value.length >= 43 && value.length <= 128 && /^[A-Za-z0-9_-]+$/.test(value);
+function validToken(value: unknown): value is string {
+  return typeof value === 'string'
+    && value.length >= 43
+    && value.length <= 128
+    && /^[A-Za-z0-9_-]+$/.test(value);
 }
 
-function validDate(value: string | undefined) {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+function validDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
@@ -136,8 +139,12 @@ customerManage.post('/provision', async (context) => {
   return context.json({ ok: true });
 });
 
-customerManage.get('/:token', async (context) => {
-  const token = context.req.param('token');
+// The bearer token is always carried in a POST body, never in a URL path/query.
+// This keeps it out of ordinary HTTP access logs. The browser page itself stores
+// the capability in the URL fragment (`/m#token`), which is not sent to the server.
+customerManage.post('/view', async (context) => {
+  const body = await readJson(context.req.raw);
+  const token = body?.token;
   if (!validToken(token)) {
     return context.json({ error: { code: 'MANAGEMENT_NOT_FOUND', message: 'Bu randevu yönetim bağlantısı geçerli değil.' } }, 404);
   }
@@ -153,10 +160,11 @@ customerManage.get('/:token', async (context) => {
   return context.json({ appointment });
 });
 
-customerManage.get('/:token/slots', async (context) => {
-  const token = context.req.param('token');
-  const date = context.req.query('date');
-  const staffRaw = context.req.query('staffId');
+customerManage.post('/slots', async (context) => {
+  const body = await readJson(context.req.raw);
+  const token = body?.token;
+  const date = body?.date;
+  const staffRaw = body?.staffId;
   const staffId = staffRaw && staffRaw !== 'any' ? staffRaw : null;
   if (!validToken(token) || !validDate(date) || (staffId !== null && !validUuid(staffId))) {
     return context.json({ error: { code: 'INVALID_MANAGEMENT_QUERY', message: 'Tarih veya personel bilgisi geçerli değil.' } }, 400);
@@ -173,10 +181,10 @@ customerManage.get('/:token/slots', async (context) => {
   return context.json({ slots: result.data ?? [] });
 });
 
-customerManage.post('/:token/reschedule', async (context) => {
-  const token = context.req.param('token');
+customerManage.post('/reschedule', async (context) => {
   const key = idempotencyKey(context.req.header('Idempotency-Key'));
   const body = await readJson(context.req.raw);
+  const token = body?.token;
   if (!validToken(token) || !key || !validUuid(body?.staffId) || !validTimestamp(body?.startsAt)) {
     return context.json({ error: { code: 'INVALID_RESCHEDULE', message: 'Yeni randevu saati geçerli değil.' } }, 400);
   }
@@ -199,10 +207,10 @@ customerManage.post('/:token/reschedule', async (context) => {
   return context.json({ appointment });
 });
 
-customerManage.post('/:token/cancel', async (context) => {
-  const token = context.req.param('token');
+customerManage.post('/cancel', async (context) => {
   const key = idempotencyKey(context.req.header('Idempotency-Key'));
   const body = await readJson(context.req.raw);
+  const token = body?.token;
   const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
   if (!validToken(token) || !key || reason.length > 240) {
     return context.json({ error: { code: 'INVALID_CANCEL', message: 'İptal isteği geçerli değil.' } }, 400);
