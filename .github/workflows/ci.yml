@@ -39,6 +39,8 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: Verify scheduled Worker bundle
+        run: npx wrangler deploy --dry-run --outdir /tmp/randevu-worker
       - name: Verify F09-02 HTTP recovery contract
         run: node --test --experimental-strip-types tests/public-booking-recovery.test.mjs
       - name: Verify F09-03 notification dispatcher contract
@@ -68,4 +70,5 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase8_calendar.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_outbox.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_outbox_concurrency.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery_concurrency.sql
