@@ -46,8 +46,36 @@ Day view personel sütunlu timed grid'dir. Week view 7 local-date column kullan�
 
 ### Faz 8 scope boundary
 
-Calendar drag-drop reschedule, external calendar sync, notification ve payment bu faza dahil değildir. Takvim önce operasyonun ana görsel yüzeyini tamamlar; sonraki MVP adımı booking confirmation/reminder ve manage-link delivery'dir.
+Calendar drag-drop reschedule, external calendar sync, notification ve payment bu faza dahil değildir. Takvim önce operasyonun ana görsel yüzeyini tamamlar.
+
+## Faz 9 — Public booking e-posta teslimi
+
+### Booking ile delivery ayrıdır
+
+Booking/capability doğruluğu e-posta sağlayıcısına bağlı değildir. `provision_public_management_token` başarıyla tamamlandıktan sonra delivery best-effort çalışır. Resend kapalı, yanlış yapılandırılmış veya geçici olarak erişilemez olsa bile appointment ve management capability geçerli kalır; UI ekrandaki `/m#<token>` linkini göstermeye devam eder.
+
+### Capability secret sınırı
+
+Plain management token PostgreSQL'e yazılmaz. Faz 9'da token yalnız şu kısa ömürlü hatta bulunabilir:
+
+`browser memory → /api/manage/provision POST body → Worker memory → outbound Resend request`
+
+E-posta sağlayıcısının manage linki teslim edebilmesi için bu URL'yi görmesi doğaldır. Buna karşılık uygulama logları, `appointment_notification_deliveries` ve diğer PostgreSQL tabloları plain token veya full manage URL saklamaz.
+
+### Public-create ownership proof
+
+`get_public_booking_email_payload` ve `record_public_booking_email_delivery` keyfi appointment ID kabul etmez. Phase 6/7 ile aynı kanıt kullanılır: appointment ID + original `public_create` idempotency key, `booking_commands` üzerinden aynı public appointment'a bağlanmalıdır. Böylece anon RPC yüzeyi genel PII lookup endpoint'ine dönüşmez.
+
+### Delivery idempotency ve receipt
+
+Resend çağrısı appointment kimliğine bağlı provider `Idempotency-Key` kullanır. Başarılı gönderimden sonra PostgreSQL yalnız recipient, provider ve provider message ID içeren durable receipt saklar. `(appointment_id, kind, channel)` primary key'i aynı confirmation'ın ikinci durable receipt'ini engeller.
+
+Receipt yazımı e-posta gönderiminden sonra başarısız olursa booking yine geçerlidir. Provider idempotency kısa süreli retry duplicate riskini azaltır; kalıcı receipt ise sonraki normal provision retry'larında `already_sent` sonucu üretir.
+
+### Faz 9 scope boundary
+
+Bu faz yalnız **public booking confirmation e-mail + manage-link delivery** kesitini tamamlar. Appointment reminder scheduling/delivery, SMS, token recovery/reissue, provider webhook analytics ve marketing flows sonraki ayrı concern'lerdir.
 
 ## MVP yönü
 
-Faz 8 sonrası: bildirim/manage-link delivery → mobil/UX polish → deployable MVP. Ödeme, gelişmiş CRM, loyalty, AI ve ERP-benzeri genişlemeler MVP öncesi varsayılan kapsam değildir.
+Faz 9 sonrası: appointment reminders → mobil/UX polish → deployable MVP. Ödeme, gelişmiş CRM, loyalty, AI ve ERP-benzeri genişlemeler MVP öncesi varsayılan kapsam değildir.
