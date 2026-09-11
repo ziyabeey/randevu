@@ -1,6 +1,6 @@
 # YZT Randevu — Mevcut Durum
 
-Son kontrol: 11 Eylül 2026. Uygulama kodu tabanı: `main` / `7c78be88fd1ed99bf37cd603eb503f2b1b4d4e3f`. Bu güncelleme ürün kurallarını, fazları ve referansları düzenler; yeni ürün ekranı veya veritabanı özelliği eklemez.
+Son kontrol: 11 Eylül 2026. Bu planın başlangıç main commit'i `ec024a7015408e07a41199ecee14583cb34e1b72` (üç kol planı, PR #9); uygulama kodu tabanı `7c78be88fd1ed99bf37cd603eb503f2b1b4d4e3f` ile aynıdır. Yeni teslimat MVP'ye kadar planı ve katkı düzenini ayrıntılandırır; uygulama fazı başlatılmaz.
 
 ## Ürün yönü
 
@@ -8,6 +8,9 @@ Son kontrol: 11 Eylül 2026. Uygulama kodu tabanı: `main` / `7c78be88fd1ed99bf3
 
 - [PRODUCT_SPEC.md](PRODUCT_SPEC.md): bağlayıcı ürün/akış kuralları.
 - [ROADMAP.md](ROADMAP.md): faz sırası, bağımlılıklar ve kabul ölçütleri.
+- [TASKS.md](TASKS.md): Faz 9–17 için 46 görev; bağımlılık, sahip, durum ve PR/kanıt takibi.
+- [CONTRIBUTING.md](CONTRIBUTING.md): insan/ajan katkısı, ortak dosya sahipliği ve oturum devri.
+- [MVP_ACCEPTANCE.md](MVP_ACCEPTANCE.md): 23 birleşik kabul senaryosu; bugün tümü bekliyor.
 - [DECISIONS.md](DECISIONS.md): teknik kararlar ve korunan veri sınırları.
 - [Görsel eşleştirme](docs/references/README.md): 11 kaynak ekran, mevcut farklar ve hedef fazlar.
 
@@ -35,7 +38,7 @@ Son kontrol: 11 Eylül 2026. Uygulama kodu tabanı: `main` / `7c78be88fd1ed99bf3
 - `phase-2-auth-tenant`, `1e58648` Faz 1 commit'inde kalmış. Main'in auth/tenant kodu bu eski branch'in durumundan çıkarılamaz.
 - `phase-9-email-delivery`: [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), açık taslak; incelenen head `9b5a6ceab648c70b8c892d831d041021d8568e37`.
 - Başka oturumdan kalan yerel `codex/faz-2-auth-tenants` değişiklikleri kaydedilip gönderilmiş değildir ve güncel main'den farklı veri/auth yaklaşımı taşır. Yeni iş güncel main üzerinden yürür; eski yerel çalışma doğrudan birleştirilmez.
-- **Sıradaki uygulama işi Faz 9'un tamamlanmasıdır.** Bu dokümanların main'e alınması Faz 9'u veya sonraki fazları tamamlamaz.
+- **Mevcut talep yalnız MVP planını hazırlamaktır.** İlk uygulama adayı F09-01'dir; F12-01 tasarım, F17-01 ortam ve F17-02 test hazırlığı kendi alanlarında eşzamanlı başlayabilir. 46 yeni görev kartı planlandı durumundadır; mevcut PR #8 taslak girdi olarak korunur. Bu dokümanların main'e alınması yeni faz veya görev kabulü değildir.
 
 ## İncelemeden kalan işler
 
@@ -88,6 +91,7 @@ Dosyalar `supabase/migrations/` altındadır. Faz 9 e-posta migration'ı taslak 
 
 ## Doğrulama kanıtı ve sınırı
 
+- [Üç kol planı PR #9 CI](https://github.com/ziyabeey1-ai/randevu/actions/runs/34625298369): kurulum/typecheck/build ve PostgreSQL migration/gerileme kontrolleri başarılı; PR #9 main'e birleşti. Bu, yeni 46 görevin uygulandığı anlamına gelmez.
 - [Main CI](https://github.com/ziyabeey1-ai/randevu/actions/runs/34590092465): `7c78be8`, başarılı.
 - [Faz 9 PR CI](https://github.com/ziyabeey1-ai/randevu/actions/runs/34591337311): `9b5a6ce`, başarılı; PR yine taslaktır.
 - Kapsam: `npm ci`, TypeScript, üretim derlemesi; PostgreSQL 17 üzerinde migration'lar ve Faz 3–8 (taslak PR'da 3–9) SQL gerileme testleri.

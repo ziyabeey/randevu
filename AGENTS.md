@@ -3,9 +3,10 @@
 ## Başlangıç ve kaynak sırası
 
 1. `PROJECT_STATE.md`: main'de gerçekten ne var, aktif faz ve açık eksikler.
-2. `PRODUCT_SPEC.md`: üç kolun işlev ve tasarım kuralları; `ROADMAP.md`: ilgili fazın kabul ölçütleri.
-3. Yalnız ilgili teknik karar için `DECISIONS.md`; UI işinde `docs/references/README.md` ve ilgili görseller.
-4. En küçük uygulama kesiti: ilgili sayfa + Worker + migration + test. Görev veya gerileme gerektirmedikçe eski PR geçmişini tarama.
+2. `PRODUCT_SPEC.md`: üç kolun işlev ve tasarım kuralları; `ROADMAP.md`: MVP sınırı ve faz sırası.
+3. `TASKS.md`, `CONTRIBUTING.md` ve yalnız ilgili `docs/plan/phase-xx.md`: görev, bağımlılık, sahiplenme ve devir. Tüm faz dosyalarını gereksiz yere okuma.
+4. Yalnız ilgili teknik karar için `DECISIONS.md`; UI işinde `docs/references/README.md` ve ilgili görseller.
+5. En küçük uygulama kesiti: ilgili sayfa + Worker + migration + test. Görev veya gerileme gerektirmedikçe eski PR geçmişini tarama.
 
 Kullanıcının açık güncel talebi önceliklidir. Hedef, uygulanan durum ve doğrulanmış sonuç ayrı yazılır. Bir dosyadaki plan veya yeşil SQL testi tüm ürünün çalıştığı anlamına gelmez.
 
@@ -35,11 +36,14 @@ Kullanıcının açık güncel talebi önceliklidir. Hedef, uygulanan durum ve d
 
 ## Branch ve değişiklik protokolü
 
+- Her uygulama işi `F09-01` gibi görev kimliğiyle yürür. TASKS ve açık PR'lardan sahip/bağımlılık kontrol edilir; tek görev/dosya alanı sahiplenilir. Ortak dosyaya iki ajan yazmadan sınırlar ve merge sırası netleşir.
+- Bu planlama teslimatı yeni uygulama fazı başlatmaz. Kullanıcının yetkilendirdiği iş kapsamında ilerle; başka ajanların katkı verebilmesi otomatik ajan görevlendirmesi değildir.
 - Yeni işe güncel main'den kısa ömürlü `phase-<n>-<concern>` veya `codex/<concern>` branch'iyle başla; PR tek faz/alt iş taşısın. Üç ürün kolu üç kalıcı geliştirme branch'i değildir.
 - `phase-2-auth-tenant` eski temeldir; güncel main'in auth uygulamasıyla karıştırma. Başka oturumun kaydedilmemiş yerel işini ezme veya doğrudan main'e taşıma.
 - Faz 1–8'i sırf yeni UI için yeniden yazma; kanıtlanan hata veya onaylı yeni gereksinim için ilgili kesiti genişlet.
 - Eski branch/PR birleştirilirken dokümanları eski ürün sınırına döndürme. Güncel üç kol kararı ve fazların mevcut/planlanan ayrımı korunur.
 - PR açıklamasında ürün kolunu, faz/alt işi, davranış değişimini ve doğrulama kanıtını belirt. Faz biterken `PROJECT_STATE.md` ve ilgili referans satırını güncelle.
+- Oturum sonunda görev/branch/commit/PR, test kanıtı, engel ve sonraki somut adımı CONTRIBUTING devir formatıyla bırak; TASKS'taki kendi satırını güncelle. Kod birleşmesi ile kartın tüm kabulünün tamamlanması ayrıdır.
 - Kullanıcının verdiği devam/merge yetkisini uygula; bu belge kendiliğinden yeni bir kullanıcı onay adımı eklemez.
 
 ## Zorunlu kontrol
