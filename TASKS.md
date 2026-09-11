@@ -59,7 +59,7 @@ Görev kimliğine tıklayarak kapsam, okuma başlangıcı, çıktı, kabul ve de
 | [F16-07](docs/plan/phase-16.md#f16-07) | Prim ve çalışan raporu · 16D | F15-04, F16-05, F16-06 | Planlandı | — | — |
 | [F16-08](docs/plan/phase-16.md#f16-08) | Hesap menüsü, dil ve eksik menülerin kapanışı · 16E | F10-06, F14-01, F12-01 | Planlandı | — | — |
 | [F17-01](docs/plan/phase-17.md#f17-01) | Geliştirme ve staging ortamı | TEMEL | Planlandı | — | — |
-| [F17-02](docs/plan/phase-17.md#f17-02) | Test çalıştırma ve bağımlılık bakım temeli | TEMEL | Çalışılıyor | ChatGPT / 2026-09-11T23:15Z | `f17-02-ci-test-dependency-baseline` · draft PR açılacak |
+| [F17-02](docs/plan/phase-17.md#f17-02) | Test çalıştırma ve bağımlılık bakım temeli | TEMEL | Tamamlandı | ChatGPT / 2026-09-11T23:30Z | `f17-02-ci-test-dependency-baseline` · [PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15) · [Devir](docs/handoffs/F17-02.md) · CI `34658041327` |
 | [F17-03](docs/plan/phase-17.md#f17-03) | İzleme, yedek ve yayın hazırlığı | F09-05, F14-03, F17-01, F17-02 | Planlandı | — | — |
 | [F17-04](docs/plan/phase-17.md#f17-04) | MVP kabul matrisi ve referans doğrulaması | G09, G10, G11, G12, G13, G14, G15, G16, F17-03 | Planlandı | — | — |
 | [F17-05](docs/plan/phase-17.md#f17-05) | Kontrollü pilot ve MVP teslimi | F17-04 | Planlandı | — | — |
