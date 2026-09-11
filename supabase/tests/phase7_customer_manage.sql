@@ -46,6 +46,7 @@ values (
 )
 on conflict(business_id,staff_id,service_id) do update set active=true;
 
+-- Configure the tenant as an authenticated owner.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','17000000-0000-4000-8000-000000000001',true);
 
@@ -70,16 +71,15 @@ begin
 end
 $$;
 
+-- Anonymous customer creates a real public booking and provisions a capability.
 select set_config('request.jwt.claim.sub','',true);
 set local role anon;
 
 do $$
 declare
-  v_day date := date_trunc('week', current_date)::date + 7;
   v_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '10:00') at time zone 'Europe/Istanbul';
   v_id uuid;
   v_token text := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-  v_stored_hash text;
 begin
   select appointment_id into v_id
   from public.create_public_appointment(
@@ -91,16 +91,6 @@ begin
 
   if not public.provision_public_management_token(v_id,'phase7-create-0001',v_token) then
     raise exception 'management capability was not provisioned';
-  end if;
-
-  select token_hash into v_stored_hash
-  from public.appointment_management_capabilities
-  where appointment_id=v_id;
-  if v_stored_hash is null or char_length(v_stored_hash) <> 64 then
-    raise exception 'management token hash missing';
-  end if;
-  if v_stored_hash = v_token or position(v_token in v_stored_hash) > 0 then
-    raise exception 'plain management token leaked into capability row';
   end if;
 
   if (select count(*) from public.get_public_managed_appointment(v_token)) <> 1 then
@@ -118,15 +108,31 @@ begin
 end
 $$;
 
--- Disable discovery/new public booking. Existing bearer capability must remain usable.
+-- Privileged assertion: only the SHA-256 hash is stored, never the bearer token.
 reset role;
+do $$
+declare
+  v_token text := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  v_stored_hash text;
+begin
+  select token_hash into v_stored_hash
+  from public.appointment_management_capabilities
+  limit 1;
+  if v_stored_hash is null or char_length(v_stored_hash) <> 64 then
+    raise exception 'management token hash missing';
+  end if;
+  if v_stored_hash = v_token or position(v_token in v_stored_hash) > 0 then
+    raise exception 'plain management token leaked into capability row';
+  end if;
+end
+$$;
+
+-- Disable discovery/new public booking and mutate catalog. Issued capability must survive.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','17000000-0000-4000-8000-000000000001',true);
 select public.update_public_booking_settings(
   '49000000-0000-4000-8000-000000000001', false, 15, 0, 30
 );
-
--- Mutate the service catalog after booking. Reschedule must keep the appointment snapshot.
 update public.services
 set duration_minutes=120, buffer_before_minutes=20, buffer_after_minutes=20, active=false
 where id='69000000-0000-4000-8000-000000000001';
@@ -141,7 +147,6 @@ declare
   v_other_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '12:00') at time zone 'Europe/Istanbul';
   v_token text := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
   v_row record;
-  v_event_count integer;
 begin
   if not exists (
     select 1 from public.compute_public_management_slots(v_token,v_day,null)
@@ -159,14 +164,12 @@ begin
     raise exception 'reschedule did not preserve 30 minute snapshot duration';
   end if;
 
-  -- Exact retry returns the committed result.
   select * into v_row
   from public.reschedule_public_managed_appointment(
     v_token,'phase7-reschedule-0001','79000000-0000-4000-8000-000000000001',v_new_start
   );
   if v_row.starts_at <> v_new_start then raise exception 'reschedule retry changed result'; end if;
 
-  -- Same command key with a different payload is rejected.
   begin
     perform public.reschedule_public_managed_appointment(
       v_token,'phase7-reschedule-0001','79000000-0000-4000-8000-000000000001',v_other_start
@@ -176,21 +179,27 @@ begin
     if sqlerrm = 'reschedule idempotency conflict was accepted' then raise; end if;
     if position('IDEMPOTENCY_CONFLICT' in sqlerrm)=0 then raise; end if;
   end;
+end
+$$;
 
+-- Privileged audit assertion after anonymous reschedule.
+reset role;
+do $$
+declare
+  v_event_count integer;
+begin
   select count(*) into v_event_count
   from public.appointment_events e
   join public.appointment_management_capabilities cap
     on cap.business_id=e.business_id and cap.appointment_id=e.appointment_id
-  where cap.token_hash=public.management_token_hash(v_token)
-    and e.event_type='rescheduled'
+  where e.event_type='rescheduled'
     and e.actor_type='public'
     and e.actor_user_id is null;
   if v_event_count <> 1 then raise exception 'public reschedule audit provenance missing'; end if;
 end
 $$;
 
--- Re-enable discovery only to verify that cancellation releases the slot again.
-reset role;
+-- Re-enable discovery only to verify that cancellation releases the occupied slot.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','17000000-0000-4000-8000-000000000001',true);
 select public.update_public_booking_settings(
@@ -209,7 +218,6 @@ declare
   v_cancelled_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '11:00') at time zone 'Europe/Istanbul';
   v_token text := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
   v_row record;
-  v_event_count integer;
 begin
   select * into v_row
   from public.cancel_public_managed_appointment(v_token,'phase7-cancel-0001','Plan değişti');
@@ -235,16 +243,6 @@ begin
     raise exception 'cancelled public-managed appointment did not release slot';
   end if;
 
-  select count(*) into v_event_count
-  from public.appointment_events e
-  join public.appointment_management_capabilities cap
-    on cap.business_id=e.business_id and cap.appointment_id=e.appointment_id
-  where cap.token_hash=public.management_token_hash(v_token)
-    and e.event_type='cancelled'
-    and e.actor_type='public'
-    and e.actor_user_id is null;
-  if v_event_count <> 1 then raise exception 'public cancel audit provenance missing'; end if;
-
   begin
     perform public.compute_public_management_slots(v_token,v_day,null);
     raise exception 'cancelled appointment still emitted management slots';
@@ -252,6 +250,23 @@ begin
     if sqlerrm = 'cancelled appointment still emitted management slots' then raise; end if;
     if position('APPOINTMENT_NOT_MANAGEABLE' in sqlerrm)=0 then raise; end if;
   end;
+end
+$$;
+
+-- Privileged audit assertion after anonymous cancellation.
+reset role;
+do $$
+declare
+  v_event_count integer;
+begin
+  select count(*) into v_event_count
+  from public.appointment_events e
+  join public.appointment_management_capabilities cap
+    on cap.business_id=e.business_id and cap.appointment_id=e.appointment_id
+  where e.event_type='cancelled'
+    and e.actor_type='public'
+    and e.actor_user_id is null;
+  if v_event_count <> 1 then raise exception 'public cancel audit provenance missing'; end if;
 end
 $$;
 
