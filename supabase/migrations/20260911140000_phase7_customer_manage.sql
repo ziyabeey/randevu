@@ -34,7 +34,7 @@ returns text
 language plpgsql
 immutable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   if p_token is null
@@ -188,19 +188,26 @@ declare
 begin
   v_hash := public.management_token_hash(p_token);
 
-  select a.*, b.timezone, pbs.min_notice_minutes, pbs.horizon_days, pbs.step_minutes
-  into v_current, v_business_timezone, v_min_notice_minutes, v_horizon_days, v_step_minutes
+  select a.* into v_current
   from public.appointment_management_capabilities cap
   join public.appointments a
     on a.business_id = cap.business_id
    and a.id = cap.appointment_id
-  join public.businesses b on b.id = a.business_id
-  join public.public_booking_settings pbs on pbs.business_id = b.id
   where cap.token_hash = v_hash
     and cap.revoked_at is null
   limit 1;
 
   if v_current.id is null then
+    raise exception 'MANAGEMENT_NOT_FOUND';
+  end if;
+
+  select b.timezone, pbs.min_notice_minutes, pbs.horizon_days, pbs.step_minutes
+  into v_business_timezone, v_min_notice_minutes, v_horizon_days, v_step_minutes
+  from public.businesses b
+  join public.public_booking_settings pbs on pbs.business_id = b.id
+  where b.id = v_current.business_id;
+
+  if v_business_timezone is null then
     raise exception 'MANAGEMENT_NOT_FOUND';
   end if;
   if v_current.status not in ('scheduled','confirmed') or v_current.starts_at <= now() then
@@ -343,19 +350,24 @@ declare
 begin
   v_hash_token := public.management_token_hash(p_token);
 
-  select a.*, b.timezone, pbs.min_notice_minutes, pbs.horizon_days
-  into v_current, v_business_timezone, v_min_notice_minutes, v_horizon_days
+  select a.* into v_current
   from public.appointment_management_capabilities cap
   join public.appointments a
     on a.business_id = cap.business_id
    and a.id = cap.appointment_id
-  join public.businesses b on b.id = a.business_id
-  join public.public_booking_settings pbs on pbs.business_id = b.id
   where cap.token_hash = v_hash_token
     and cap.revoked_at is null
   limit 1;
 
   if v_current.id is null then raise exception 'MANAGEMENT_NOT_FOUND'; end if;
+
+  select b.timezone, pbs.min_notice_minutes, pbs.horizon_days
+  into v_business_timezone, v_min_notice_minutes, v_horizon_days
+  from public.businesses b
+  join public.public_booking_settings pbs on pbs.business_id = b.id
+  where b.id = v_current.business_id;
+
+  if v_business_timezone is null then raise exception 'MANAGEMENT_NOT_FOUND'; end if;
 
   v_hash := md5(jsonb_build_object(
     'source', 'public_manage',
