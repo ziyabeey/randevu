@@ -4,7 +4,7 @@
 
 1. Read `PROJECT_STATE.md` first.
 2. Read `DECISIONS.md` only for the phase/invariant you are touching.
-3. Read the smallest relevant implementation slice: feature page + feature worker + latest relevant migration(s) + matching SQL test.
+3. Read the smallest relevant implementation slice: feature page + feature worker + latest relevant migration + matching SQL test.
 4. Do not scan old PR history unless a failing regression makes it necessary.
 
 ## Architecture rules
@@ -19,10 +19,15 @@
 - Booking create/reschedule/status operations stay idempotent.
 - Appointment snapshot semantics must survive later service/staff edits.
 - Public booking remains opt-in. Anonymous users get narrow RPC capability only, never direct table grants.
-- `/m/:token` is a bearer capability for exactly one appointment. Never log it, store it in plaintext, place it in analytics, or expose capability-table rows.
+- Customer management uses `/m#<token>`. The fragment is a bearer capability for exactly one appointment and must never be moved into a server-visible URL path/query, analytics event, log field or plaintext database column.
+- Management API requests use stable paths (`/api/manage/view`, `/slots`, `/reschedule`, `/cancel`) and carry the token only inside POST JSON bodies.
 - Management tokens are generated with 256 bits of browser cryptographic randomness; PostgreSQL stores only SHA-256 hashes.
 - Disabling public booking must not invalidate already-issued management capabilities.
 - Public management mutations stay idempotent and preserve public/null-actor audit provenance.
+
+## Product boundary
+
+After Phase 7, stay close to the original competitor-equivalent appointment SaaS goal. The preferred path is calendar UI → notifications/manage-link delivery → UX/mobile polish → deployable MVP. Do not expand into payments, advanced CRM, loyalty, AI or ERP concerns before MVP unless explicitly requested.
 
 ## Change protocol
 
