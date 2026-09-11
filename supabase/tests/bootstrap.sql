@@ -33,3 +33,6 @@ stable
 as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
+
+grant usage on schema auth to anon, authenticated;
+grant execute on function auth.uid() to anon, authenticated;
