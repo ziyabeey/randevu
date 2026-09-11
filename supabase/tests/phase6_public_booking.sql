@@ -72,9 +72,10 @@ begin
     '[{"start":"09:00","end":"17:00"}]'::jsonb
   );
 
-  select public.update_public_booking_settings(
+  select * into v_settings
+  from public.update_public_booking_settings(
     '47000000-0000-4000-8000-000000000001', true, 15, 0, 30
-  ) into v_settings;
+  );
 
   if not v_settings.enabled or v_settings.step_minutes <> 15 or v_settings.horizon_days <> 30 then
     raise exception 'owner settings update failed';
