@@ -50,6 +50,7 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911100000_phase3_services_team.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911110000_phase4_availability.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911120000_phase5_booking_core.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911121000_phase5_booking_hardening.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase3_services_team.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase4_availability.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase5_booking_core.sql
