@@ -76,8 +76,6 @@ supabase/migrations/20260911120000_phase5_booking_core.sql
 supabase/migrations/20260911121000_phase5_booking_hardening.sql
 supabase/migrations/20260911130000_phase6_public_booking.sql
 supabase/migrations/20260911140000_phase7_customer_manage.sql
-supabase/migrations/20260911140100_phase7_capability_hash_hardening.sql
-supabase/migrations/20260911140200_phase7_composite_row_hardening.sql
 ```
 
 Stabil merge edilmiş migration'lar geriye dönük düzenlenmez; yeni davranış yeni migration ile eklenir.
