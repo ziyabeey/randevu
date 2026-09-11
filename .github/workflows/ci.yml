@@ -33,6 +33,15 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Refresh dependency lock for F17-02
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Export dependency lock for F17-02
+        uses: actions/upload-artifact@v4
+        with:
+          name: f17-02-package-lock
+          path: package-lock.json
+          retention-days: 1
+          if-no-files-found: error
       - name: Install
         run: npm ci
       - name: Verify CI test and migration coverage
