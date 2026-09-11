@@ -1,6 +1,13 @@
 import { Hono } from 'hono';
+import {
+  publicGateUnavailableBody,
+  publicRateLimitedBody,
+  rateLimitFromRpcError,
+  resolvePublicAbuseIdentity,
+  type PublicAbuseEnv,
+} from './public-abuse';
 
-type Env = {
+type Env = PublicAbuseEnv & {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
@@ -149,8 +156,21 @@ async function decryptManagementToken(env: Env, row: RecoveryRow, recoveryId: st
     return null;
   }
 }
+
 function rpcError(data: unknown, fallback: string) {
+  const retryAfter = rateLimitFromRpcError(data);
+  if (retryAfter) {
+    return {
+      code: 'PUBLIC_BOOKING_RATE_LIMITED',
+      message: `Çok fazla istek yapıldı. ${retryAfter} saniye sonra tekrar deneyin.`,
+      status: 429 as const,
+      retryAfter,
+    };
+  }
   const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  if (message.includes('PUBLIC_BOOKING_GATE_UNAVAILABLE') || message.includes('PUBLIC_BOOKING_GATE_INVALID_PROOF')) {
+    return { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon güvenlik kontrolü şu anda hazır değil.', status: 503 as const };
+  }
   if (message.includes('PUBLIC_BOOKING_NOT_FOUND') || message.includes('PUBLIC_BOOKING_DISABLED')) {
     return { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.', status: 404 as const };
   }
@@ -170,6 +190,15 @@ function rpcError(data: unknown, fallback: string) {
     return { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon bilgileri geçerli değil.', status: 400 as const };
   }
   return { code: 'BOOKING_RESULT_UNKNOWN', message: fallback, status: 503 as const };
+}
+
+function errorResponse(context: Parameters<typeof bookingRecovery.fetch>[0] extends never ? never : any, error: ReturnType<typeof rpcError>) {
+  if ('retryAfter' in error && error.retryAfter) {
+    const response = context.json(publicRateLimitedBody(error.retryAfter), 429);
+    response.headers.set('Retry-After', String(error.retryAfter));
+    return response;
+  }
+  return context.json({ error: { code: error.code, message: error.message } }, error.status);
 }
 
 bookingRecovery.post('/business/:slug/book', async (context) => {
@@ -195,6 +224,9 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
     return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Ad, iletişim, hizmet veya saat bilgileri geçerli değil.' } }, 400);
   }
 
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+
   const encrypted = await encryptManagementToken(context.env, managementToken, recoveryId);
   if (!encrypted) {
     return context.json({ error: { code: 'BOOKING_RECOVERY_UNAVAILABLE', message: 'Rezervasyon güvenli olarak hazırlanamadı. Lütfen tekrar deneyin.' } }, 503);
@@ -205,7 +237,7 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
     sha256Hex(recoverySecret),
   ]);
 
-  const result = await supabaseRequest<PublicConfirmation[]>(context.env, 'rest/v1/rpc/create_public_appointment_with_recovery', {
+  const result = await supabaseRequest<PublicConfirmation[]>(context.env, 'rest/v1/rpc/create_public_appointment_with_recovery_guarded', {
     method: 'POST',
     body: JSON.stringify({
       p_slug: slug,
@@ -220,6 +252,9 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
       p_management_token_ciphertext: encrypted.ciphertext,
       p_management_token_iv: encrypted.iv,
       p_key_version: encrypted.keyVersion,
+      p_gate_secret: abuse.gateSecret,
+      p_actor_hash: abuse.actorHash,
+      p_network_hash: abuse.networkHash,
       p_customer_phone: customerPhone,
       p_customer_email: customerEmail,
       p_notes: notes,
@@ -227,8 +262,7 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
   });
 
   if (!result.ok) {
-    const error = rpcError(result.data, 'Rezervasyon sonucunuz doğrulanamadı. Aynı işlemle sonucu kontrol edin.');
-    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+    return errorResponse(context, rpcError(result.data, 'Rezervasyon sonucunuz doğrulanamadı. Aynı işlemle sonucu kontrol edin.'));
   }
 
   const appointment = first(result.data);
@@ -252,15 +286,25 @@ bookingRecovery.post('/booking/recover', async (context) => {
     return context.json({ error: { code: 'BOOKING_RECOVERY_NOT_FOUND', message: 'Randevu sonucu bulunamadı.' } }, 404);
   }
 
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+
   const recoverySecretHash = await sha256Hex(recoverySecret);
-  const result = await supabaseRequest<RecoveryRow[]>(context.env, 'rest/v1/rpc/recover_public_appointment', {
+  const result = await supabaseRequest<RecoveryRow[]>(context.env, 'rest/v1/rpc/recover_public_appointment_guarded', {
     method: 'POST',
     body: JSON.stringify({
       p_recovery_id: recoveryId,
       p_idempotency_key: key,
       p_recovery_secret_hash: recoverySecretHash,
+      p_gate_secret: abuse.gateSecret,
+      p_actor_hash: abuse.actorHash,
+      p_network_hash: abuse.networkHash,
     }),
   });
+  if (!result.ok) {
+    const error = rpcError(result.data, 'Randevu sonucu bulunamadı.');
+    if (error.status === 429 || error.status === 503) return errorResponse(context, error);
+  }
   const row = result.ok ? first(result.data) : null;
   if (!row) {
     return context.json({ error: { code: 'BOOKING_RECOVERY_NOT_FOUND', message: 'Randevu sonucu bulunamadı.' } }, 404);
