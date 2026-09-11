@@ -1,87 +1,79 @@
 # YZT Randevu
 
-YZT Digital'ın yerel hizmet işletmeleri için geliştirdiği randevu SaaS'ının başlangıcı.
+YZT Digital'ın yerel hizmet işletmeleri için geliştirdiği randevu SaaS'ı.
 
-**Mevcut kapsam: Faz 1 — yerelde çalışan frontend ve Worker API.** Bu sürüm randevu almaz ve müşteri verisi saklamaz. Authentication, işletme/tenant modeli, veritabanı, migration, takvim ve deployment sonraki fazlardadır.
+**Mevcut geliştirme dalı: Faz 3 — Hizmet + ekip.** Faz 1 React/Worker temeli üzerine Faz 2'nin kimlik/tenant güvenlik sözleşmesi ve Faz 3 katalog/ekip modeli eklenmiştir.
 
-## Gereksinimler
-
-- Node.js 24 önerilir; minimum sürüm 22.12.0'dır. `.nvmrc` Node 24'ü seçer.
-- npm 11.9.0 ile doğrulanır. Bağımlılıkların kesin sürümleri `package-lock.json` ile sabitlenir.
-- Yerel kullanım için Cloudflare hesabı, Supabase projesi, API anahtarı veya `.env` gerekmez.
-
-## Yerelde çalıştırma
+## Yerel kurulum
 
 ```bash
+cp .dev.vars.example .dev.vars
 npm ci
 npm run dev
 ```
 
-Uygulama: http://127.0.0.1:5173
+`.dev.vars` içine Supabase proje URL'sini ve anon/publishable key'i girin. Service-role key bu uygulamada kullanılmaz.
 
-Vite ve Cloudflare Vite eklentisi, React arayüzünü ve gerçek yerel Workers runtime'ını tek komutla çalıştırır. İkinci bir backend sunucusu veya API proxy ayarı gerekmez. Port kullanımda ise sunucu başka porta sessizce geçmek yerine hata verir.
+Migration'ları sırayla uygulayın:
 
-Worker debug inspector'ı kapalıdır; yerel başlangıç otomatik inspector portu veya ağ arayüzü keşfi gerektirmez.
+```text
+supabase/migrations/20260911090000_phase2_auth_tenancy.sql
+supabase/migrations/20260911100000_phase3_services_team.sql
+```
 
-Başlangıç ekranı `/api/health` isteğinin sonucunu gösterir. Kontrol sekiz saniyede zaman aşımına uğrar; hatada kullanıcı tekrar deneyebilir. “Bağlantı hazır” yalnızca API'nin yanıt verdiğini ifade eder; bir veritabanı veya booking hazırlık kontrolü değildir.
+## Faz 3 akışı
 
-## Komutlar
+1. Kayıt ol veya giriş yap.
+2. İlk işletmeyi oluştur. Oluşturan kullanıcı owner olur.
+3. Hizmet ekle. Süre ve fiyat hem backend hem PostgreSQL tarafından doğrulanır.
+4. Personel ekle.
+5. Personelin verebildiği hizmetleri eşleştir.
 
-| Komut | İşlev |
+Tenant izolasyonu her istekte güncel membership ve RLS üzerinden tekrar doğrulanır. `yzt_business` cookie'si tek başına erişim sağlamaz.
+
+## API
+
+| İstek | İşlev |
 | --- | --- |
-| `npm ci` | Lockfile'daki sürümlerle temiz kurulum. |
-| `npm run dev` | Yerel React + Worker geliştirme sunucusu. |
-| `npm run typecheck` | Frontend, Worker ve Vite yapılandırmasını ayrı TypeScript ortamlarında kontrol eder. |
-| `npm run build` | Önce typecheck, ardından frontend ve Worker build'i. Çıktılar `dist/` altındadır. |
-| `npm run preview` | Son build'i yerelde http://127.0.0.1:4173 üzerinden çalıştırır. Önce build gerekir. |
+| `GET /api/health` | Worker sağlık kontrolü |
+| `POST /api/auth/signup` | Supabase Auth hesabı oluşturur |
+| `POST /api/auth/login` | HttpOnly cookie tabanlı oturum açar |
+| `POST /api/auth/logout` | Oturumu kapatır |
+| `GET /api/session` | Kullanıcı ve aktif membership'leri döndürür |
+| `POST /api/businesses` | Business + owner membership oluşturur |
+| `POST /api/businesses/select` | Aktif membership doğrulayıp işletme seçer |
+| `GET /api/catalog` | Tenant'a ait services/staff/assignments okur |
+| `POST /api/services` | Hizmet oluşturur |
+| `PATCH /api/services/:id` | Hizmet günceller |
+| `POST /api/staff` | Personel oluşturur |
+| `PATCH /api/staff/:id` | Personel günceller |
+| `PUT /api/staff/:staffId/services/:serviceId` | Personel-hizmet yetkinliği açar/kapatır |
 
-Bu komutlar deployment yapmaz. Cloudflare kaynakları ve CI/CD bu fazda oluşturulmaz.
+## Güvenlik
 
-## Yapı
+- `Business` tenant köküdür.
+- `Membership.active=false` olduğunda erişim sonraki istekte kesilir.
+- Worker Supabase service-role key kullanmaz.
+- PostgREST çağrıları giriş yapan kullanıcının access token'ıyla yapılır ve RLS son sınırdır.
+- Staff-Service eşleştirmesi birleşik foreign key taşır; farklı tenant kayıtları bağlanamaz.
+- Owner/manager katalog ve ekip mutasyonu yapabilir; staff yalnızca okur.
 
-| Yol | Sorumluluk |
-| --- | --- |
-| `src/` | React başlangıç ekranı ve stiller. |
-| `worker/index.ts` | Hono API; uygulamanın server giriş noktası. |
-| `public/` | Statik dosyalar. |
-| `vite.config.ts` | React/Cloudflare eklentileri ve yerel portlar. |
-| `wrangler.jsonc` | Worker girişi ve statik dosya/API yönlendirmesi. |
-| `tsconfig.*.json` | Tarayıcı, Worker ve Node yapılandırma kodunun ayrı tip ortamları. |
-
-Frontend iş verisine kendi API'si üzerinden erişecek. Booking kuralları sonraki fazlarda backend/domain kodunda yer alacak. Şimdilik ihtiyaç duyulmayan domain klasörleri, SDK'lar ve veri bağlantıları eklenmedi.
-
-## API sözleşmesi
-
-| İstek | Sonuç |
-| --- | --- |
-| `GET /api/health` | `200`, `{"status":"ok","service":"yzt-randevu"}` |
-| `HEAD /api/health` | `200`, boş gövde. |
-| `POST /api/health` ve diğer desteklenmeyen metotlar | `405`, JSON hata ve `Allow: GET, HEAD`. |
-| `/api` ve bilinmeyen `/api/*` adresleri | `404`, `NOT_FOUND` kodlu JSON hata. |
-
-API yanıtları `Cache-Control: no-store` ve `X-Content-Type-Options: nosniff` taşır. Health yanıtı secrets veya ortam değişkenlerini içermez.
-
-`run_worker_first`, hem `/api` hem `/api/*` için açıktır. Böylece API istekleri SPA fallback tarafından `200 index.html` yanıtına dönüştürülmez; `Accept: text/html` gönderen gezinme istekleri de JSON hata alır.
-
-## Faz 1 kabul kontrolü
+## Kabul kontrolü
 
 ```bash
 npm ci
 npm run typecheck
 npm run build
-npm run dev
 ```
 
-Ayrı bir terminalde:
+Disposable Supabase veritabanında migration'ları uyguladıktan sonra:
 
-```bash
-curl -i http://127.0.0.1:5173/api/health
-curl -I http://127.0.0.1:5173/api/health
-curl -i -X POST http://127.0.0.1:5173/api/health
-curl -i -H 'Accept: text/html' http://127.0.0.1:5173/api/bulunamadi
-curl -i http://127.0.0.1:5173/api
+```text
+supabase/tests/phase3_services_team.sql
 ```
 
-Sırasıyla 200, 200, 405, 404 ve 404 beklenir. Aynı kontroller build sonrası `npm run preview` ile 4173 portunda da yapılabilir. Arayüzde kontrol sürerken düğme kilitlenmeli, bağlantı sonucu metinle açıklanmalıdır.
+Test; tenant A'nın tenant B hizmet/personel kayıtlarını görememesini, membership iptalinde erişimin kesilmesini, geçersiz süre/fiyatın DB tarafından reddedilmesini ve cross-tenant StaffService bağının engellenmesini kapsar.
 
-Secrets yalnızca ileride ihtiyaç oluştuğunda server ortamına eklenecek. `VITE_` önekli değişkenler tarayıcıya açık kabul edilir; burada secret tutulmaz. Yerel `.env` ve `.dev.vars` dosyaları Git dışında bırakılır.
+## Faz sınırı
+
+Faz 3; hizmet, personel ve yetkinlik eşleştirmesinde biter. Mesai, mola, izin, slot hesabı ve timezone availability motoru Faz 4'te; gerçek appointment yazımı ve concurrency Faz 5'tedir.
