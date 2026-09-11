@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
+import { sendPublicBookingConfirmation } from './email';
+import type { EmailEnv } from './email';
 
-type Env = {
+type Env = EmailEnv & {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
 };
@@ -28,6 +30,20 @@ type ManagedSlot = {
   ends_at: string;
   timezone: string;
 };
+type BookingEmailPayload = {
+  business_id: string;
+  business_name: string;
+  customer_name: string;
+  customer_email: string | null;
+  starts_at: string;
+  timezone: string;
+  service_name: string;
+  staff_name: string;
+  price_minor: number;
+  currency: string;
+  already_delivered: boolean;
+};
+type DeliveryStatus = 'sent' | 'already_sent' | 'skipped_no_email' | 'disabled' | 'failed' | 'unavailable';
 
 const customerManage = new Hono<{ Bindings: Env }>();
 
@@ -115,6 +131,63 @@ function rpcError(data: unknown, fallback: string) {
   return { code: 'MANAGEMENT_FAILED', message: fallback, status: 400 as const };
 }
 
+async function deliverBookingEmail(
+  context: Parameters<Parameters<typeof customerManage.post>[1]>[0],
+  appointmentId: string,
+  bookingKey: string,
+  managementToken: string,
+): Promise<{ status: DeliveryStatus; tracked?: boolean }> {
+  const payloadResult = await supabaseRequest<BookingEmailPayload[]>(
+    context.env,
+    'rest/v1/rpc/get_public_booking_email_payload',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_appointment_id: appointmentId,
+        p_booking_idempotency_key: bookingKey,
+      }),
+    },
+  );
+  const payload = payloadResult.ok ? first(payloadResult.data) : null;
+  if (!payload) return { status: 'unavailable' };
+  if (payload.already_delivered) return { status: 'already_sent', tracked: true };
+  if (!payload.customer_email) return { status: 'skipped_no_email' };
+
+  const manageUrl = new URL('/m', context.req.url);
+  manageUrl.hash = managementToken;
+
+  const delivery = await sendPublicBookingConfirmation(context.env, {
+    appointmentId,
+    businessName: payload.business_name,
+    customerName: payload.customer_name,
+    customerEmail: payload.customer_email,
+    startsAt: payload.starts_at,
+    timezone: payload.timezone,
+    serviceName: payload.service_name,
+    staffName: payload.staff_name,
+    priceMinor: payload.price_minor,
+    currency: payload.currency,
+    manageUrl: manageUrl.toString(),
+  });
+
+  if (delivery.status !== 'sent') return { status: delivery.status };
+
+  const receipt = await supabaseRequest<boolean>(
+    context.env,
+    'rest/v1/rpc/record_public_booking_email_delivery',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_appointment_id: appointmentId,
+        p_booking_idempotency_key: bookingKey,
+        p_provider_message_id: delivery.providerMessageId,
+      }),
+    },
+  );
+
+  return { status: 'sent', tracked: receipt.ok && receipt.data === true };
+}
+
 customerManage.post('/provision', async (context) => {
   const body = await readJson(context.req.raw);
   const appointmentId = body?.appointmentId;
@@ -136,7 +209,11 @@ customerManage.post('/provision', async (context) => {
     const error = rpcError(result.data, 'Randevu yönetim bağlantısı hazırlanamadı.');
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
-  return context.json({ ok: true });
+
+  // Notification delivery is deliberately non-transactional with booking/capability
+  // creation. A provider outage must never roll back a valid appointment.
+  const delivery = await deliverBookingEmail(context, appointmentId, bookingKey, managementToken);
+  return context.json({ ok: true, delivery });
 });
 
 // The bearer token is always carried in a POST body, never in a URL path/query.
