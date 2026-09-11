@@ -25,9 +25,9 @@ npm run dev
 | `/bookings` | Operatör randevu oluşturma, taşıma, durum ve audit |
 | `/public-booking` | Owner/manager public sayfa ayarları ve paylaşım linki |
 | `/r/:slug` | Login gerektirmeyen müşteri self-booking sayfası |
-| `/m/:token` | Tek randevu için capability-link görüntüleme, taşıma ve iptal |
+| `/m#<token>` | Tek randevu için capability-link görüntüleme, taşıma ve iptal. Secret fragment server'a gönderilmez. |
 
-Public rezervasyon **varsayılan kapalıdır**. Owner/manager `/public-booking` ekranından açtıktan sonra müşteri linki çalışır. Daha önce verilmiş `/m/:token` yönetim bağlantısı, public sayfa sonradan kapatılsa da mevcut randevu için geçerli kalır.
+Public rezervasyon **varsayılan kapalıdır**. Owner/manager `/public-booking` ekranından açtıktan sonra müşteri linki çalışır. Daha önce verilmiş `/m#<token>` yönetim bağlantısı, public sayfa sonradan kapatılsa da mevcut randevu için geçerli kalır.
 
 ## Public booking akışı
 
@@ -40,13 +40,13 @@ Public rezervasyon **varsayılan kapalıdır**. Owner/manager `/public-booking` 
 7. Son yarış koşulunda PostgreSQL `EXCLUDE USING gist` aynı personele overlap yazılmasını engeller.
 8. Başarılı kayıt `appointments.source='public'` ve public audit event'i bırakır.
 9. Tarayıcı 256-bit rastgele bir management token üretir; aynı booking idempotency key ile capability provision edilir.
-10. DB yalnız `SHA-256(token)` saklar; müşteriye `/m/:token` linki gösterilir.
+10. DB yalnız `SHA-256(token)` saklar; müşteriye `/m#<token>` linki gösterilir.
 
 Anon kullanıcıların `customers`, `appointments`, `public_booking_settings` veya capability tablolarına doğrudan erişimi yoktur. Public yüzey yalnız dar security-definer RPC'lerden oluşur.
 
 ## Randevumu yönet akışı
 
-`/m/:token` bearer-capability bağlantısı yalnız tek appointment'ı temsil eder. Token düz hali PostgreSQL'de saklanmaz ve listelenemez.
+`/m#<token>` bearer-capability bağlantısı yalnız tek appointment'ı temsil eder. Token düz hali PostgreSQL'de saklanmaz ve listelenemez. Fragment browser tarafında kalır ve page request/access log URL'sine gönderilmez.
 
 Müşteri bu bağlantıyla:
 
@@ -54,6 +54,8 @@ Müşteri bu bağlantıyla:
 - mevcut appointment'ın snapshot süre/buffer değerleriyle hesaplanan uygun saatleri görebilir,
 - `Idempotency-Key` ile güvenli biçimde randevuyu taşıyabilir,
 - `Idempotency-Key` ile iptal edebilir.
+
+Management API token'ı path/query içinde taşımaz. `view`, `slots`, `reschedule` ve `cancel` sabit POST endpoint'lerine JSON body içinde gönderilir.
 
 Taşıma mevcut işletme/personel çalışma saatleri, block'lar, personel-hizmet yetkinliği, minimum notice ve horizon kurallarını uygular. Final overlap kilidi yine PostgreSQL exclusion constraint'tir. Taşıma ve iptal audit event'leri `actor_type='public'`, `actor_user_id=null` provenance taşır.
 
@@ -101,10 +103,10 @@ Stabil merge edilmiş migration'lar geriye dönük düzenlenmez; yeni davranış
 ### Anonymous customer management
 
 - `POST /api/manage/provision` — booking sonucuna management capability bağlar
-- `GET /api/manage/:token`
-- `GET /api/manage/:token/slots?date=...&staffId=...`
-- `POST /api/manage/:token/reschedule` — `Idempotency-Key` zorunlu
-- `POST /api/manage/:token/cancel` — `Idempotency-Key` zorunlu
+- `POST /api/manage/view` — body: management token
+- `POST /api/manage/slots` — body: token + date + optional staff
+- `POST /api/manage/reschedule` — body: token + target slot, `Idempotency-Key` zorunlu
+- `POST /api/manage/cancel` — body: token + optional reason, `Idempotency-Key` zorunlu
 
 ## Booking invariant'ları
 
@@ -118,7 +120,7 @@ Stabil merge edilmiş migration'lar geriye dönük düzenlenmez; yeni davranış
 - Appointment snapshot'ları sonradan değişen katalogdan etkilenmez.
 - Terminal durumlar yeniden aktif duruma açılamaz.
 - Public booking mevcut CRM customer kaydını contact match ile reuse edebilir ama anonim veriyle o customer satırını güncellemez.
-- Management capability yalnız tek appointment içindir; plain token DB'de saklanmaz.
+- Management capability yalnız tek appointment içindir; plain token DB'de saklanmaz veya server-visible URL'e konmaz.
 
 ## Kabul kontrolü
 
@@ -129,6 +131,10 @@ npm run build
 ```
 
 CI ayrıca PostgreSQL 17 üzerinde tüm migration zincirini kurar ve Faz 3–7 SQL regression testlerini çalıştırır. Kırmızı DB gate ile merge yapılmaz.
+
+## MVP rotası
+
+Faz 7 sonrası ürünün ana rotası: **takvim → bildirim/manage-link teslimi → mobil/UX polish → deployable MVP**. Ödeme, gelişmiş CRM, loyalty, AI ve ERP-benzeri genişlemeler MVP öncesi varsayılan kapsam değildir.
 
 ## Sonraki kapsam
 
