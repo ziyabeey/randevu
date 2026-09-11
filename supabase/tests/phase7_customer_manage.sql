@@ -77,7 +77,7 @@ set local role anon;
 
 do $$
 declare
-  v_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '10:00') at time zone 'Europe/Istanbul';
+  v_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '10:05') at time zone 'Europe/Istanbul';
   v_id uuid;
   v_token text := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 begin
@@ -143,8 +143,8 @@ set local role anon;
 do $$
 declare
   v_day date := date_trunc('week', current_date)::date + 7;
-  v_new_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '11:00') at time zone 'Europe/Istanbul';
-  v_other_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '12:00') at time zone 'Europe/Istanbul';
+  v_new_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '11:05') at time zone 'Europe/Istanbul';
+  v_other_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '12:05') at time zone 'Europe/Istanbul';
   v_token text := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
   v_row record;
 begin
@@ -215,7 +215,7 @@ set local role anon;
 do $$
 declare
   v_day date := date_trunc('week', current_date)::date + 7;
-  v_cancelled_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '11:00') at time zone 'Europe/Istanbul';
+  v_cancelled_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '11:05') at time zone 'Europe/Istanbul';
   v_token text := 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
   v_row record;
 begin
