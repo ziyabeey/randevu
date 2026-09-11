@@ -1,10 +1,31 @@
 # YZT Randevu
 
-YZT Digital'ın yerel hizmet işletmeleri için geliştirdiği multi-tenant randevu SaaS'ı.
+YZT Digital'ın salon ve yerel hizmet işletmeleri için geliştirdiği ortak randevu/operasyon ürünü.
 
-**Güncel ürün sınırı: Faz 8 — Operator Calendar.** Auth/tenant, hizmet-ekip, timezone/DST-safe availability, concurrency-safe booking, public self-booking ve müşteri self-management üstüne günlük/haftalık operasyon takvimi eklendi.
+## Üç ürün kolu
 
-> Coding agent: önce `PROJECT_STATE.md`, sonra gerekiyorsa `DECISIONS.md`. `AGENTS.md` düşük-context çalışma protokolüdür.
+| Kol | Amaç | Tasarım ilkesi |
+| --- | --- | --- |
+| Müşteri paneli | Salon/hizmet keşfi, rezervasyon ve randevu yönetimi | Aynı temel işlevler, daha estetik müşteri deneyimi |
+| Randevu paneli | Salonun gün/hafta/liste takvimi ve günlük planlama | Referanstaki iş disiplini ve işlem sırası; küçük iyileştirmeler |
+| SalonApp | Mobil randevu, adisyon, tahsilat ve salon işlemleri | Tanıdık menü/adisyon akışı; küçük görsel ve ergonomik farklar |
+
+Üç kol ortak işletme, üyelik, müşteri, hizmet, personel ve randevu verisini kullanır. SalonApp alt menü hedefi: **Randevular · Adisyonlar · Yeni · Müşteriler · Diğer**.
+
+## Mevcut durum
+
+Main'de Faz 1–8 temeli vardır: Auth/tenant, katalog, çalışma saatleri/müsaitlik, tek hizmetli randevu, müşteriye açık rezervasyon, güvenli bağlantıyla yönetim ve gün/hafta takvimi.
+
+Faz 9 e-posta çalışması [taslak PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8) içindedir. Çoklu hizmet, yeni müşteri tasarımı, SalonApp/adisyon/tahsilat ve ürün/stok/rapor genişlemeleri planlanmıştır; henüz uygulanmış değildir. Canlı pilot doğrulanmış sayılmaz.
+
+## Proje rehberi
+
+- [PRODUCT_SPEC.md](PRODUCT_SPEC.md) — üç kol, işlev/tasarım kuralları ve kapsam.
+- [ROADMAP.md](ROADMAP.md) — korunan Faz 1–8 ve kabul ölçütlü Faz 9–17.
+- [PROJECT_STATE.md](PROJECT_STATE.md) — gerçek kod durumu, branch'ler, açık bulgular ve kanıtlar.
+- [DECISIONS.md](DECISIONS.md) — teknik kararlar ve veri sınırları.
+- [Görsel referanslar](docs/references/README.md) — ürün sahibinin sağladığı 11 ekranın eşleştirmesi.
+- [AGENTS.md](AGENTS.md) — geliştirme ve doğrulama protokolü.
 
 ## Yerel kurulum
 
@@ -14,55 +35,29 @@ npm ci
 npm run dev
 ```
 
-Worker service-role key kullanmaz.
+`.dev.vars` içindeki Supabase değerleri gerçek geliştirme ortamına göre ayarlanır. Main'deki migration sırası [PROJECT_STATE.md](PROJECT_STATE.md) içindedir. Worker, Supabase Auth ve kullanıcının RLS yetkileriyle çalışır; service-role anahtarı kullanmaz.
 
-## Ana ekranlar
+## Mevcut ekranlar
 
 | Yol | İşlev |
 | --- | --- |
-| `/calendar` | Gün/hafta operasyon takvimi, personel filtresi, hızlı durum aksiyonları |
-| `/bookings` | Yeni randevu, taşıma ve gelişmiş booking işlemleri |
-| `/availability` | Mesai, izin/kapanış ve slot önizleme |
-| `/` | İşletme, hizmet ve ekip |
+| `/calendar` | Gün/hafta takvimi, personel filtresi, durum işlemleri |
+| `/bookings` | Randevu oluşturma ve taşıma |
+| `/availability` | Mesai, kapanış ve müsaitlik |
+| `/` | Giriş, işletme, hizmet ve ekip |
 | `/public-booking` | Public sayfa ayarları |
-| `/r/:slug` | Müşteri self-booking |
-| `/m#<token>` | Tek randevu için güvenli müşteri yönetimi |
+| `/r/:slug` | Müşteri rezervasyonu |
+| `/m#<token>` | Tek randevuyu bağlantıyla yönetme |
 
-## Takvim
+SalonApp/adisyon yolları ilgili uygulama fazında eklenecek; yukarıdaki tablo mevcut çalışan route'ları gösterir.
 
-Takvim yeni bir booking sistemi değildir. `get_calendar_appointments` mevcut appointment snapshot'larını aktif tenant üyeliği ile okur. İstenen yerel gün/hafta business timezone'unda exact `timestamptz` sınırlarına çevrilir; UTC günü ile işletme günü karıştırılmaz.
+## Korunan teknik temel
 
-Gün görünümü personel sütunları üzerinde timed blocks gösterir. Hafta görünümü 7 business-local günü kompakt sütunlarda gösterir. Detay çekmecesi müşteri/hizmet/personel/kaynak/iletişim/not bilgilerini gösterir ve mevcut Faz 5 lifecycle endpoint'leriyle onay, tamamlandı, gelmedi ve iptal aksiyonlarını çalıştırır.
+İşletme sınırı aktif üyelik + RLS + composite FK'lerle uygulanır. Müsaitlik işletmenin IANA saat dilimini kullanır. Tamponlar dahil personel çakışması PostgreSQL exclusion constraint'iyle engellenir. Randevu işlemleri tekrar güvenlidir; snapshot ve değişiklik geçmişi korunur. Takvim ortak randevuların görünümüdür. Müşteri yönetim token'ı düz metin saklanmaz ve URL path/query'sine konulmaz.
 
-Yeni randevu ve gelişmiş reschedule `/bookings` yüzeyinde kalır. Booking doğruluğu ve overlap kilidi takvim UI'sına taşınmaz.
+Yeni kapsamda adisyon/tahsilat durumu randevu durumundan ayrı tutulur. İlk mali işlev işletmede gerçekleşen tahsilatı kaydetmektir; çevrimiçi ödeme, tam muhasebe, e-fatura, bordro ve ERP ayrı kapsamdır.
 
-## Güvenlik ve booking invariant'ları
-
-- Tenant root `Business`'tır; cookie yetki değildir.
-- Member erişimi aktif Membership + RLS ile doğrulanır.
-- Cross-tenant ilişkiler engellenir.
-- Availability ve calendar işletme timezone'u ile gerçek timeline üzerinde çalışır.
-- Occupied aralık buffer'ları içerir.
-- Same-staff overlap final kilidi PostgreSQL `EXCLUDE USING gist` constraint'idir.
-- `cancelled` slotu serbest bırakır; `completed/no_show` tarihçeyi korur.
-- Booking mutation'ları idempotenttir.
-- Public booking mevcut customer master kaydını anonim veriyle güncellemez.
-- Management token DB'de plaintext tutulmaz; `/m#token` fragment server-visible URL'e gitmez.
-
-## Migration sırası
-
-```text
-20260911090000_phase2_auth_tenancy.sql
-20260911100000_phase3_services_team.sql
-20260911110000_phase4_availability.sql
-20260911120000_phase5_booking_core.sql
-20260911121000_phase5_booking_hardening.sql
-20260911130000_phase6_public_booking.sql
-20260911140000_phase7_customer_manage.sql
-20260911150000_phase8_calendar.sql
-```
-
-## Kabul kontrolü
+## Kontroller
 
 ```bash
 npm ci
@@ -70,10 +65,4 @@ npm run typecheck
 npm run build
 ```
 
-CI PostgreSQL 17 üzerinde tüm migration zincirini ve Faz 3–8 regression testlerini çalıştırır.
-
-## MVP rotası
-
-**Takvim ✅ → bildirim/manage-link teslimi → mobil/UX polish → deployable MVP.**
-
-Ödeme, gelişmiş CRM, loyalty, AI ve ERP-benzeri genişlemeler MVP öncesi varsayılan kapsam değildir.
+GitHub CI PostgreSQL 17 üzerinde main'deki tüm migration'ları ve SQL gerileme testlerini çalıştırır. Gerçek hesap, tarayıcı, mobil, bildirim ve üç kol arasındaki işlemler ayrıca ilgili fazın kabul ölçütleriyle doğrulanır.
