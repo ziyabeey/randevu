@@ -73,8 +73,9 @@ $$;
 reset role;
 
 -- Two physical database sessions exercise the actual transaction advisory lock.
--- Session A creates the booking then sleeps inside the same statement transaction,
--- keeping the recovery-id lock held. Session B attempts recovery and must wait.
+-- Session A creates the booking and then sleeps in a LATERAL expression that
+-- depends on the created row, so the recovery-id lock is already held. The test
+-- waits until that lock is observable before Session B attempts recovery.
 do $$
 declare
   v_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '10:05') at time zone 'Europe/Istanbul';
@@ -84,6 +85,9 @@ declare
   v_created uuid;
   v_started timestamptz;
   v_elapsed double precision;
+  v_lock_key bigint := hashtextextended('8a000000-0000-4000-8000-000000000002', 0);
+  v_attempt integer := 0;
+  v_lock_available boolean;
 begin
   perform dblink_connect('f09_create','host=127.0.0.1 port=5432 dbname=yzt_test user=postgres password=postgres');
   perform dblink_connect('f09_recover','host=127.0.0.1 port=5432 dbname=yzt_test user=postgres password=postgres');
@@ -100,14 +104,31 @@ begin
       'ciphertext-race-abcdefghijklmnopqrstuvwxyz0123456789','iv-race-12345678',1::smallint,
       '+90 555 900 00 03','phase9-race@example.test',null
     ) c
-    cross join lateral (select pg_sleep(2)) delay
+    cross join lateral (
+      select pg_sleep(2)
+      where c.appointment_id is not null
+    ) delay
   $sql$, v_start);
 
   if dblink_send_query('f09_create', v_create_sql) <> 1 then
     raise exception 'could not start concurrent create query';
   end if;
 
-  perform pg_sleep(0.25);
+  -- Do not guess how quickly the other session reaches the function. Probe the
+  -- exact advisory key until Session A owns it, releasing any probe lock at once.
+  loop
+    v_lock_available := pg_try_advisory_lock(v_lock_key);
+    if not v_lock_available then
+      exit;
+    end if;
+    perform pg_advisory_unlock(v_lock_key);
+    v_attempt := v_attempt + 1;
+    if v_attempt > 100 then
+      raise exception 'create session never acquired the recovery advisory lock';
+    end if;
+    perform pg_sleep(0.02);
+  end loop;
+
   v_started := clock_timestamp();
   v_recover_sql := $sql$
     select count(*)::bigint as c
