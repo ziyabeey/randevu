@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - phase-8-calendar
+      - f09-02-booking-recovery
   pull_request:
     branches:
       - main
@@ -39,9 +39,11 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: Verify F09-02 HTTP recovery contract
+        run: node --test --experimental-strip-types tests/public-booking-recovery.test.mjs
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Verify migrations, tenancy, availability, booking, public management and calendar
+      - name: Verify migrations, tenancy, booking, management, calendar and recovery
         env:
           PGPASSWORD: postgres
         run: |
@@ -54,9 +56,12 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911130000_phase6_public_booking.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911140000_phase7_customer_manage.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911150000_phase8_calendar.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911160000_phase9_booking_recovery.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase3_services_team.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase4_availability.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase5_booking_core.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase6_public_booking.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase7_customer_manage.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase8_calendar.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery_concurrency.sql

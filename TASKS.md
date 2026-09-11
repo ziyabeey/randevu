@@ -6,7 +6,7 @@ Başlangıç kaydı: 11 Eylül 2026. İlk kayıtta 46 görevin tümü **Planland
 
 Görev kimliğine tıklayarak kapsam, okuma başlangıcı, çıktı, kabul ve devir maddelerini aç. [CONTRIBUTING.md](CONTRIBUTING.md) sahiplenme ve PR düzenini tanımlar. Görevi alırken yalnız kendi satırında durum/sahip/UTC tarih/branch/kanıt alanlarını güncelle; başka açık PR'da aynı görevin üstlenilip üstlenilmediğini ayrıca kontrol et.
 
-- `TEMEL`: güncel main'deki Faz 1–8 kodu ve kabul edilmiş ürün planı; erişim/ortam hazır olduğu varsayımı değildir.
+- `TEMEL`: güncel main'deki Faz 1–8 kodu ve kabul edilmiş ürün planıdır; erişim/ortam hazır olduğu varsayımı değildir.
 - `Fxx-yy`: doğrudan görev önkoşulu. Varsayılan olarak kartın kabulü tamamlanmış olmalıdır.
 - `Gxx`: o fazın bütün görevlerinin kabul kapısı. G17, tüm ürünün MVP/pilot kabulüdür.
 - Durumlar: Planlandı → Üstlenildi → Çalışılıyor → İncelemede → Tamamlandı. Gerektiğinde Engelli veya Main'de / kabul açık kullanılır.
@@ -18,7 +18,7 @@ Görev kimliğine tıklayarak kapsam, okuma başlangıcı, çıktı, kabul ve de
 | Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / PR / kanıt veya engel |
 | --- | --- | --- | --- | --- | --- |
 | [F09-01](docs/plan/phase-09.md#f09-01) | Taslak incelemesi ve kurtarma sözleşmesi | TEMEL | Tamamlandı | ChatGPT / 2026-09-11T17:52Z | `f09-01-recovery-contract` · [PR #11](https://github.com/ziyabeey1-ai/randevu/pull/11) · [Sözleşme](docs/plan/f09-01-recovery-contract.md) |
-| [F09-02](docs/plan/phase-09.md#f09-02) | Rezervasyon sonucunu ve yönetim erişimini kurtarma | F09-01 | Planlandı | — | — |
+| [F09-02](docs/plan/phase-09.md#f09-02) | Rezervasyon sonucunu ve yönetim erişimini kurtarma | F09-01 | Tamamlandı | ChatGPT / 2026-09-11T21:58Z | `f09-02-booking-recovery` · [PR #12](https://github.com/ziyabeey1-ai/randevu/pull/12) · [Devir](docs/handoffs/F09-02.md) · CI `34651571690` |
 | [F09-03](docs/plan/phase-09.md#f09-03) | Kalıcı gönderim ve güvenilir sağlayıcı kaydı | F09-02 | Planlandı | — | — |
 | [F09-04](docs/plan/phase-09.md#f09-04) | Public rezervasyonda kötüye kullanım kontrolü | F09-02 | Planlandı | — | — |
 | [F09-05](docs/plan/phase-09.md#f09-05) | Rezervasyon/bildirim entegrasyon kapısı | F09-03, F09-04, F17-01, F17-02 | Planlandı | — | — |
