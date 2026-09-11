@@ -168,7 +168,7 @@ begin
     ) values (
       v_created.appointment_id, v_business_id, p_management_token_hash
     )
-    on conflict (appointment_id) do nothing;
+    on conflict on constraint appointment_management_capabilities_pkey do nothing;
   exception when unique_violation then
     raise exception 'IDEMPOTENCY_CONFLICT';
   end;
@@ -182,11 +182,11 @@ begin
     raise exception 'IDEMPOTENCY_CONFLICT';
   end if;
 
-  update public.public_booking_recoveries
+  update public.public_booking_recoveries r
   set appointment_id = v_created.appointment_id
-  where recovery_id = p_recovery_id
-    and business_id = v_business_id
-    and (appointment_id is null or appointment_id = v_created.appointment_id);
+  where r.recovery_id = p_recovery_id
+    and r.business_id = v_business_id
+    and (r.appointment_id is null or r.appointment_id = v_created.appointment_id);
 
   select r.expires_at into v_expires_at
   from public.public_booking_recoveries r
