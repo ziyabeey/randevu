@@ -2,7 +2,7 @@
 
 YZT Digital'ın yerel hizmet işletmeleri için geliştirdiği randevu SaaS'ı.
 
-**Mevcut geliştirme dalı: Faz 3 — Hizmet + ekip.** Faz 1 React/Worker temeli üzerine Faz 2'nin kimlik/tenant güvenlik sözleşmesi ve Faz 3 katalog/ekip modeli eklenmiştir.
+**Mevcut geliştirme dalı: Faz 4 — Müsaitlik motoru.** Faz 1 React/Worker temeli, Faz 2 kimlik/tenant güvenliği ve Faz 3 hizmet/ekip modelinin üzerine haftalık çalışma saatleri, mola, izin/kapanış, timezone ve gerçek slot hesabı eklenmiştir.
 
 ## Yerel kurulum
 
@@ -19,17 +19,19 @@ Migration'ları sırayla uygulayın:
 ```text
 supabase/migrations/20260911090000_phase2_auth_tenancy.sql
 supabase/migrations/20260911100000_phase3_services_team.sql
+supabase/migrations/20260911110000_phase4_availability.sql
 ```
 
-## Faz 3 akışı
+## Faz 4 akışı
 
-1. Kayıt ol veya giriş yap.
-2. İlk işletmeyi oluştur. Oluşturan kullanıcı owner olur.
-3. Hizmet ekle. Süre ve fiyat hem backend hem PostgreSQL tarafından doğrulanır.
-4. Personel ekle.
-5. Personelin verebildiği hizmetleri eşleştir.
+1. Ana çalışma alanında işletme, hizmet ve personeli oluştur.
+2. `/availability` ekranında işletmenin haftalık açık aralıklarını tanımla.
+3. Her personelin haftalık çalışma aralıklarını tanımla.
+4. Mola için aynı günü iki veya daha fazla açık aralığa böl.
+5. Tarih bazlı personel izni veya tüm işletme kapanışı ekle.
+6. Hizmet + tarih + personel seçerek gerçek slotları önizle. `Fark etmez` seçimi uygun tüm personellerin slotlarını döndürür.
 
-Tenant izolasyonu her istekte güncel membership ve RLS üzerinden tekrar doğrulanır. `yzt_business` cookie'si tek başına erişim sağlamaz.
+Slot önizleme appointment oluşturmaz. Booking yazımı Faz 5 kapsamındadır.
 
 ## API
 
@@ -48,15 +50,35 @@ Tenant izolasyonu her istekte güncel membership ve RLS üzerinden tekrar doğru
 | `POST /api/staff` | Personel oluşturur |
 | `PATCH /api/staff/:id` | Personel günceller |
 | `PUT /api/staff/:staffId/services/:serviceId` | Personel-hizmet yetkinliği açar/kapatır |
+| `GET /api/availability/setup` | Tenant'ın timezone, haftalık saat ve bloklarını okur |
+| `PUT /api/availability/business-hours/:weekday` | Bir işletme gününün açık aralıklarını atomik değiştirir |
+| `PUT /api/availability/staff/:staffId/hours/:weekday` | Bir personelin günlük çalışma aralıklarını atomik değiştirir |
+| `POST /api/availability/blocks` | Tarih bazlı izin/kapanış ekler |
+| `DELETE /api/availability/blocks/:id` | İzin/kapanış kaydını siler |
+| `GET /api/availability/slots` | Hizmet süresi, tamponlar, mesai ve bloklardan slot üretir |
+
+## Müsaitlik kuralları
+
+- İşletme ve personel haftalık aralıkları kesiştirilir.
+- Haftalık aralıklar arasındaki boşluklar mola kabul edilir.
+- Personelin hizmeti verebilmesi için aktif `StaffService` eşleşmesi gerekir.
+- Hizmet süresi ile `buffer_before` ve `buffer_after` birlikte açık pencereye sığmalıdır.
+- Slot adımı hizmet süresinden bağımsızdır; örneğin 15 dakikalık grid üzerinde 45 dakikalık hizmet üretilebilir.
+- İşletme seviyesindeki blok bütün personeli, personel seviyesindeki blok yalnız ilgili kişiyi kapatır.
+- `00:00 → 00:00` tarih bloğu o yerel günün tamamını kapatır.
+- Haftalık saatler işletmenin IANA timezone'u ile gerçek `timestamptz` anlarına çevrilir.
+- İlkbahar DST sıçramasında var olmayan yerel saat slot üretemez. Sonbaharda tekrarlanan yerel saat iki farklı UTC offset'e sahip iki gerçek zaman aralığı olarak korunur.
 
 ## Güvenlik
 
 - `Business` tenant köküdür.
 - `Membership.active=false` olduğunda erişim sonraki istekte kesilir.
+- Aktif işletme cookie'si tek başına yetki değildir; her availability isteği JWT + güncel Membership + RLS ile doğrulanır.
 - Worker Supabase service-role key kullanmaz.
-- PostgREST çağrıları giriş yapan kullanıcının access token'ıyla yapılır ve RLS son sınırdır.
-- Staff-Service eşleştirmesi birleşik foreign key taşır; farklı tenant kayıtları bağlanamaz.
-- Owner/manager katalog ve ekip mutasyonu yapabilir; staff yalnızca okur.
+- Schedule tablolarına authenticated kullanıcılar doğrudan yazamaz. Mutasyonlar atomik RPC'lerden geçer ve owner/manager yetkisi tekrar kontrol edilir.
+- Staff availability verisini okuyabilir fakat schedule, izin veya kapanış mutasyonu yapamaz.
+- Staff-Service ve Staff-Hours ilişkilerinde birleşik tenant foreign key'leri cross-tenant bağlantıyı engeller.
+- İşletme timezone'u PostgreSQL `pg_timezone_names` listesine göre doğrulanır.
 
 ## Kabul kontrolü
 
@@ -66,14 +88,15 @@ npm run typecheck
 npm run build
 ```
 
-Disposable Supabase veritabanında migration'ları uyguladıktan sonra:
+CI ayrıca disposable PostgreSQL üzerinde migration'ları ve şu testleri çalıştırır:
 
 ```text
 supabase/tests/phase3_services_team.sql
+supabase/tests/phase4_availability.sql
 ```
 
-Test; tenant A'nın tenant B hizmet/personel kayıtlarını görememesini, membership iptalinde erişimin kesilmesini, geçersiz süre/fiyatın DB tarafından reddedilmesini ve cross-tenant StaffService bağının engellenmesini kapsar.
+Faz 4 testi; işletme/personel saat kesişimini, mola davranışını, hizmet tamponlarını, personel iznini, tüm gün kapanışı, staff read-only rolünü, tenant izolasyonunu, geçersiz timezone reddini ve Europe/Berlin yaz/kış saati geçişlerini kapsar.
 
 ## Faz sınırı
 
-Faz 3; hizmet, personel ve yetkinlik eşleştirmesinde biter. Mesai, mola, izin, slot hesabı ve timezone availability motoru Faz 4'te; gerçek appointment yazımı ve concurrency Faz 5'tedir.
+Faz 4 gerçek appointment yazmaz ve mevcut randevu çakışması henüz hesaba katılmaz. Appointment oluşturma, aynı personelin zaman aralığında concurrency/exclusion constraint, idempotency, reschedule ve audit Faz 5 booking çekirdeğinde eklenecektir.
