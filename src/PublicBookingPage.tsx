@@ -26,6 +26,7 @@ type PublicSlot = {
   ends_at: string;
   timezone: string;
 };
+type DeliveryStatus = 'sent' | 'already_sent' | 'skipped_no_email' | 'disabled' | 'failed' | 'unavailable';
 type Confirmation = {
   appointment_id: string;
   status: string;
@@ -37,6 +38,7 @@ type Confirmation = {
   price_minor: number;
   currency: string;
   manage_url?: string;
+  delivery_status?: DeliveryStatus;
 };
 type PagePayload = { business: PublicBusiness; services: PublicService[] };
 type ApiError = { error?: { code?: string; message?: string } };
@@ -82,6 +84,14 @@ function createManagementToken() {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function deliveryMessage(status: DeliveryStatus | undefined) {
+  if (status === 'sent' || status === 'already_sent') return 'Randevu özeti ve yönetim bağlantısı e-posta adresinize de gönderildi.';
+  if (status === 'skipped_no_email') return 'E-posta adresi vermediğiniz için yönetim bağlantısını bu sayfadan saklayın.';
+  if (status === 'disabled') return 'E-posta gönderimi bu ortamda yapılandırılmamış. Yönetim bağlantısını bu sayfadan saklayın.';
+  if (status === 'failed' || status === 'unavailable') return 'E-posta gönderilemedi. Randevunuz geçerli; yönetim bağlantısını bu sayfadan saklayın.';
+  return null;
 }
 
 export default function PublicBookingPage({ slug }: { slug: string }) {
@@ -211,7 +221,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
         headers: { 'Idempotency-Key': current.key },
         body: JSON.stringify(payload),
       });
-      await api<{ ok: true }>('/api/manage/provision', {
+      const provision = await api<{ ok: true; delivery?: { status: DeliveryStatus } }>('/api/manage/provision', {
         method: 'POST',
         body: JSON.stringify({
           appointmentId: result.appointment.appointment_id,
@@ -219,7 +229,11 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
           managementToken: current.managementToken,
         }),
       });
-      setConfirmation({ ...result.appointment, manage_url: `/m#${encodeURIComponent(current.managementToken)}` });
+      setConfirmation({
+        ...result.appointment,
+        manage_url: `/m#${encodeURIComponent(current.managementToken)}`,
+        delivery_status: provision.delivery?.status,
+      });
       idempotency.current = null;
     } catch (error) {
       const coded = error as Error & { code?: string };
@@ -250,6 +264,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
   }
 
   if (confirmation) {
+    const mailNotice = deliveryMessage(confirmation.delivery_status);
     return (
       <main className="public-booking-shell">
         <section className="public-booking-card public-confirmation">
@@ -263,6 +278,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
             <div><dt>Ücret</dt><dd>{money(confirmation.price_minor, confirmation.currency)}</dd></div>
           </dl>
           <p className="public-confirmation-note">Randevunuz işletmenin paneline kaydedildi. Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.</p>
+          {mailNotice && <p className="public-confirmation-note">{mailNotice}</p>}
           {confirmation.manage_url && <a className="public-primary" href={confirmation.manage_url}>Randevumu yönet</a>}
           <button className="public-secondary" type="button" onClick={() => { setConfirmation(null); setSlots([]); setSelectedSlot(null); setNotice(''); }}>Yeni randevu oluştur</button>
         </section>
