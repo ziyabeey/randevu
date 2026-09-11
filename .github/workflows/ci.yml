@@ -39,6 +39,8 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: Verify F09-02 HTTP recovery contract
+        run: node --test --experimental-strip-types tests/public-booking-recovery.test.mjs
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Verify migrations, tenancy, booking, management, calendar and recovery
