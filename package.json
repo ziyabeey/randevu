@@ -11,7 +11,10 @@
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.worker.json && tsc --noEmit -p tsconfig.node.json",
     "build": "npm run typecheck && vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "test:http": "node --test --experimental-strip-types tests/*.test.mjs",
+    "test:ci-coverage": "node scripts/verify-ci-coverage.mjs",
+    "test:browser-smoke": "bash scripts/browser-smoke.sh"
   },
   "dependencies": {
     "hono": "4.13.7",
