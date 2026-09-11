@@ -5,7 +5,7 @@ import {
   rateLimitFromRpcError,
   resolvePublicAbuseIdentity,
   type PublicAbuseEnv,
-} from './public-abuse';
+} from './public-abuse.ts';
 
 type Env = PublicAbuseEnv & {
   SUPABASE_URL: string;
@@ -192,7 +192,7 @@ function rpcError(data: unknown, fallback: string) {
   return { code: 'BOOKING_RESULT_UNKNOWN', message: fallback, status: 503 as const };
 }
 
-function errorResponse(context: Parameters<typeof bookingRecovery.fetch>[0] extends never ? never : any, error: ReturnType<typeof rpcError>) {
+function errorResponse(context: any, error: ReturnType<typeof rpcError>) {
   if ('retryAfter' in error && error.retryAfter) {
     const response = context.json(publicRateLimitedBody(error.retryAfter), 429);
     response.headers.set('Retry-After', String(error.retryAfter));
