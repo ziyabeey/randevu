@@ -142,11 +142,12 @@ begin
     raise exception 'reschedule preview did not ignore the current appointment';
   end if;
 
-  select public.reschedule_appointment(
+  select * into v_row
+  from public.reschedule_appointment(
     '45000000-0000-4000-8000-000000000001', v_id,
     'phase5-reschedule-0001',
     '75000000-0000-4000-8000-000000000001', v_move
-  ) into v_row;
+  );
 
   if v_row.starts_at <> v_move then raise exception 'appointment was not rescheduled'; end if;
 
@@ -170,16 +171,18 @@ begin
     raise exception 'new booked slot remained publicly available';
   end if;
 
-  select public.set_appointment_status(
+  select * into v_row
+  from public.set_appointment_status(
     '45000000-0000-4000-8000-000000000001', v_id,
     'phase5-status-confirm-0001', 'confirmed', null
-  ) into v_row;
+  );
   if v_row.status <> 'confirmed' then raise exception 'confirm transition failed'; end if;
 
-  select public.set_appointment_status(
+  select * into v_row
+  from public.set_appointment_status(
     '45000000-0000-4000-8000-000000000001', v_id,
     'phase5-status-cancel-0001', 'cancelled', 'Müşteri talebi'
-  ) into v_row;
+  );
   if v_row.status <> 'cancelled' or v_row.cancelled_at is null then
     raise exception 'cancel transition failed';
   end if;
