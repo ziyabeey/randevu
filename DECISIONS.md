@@ -1,153 +1,128 @@
-# YZT Randevu — teknik kararlar
+# YZT Randevu — Teknik Kararlar
 
-## Faz 2 güvenlik sözleşmesi
+Bu dosya yalnız mimari gerekçeleri ve değişmemesi gereken kararları tutar. Güncel dosya/route/test haritası için önce `PROJECT_STATE.md` oku.
 
-Faz 2 yeniden tasarlanmaz. `Business` tenant köküdür; kimlik Supabase Auth tarafından sağlanır; `Membership` kullanıcının tenant içindeki güncel rolünü ve aktifliğini belirler. İstemcinin gönderdiği işletme kimliği yetki değildir. Her tenant isteği güncel membership kaydıyla ve PostgreSQL RLS ile yeniden doğrulanır. Service-role anahtarı uygulama Worker'ında kullanılmaz.
+## Faz 2 — Auth ve tenant
 
-Tarayıcıdaki aktif işletme seçimi yalnızca kullanıcı tercihi taşıyan HttpOnly cookie'dir. Yetki kaynağı değildir. Üyelik pasifleştirildiğinde aynı oturumun sonraki isteği tenant erişimini kaybeder.
+- `Business` tenant köküdür.
+- Supabase Auth kimliği sağlar; `Membership` tenant içindeki güncel rol/aktiflik kaynağıdır.
+- İstemcinin business ID veya business cookie göndermesi yetki değildir. Her member isteği aktif membership + PostgreSQL RLS ile yeniden doğrulanır.
+- Worker service-role key kullanmaz.
+- Üyelik pasifleştirilirse aynı oturumun sonraki isteği tenant erişimini kaybeder.
 
-## Faz 3 — hizmet ve ekip
+## Faz 3 — Hizmet ve ekip
 
-- `services`: tenant hizmeti, süre, buffer, fiyat ve aktiflik.
-- `staff_profiles`: randevu atanabilir personel.
-- `staff_services`: hangi personelin hangi hizmeti verebildiği.
+- `services`: ad, duration, buffer, fiyat, aktiflik.
+- `staff_profiles`: randevu atanabilir personel; login hesabı zorunlu değildir.
+- `staff_services`: personel-hizmet yetkinliği.
+- Tenant kimliği ilişkilerin parçasıdır; composite FK cross-tenant staff/service bağını DB seviyesinde engeller.
+- Owner/manager katalog mutasyonu yapabilir; staff read-only'dir.
 
-Bütün ilişkiler tenant kimliği taşır. Staff-Service bağlantısındaki birleşik foreign key farklı işletmelerin kayıtlarının birbirine bağlanmasını engeller. Owner/manager katalog mutasyonu yapabilir; staff katalog için read-only'dir.
+## Faz 4 — Müsaitlik
 
-## Faz 4 — müsaitlik
+- Haftalık açık pencereler `business_hours` + `staff_hours` ile kesişir.
+- Mola ayrı tablo değildir; günün birden fazla açık pencereye bölünmesiyle temsil edilir.
+- `availability_blocks` işletme veya staff için gerçek `timestamptz` kapalı aralıklarıdır.
+- Slot ancak `buffer_before + duration + buffer_after` bütünü açık pencereye sığıyorsa geçerlidir.
+- Local schedule işletmenin IANA timezone'uyla gerçek timeline'a çevrilir. DST spring-forward olmayan saati üretmez; fall-back tekrarlanan saati farklı gerçek instantlar olarak korur.
 
-Müsaitlik üç veri katmanıyla modellenir:
+## Faz 5 — Booking çekirdeği
 
-- `business_hours`: işletmenin haftalık açık pencereleri.
-- `staff_hours`: personelin haftalık çalışma pencereleri.
-- `availability_blocks`: tarih bazlı işletme geneli veya personel özelinde kapalı gerçek zaman aralıkları.
+### Snapshot ve occupancy
 
-Haftalık mola ayrı tablo değildir. Aynı günün açık saatlerini iki aralığa bölmek molayı doğal olarak oluşturur. Schedule değişiklikleri `replace_business_hours` ve `replace_staff_hours` RPC'leriyle bir gün için atomik değiştirilir.
+Appointment oluşturulurken müşteri, hizmet, staff, duration, buffer, fiyat, currency ve timezone snapshot'ları saklanır. Sonraki katalog değişikliği tarihsel booking semantiğini değiştirmez.
 
-Slot hesabı işletme/personel pencerelerini kesiştirir; hizmet `buffer_before + duration + buffer_after` toplamının tamamı bu pencereye sığmalıdır. Pencereler işletmenin IANA timezone'u ile `timestamptz` anlarına dönüştürülür ve slot grid'i gerçek timeline üzerinde üretilir. Spring-forward'da var olmayan yerel saat üretilmez; fall-back'de tekrarlanan saat iki farklı gerçek instant olarak korunur.
+`starts_at/end_at` hizmet zamanıdır; `occupied_starts_at/occupied_ends_at` buffer dahil staff kilididir.
 
-## Faz 5 — booking çekirdeği
+### Concurrency
 
-### Appointment snapshot modeli
+UI/API availability kontrolü yalnız ön kontroldür. Son doğruluk sınırı PostgreSQL `EXCLUDE USING gist` constraint'idir: aynı business + staff için non-cancelled occupied aralıkları overlap edemez.
 
-Appointment yalnız foreign key taşımaz. Oluşturma anındaki müşteri adı/iletişim, hizmet adı, personel adı, süre, buffer, fiyat, para birimi ve timezone ayrıca snapshot olarak saklanır. Sonradan hizmet fiyatı veya personel adı değişse bile tarihsel randevu kaydı semantiğini kaybetmez.
+`cancelled` slotu serbest bırakır. `completed` ve `no_show` tarihsel occupancy'yi korur.
 
-`starts_at` ve `ends_at` müşterinin gördüğü hizmet süresidir. `occupied_starts_at` ve `occupied_ends_at` ise buffer'lar dahil personelin gerçekten kilitlendiği aralıktır.
+### Idempotency ve lifecycle
 
-### Concurrency son sınırı PostgreSQL'dir
+`booking_commands` `(business_id,idempotency_key)` üzerinden mutation komutlarını claim eder.
 
-Availability kontrolü UX için yapılır fakat rezervasyon doğruluğunun tek dayanağı değildir. İki istemci aynı slotu aynı anda boş görebilir. Bu nedenle `appointments` üzerinde `btree_gist` ile şu invariant DB seviyesinde tutulur:
+- aynı key + aynı command/payload → önceki sonuç;
+- aynı key + farklı payload → `IDEMPOTENCY_CONFLICT`.
 
-- aynı `business_id`
-- aynı `staff_id`
-- `status <> cancelled`
-- çakışan `[occupied_starts_at, occupied_ends_at)` aralıkları
+Aktif durumlar `scheduled|confirmed`; terminal durumlar `cancelled|completed|no_show`. Terminal appointment tekrar aktif hale getirilemez.
 
-aynı anda var olamaz.
+Create/reschedule/status append-only `appointment_events` audit kaydı bırakır.
 
-Uygulama availability kontrolünden sonra insert/update yapar; yarış oluşursa exclusion constraint işlemlerden yalnız birini geçirir. Worker bunu `APPOINTMENT_CONFLICT` olarak 409'a çevirir.
+### Customer
 
-Cancelled appointment slotu serbest bırakır. Completed ve no-show kayıtları tarihsel occupancy'yi korur; geçmişte aynı personele üst üste ikinci appointment yazılarak tarihçe yeniden yazılamaz.
+Customer dedup tenant içinde normalize telefon veya lower-case e-posta exact match kolaylığıdır; global kimlik iddiası değildir. PII tenant RLS sınırındadır.
 
-### Booking-aware slot motoru
+## Faz 6 — Public self-booking
 
-Faz 4'ün public `compute_availability_slots` sözleşmesi korunur fakat Faz 5 migration'ı implementasyonu booking-aware hale getirir. Schedule, block ve service kurallarından geçen aday slotlar ayrıca non-cancelled appointment occupied aralıklarıyla karşılaştırılır.
+### Opt-in public yüzey
 
-Reschedule için ayrı `compute_reschedule_slots` vardır. Bu fonksiyon sadece taşınan appointment kimliğini occupancy hesabından hariç tutar. Böylece appointment aynı saate veya kendi eski aralığıyla kısmen kesişen yeni bir saate taşınabilir; diğer randevular yine normal şekilde engeldir. Son update yine exclusion constraint tarafından korunur.
+Her business için `public_booking_settings` varsayılan `enabled=false` provision edilir. Owner/manager `enabled`, `step_minutes`, `min_notice_minutes`, `horizon_days` değerlerini yönetir.
 
-### Idempotency
+Anon role tenant tablolarına doğrudan CRUD/read grant almaz. Public yüzey yalnız dar security-definer RPC'lerdir: sanitized business, bookable services, eligible staff, live slots ve public create.
 
-Create, reschedule ve status komutları `booking_commands` tablosunda `(business_id, idempotency_key)` primary key'iyle claim edilir. İstek payload'ı deterministik hash ile kaydedilir.
+### Public slot ve create
 
-- aynı key + aynı command/payload: önceki appointment sonucu döner;
-- aynı key + farklı command/payload: `IDEMPOTENCY_CONFLICT`;
-- concurrent aynı-key istekleri PK üzerinde serialize olur.
-
-Command ledger istemciye doğrudan açılmaz. Dış mutasyon yüzeyi yalnız RPC'dir.
-
-### Customer kimliği
-
-Faz 5 ayrı `customers` tablosu ekler. Yeni operator booking sırasında aynı tenant içinde normalize edilmiş telefon veya lower-case e-posta birebir eşleşirse mevcut customer yeniden kullanılır; aksi halde yeni kayıt açılır. Bu dedup kolaylık katmanıdır, global kimlik iddiası değildir. Customer PII tenant RLS ile sınırlandırılır.
-
-### Appointment yaşam döngüsü ve audit
-
-Başlangıç durumu `scheduled`'dır. Aktif durumlar `scheduled` ve `confirmed`; terminal durumlar `cancelled`, `completed`, `no_show` olarak kabul edilir. Terminal bir appointment tekrar aktif duruma açılamaz.
-
-Create, reschedule ve status değişiklikleri `appointment_events` tablosuna append-only event bırakır. Member event actor kullanıcıyı, önceki/yeni status'u ve gereken delta payload'ını saklar. Authenticated role event tablosuna doğrudan insert/update/delete yapamaz.
-
-### Yetki yüzeyi
-
-Booking operasyonları aktif tenant üyesine açıktır; owner/manager/staff randevu operasyonu yapabilir. Bunun nedeni staff rolünün randevu operasyonunda ön büro veya hizmet veren personel olarak çalışabilmesidir. Tenant dışına erişim yine `Membership`, explicit RPC check, birleşik foreign key ve RLS katmanlarıyla engellenir.
-
-## Faz 6 — public self-booking
-
-### Opt-in publication
-
-Public rezervasyon bir işletme oluşturulduğunda otomatik açık değildir. Her business için `public_booking_settings` kaydı `enabled=false` olarak provision edilir. Owner/manager security-definer RPC üzerinden şu alanları yönetir:
-
-- `enabled`
-- `step_minutes`
-- `min_notice_minutes`
-- `horizon_days`
-
-Bu ayar tablosu anon role'e doğrudan açılmaz.
-
-### Anonymous capability yüzeyi
-
-Anon role hiçbir tenant tablosunda `select/insert/update/delete` grant'i almaz. Public booking yalnızca özellikle grant edilmiş security-definer fonksiyonlarla çalışır:
-
-- sanitize edilmiş business başlığı
-- aktif ve gerçekten atanabilir service listesi
-- hizmeti verebilen aktif staff listesi
-- live slot hesabı
-- public appointment create
-
-Disabled business public fonksiyonlarda yokmuş gibi davranır; business iç verisiyle enabled/disabled durumu gereksiz yere sızdırılmaz.
-
-### Public slot semantiği
-
-Public slot motoru Faz 4/5 invariant'larını aynen uygular:
-
-- işletme + staff weekly window kesişimi
-- hizmet duration + buffer'ların tamamının pencereye sığması
-- business/staff availability block'larının düşülmesi
-- non-cancelled appointment occupied aralıklarının düşülmesi
-- işletme timezone'u ile gerçek timeline
-
-Buna ek olarak yalnız `min_notice_minutes` sonrasındaki slotlar ve `horizon_days` içindeki yerel tarihler döner. Grid adımı business public ayarındaki `step_minutes` değeridir.
-
-Member-only internal availability RPC yetkisi public kullanım için gevşetilmez. Public slot fonksiyonu aynı invariant'ı ayrı dar bir security-definer yüzeyinde uygular. Bu tercih, public açılımın Faz 2–5 authorization sözleşmesini sessizce genişletmesini engeller.
-
-### Public create ve provenance
-
-Anon caller'ın gerçek `auth.uid()` değeri yoktur. Bu nedenle Faz 6:
-
-- `customers.created_by`
-- `appointments.created_by`
-- `appointment_events.actor_user_id`
-- `booking_commands.created_by`
-
-alanlarını public provenance için nullable hale getirir. Üye akışları mevcut actor ID'lerini yazmaya devam eder.
-
-`appointments.source` alanı `operator|public`, event `actor_type` alanı `member|public`, booking command `source` alanı `operator|public` olarak açık provenance taşır.
+Public slot hesabı Faz 4/5 invariant'larını korur: schedule kesişimi, snapshot değil güncel service duration/buffer, blocks, non-cancelled occupancy, timezone, notice ve horizon.
 
 Public create:
 
-1. slug ile business + public settings çözülür;
-2. payload deterministic hash ile `public_create` command olarak idempotent claim edilir;
-3. exact retry, sayfa sonradan kapansa bile committed sonucu güvenli biçimde döndürebilir;
-4. yeni işlem için enabled, notice, horizon, active service/staff ve exact live slot tekrar doğrulanır;
-5. final insert hâlâ appointment exclusion constraint'ine tabidir;
-6. response yalnız confirmation için gereken sınırlı alanları döndürür.
+1. business/settings çözülür;
+2. `public_create` idempotency command claim edilir;
+3. exact retry committed sonucu döndürebilir;
+4. enabled/notice/horizon/service/staff/live-slot tekrar doğrulanır;
+5. final insert exclusion constraint'e tabidir.
 
-### Public customer dedup güvenliği
+Public kayıt provenance'ı açıktır: `appointments.source='public'`, audit `actor_type='public'`, authenticated actor null.
 
-Public booking telefon/e-posta exact match ile mevcut tenant customer ID'sini reuse edebilir. Fakat anonymous input **mevcut customer master row'unu güncellemez**. Müşterinin public formda verdiği ad/iletişim appointment snapshot'ına yazılır. Böylece bir kişinin telefonunu/e-postasını bilen anonim caller CRM master verisini değiştiremez.
+### Public customer güvenliği
 
-### Contact ve bilgi minimizasyonu
+Telefon/e-posta exact match mevcut customer ID'sini reuse edebilir fakat anonim input mevcut customer master row'unu güncellemez. Form değerleri appointment snapshot'a yazılır.
 
-Public booking için telefon veya e-postadan en az biri zorunludur. Public read yüzeyi customer/appointment geçmişi döndürmez; create response sadece appointment ID, durum, zaman, service/staff display adı ve fiyat snapshot'ını içerir.
+## Faz 7 — Customer appointment management
 
-## Sonraki sınır
+### Bearer capability
 
-Faz 6 public cancellation/reschedule linklerini, ödeme/depozitoyu, SMS/e-posta bildirimlerini, Turnstile/dağıtık rate limiting'i, dış takvim senkronizasyonunu ve CRM otomasyonunu içermez. Bu concern'ler booking doğruluğu ve public authorization yüzeyinden ayrı fazlarda ilerletilecektir.
+`/m/:token` bağlantısına sahip olmak yalnız tek appointment'ı görüntüleme/değiştirme yetkisidir. Bu nedenle token parola gibi ele alınır.
+
+- Token browser'da Web Crypto ile 32 random byte (256 bit) üretilir.
+- Plain token PostgreSQL'e yazılmaz.
+- `appointment_management_capabilities` yalnız SHA-256 token hash'i saklar.
+- Capability tablosuna anon veya authenticated doğrudan table grant verilmez.
+- Token listing/recovery endpoint'i yoktur.
+
+### Provisioning
+
+Public booking create RPC'sinin stabil imzası değiştirilmez. Booking başarıdan sonra `provision_public_management_token` çağrısı appointment ID + **aynı original public-create idempotency key** ile appointment'ın o public create command'e ait olduğunu kanıtlar.
+
+Frontend booking key ve management token'ı provision başarıya kadar hafızada tutar. Network booking'den sonra koparsa aynı booking exact retry sonucu döner ve capability provision tekrar denenir; ikinci appointment oluşmaz.
+
+Bir appointment'a aynı token tekrar provision edilebilir; farklı token ile overwrite edilemez.
+
+### Existing capability vs public publication
+
+Public sayfanın sonradan `enabled=false` olması mevcut appointment capability'sini iptal etmez. Publication yeni müşteri edinme yüzeyidir; verilmiş appointment yönetim yetkisinden ayrıdır.
+
+### Reschedule
+
+Customer reschedule:
+
+- mevcut appointment'ın duration/buffer snapshot'larını korur;
+- güncel staff active/StaffService yetkinliğini kullanır;
+- güncel business/staff schedule ve blocks'u kullanır;
+- public settings'teki step/notice/horizon kurallarını kullanır;
+- kendi appointment'ını occupancy hesabından hariç tutar;
+- final update'te exclusion constraint'e tabidir;
+- idempotent `public_reschedule` command ve public audit event'i bırakır.
+
+Hizmet sonradan pasifleşse veya duration değişse bile mevcut appointment snapshot'ı taşınabilir; yeni public booking katalog davranışı bundan etkilenmez.
+
+### Cancellation
+
+Customer yalnız gelecekteki `scheduled|confirmed` appointment'ı iptal edebilir. İptal `public_cancel` idempotency command'i ve public audit event'i bırakır; slot Faz 5 invariant'ı gereği tekrar müsait olur.
+
+### Phase 7 scope boundary
+
+Bu faz capability linkini **üretir ve ekranda gösterir**, fakat SMS/e-posta ile teslim etmez. Token recovery/reissue, ödeme/depozito, anti-bot/rate-limit, dış takvim sync ve CRM automation ayrı concern'lerdir.
