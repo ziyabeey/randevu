@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - f09-04-public-abuse-control
+      - f17-02-ci-test-dependency-baseline
   pull_request:
     branches:
       - main
@@ -35,18 +35,26 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci
+      - name: Verify CI test and migration coverage
+        run: npm run test:ci-coverage
+      - name: Report dependency audit
+        run: |
+          set +e
+          npm audit --json > /tmp/npm-audit.json
+          audit_status=$?
+          set -e
+          node scripts/report-npm-audit.mjs /tmp/npm-audit.json
+          echo "npm audit exit status: $audit_status"
       - name: Typecheck
         run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: Verify browser smoke
+        run: npm run test:browser-smoke
       - name: Verify scheduled Worker bundle
         run: npx wrangler deploy --dry-run --outdir /tmp/randevu-worker
-      - name: Verify F09-02 HTTP recovery contract
-        run: node --test --experimental-strip-types tests/public-booking-recovery.test.mjs
-      - name: Verify F09-03 notification dispatcher contract
-        run: node --test --experimental-strip-types tests/notification-dispatcher.test.mjs
-      - name: Verify F09-04 public abuse HTTP contract
-        run: node --test --experimental-strip-types tests/public-booking-abuse.test.mjs
+      - name: Verify HTTP contracts
+        run: npm run test:http
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Verify migrations, tenancy, booking, management, calendar, recovery and notifications
