@@ -23,14 +23,14 @@ const isAvailability = path === '/availability';
 const isBookings = path === '/bookings';
 const isPublicSettings = path === '/public-booking';
 const publicSlug = path.startsWith('/r/') ? decodeURIComponent(path.slice(3).split('/')[0] ?? '') : null;
-const managementToken = path.startsWith('/m/') ? decodeURIComponent(path.slice(3).split('/')[0] ?? '') : null;
+const isManagementPage = path === '/m' || path === '/m/';
+const managementToken = isManagementPage ? decodeURIComponent(window.location.hash.replace(/^#/, '')) : null;
 const isPublicPage = publicSlug !== null;
-const isManagementPage = managementToken !== null;
 
 createRoot(root).render(
   <StrictMode>
-    {isManagementPage && managementToken
-      ? <ManageAppointmentPage token={managementToken} />
+    {isManagementPage
+      ? <ManageAppointmentPage token={managementToken ?? ''} />
       : isPublicPage && publicSlug
         ? <PublicBookingPage slug={publicSlug} />
         : isAvailability
