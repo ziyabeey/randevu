@@ -29,6 +29,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | Rezervasyon sonucu + yönetim erişimi kurtarma | Main'de, F09-02 / PR #12 | Atomik create/capability/recovery tamamlandı |
 | Durable public booking e-postası | Main'de, F09-03 / PR #13 | Outbox/lease/retry/provider receipt tamamlandı; gerçek provider teslimi F09-05/F17 |
 | Public booking abuse sınırı | Main'de, F09-04 / PR #14 | Direct RPC bypass kapalı; guarded RPC + actor/network/business rate-limit + retention tamamlandı |
+| Test/CI + dependency bakım temeli | Main'de, F17-02 / PR #15 | Coverage gate, gerçek Chrome smoke, blocking audit ve 0-vulnerability lock baseline tamamlandı |
 | SalonApp mobil kabuğu, adisyon ve tahsilat | Planlandı, Faz 14 | Henüz uygulama/route/tablo yok |
 | Ürün/stok, masraf, kasa/raporlar | Planlandı, Faz 15 | Sınırlı operasyon işlevleri |
 | Tekrar/SMS, yorum/fotoğraf, paket/promosyon, prim, hesap menüsü | Planlandı, Faz 16 | Ayrı alt işler |
@@ -40,11 +41,12 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 - **F09-02 tamamlandı:** PR #12 atomik booking + management capability + recovery akışını main'e aldı.
 - **F09-03 tamamlandı:** PR #13 durable e-posta outbox, lease/retry, scheduled dispatcher, upgrade backfill ve server-only provider receipt authority ekledi.
 - **F09-04 tamamlandı:** PR #14 raw public RPC bypass'larını kapattı; Worker-only gate secret, signed HttpOnly actor proof, coarse network HMAC, actor/network/business PostgreSQL rate-limit ve bounded counter retention ekledi.
+- **F17-02 tamamlandı:** PR #15 CI/test envanter kapısı, gerçek headless Chrome smoke, tek HTTP test komutu ve blocking high/critical dependency audit ekledi; Cloudflare toolchain dar yükseltmesiyle `npm ci` 0 vulnerability baseline'a geldi.
 - Notification intent F09-02 recovery satırı appointment'a bağlandığında aynı outer booking transaction'ında doğar; provider HTTP booking response yolunda değildir.
 - Notification job state'leri `pending`, `leased`, `retry_wait`, `sent`, `failed_terminal`; lease varsayılanı 45 saniye, provider timeout 10 saniye, max deneme 8, bounded retry penceresi en fazla 72 saattir.
 - `sent`, provider'ın isteği kabul edip message ID verdiğini ifade eder; inbox teslimi değildir.
 - Resend idempotency key'i job başına stabildir. Provider'ın güncel 24 saatlik idempotency saklama penceresi nedeniyle 24 saat sonrasındaki ambiguous retry'larda mutlak exactly-once iddiası yoktur.
-- **F09-05 sıradaki Faz 9 entegrasyon kapısıdır**, fakat önkoşulları arasında F17-01 ve F17-02 de vardır. G09, F09-05 gerçek ortam kabulü tamamlanmadan kapanmaz.
+- **F09-05 sıradaki Faz 9 entegrasyon kapısıdır**, ancak kalan önkoşul F17-01 gerçek development/staging ortamıdır. G09, F09-05 gerçek ortam kabulü tamamlanmadan kapanmaz.
 
 ## Branch / PR notu
 
@@ -52,6 +54,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 - `f09-02-booking-recovery`: [PR #12](https://github.com/ziyabeey1-ai/randevu/pull/12), main'e alındı.
 - `f09-03-durable-notifications`: [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13), F09-03 teslimidir.
 - `f09-04-public-abuse-control`: [PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14), F09-04 teslimidir; ayrıntı [handoff](docs/handoffs/F09-04.md) içindedir.
+- `f17-02-ci-test-dependency-baseline`: [PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15), F17-02 teslimidir; ayrıntı [handoff](docs/handoffs/F17-02.md) içindedir.
 - `phase-9-email-delivery`: [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), superseded eski taslaktır; synchronous send ve anon receipt modeli kullanılmaz.
 - `phase-2-auth-tenant`, Faz 1 seviyesinde kalan eski branch'tir; main auth durumunu temsil etmez.
 
@@ -64,7 +67,6 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | Auth/istek yardımcıları Worker modüllerinde tekrarlanıyor; hata/Origin/CSRF davranışı merkezi değil | Oturum ve güvenlik düzeltmeleri birlikte uygulanmalı | 10 |
 | Takvimde otomatik güncelleme ve eski yanıt koruması yok | Public/diğer çalışan işlemleri geç veya yanlış seçimde görünebilir | 13 |
 | Bazı ekranlarda Faz 3/tenant/StaffService metinleri ve eksik düzenleme kontrolleri var | Ürün dili ve operasyon kullanımı tamamlanmalı | 10, 12–14 |
-| Proje notunda high-severity dependency audit uyarıları raporlandı | Güncel advisory/etki doğrulanıp pilot öncesi kapatılmalı | 17 |
 
 ## Mevcut tarayıcı yolları
 
@@ -145,12 +147,22 @@ Birleştirilmiş eski migration'lar değiştirilmez; yeni davranış ileri migra
 - Rate counters `updated_at` index'iyle 48 saatten eski state'i request-path'te en fazla 500 satır/call bounded prune eder.
 - 429 cevabı `Retry-After` taşır; rate-limit booking failure gibi raporlanmaz.
 
+## F17-02 CI/test invariant'ları
+
+- SQL migration ve SQL acceptance dosyaları CI workflow'unda açıkça bağlı değilse coverage gate kırılır.
+- Node kontratları `tests/*.test.mjs` wildcard'ıyla tek komutta çalışır; negatif coverage testi gate'in fail-closed davranışını kanıtlar.
+- Production build sonrası gerçek headless Chrome giriş ekranını render etmeden browser smoke geçmez.
+- `npm audit --audit-level=high` blocking'dir; high veya critical dependency advisory CI'ı kırar.
+- Güncel lock baseline: `@cloudflare/vite-plugin@1.54.8`, `wrangler@4.131.0`, transitive `sharp@0.35.4`; clean install/audit 0 vulnerability raporlar.
+- CI secret/provider/staging kanıtı değildir; gerçek servis kabulü F17-01/F09-05 kapsamındadır.
+
 ## Doğrulama kanıtı ve sınırı
 
 - [F09-01 PR #11](https://github.com/ziyabeey1-ai/randevu/pull/11): sözleşme main'de.
 - [F09-02 PR #12](https://github.com/ziyabeey1-ai/randevu/pull/12): atomik booking/recovery main'de.
 - [F09-03 PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13): CI `34653785166` success; provider stub + tam PostgreSQL + concurrency + upgrade/backfill kapsandı.
-- [F09-04 PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14): branch/PR CI `34656950693` success; Worker abuse contract, direct-RPC deny, wrong-proof deny, actor/network/business quota, safe retry, recovery, public provenance ve counter retention kapsandı.
+- [F09-04 PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14): CI `34656950693` success; Worker abuse contract, direct-RPC deny, wrong-proof deny, actor/network/business quota, safe retry, recovery, public provenance ve counter retention kapsandı.
+- [F17-02 PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15): teknik kabul CI `34658041327` success; 34-file coverage gate, negatif gate testi, 0-vulnerability blocking audit, real Chrome smoke, 21/21 HTTP kontratı ve tam SQL zinciri kapsandı.
 - Testler yerel PostgreSQL/Auth fixture ve fake provider kullanır. Gerçek Resend hesabı, gerçek inbox teslimi, gerçek Supabase environment ve üretim abuse/load davranışı bu kanıtın kapsamı değildir.
 - Gerçek ortam/secret provisioning F17-01 ve F09-05 kabulinde doğrulanacaktır.
 
