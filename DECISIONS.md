@@ -67,18 +67,87 @@ Command ledger istemciye doğrudan açılmaz. Dış mutasyon yüzeyi yalnız RPC
 
 ### Customer kimliği
 
-Faz 5 ayrı `customers` tablosu ekler. Yeni booking sırasında aynı tenant içinde normalize edilmiş telefon veya lower-case e-posta birebir eşleşirse mevcut customer yeniden kullanılır; aksi halde yeni kayıt açılır. Bu dedup kolaylık katmanıdır, global kimlik iddiası değildir. Customer PII tenant RLS ile sınırlandırılır.
+Faz 5 ayrı `customers` tablosu ekler. Yeni operator booking sırasında aynı tenant içinde normalize edilmiş telefon veya lower-case e-posta birebir eşleşirse mevcut customer yeniden kullanılır; aksi halde yeni kayıt açılır. Bu dedup kolaylık katmanıdır, global kimlik iddiası değildir. Customer PII tenant RLS ile sınırlandırılır.
 
 ### Appointment yaşam döngüsü ve audit
 
 Başlangıç durumu `scheduled`'dır. Aktif durumlar `scheduled` ve `confirmed`; terminal durumlar `cancelled`, `completed`, `no_show` olarak kabul edilir. Terminal bir appointment tekrar aktif duruma açılamaz.
 
-Create, reschedule ve status değişiklikleri `appointment_events` tablosuna append-only event bırakır. Event actor kullanıcıyı, önceki/yeni status'u ve gereken delta payload'ını saklar. Authenticated role event tablosuna doğrudan insert/update/delete yapamaz.
+Create, reschedule ve status değişiklikleri `appointment_events` tablosuna append-only event bırakır. Member event actor kullanıcıyı, önceki/yeni status'u ve gereken delta payload'ını saklar. Authenticated role event tablosuna doğrudan insert/update/delete yapamaz.
 
 ### Yetki yüzeyi
 
 Booking operasyonları aktif tenant üyesine açıktır; owner/manager/staff randevu operasyonu yapabilir. Bunun nedeni staff rolünün randevu operasyonunda ön büro veya hizmet veren personel olarak çalışabilmesidir. Tenant dışına erişim yine `Membership`, explicit RPC check, birleşik foreign key ve RLS katmanlarıyla engellenir.
 
+## Faz 6 — public self-booking
+
+### Opt-in publication
+
+Public rezervasyon bir işletme oluşturulduğunda otomatik açık değildir. Her business için `public_booking_settings` kaydı `enabled=false` olarak provision edilir. Owner/manager security-definer RPC üzerinden şu alanları yönetir:
+
+- `enabled`
+- `step_minutes`
+- `min_notice_minutes`
+- `horizon_days`
+
+Bu ayar tablosu anon role'e doğrudan açılmaz.
+
+### Anonymous capability yüzeyi
+
+Anon role hiçbir tenant tablosunda `select/insert/update/delete` grant'i almaz. Public booking yalnızca özellikle grant edilmiş security-definer fonksiyonlarla çalışır:
+
+- sanitize edilmiş business başlığı
+- aktif ve gerçekten atanabilir service listesi
+- hizmeti verebilen aktif staff listesi
+- live slot hesabı
+- public appointment create
+
+Disabled business public fonksiyonlarda yokmuş gibi davranır; business iç verisiyle enabled/disabled durumu gereksiz yere sızdırılmaz.
+
+### Public slot semantiği
+
+Public slot motoru Faz 4/5 invariant'larını aynen uygular:
+
+- işletme + staff weekly window kesişimi
+- hizmet duration + buffer'ların tamamının pencereye sığması
+- business/staff availability block'larının düşülmesi
+- non-cancelled appointment occupied aralıklarının düşülmesi
+- işletme timezone'u ile gerçek timeline
+
+Buna ek olarak yalnız `min_notice_minutes` sonrasındaki slotlar ve `horizon_days` içindeki yerel tarihler döner. Grid adımı business public ayarındaki `step_minutes` değeridir.
+
+Member-only internal availability RPC yetkisi public kullanım için gevşetilmez. Public slot fonksiyonu aynı invariant'ı ayrı dar bir security-definer yüzeyinde uygular. Bu tercih, public açılımın Faz 2–5 authorization sözleşmesini sessizce genişletmesini engeller.
+
+### Public create ve provenance
+
+Anon caller'ın gerçek `auth.uid()` değeri yoktur. Bu nedenle Faz 6:
+
+- `customers.created_by`
+- `appointments.created_by`
+- `appointment_events.actor_user_id`
+- `booking_commands.created_by`
+
+alanlarını public provenance için nullable hale getirir. Üye akışları mevcut actor ID'lerini yazmaya devam eder.
+
+`appointments.source` alanı `operator|public`, event `actor_type` alanı `member|public`, booking command `source` alanı `operator|public` olarak açık provenance taşır.
+
+Public create:
+
+1. slug ile business + public settings çözülür;
+2. payload deterministic hash ile `public_create` command olarak idempotent claim edilir;
+3. exact retry, sayfa sonradan kapansa bile committed sonucu güvenli biçimde döndürebilir;
+4. yeni işlem için enabled, notice, horizon, active service/staff ve exact live slot tekrar doğrulanır;
+5. final insert hâlâ appointment exclusion constraint'ine tabidir;
+6. response yalnız confirmation için gereken sınırlı alanları döndürür.
+
+### Public customer dedup güvenliği
+
+Public booking telefon/e-posta exact match ile mevcut tenant customer ID'sini reuse edebilir. Fakat anonymous input **mevcut customer master row'unu güncellemez**. Müşterinin public formda verdiği ad/iletişim appointment snapshot'ına yazılır. Böylece bir kişinin telefonunu/e-postasını bilen anonim caller CRM master verisini değiştiremez.
+
+### Contact ve bilgi minimizasyonu
+
+Public booking için telefon veya e-postadan en az biri zorunludur. Public read yüzeyi customer/appointment geçmişi döndürmez; create response sadece appointment ID, durum, zaman, service/staff display adı ve fiyat snapshot'ını içerir.
+
 ## Sonraki sınır
 
-Faz 5 public müşteri self-booking, ödeme, bildirim/h hatırlatma, dış takvim senkronizasyonu ve CRM otomasyonunu içermez. Booking çekirdeği önce transaction ve concurrency doğruluğunu sabitler; dağıtım kanalları bunun üzerine eklenir.
+Faz 6 public cancellation/reschedule linklerini, ödeme/depozitoyu, SMS/e-posta bildirimlerini, Turnstile/dağıtık rate limiting'i, dış takvim senkronizasyonunu ve CRM otomasyonunu içermez. Bu concern'ler booking doğruluğu ve public authorization yüzeyinden ayrı fazlarda ilerletilecektir.
