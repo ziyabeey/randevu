@@ -99,3 +99,4 @@ Tam muhasebe, e-fatura, bordro, karmaşık stok ERP, çevrimiçi ödeme altyapı
 - Müşteri akışı 360/390 px; işletme ekranları mobil, tablet ve masaüstünde kontrol edilir. Sabit alt eylem/menü içerik veya klavye altında kalmaz; klavye odağı ve renk dışı durum işaretleri vardır.
 - Referans ekranlar [görsel eşleştirme dosyasında](docs/references/README.md) saklanır. Rakibin marka/fotoğrafı uygulama varlığı olarak kullanılmaz; örnek isim, fiyat ve tarihler canlı veri yapılmaz.
 - Özellik eşdeğerliği ve görsel kalite ayrı kontrol edilir. Tamamlanma, [fazın kabul ölçütleri](ROADMAP.md) ve gerçek doğrulama kanıtıyla kaydedilir.
+- Bu üç kollu hedefin MVP kabulü Faz 17 sonundadır. Faz 9–16'daki onaylı referans işlevleri kapsamda kalır; Faz 13/14 ara teslimattır. İnsan/ajanlara devredilecek işler [TASKS.md](TASKS.md), birleşik ürün kabulü [MVP_ACCEPTANCE.md](MVP_ACCEPTANCE.md) içindedir.

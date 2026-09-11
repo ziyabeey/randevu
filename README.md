@@ -22,10 +22,15 @@ Faz 9 e-posta çalışması [taslak PR #8](https://github.com/ziyabeey1-ai/rande
 
 - [PRODUCT_SPEC.md](PRODUCT_SPEC.md) — üç kol, işlev/tasarım kuralları ve kapsam.
 - [ROADMAP.md](ROADMAP.md) — korunan Faz 1–8 ve kabul ölçütlü Faz 9–17.
+- [TASKS.md](TASKS.md) — MVP'ye kadar 46 devralınabilir görev, bağımlılıklar ve durum/sahip takibi.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Ziya ve diğer ajanlar için görev seçimi, branch/PR, ortak dosya ve devir rehberi; kopyalanabilir görev metni.
+- [MVP_ACCEPTANCE.md](MVP_ACCEPTANCE.md) — üç kolun birlikte doğrulanacağı 23 MVP/pilot senaryosu.
 - [PROJECT_STATE.md](PROJECT_STATE.md) — gerçek kod durumu, branch'ler, açık bulgular ve kanıtlar.
 - [DECISIONS.md](DECISIONS.md) — teknik kararlar ve veri sınırları.
 - [Görsel referanslar](docs/references/README.md) — ürün sahibinin sağladığı 11 ekranın eşleştirmesi.
 - [AGENTS.md](AGENTS.md) — geliştirme ve doğrulama protokolü.
+
+Katkı vermek için mevcut durumu okuyup TASKS'tan tek görev seçin; ilgili faz dosyası başlama noktası, çıktı ve kabul ölçütlerini içerir. Faz 17'nin ortam/test hazırlığı erken yürüyebilir. Tüm yeni görevler plan durumundadır; bu belgelerin yazılması yeni ekranların veya işlevlerin tamamlandığı anlamına gelmez.
 
 ## Yerel kurulum
 
