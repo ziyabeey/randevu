@@ -1,4 +1,5 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { FormEvent } from 'react';
 
 type Business = { id: string; name: string; slug: string; timezone: string };
 type Membership = {
