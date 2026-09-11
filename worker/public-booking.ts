@@ -1,8 +1,15 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import {
+  publicGateUnavailableBody,
+  publicRateLimitedBody,
+  rateLimitFromRpcError,
+  resolvePublicAbuseIdentity,
+  type PublicAbuseEnv,
+} from './public-abuse.ts';
 
-type Env = {
+type Env = PublicAbuseEnv & {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   COOKIE_SECURE?: string;
@@ -46,17 +53,6 @@ type PublicSlot = {
   starts_at: string;
   ends_at: string;
   timezone: string;
-};
-type PublicConfirmation = {
-  appointment_id: string;
-  status: string;
-  starts_at: string;
-  ends_at: string;
-  timezone: string;
-  service_name: string;
-  staff_name: string;
-  price_minor: number;
-  currency: string;
 };
 
 const publicBooking = new Hono<{ Bindings: Env }>();
@@ -123,24 +119,11 @@ function isDate(value: unknown): value is string {
   const parsed = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
-function isTimestamp(value: unknown): value is string {
-  return typeof value === 'string' && Number.isFinite(Date.parse(value));
-}
 function isSlug(value: unknown): value is string {
   return typeof value === 'string' && value.length >= 1 && value.length <= 60 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value);
 }
 function integerIn(value: unknown, min: number, max: number): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
-}
-function cleanOptional(value: unknown, max: number) {
-  if (value === null || value === undefined || value === '') return null;
-  if (typeof value !== 'string') return undefined;
-  const result = value.trim();
-  return result.length <= max ? (result || null) : undefined;
-}
-function idempotencyKey(context: AppContext) {
-  const value = context.req.header('Idempotency-Key')?.trim() ?? '';
-  return value.length >= 8 && value.length <= 128 ? value : null;
 }
 
 async function resolveAuth(context: AppContext): Promise<AuthSession | null> {
@@ -192,7 +175,19 @@ function canManage(membership: Membership) {
 }
 
 function rpcError(data: unknown, fallback: string) {
+  const retryAfter = rateLimitFromRpcError(data);
+  if (retryAfter) {
+    return {
+      code: 'PUBLIC_BOOKING_RATE_LIMITED',
+      message: `Çok fazla istek yapıldı. ${retryAfter} saniye sonra tekrar deneyin.`,
+      status: 429 as const,
+      retryAfter,
+    };
+  }
   const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  if (message.includes('PUBLIC_BOOKING_GATE_UNAVAILABLE') || message.includes('PUBLIC_BOOKING_GATE_INVALID_PROOF')) {
+    return { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon güvenlik kontrolü şu anda hazır değil.', status: 503 as const };
+  }
   if (message.includes('PUBLIC_BOOKING_NOT_FOUND') || message.includes('PUBLIC_BOOKING_DISABLED')) {
     return { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.', status: 404 as const };
   }
@@ -215,6 +210,23 @@ function rpcError(data: unknown, fallback: string) {
     return { code: 'NOT_ALLOWED', message: 'Bu işlem için yetkiniz yok.', status: 403 as const };
   }
   return { code: 'PUBLIC_BOOKING_FAILED', message: fallback, status: 400 as const };
+}
+
+function errorResponse(context: AppContext, error: ReturnType<typeof rpcError>) {
+  if ('retryAfter' in error && error.retryAfter) {
+    const response = context.json(publicRateLimitedBody(error.retryAfter), 429);
+    response.headers.set('Retry-After', String(error.retryAfter));
+    return response;
+  }
+  return context.json({ error: { code: error.code, message: error.message } }, error.status);
+}
+
+function abuseProof(identity: NonNullable<Awaited<ReturnType<typeof resolvePublicAbuseIdentity>>>) {
+  return {
+    p_gate_secret: identity.gateSecret,
+    p_actor_hash: identity.actorHash,
+    p_network_hash: identity.networkHash,
+  };
 }
 
 // Authenticated business-side settings. Public booking is opt-in and manager-only mutable.
@@ -275,31 +287,35 @@ publicBooking.put('/settings', async (context) => {
     }),
   }, access.auth.accessToken);
 
-  if (!result.ok) {
-    const error = rpcError(result.data, 'Public rezervasyon ayarları kaydedilemedi.');
-    return context.json({ error: { code: error.code, message: error.message } }, error.status);
-  }
+  if (!result.ok) return errorResponse(context, rpcError(result.data, 'Public rezervasyon ayarları kaydedilemedi.'));
   return context.json({ settings: Array.isArray(result.data) ? first(result.data) : result.data });
 });
 
-// Everything below this point intentionally uses the anon Supabase key, not session cookies.
+// Public browsing is routed through guarded RPCs. The browser never receives the
+// gate secret; it only keeps a signed HttpOnly client proof cookie.
 publicBooking.get('/business/:slug', async (context) => {
   const slug = context.req.param('slug');
   if (!isSlug(slug)) return context.json({ error: { code: 'NOT_FOUND', message: 'Rezervasyon bağlantısı bulunamadı.' } }, 404);
 
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+  const proof = abuseProof(abuse);
+
   const [business, services] = await Promise.all([
-    supabaseRequest<PublicBusiness[]>(context.env, 'rest/v1/rpc/get_public_booking_business', {
-      method: 'POST', body: JSON.stringify({ p_slug: slug }),
+    supabaseRequest<PublicBusiness[]>(context.env, 'rest/v1/rpc/get_public_booking_business_guarded', {
+      method: 'POST', body: JSON.stringify({ p_slug: slug, ...proof }),
     }),
-    supabaseRequest<PublicService[]>(context.env, 'rest/v1/rpc/get_public_booking_services', {
-      method: 'POST', body: JSON.stringify({ p_slug: slug }),
+    supabaseRequest<PublicService[]>(context.env, 'rest/v1/rpc/get_public_booking_services_guarded', {
+      method: 'POST', body: JSON.stringify({ p_slug: slug, ...proof }),
     }),
   ]);
-  const publicBusiness = business.ok ? first(business.data) : null;
+  if (!business.ok) return errorResponse(context, rpcError(business.data, 'Rezervasyon bağlantısı yüklenemedi.'));
+  if (!services.ok) return errorResponse(context, rpcError(services.data, 'Hizmetler yüklenemedi.'));
+
+  const publicBusiness = first(business.data);
   if (!publicBusiness) {
     return context.json({ error: { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.' } }, 404);
   }
-  if (!services.ok) return context.json({ error: { code: 'PUBLIC_CATALOG_FAILED', message: 'Hizmetler yüklenemedi.' } }, 502);
 
   return context.json({ business: publicBusiness, services: services.data ?? [] });
 });
@@ -311,13 +327,12 @@ publicBooking.get('/business/:slug/staff', async (context) => {
     return context.json({ error: { code: 'INVALID_PUBLIC_QUERY', message: 'Hizmet bilgisi geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<PublicStaff[]>(context.env, 'rest/v1/rpc/get_public_booking_staff', {
-    method: 'POST', body: JSON.stringify({ p_slug: slug, p_service_id: serviceId }),
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+  const result = await supabaseRequest<PublicStaff[]>(context.env, 'rest/v1/rpc/get_public_booking_staff_guarded', {
+    method: 'POST', body: JSON.stringify({ p_slug: slug, p_service_id: serviceId, ...abuseProof(abuse) }),
   });
-  if (!result.ok) {
-    const error = rpcError(result.data, 'Personel bilgileri yüklenemedi.');
-    return context.json({ error: { code: error.code, message: error.message } }, error.status);
-  }
+  if (!result.ok) return errorResponse(context, rpcError(result.data, 'Personel bilgileri yüklenemedi.'));
   return context.json({ staff: result.data ?? [] });
 });
 
@@ -331,62 +346,20 @@ publicBooking.get('/business/:slug/slots', async (context) => {
     return context.json({ error: { code: 'INVALID_PUBLIC_QUERY', message: 'Hizmet, tarih veya personel bilgisi geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<PublicSlot[]>(context.env, 'rest/v1/rpc/compute_public_booking_slots', {
-    method: 'POST',
-    body: JSON.stringify({ p_slug: slug, p_service_id: serviceId, p_date: date, p_staff_id: staffId }),
-  });
-  if (!result.ok) {
-    const error = rpcError(result.data, 'Uygun saatler hesaplanamadı.');
-    return context.json({ error: { code: error.code, message: error.message } }, error.status);
-  }
-  return context.json({ slots: result.data ?? [] });
-});
-
-publicBooking.post('/business/:slug/book', async (context) => {
-  const slug = context.req.param('slug');
-  const key = idempotencyKey(context);
-  const body = await readJson(context);
-  const customerName = typeof body?.customerName === 'string' ? body.customerName.trim() : '';
-  const customerPhone = cleanOptional(body?.customerPhone, 40);
-  const customerEmail = cleanOptional(body?.customerEmail, 254);
-  const notes = cleanOptional(body?.notes, 500);
-
-  if (!isSlug(slug) || !key) {
-    return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon isteği geçerli değil.' } }, 400);
-  }
-  if (customerName.length < 2 || customerName.length > 120
-      || customerPhone === undefined || customerEmail === undefined || notes === undefined
-      || (customerPhone === null && customerEmail === null)
-      || (customerEmail !== null && !customerEmail.includes('@'))
-      || !isUuid(body?.serviceId) || !isUuid(body?.staffId) || !isTimestamp(body?.startsAt)) {
-    return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Ad, iletişim, hizmet veya saat bilgileri geçerli değil.' } }, 400);
-  }
-
-  const result = await supabaseRequest<PublicConfirmation[]>(context.env, 'rest/v1/rpc/create_public_appointment', {
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+  const result = await supabaseRequest<PublicSlot[]>(context.env, 'rest/v1/rpc/compute_public_booking_slots_guarded', {
     method: 'POST',
     body: JSON.stringify({
       p_slug: slug,
-      p_idempotency_key: key,
-      p_customer_name: customerName,
-      p_service_id: body.serviceId,
-      p_staff_id: body.staffId,
-      p_starts_at: body.startsAt,
-      p_customer_phone: customerPhone,
-      p_customer_email: customerEmail,
-      p_notes: notes,
+      p_service_id: serviceId,
+      p_date: date,
+      p_staff_id: staffId,
+      ...abuseProof(abuse),
     }),
   });
-
-  if (!result.ok) {
-    const error = rpcError(result.data, 'Rezervasyon oluşturulamadı.');
-    return context.json({ error: { code: error.code, message: error.message } }, error.status);
-  }
-
-  const confirmation = first(result.data);
-  if (!confirmation) {
-    return context.json({ error: { code: 'PUBLIC_BOOKING_FAILED', message: 'Rezervasyon sonucu alınamadı.' } }, 502);
-  }
-  return context.json({ appointment: confirmation }, 201);
+  if (!result.ok) return errorResponse(context, rpcError(result.data, 'Uygun saatler hesaplanamadı.'));
+  return context.json({ slots: result.data ?? [] });
 });
 
 export default publicBooking;

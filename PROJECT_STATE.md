@@ -28,37 +28,38 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | Gün/hafta takvimi | Main'de, Faz 8 | Liste görünümü, güncellik ve referans düzeni Faz 13 |
 | Rezervasyon sonucu + yönetim erişimi kurtarma | Main'de, F09-02 / PR #12 | Atomik create/capability/recovery tamamlandı |
 | Durable public booking e-postası | Main'de, F09-03 / PR #13 | Outbox/lease/retry/provider receipt tamamlandı; gerçek provider teslimi F09-05/F17 |
+| Public booking abuse sınırı | Main'de, F09-04 / PR #14 | Direct RPC bypass kapalı; guarded RPC + actor/network/business rate-limit + retention tamamlandı |
 | SalonApp mobil kabuğu, adisyon ve tahsilat | Planlandı, Faz 14 | Henüz uygulama/route/tablo yok |
 | Ürün/stok, masraf, kasa/raporlar | Planlandı, Faz 15 | Sınırlı operasyon işlevleri |
 | Tekrar/SMS, yorum/fotoğraf, paket/promosyon, prim, hesap menüsü | Planlandı, Faz 16 | Ayrı alt işler |
-| Üç kolun gerçek ortam pilotu | Doğrulanmadı, Faz 17 | Canlı Auth, mesaj teslimi, mobil ve ortak işlem zinciri doğrulanacak |
+| Üç kolun gerçek ortam pilotu | Doğrulanmadı, Faz 17 | Canlı Auth, mesaj teslimi, abuse/load, mobil ve ortak işlem zinciri doğrulanacak |
 
 ## Faz 9 aktif durum
 
 - **F09-01 tamamlandı:** recovery/bildirim authority sözleşmesi main'de, PR #11.
 - **F09-02 tamamlandı:** PR #12 atomik booking + management capability + recovery akışını main'e aldı.
 - **F09-03 tamamlandı:** PR #13 durable e-posta outbox, lease/retry, scheduled dispatcher, upgrade backfill ve server-only provider receipt authority ekledi.
+- **F09-04 tamamlandı:** PR #14 raw public RPC bypass'larını kapattı; Worker-only gate secret, signed HttpOnly actor proof, coarse network HMAC, actor/network/business PostgreSQL rate-limit ve bounded counter retention ekledi.
 - Notification intent F09-02 recovery satırı appointment'a bağlandığında aynı outer booking transaction'ında doğar; provider HTTP booking response yolunda değildir.
 - Notification job state'leri `pending`, `leased`, `retry_wait`, `sent`, `failed_terminal`; lease varsayılanı 45 saniye, provider timeout 10 saniye, max deneme 8, bounded retry penceresi en fazla 72 saattir.
 - `sent`, provider'ın isteği kabul edip message ID verdiğini ifade eder; inbox teslimi değildir.
 - Resend idempotency key'i job başına stabildir. Provider'ın güncel 24 saatlik idempotency saklama penceresi nedeniyle 24 saat sonrasındaki ambiguous retry'larda mutlak exactly-once iddiası yoktur.
-- F09-04 direct-RPC abuse/rate-limit; F09-05 gerçek Supabase + provider birleşik kabulüdür. G09 bu görevler tamamlanmadan kapanmaz.
+- **F09-05 sıradaki Faz 9 entegrasyon kapısıdır**, fakat önkoşulları arasında F17-01 ve F17-02 de vardır. G09, F09-05 gerçek ortam kabulü tamamlanmadan kapanmaz.
 
 ## Branch / PR notu
 
 - `phase-3-services-team` → `phase-8-calendar` çalışmaları squash commit'lerle main'e alınmış.
 - `f09-02-booking-recovery`: [PR #12](https://github.com/ziyabeey1-ai/randevu/pull/12), main'e alındı.
-- `f09-03-durable-notifications`: [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13), F09-03 teslimidir; main kabul kaydı TASKS ve handoff'tadır.
-- `phase-9-email-delivery`: [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), eski taslak; F09-03 içinde yalnız template/escaping/Resend adapter fikirleri seçilerek tüketildi. Eski synchronous send ve anon receipt modeli kullanılmaz.
+- `f09-03-durable-notifications`: [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13), F09-03 teslimidir.
+- `f09-04-public-abuse-control`: [PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14), F09-04 teslimidir; ayrıntı [handoff](docs/handoffs/F09-04.md) içindedir.
+- `phase-9-email-delivery`: [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), superseded eski taslaktır; synchronous send ve anon receipt modeli kullanılmaz.
 - `phase-2-auth-tenant`, Faz 1 seviyesinde kalan eski branch'tir; main auth durumunu temsil etmez.
-- Eski yerel `codex/faz-2-auth-tenants` çalışması güncel main'den farklı yaklaşım taşır ve doğrudan birleştirilmez.
 
 ## İncelemeden kalan işler
 
 | Bulgu | Etki | Faz |
 | --- | --- | --- |
-| Public oluşturma RPC'leri Worker dışından doğrudan çağrılabilir; public abuse sınırı kapanmış değil | Otomatik slot doldurma/direct-RPC bypass ölçülebilir biçimde sınırlanmalı | 9 / F09-04 |
-| Gerçek Resend/Supabase staging teslimi henüz doğrulanmadı | Stub/provider-acceptance testleri gerçek inbox teslimi kanıtı değildir | 9 / F09-05, 17 |
+| Gerçek Supabase + Resend staging teslimi ve gerçek abuse/load davranışı henüz doğrulanmadı | CI fixture/stub kanıtı production davranışı değildir; gate/config/secret provisioning gerçek ortamda doğrulanmalı | 9 / F09-05, 17 |
 | Personel kaydı üyelik/davet üretmiyor; parola kurtarma ve işletme geçişi UI'sı eksik | Çok kullanıcılı günlük kullanım tamamlanmış değil | 10 |
 | Auth/istek yardımcıları Worker modüllerinde tekrarlanıyor; hata/Origin/CSRF davranışı merkezi değil | Oturum ve güvenlik düzeltmeleri birlikte uygulanmalı | 10 |
 | Takvimde otomatik güncelleme ve eski yanıt koruması yok | Public/diğer çalışan işlemleri geç veya yanlış seçimde görünebilir | 13 |
@@ -79,25 +80,25 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 
 SalonApp/adisyon için çalışan yeni bir yol henüz yok.
 
-## Worker ve notification haritası
+## Worker haritası
 
 `worker/app.ts` feature router'larını birleştirir. F09-03 ile Wrangler entry `worker/entry.ts` olur: HTTP isteklerini Hono app'e aktarır ve her dakika scheduled notification maintenance + dispatcher çalıştırır.
 
-Notification dosyaları:
-
 - `worker/notifications.ts`: claim, AES-GCM decrypt, Resend request, timeout/retry sınıflandırması, complete/release.
 - `worker/notification-maintenance.ts`: provider configinden bağımsız terminalization/retention maintenance RPC çağrısı.
-- `docs/handoffs/F09-03.md`: retry, provider ve secret sözleşmesinin ayrıntılı devri.
+- `worker/public-abuse.ts`: F09-04 gate validation, signed public client cookie, IPv4 `/24` / IPv6 `/64` coarse network anahtarı, HMAC-derived actor/network hash'leri ve HTTP 429 mapping.
+- `worker/public-booking.ts`, `worker/public-booking-recovery.ts`: yalnız guarded public RPC yüzeyini kullanır.
 
-Production notification env:
+Production env:
 
 - `MANAGEMENT_LINK_ENCRYPTION_KEY_V1`
+- `PUBLIC_BOOKING_GATE_SECRET`
 - `NOTIFICATION_DISPATCH_SECRET`
 - `RESEND_API_KEY`
 - `NOTIFICATION_FROM_EMAIL`
 - `PUBLIC_APP_ORIGIN` — production için HTTPS zorunlu
 
-DB'de `notification_dispatch_config` yalnız `NOTIFICATION_DISPATCH_SECRET` SHA-256 hash'ini tutar. Raw secret repo/migration içine yazılmaz; staging/production provisioning F17-01'de doğrulanır.
+DB'de `notification_dispatch_config` yalnız `NOTIFICATION_DISPATCH_SECRET` SHA-256 hash'ini; `public_booking_abuse_config` yalnız `PUBLIC_BOOKING_GATE_SECRET` SHA-256 hash'ini tutar. Raw secret'lar repo/migration içine yazılmaz. Gerçek staging/production provisioning F17-01/F09-05'te doğrulanır. Abuse config satırı yoksa public gate fail-closed davranır.
 
 ## Migration sırası
 
@@ -113,11 +114,14 @@ DB'de `notification_dispatch_config` yalnız `NOTIFICATION_DISPATCH_SECRET` SHA-
 20260911160000_phase9_booking_recovery.sql
 20260911170000_phase9_notification_outbox.sql
 20260911170100_phase9_notification_maintenance.sql
+20260911180000_phase9_public_abuse_control.sql
+20260911180100_phase9_public_abuse_hardening.sql
+20260911180200_phase9_public_abuse_retention.sql
 ```
 
-`170000` outbox/state/trigger/lease RPC'lerini ekler. `170100`, F09-03 öncesi F09-02 recoveries için idempotent e-posta job backfill'i ve bağımsız maintenance RPC'sini ekler. Birleştirilmiş eski migration'lar değiştirilmez.
+Birleştirilmiş eski migration'lar değiştirilmez; yeni davranış ileri migration ile eklenir.
 
-## F09-03 güvenlik ve delivery invariant'ları
+## F09-03 delivery invariant'ları
 
 - Public booking job'ı, e-posta varsa booking transaction'ı commit olurken durable olarak doğar.
 - Job payload plaintext management bearer veya full manage URL tutmaz.
@@ -125,18 +129,29 @@ DB'de `notification_dispatch_config` yalnız `NOTIFICATION_DISPATCH_SECRET` SHA-
 - Production management link origin'i HTTPS olmak zorundadır; HTTP yalnız local development'ta kabul edilir.
 - Notification tablolarına anon/authenticated doğrudan erişemez.
 - Claim/complete/release/maintenance yalnız `NOTIFICATION_DISPATCH_SECRET` doğrulamasıyla çalışır; DB yalnız secret hash'i tutar.
-- Active lease başka worker tarafından claim edilemez; `FOR UPDATE SKIP LOCKED` iki gerçek PostgreSQL session ile test edilir.
-- Completion aktif lease tokenını doğrular. Müşterinin booking idempotency key'i provider receipt authority değildir.
+- Active lease başka worker tarafından claim edilemez; completion aktif lease tokenını doğrular.
 - Provider/network failure appointment'ı geri almaz.
 - Recovery TTL dolduktan ve ilgili notification terminal olduktan sonra recovery hash/ciphertext/IV maintenance ile temizlenir.
-- F09-04 tamamlanana kadar public booking/direct RPC abuse sınırı kapanmış sayılmaz.
+
+## F09-04 abuse invariant'ları
+
+- Eski raw public business/service/staff/slot/create/recovery RPC'leri anon/authenticated dış API değildir; guarded wrapper'lar tek public PostgREST yüzeyidir.
+- Guarded wrapper server-only gate secret olmadan fail-closed davranır.
+- Browser cookie imzalı + HttpOnly + SameSite=Lax'tır; raw cookie ve raw IP PostgreSQL'e gitmez.
+- Actor ve coarse-network anahtarları Worker'da HMAC-SHA-256 türetilir; DB yalnız 64 hex hash key saklar.
+- Read/recovery actor+network, create actor+network+business limitine tabidir.
+- Same-intent başarılı retry yeni create budget tüketmez.
+- Guarded public create yanlışlıkla authenticated üst context taşısa bile booking command source `public` kalır.
+- Rate counters `updated_at` index'iyle 48 saatten eski state'i request-path'te en fazla 500 satır/call bounded prune eder.
+- 429 cevabı `Retry-After` taşır; rate-limit booking failure gibi raporlanmaz.
 
 ## Doğrulama kanıtı ve sınırı
 
 - [F09-01 PR #11](https://github.com/ziyabeey1-ai/randevu/pull/11): sözleşme main'de.
 - [F09-02 PR #12](https://github.com/ziyabeey1-ai/randevu/pull/12): atomik booking/recovery main'de.
-- [F09-03 PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13): CI run `34653785166` üzerinde typecheck, production build, Wrangler scheduled dry-run, provider stub, full PostgreSQL regression, iki-session notification claim race ve ayrı F09-02→F09-03 upgrade/backfill testi success.
-- Testler fake Resend response ve yerel PostgreSQL/Auth fixture kullanır. Gerçek Resend hesabı, gerçek inbox teslimi ve gerçek Supabase environment bu kanıtın kapsamı değildir.
+- [F09-03 PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13): CI `34653785166` success; provider stub + tam PostgreSQL + concurrency + upgrade/backfill kapsandı.
+- [F09-04 PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14): branch/PR CI `34656950693` success; Worker abuse contract, direct-RPC deny, wrong-proof deny, actor/network/business quota, safe retry, recovery, public provenance ve counter retention kapsandı.
+- Testler yerel PostgreSQL/Auth fixture ve fake provider kullanır. Gerçek Resend hesabı, gerçek inbox teslimi, gerçek Supabase environment ve üretim abuse/load davranışı bu kanıtın kapsamı değildir.
 - Gerçek ortam/secret provisioning F17-01 ve F09-05 kabulinde doğrulanacaktır.
 
-Her PR aynı zorunlu build/SQL kapısını geçer. F09-03 kullanıcıya ancak PR merge edilip merge sonrası main CI başarılı olduğunda tamamlandı diye raporlanır. G09 ancak F09-01…F09-05 kabul edildiğinde kapanır.
+Her PR aynı zorunlu build/SQL kapısını geçer. G09 ancak F09-01…F09-05 kabul edildiğinde kapanır.
