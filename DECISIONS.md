@@ -8,17 +8,11 @@ Tarayıcıdaki aktif işletme seçimi yalnızca kullanıcı tercihi taşıyan Ht
 
 ## Faz 3 — hizmet ve ekip
 
-Faz 3 yalnızca işletme kataloğu ve randevu atanabilir ekip modelini ekler:
-
-- `services`: işletmeye ait hizmet, süre, tampon süreler, fiyat ve aktiflik.
-- `staff_profiles`: randevu atanabilir personel. Bir `Membership` ile bağlanabilir ama her personelin giriş hesabı olmak zorunda değildir.
+- `services`: tenant hizmeti, süre, buffer, fiyat ve aktiflik.
+- `staff_profiles`: randevu atanabilir personel.
 - `staff_services`: hangi personelin hangi hizmeti verebildiği.
 
-Bütün tablolarda `business_id` bulunur. Staff-Service bağlantısında birleşik foreign key kullanılır; farklı tenant'ın staff ve service kayıtları birbirine bağlanamaz.
-
-Owner ve manager katalog/ekip yönetebilir. Staff okuyabilir fakat Faz 3 katalog mutasyonu yapamaz. Bu kural hem Worker hem RLS katmanında uygulanır.
-
-Hizmet süresi 5–720 dakika, tamponlar 0–240 dakika, fiyat en küçük para biriminde sıfır veya pozitif tam sayı olmak zorundadır.
+Bütün ilişkiler tenant kimliği taşır. Staff-Service bağlantısındaki birleşik foreign key farklı işletmelerin kayıtlarının birbirine bağlanmasını engeller. Owner/manager katalog mutasyonu yapabilir; staff katalog için read-only'dir.
 
 ## Faz 4 — müsaitlik
 
@@ -26,32 +20,65 @@ Müsaitlik üç veri katmanıyla modellenir:
 
 - `business_hours`: işletmenin haftalık açık pencereleri.
 - `staff_hours`: personelin haftalık çalışma pencereleri.
-- `availability_blocks`: belirli gerçek zaman aralığını kapatan işletme geneli veya personel özelinde izin/kapanış.
+- `availability_blocks`: tarih bazlı işletme geneli veya personel özelinde kapalı gerçek zaman aralıkları.
 
-Haftalık mola ayrı bir "break" tablosu değildir. Aynı günün çalışma saatini iki veya daha fazla açık pencereye bölmek molayı doğal olarak oluşturur. Bu yaklaşım slot motorunda tek bir "açık aralıkların kesişimi eksi bloklar" kuralı bırakır.
+Haftalık mola ayrı tablo değildir. Aynı günün açık saatlerini iki aralığa bölmek molayı doğal olarak oluşturur. Schedule değişiklikleri `replace_business_hours` ve `replace_staff_hours` RPC'leriyle bir gün için atomik değiştirilir.
 
-Günlük schedule değişimi tek tek satır CRUD'u ile yapılmaz. `replace_business_hours` ve `replace_staff_hours` RPC'leri bütün günü tek transaction içinde değiştirir. Böylece eski saatlerin silinip yeni saatlerin yarım yazılması engellenir. Overlap aralıkları RPC içinde reddedilir.
+Slot hesabı işletme/personel pencerelerini kesiştirir; hizmet `buffer_before + duration + buffer_after` toplamının tamamı bu pencereye sığmalıdır. Pencereler işletmenin IANA timezone'u ile `timestamptz` anlarına dönüştürülür ve slot grid'i gerçek timeline üzerinde üretilir. Spring-forward'da var olmayan yerel saat üretilmez; fall-back'de tekrarlanan saat iki farklı gerçek instant olarak korunur.
 
-Schedule tablolarında authenticated role doğrudan `insert/update/delete` yetkisi taşımaz. Owner/manager mutasyonları security-definer RPC'lerde `auth.uid()` ve `can_manage_business()` ile yeniden doğrulanır. Staff yalnızca kendi aktif tenant'ının availability verisini okuyabilir.
+## Faz 5 — booking çekirdeği
 
-Slot hesabının kuralları:
+### Appointment snapshot modeli
 
-1. Aktif hizmet ve aktif `StaffService` eşleşmesi olmayan personel aday değildir.
-2. İşletme ve personel haftalık açık pencereleri yerel saat üzerinden kesiştirilir.
-3. İşletmenin IANA timezone'u ile bu pencereler `timestamptz` gerçek anlarına çevrilir.
-4. Hizmet başlangıcı, `buffer_before + duration + buffer_after` toplamı açık pencereye tamamen sığacak şekilde üretilir.
-5. Slot grid adımı hizmet süresinden bağımsızdır.
-6. İşletme seviyesindeki blok tüm personeli, staff seviyesindeki blok yalnız ilgili personeli eler.
-7. `[başlangıç, bitiş)` mantığı kullanılır; bir blok tam slotun occupied başlangıcında biterse sonraki slotu engellemez.
-8. Faz 4 appointment tablosunu okumaz. Dolu randevuların slotlardan düşülmesi Faz 5'te booking modeliyle birlikte eklenecektir.
+Appointment yalnız foreign key taşımaz. Oluşturma anındaki müşteri adı/iletişim, hizmet adı, personel adı, süre, buffer, fiyat, para birimi ve timezone ayrıca snapshot olarak saklanır. Sonradan hizmet fiyatı veya personel adı değişse bile tarihsel randevu kaydı semantiğini kaybetmez.
 
-### Timezone ve DST
+`starts_at` ve `ends_at` müşterinin gördüğü hizmet süresidir. `occupied_starts_at` ve `occupied_ends_at` ise buffer'lar dahil personelin gerçekten kilitlendiği aralıktır.
 
-Timezone adı serbest metin kabul edilmez; `pg_timezone_names` ile doğrulanır. Haftalık wall-clock pencereleri önce işletme timezone'unda gerçek UTC anlarına dönüştürülür, sonra slotlar gerçek timeline üzerinde `generate_series` ile üretilir.
+### Concurrency son sınırı PostgreSQL'dir
 
-Bu kararın sonucu açıktır:
+Availability kontrolü UX için yapılır fakat rezervasyon doğruluğunun tek dayanağı değildir. İki istemci aynı slotu aynı anda boş görebilir. Bu nedenle `appointments` üzerinde `btree_gist` ile şu invariant DB seviyesinde tutulur:
 
-- Spring-forward sırasında hiç yaşanmayan yerel saat için slot üretilmez.
-- Fall-back sırasında aynı yerel saat iki kez yaşanıyorsa iki farklı `timestamptz` instant korunur. UI bu ayrımı UTC offset etiketiyle gösterebilir.
+- aynı `business_id`
+- aynı `staff_id`
+- `status <> cancelled`
+- çakışan `[occupied_starts_at, occupied_ends_at)` aralıkları
 
-Bu davranış `Europe/Berlin` geçişleriyle CI testinde doğrulanır. `Europe/Istanbul` gibi DST kullanmayan işletmeler aynı motoru değişiklik olmadan kullanır.
+aynı anda var olamaz.
+
+Uygulama availability kontrolünden sonra insert/update yapar; yarış oluşursa exclusion constraint işlemlerden yalnız birini geçirir. Worker bunu `APPOINTMENT_CONFLICT` olarak 409'a çevirir.
+
+Cancelled appointment slotu serbest bırakır. Completed ve no-show kayıtları tarihsel occupancy'yi korur; geçmişte aynı personele üst üste ikinci appointment yazılarak tarihçe yeniden yazılamaz.
+
+### Booking-aware slot motoru
+
+Faz 4'ün public `compute_availability_slots` sözleşmesi korunur fakat Faz 5 migration'ı implementasyonu booking-aware hale getirir. Schedule, block ve service kurallarından geçen aday slotlar ayrıca non-cancelled appointment occupied aralıklarıyla karşılaştırılır.
+
+Reschedule için ayrı `compute_reschedule_slots` vardır. Bu fonksiyon sadece taşınan appointment kimliğini occupancy hesabından hariç tutar. Böylece appointment aynı saate veya kendi eski aralığıyla kısmen kesişen yeni bir saate taşınabilir; diğer randevular yine normal şekilde engeldir. Son update yine exclusion constraint tarafından korunur.
+
+### Idempotency
+
+Create, reschedule ve status komutları `booking_commands` tablosunda `(business_id, idempotency_key)` primary key'iyle claim edilir. İstek payload'ı deterministik hash ile kaydedilir.
+
+- aynı key + aynı command/payload: önceki appointment sonucu döner;
+- aynı key + farklı command/payload: `IDEMPOTENCY_CONFLICT`;
+- concurrent aynı-key istekleri PK üzerinde serialize olur.
+
+Command ledger istemciye doğrudan açılmaz. Dış mutasyon yüzeyi yalnız RPC'dir.
+
+### Customer kimliği
+
+Faz 5 ayrı `customers` tablosu ekler. Yeni booking sırasında aynı tenant içinde normalize edilmiş telefon veya lower-case e-posta birebir eşleşirse mevcut customer yeniden kullanılır; aksi halde yeni kayıt açılır. Bu dedup kolaylık katmanıdır, global kimlik iddiası değildir. Customer PII tenant RLS ile sınırlandırılır.
+
+### Appointment yaşam döngüsü ve audit
+
+Başlangıç durumu `scheduled`'dır. Aktif durumlar `scheduled` ve `confirmed`; terminal durumlar `cancelled`, `completed`, `no_show` olarak kabul edilir. Terminal bir appointment tekrar aktif duruma açılamaz.
+
+Create, reschedule ve status değişiklikleri `appointment_events` tablosuna append-only event bırakır. Event actor kullanıcıyı, önceki/yeni status'u ve gereken delta payload'ını saklar. Authenticated role event tablosuna doğrudan insert/update/delete yapamaz.
+
+### Yetki yüzeyi
+
+Booking operasyonları aktif tenant üyesine açıktır; owner/manager/staff randevu operasyonu yapabilir. Bunun nedeni staff rolünün randevu operasyonunda ön büro veya hizmet veren personel olarak çalışabilmesidir. Tenant dışına erişim yine `Membership`, explicit RPC check, birleşik foreign key ve RLS katmanlarıyla engellenir.
+
+## Sonraki sınır
+
+Faz 5 public müşteri self-booking, ödeme, bildirim/h hatırlatma, dış takvim senkronizasyonu ve CRM otomasyonunu içermez. Booking çekirdeği önce transaction ve concurrency doğruluğunu sabitler; dağıtım kanalları bunun üzerine eklenir.
