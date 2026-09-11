@@ -1,4 +1,5 @@
 import app from './app';
+import { maintainNotificationState } from './notification-maintenance';
 import { dispatchNotificationBatch } from './notifications';
 import type { NotificationEnv } from './notifications';
 
@@ -11,6 +12,9 @@ export default {
     return app.fetch(request, env, context as never);
   },
   scheduled(_controller: unknown, env: NotificationEnv, context: WaitUntilContext) {
-    context.waitUntil(dispatchNotificationBatch(env).then(() => undefined));
+    context.waitUntil((async () => {
+      await maintainNotificationState(env);
+      await dispatchNotificationBatch(env);
+    })());
   },
 };
