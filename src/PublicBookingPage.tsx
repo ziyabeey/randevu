@@ -28,6 +28,7 @@ type PublicSlot = {
 };
 type Confirmation = {
   appointment_id: string;
+  business_name?: string;
   status: string;
   starts_at: string;
   ends_at: string;
@@ -40,6 +41,24 @@ type Confirmation = {
 };
 type PagePayload = { business: PublicBusiness; services: PublicService[] };
 type ApiError = { error?: { code?: string; message?: string } };
+type PendingRecovery = {
+  slug: string;
+  idempotencyKey: string;
+  recoveryId: string;
+  recoverySecret: string;
+  requestFingerprint: string;
+  createdAt: string;
+};
+type BookingIntent = {
+  fingerprint: string;
+  key: string;
+  managementToken: string;
+  recoveryId: string;
+  recoverySecret: string;
+};
+
+const RECOVERY_TTL_MS = 72 * 60 * 60 * 1000;
+const PENDING_PREFIX = 'yzt-public-booking-pending-v1:';
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -47,7 +66,12 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(init?.headers ?? {}) },
     cache: 'no-store',
   });
-  const body = await response.json() as T & ApiError;
+  const text = await response.text();
+  let body = {} as T & ApiError;
+  if (text) {
+    try { body = JSON.parse(text) as T & ApiError; }
+    catch { body = {} as T & ApiError; }
+  }
   if (!response.ok) {
     const error = new Error(body.error?.message ?? 'İşlem tamamlanamadı.');
     (error as Error & { code?: string }).code = body.error?.code;
@@ -76,12 +100,54 @@ function money(minor: number, currency: string) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
 }
 
-function createManagementToken() {
+function createSecret() {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function sha256Hex(value: string) {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function storageKey(slug: string) {
+  return `${PENDING_PREFIX}${slug}`;
+}
+
+function readPending(slug: string): PendingRecovery | null {
+  try {
+    const raw = sessionStorage.getItem(storageKey(slug));
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<PendingRecovery>;
+    const created = typeof value.createdAt === 'string' ? Date.parse(value.createdAt) : NaN;
+    const valid = value.slug === slug
+      && typeof value.idempotencyKey === 'string'
+      && typeof value.recoveryId === 'string'
+      && typeof value.recoverySecret === 'string'
+      && typeof value.requestFingerprint === 'string'
+      && Number.isFinite(created)
+      && Date.now() - created <= RECOVERY_TTL_MS;
+    if (!valid) {
+      sessionStorage.removeItem(storageKey(slug));
+      return null;
+    }
+    return value as PendingRecovery;
+  } catch {
+    return null;
+  }
+}
+
+function writePending(value: PendingRecovery) {
+  try { sessionStorage.setItem(storageKey(value.slug), JSON.stringify(value)); }
+  catch { /* Recovery still works within the current request if storage is unavailable. */ }
+}
+
+function removePending(slug: string) {
+  try { sessionStorage.removeItem(storageKey(slug)); }
+  catch { /* no-op */ }
 }
 
 export default function PublicBookingPage({ slug }: { slug: string }) {
@@ -93,16 +159,60 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
   const [slots, setSlots] = useState<PublicSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<PublicSlot | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [pendingRecovery, setPendingRecovery] = useState<PendingRecovery | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const idempotency = useRef<{ fingerprint: string; key: string; managementToken: string } | null>(null);
+  const idempotency = useRef<BookingIntent | null>(null);
+
+  async function recoverPendingResult(pending: PendingRecovery) {
+    setRecoveryBusy(true);
+    try {
+      const result = await api<{
+        appointment: Confirmation;
+        management: { url: string };
+        recovery: { expiresAt: string };
+      }>('/api/public/booking/recover', {
+        method: 'POST',
+        body: JSON.stringify({
+          recoveryId: pending.recoveryId,
+          idempotencyKey: pending.idempotencyKey,
+          recoverySecret: pending.recoverySecret,
+        }),
+      });
+      setConfirmation({ ...result.appointment, manage_url: result.management.url });
+      removePending(slug);
+      setPendingRecovery(null);
+      idempotency.current = null;
+      setNotice('');
+      return true;
+    } catch (error) {
+      const coded = error as Error & { code?: string };
+      if (coded.code === 'BOOKING_RECOVERY_NOT_FOUND') {
+        removePending(slug);
+        setPendingRecovery(null);
+        idempotency.current = null;
+        setNotice('Önceki işlem tamamlanmamış. Yeni bir randevu oluşturabilirsiniz.');
+      } else {
+        setNotice('Önceki randevu işleminizin sonucu henüz doğrulanamadı. Yeni randevu oluşturmadan önce tekrar kontrol edin.');
+      }
+      return false;
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    const pending = readPending(slug);
+    setPendingRecovery(pending);
+    if (pending) void recoverPendingResult(pending);
+  }, [slug]);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      setNotice('');
       try {
         const next = await api<PagePayload>(`/api/public/business/${encodeURIComponent(slug)}`);
         if (cancelled) return;
@@ -111,7 +221,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
         setServiceId(firstService);
         setDate(next.business.local_date);
       } catch (error) {
-        if (!cancelled) setNotice(error instanceof Error ? error.message : 'Rezervasyon sayfası yüklenemedi.');
+        if (!cancelled && !confirmation) setNotice(error instanceof Error ? error.message : 'Rezervasyon sayfası yüklenemedi.');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -172,7 +282,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
 
   async function book(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedSlot || !selectedService) return;
+    if (!selectedSlot || !selectedService || pendingRecovery) return;
     const form = event.currentTarget;
     const formData = new FormData(form);
     const customerName = String(formData.get('customerName') ?? '').trim();
@@ -198,32 +308,69 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
       idempotency.current = {
         fingerprint,
         key: `pub-${crypto.randomUUID()}`,
-        managementToken: createManagementToken(),
+        managementToken: createSecret(),
+        recoveryId: crypto.randomUUID(),
+        recoverySecret: createSecret(),
       };
     }
+
+    const current = idempotency.current;
+    const pending: PendingRecovery = {
+      slug,
+      idempotencyKey: current.key,
+      recoveryId: current.recoveryId,
+      recoverySecret: current.recoverySecret,
+      requestFingerprint: await sha256Hex(fingerprint),
+      createdAt: new Date().toISOString(),
+    };
+    writePending(pending);
+    setPendingRecovery(pending);
 
     setBusy(true);
     setNotice('');
     try {
-      const current = idempotency.current;
-      const result = await api<{ appointment: Confirmation }>(`/api/public/business/${encodeURIComponent(slug)}/book`, {
+      const result = await api<{
+        appointment: Confirmation;
+        management: { url: string };
+        recovery: { expiresAt: string };
+      }>(`/api/public/business/${encodeURIComponent(slug)}/book`, {
         method: 'POST',
         headers: { 'Idempotency-Key': current.key },
-        body: JSON.stringify(payload),
-      });
-      await api<{ ok: true }>('/api/manage/provision', {
-        method: 'POST',
         body: JSON.stringify({
-          appointmentId: result.appointment.appointment_id,
-          bookingIdempotencyKey: current.key,
+          ...payload,
           managementToken: current.managementToken,
+          recoveryId: current.recoveryId,
+          recoverySecret: current.recoverySecret,
         }),
       });
-      setConfirmation({ ...result.appointment, manage_url: `/m#${encodeURIComponent(current.managementToken)}` });
+      setConfirmation({
+        ...result.appointment,
+        business_name: page?.business.name,
+        manage_url: result.management.url,
+      });
+      removePending(slug);
+      setPendingRecovery(null);
       idempotency.current = null;
     } catch (error) {
       const coded = error as Error & { code?: string };
-      setNotice(coded.message);
+      const definitelyNotCommitted = new Set([
+        'SLOT_UNAVAILABLE',
+        'INVALID_PUBLIC_BOOKING',
+        'PUBLIC_BOOKING_NOT_FOUND',
+        'PUBLIC_CONTACT_REQUIRED',
+        'DATE_OUT_OF_RANGE',
+        'BOOKING_RECOVERY_UNAVAILABLE',
+      ]).has(coded.code ?? '');
+
+      if (definitelyNotCommitted) {
+        removePending(slug);
+        setPendingRecovery(null);
+        idempotency.current = null;
+        setNotice(coded.message);
+      } else {
+        setNotice('Randevu isteğinin sonucu belirsiz kaldı. Aynı işlemin sonucunu kontrol ediyoruz…');
+        await recoverPendingResult(pending);
+      }
       if (coded.code === 'SLOT_UNAVAILABLE') {
         setSelectedSlot(null);
         void loadSlots();
@@ -233,20 +380,8 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
     }
   }
 
-  if (loading) {
+  if (loading && !confirmation) {
     return <main className="public-booking-shell"><section className="public-booking-card"><p>Uygun saatler hazırlanıyor…</p></section></main>;
-  }
-
-  if (!page) {
-    return (
-      <main className="public-booking-shell">
-        <section className="public-booking-card public-empty-state">
-          <p className="public-kicker">YZT RANDEVU</p>
-          <h1>Bu rezervasyon bağlantısı şu anda aktif değil.</h1>
-          <p>{notice || 'İşletme bağlantıyı kapatmış veya adres geçersiz olabilir.'}</p>
-        </section>
-      </main>
-    );
   }
 
   if (confirmation) {
@@ -255,7 +390,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
         <section className="public-booking-card public-confirmation">
           <div className="public-success-mark">✓</div>
           <p className="public-kicker">RANDEVU OLUŞTURULDU</p>
-          <h1>{page.business.name}</h1>
+          <h1>{confirmation.business_name ?? page?.business.name ?? 'Randevu'}</h1>
           <dl className="public-confirmation-list">
             <div><dt>Hizmet</dt><dd>{confirmation.service_name}</dd></div>
             <div><dt>Personel</dt><dd>{confirmation.staff_name}</dd></div>
@@ -270,6 +405,23 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
     );
   }
 
+  if (!page) {
+    return (
+      <main className="public-booking-shell">
+        <section className="public-booking-card public-empty-state">
+          <p className="public-kicker">YZT RANDEVU</p>
+          <h1>Bu rezervasyon bağlantısı şu anda aktif değil.</h1>
+          <p>{notice || 'İşletme bağlantıyı kapatmış veya adres geçersiz olabilir.'}</p>
+          {pendingRecovery && (
+            <button className="public-primary" type="button" disabled={recoveryBusy} onClick={() => void recoverPendingResult(pendingRecovery)}>
+              {recoveryBusy ? 'Randevu sonucu kontrol ediliyor…' : 'Önceki randevu sonucunu kontrol et'}
+            </button>
+          )}
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="public-booking-shell">
       <header className="public-booking-header">
@@ -279,6 +431,14 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
       </header>
 
       {notice && <div className="public-booking-notice" role="status">{notice}</div>}
+      {pendingRecovery && (
+        <div className="public-booking-notice" role="status">
+          <span>Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.</span>{' '}
+          <button className="public-secondary" type="button" disabled={recoveryBusy} onClick={() => void recoverPendingResult(pendingRecovery)}>
+            {recoveryBusy ? 'Kontrol ediliyor…' : 'Sonucu tekrar kontrol et'}
+          </button>
+        </div>
+      )}
 
       <div className="public-booking-layout">
         <section className="public-booking-card">
@@ -330,7 +490,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
                 <strong>{selectedService.name}</strong>
                 <span>{formatDateTime(selectedSlot.starts_at, selectedSlot.timezone)} · {selectedSlot.staff_name}</span>
               </div>
-              <form className="public-customer-form" onSubmit={book}>
+              <form className="public-customer-form" onSubmit={(event) => void book(event)}>
                 <label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required /></label>
                 <div className="public-two-columns">
                   <label><span>Telefon</span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" /></label>
@@ -338,7 +498,9 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
                 </div>
                 <small className="public-field-hint">Telefon veya e-postadan en az biri gerekli.</small>
                 <label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
-                <button className="public-primary public-book-button" disabled={busy}>{busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
+                <button className="public-primary public-book-button" disabled={busy || Boolean(pendingRecovery)}>
+                  {pendingRecovery ? 'Önceki randevu kontrol ediliyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}
+                </button>
               </form>
             </>
           ) : <p className="public-muted">Bir saat seçtiğinizde iletişim formu burada açılır.</p>}
