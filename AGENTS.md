@@ -4,7 +4,7 @@
 
 1. Read `PROJECT_STATE.md` first.
 2. Read `DECISIONS.md` only for the phase/invariant you are touching.
-3. Read the smallest relevant implementation slice: feature page + feature worker + latest relevant migration + matching SQL test.
+3. Read the smallest relevant implementation slice: feature page + feature worker + latest relevant migration(s) + matching SQL test.
 4. Do not scan old PR history unless a failing regression makes it necessary.
 
 ## Architecture rules
@@ -18,7 +18,11 @@
 - Appointment overlap correctness belongs to the PostgreSQL exclusion constraint, not only UI/API checks.
 - Booking create/reschedule/status operations stay idempotent.
 - Appointment snapshot semantics must survive later service/staff edits.
-- Public booking remains opt-in. Anonymous users get RPC capability only, never direct table grants.
+- Public booking remains opt-in. Anonymous users get narrow RPC capability only, never direct table grants.
+- `/m/:token` is a bearer capability for exactly one appointment. Never log it, store it in plaintext, place it in analytics, or expose capability-table rows.
+- Management tokens are generated with 256 bits of browser cryptographic randomness; PostgreSQL stores only SHA-256 hashes.
+- Disabling public booking must not invalidate already-issued management capabilities.
+- Public management mutations stay idempotent and preserve public/null-actor audit provenance.
 
 ## Change protocol
 
@@ -26,7 +30,7 @@
 - Prefer small feature modules over refactoring stable completed phases.
 - If a stable invariant must change, add/adjust a regression test first.
 - Keep UI validation and DB validation aligned, but DB is the final authority.
-- Do not invent notification, payment, CRM or calendar behavior outside the requested phase.
+- Do not invent notification, payment, CRM, token recovery or calendar behavior outside the requested phase.
 
 ## Required gate before merge
 
@@ -44,10 +48,11 @@ GitHub CI must also pass all PostgreSQL migration/tests. Never merge around a re
 - Availability: `worker/availability.ts`, `src/AvailabilityPage.tsx`
 - Operator booking: `worker/bookings.ts`, `src/BookingPage.tsx`
 - Public booking: `worker/public-booking.ts`, `src/PublicBookingPage.tsx`, `src/PublicBookingSettingsPage.tsx`
+- Customer appointment management: `worker/customer-manage.ts`, `src/ManageAppointmentPage.tsx`, `src/customer-manage.css`
 - Route assembly: `worker/app.ts`, `src/main.tsx`
 - Current state: `PROJECT_STATE.md`
 - Architectural rationale: `DECISIONS.md`
 
 ## Context-saving principle
 
-Assume Phases 1–6 are correct when their tests are green. Do not re-derive them from scratch. Pull deeper history only when the current task or a failing test directly requires it.
+Assume Phases 1–7 are correct when their tests are green. Do not re-derive them from scratch. Pull deeper history only when the current task or a failing test directly requires it.
