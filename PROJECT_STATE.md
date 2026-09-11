@@ -27,7 +27,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | Güvenli bağlantıyla yönetim | Main'de, Faz 7 | `/m#token` capability korunur |
 | Gün/hafta takvimi | Main'de, Faz 8 | Liste görünümü, güncellik ve referans düzeni Faz 13 |
 | Rezervasyon sonucu + yönetim erişimi kurtarma | Main'de, F09-02 / PR #12 | Atomik create/capability/recovery tamamlandı |
-| Durable public booking e-postası | F09-03 PR #13, incelemede | Outbox/lease/retry/provider receipt hazır; gerçek provider teslimi F09-05/F17 |
+| Durable public booking e-postası | Main'de, F09-03 / PR #13 | Outbox/lease/retry/provider receipt tamamlandı; gerçek provider teslimi F09-05/F17 |
 | SalonApp mobil kabuğu, adisyon ve tahsilat | Planlandı, Faz 14 | Henüz uygulama/route/tablo yok |
 | Ürün/stok, masraf, kasa/raporlar | Planlandı, Faz 15 | Sınırlı operasyon işlevleri |
 | Tekrar/SMS, yorum/fotoğraf, paket/promosyon, prim, hesap menüsü | Planlandı, Faz 16 | Ayrı alt işler |
@@ -37,8 +37,8 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 
 - **F09-01 tamamlandı:** recovery/bildirim authority sözleşmesi main'de, PR #11.
 - **F09-02 tamamlandı:** PR #12 atomik booking + management capability + recovery akışını main'e aldı.
-- **F09-03 incelemede:** PR #13 durable e-posta outbox, lease/retry, scheduled dispatcher ve server-only provider receipt authority ekler.
-- F09-03 notification intent'i F09-02 recovery satırı appointment'a bağlandığında aynı outer booking transaction'ında doğar; provider HTTP booking response yolunda değildir.
+- **F09-03 tamamlandı:** PR #13 durable e-posta outbox, lease/retry, scheduled dispatcher, upgrade backfill ve server-only provider receipt authority ekledi.
+- Notification intent F09-02 recovery satırı appointment'a bağlandığında aynı outer booking transaction'ında doğar; provider HTTP booking response yolunda değildir.
 - Notification job state'leri `pending`, `leased`, `retry_wait`, `sent`, `failed_terminal`; lease varsayılanı 45 saniye, provider timeout 10 saniye, max deneme 8, bounded retry penceresi en fazla 72 saattir.
 - `sent`, provider'ın isteği kabul edip message ID verdiğini ifade eder; inbox teslimi değildir.
 - Resend idempotency key'i job başına stabildir. Provider'ın güncel 24 saatlik idempotency saklama penceresi nedeniyle 24 saat sonrasındaki ambiguous retry'larda mutlak exactly-once iddiası yoktur.
@@ -48,7 +48,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 
 - `phase-3-services-team` → `phase-8-calendar` çalışmaları squash commit'lerle main'e alınmış.
 - `f09-02-booking-recovery`: [PR #12](https://github.com/ziyabeey1-ai/randevu/pull/12), main'e alındı.
-- `f09-03-durable-notifications`: [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13), aktif F09-03 teslimidir.
+- `f09-03-durable-notifications`: [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13), F09-03 teslimidir; main kabul kaydı TASKS ve handoff'tadır.
 - `phase-9-email-delivery`: [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), eski taslak; F09-03 içinde yalnız template/escaping/Resend adapter fikirleri seçilerek tüketildi. Eski synchronous send ve anon receipt modeli kullanılmaz.
 - `phase-2-auth-tenant`, Faz 1 seviyesinde kalan eski branch'tir; main auth durumunu temsil etmez.
 - Eski yerel `codex/faz-2-auth-tenants` çalışması güncel main'den farklı yaklaşım taşır ve doğrudan birleştirilmez.
@@ -101,8 +101,6 @@ DB'de `notification_dispatch_config` yalnız `NOTIFICATION_DISPATCH_SECRET` SHA-
 
 ## Migration sırası
 
-F09-03 branch'inde:
-
 ```text
 20260911090000_phase2_auth_tenancy.sql
 20260911100000_phase3_services_team.sql
@@ -137,8 +135,8 @@ F09-03 branch'inde:
 
 - [F09-01 PR #11](https://github.com/ziyabeey1-ai/randevu/pull/11): sözleşme main'de.
 - [F09-02 PR #12](https://github.com/ziyabeey1-ai/randevu/pull/12): atomik booking/recovery main'de.
-- [F09-03 PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13): CI run `34653561431` üzerinde typecheck, production build, Wrangler scheduled dry-run, provider stub, full PostgreSQL regression, iki-session notification claim race ve ayrı F09-02→F09-03 upgrade/backfill testi success.
+- [F09-03 PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13): CI run `34653785166` üzerinde typecheck, production build, Wrangler scheduled dry-run, provider stub, full PostgreSQL regression, iki-session notification claim race ve ayrı F09-02→F09-03 upgrade/backfill testi success.
 - Testler fake Resend response ve yerel PostgreSQL/Auth fixture kullanır. Gerçek Resend hesabı, gerçek inbox teslimi ve gerçek Supabase environment bu kanıtın kapsamı değildir.
 - Gerçek ortam/secret provisioning F17-01 ve F09-05 kabulinde doğrulanacaktır.
 
-Her PR aynı zorunlu build/SQL kapısını geçer. F09-03 yalnız final branch CI, PR merge-ref CI, squash merge ve merge sonrası main CI tamamlandığında `Tamamlandı` sayılır. G09 ancak F09-01…F09-05 kabul edildiğinde kapanır.
+Her PR aynı zorunlu build/SQL kapısını geçer. F09-03 kullanıcıya ancak PR merge edilip merge sonrası main CI başarılı olduğunda tamamlandı diye raporlanır. G09 ancak F09-01…F09-05 kabul edildiğinde kapanır.
