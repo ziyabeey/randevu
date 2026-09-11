@@ -219,7 +219,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
           managementToken: current.managementToken,
         }),
       });
-      setConfirmation({ ...result.appointment, manage_url: `/m/${encodeURIComponent(current.managementToken)}` });
+      setConfirmation({ ...result.appointment, manage_url: `/m#${encodeURIComponent(current.managementToken)}` });
       idempotency.current = null;
     } catch (error) {
       const coded = error as Error & { code?: string };
