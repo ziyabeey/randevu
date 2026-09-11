@@ -1,43 +1,43 @@
 # YZT Randevu — Current Project State
 
-Bu dosya yeni bir coding agent'ın repo durumunu minimum taramayla anlaması içindir. Önce bunu oku. Yalnız dokunacağın alan için `DECISIONS.md` ve ilgili test/migration'a in.
+Bu dosya coding agent'ın repo durumunu minimum taramayla anlaması içindir. Önce bunu oku; yalnız dokunacağın concern için `DECISIONS.md` ve ilgili worker/page/migration/test'e in.
 
 ## Stable product boundary
 
-Target state after Phase 7:
+Target state after Phase 8:
 
 - Phase 1 ✅ React + Cloudflare Worker foundation
 - Phase 2 ✅ Supabase Auth + multi-tenant `Business` / `Membership`
 - Phase 3 ✅ Services + staff + staff/service assignment
-- Phase 4 ✅ Working hours + breaks + blocks + timezone/DST-safe availability
-- Phase 5 ✅ Customers + appointments + concurrency lock + idempotency + reschedule + lifecycle + audit
-- Phase 6 ✅ Opt-in public self-booking page and anonymous booking RPC surface
-- Phase 7 ✅ Capability-link customer appointment view / reschedule / cancel
+- Phase 4 ✅ Working hours + blocks + timezone/DST-safe availability
+- Phase 5 ✅ Customers + appointments + overlap lock + idempotency + lifecycle + audit
+- Phase 6 ✅ Opt-in public self-booking
+- Phase 7 ✅ Capability-link customer view / reschedule / cancel
+- Phase 8 ✅ Operator day/week calendar projection
 
-Do not redesign completed phases unless a failing test proves a regression or the task explicitly changes an invariant.
+Do not redesign completed phases unless a failing regression proves it is required.
 
-## Entry points
+## Browser entry points
 
-### Browser
-
-- `/` → `src/App.tsx` — auth, business selection, services, staff
+- `/calendar` → `src/CalendarPage.tsx` — primary operator calendar, day/week views and quick lifecycle actions
+- `/bookings` → `src/BookingPage.tsx` — create/reschedule/full booking operations
 - `/availability` → `src/AvailabilityPage.tsx`
-- `/bookings` → `src/BookingPage.tsx`
-- `/public-booking` → `src/PublicBookingSettingsPage.tsx` — owner/manager public-page settings
-- `/r/:slug` → `src/PublicBookingPage.tsx` — customer-facing self-booking, no login
-- `/m#<token>` → `src/ManageAppointmentPage.tsx` — bearer-capability appointment management; secret is a URL fragment and is not sent in the HTTP request
-- Route selection lives in `src/main.tsx`.
+- `/` → `src/App.tsx` — business, services, staff
+- `/public-booking` → `src/PublicBookingSettingsPage.tsx`
+- `/r/:slug` → `src/PublicBookingPage.tsx`
+- `/m#<token>` → `src/ManageAppointmentPage.tsx`; secret fragment is not sent in page HTTP requests
 
-### Worker
+## Worker entry points
 
 - `worker/index.ts` — auth/business/catalog core
-- `worker/availability.ts` — Phase 4 member availability API
-- `worker/bookings.ts` — Phase 5 member booking API
-- `worker/public-booking.ts` — Phase 6 settings + anonymous public API
-- `worker/customer-manage.ts` — Phase 7 capability bootstrap/view/reschedule/cancel API; management token is accepted only in POST bodies
+- `worker/availability.ts` — availability member API
+- `worker/bookings.ts` — booking mutation/lifecycle API
+- `worker/public-booking.ts` — public booking
+- `worker/customer-manage.ts` — customer capability management
+- `worker/calendar.ts` — Phase 8 tenant-safe local-date calendar read API
 - `worker/app.ts` mounts feature routers.
 
-## Database migration order
+## Migration order
 
 1. `20260911090000_phase2_auth_tenancy.sql`
 2. `20260911100000_phase3_services_team.sql`
@@ -46,62 +46,41 @@ Do not redesign completed phases unless a failing test proves a regression or th
 5. `20260911121000_phase5_booking_hardening.sql`
 6. `20260911130000_phase6_public_booking.sql`
 7. `20260911140000_phase7_customer_manage.sql`
+8. `20260911150000_phase8_calendar.sql`
 
-Never edit an already-stable merged migration to implement a new phase. Append a new migration.
+Stable merged migrations are immutable. New behavior gets a new migration.
 
 ## Non-negotiable invariants
 
-- `Business` is the tenant root.
-- Browser-selected business cookie is preference, never authorization.
-- Member requests re-check current `Membership` and RLS.
-- Worker never uses a Supabase service-role key.
-- Cross-tenant foreign-key relationships remain impossible.
-- Availability uses real `timestamptz` instants and business IANA timezone.
-- Appointment occupied range includes service buffers.
-- PostgreSQL `EXCLUDE USING gist` is the final same-staff overlap lock.
-- `cancelled` releases a slot; `completed` and `no_show` retain historical occupancy.
-- Booking mutation commands are idempotent.
-- Existing appointment snapshots survive later catalog edits.
-- Terminal appointment states do not reopen.
-- Anonymous callers never receive direct table grants.
-- Public booking is opt-in and defaults to disabled.
-- Public booking can create only a currently valid public slot and requires phone or email.
-- Public-created CRM matches may reuse an existing customer ID but never mutate that existing customer row.
-- Management capability possession grants access to exactly one appointment.
-- Plain management tokens are never stored in PostgreSQL; only SHA-256 hashes are stored.
-- Management tokens do not appear in HTTP URL paths/query strings. Browser links keep the secret after `#`; API calls send it only in POST bodies.
-- Capability table has no anon/authenticated direct table grants.
-- Existing issued management capability remains valid if the business later disables public booking.
-- Customer reschedule preserves the booked appointment duration/buffer snapshots and obeys current schedule, blocks, staff eligibility, notice and horizon.
-- Customer reschedule/cancel are idempotent and write `actor_type='public'`, `actor_user_id=null` audit events.
+- `Business` is the tenant root; browser business selection is preference, not authorization.
+- Member reads/mutations re-check active `Membership` and RLS. Worker never uses service-role key.
+- Cross-tenant relationships remain impossible.
+- Availability and calendar local-day boundaries use the business IANA timezone and real `timestamptz` instants.
+- Appointment occupied range includes buffers. Same-staff overlap final lock is PostgreSQL `EXCLUDE USING gist`.
+- `cancelled` releases a slot; `completed/no_show` keep historical occupancy.
+- Booking mutations are idempotent and appointment snapshots survive later catalog edits.
+- Public callers never receive direct tenant table grants.
+- Public booking is opt-in.
+- Management capability is single-appointment bearer authority; plain token is never stored and never appears in server-visible URL path/query.
+- Calendar is a **read projection over appointments**, not a second booking model. Calendar quick actions must reuse stable Faz 5 lifecycle endpoints.
+- Calendar ranges are expressed as business-local dates and converted to exact UTC instants in PostgreSQL.
 
-## Phase 6 public surface
+## Phase 8 calendar surface
 
-Business owner/manager controls:
+`GET /api/calendar?date=YYYY-MM-DD&days=1|7&staffId=...` returns the active tenant's business context, staff list and appointment projection. If `date` is omitted, business-local today is used.
 
-- `enabled`
-- `step_minutes`
-- `min_notice_minutes`
-- `horizon_days`
+UI capabilities:
 
-Anonymous booking surface exposes sanitized business/catalog/staff/live-slot data and one safe booking confirmation.
+- day view: staff columns + timed appointment blocks
+- week view: seven local-date columns
+- staff filter
+- optional cancelled visibility
+- scheduled/confirmed/completed summary counts
+- appointment detail drawer
+- quick lifecycle actions: confirm, complete, no-show, cancel
+- new/full booking operations remain in `/bookings`
 
-## Phase 7 customer management surface
-
-Public booking confirmation generates a 256-bit browser-side capability token. Booking creation remains Phase 6 idempotent; capability provisioning uses the same original booking idempotency key to prove the appointment belongs to that public create command. Provisioning can therefore be retried after a network interruption without duplicating the booking.
-
-The plain token exists only in browser memory and the `/m#<token>` fragment. URL fragments are not sent to the server in the page request. PostgreSQL stores `SHA-256(token)` in `appointment_management_capabilities`. Management API calls carry the token in a POST JSON body so normal request paths/query logs do not contain the bearer secret.
-
-Anonymous management RPC surface supports only:
-
-- sanitized single-appointment read
-- reschedule slot computation for that appointment
-- idempotent reschedule
-- idempotent cancellation
-
-There is no token recovery or token listing API in Phase 7.
-
-## Tests / acceptance gate
+## Acceptance gate
 
 Every PR must pass:
 
@@ -111,45 +90,25 @@ npm run typecheck
 npm run build
 ```
 
-CI builds disposable PostgreSQL 17, applies every migration in order, then runs:
+CI builds PostgreSQL 17, applies every migration in order and runs Faz 3–8 regression tests. Never merge around a red DB gate.
 
-- `supabase/tests/phase3_services_team.sql`
-- `supabase/tests/phase4_availability.sql`
-- `supabase/tests/phase5_booking_core.sql`
-- `supabase/tests/phase6_public_booking.sql`
-- `supabase/tests/phase7_customer_manage.sql`
+Phase 8 regression specifically checks business-local day boundaries, staff filtering, cross-tenant denial and immediate membership revocation.
 
-Phase 7 regression coverage includes hashed-only capability storage, direct-table denial, invalid-token isolation, management after public-page disable, snapshot-safe reschedule, mutation idempotency, public audit provenance and cancellation slot release.
+## MVP roadmap
 
-Do not merge around a red SQL gate.
+Stay close to the original competitor-equivalent appointment SaaS goal:
 
-## Product roadmap after Phase 7
-
-Stay close to the original competitor-equivalent appointment SaaS goal. Prioritize:
-
-1. calendar operator UI
-2. booking confirmations/reminders and management-link delivery
+1. calendar ✅ Phase 8
+2. booking confirmations/reminders + manage-link delivery
 3. UX/mobile polish
 4. deployable MVP hardening
 
-Do not expand into payments, advanced CRM, loyalty, AI or broad ERP functionality before the MVP unless the product scope is explicitly changed.
-
-## Scope intentionally NOT implemented yet
-
-- SMS/e-mail delivery of booking/manage links or reminders
-- Token recovery / reissue flow
-- Payments/deposits
-- Cloudflare Turnstile / dedicated anti-bot layer
-- Per-IP/distributed rate limiting
-- Google/Apple/Outlook calendar sync
-- CRM automations and marketing flows
-
-These are future phases. Do not silently add them while fixing unrelated work.
+Do not expand into payments, advanced CRM, loyalty, AI or broad ERP functionality before MVP unless scope explicitly changes.
 
 ## Known maintenance item
 
-`npm ci` reported 4 high-severity audit warnings on 2026-09-11. They were pre-existing and did not fail typecheck/build/SQL CI. Resolve them in a dedicated dependency-maintenance PR so application behavior and dependency upgrades are not mixed.
+`npm ci` reported 4 high-severity audit warnings on 2026-09-11. Keep dependency upgrades in a dedicated maintenance PR.
 
 ## Agent efficiency rule
 
-For a new task, read this file first. Then read only the feature worker/page, the latest relevant migration, and matching SQL test. Do not scan merged PR history or all previous migrations unless a regression requires it.
+Read this file first. Then read only the relevant page + worker + latest migration + matching SQL test. Do not scan merged PR history or all old migrations unless a regression requires it.

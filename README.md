@@ -2,9 +2,9 @@
 
 YZT Digital'ın yerel hizmet işletmeleri için geliştirdiği multi-tenant randevu SaaS'ı.
 
-**Güncel ürün sınırı: Faz 7 — Customer Appointment Management.** Auth/tenant, hizmet-ekip, timezone/DST güvenli müsaitlik, concurrency-safe booking ve public self-booking üstüne müşterinin güvenli capability bağlantısıyla kendi randevusunu görüntüleme, taşıma ve iptal etme akışı eklenmiştir.
+**Güncel ürün sınırı: Faz 8 — Operator Calendar.** Auth/tenant, hizmet-ekip, timezone/DST-safe availability, concurrency-safe booking, public self-booking ve müşteri self-management üstüne günlük/haftalık operasyon takvimi eklendi.
 
-> Coding agent kullanıyorsan önce [`PROJECT_STATE.md`](PROJECT_STATE.md), sonra yalnız gerekli olduğunda [`DECISIONS.md`](DECISIONS.md) oku. `AGENTS.md` düşük-context çalışma protokolünü içerir.
+> Coding agent: önce `PROJECT_STATE.md`, sonra gerekiyorsa `DECISIONS.md`. `AGENTS.md` düşük-context çalışma protokolüdür.
 
 ## Yerel kurulum
 
@@ -14,113 +14,53 @@ npm ci
 npm run dev
 ```
 
-`.dev.vars` içine Supabase proje URL'si ve anon/publishable key girilir. Worker **service-role key kullanmaz**.
+Worker service-role key kullanmaz.
 
-## Ekranlar
+## Ana ekranlar
 
 | Yol | İşlev |
 | --- | --- |
-| `/` | Giriş, işletme seçimi, hizmet ve ekip |
-| `/availability` | İşletme/personel mesaisi, mola, izin/kapanış, slot önizleme |
-| `/bookings` | Operatör randevu oluşturma, taşıma, durum ve audit |
-| `/public-booking` | Owner/manager public sayfa ayarları ve paylaşım linki |
-| `/r/:slug` | Login gerektirmeyen müşteri self-booking sayfası |
-| `/m#<token>` | Tek randevu için capability-link görüntüleme, taşıma ve iptal. Secret fragment server'a gönderilmez. |
+| `/calendar` | Gün/hafta operasyon takvimi, personel filtresi, hızlı durum aksiyonları |
+| `/bookings` | Yeni randevu, taşıma ve gelişmiş booking işlemleri |
+| `/availability` | Mesai, izin/kapanış ve slot önizleme |
+| `/` | İşletme, hizmet ve ekip |
+| `/public-booking` | Public sayfa ayarları |
+| `/r/:slug` | Müşteri self-booking |
+| `/m#<token>` | Tek randevu için güvenli müşteri yönetimi |
 
-Public rezervasyon **varsayılan kapalıdır**. Owner/manager `/public-booking` ekranından açtıktan sonra müşteri linki çalışır. Daha önce verilmiş `/m#<token>` yönetim bağlantısı, public sayfa sonradan kapatılsa da mevcut randevu için geçerli kalır.
+## Takvim
 
-## Public booking akışı
+Takvim yeni bir booking sistemi değildir. `get_calendar_appointments` mevcut appointment snapshot'larını aktif tenant üyeliği ile okur. İstenen yerel gün/hafta business timezone'unda exact `timestamptz` sınırlarına çevrilir; UTC günü ile işletme günü karıştırılmaz.
 
-1. Müşteri `/r/:slug` sayfasını açar.
-2. Yalnız aktif ve gerçekten atanabilir hizmetleri görür.
-3. Personel veya `Fark etmez` seçip tarih belirler.
-4. Müsaitlik motoru mesai, buffer, izin/kapanış ve mevcut appointment'ları düşerek gerçek slot üretir.
-5. Müşteri bir slot seçer; telefon veya e-postadan en az birini verir.
-6. `create_public_appointment` slotu transaction içinde tekrar doğrular.
-7. Son yarış koşulunda PostgreSQL `EXCLUDE USING gist` aynı personele overlap yazılmasını engeller.
-8. Başarılı kayıt `appointments.source='public'` ve public audit event'i bırakır.
-9. Tarayıcı 256-bit rastgele bir management token üretir; aynı booking idempotency key ile capability provision edilir.
-10. DB yalnız `SHA-256(token)` saklar; müşteriye `/m#<token>` linki gösterilir.
+Gün görünümü personel sütunları üzerinde timed blocks gösterir. Hafta görünümü 7 business-local günü kompakt sütunlarda gösterir. Detay çekmecesi müşteri/hizmet/personel/kaynak/iletişim/not bilgilerini gösterir ve mevcut Faz 5 lifecycle endpoint'leriyle onay, tamamlandı, gelmedi ve iptal aksiyonlarını çalıştırır.
 
-Anon kullanıcıların `customers`, `appointments`, `public_booking_settings` veya capability tablolarına doğrudan erişimi yoktur. Public yüzey yalnız dar security-definer RPC'lerden oluşur.
+Yeni randevu ve gelişmiş reschedule `/bookings` yüzeyinde kalır. Booking doğruluğu ve overlap kilidi takvim UI'sına taşınmaz.
 
-## Randevumu yönet akışı
+## Güvenlik ve booking invariant'ları
 
-`/m#<token>` bearer-capability bağlantısı yalnız tek appointment'ı temsil eder. Token düz hali PostgreSQL'de saklanmaz ve listelenemez. Fragment browser tarafında kalır ve page request/access log URL'sine gönderilmez.
-
-Müşteri bu bağlantıyla:
-
-- sanitize edilmiş randevu özetini görebilir,
-- mevcut appointment'ın snapshot süre/buffer değerleriyle hesaplanan uygun saatleri görebilir,
-- `Idempotency-Key` ile güvenli biçimde randevuyu taşıyabilir,
-- `Idempotency-Key` ile iptal edebilir.
-
-Management API token'ı path/query içinde taşımaz. `view`, `slots`, `reschedule` ve `cancel` sabit POST endpoint'lerine JSON body içinde gönderilir.
-
-Taşıma mevcut işletme/personel çalışma saatleri, block'lar, personel-hizmet yetkinliği, minimum notice ve horizon kurallarını uygular. Final overlap kilidi yine PostgreSQL exclusion constraint'tir. Taşıma ve iptal audit event'leri `actor_type='public'`, `actor_user_id=null` provenance taşır.
-
-## Public ayarlar
-
-Owner/manager şunları yönetebilir:
-
-- public sayfa açık/kapalı
-- slot adımı
-- minimum önceden rezervasyon süresi
-- ileri tarih rezervasyon ufku
+- Tenant root `Business`'tır; cookie yetki değildir.
+- Member erişimi aktif Membership + RLS ile doğrulanır.
+- Cross-tenant ilişkiler engellenir.
+- Availability ve calendar işletme timezone'u ile gerçek timeline üzerinde çalışır.
+- Occupied aralık buffer'ları içerir.
+- Same-staff overlap final kilidi PostgreSQL `EXCLUDE USING gist` constraint'idir.
+- `cancelled` slotu serbest bırakır; `completed/no_show` tarihçeyi korur.
+- Booking mutation'ları idempotenttir.
+- Public booking mevcut customer master kaydını anonim veriyle güncellemez.
+- Management token DB'de plaintext tutulmaz; `/m#token` fragment server-visible URL'e gitmez.
 
 ## Migration sırası
 
 ```text
-supabase/migrations/20260911090000_phase2_auth_tenancy.sql
-supabase/migrations/20260911100000_phase3_services_team.sql
-supabase/migrations/20260911110000_phase4_availability.sql
-supabase/migrations/20260911120000_phase5_booking_core.sql
-supabase/migrations/20260911121000_phase5_booking_hardening.sql
-supabase/migrations/20260911130000_phase6_public_booking.sql
-supabase/migrations/20260911140000_phase7_customer_manage.sql
+20260911090000_phase2_auth_tenancy.sql
+20260911100000_phase3_services_team.sql
+20260911110000_phase4_availability.sql
+20260911120000_phase5_booking_core.sql
+20260911121000_phase5_booking_hardening.sql
+20260911130000_phase6_public_booking.sql
+20260911140000_phase7_customer_manage.sql
+20260911150000_phase8_calendar.sql
 ```
-
-Stabil merge edilmiş migration'lar geriye dönük düzenlenmez; yeni davranış yeni migration ile eklenir.
-
-## Temel API yüzeyi
-
-### Member
-
-- `GET /api/session`
-- `GET /api/catalog`
-- `/api/availability/*`
-- `/api/bookings/*`
-- `GET /api/public/settings`
-- `PUT /api/public/settings`
-
-### Anonymous public booking
-
-- `GET /api/public/business/:slug`
-- `GET /api/public/business/:slug/staff?serviceId=...`
-- `GET /api/public/business/:slug/slots?serviceId=...&date=...&staffId=...`
-- `POST /api/public/business/:slug/book` — `Idempotency-Key` zorunlu
-
-### Anonymous customer management
-
-- `POST /api/manage/provision` — booking sonucuna management capability bağlar
-- `POST /api/manage/view` — body: management token
-- `POST /api/manage/slots` — body: token + date + optional staff
-- `POST /api/manage/reschedule` — body: token + target slot, `Idempotency-Key` zorunlu
-- `POST /api/manage/cancel` — body: token + optional reason, `Idempotency-Key` zorunlu
-
-## Booking invariant'ları
-
-- Tenant root `Business`'tır; cookie yetki değildir.
-- Cross-tenant ilişkiler birleşik foreign key + RLS ile engellenir.
-- Availability gerçek `timestamptz` timeline üzerinde çalışır.
-- Occupied aralık `buffer_before + duration + buffer_after` içerir.
-- Non-cancelled aynı-personel overlap'ının son kilidi PostgreSQL exclusion constraint'tir.
-- `cancelled` slotu serbest bırakır; `completed/no_show` tarihsel occupancy'yi korur.
-- Create/reschedule/status ve public-management mutation komutları idempotenttir.
-- Appointment snapshot'ları sonradan değişen katalogdan etkilenmez.
-- Terminal durumlar yeniden aktif duruma açılamaz.
-- Public booking mevcut CRM customer kaydını contact match ile reuse edebilir ama anonim veriyle o customer satırını güncellemez.
-- Management capability yalnız tek appointment içindir; plain token DB'de saklanmaz veya server-visible URL'e konmaz.
 
 ## Kabul kontrolü
 
@@ -130,12 +70,10 @@ npm run typecheck
 npm run build
 ```
 
-CI ayrıca PostgreSQL 17 üzerinde tüm migration zincirini kurar ve Faz 3–7 SQL regression testlerini çalıştırır. Kırmızı DB gate ile merge yapılmaz.
+CI PostgreSQL 17 üzerinde tüm migration zincirini ve Faz 3–8 regression testlerini çalıştırır.
 
 ## MVP rotası
 
-Faz 7 sonrası ürünün ana rotası: **takvim → bildirim/manage-link teslimi → mobil/UX polish → deployable MVP**. Ödeme, gelişmiş CRM, loyalty, AI ve ERP-benzeri genişlemeler MVP öncesi varsayılan kapsam değildir.
+**Takvim ✅ → bildirim/manage-link teslimi → mobil/UX polish → deployable MVP.**
 
-## Sonraki kapsam
-
-Faz 7'de SMS/e-posta ile yönetim linki teslimi veya hatırlatma, token recovery/reissue, ödeme/depozito, Turnstile/dağıtık rate-limit, dış takvim senkronizasyonu ve gelişmiş CRM otomasyonu yoktur. Bunlar sonraki fazlarda ayrı concern olarak ele alınacaktır.
+Ödeme, gelişmiş CRM, loyalty, AI ve ERP-benzeri genişlemeler MVP öncesi varsayılan kapsam değildir.

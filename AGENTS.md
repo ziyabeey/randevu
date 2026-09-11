@@ -3,41 +3,35 @@
 ## Start here
 
 1. Read `PROJECT_STATE.md` first.
-2. Read `DECISIONS.md` only for the phase/invariant you are touching.
-3. Read the smallest relevant implementation slice: feature page + feature worker + latest relevant migration + matching SQL test.
-4. Do not scan old PR history unless a failing regression makes it necessary.
+2. Read `DECISIONS.md` only for the concern being changed.
+3. Read the smallest implementation slice: feature page + worker + latest migration + matching SQL test.
+4. Do not scan old PR history unless a failing regression requires it.
 
 ## Architecture rules
 
-- `Business` is the tenant root. Never trust a client-supplied business ID as authorization.
-- Member authorization is current Supabase Auth + active `Membership` + RLS.
-- Do not add a service-role key to the Worker.
-- Do not weaken cross-tenant composite foreign keys or RLS to make a feature easier.
-- Existing stable migrations are immutable. New schema behavior gets a new migration.
-- Availability is timezone/DST aware and uses real `timestamptz` instants.
-- Appointment overlap correctness belongs to the PostgreSQL exclusion constraint, not only UI/API checks.
-- Booking create/reschedule/status operations stay idempotent.
-- Appointment snapshot semantics must survive later service/staff edits.
-- Public booking remains opt-in. Anonymous users get narrow RPC capability only, never direct table grants.
-- Customer management uses `/m#<token>`. The fragment is a bearer capability for exactly one appointment and must never be moved into a server-visible URL path/query, analytics event, log field or plaintext database column.
-- Management API requests use stable paths (`/api/manage/view`, `/slots`, `/reschedule`, `/cancel`) and carry the token only inside POST JSON bodies.
-- Management tokens are generated with 256 bits of browser cryptographic randomness; PostgreSQL stores only SHA-256 hashes.
-- Disabling public booking must not invalidate already-issued management capabilities.
-- Public management mutations stay idempotent and preserve public/null-actor audit provenance.
+- `Business` is the tenant root. Never trust client business ID as authorization.
+- Member authorization is Supabase Auth + active `Membership` + RLS. Never add a service-role key to Worker.
+- Keep cross-tenant composite FKs/RLS intact.
+- Stable merged migrations are immutable.
+- Availability/calendar use business IANA timezone and real `timestamptz` instants.
+- Same-staff overlap correctness belongs to PostgreSQL exclusion constraint.
+- Booking create/reschedule/status remain idempotent; snapshots survive later catalog edits.
+- Public booking stays opt-in; anonymous users receive only narrow RPC capability.
+- Customer management uses `/m#<token>` and POST-body capability transport. Never log/store the plain token.
+- **Calendar is projection, not authority.** Do not duplicate booking lifecycle/concurrency logic inside calendar code. Calendar mutations call existing booking endpoints.
 
 ## Product boundary
 
-After Phase 7, stay close to the original competitor-equivalent appointment SaaS goal. The preferred path is calendar UI → notifications/manage-link delivery → UX/mobile polish → deployable MVP. Do not expand into payments, advanced CRM, loyalty, AI or ERP concerns before MVP unless explicitly requested.
+After Phase 8 the MVP path is notifications/manage-link delivery → UX/mobile polish → deployable MVP. Do not expand into payment, advanced CRM, loyalty, AI or ERP concerns unless explicitly requested.
 
 ## Change protocol
 
 - One phase/concern per branch.
-- Prefer small feature modules over refactoring stable completed phases.
-- If a stable invariant must change, add/adjust a regression test first.
-- Keep UI validation and DB validation aligned, but DB is the final authority.
-- Do not invent notification, payment, CRM, token recovery or calendar behavior outside the requested phase.
+- Prefer feature modules over refactoring stable phases.
+- If an invariant must change, add/adjust regression coverage first.
+- DB remains final authority for booking correctness.
 
-## Required gate before merge
+## Required gate
 
 ```bash
 npm ci
@@ -45,19 +39,18 @@ npm run typecheck
 npm run build
 ```
 
-GitHub CI must also pass all PostgreSQL migration/tests. Never merge around a red DB gate.
+GitHub CI must pass all PostgreSQL migration/tests.
 
-## Current files by concern
+## Files by concern
 
-- Auth / business / catalog: `worker/index.ts`, `src/App.tsx`
-- Availability: `worker/availability.ts`, `src/AvailabilityPage.tsx`
+- Calendar: `worker/calendar.ts`, `src/CalendarPage.tsx`, `src/calendar.css`, `20260911150000_phase8_calendar.sql`, `phase8_calendar.sql`
 - Operator booking: `worker/bookings.ts`, `src/BookingPage.tsx`
-- Public booking: `worker/public-booking.ts`, `src/PublicBookingPage.tsx`, `src/PublicBookingSettingsPage.tsx`
-- Customer appointment management: `worker/customer-manage.ts`, `src/ManageAppointmentPage.tsx`, `src/customer-manage.css`
-- Route assembly: `worker/app.ts`, `src/main.tsx`
-- Current state: `PROJECT_STATE.md`
-- Architectural rationale: `DECISIONS.md`
+- Availability: `worker/availability.ts`, `src/AvailabilityPage.tsx`
+- Public booking: `worker/public-booking.ts`, `src/PublicBookingPage.tsx`
+- Customer management: `worker/customer-manage.ts`, `src/ManageAppointmentPage.tsx`
+- Auth/business/catalog: `worker/index.ts`, `src/App.tsx`
+- State: `PROJECT_STATE.md`
 
 ## Context-saving principle
 
-Assume Phases 1–7 are correct when their tests are green. Do not re-derive them from scratch. Pull deeper history only when the current task or a failing test directly requires it.
+Assume Phases 1–8 are correct when tests are green. Pull deeper history only when the current task directly requires it.
