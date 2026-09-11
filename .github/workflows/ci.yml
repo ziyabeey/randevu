@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - f09-03-durable-notifications
+      - f09-04-public-abuse-control
   pull_request:
     branches:
       - main
@@ -45,6 +45,8 @@ jobs:
         run: node --test --experimental-strip-types tests/public-booking-recovery.test.mjs
       - name: Verify F09-03 notification dispatcher contract
         run: node --test --experimental-strip-types tests/notification-dispatcher.test.mjs
+      - name: Verify F09-04 public abuse HTTP contract
+        run: node --test --experimental-strip-types tests/public-booking-abuse.test.mjs
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Verify migrations, tenancy, booking, management, calendar, recovery and notifications
@@ -93,3 +95,9 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170000_phase9_notification_outbox.sql
           psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170100_phase9_notification_maintenance.sql
           psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_upgrade_assert.sql
+      - name: Verify F09-04 public abuse gate and direct-RPC upgrade boundary
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180000_phase9_public_abuse_control.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_public_abuse_control.sql
