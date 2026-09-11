@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Context, Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 
 type Env = {
@@ -25,7 +25,7 @@ type Membership = {
   active: boolean;
 };
 
-type AppContext = Parameters<Parameters<InstanceType<typeof Hono>['get']>[1]>[0];
+type AppContext = Context<{ Bindings: Env }>;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -187,7 +187,6 @@ app.post('/api/auth/signup', async (context) => {
     refresh_token?: string;
     expires_in?: number;
     user?: AuthUser;
-    msg?: string;
   }>(context.env, 'auth/v1/signup', {
     method: 'POST',
     body: JSON.stringify({ email, password, data: { full_name: fullName || undefined } }),
@@ -283,7 +282,11 @@ app.post('/api/businesses/select', async (context) => {
   const body = await readJson(context);
   const businessId = typeof body?.businessId === 'string' ? body.businessId : '';
   const query = new URLSearchParams({
-    select: 'id,business_id,role,active', business_id: `eq.${businessId}`, user_id: `eq.${auth.user.id}`, active: 'eq.true', limit: '1',
+    select: 'id,business_id,role,active',
+    business_id: `eq.${businessId}`,
+    user_id: `eq.${auth.user.id}`,
+    active: 'eq.true',
+    limit: '1',
   });
   const result = await supabaseRequest<Membership[]>(context.env, `rest/v1/memberships?${query}`, {}, auth.accessToken);
   if (!result.ok || !result.data?.length) {
@@ -349,9 +352,18 @@ app.patch('/api/services/:id', async (context) => {
   if (!canManage(membership)) return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için yetkiniz yok.' } }, 403);
   const body = await readJson(context);
   const patch: Record<string, unknown> = {};
-  if (body?.name !== undefined) { if (!validName(body.name)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Hizmet adı geçerli değil.' } }, 400); patch.name = String(body.name).trim(); }
-  if (body?.durationMinutes !== undefined) { if (!integerIn(body.durationMinutes, 5, 720)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Süre 5–720 dakika olmalı.' } }, 400); patch.duration_minutes = body.durationMinutes; }
-  if (body?.priceMinor !== undefined) { if (!integerIn(body.priceMinor, 0, 100000000)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Fiyat geçerli değil.' } }, 400); patch.price_minor = body.priceMinor; }
+  if (body?.name !== undefined) {
+    if (!validName(body.name)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Hizmet adı geçerli değil.' } }, 400);
+    patch.name = String(body.name).trim();
+  }
+  if (body?.durationMinutes !== undefined) {
+    if (!integerIn(body.durationMinutes, 5, 720)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Süre 5–720 dakika olmalı.' } }, 400);
+    patch.duration_minutes = body.durationMinutes;
+  }
+  if (body?.priceMinor !== undefined) {
+    if (!integerIn(body.priceMinor, 0, 100000000)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Fiyat geçerli değil.' } }, 400);
+    patch.price_minor = body.priceMinor;
+  }
   if (typeof body?.active === 'boolean') patch.active = body.active;
   if (!Object.keys(patch).length) return context.json({ error: { code: 'EMPTY_PATCH', message: 'Değiştirilecek alan yok.' } }, 400);
   const result = await supabaseRequest<unknown[]>(context.env, `rest/v1/services?id=eq.${context.req.param('id')}&business_id=eq.${membership!.business_id}`, {
@@ -385,7 +397,10 @@ app.patch('/api/staff/:id', async (context) => {
   if (!canManage(membership)) return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için yetkiniz yok.' } }, 403);
   const body = await readJson(context);
   const patch: Record<string, unknown> = {};
-  if (body?.name !== undefined) { if (!validName(body.name)) return context.json({ error: { code: 'INVALID_STAFF', message: 'Personel adı geçerli değil.' } }, 400); patch.name = String(body.name).trim(); }
+  if (body?.name !== undefined) {
+    if (!validName(body.name)) return context.json({ error: { code: 'INVALID_STAFF', message: 'Personel adı geçerli değil.' } }, 400);
+    patch.name = String(body.name).trim();
+  }
   if (body?.phone !== undefined) patch.phone = typeof body.phone === 'string' && body.phone.trim() ? body.phone.trim() : null;
   if (typeof body?.active === 'boolean') patch.active = body.active;
   if (!Object.keys(patch).length) return context.json({ error: { code: 'EMPTY_PATCH', message: 'Değiştirilecek alan yok.' } }, 400);
