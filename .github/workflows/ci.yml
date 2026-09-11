@@ -64,3 +64,4 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase7_customer_manage.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase8_calendar.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery_concurrency.sql
