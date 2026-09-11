@@ -46,8 +46,6 @@ Do not redesign completed phases unless a failing test proves a regression or th
 5. `20260911121000_phase5_booking_hardening.sql`
 6. `20260911130000_phase6_public_booking.sql`
 7. `20260911140000_phase7_customer_manage.sql`
-8. `20260911140100_phase7_capability_hash_hardening.sql`
-9. `20260911140200_phase7_composite_row_hardening.sql`
 
 Never edit an already-stable merged migration to implement a new phase. Append a new migration.
 
@@ -142,4 +140,4 @@ These are future phases. Do not silently add them while fixing unrelated work.
 
 ## Agent efficiency rule
 
-For a new task, read this file first. Then read only the feature worker/page, the latest relevant migration(s), and matching SQL test. Do not scan merged PR history or all previous migrations unless a regression requires it.
+For a new task, read this file first. Then read only the feature worker/page, the latest relevant migration, and matching SQL test. Do not scan merged PR history or all previous migrations unless a regression requires it.
