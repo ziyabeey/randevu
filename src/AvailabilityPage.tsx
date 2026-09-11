@@ -65,6 +65,14 @@ function formatSlot(value: string, timezone: string) {
   }).format(new Date(value));
 }
 
+function formatDateTime(value: string, timezone: string) {
+  return new Intl.DateTimeFormat('tr-TR', {
+    timeZone: timezone,
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
 export default function AvailabilityPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -244,7 +252,7 @@ export default function AvailabilityPage() {
         <section className="availability-card">
           <div className="section-head"><h2>İzin / kapanış</h2><span>{setup.blocks.length}</span></div>
           <div className="schedule-list">
-            {setup.blocks.map((block) => <div className="block-row" key={block.id}><div><strong>{block.staff_id ? activeStaff.find((item) => item.id === block.staff_id)?.name ?? 'Personel' : 'Tüm işletme'}</strong><span>{new Date(block.starts_at).toLocaleString('tr-TR')} → {new Date(block.ends_at).toLocaleString('tr-TR')}</span><small>{block.reason || 'Neden belirtilmedi'}</small></div>{canManage && <button disabled={busy} onClick={() => void deleteBlock(block.id)}>Sil</button>}</div>)}
+            {setup.blocks.map((block) => <div className="block-row" key={block.id}><div><strong>{block.staff_id ? activeStaff.find((item) => item.id === block.staff_id)?.name ?? 'Personel' : 'Tüm işletme'}</strong><span>{formatDateTime(block.starts_at, setup.timezone)} → {formatDateTime(block.ends_at, setup.timezone)}</span><small>{block.reason || 'Neden belirtilmedi'}</small></div>{canManage && <button disabled={busy} onClick={() => void deleteBlock(block.id)}>Sil</button>}</div>)}
             {!setup.blocks.length && <p className="empty">Planlanmış izin veya kapanış yok.</p>}
           </div>
           {canManage && <form className="availability-form block-form" onSubmit={addBlock}>
