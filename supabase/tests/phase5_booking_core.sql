@@ -142,6 +142,50 @@ begin
     raise exception 'reschedule preview did not ignore the current appointment';
   end if;
 
+  -- A scheduled appointment cannot jump directly to a terminal completion state.
+  begin
+    perform public.set_appointment_status(
+      '45000000-0000-4000-8000-000000000001', v_id,
+      'phase5-status-premature-0001', 'completed', null
+    );
+    raise exception 'scheduled appointment jumped directly to completed';
+  exception when others then
+    if sqlerrm = 'scheduled appointment jumped directly to completed' then raise; end if;
+    if position('INVALID_STATUS_TRANSITION' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  -- Existing bookings must remain movable using their original snapshot duration/buffers,
+  -- even if the service catalog is later edited or deactivated.
+  update public.services
+  set active=false,
+      duration_minutes=120,
+      buffer_before_minutes=30,
+      buffer_after_minutes=45
+  where business_id='45000000-0000-4000-8000-000000000001'
+    and id='65000000-0000-4000-8000-000000000001';
+
+  select (public.create_appointment(
+    '45000000-0000-4000-8000-000000000001',
+    'phase5-create-0001',
+    'Ali Test',
+    '65000000-0000-4000-8000-000000000001',
+    '75000000-0000-4000-8000-000000000001',
+    v_start,
+    '+90 555 111 22 33',
+    'ali@example.test',
+    'İlk randevu'
+  )).id into v_retry;
+  if v_retry <> v_id then raise exception 'idempotent retry failed after catalog mutation'; end if;
+
+  if not exists (
+    select 1 from public.compute_reschedule_slots(
+      '45000000-0000-4000-8000-000000000001', v_id, v_day,
+      '75000000-0000-4000-8000-000000000001', 15
+    ) s where s.starts_at = v_move and s.ends_at = v_move + interval '30 minutes'
+  ) then
+    raise exception 'reschedule did not preserve appointment snapshot duration';
+  end if;
+
   select * into v_row
   from public.reschedule_appointment(
     '45000000-0000-4000-8000-000000000001', v_id,
@@ -150,6 +194,19 @@ begin
   );
 
   if v_row.starts_at <> v_move then raise exception 'appointment was not rescheduled'; end if;
+  if v_row.ends_at <> v_move + interval '30 minutes' then raise exception 'reschedule changed snapshot duration'; end if;
+  if v_row.occupied_starts_at <> v_move or v_row.occupied_ends_at <> v_move + interval '30 minutes' then
+    raise exception 'reschedule changed snapshot buffers';
+  end if;
+
+  -- Restore catalog state so public new-booking availability assertions stay comparable.
+  update public.services
+  set active=true,
+      duration_minutes=30,
+      buffer_before_minutes=0,
+      buffer_after_minutes=0
+  where business_id='45000000-0000-4000-8000-000000000001'
+    and id='65000000-0000-4000-8000-000000000001';
 
   if not exists (
     select 1 from public.compute_availability_slots(
