@@ -1,8 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "yzt-randevu",
-  "main": "worker/app.ts",
+  "main": "worker/entry.ts",
   "compatibility_date": "2026-09-10",
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api", "/api/*"]
