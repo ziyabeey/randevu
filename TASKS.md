@@ -1,6 +1,6 @@
 # YZT Randevu — Görev takip tablosu
 
-Başlangıç kaydı: 11 Eylül 2026. 46 görevin tümü **Planlandı**, sahibi atanmadı. Bu belge uygulama yapılmış veya yeni faz başlatılmış anlamına gelmez. Faz 1–8'in gerçek durumu [PROJECT_STATE.md](PROJECT_STATE.md) içindedir; eski Faz 9 [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), F09-01 için taslak girdidir.
+Başlangıç kaydı: 11 Eylül 2026. İlk kayıtta 46 görevin tümü **Planlandı** durumundaydı ve sahibi yoktu; güncel durum her görev satırında tutulur. Faz 1–8'in gerçek durumu [PROJECT_STATE.md](PROJECT_STATE.md) içindedir; eski Faz 9 [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), F09-01 için taslak girdidir.
 
 ## Kullanım
 
@@ -17,7 +17,7 @@ Görev kimliğine tıklayarak kapsam, okuma başlangıcı, çıktı, kabul ve de
 
 | Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / PR / kanıt veya engel |
 | --- | --- | --- | --- | --- | --- |
-| [F09-01](docs/plan/phase-09.md#f09-01) | Taslak incelemesi ve kurtarma sözleşmesi | TEMEL | Planlandı | — | Girdi: [taslak PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8) |
+| [F09-01](docs/plan/phase-09.md#f09-01) | Taslak incelemesi ve kurtarma sözleşmesi | TEMEL | Tamamlandı | ChatGPT / 2026-09-11T17:52Z | `f09-01-recovery-contract` · [PR #11](https://github.com/ziyabeey1-ai/randevu/pull/11) · [Sözleşme](docs/plan/f09-01-recovery-contract.md) |
 | [F09-02](docs/plan/phase-09.md#f09-02) | Rezervasyon sonucunu ve yönetim erişimini kurtarma | F09-01 | Planlandı | — | — |
 | [F09-03](docs/plan/phase-09.md#f09-03) | Kalıcı gönderim ve güvenilir sağlayıcı kaydı | F09-02 | Planlandı | — | — |
 | [F09-04](docs/plan/phase-09.md#f09-04) | Public rezervasyonda kötüye kullanım kontrolü | F09-02 | Planlandı | — | — |
