@@ -155,7 +155,7 @@ function integerIn(value: unknown, min: number, max: number) {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 }
 
-app.get('/api/health', (context) => context.json({ status: 'ok', service: 'yzt-randevu', phase: 6 }));
+app.get('/api/health', (context) => context.json({ status: 'ok', service: 'yzt-randevu', phase: 8 }));
 
 app.post('/api/auth/signup', async (context) => {
   const body = await readJson(context);
