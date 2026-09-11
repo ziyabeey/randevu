@@ -132,13 +132,14 @@ function rpcError(data: unknown, fallback: string) {
 }
 
 async function deliverBookingEmail(
-  context: Parameters<Parameters<typeof customerManage.post>[1]>[0],
+  env: Env,
+  requestUrl: string,
   appointmentId: string,
   bookingKey: string,
   managementToken: string,
 ): Promise<{ status: DeliveryStatus; tracked?: boolean }> {
   const payloadResult = await supabaseRequest<BookingEmailPayload[]>(
-    context.env,
+    env,
     'rest/v1/rpc/get_public_booking_email_payload',
     {
       method: 'POST',
@@ -153,10 +154,10 @@ async function deliverBookingEmail(
   if (payload.already_delivered) return { status: 'already_sent', tracked: true };
   if (!payload.customer_email) return { status: 'skipped_no_email' };
 
-  const manageUrl = new URL('/m', context.req.url);
+  const manageUrl = new URL('/m', requestUrl);
   manageUrl.hash = managementToken;
 
-  const delivery = await sendPublicBookingConfirmation(context.env, {
+  const delivery = await sendPublicBookingConfirmation(env, {
     appointmentId,
     businessName: payload.business_name,
     customerName: payload.customer_name,
@@ -173,7 +174,7 @@ async function deliverBookingEmail(
   if (delivery.status !== 'sent') return { status: delivery.status };
 
   const receipt = await supabaseRequest<boolean>(
-    context.env,
+    env,
     'rest/v1/rpc/record_public_booking_email_delivery',
     {
       method: 'POST',
@@ -212,7 +213,13 @@ customerManage.post('/provision', async (context) => {
 
   // Notification delivery is deliberately non-transactional with booking/capability
   // creation. A provider outage must never roll back a valid appointment.
-  const delivery = await deliverBookingEmail(context, appointmentId, bookingKey, managementToken);
+  const delivery = await deliverBookingEmail(
+    context.env,
+    context.req.url,
+    appointmentId,
+    bookingKey,
+    managementToken,
+  );
   return context.json({ ok: true, delivery });
 });
 
