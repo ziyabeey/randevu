@@ -230,13 +230,13 @@ begin
 
   perform public.replace_business_hours(
     '43000000-0000-4000-8000-000000000003',
-    0,
+    0::smallint,
     '[{"start":"01:00","end":"04:00"}]'::jsonb
   );
   perform public.replace_staff_hours(
     '43000000-0000-4000-8000-000000000003',
     '73000000-0000-4000-8000-000000000003',
-    0,
+    0::smallint,
     '[{"start":"01:00","end":"04:00"}]'::jsonb
   );
 
