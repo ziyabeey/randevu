@@ -103,6 +103,20 @@ test('F09-03 notification dispatcher contract', async (t) => {
     assert.equal(calls, 0);
   });
 
+  await t.test('rejects insecure non-local public app origins before claiming jobs', async () => {
+    let calls = 0;
+    const fakeFetch = async () => {
+      calls += 1;
+      return json([]);
+    };
+    const summary = await dispatchNotificationBatch({
+      ...env,
+      PUBLIC_APP_ORIGIN: 'http://app.example.test',
+    }, fakeFetch);
+    assert.equal(summary.status, 'disabled');
+    assert.equal(calls, 0);
+  });
+
   await t.test('successful provider acceptance writes receipt only through completion RPC', async () => {
     const row = await claimRow(1);
     const calls = [];
