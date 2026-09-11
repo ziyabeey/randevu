@@ -5,10 +5,12 @@ import AvailabilityPage from './AvailabilityPage';
 import BookingPage from './BookingPage';
 import PublicBookingPage from './PublicBookingPage';
 import PublicBookingSettingsPage from './PublicBookingSettingsPage';
+import ManageAppointmentPage from './ManageAppointmentPage';
 import './styles.css';
 import './phase4.css';
 import './phase5.css';
 import './public-booking.css';
+import './customer-manage.css';
 
 const root = document.getElementById('root');
 
@@ -21,20 +23,24 @@ const isAvailability = path === '/availability';
 const isBookings = path === '/bookings';
 const isPublicSettings = path === '/public-booking';
 const publicSlug = path.startsWith('/r/') ? decodeURIComponent(path.slice(3).split('/')[0] ?? '') : null;
+const isManagementPage = path === '/m' || path === '/m/';
+const managementToken = isManagementPage ? decodeURIComponent(window.location.hash.replace(/^#/, '')) : null;
 const isPublicPage = publicSlug !== null;
 
 createRoot(root).render(
   <StrictMode>
-    {isPublicPage && publicSlug
-      ? <PublicBookingPage slug={publicSlug} />
-      : isAvailability
-        ? <AvailabilityPage />
-        : isBookings
-          ? <BookingPage />
-          : isPublicSettings
-            ? <PublicBookingSettingsPage />
-            : <App />}
-    {!isPublicPage && (
+    {isManagementPage
+      ? <ManageAppointmentPage token={managementToken ?? ''} />
+      : isPublicPage && publicSlug
+        ? <PublicBookingPage slug={publicSlug} />
+        : isAvailability
+          ? <AvailabilityPage />
+          : isBookings
+            ? <BookingPage />
+            : isPublicSettings
+              ? <PublicBookingSettingsPage />
+              : <App />}
+    {!isPublicPage && !isManagementPage && (
       <nav className="phase-nav" aria-label="Çalışma alanları">
         <a href="/" aria-current={!isAvailability && !isBookings && !isPublicSettings ? 'page' : undefined}>Hizmet & Ekip</a>
         <a href="/availability" aria-current={isAvailability ? 'page' : undefined}>Müsaitlik</a>

@@ -1,0 +1,169 @@
+.manage-shell {
+  min-height: 100vh;
+  padding: 40px 20px 64px;
+  background: #f5f5f4;
+  color: #171717;
+}
+
+.manage-header,
+.manage-grid,
+.manage-shell > .public-booking-notice,
+.manage-shell > .public-booking-footer {
+  width: min(1040px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.manage-header {
+  margin-bottom: 22px;
+}
+
+.manage-header h1 {
+  margin: 4px 0 12px;
+  font-size: clamp(2rem, 6vw, 3.6rem);
+}
+
+.manage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.manage-card {
+  background: #fff;
+  border: 1px solid #e7e5e4;
+  border-radius: 22px;
+  padding: 24px;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.05);
+}
+
+.manage-card h2 {
+  margin-top: 0;
+}
+
+.manage-summary,
+.manage-danger {
+  grid-column: span 1;
+}
+
+.manage-status {
+  display: inline-flex;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: #e7e5e4;
+}
+
+.status-scheduled,
+.status-confirmed {
+  background: #dcfce7;
+}
+
+.status-cancelled,
+.status-no_show {
+  background: #fee2e2;
+}
+
+.status-completed {
+  background: #dbeafe;
+}
+
+.manage-date-row {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.manage-date-row input {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #d6d3d1;
+  border-radius: 12px;
+}
+
+.manage-slots {
+  margin-top: 18px;
+}
+
+.manage-confirm {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.manage-danger label {
+  display: grid;
+  gap: 7px;
+}
+
+.manage-danger textarea {
+  width: 100%;
+  border: 1px solid #d6d3d1;
+  border-radius: 12px;
+  padding: 12px;
+  resize: vertical;
+  font: inherit;
+}
+
+.manage-cancel-button {
+  margin-top: 14px;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: #991b1b;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.manage-cancel-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.manage-security-note {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fafaf9;
+  color: #57534e;
+  font-size: 0.9rem;
+}
+
+.manage-empty {
+  width: min(680px, 100%);
+  margin: 80px auto 0;
+  text-align: center;
+}
+
+.public-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  margin-top: 10px;
+  border: 1px solid #d6d3d1;
+  border-radius: 12px;
+  background: #fff;
+  color: #171717;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.public-confirmation .public-primary {
+  text-decoration: none;
+  margin-top: 10px;
+}
+
+@media (max-width: 760px) {
+  .manage-shell {
+    padding: 24px 14px 48px;
+  }
+
+  .manage-grid {
+    grid-template-columns: 1fr;
+  }
+}

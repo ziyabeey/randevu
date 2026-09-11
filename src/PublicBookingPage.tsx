@@ -36,6 +36,7 @@ type Confirmation = {
   staff_name: string;
   price_minor: number;
   currency: string;
+  manage_url?: string;
 };
 type PagePayload = { business: PublicBusiness; services: PublicService[] };
 type ApiError = { error?: { code?: string; message?: string } };
@@ -75,6 +76,14 @@ function money(minor: number, currency: string) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
 }
 
+function createManagementToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
 export default function PublicBookingPage({ slug }: { slug: string }) {
   const [page, setPage] = useState<PagePayload | null>(null);
   const [serviceId, setServiceId] = useState('');
@@ -87,7 +96,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const idempotency = useRef<{ fingerprint: string; key: string } | null>(null);
+  const idempotency = useRef<{ fingerprint: string; key: string; managementToken: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,18 +195,31 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
     };
     const fingerprint = JSON.stringify(payload);
     if (!idempotency.current || idempotency.current.fingerprint !== fingerprint) {
-      idempotency.current = { fingerprint, key: `pub-${crypto.randomUUID()}` };
+      idempotency.current = {
+        fingerprint,
+        key: `pub-${crypto.randomUUID()}`,
+        managementToken: createManagementToken(),
+      };
     }
 
     setBusy(true);
     setNotice('');
     try {
+      const current = idempotency.current;
       const result = await api<{ appointment: Confirmation }>(`/api/public/business/${encodeURIComponent(slug)}/book`, {
         method: 'POST',
-        headers: { 'Idempotency-Key': idempotency.current.key },
+        headers: { 'Idempotency-Key': current.key },
         body: JSON.stringify(payload),
       });
-      setConfirmation(result.appointment);
+      await api<{ ok: true }>('/api/manage/provision', {
+        method: 'POST',
+        body: JSON.stringify({
+          appointmentId: result.appointment.appointment_id,
+          bookingIdempotencyKey: current.key,
+          managementToken: current.managementToken,
+        }),
+      });
+      setConfirmation({ ...result.appointment, manage_url: `/m#${encodeURIComponent(current.managementToken)}` });
       idempotency.current = null;
     } catch (error) {
       const coded = error as Error & { code?: string };
@@ -240,8 +262,9 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
             <div><dt>Tarih</dt><dd>{formatDateTime(confirmation.starts_at, confirmation.timezone)}</dd></div>
             <div><dt>Ücret</dt><dd>{money(confirmation.price_minor, confirmation.currency)}</dd></div>
           </dl>
-          <p className="public-confirmation-note">Randevunuz işletmenin paneline kaydedildi. Bildirim ve hatırlatma mesajları bu fazın kapsamında değildir.</p>
-          <button className="public-primary" type="button" onClick={() => { setConfirmation(null); setSlots([]); setSelectedSlot(null); setNotice(''); }}>Yeni randevu oluştur</button>
+          <p className="public-confirmation-note">Randevunuz işletmenin paneline kaydedildi. Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.</p>
+          {confirmation.manage_url && <a className="public-primary" href={confirmation.manage_url}>Randevumu yönet</a>}
+          <button className="public-secondary" type="button" onClick={() => { setConfirmation(null); setSlots([]); setSelectedSlot(null); setNotice(''); }}>Yeni randevu oluştur</button>
         </section>
       </main>
     );
