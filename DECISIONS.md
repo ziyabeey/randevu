@@ -85,13 +85,15 @@ Telefon/e-posta exact match mevcut customer ID'sini reuse edebilir fakat anonim 
 
 ### Bearer capability
 
-`/m/:token` bağlantısına sahip olmak yalnız tek appointment'ı görüntüleme/değiştirme yetkisidir. Bu nedenle token parola gibi ele alınır.
+`/m#<token>` bağlantısına sahip olmak yalnız tek appointment'ı görüntüleme/değiştirme yetkisidir. Token parola gibi ele alınır.
 
 - Token browser'da Web Crypto ile 32 random byte (256 bit) üretilir.
 - Plain token PostgreSQL'e yazılmaz.
 - `appointment_management_capabilities` yalnız SHA-256 token hash'i saklar.
 - Capability tablosuna anon veya authenticated doğrudan table grant verilmez.
 - Token listing/recovery endpoint'i yoktur.
+- Token URL fragment'ında tutulur. Fragment HTTP page request'ine gönderilmez, böylece normal CDN/origin access loglarına capability düşmez.
+- Management API token'ı URL path/query'den kabul etmez; `/api/manage/view|slots|reschedule|cancel` POST JSON body üzerinden alır.
 
 ### Provisioning
 
@@ -126,3 +128,7 @@ Customer yalnız gelecekteki `scheduled|confirmed` appointment'ı iptal edebilir
 ### Phase 7 scope boundary
 
 Bu faz capability linkini **üretir ve ekranda gösterir**, fakat SMS/e-posta ile teslim etmez. Token recovery/reissue, ödeme/depozito, anti-bot/rate-limit, dış takvim sync ve CRM automation ayrı concern'lerdir.
+
+## MVP yönü
+
+Faz 7 sonrası ürün çizgisi takvim operatör deneyimi → bildirim/manage-link teslimi → mobil/UX polish → deployable MVP olarak tutulur. Ödeme, gelişmiş CRM, sadakat, AI ve ERP-benzeri genişlemeler MVP öncesi varsayılan kapsam değildir.
