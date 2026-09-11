@@ -21,6 +21,7 @@ supabase/migrations/20260911090000_phase2_auth_tenancy.sql
 supabase/migrations/20260911100000_phase3_services_team.sql
 supabase/migrations/20260911110000_phase4_availability.sql
 supabase/migrations/20260911120000_phase5_booking_core.sql
+supabase/migrations/20260911121000_phase5_booking_hardening.sql
 ```
 
 ## Faz 5 akışı
@@ -68,8 +69,10 @@ supabase/migrations/20260911120000_phase5_booking_core.sql
 - Uygulama önce availability kontrolü yapar; yarış koşulunda son söz yine exclusion constraint'indir.
 - Public slot motoru `scheduled`, `confirmed`, `completed` ve `no_show` appointment'ları müsaitlikten düşer. `cancelled` slotu serbest bırakır.
 - Reschedule slot motoru yalnız taşınan appointment'ı ignore eder; diğer bütün appointment'lar ve availability block'ları normal şekilde engel olmaya devam eder.
+- Reschedule mevcut appointment'ın snapshot süre ve buffer değerlerini korur; hizmet kataloğu sonradan değişmiş veya pasifleşmiş olsa bile tarihsel booking semantiği bozulmaz.
 - Create/reschedule/status komutları `booking_commands` tablosunda idempotent tutulur. Aynı key + aynı payload önceki sonucu döndürür; aynı key + farklı payload `IDEMPOTENCY_CONFLICT` üretir.
 - Appointment event geçmişi append-only'dir; create, reschedule ve status değişiklikleri actor kullanıcı ile kaydedilir.
+- Yaşam döngüsü DB seviyesinde sınırlıdır: `scheduled → confirmed/cancelled`, `confirmed → completed/no_show/cancelled`; terminal durumlar yeniden açılamaz.
 
 ## Güvenlik
 
@@ -97,7 +100,7 @@ supabase/tests/phase4_availability.sql
 supabase/tests/phase5_booking_core.sql
 ```
 
-Faz 5 testi; idempotent create, farklı payload/key çatışması, appointment'ın availability'den düşmesi, reschedule self-ignore davranışı, eski slotun yeniden açılması, cancel ile slot release, status/audit, tenant izolasyonu ve DB exclusion constraint'ini kapsar.
+Faz 5 testi; idempotent create, katalog mutasyonundan sonra exact retry, farklı payload/key çatışması, appointment'ın availability'den düşmesi, snapshot-reschedule, lifecycle gate'leri, eski slotun yeniden açılması, cancel ile slot release, status/audit, tenant izolasyonu ve DB exclusion constraint'ini kapsar.
 
 ## Faz sınırı
 
