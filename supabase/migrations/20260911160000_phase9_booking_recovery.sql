@@ -96,6 +96,11 @@ begin
     raise exception 'INVALID_BOOKING_RECOVERY_BOOTSTRAP';
   end if;
 
+  -- A recovery request using the same ID waits for this transaction to resolve.
+  -- This prevents a response-loss retry from observing a transient "not found"
+  -- while the original booking is still committing.
+  perform pg_advisory_xact_lock(hashtextextended(p_recovery_id::text, 0));
+
   select b.id into v_business_id
   from public.businesses b
   where lower(b.slug) = lower(trim(p_slug))
@@ -246,6 +251,10 @@ begin
      or p_recovery_secret_hash !~ '^[0-9a-f]{64}$' then
     return;
   end if;
+
+  -- If create is still in-flight for this recovery ID, wait for its transaction
+  -- outcome before deciding whether the booking exists.
+  perform pg_advisory_xact_lock(hashtextextended(p_recovery_id::text, 0));
 
   -- Expired proof material is lazily removed. Encrypted management material stays
   -- for F09-03's bounded delivery window and is not itself a bearer credential.
