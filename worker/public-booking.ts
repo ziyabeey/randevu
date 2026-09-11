@@ -7,7 +7,7 @@ import {
   rateLimitFromRpcError,
   resolvePublicAbuseIdentity,
   type PublicAbuseEnv,
-} from './public-abuse';
+} from './public-abuse.ts';
 
 type Env = PublicAbuseEnv & {
   SUPABASE_URL: string;
