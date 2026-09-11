@@ -1,114 +1,97 @@
-# YZT Randevu — Current Project State
+# YZT Randevu — Mevcut Durum
 
-Bu dosya coding agent'ın repo durumunu minimum taramayla anlaması içindir. Önce bunu oku; yalnız dokunacağın concern için `DECISIONS.md` ve ilgili worker/page/migration/test'e in.
+Son kontrol: 11 Eylül 2026. Uygulama kodu tabanı: `main` / `7c78be88fd1ed99bf37cd603eb503f2b1b4d4e3f`. Bu güncelleme ürün kurallarını, fazları ve referansları düzenler; yeni ürün ekranı veya veritabanı özelliği eklemez.
 
-## Stable product boundary
+## Ürün yönü
 
-Target state after Phase 8:
+**Müşteri paneli + randevu paneli + SalonApp**, ortak işletme/müşteri/randevu verisini kullanan üç kullanım koludur. Müşteri tarafında estetik farklılaşma; işletme takvimi ve adisyon tarafında referansa yakın düzen ve küçük farklar hedeflenir.
 
-- Phase 1 ✅ React + Cloudflare Worker foundation
-- Phase 2 ✅ Supabase Auth + multi-tenant `Business` / `Membership`
-- Phase 3 ✅ Services + staff + staff/service assignment
-- Phase 4 ✅ Working hours + blocks + timezone/DST-safe availability
-- Phase 5 ✅ Customers + appointments + overlap lock + idempotency + lifecycle + audit
-- Phase 6 ✅ Opt-in public self-booking
-- Phase 7 ✅ Capability-link customer view / reschedule / cancel
-- Phase 8 ✅ Operator day/week calendar projection
+- [PRODUCT_SPEC.md](PRODUCT_SPEC.md): bağlayıcı ürün/akış kuralları.
+- [ROADMAP.md](ROADMAP.md): faz sırası, bağımlılıklar ve kabul ölçütleri.
+- [DECISIONS.md](DECISIONS.md): teknik kararlar ve korunan veri sınırları.
+- [Görsel eşleştirme](docs/references/README.md): 11 kaynak ekran, mevcut farklar ve hedef fazlar.
 
-Do not redesign completed phases unless a failing regression proves it is required.
+## Gerçek uygulama durumu
 
-## Browser entry points
+| Alan | Durum | Sınır / sonraki iş |
+| --- | --- | --- |
+| React + Worker temeli | Main'de, Faz 1 | Ortak repo/backend korunacak |
+| Supabase Auth + Business/Membership + RLS | Main'de, Faz 2 temeli | Davet/rol yönetimi, parola kurtarma, görünür işletme geçişi Faz 10 |
+| Hizmet/personel/eşleştirme | Main'de, Faz 3 | Düzenleme/pasifleştirme ve süre/fiyat arayüzleri Faz 10 |
+| Çalışma saatleri, kapanış, müsaitlik | Main'de, Faz 4 | Aynı motor üç kolda kullanılacak |
+| Müşteri + randevu çekirdeği | Main'de, Faz 5 | Tek hizmet/personel modeli; çoklu hizmet Faz 11 |
+| Müşteriye açık rezervasyon | Main'de, Faz 6 | Yeni müşteri paneli estetiği ve eşdeğerlik Faz 12 |
+| Güvenli bağlantıyla yönetim | Main'de, Faz 7 | Ara hata/kurtarma ve bildirim güvenilirliği Faz 9 |
+| Gün/hafta takvimi | Main'de, Faz 8 | Liste görünümü, güncellik ve referans düzeni Faz 13 |
+| Public rezervasyon e-postası | Taslak PR / kısmi, Faz 9 | Main'de değil; fazın yeni kabul ölçütleri tamamlanmalı |
+| SalonApp mobil kabuğu, adisyon ve tahsilat | Planlandı, Faz 14 | Henüz uygulama/route/tablo yok |
+| Ürün/stok, masraf, kasa/raporlar | Planlandı, Faz 15 | Önceki kapsam bu sınırlı operasyon işlevleri için genişletildi |
+| Tekrar/SMS, yorum/fotoğraf, paket/promosyon, prim, hesap menüsü | Planlandı, Faz 16 | İlgili referans satırlarına bağlı ayrı alt işler |
+| Üç kolun gerçek ortam pilotu | Doğrulanmadı, Faz 17 | Canlı Auth, mesaj teslimi, mobil ve ortak işlem zinciri doğrulanacak |
 
-- `/calendar` → `src/CalendarPage.tsx` — primary operator calendar, day/week views and quick lifecycle actions
-- `/bookings` → `src/BookingPage.tsx` — create/reschedule/full booking operations
-- `/availability` → `src/AvailabilityPage.tsx`
-- `/` → `src/App.tsx` — business, services, staff
-- `/public-booking` → `src/PublicBookingSettingsPage.tsx`
-- `/r/:slug` → `src/PublicBookingPage.tsx`
-- `/m#<token>` → `src/ManageAppointmentPage.tsx`; secret fragment is not sent in page HTTP requests
+## Branch / PR notu
 
-## Worker entry points
+- `phase-3-services-team` → `phase-8-calendar` çalışmaları squash commit'lerle main'e alınmış. Eski branch'lerde farklı commit geçmişi görünmesi tek başına eksik merge değildir.
+- `phase-2-auth-tenant`, `1e58648` Faz 1 commit'inde kalmış. Main'in auth/tenant kodu bu eski branch'in durumundan çıkarılamaz.
+- `phase-9-email-delivery`: [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), açık taslak; incelenen head `9b5a6ceab648c70b8c892d831d041021d8568e37`.
+- Başka oturumdan kalan yerel `codex/faz-2-auth-tenants` değişiklikleri kaydedilip gönderilmiş değildir ve güncel main'den farklı veri/auth yaklaşımı taşır. Yeni iş güncel main üzerinden yürür; eski yerel çalışma doğrudan birleştirilmez.
+- **Sıradaki uygulama işi Faz 9'un tamamlanmasıdır.** Bu dokümanların main'e alınması Faz 9'u veya sonraki fazları tamamlamaz.
 
-- `worker/index.ts` — auth/business/catalog core
-- `worker/availability.ts` — availability member API
-- `worker/bookings.ts` — booking mutation/lifecycle API
-- `worker/public-booking.ts` — public booking
-- `worker/customer-manage.ts` — customer capability management
-- `worker/calendar.ts` — Phase 8 tenant-safe local-date calendar read API
-- `worker/app.ts` mounts feature routers.
+## İncelemeden kalan işler
 
-## Migration order
+Bu maddeler 11 Eylül kod incelemesinin açık bulgularıdır; giderilince ilgili PR ve doğrulama kanıtıyla güncellenir.
 
-1. `20260911090000_phase2_auth_tenancy.sql`
-2. `20260911100000_phase3_services_team.sql`
-3. `20260911110000_phase4_availability.sql`
-4. `20260911120000_phase5_booking_core.sql`
-5. `20260911121000_phase5_booking_hardening.sql`
-6. `20260911130000_phase6_public_booking.sql`
-7. `20260911140000_phase7_customer_manage.sql`
-8. `20260911150000_phase8_calendar.sql`
+| Bulgu | Etki | Faz |
+| --- | --- | --- |
+| Rezervasyon ve yönetim bağlantısı ayrı istek; bağlantı hatasında başarı ekranı açılmayabiliyor | Kayıt oluştuğu halde müşteri hata görür; yenileme sonrası kurtarma eksik | 9 |
+| Taslak e-posta işi kullanıcı isteğinde bekliyor; kalıcı otomatik yeniden deneme yok | Yavaş/kesilen sağlayıcı müşteri sonucunu ve bağlantı teslimini etkiler | 9 |
+| Taslak gönderim kaydı RPC'si, rezervasyon oluşturma anahtarına sahip anon istemciye açık | Kendi rezervasyonuna gerçek sağlayıcı gönderimi olmadan kayıt yazılabilir | 9 |
+| Public oluşturma için uygulama/RPC düzeyinde kötüye kullanım kontrolü görülmedi | Otomatik isteklerle saatlerin doldurulması ele alınmalı | 9 |
+| Personel kaydı üyelik/davet üretmiyor; parola kurtarma ve işletme geçişi UI'sı eksik | Çok kullanıcılı günlük kullanım tamamlanmış değil | 10 |
+| Auth/istek yardımcıları Worker modüllerinde tekrarlanıyor; hata/Origin/CSRF davranışı merkezi değil | Oturum ve güvenlik düzeltmeleri birlikte uygulanmalı | 10 |
+| Takvimde otomatik güncelleme ve eski yanıt koruması yok | Public/diğer çalışan işlemleri geç veya yanlış seçimde görünebilir | 13 |
+| Bazı ekranlarda Faz 3/tenant/StaffService metinleri ve eksik düzenleme kontrolleri var | Ürün dili ve operasyon kullanımı tamamlanmalı | 10, 12–14 |
+| Proje notunda 4 high-severity dependency audit uyarısı raporlandı | Ayrı bakım PR'ında güncel advisory/etki doğrulanıp kapatılmalı | Pilot öncesi; en geç 17 |
 
-Stable merged migrations are immutable. New behavior gets a new migration.
+## Mevcut tarayıcı yolları
 
-## Non-negotiable invariants
+| Yol | Uygulanan işlev / dosya |
+| --- | --- |
+| `/calendar` | Gün/hafta takvimi — `src/CalendarPage.tsx` |
+| `/bookings` | Randevu oluşturma/taşıma/durum — `src/BookingPage.tsx` |
+| `/availability` | Mesai/kapanış/müsaitlik — `src/AvailabilityPage.tsx` |
+| `/` | Giriş, işletme, hizmet ve ekip — `src/App.tsx` |
+| `/public-booking` | Halka açık rezervasyon ayarları — `src/PublicBookingSettingsPage.tsx` |
+| `/r/:slug` | Müşteri rezervasyonu — `src/PublicBookingPage.tsx` |
+| `/m#<token>` | Müşteri yönetimi — `src/ManageAppointmentPage.tsx` |
 
-- `Business` is the tenant root; browser business selection is preference, not authorization.
-- Member reads/mutations re-check active `Membership` and RLS. Worker never uses service-role key.
-- Cross-tenant relationships remain impossible.
-- Availability and calendar local-day boundaries use the business IANA timezone and real `timestamptz` instants.
-- Appointment occupied range includes buffers. Same-staff overlap final lock is PostgreSQL `EXCLUDE USING gist`.
-- `cancelled` releases a slot; `completed/no_show` keep historical occupancy.
-- Booking mutations are idempotent and appointment snapshots survive later catalog edits.
-- Public callers never receive direct tenant table grants.
-- Public booking is opt-in.
-- Management capability is single-appointment bearer authority; plain token is never stored and never appears in server-visible URL path/query.
-- Calendar is a **read projection over appointments**, not a second booking model. Calendar quick actions must reuse stable Faz 5 lifecycle endpoints.
-- Calendar ranges are expressed as business-local dates and converted to exact UTC instants in PostgreSQL.
+SalonApp/adisyon için çalışan yeni bir yol henüz yok. Yeni route/menü haritası ilgili fazda bu tabloya eklenir; mevcut bağlantılar korunur.
 
-## Phase 8 calendar surface
+## Worker ve migration haritası
 
-`GET /api/calendar?date=YYYY-MM-DD&days=1|7&staffId=...` returns the active tenant's business context, staff list and appointment projection. If `date` is omitted, business-local today is used.
+`worker/app.ts` feature router'larını birleştirir: `index.ts` auth/işletme/katalog; `availability.ts` müsaitlik; `bookings.ts` işlemler; `public-booking.ts` public rezervasyon; `customer-manage.ts` bağlantıyla yönetim; `calendar.ts` takvim okuması.
 
-UI capabilities:
+Main'deki migration sırası:
 
-- day view: staff columns + timed appointment blocks
-- week view: seven local-date columns
-- staff filter
-- optional cancelled visibility
-- scheduled/confirmed/completed summary counts
-- appointment detail drawer
-- quick lifecycle actions: confirm, complete, no-show, cancel
-- new/full booking operations remain in `/bookings`
-
-## Acceptance gate
-
-Every PR must pass:
-
-```bash
-npm ci
-npm run typecheck
-npm run build
+```text
+20260911090000_phase2_auth_tenancy.sql
+20260911100000_phase3_services_team.sql
+20260911110000_phase4_availability.sql
+20260911120000_phase5_booking_core.sql
+20260911121000_phase5_booking_hardening.sql
+20260911130000_phase6_public_booking.sql
+20260911140000_phase7_customer_manage.sql
+20260911150000_phase8_calendar.sql
 ```
 
-CI builds PostgreSQL 17, applies every migration in order and runs Faz 3–8 regression tests. Never merge around a red DB gate.
+Dosyalar `supabase/migrations/` altındadır. Faz 9 e-posta migration'ı taslak PR'dadır; main'de uygulanmış zincire eklenmiş sayılmaz. Birleştirilmiş migration'lar değişmez; yeni modeller ileri migration ile eklenir.
 
-Phase 8 regression specifically checks business-local day boundaries, staff filtering, cross-tenant denial and immediate membership revocation.
+## Doğrulama kanıtı ve sınırı
 
-## MVP roadmap
+- [Main CI](https://github.com/ziyabeey1-ai/randevu/actions/runs/34590092465): `7c78be8`, başarılı.
+- [Faz 9 PR CI](https://github.com/ziyabeey1-ai/randevu/actions/runs/34591337311): `9b5a6ce`, başarılı; PR yine taslaktır.
+- Kapsam: `npm ci`, TypeScript, üretim derlemesi; PostgreSQL 17 üzerinde migration'lar ve Faz 3–8 (taslak PR'da 3–9) SQL gerileme testleri.
+- SQL testleri yerel Auth fixture'ı kullanır. Gerçek Supabase kayıt/giriş, canlı sağlayıcı teslimi ve uçtan uca tarayıcı/mobil zinciri bu kontrollerin kanıtladığı kapsam değildir.
+- İnceleme sırasında erişilebilen hesapta projeye bağlı aktif Supabase ortamı doğrulanamadı. Bu, başka bir hesapta ortam bulunmadığı iddiası değildir.
 
-Stay close to the original competitor-equivalent appointment SaaS goal:
-
-1. calendar ✅ Phase 8
-2. booking confirmations/reminders + manage-link delivery
-3. UX/mobile polish
-4. deployable MVP hardening
-
-Do not expand into payments, advanced CRM, loyalty, AI or broad ERP functionality before MVP unless scope explicitly changes.
-
-## Known maintenance item
-
-`npm ci` reported 4 high-severity audit warnings on 2026-09-11. Keep dependency upgrades in a dedicated maintenance PR.
-
-## Agent efficiency rule
-
-Read this file first. Then read only the relevant page + worker + latest migration + matching SQL test. Do not scan merged PR history or all old migrations unless a regression requires it.
+Her PR aynı zorunlu build/SQL kapısını geçer. Yeni faz tamamlanınca bu dosya gerçek merge ve kabul kanıtlarıyla güncellenir; yeni kapsam hazırmış gibi yalnız faz numarası artırılmaz.

@@ -1,37 +1,48 @@
 # Coding Agent Protocol
 
-## Start here
+## Başlangıç ve kaynak sırası
 
-1. Read `PROJECT_STATE.md` first.
-2. Read `DECISIONS.md` only for the concern being changed.
-3. Read the smallest implementation slice: feature page + worker + latest migration + matching SQL test.
-4. Do not scan old PR history unless a failing regression requires it.
+1. `PROJECT_STATE.md`: main'de gerçekten ne var, aktif faz ve açık eksikler.
+2. `PRODUCT_SPEC.md`: üç kolun işlev ve tasarım kuralları; `ROADMAP.md`: ilgili fazın kabul ölçütleri.
+3. Yalnız ilgili teknik karar için `DECISIONS.md`; UI işinde `docs/references/README.md` ve ilgili görseller.
+4. En küçük uygulama kesiti: ilgili sayfa + Worker + migration + test. Görev veya gerileme gerektirmedikçe eski PR geçmişini tarama.
 
-## Architecture rules
+Kullanıcının açık güncel talebi önceliklidir. Hedef, uygulanan durum ve doğrulanmış sonuç ayrı yazılır. Bir dosyadaki plan veya yeşil SQL testi tüm ürünün çalıştığı anlamına gelmez.
 
-- `Business` is the tenant root. Never trust client business ID as authorization.
-- Member authorization is Supabase Auth + active `Membership` + RLS. Never add a service-role key to Worker.
-- Keep cross-tenant composite FKs/RLS intact.
-- Stable merged migrations are immutable.
-- Availability/calendar use business IANA timezone and real `timestamptz` instants.
-- Same-staff overlap correctness belongs to PostgreSQL exclusion constraint.
-- Booking create/reschedule/status remain idempotent; snapshots survive later catalog edits.
-- Public booking stays opt-in; anonymous users receive only narrow RPC capability.
-- Customer management uses `/m#<token>` and POST-body capability transport. Never log/store the plain token.
-- **Calendar is projection, not authority.** Do not duplicate booking lifecycle/concurrency logic inside calendar code. Calendar mutations call existing booking endpoints.
+## Ürün kuralları
 
-## Product boundary
+- Üç kol: **müşteri paneli, randevu paneli, SalonApp**. Tek repo, ortak backend ve ortak işletme/müşteri/randevu verisi kullanılır.
+- Müşteri tarafında işlev eşdeğerliği korunarak daha estetik bir deneyim yapılır.
+- Randevu paneli ve SalonApp'te referansın menü, alan ve işlem sırası korunur; farklar küçük görsel/ergonomik iyileştirmelerdir. Takvimin yerine başka bir ana deneyim koyma.
+- SalonApp alt menüsü: **Randevular / Adisyonlar / Yeni / Müşteriler / Diğer**. İşletme müşteri kayıtları ile halka açık müşteri panelini karıştırma.
+- 11 Eylül kararı adisyon, manuel tahsilat ve sınırlı ürün/stok/kasa genişlemesini kapsar. Eski genel ödeme/stok yasağını bu onaylı kapsama uygulama. Çevrimiçi ödeme, muhasebe, e-fatura, bordro, ERP, marketplace ve AI ayrı kapsamdır.
+- Çok hizmet/personel, adisyon, tahsilat ve kalan referans işlevleri henüz yapılmadıysa eksik olarak tutulur; sahte veri/buton ile tamamlandı gösterilmez.
+- Kullanıcı ekranları Türkçedir; faz, tenant, RPC ve benzeri uygulama ayrıntıları ürün metni değildir.
+- Referans görseller yalnız dokümantasyondadır; rakip kimliği ve örnek verileri üretim varlığına dönüştürme.
 
-After Phase 8 the MVP path is notifications/manage-link delivery → UX/mobile polish → deployable MVP. Do not expand into payment, advanced CRM, loyalty, AI or ERP concerns unless explicitly requested.
+## Mimari kurallar
 
-## Change protocol
+- `Business` tenant köküdür. Client business ID veya işletme seçim cookie'si yetki değildir.
+- Üye yetkisi Supabase Auth + aktif `Membership` + RLS ile doğrulanır. Worker'a service-role anahtarı ekleme; cross-tenant composite FK/RLS sınırlarını koru.
+- Birleştirilmiş migration dosyaları değişmez. Onaylı yeni kapsam ileri migration ve gerileme testleriyle eklenir.
+- Zaman işletme IANA timezone'u ve gerçek `timestamptz` anlarıyla hesaplanır. Tamponlar dahil personel çakışmasının son kontrolü PostgreSQL exclusion constraint'idir.
+- Oluşturma/taşıma/durum işlemleri tekrar güvenlidir; geçmiş snapshot ve audit korunur. Çok hizmetli işlem yarım kayıt bırakmaz.
+- Public rezervasyon opt-in'dir. Anon kullanıcı yalnız dar yetkili RPC'leri kullanır; tenant tablolarına doğrudan erişim verilmez.
+- Yönetim bağlantısı `/m#<token>` ve POST body kullanır. Düz token/link loglanmaz veya veritabanına yazılmaz; kurtarma/yeniden gönderim de bu sınırı korur.
+- Takvim ve SalonApp mevcut randevuların görünümüdür; ikinci randevu durum/çakışma motoru oluşturma.
+- Adisyon ve tahsilat durumu randevu durumundan ayrıdır. Tutarlar sunucuda, tenant/yetki ve tekrar güvenliğiyle yönetilir; kapanmış mali kayıt sessizce değişmez/silinmez.
+- Bildirim başarısızlığı randevu sonucunu belirsizleştirmez. Sağlayıcıya ait gönderim kaydına istemci beyanıyla güvenme.
 
-- One phase/concern per branch.
-- Prefer feature modules over refactoring stable phases.
-- If an invariant must change, add/adjust regression coverage first.
-- DB remains final authority for booking correctness.
+## Branch ve değişiklik protokolü
 
-## Required gate
+- Yeni işe güncel main'den kısa ömürlü `phase-<n>-<concern>` veya `codex/<concern>` branch'iyle başla; PR tek faz/alt iş taşısın. Üç ürün kolu üç kalıcı geliştirme branch'i değildir.
+- `phase-2-auth-tenant` eski temeldir; güncel main'in auth uygulamasıyla karıştırma. Başka oturumun kaydedilmemiş yerel işini ezme veya doğrudan main'e taşıma.
+- Faz 1–8'i sırf yeni UI için yeniden yazma; kanıtlanan hata veya onaylı yeni gereksinim için ilgili kesiti genişlet.
+- Eski branch/PR birleştirilirken dokümanları eski ürün sınırına döndürme. Güncel üç kol kararı ve fazların mevcut/planlanan ayrımı korunur.
+- PR açıklamasında ürün kolunu, faz/alt işi, davranış değişimini ve doğrulama kanıtını belirt. Faz biterken `PROJECT_STATE.md` ve ilgili referans satırını güncelle.
+- Kullanıcının verdiği devam/merge yetkisini uygula; bu belge kendiliğinden yeni bir kullanıcı onay adımı eklemez.
+
+## Zorunlu kontrol
 
 ```bash
 npm ci
@@ -39,18 +50,14 @@ npm run typecheck
 npm run build
 ```
 
-GitHub CI must pass all PostgreSQL migration/tests.
+GitHub CI tüm PostgreSQL migration/gerileme testlerini geçmelidir. Kırmızı DB kontrolü atlanarak merge yapılmaz. İlgili fazın HTTP/hata/tarayıcı kabul ölçütleri ayrıca doğrulanır; test kapsamı dışındaki canlı kullanım hazır diye raporlanmaz.
 
-## Files by concern
+## Dosya haritası
 
-- Calendar: `worker/calendar.ts`, `src/CalendarPage.tsx`, `src/calendar.css`, `20260911150000_phase8_calendar.sql`, `phase8_calendar.sql`
-- Operator booking: `worker/bookings.ts`, `src/BookingPage.tsx`
-- Availability: `worker/availability.ts`, `src/AvailabilityPage.tsx`
-- Public booking: `worker/public-booking.ts`, `src/PublicBookingPage.tsx`
-- Customer management: `worker/customer-manage.ts`, `src/ManageAppointmentPage.tsx`
-- Auth/business/catalog: `worker/index.ts`, `src/App.tsx`
-- State: `PROJECT_STATE.md`
-
-## Context-saving principle
-
-Assume Phases 1–8 are correct when tests are green. Pull deeper history only when the current task directly requires it.
+- Takvim: `worker/calendar.ts`, `src/CalendarPage.tsx`, `src/calendar.css`, Faz 8 migration/test.
+- Randevu işlemleri: `worker/bookings.ts`, `src/BookingPage.tsx`.
+- Müsaitlik: `worker/availability.ts`, `src/AvailabilityPage.tsx`.
+- Public rezervasyon: `worker/public-booking.ts`, `src/PublicBookingPage.tsx`.
+- Müşteri yönetimi: `worker/customer-manage.ts`, `src/ManageAppointmentPage.tsx`.
+- Auth/işletme/katalog: `worker/index.ts`, `src/App.tsx`.
+- SalonApp/adisyon/tahsilat: planlandı; henüz varmış gibi dosya/route varsayma.
