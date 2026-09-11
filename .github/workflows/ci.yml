@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - f09-02-booking-recovery
+      - f09-03-durable-notifications
   pull_request:
     branches:
       - main
@@ -39,11 +39,15 @@ jobs:
         run: npm run typecheck
       - name: Build
         run: npm run build
+      - name: Verify scheduled Worker bundle
+        run: npx wrangler deploy --dry-run --outdir /tmp/randevu-worker
       - name: Verify F09-02 HTTP recovery contract
         run: node --test --experimental-strip-types tests/public-booking-recovery.test.mjs
+      - name: Verify F09-03 notification dispatcher contract
+        run: node --test --experimental-strip-types tests/notification-dispatcher.test.mjs
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Verify migrations, tenancy, booking, management, calendar and recovery
+      - name: Verify migrations, tenancy, booking, management, calendar, recovery and notifications
         env:
           PGPASSWORD: postgres
         run: |
@@ -57,6 +61,8 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911140000_phase7_customer_manage.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911150000_phase8_calendar.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911160000_phase9_booking_recovery.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170000_phase9_notification_outbox.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170100_phase9_notification_maintenance.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase3_services_team.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase4_availability.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase5_booking_core.sql
@@ -64,4 +70,26 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase7_customer_manage.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase8_calendar.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_outbox.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_outbox_concurrency.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery_concurrency.sql
+      - name: Verify F09-03 upgrade and backfill path
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists yzt_upgrade;"
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "create database yzt_upgrade;"
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911090000_phase2_auth_tenancy.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911100000_phase3_services_team.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911110000_phase4_availability.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911120000_phase5_booking_core.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911121000_phase5_booking_hardening.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911130000_phase6_public_booking.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911140000_phase7_customer_manage.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911150000_phase8_calendar.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911160000_phase9_booking_recovery.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_upgrade_fixture.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170000_phase9_notification_outbox.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170100_phase9_notification_maintenance.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_upgrade_assert.sql
