@@ -13,6 +13,7 @@ Okuma başlangıcı: `worker/public-booking.ts`, `worker/customer-manage.ts`, `s
 - **İş ve çıktı:** PR #8'de yeniden kullanılacak parçaları, main ile çatışmaları ve açık bulguları kaydet. Rezervasyon sonucu, idempotency anahtarı, yönetim yetkisi, sağlayıcı kabulü/teslimi ve hata durumları için istek/yanıt sözleşmesi yaz. Düz token saklamadan yenileme sonrası kurtarma ve tarayıcı kapandıktan sonra gönderim yapılabilmesini birlikte çöz.
 - **Kabul:** Cevap kaybı, sayfa yenileme, yanlış sahiplik kanıtı, eşzamanlı tekrar, anahtar değişimi ve sağlayıcı kesintisi için beklenen sonuçlar somut örneklerle bellidir. Dar sunucu gönderim yetkisi tariflidir; Worker service-role kullanmaz. Yalnız idempotency anahtarını istemci beyanı olarak kabul edip sahte gönderim kaydı açılmaz.
 - **Devir:** Seçilen token yaşam döngüsü, hassas verinin nerede/ne kadar tutulduğu, hata kodları ve PR #8 parça eşleştirmesi. Bu görev sözleşmeyi teslim eder; kodlanmış kurtarma veya kuyruk olarak işaretlenmez.
+- **Bağlayıcı teslim:** [F09-01 rezervasyon kurtarma ve bildirim sözleşmesi](f09-01-recovery-contract.md).
 
 ## F09-02
 
