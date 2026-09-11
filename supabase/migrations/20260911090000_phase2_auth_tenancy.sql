@@ -119,6 +119,10 @@ create policy memberships_select_self on public.memberships for select to authen
 
 revoke all on public.profiles, public.businesses, public.memberships from anon;
 grant select on public.profiles, public.businesses, public.memberships to authenticated;
+
+revoke all on function public.is_active_member(uuid) from public;
+revoke all on function public.current_membership_role(uuid) from public;
+revoke all on function public.can_manage_business(uuid) from public;
 grant execute on function public.is_active_member(uuid) to authenticated;
 grant execute on function public.current_membership_role(uuid) to authenticated;
 grant execute on function public.can_manage_business(uuid) to authenticated;
