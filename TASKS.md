@@ -8,7 +8,7 @@ Görev kimliğine tıklayarak kapsam, okuma başlangıcı, çıktı, kabul ve de
 
 - `TEMEL`: güncel main'deki Faz 1–8 kodu ve kabul edilmiş ürün planıdır; erişim/ortam hazır olduğu varsayımı değildir.
 - `Fxx-yy`: doğrudan görev önkoşulu. Varsayılan olarak kartın kabulü tamamlanmış olmalıdır.
-- `Gxx`: o fazın bütün görevlerinin kabul kapısı. G17, tüm ürünün MVP/pilot kabulüdür.
+- `Gxx`: o fazın bütün görevlerinin kabulünün tamamlanmasıdır. G17, tüm ürünün MVP/pilot kabulüdür.
 - Durumlar: Planlandı → Üstlenildi → Çalışılıyor → İncelemede → Tamamlandı. Gerektiğinde Engelli veya Main'de / kabul açık kullanılır.
 - İlk teknik adaylar: **F09-01, F12-01, F17-01, F17-02**. Uygulama yetkisi verildiğinde farklı dosya alanlarında ilerleyebilirler.
 - Bir görev büyükse ana kabulü koruyarak `.a`, `.b` alt görevleri ekle; ana kimliği yeniden numaralandırma. Görev sayısı oturum/PR/süre garantisi değildir.
@@ -21,8 +21,8 @@ Görev kimliğine tıklayarak kapsam, okuma başlangıcı, çıktı, kabul ve de
 | [F09-02](docs/plan/phase-09.md#f09-02) | Rezervasyon sonucunu ve yönetim erişimini kurtarma | F09-01 | Tamamlandı | ChatGPT / 2026-09-11T21:58Z | `f09-02-booking-recovery` · [PR #12](https://github.com/ziyabeey1-ai/randevu/pull/12) · [Devir](docs/handoffs/F09-02.md) · CI `34651571690` |
 | [F09-03](docs/plan/phase-09.md#f09-03) | Kalıcı gönderim ve güvenilir sağlayıcı kaydı | F09-02 | Tamamlandı | ChatGPT / 2026-09-11T22:25Z | `f09-03-durable-notifications` · [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13) · [Devir](docs/handoffs/F09-03.md) · CI `34653785166` |
 | [F09-04](docs/plan/phase-09.md#f09-04) | Public rezervasyonda kötüye kullanım kontrolü | F09-02 | Tamamlandı | ChatGPT / 2026-09-11T23:10Z | `f09-04-public-abuse-control` · [PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14) · [Devir](docs/handoffs/F09-04.md) · CI `34656950693` |
-| [F09-05](docs/plan/phase-09.md#f09-05) | Rezervasyon/bildirim entegrasyon kapısı | F09-03, F09-04, F17-01, F17-02 | Çalışılıyor | ChatGPT / 2026-09-12T07:25Z | `f09-05-staging-integration` · canlı booking/recovery/idempotency/capability + Resend delivered acceptance hazırlanıyor |
-| [F10-01](docs/plan/phase-10.md#f10-01) | Ortak oturum ve parola akışları | F09-05 | Planlandı | — | — |
+| [F09-05](docs/plan/phase-09.md#f09-05) | Rezervasyon/bildirim entegrasyon kapısı | F09-03, F09-04, F17-01, F17-02 | Tamamlandı | ChatGPT / 2026-09-12T07:47Z | `f09-05-staging-integration` · [PR #30](https://github.com/ziyabeey1-ai/randevu/pull/30) · [Devir](docs/handoffs/F09-05.md) · CI `34681255156` · staging `34681540142` success: kayıp cevap recovery, duplicate/conflict, capability, sahte receipt reddi ve Resend `delivered` |
+| [F10-01](docs/plan/phase-10.md#f10-01) | Ortak oturum ve parola akışları | F09-05 | Planlandı | — | Önkoşul F09-05 tamamlandı |
 | [F10-02](docs/plan/phase-10.md#f10-02) | Davet, üyelik ve rol yönetimi | F10-01 | Planlandı | — | — |
 | [F10-03](docs/plan/phase-10.md#f10-03) | İşletme geçişi ve kurulum akışı | F10-02 | Planlandı | — | — |
 | [F10-04](docs/plan/phase-10.md#f10-04) | Hizmet, personel ve çalışma ayarları | F10-03 | Planlandı | — | — |
@@ -70,7 +70,7 @@ Bir kapı, ilgili fazdaki bütün görevler main'e alınmış ve kabul kanıtı 
 
 | Kapı | Kapsam | Durum / kanıt |
 | --- | --- | --- |
-| G09 | F09-01…F09-05 | Açık — kabul bekliyor |
+| G09 | F09-01…F09-05 | Kapalı — PR #30, CI `34681255156`, staging `34681540142` gerçek rezervasyon + Resend `delivered` kabulü |
 | G10 | F10-01…F10-06 | Açık — kabul bekliyor |
 | G11 | F11-01…F11-04 | Açık — kabul bekliyor |
 | G12 | F12-01…F12-05 | Açık — kabul bekliyor |
