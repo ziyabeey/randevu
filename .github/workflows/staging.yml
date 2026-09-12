@@ -18,8 +18,9 @@ jobs:
     timeout-minutes: 30
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       STAGING_SUPABASE_PROJECT_REF: smizhsagjpqexveitbqu
+      STAGING_SUPABASE_POOLER_HOST: aws-0-eu-central-1.pooler.supabase.com
       SUPABASE_URL: https://smizhsagjpqexveitbqu.supabase.co
       SUPABASE_ANON_KEY: sb_publishable_smh_KUbC7hv3fhTEX21xXQ_zzn6qZnY
       SUPABASE_ADMIN_KEY: ${{ secrets.SUPABASE_ADMIN_KEY }}
@@ -69,7 +70,7 @@ jobs:
         run: |
           node <<'NODE'
           const requiredExternal = [
-            'CLOUDFLARE_API_TOKEN', 'STAGING_DATABASE_URL',
+            'CLOUDFLARE_API_TOKEN', 'SUPABASE_DB_PASSWORD',
             'SUPABASE_ADMIN_KEY', 'RESEND_API_KEY',
           ];
           const missingExternal = requiredExternal.filter((name) => !process.env[name]);
@@ -78,7 +79,8 @@ jobs:
           }
 
           const requiredWorkflow = [
-            'STAGING_SUPABASE_PROJECT_REF', 'SUPABASE_URL', 'SUPABASE_ANON_KEY',
+            'STAGING_SUPABASE_PROJECT_REF', 'STAGING_SUPABASE_POOLER_HOST',
+            'SUPABASE_URL', 'SUPABASE_ANON_KEY',
             'STAGING_OWNER_A_EMAIL', 'STAGING_OWNER_A_PASSWORD',
             'STAGING_OWNER_B_EMAIL', 'STAGING_OWNER_B_PASSWORD',
             'PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET',
@@ -89,8 +91,8 @@ jobs:
             throw new Error(`Missing workflow-provided staging settings: ${missingWorkflow.join(', ')}`);
           }
           const projectRef = process.env.STAGING_SUPABASE_PROJECT_REF;
-          if (!process.env.SUPABASE_URL.includes(projectRef) || !process.env.STAGING_DATABASE_URL.includes(projectRef)) {
-            throw new Error('Supabase API URL, database URL and project ref do not describe the same staging project');
+          if (!process.env.SUPABASE_URL.includes(projectRef)) {
+            throw new Error('Supabase API URL and project ref do not describe the same staging project');
           }
           if (!process.env.SUPABASE_ANON_KEY.startsWith('sb_publishable_')) {
             throw new Error('Staging API key must use the hosted Supabase publishable-key model');
@@ -104,6 +106,26 @@ jobs:
               throw new Error(`${name} must satisfy the Worker secret length contract`);
             }
           }
+          NODE
+
+      - name: Build staging database URL
+        run: |
+          node <<'NODE'
+          const { appendFileSync } = require('node:fs');
+
+          const projectRef = process.env.STAGING_SUPABASE_PROJECT_REF;
+          const host = process.env.STAGING_SUPABASE_POOLER_HOST;
+          const password = process.env.SUPABASE_DB_PASSWORD ?? '';
+          if (!password) throw new Error('SUPABASE_DB_PASSWORD is empty');
+
+          const user = `postgres.${projectRef}`;
+          const encodedPassword = encodeURIComponent(password);
+          const databaseUrl = `postgresql://${user}:${encodedPassword}@${host}:5432/postgres?sslmode=require`;
+          new URL(databaseUrl);
+
+          process.stdout.write(`::add-mask::${databaseUrl}\n`);
+          appendFileSync(process.env.GITHUB_ENV, `STAGING_DATABASE_URL=${databaseUrl}\n`, 'utf8');
+          console.log(`Prepared staging database endpoint for ${user} via session pooler.`);
           NODE
 
       - name: Resolve Cloudflare account
@@ -178,6 +200,11 @@ jobs:
 
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Verify staging database credentials
+        env:
+          PGCONNECT_TIMEOUT: '10'
+        run: psql "$STAGING_DATABASE_URL" -v ON_ERROR_STOP=1 -Atqc "select current_database(), current_user"
 
       - name: Apply staging migrations
         run: supabase db push --db-url "$STAGING_DATABASE_URL" --include-all --yes

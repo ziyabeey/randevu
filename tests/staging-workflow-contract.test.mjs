@@ -6,7 +6,7 @@ const workflow = readFileSync(new URL('../.github/workflows/staging.yml', import
 
 const externalSettings = [
   'CLOUDFLARE_API_TOKEN',
-  'STAGING_DATABASE_URL',
+  'SUPABASE_DB_PASSWORD',
   'SUPABASE_ADMIN_KEY',
   'RESEND_API_KEY',
 ];
@@ -31,6 +31,7 @@ test('staging workflow keeps the external provisioning surface at four secrets',
 
 test('public staging metadata and generated job values are not treated as GitHub secrets', () => {
   assert.match(workflow, /STAGING_SUPABASE_PROJECT_REF: smizhsagjpqexveitbqu/);
+  assert.match(workflow, /STAGING_SUPABASE_POOLER_HOST: aws-0-eu-central-1\.pooler\.supabase\.com/);
   assert.match(workflow, /SUPABASE_URL: https:\/\/smizhsagjpqexveitbqu\.supabase\.co/);
   assert.match(workflow, /SUPABASE_ANON_KEY: sb_publishable_/);
   assert.match(workflow, /STAGING_OWNER_A_EMAIL: randevu-staging-owner-a@example\.com/);
@@ -39,6 +40,7 @@ test('public staging metadata and generated job values are not treated as GitHub
 
   assert.doesNotMatch(workflow, /secrets\.CLOUDFLARE_ACCOUNT_ID/);
   assert.doesNotMatch(workflow, /secrets\.NOTIFICATION_FROM_EMAIL/);
+  assert.doesNotMatch(workflow, /secrets\.STAGING_DATABASE_URL/);
   assert.doesNotMatch(workflow, /secrets\.STAGING_SUPABASE_PROJECT_REF/);
   assert.doesNotMatch(workflow, /secrets\.SUPABASE_URL/);
   assert.doesNotMatch(workflow, /secrets\.SUPABASE_ANON_KEY/);
@@ -47,6 +49,24 @@ test('public staging metadata and generated job values are not treated as GitHub
   assert.doesNotMatch(workflow, /secrets\.PUBLIC_BOOKING_GATE_SECRET/);
   assert.doesNotMatch(workflow, /secrets\.NOTIFICATION_DISPATCH_SECRET/);
   assert.doesNotMatch(workflow, /secrets\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1/);
+});
+
+test('staging database URL is derived from a raw password instead of stored as a GitHub secret', () => {
+  assert.match(workflow, /Build staging database URL/);
+  assert.match(workflow, /SUPABASE_DB_PASSWORD: \$\{\{ secrets\.SUPABASE_DB_PASSWORD \}\}/);
+  assert.match(workflow, /const encodedPassword = encodeURIComponent\(password\)/);
+  assert.match(workflow, /`postgresql:\/\/\$\{user\}:\$\{encodedPassword\}@\$\{host\}:5432\/postgres\?sslmode=require`/);
+  assert.match(workflow, /STAGING_DATABASE_URL=\$\{databaseUrl\}/);
+  assert.match(workflow, /::add-mask::\$\{databaseUrl\}/);
+  assert.match(workflow, /Verify staging database credentials/);
+  assert.match(workflow, /psql "\$STAGING_DATABASE_URL"/);
+
+  const validateIndex = workflow.indexOf('- name: Validate staging external contract');
+  const dbUrlIndex = workflow.indexOf('- name: Build staging database URL');
+  const dbVerifyIndex = workflow.indexOf('- name: Verify staging database credentials');
+  const migrationIndex = workflow.indexOf('- name: Apply staging migrations');
+  assert.ok(validateIndex >= 0 && dbUrlIndex > validateIndex, 'database URL must be built only after external secret validation');
+  assert.ok(dbVerifyIndex > dbUrlIndex && migrationIndex > dbVerifyIndex, 'database credentials must be proven before migrations');
 });
 
 test('Cloudflare account is derived from a single-account Wrangler token before runtime checks', () => {
