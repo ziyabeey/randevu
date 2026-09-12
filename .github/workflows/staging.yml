@@ -2,6 +2,9 @@ name: Staging deploy
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - f17-01-staging-probe
 
 permissions:
   contents: read
