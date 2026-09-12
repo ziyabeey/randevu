@@ -89,7 +89,7 @@ function psqlScalar(sql) {
 }
 
 async function verifyAnonymousCannotForgeReceipt() {
-  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/complete_notification_job`, {
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/complete_notification_job_v2`, {
     method: 'POST',
     headers: {
       apikey: process.env.SUPABASE_ANON_KEY,
@@ -102,6 +102,7 @@ async function verifyAnonymousCannotForgeReceipt() {
       p_job_id: randomUUID(),
       p_lease_token: randomUUID(),
       p_provider_message_id: 'forged-f09-05',
+      p_request_fingerprint: 'f'.repeat(64),
     }),
   });
   const text = await response.text();
@@ -182,6 +183,8 @@ async function waitForNotificationJob(appointmentId) {
       where appointment_id = ${safeAppointment}::uuid
         and kind = 'public_booking_confirmation'
         and channel = 'email'
+        and is_current
+      order by event_version desc, created_at desc
       limit 1
     `);
     if (row) {
