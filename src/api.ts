@@ -1,6 +1,9 @@
 type ApiErrorBody = { error?: { code?: string; message?: string } };
 
-type ApiInit = RequestInit & { skipCsrfRetry?: boolean };
+type ApiInit = RequestInit & {
+  skipCsrfRetry?: boolean;
+  csrf?: 'required' | 'skip';
+};
 
 export class ApiRequestError extends Error {
   readonly code?: string;
@@ -64,16 +67,18 @@ async function parseBody<T>(response: Response) {
 }
 
 export async function api<T = unknown>(path: string, init: ApiInit = {}): Promise<T> {
+  const { csrf = 'required', skipCsrfRetry = false, ...requestInit } = init;
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
-  if (unsafeMethod(init.method)) {
+  const csrfRequired = unsafeMethod(init.method) && csrf !== 'skip';
+  if (csrfRequired) {
     headers.set('X-YZT-CSRF', await obtainCsrfToken());
   }
 
   const response = await fetch(path, {
-    ...init,
+    ...requestInit,
     headers,
     cache: 'no-store',
     credentials: 'same-origin',
@@ -82,7 +87,7 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
 
   if (!response.ok) {
     const code = body.error?.code;
-    if (response.status === 403 && code === 'CSRF_INVALID' && !init.skipCsrfRetry) {
+    if (csrfRequired && response.status === 403 && code === 'CSRF_INVALID' && !skipCsrfRetry) {
       clearCsrfToken();
       return api<T>(path, { ...init, skipCsrfRetry: true });
     }

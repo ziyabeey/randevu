@@ -173,7 +173,7 @@ export function first<T>(items: T[] | null): T | null {
   return items?.[0] ?? null;
 }
 
-function upstreamUnavailable(status: number) {
+export function upstreamUnavailable(status: number) {
   return status === 0 || status >= 500;
 }
 
@@ -474,9 +474,6 @@ export function mutationSecurityError<E extends AuthEnv>(context: AppContext<E>)
 
   const origin = context.req.header('Origin');
   const fetchSite = context.req.header('Sec-Fetch-Site');
-  const browserLike = Boolean(origin || fetchSite);
-  if (!browserLike) return null;
-
   if (!origin || origin !== applicationOrigin(context) || fetchSite === 'cross-site') {
     return {
       code: 'ORIGIN_FORBIDDEN',

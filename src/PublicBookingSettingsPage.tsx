@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { api } from './api';
 
 type Role = 'owner' | 'manager' | 'staff';
 type PublicSettings = {
@@ -14,18 +15,6 @@ type SettingsPayload = {
   business: { id: string; name: string; slug: string; timezone: string };
   settings: PublicSettings;
 };
-type ApiError = { error?: { message?: string } };
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(init?.headers ?? {}) },
-    cache: 'no-store',
-  });
-  const body = await response.json() as T & ApiError;
-  if (!response.ok) throw new Error(body.error?.message ?? 'İşlem tamamlanamadı.');
-  return body;
-}
 
 export default function PublicBookingSettingsPage() {
   const [data, setData] = useState<SettingsPayload | null>(null);

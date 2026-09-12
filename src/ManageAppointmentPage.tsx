@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { api } from './api';
 
 type ManagedAppointment = {
   appointment_id: string;
@@ -23,22 +24,6 @@ type ManagedSlot = {
   ends_at: string;
   timezone: string;
 };
-type ApiError = { error?: { code?: string; message?: string } };
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(init?.headers ?? {}) },
-    cache: 'no-store',
-  });
-  const body = await response.json() as T & ApiError;
-  if (!response.ok) {
-    const error = new Error(body.error?.message ?? 'İşlem tamamlanamadı.');
-    (error as Error & { code?: string }).code = body.error?.code;
-    throw error;
-  }
-  return body;
-}
 
 function formatDateTime(value: string, timezone: string) {
   return new Intl.DateTimeFormat('tr-TR', {
@@ -86,6 +71,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
   async function loadAppointment() {
     const result = await api<{ appointment: ManagedAppointment }>('/api/manage/view', {
       method: 'POST',
+      csrf: 'skip',
       body: JSON.stringify({ token }),
     });
     setAppointment(result.appointment);
@@ -106,6 +92,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
       try {
         const result = await api<{ appointment: ManagedAppointment }>('/api/manage/view', {
           method: 'POST',
+          csrf: 'skip',
           body: JSON.stringify({ token }),
         });
         if (cancelled) return;
@@ -129,6 +116,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     try {
       const result = await api<{ slots: ManagedSlot[] }>('/api/manage/slots', {
         method: 'POST',
+        csrf: 'skip',
         body: JSON.stringify({ token, date, staffId: 'any' }),
       });
       setSlots(result.slots);
@@ -153,6 +141,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     try {
       await api('/api/manage/reschedule', {
         method: 'POST',
+        csrf: 'skip',
         headers: { 'Idempotency-Key': rescheduleCommand.current.key },
         body: JSON.stringify({ token, staffId: selectedSlot.staff_id, startsAt: selectedSlot.starts_at }),
       });
@@ -187,6 +176,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     try {
       await api('/api/manage/cancel', {
         method: 'POST',
+        csrf: 'skip',
         headers: { 'Idempotency-Key': cancelCommand.current.key },
         body: JSON.stringify({ token, reason: cleanReason || null }),
       });

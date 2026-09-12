@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { api } from './api';
 
 type CalendarAppointment = {
   appointment_id: string;
@@ -28,19 +29,7 @@ type CalendarPayload = {
   staff: Staff[];
   appointments: CalendarAppointment[];
 };
-type ApiError = { error?: { code?: string; message?: string } };
 type ViewMode = 'day' | 'week';
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    cache: 'no-store',
-  });
-  const body = await response.json() as T & ApiError;
-  if (!response.ok) throw new Error(body.error?.message ?? 'İşlem tamamlanamadı.');
-  return body;
-}
 
 function addDays(date: string, amount: number) {
   const value = new Date(`${date}T12:00:00Z`);
