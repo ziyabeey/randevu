@@ -18,7 +18,6 @@ jobs:
     timeout-minutes: 30
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       STAGING_SUPABASE_PROJECT_REF: smizhsagjpqexveitbqu
       SUPABASE_URL: https://smizhsagjpqexveitbqu.supabase.co
@@ -27,7 +26,7 @@ jobs:
       STAGING_OWNER_A_EMAIL: randevu-staging-owner-a@example.com
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-      NOTIFICATION_FROM_EMAIL: ${{ secrets.NOTIFICATION_FROM_EMAIL }}
+      NOTIFICATION_FROM_EMAIL: randevu@notify.kepenk.ai
 
     steps:
       - name: Checkout
@@ -70,8 +69,8 @@ jobs:
         run: |
           node <<'NODE'
           const requiredExternal = [
-            'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'STAGING_DATABASE_URL',
-            'SUPABASE_ADMIN_KEY', 'RESEND_API_KEY', 'NOTIFICATION_FROM_EMAIL',
+            'CLOUDFLARE_API_TOKEN', 'STAGING_DATABASE_URL',
+            'SUPABASE_ADMIN_KEY', 'RESEND_API_KEY',
           ];
           const missingExternal = requiredExternal.filter((name) => !process.env[name]);
           if (missingExternal.length) {
@@ -83,6 +82,7 @@ jobs:
             'STAGING_OWNER_A_EMAIL', 'STAGING_OWNER_A_PASSWORD',
             'STAGING_OWNER_B_EMAIL', 'STAGING_OWNER_B_PASSWORD',
             'PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET',
+            'NOTIFICATION_FROM_EMAIL',
           ];
           const missingWorkflow = requiredWorkflow.filter((name) => !process.env[name]);
           if (missingWorkflow.length) {
@@ -95,11 +95,37 @@ jobs:
           if (!process.env.SUPABASE_ANON_KEY.startsWith('sb_publishable_')) {
             throw new Error('Staging API key must use the hosted Supabase publishable-key model');
           }
+          if (process.env.NOTIFICATION_FROM_EMAIL !== 'randevu@notify.kepenk.ai') {
+            throw new Error('Staging notification sender must use the dedicated notify.kepenk.ai domain');
+          }
           for (const name of ['PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET']) {
             const value = process.env[name] ?? '';
             if (value.length < 43 || value.length > 256) {
               throw new Error(`${name} must satisfy the Worker secret length contract`);
             }
+          }
+          NODE
+
+      - name: Resolve Cloudflare account
+        run: |
+          umask 077
+          npx wrangler whoami --json > /tmp/randevu-cloudflare-whoami.json
+          node <<'NODE'
+          const { appendFileSync, readFileSync, rmSync } = require('node:fs');
+          const path = '/tmp/randevu-cloudflare-whoami.json';
+          try {
+            const payload = JSON.parse(readFileSync(path, 'utf8'));
+            if (payload.loggedIn !== true) throw new Error('Wrangler did not authenticate with the staging Cloudflare token');
+            const accounts = Array.isArray(payload.accounts) ? payload.accounts : [];
+            if (accounts.length !== 1) {
+              throw new Error(`Cloudflare staging token must expose exactly one account; received ${accounts.length}`);
+            }
+            const accountId = String(accounts[0]?.id ?? accounts[0]?.accountId ?? '').trim();
+            if (!/^[a-f0-9]{32}$/i.test(accountId)) throw new Error('Wrangler returned an invalid Cloudflare account ID');
+            appendFileSync(process.env.GITHUB_ENV, `CLOUDFLARE_ACCOUNT_ID=${accountId}\n`, 'utf8');
+            console.log(`Resolved Cloudflare account: ${accountId.slice(0, 6)}…`);
+          } finally {
+            rmSync(path, { force: true });
           }
           NODE
 
@@ -215,4 +241,4 @@ jobs:
 
       - name: Remove temporary Worker secret bundle
         if: always()
-        run: rm -f /tmp/randevu-staging-secrets.json
+        run: rm -f /tmp/randevu-staging-secrets.json /tmp/randevu-cloudflare-whoami.json
