@@ -3,10 +3,15 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const script = readFileSync(new URL('../scripts/staging-f09-acceptance.mjs', import.meta.url), 'utf8');
+const runner = readFileSync(new URL('../scripts/staging-f09-acceptance-runner.mjs', import.meta.url), 'utf8');
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-test('F09 live acceptance command is wired to the dedicated staging script', () => {
-  assert.equal(pkg.scripts['staging:f09-acceptance'], 'node scripts/staging-f09-acceptance.mjs');
+test('F09 live acceptance command is wired through the scoped Resend reader', () => {
+  assert.equal(pkg.scripts['staging:f09-acceptance'], 'node scripts/staging-f09-acceptance-runner.mjs');
+  assert.match(runner, /RESEND_ACCEPTANCE_API_KEY/);
+  assert.match(runner, /full_access/);
+  assert.match(runner, /https:\/\/api\.resend\.com\/emails\?limit=1/);
+  assert.match(runner, /process\.env\.RESEND_API_KEY = acceptanceKey/);
 });
 
 test('F09 live acceptance keeps recovery, idempotency and capability negative cases', () => {
