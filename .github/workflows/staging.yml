@@ -55,7 +55,14 @@ jobs:
 
       - name: Verify F09 failure and recovery contracts
         if: ${{ inputs.run_f09_acceptance }}
-        run: npm run test:http
+        env:
+          RESEND_ACCEPTANCE_API_KEY: ${{ secrets.RESEND_ACCEPTANCE_API_KEY }}
+        run: |
+          if [ -z "$RESEND_ACCEPTANCE_API_KEY" ]; then
+            echo "::error::F09 acceptance requires staging secret RESEND_ACCEPTANCE_API_KEY (Resend full_access)."
+            exit 1
+          fi
+          npm run test:http
 
       - name: Prepare ephemeral staging job secrets
         run: |
@@ -278,6 +285,8 @@ jobs:
 
       - name: Verify F09-05 real booking and notification delivery
         if: ${{ inputs.run_f09_acceptance }}
+        env:
+          RESEND_ACCEPTANCE_API_KEY: ${{ secrets.RESEND_ACCEPTANCE_API_KEY }}
         run: npm run staging:f09-acceptance
 
       - name: Remove temporary Worker secret bundle
