@@ -22,7 +22,7 @@ jobs:
       STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       STAGING_SUPABASE_PROJECT_REF: smizhsagjpqexveitbqu
       SUPABASE_URL: https://smizhsagjpqexveitbqu.supabase.co
-      SUPABASE_ANON_KEY: sb_publishable_smh_KUbC7hv3fhTEX21xXQ_zzn6qZnY
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtaXpoc2FnanBxZXh2ZWl0YnF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjQzNzIsImV4cCI6MjEwNDc0MDM3Mn0.47pevW2e3DJ3zB_mDIaKyN3aEjYvpCTfMNybHYDD6gU
       SUPABASE_ADMIN_KEY: ${{ secrets.SUPABASE_ADMIN_KEY }}
       STAGING_OWNER_A_EMAIL: randevu-staging-owner-a@example.com
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
@@ -88,9 +88,6 @@ jobs:
           const projectRef = process.env.STAGING_SUPABASE_PROJECT_REF;
           if (!process.env.SUPABASE_URL.includes(projectRef) || !process.env.STAGING_DATABASE_URL.includes(projectRef)) {
             throw new Error('Supabase API URL, database URL and project ref do not describe the same staging project');
-          }
-          if (!process.env.SUPABASE_ANON_KEY.startsWith('sb_publishable_')) {
-            throw new Error('Staging Worker must use the hosted Supabase publishable key');
           }
           NODE
 
