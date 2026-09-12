@@ -228,7 +228,9 @@ await test('F10-01 auth, session and request security contract', async (t) => {
     assert.match(flows[0].state, /^[A-Za-z0-9_-]{32,128}$/);
     assert.match(flows[0].verifier, /^[A-Za-z0-9_-]{43,128}$/);
     assert.ok(flows[0].expiresAt > Date.now());
-    assert.match(setCookieValues(response).join('\n'), /yzt_auth_flows=.*HttpOnly.*Path=\/api\/auth/i);
+    const flowCookie = setCookieValues(response).join('\n');
+    assert.match(flowCookie, /yzt_auth_flows=.*HttpOnly/i);
+    assert.match(flowCookie, /Path=\/api\/auth/i);
   });
 
   await t.test('PKCE callback binds state to verifier, rejects replay and never redirects tokens', async () => {
