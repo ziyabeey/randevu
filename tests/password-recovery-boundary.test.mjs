@@ -48,7 +48,7 @@ await test('S01 password recovery session cannot enter protected feature routers
 
   try {
     for (const path of [
-      '/api/availability',
+      '/api/availability/setup',
       '/api/bookings',
       '/api/calendar',
       '/api/public/settings',
