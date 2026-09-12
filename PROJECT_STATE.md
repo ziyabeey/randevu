@@ -27,10 +27,10 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | Güvenli bağlantıyla yönetim | Main'de, Faz 7 | `/m#token` capability korunur |
 | Gün/hafta takvimi | Main'de, Faz 8 | Liste görünümü, güncellik ve referans düzeni Faz 13 |
 | Rezervasyon sonucu + yönetim erişimi kurtarma | Main'de, F09-02 / PR #12 | Atomik create/capability/recovery tamamlandı |
-| Durable public booking e-postası | Main'de, F09-03 / PR #13 | Outbox/lease/retry/provider receipt tamamlandı; gerçek provider teslimi F09-05/F17 |
+| Durable public booking e-postası | Main'de, F09-03 / PR #13 | Outbox/lease/retry/provider receipt tamamlandı; gerçek provider teslimi F09-05 |
 | Public booking abuse sınırı | Main'de, F09-04 / PR #14 | Direct RPC bypass kapalı; guarded RPC + actor/network/business rate-limit + retention tamamlandı |
 | Test/CI + dependency bakım temeli | Main'de, F17-02 / PR #15 | Coverage gate, gerçek Chrome smoke, blocking audit ve 0-vulnerability lock baseline tamamlandı |
-| Staging ortamı | Engelli, F17-01 | Supabase hosted + ACL canlı doğrulandı; dış contract 17→11→9→7→6→4 secret'a daraltıldı; workers.dev origin ve Cloudflare account ID otomatik çözülüyor, gate/dispatch run başına üretiliyor, management key Cloudflare'da kalıcı; 4 secret + gerçek deploy/smoke bekleniyor |
+| Staging ortamı | Tamamlandı, F17-01 | Supabase hosted + ACL, gerçek DB credential/migration, Auth fixture, Cloudflare Worker, persistent management secret ve health/login/session/business/catalog smoke run `34679959999` ile yeşil; F09-05 gerçek bildirim entegrasyonunu doğrulayacak |
 | SalonApp mobil kabuğu, adisyon ve tahsilat | Planlandı, Faz 14 | Henüz uygulama/route/tablo yok |
 | Ürün/stok, masraf, kasa/raporlar | Planlandı, Faz 15 | Sınırlı operasyon işlevleri |
 | Tekrar/SMS, yorum/fotoğraf, paket/promosyon, prim, hesap menüsü | Planlandı, Faz 16 | Ayrı alt işler |
@@ -43,13 +43,13 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 - **F09-03 tamamlandı:** PR #13 durable e-posta outbox, lease/retry, scheduled dispatcher, upgrade backfill ve server-only provider receipt authority ekledi.
 - **F09-04 tamamlandı:** PR #14 raw public RPC bypass'larını kapattı; Worker-only gate secret, signed HttpOnly actor proof, coarse network HMAC, actor/network/business PostgreSQL rate-limit ve bounded counter retention ekledi.
 - **F17-02 tamamlandı:** PR #15 CI/test envanter kapısı, gerçek headless Chrome smoke, tek HTTP test komutu ve blocking high/critical dependency audit ekledi; Cloudflare toolchain dar yükseltmesiyle `npm ci` 0 vulnerability baseline'a geldi.
-- **F17-01 engelli:** Supabase hosted staging ve ACL hardening canlı doğrulandı; gerçek staging probe `34671008590` GitHub environment provisioning katmanında fail-closed durdu. Repo otomasyonu dış contract'ı 17 değerden 4 gerçek secret'a indirir; modern public Supabase client metadata, notification sender, Cloudflare account ID, workers.dev origin, rotatable gate/dispatch secret'ları ve Cloudflare-persistent management encryption key artık elle provision edilmez. Dışarıdan yalnız Cloudflare tokenı, privileged Supabase DB/admin erişimi ve Resend API key bağlanmalıdır.
+- **F17-01 tamamlandı:** Supabase hosted staging + ACL, GitHub `staging` external contract, Cloudflare Worker deploy, persistent management encryption key ve gerçek Auth/session/catalog smoke canlıda doğrulandı. Kabul run'ı `34679959999`, Worker origin `https://yzt-randevu-staging.ziyabeey1.workers.dev`.
 - Domain yönü: production `randevu.kepenk.ai`, staging custom-domain hedefi `staging.randevu.kepenk.ai`, transactional sender domain `notify.kepenk.ai`, sender `randevu@notify.kepenk.ai`.
 - Notification intent F09-02 recovery satırı appointment'a bağlandığında aynı outer booking transaction'ında doğar; provider HTTP booking response yolunda değildir.
 - Notification job state'leri `pending`, `leased`, `retry_wait`, `sent`, `failed_terminal`; lease varsayılanı 45 saniye, provider timeout 10 saniye, max deneme 8, bounded retry penceresi en fazla 72 saattir.
 - `sent`, provider'ın isteği kabul edip message ID verdiğini ifade eder; inbox teslimi değildir.
 - Resend idempotency key'i job başına stabildir. Provider'ın güncel 24 saatlik idempotency saklama penceresi nedeniyle 24 saat sonrasındaki ambiguous retry'larda mutlak exactly-once iddiası yoktur.
-- **F09-05 sıradaki Faz 9 entegrasyon kapısıdır**, ancak kalan önkoşul F17-01 gerçek development/staging ortamıdır. G09, F09-05 gerçek ortam kabulü tamamlanmadan kapanmaz.
+- **F09-05 sıradaki Faz 9 entegrasyon kapısıdır.** F09-03, F09-04, F17-01 ve F17-02 önkoşulları tamamlandı; G09 ancak F09-05 gerçek provider/booking acceptance tamamlanınca kapanır.
 
 ## Branch / PR notu
 
@@ -58,7 +58,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 - `f09-03-durable-notifications`: [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13), F09-03 teslimidir.
 - `f09-04-public-abuse-control`: [PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14), F09-04 teslimidir; ayrıntı [handoff](docs/handoffs/F09-04.md) içindedir.
 - `f17-02-ci-test-dependency-baseline`: [PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15), F17-02 teslimidir; ayrıntı [handoff](docs/handoffs/F17-02.md) içindedir.
-- F17-01 repo/staging zinciri: [PR #16](https://github.com/ziyabeey1-ai/randevu/pull/16), hosted uyumluluk/ACL [PR #17](https://github.com/ziyabeey1-ai/randevu/pull/17) + [PR #18](https://github.com/ziyabeey1-ai/randevu/pull/18), canlı sınır kaydı [PR #19](https://github.com/ziyabeey1-ai/randevu/pull/19) + [PR #20](https://github.com/ziyabeey1-ai/randevu/pull/20), dış secret yüzeyi daraltmaları [PR #21](https://github.com/ziyabeey1-ai/randevu/pull/21) + [PR #22](https://github.com/ziyabeey1-ai/randevu/pull/22) + [PR #23](https://github.com/ziyabeey1-ai/randevu/pull/23) + [PR #25](https://github.com/ziyabeey1-ai/randevu/pull/25) + [PR #26](https://github.com/ziyabeey1-ai/randevu/pull/26).
+- F17-01 repo/staging zinciri: [PR #16](https://github.com/ziyabeey1-ai/randevu/pull/16), hosted uyumluluk/ACL [PR #17](https://github.com/ziyabeey1-ai/randevu/pull/17) + [PR #18](https://github.com/ziyabeey1-ai/randevu/pull/18), canlı sınır kaydı [PR #19](https://github.com/ziyabeey1-ai/randevu/pull/19) + [PR #20](https://github.com/ziyabeey1-ai/randevu/pull/20), dış secret yüzeyi ve gerçek deploy hazırlığı [PR #21](https://github.com/ziyabeey1-ai/randevu/pull/21) + [PR #22](https://github.com/ziyabeey1-ai/randevu/pull/22) + [PR #23](https://github.com/ziyabeey1-ai/randevu/pull/23) + [PR #25](https://github.com/ziyabeey1-ai/randevu/pull/25) + [PR #26](https://github.com/ziyabeey1-ai/randevu/pull/26) + [PR #27](https://github.com/ziyabeey1-ai/randevu/pull/27) + readiness [PR #28](https://github.com/ziyabeey1-ai/randevu/pull/28). Canlı kabul run'ı `34679959999` success.
 - `phase-9-email-delivery`: [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), superseded eski taslaktır; synchronous send ve anon receipt modeli kullanılmaz.
 - `phase-2-auth-tenant`, Faz 1 seviyesinde kalan eski branch'tir; main auth durumunu temsil etmez.
 
@@ -66,7 +66,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 
 | Bulgu | Etki | Faz |
 | --- | --- | --- |
-| Hosted Supabase staging + ACL doğrulandı; Cloudflare/Resend/Supabase privileged config henüz GitHub `staging` environment'a provision edilmedi | CI fixture/stub kanıtı provider/deploy davranışı değildir; 4 dış secret bağlanıp gerçek workflow/smoke yeşil olmalı | 9 / F09-05, 17 |
+| F17-01 staging ortamı canlı kabul edildi; gerçek Resend provider kabulü/inbox teslimi ve booking→outbox→provider zinciri henüz F09-05 altında kanıtlanmadı | CI/staging smoke uygulama ortamını kanıtlar, gerçek mesaj teslimini değil | 9 / F09-05 |
 | Personel kaydı üyelik/davet üretmiyor; parola kurtarma ve işletme geçişi UI'sı eksik | Çok kullanıcılı günlük kullanım tamamlanmış değil | 10 |
 | Auth/istek yardımcıları Worker modüllerinde tekrarlanıyor; hata/Origin/CSRF davranışı merkezi değil | Oturum ve güvenlik düzeltmeleri birlikte uygulanmalı | 10 |
 | Takvimde otomatik güncelleme ve eski yanıt koruması yok | Public/diğer çalışan işlemleri geç veya yanlış seçimde görünebilir | 13 |
@@ -104,7 +104,7 @@ Production env:
 - `NOTIFICATION_FROM_EMAIL`
 - `PUBLIC_APP_ORIGIN` — production için HTTPS zorunlu
 
-DB'de `notification_dispatch_config` yalnız `NOTIFICATION_DISPATCH_SECRET` SHA-256 hash'ini; `public_booking_abuse_config` yalnız `PUBLIC_BOOKING_GATE_SECRET` SHA-256 hash'ini tutar. Raw secret'lar repo/migration içine yazılmaz. Gerçek staging/production provisioning F17-01/F09-05'te doğrulanır. Abuse config satırı yoksa public gate fail-closed davranır.
+DB'de `notification_dispatch_config` yalnız `NOTIFICATION_DISPATCH_SECRET` SHA-256 hash'ini; `public_booking_abuse_config` yalnız `PUBLIC_BOOKING_GATE_SECRET` SHA-256 hash'ini tutar. Raw secret'lar repo/migration içine yazılmaz. Staging provisioning F17-01'de canlı doğrulandı; production ve gerçek provider delivery F09-05/F17 yayın aşamalarında ayrıca doğrulanır. Abuse config satırı yoksa public gate fail-closed davranır.
 
 ## Migration sırası
 
@@ -158,7 +158,7 @@ Birleştirilmiş eski migration'lar değiştirilmez; yeni davranış ileri migra
 - Production build sonrası gerçek headless Chrome giriş ekranını render etmeden browser smoke geçmez.
 - `npm audit --audit-level=high` blocking'dir; high veya critical dependency advisory CI'ı kırar.
 - Güncel lock baseline: `@cloudflare/vite-plugin@1.54.8`, `wrangler@4.131.0`, transitive `sharp@0.35.4`; clean install/audit 0 vulnerability raporlar.
-- CI secret/provider/staging kanıtı değildir; gerçek servis kabulü F17-01/F09-05 kapsamındadır.
+- CI secret/provider/staging kanıtı değildir; gerçek staging kanıtı F17-01 live workflow, provider/notification kanıtı F09-05 ile tutulur.
 
 ## Doğrulama kanıtı ve sınırı
 
@@ -173,8 +173,10 @@ Birleştirilmiş eski migration'lar değiştirilmez; yeni davranış ileri migra
 - F17-01 PR #22 contract'ı 9 dış değere indirdi; public Supabase client metadata'sını workflow'a aldı ve Cloudflare workers.dev origin'ini migration öncesi otomatik çözdü.
 - F17-01 PR #23 contract'ı 7 dış değere indirdi; public-booking gate ve notification-dispatch secret'larını run başına üretip aynı job içinde DB hash provisioning + Worker runtime'a bağladı. PR CI `34676186429` ve main CI `34676257736` success.
 - F17-01 PR #25 contract'ı 6 dış değere indirdi; staging public API key'ini modern publishable modeline taşıdı ve management encryption key'ini Cloudflare Worker secret olarak bootstrap/preserve/verify etti. PR CI `34676791782`, main CI `34676848214` success.
-- F17-01 PR #26 contract'ı 4 dış secret'a indirir; `CLOUDFLARE_ACCOUNT_ID` Wrangler'ın tek-hesap JSON çıktısından çözülür ve `NOTIFICATION_FROM_EMAIL` `randevu@notify.kepenk.ai` metadata'sına dönüşür. PR CI `34678308097` success. Gerçek Cloudflare/Resend davranışı staging workflow kabulinde ayrıca kanıtlanmalıdır.
-- Testler yerel PostgreSQL/Auth fixture ve fake provider kullanır. Gerçek Resend hesabı/inbox teslimi, Cloudflare deploy ve üretim abuse/load davranışı bu CI kanıtının kapsamı değildir.
-- Gerçek environment credential provisioning F17-01 ve provider entegrasyonu F09-05 kabulinde doğrulanacaktır.
+- F17-01 PR #26 contract'ı 4 dış secret'a indirdi; `CLOUDFLARE_ACCOUNT_ID` Wrangler'ın tek-hesap JSON çıktısından çözülür ve `NOTIFICATION_FROM_EMAIL` `randevu@notify.kepenk.ai` metadata'sına dönüşür. PR CI `34678308097` success.
+- F17-01 PR #27 staging DB bağlantısını raw `SUPABASE_DB_PASSWORD` secret'ından workflow içinde güvenli URL türetimine çevirdi ve credential smoke'u migration öncesine aldı.
+- F17-01 PR #28 Worker deploy-readiness yarışında yalnız `/api/health` için bounded retry ekledi; auth/session/catalog hataları fail-closed kalır. PR CI `34679816265`, main CI `34679877089` success.
+- **F17-01 canlı kabul run `34679959999` success:** DB credential testi, migrations, Auth owners, runtime hashes, fixture reset/seed, Cloudflare Worker deploy, persistent management secret doğrulaması ve gerçek health/login/session/business-select/catalog smoke tamamen geçti. Worker origin: `https://yzt-randevu-staging.ziyabeey1.workers.dev`.
+- Testler yerel PostgreSQL/Auth fixture ve fake provider kullanır. Gerçek Resend inbox teslimi ve üretim abuse/load davranışı bu CI/staging smoke kanıtının kapsamı değildir; F09-05 ve sonraki kabul kapılarında doğrulanır.
 
 Her PR aynı zorunlu build/SQL kapısını geçer. G09 ancak F09-01…F09-05 kabul edildiğinde kapanır.
