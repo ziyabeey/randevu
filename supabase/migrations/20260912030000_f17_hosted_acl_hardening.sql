@@ -2,11 +2,14 @@ begin;
 
 -- F17-01 live-staging hardening.
 -- Hosted Supabase gives new functions in public explicit EXECUTE privileges to
--- anon/authenticated via postgres default privileges. `REVOKE ... FROM PUBLIC`
--- alone does not remove those role-specific grants. Make future app functions
--- deny-by-default, then explicitly expose only the API surface each role needs.
+-- anon/authenticated via postgres schema defaults. PostgreSQL also has a global
+-- hard-wired PUBLIC EXECUTE default for functions. A schema-scoped revoke cannot
+-- cancel that global default, so close both layers before explicitly exposing
+-- only the application RPC surface each role needs.
+alter default privileges for role postgres
+  revoke execute on functions from public;
 alter default privileges for role postgres in schema public
-  revoke execute on functions from public, anon, authenticated;
+  revoke execute on functions from anon, authenticated;
 
 -- Start from a closed application RPC surface. Keep this list explicit so we do
 -- not touch btree_gist/extension support functions that also live in public.
