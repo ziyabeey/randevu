@@ -9,12 +9,14 @@ import {
   requireMember,
   setBusinessCookie,
   supabaseRequest,
+  type AppContext,
   type AuthEnv,
   type Membership,
   type Role,
 } from './auth.ts';
 
 type Env = AuthEnv;
+type BaseContext = AppContext<Env>;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -67,7 +69,7 @@ function integerIn(value: unknown, min: number, max: number) {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 }
 
-async function requireStandardAuth(context: Parameters<typeof requireAuth>[0]) {
+async function requireStandardAuth(context: BaseContext) {
   const access = await requireAuth(context);
   if ('error' in access) return access;
   if (access.auth.passwordRecovery) {
@@ -83,7 +85,7 @@ async function requireStandardAuth(context: Parameters<typeof requireAuth>[0]) {
   return access;
 }
 
-async function requireStandardMember(context: Parameters<typeof requireMember>[0]) {
+async function requireStandardMember(context: BaseContext) {
   const access = await requireMember(context);
   if ('error' in access) return access;
   if (access.auth.passwordRecovery) {
