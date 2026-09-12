@@ -28,6 +28,10 @@ do $$ begin
 exception when duplicate_object then null;
 end $$;
 
+-- Hosted Supabase grants both API roles USAGE on the extensions schema and
+-- EXECUTE on pgcrypto functions through their normal PUBLIC function grants.
+grant usage on schema extensions to anon, authenticated;
+
 create schema if not exists auth;
 
 create table if not exists auth.users (
