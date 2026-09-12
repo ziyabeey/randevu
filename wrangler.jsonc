@@ -9,5 +9,23 @@
   "assets": {
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api", "/api/*"]
+  },
+  "env": {
+    "staging": {
+      "workers_dev": true,
+      "secrets": {
+        "required": [
+          "SUPABASE_URL",
+          "SUPABASE_ANON_KEY",
+          "COOKIE_SECURE",
+          "MANAGEMENT_LINK_ENCRYPTION_KEY_V1",
+          "PUBLIC_BOOKING_GATE_SECRET",
+          "NOTIFICATION_DISPATCH_SECRET",
+          "RESEND_API_KEY",
+          "NOTIFICATION_FROM_EMAIL",
+          "PUBLIC_APP_ORIGIN"
+        ]
+      }
+    }
   }
 }
