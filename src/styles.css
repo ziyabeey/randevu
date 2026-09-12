@@ -23,6 +23,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .wordmark { font-size: 1.9rem; font-weight: 800; line-height: 1; letter-spacing: -.06em; }
 .wordmark span { color: var(--accent); }
 .product-name { padding-left: 1rem; border-left: 1px solid #ccd3df; font-weight: 600; }
+.header-actions { display: flex; align-items: center; justify-content: flex-end; gap: .55rem; flex-wrap: wrap; }
 .workspace { flex: 1; width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: clamp(2rem, 5vw, 4rem) 0; }
 .panel, .center-card { background: var(--panel); border: 1px solid var(--border); border-radius: 1rem; box-shadow: 0 14px 36px rgba(25, 41, 74, .04); }
 .panel { padding: clamp(1.25rem, 3vw, 2rem); }
@@ -41,6 +42,8 @@ input { width: 100%; min-height: 2.8rem; padding: .65rem .8rem; border: 1px soli
 .primary-button { min-height: 2.8rem; padding: .7rem 1rem; border: 1px solid var(--accent); background: var(--accent); color: white; }
 .ghost-button { padding: .6rem .8rem; border: 1px solid var(--border); background: white; color: #33405b; }
 .text-button { margin-top: 1rem; padding: .5rem 0; border: 0; background: transparent; color: var(--accent); }
+.auth-actions { display: flex; align-items: center; gap: .4rem 1rem; flex-wrap: wrap; margin-top: .65rem; }
+.auth-actions .text-button { margin-top: 0; }
 .choice-list { display: grid; gap: .75rem; margin-top: 1.5rem; }
 .choice-button { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border: 1px solid var(--border); background: white; text-align: left; }
 .choice-button span { color: var(--muted); text-transform: capitalize; }
@@ -66,6 +69,8 @@ input { width: 100%; min-height: 2.8rem; padding: .65rem .8rem; border: 1px soli
 .chip input { width: auto; min-height: 0; margin: 0; }
 .app-footer { padding: 0 1rem 1.5rem; color: var(--muted); text-align: center; font-size: .82rem; }
 @media (max-width: 760px) {
+  .app-header { align-items: flex-start; }
+  .header-actions { justify-content: flex-end; }
   .dashboard-grid { grid-template-columns: 1fr; }
   .span-two { grid-column: auto; }
   .inline-form { grid-template-columns: 1fr; }
