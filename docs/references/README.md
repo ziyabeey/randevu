@@ -1,6 +1,6 @@
 # Mobil referanslar — işlev ve düzen eşleştirmesi
 
-Kaynak: ürün sahibinin 11 Eylül 2026 tarihinde sağladığı 11 ekran görüntüsü. Dosyalar orijinal halleriyle bu klasördedir; uygulamanın public varlıklarına dahil edilmez. İnceleme tabanı: `main` / `7c78be88fd1ed99bf37cd603eb503f2b1b4d4e3f`; Faz 9 ayrı taslak PR'dır.
+Kaynak: ürün sahibinin 11 Eylül 2026 tarihinde sağladığı 11 ekran görüntüsü. Dosyalar orijinal halleriyle bu klasördedir; uygulamanın public varlıklarına dahil edilmez. Görsel ilk eşleştirme tabanı `7c78be8`; plan v3 durum kontrolü `main@3b73bf8` (12 Eylül 2026). Faz 9 main’dedir; eski PR #8 kapalı/superseded. Yeni teknik açıklar GS altında ayrıca izlenir.
 
 Bu ekranlar işlev/işlem sırası ve işletme tarafındaki kullanım disiplini için referanstır. Müşteri kolu estetik olarak yeniden tasarlanır; randevu paneli ve SalonApp küçük görsel/ergonomik değişikliklerle bu düzeni korur. Rakibin logosu, salon fotoğrafı, örnek kişi/tarih/fiyatları üretim varlığı veya seed verisi değildir.
 
@@ -16,7 +16,7 @@ Bu ekranlar işlev/işlem sırası ve işletme tarafındaki kullanım disiplini 
 | [mobil-yeni.png](mobil-yeni.png) | SalonApp | Yeni randevu, adisyon, ürün satışı, paket satışı, masraf | Yalnız randevu yolu var; birleşik Yeni yüzeyi yok | 14–15, paket 16C | F14-01/04, F15-02/03, F16-05 |
 | [mobil-diger-1.png](mobil-diger-1.png) | SalonApp | Destek, Online Randevu, geri bildirim, fotoğraflar; kasa/prim/masraf/ürün/gelir-gider/çalışan raporları | Public ayarlar var; birleşik menü ve rapor modülleri yok | 14–15, 16B/16D | F14-01, F15-04, F16-03/04/07 |
 | [mobil-diger-2.png](mobil-diger-2.png) | SalonApp | Salon, mesai, çalışan, hizmet, süre/fiyat, randevu ayarları, ürün/stok, fotoğraf, promosyon | Temel katalog/mesai var; düzenleme ve genişleme işlevleri eksik | 10, 12, 14–15, 16C | F10-04, F12-02/03, F15-01, F16-06 |
-| [mobil-diger-3.png](mobil-diger-3.png) | Panel + SalonApp | Üyelik, şube değiştirme, dil, şifre, çıkış | Giriş/çıkış ve işletme seçimi API'si var; tam hesap menüsü/yönetimi eksik | 10, 14, 16E | F10-01/03, F16-08 |
+| [mobil-diger-3.png](mobil-diger-3.png) | Panel + SalonApp | Üyelik, şube değiştirme, dil, şifre, çıkış | F10-01 giriş/kayıt/parola temeli ve işletme seçimi API’si var; S01/S02 düzeltmeleri, tam hesap menüsü ve üyelik yönetimi eksik | 10, 14, 16E | F10-01/03, F16-08 |
 
 Görev kimliklerinin kapsamı ve durumu [TASKS.md](../../TASKS.md) içindedir. Bu eşleştirme planlama kaydıdır; mevcut fark sütunu ancak ilgili uygulama ve kabul kanıtıyla güncellenir.
 
@@ -32,3 +32,5 @@ Adisyon listesinin içeriği, ödeme formu, rapor hesaplama kuralları ve stok/p
 2. Müşteri yüzeyinde işlev koruması + estetik kaliteyi; işletme yüzeylerinde işlem/alan sırası + küçük fark sınırını kontrol et.
 3. Gerçek uygulama görüntüsünü ve API/işlem sonucunu birlikte doğrula; statik benzerlik işlev kanıtı değildir.
 4. Tamamlanan işlevin durumunu bu matriste ve `PROJECT_STATE.md` içinde kanıtıyla güncelle. Sonraki faza bağlı öğeleri eksik olarak tut.
+
+Plan v3 sıra notu: F12-03 fiyat/kategori veri desteği F11-01 grup snapshot’ından önce tamamlanır. Bu değişiklik referans işlevlerini kaldırmaz. Yeni estetik yön/UX fikri ayrı çalışmadır; mevcut 11 görsel aynen korunur.

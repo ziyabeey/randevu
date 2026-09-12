@@ -2,7 +2,7 @@
 
 **Sonuç:** Müşteri randevusunun oluşup oluşmadığını bilir; bağlantı ve e-posta hataları güvenle toparlanır. **Kapı:** G09. Görevlerin canlı durumu [TASKS.md](../../TASKS.md) içindedir.
 
-Okuma başlangıcı: `worker/public-booking.ts`, `worker/customer-manage.ts`, `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx`, Faz 6–7 migration/testleri. [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8) yararlı fakat eksik bir girdidir; mevcut main'e göre yeniden değerlendirilir. Eski PR'ın dokümanları güncel ürün kapsamının üzerine yazılmaz.
+Okuma başlangıcı: `worker/public-booking.ts`, `worker/customer-manage.ts`, `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx`, Faz 6–7 migration/testleri. [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8) tarihsel girdiydi; kapalı ve PR #13 tarafından superseded durumundadır. F09-01…05 teslimleri korunur; yeni bulgular S03/S04/S07’dedir. Eski PR'ın dokümanları güncel ürün kapsamının üzerine yazılmaz.
 
 ## F09-01
 

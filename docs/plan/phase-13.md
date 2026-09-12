@@ -13,6 +13,7 @@ Okuma başlangıcı: `src/CalendarPage.tsx`, `src/calendar.css`, `worker/calenda
 - **İş ve çıktı:** Ortak grup/satır projeksiyonu, iptal edilebilir/sürümle korunan istekler, görünür sekmede en geç 30 saniyelik güncelleme ve odağa dönüşte hemen yenilemeyi uygula. Ağ hatasında eski verinin durumu ve yeniden deneme görünür olsun.
 - **Kabul:** Başka operatör/public rezervasyon açık takvime süre sınırında yansır. Hızlı tarih/personel/işletme değişiminde eski cevap yeni seçimi ezmez. Gizli sekme gereksiz yoğun istek üretmez; yetki iptali eski kaydı erişilebilir bırakmaz.
 - **Devir:** Yenileme/önbellek davranışı, yarış testi ve ölçülen güncellenme süresi.
+- **v3 veri erişimi:** S02 auth/HTTP sözleşmesi ve K03 yenileme bütçesi kullanılır. Aynı filtreye tek aktif istek; başarısız yenilemede hızlanan retry döngüsü yoktur. Aktif business değişimi response/çekmece bağlamını geçersiz kılar.
 
 ## F13-02
 

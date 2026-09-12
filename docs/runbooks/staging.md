@@ -1,5 +1,6 @@
 # Staging runbook
 
+> Plan v3 notu: Bu runbook mevcut uygulamanın çalışma biçimini anlatır. Run başına gate/dispatch secret rotasyonunun kısmi deploy riski [S05](../plan/stabilization.md#s05) altında açıktır. Yeni güvenli rotasyon uygulanana kadar bu belge düzeltmenin tamamlandığına kanıt değildir.
 Bu runbook F17-01 ile kabul edilmiş **production'dan ayrılmış** Randevu staging ortamını tekrar üretilebilir biçimde kurar ve F09-05 gerçek rezervasyon/bildirim kabulünü çalıştırır. Secret değerleri hiçbir zaman Git'e, PR'a, handoff metnine veya sohbete yazılmaz.
 
 ## Canlı kabul durumu

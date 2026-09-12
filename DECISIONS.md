@@ -2,6 +2,16 @@
 
 Güncel dosya/route/test haritası için önce [PROJECT_STATE.md](PROJECT_STATE.md) oku. Ürün hedefi [PRODUCT_SPEC.md](PRODUCT_SPEC.md), faz ve kabul sırası [ROADMAP.md](ROADMAP.md) içindedir. Bu dosya mevcut teknik temeli ve kabul edilmiş yeni teknik yönü ayırır.
 
+## 12 Eylül 2026 — Plan v3 teknik revizyonu
+
+- Tek uygulama/Worker ve mevcut Supabase HTTP/RPC erişimi korunur. Yeni framework, mikroservis, pg/Hyperdrive geçişi veya ikinci booking/mali motoru bu revizyonun işi değildir.
+- [K01/K02/K03](docs/plan/architecture-contracts.md) bu revizyonun bağlayıcı tasarım girdisidir; uygulanan veri modeli veya ölçülmüş limit değildir. K01 eski kimlik/bağlantı/audit/recovery/outbox geçişini, K02 para/fiyat kaynaklarını, K03 kaynak/veri ömrü sınırlarını sabitler.
+- F12-03 fiyat aralığı veri desteği F11-01 grup snapshot'ından önce uygulanır. Paket/promosyon/prim modülleri erkenden kurulmaz; sonraki fazlar aynı mali kimlik/snapshot/karşı hareket sözleşmesini kullanır. İşletme politikaları ilgili görevde örneklerle kesinleşir; Sol bunları deneysel rastgele seçmez.
+- S01…S08 ayrı teknik düzeltmelerdir; GS kabulü yeni özellik kodundan önce gelir. Eski F09/F10/F17 teslim kanıtı korunur; yeni bulgular açık kalır. S03 bildirim kararı aşağıdaki tarihsel özetten daha günceldir.
+- Erken işletim temeli S07/S08; nihai modelle restore/yayın F17-03'tür. F17-04 release adayı kabulü M23 pilotunu önceden istemez; M23 F17-05'te kapanır.
+- Koordinatör mimari/kabul/bağımsız incelemeyi, GPT-5.6 Sol sınırlı uygulamayı üstlenir. [Beceri ve devir protokolü](docs/plan/agent-workflow.md) görev başında okunur; bu belge yeni uygulama başlatmaz.
+- Mevcut üç kollu MVP kapsamı Faz 17 sonundadır. Yeni UX fikirleri ayrı çalışmadır; MVP sonrası PDF bağımsız kalır ve bu repoya eklenmez.
+
 ## 11 Eylül 2026 — Üç kol kararı
 
 Müşteri paneli, randevu paneli ve SalonApp aynı backend/tenant/customer/appointment verisini kullanır. Kullanım yüzeyleri ayrılır; çekirdek iş kuralları ayrılmaz. Ayrı repo, mikroservis veya üç kalıcı branch kurmak bu ürün kararının gereği değildir.
@@ -28,6 +38,8 @@ Mevcut randevu API'sinde aktif staff üyeleri işletmenin randevularını yönet
 | Tahsilat, fiyat/iskonto değişimi, kapalı adisyon düzeltmesi/iptali | Var | Var | Varsayılan yok; açık mali izin gerekir |
 | Kasa/prim raporu, masraf ve stok yazımı | Var | Var | Varsayılan yok; açık mali izin gerekir |
 
+F10-02 açık mali izin kaydının ve yalnız owner tarafından grant/revoke yönetiminin sahibidir; rol düşürme/pasifleştirme ve izin iptali güncel DB kaydıyla uygulanır. F14-02/03 ve F15 bunları endpoint/DB’de tüketir, F14-04 yalnız yetkili eylemi gösterir.
+
 Bu tablo hedef yetki politikasıdır; mevcut kodda mali yetkiler varmış gibi kullanılmaz. Her mali izin endpoint ve DB seviyesinde, çapraz tenant ve yetki iptali testleriyle uygulanır.
 
 ### Çok hizmetli randevu
@@ -49,6 +61,8 @@ Tutarlar para birimiyle minor unit olarak sunucuda hesaplanır; istemci toplamı
 Faz 15 temel ürün ve stok hareketi ekler; satış/iptal ve stok etkisi atomik/tekrar güvenlidir. Kasa raporu randevu fiyatı toplamından değil tahsilat/düzeltme hareketlerinden türetilir. Gün sınırı işletme timezone'udur. Prim/paket/promosyon Faz 16'nın dar alt modülleridir; bordro, muhasebe ve ERP motoru kurulmaz.
 
 ### Bildirim ve kurtarma
+
+Bu yönün Faz 9 uygulaması main’dedir; yeni içerik/sürüm ve tekrar düzeltmeleri S03/S07’de açıktır. Aşağıdaki tarihsel hedef bu açıkları kapatmaz.
 
 Randevunun DB sonucu müşteri başarısının kaynağıdır; bağlantı veya mesaj yan işlemi bu sonucu gizlemez. Faz 9, randevu sonucu kurtarma ve tarayıcıdan bağımsız güvenli yeniden denemeyi tasarlayıp test eder. Düz yönetim token'ı saklamama ilkesi korunur; token yenileme/teslim stratejisi güvenlik ve başarısızlık testleriyle karara bağlanır.
 
