@@ -121,3 +121,31 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_public_abuse_control.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_public_abuse_retention.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/f17_staging_fixture.sql
+      - name: Verify S03 frozen notification events and conservative upgrade
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260912123000_s03_notification_consistency.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s03_notification_consistency.sql
+
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists yzt_s03_upgrade;"
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "create database yzt_s03_upgrade;"
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911090000_phase2_auth_tenancy.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911100000_phase3_services_team.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911110000_phase4_availability.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911120000_phase5_booking_core.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911121000_phase5_booking_hardening.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911130000_phase6_public_booking.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911140000_phase7_customer_manage.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911150000_phase8_calendar.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911160000_phase9_booking_recovery.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170000_phase9_notification_outbox.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170100_phase9_notification_maintenance.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180000_phase9_public_abuse_control.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180200_phase9_public_abuse_retention.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/s03_notification_upgrade_fixture.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260912123000_s03_notification_consistency.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/s03_notification_upgrade_assert.sql
