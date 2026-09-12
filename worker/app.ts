@@ -1,10 +1,10 @@
-import app from './index';
-import availability from './availability';
-import bookings from './bookings';
-import publicBookingRecovery from './public-booking-recovery';
-import publicBooking from './public-booking';
-import customerManage from './customer-manage';
-import calendar from './calendar';
+import app from './index.ts';
+import availability from './availability.ts';
+import bookings from './bookings.ts';
+import publicBookingRecovery from './public-booking-recovery.ts';
+import publicBooking from './public-booking.ts';
+import customerManage from './customer-manage.ts';
+import calendar from './calendar.ts';
 
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);
