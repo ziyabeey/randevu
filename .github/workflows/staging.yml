@@ -2,6 +2,12 @@ name: Staging deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      run_f09_acceptance:
+        description: Run real F09-05 booking and Resend delivery gate
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -46,6 +52,10 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Verify F09 failure and recovery contracts
+        if: ${{ inputs.run_f09_acceptance }}
+        run: npm run test:http
 
       - name: Prepare ephemeral staging job secrets
         run: |
@@ -265,6 +275,10 @@ jobs:
 
       - name: Verify real staging login and catalog
         run: npm run staging:smoke
+
+      - name: Verify F09-05 real booking and notification delivery
+        if: ${{ inputs.run_f09_acceptance }}
+        run: npm run staging:f09-acceptance
 
       - name: Remove temporary Worker secret bundle
         if: always()
