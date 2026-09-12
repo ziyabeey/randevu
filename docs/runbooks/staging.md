@@ -1,14 +1,16 @@
 # Staging runbook
 
-Bu runbook F17-01 ile kabul edilmiş **production'dan ayrılmış** Randevu staging ortamını tekrar üretilebilir biçimde kurar. Secret değerleri hiçbir zaman Git'e, PR'a, handoff metnine veya sohbete yazılmaz.
+Bu runbook F17-01 ile kabul edilmiş **production'dan ayrılmış** Randevu staging ortamını tekrar üretilebilir biçimde kurar ve F09-05 gerçek rezervasyon/bildirim kabulünü çalıştırır. Secret değerleri hiçbir zaman Git'e, PR'a, handoff metnine veya sohbete yazılmaz.
 
 ## Canlı kabul durumu
 
 - Supabase project: `randevu-staging`, ref `smizhsagjpqexveitbqu`, region `eu-central-1`.
 - Cloudflare Worker: `yzt-randevu-staging`.
 - Kabul edilen workers.dev origin: `https://yzt-randevu-staging.ziyabeey1.workers.dev`.
-- Son F17-01 acceptance: GitHub Actions `Staging deploy` run `34679959999` → **success**.
-- Canlı smoke: health → login → session → business select → catalog.
+- F17-01 base environment acceptance: GitHub Actions `Staging deploy` run `34679959999` → **success**.
+- F09-05 gerçek booking/provider delivery acceptance: run `34681540142` → **success**.
+- Base smoke: health → login → session → business select → catalog.
+- F09 acceptance: lost-response recovery → idempotency/capability/receipt authority → durable outbox → Resend provider record → güvenli test recipient `delivered`.
 - Production verisi staging fixture'a kopyalanmaz.
 
 ## Alan adı planı
@@ -19,11 +21,11 @@ Bu runbook F17-01 ile kabul edilmiş **production'dan ayrılmış** Randevu stag
 - Transactional sending domain: `notify.kepenk.ai`
 - Sender: `randevu@notify.kepenk.ai`
 
-Custom staging domain temel F17-01 kabulünün önkoşulu değildir; workers.dev origin ile staging zinciri canlı doğrulanmıştır.
+Custom staging domain temel F17-01/F09-05 kabulünün önkoşulu değildir; workers.dev origin ile staging ve delivery zinciri canlı doğrulanmıştır.
 
 ## GitHub `staging` environment dış sözleşmesi
 
-GitHub Environment `staging` altında yalnız şu **4 secret** gerekir:
+Normal staging deploy için GitHub Environment `staging` altında şu **4 runtime/provisioning secret** gerekir:
 
 ### Cloudflare
 
@@ -52,11 +54,17 @@ Parola `encodeURIComponent` ile percent-encode edilerek job içinde `STAGING_DAT
 
 ### Resend
 
-- `RESEND_API_KEY`
+- `RESEND_API_KEY`: Worker runtime için gönderimle sınırlı anahtar.
 
 `NOTIFICATION_FROM_EMAIL` secret değildir; workflow metadata'sı olarak `randevu@notify.kepenk.ai` kullanılır.
 
-Gerçek booking → notification → provider → inbox acceptance F09-05 kapsamındadır. F17-01 staging smoke Resend inbox teslimi iddiası yapmaz.
+F09-05 opt-in gerçek delivery kabulü için ayrıca:
+
+- `RESEND_ACCEPTANCE_API_KEY`: yalnız GitHub acceptance adımında kullanılan `full_access` anahtar.
+
+Acceptance key normal deploy'un zorunlu secret'ı değildir. Yalnız `run_f09_acceptance=true` seçildiğinde fail-closed doğrulanır. Worker secret bundle'a, Cloudflare binding'lerine veya uygulama runtime'ına girmez. Runtime gönderim anahtarının kapsamı kabul için genişletilmez.
+
+Gerçek booking → notification → provider → güvenli test recipient delivery zinciri F09-05 run `34681540142` ile kanıtlanmıştır. Bu, production/pilot deliverability iddiası değildir.
 
 ## Workflow metadata ve ephemeral değerler
 
@@ -210,28 +218,54 @@ Gerçek uygulama API zinciri:
 
 Owner'ın fixture üyeliği, hizmeti ve personeli görünmezse workflow kırılır.
 
+## F09-05 opt-in gerçek delivery acceptance
+
+Actions ekranında `Staging deploy` çalıştırılırken branch/ref seçilir ve `Run real F09-05 booking and Resend delivery gate` girişi açılır. Normal staging deploy'da bu kutu kapalı kalır.
+
+Acceptance komutu:
+
+```bash
+npm run staging:f09-acceptance
+```
+
+Acceptance şunları kanıtlar:
+
+- create response body bilerek tüketilmeden bırakıldığında recovery aynı appointment'ı bulur,
+- same-intent duplicate aynı appointment'ı döndürür,
+- aynı idempotency key ile farklı intent reddedilir,
+- doğru management capability çalışır; yanlış capability generic 404 alır,
+- yanlış ve süresi dolmuş recovery authority generic not-found alır,
+- anon/publishable istemci sahte provider receipt yazamaz,
+- outbox scheduled Worker tarafından `sent` olur ve provider message ID kaydedilir,
+- Resend Retrieve Email API kaydı beklenen sender/recipient/subject ve staging `/m#` origin'ini taşır,
+- güvenli `delivered+...@resend.dev` test recipient'i `last_event=delivered` üretir.
+
+Kişisel mailbox veya gerçek müşteri adresi kullanılmaz. Acceptance job sonrasında recovery authority'yi bilinçli biçimde expire eder; management bearer ve secret değerleri loglanmaz.
+
 ## Tam workflow sırası
 
 `.github/workflows/staging.yml` manual `workflow_dispatch` ile çalışır:
 
 1. checkout / Node / Supabase CLI / `npm ci`
-2. ephemeral owner + gate/dispatch secret üretimi ve masking
-3. 4 dış secret + workflow metadata contract doğrulaması
-4. raw DB password'dan maskelenmiş session-pooler URL üretimi
-5. `wrangler whoami --json` ile tek Cloudflare account çözümü
-6. `npm run build:staging`
-7. Workers subdomain lookup + staging origin çözümü + management secret lookup
-8. PostgreSQL client kurulumu
-9. DB credential smoke
-10. migration push
-11. Auth owner bootstrap
-12. DB runtime hash provisioning
-13. fixture reset + seed
-14. geçici Worker secret bundle
-15. Cloudflare Worker deploy
-16. persistent management secret verification
-17. bounded health readiness + gerçek login/session/business/catalog smoke
-18. geçici dosya cleanup
+2. F09 opt-in ise acceptance read key kontrolü + HTTP failure/recovery kontratları
+3. ephemeral owner + gate/dispatch secret üretimi ve masking
+4. 4 dış runtime secret + workflow metadata contract doğrulaması
+5. raw DB password'dan maskelenmiş session-pooler URL üretimi
+6. `wrangler whoami --json` ile tek Cloudflare account çözümü
+7. `npm run build:staging`
+8. Workers subdomain lookup + staging origin çözümü + management secret lookup
+9. PostgreSQL client kurulumu
+10. DB credential smoke
+11. migration push
+12. Auth owner bootstrap
+13. DB runtime hash provisioning
+14. fixture reset + seed
+15. geçici Worker secret bundle
+16. Cloudflare Worker deploy
+17. persistent management secret verification
+18. bounded health readiness + gerçek login/session/business/catalog smoke
+19. F09 opt-in ise gerçek booking/recovery/idempotency/capability/fake-receipt/Resend delivery acceptance
+20. geçici dosya cleanup
 
 ## Supabase Auth URL ayarı
 
@@ -248,7 +282,9 @@ Custom staging domain bağlandığında veya gerçek redirect tabanlı auth akı
 - Management encryption key DB veya GitHub secret deposunda tutulmaz.
 - Fixture owner parolaları kalıcı değildir.
 - Cloudflare account ID secret değildir.
-- Provider API key Git/PR/handoff'a yazılmaz.
+- Runtime `RESEND_API_KEY` gönderimle sınırlı tutulur.
+- `RESEND_ACCEPTANCE_API_KEY` yalnız opt-in GitHub acceptance process'ine verilir; Worker bundle'a girmez.
+- Provider API key değerleri Git/PR/handoff'a yazılmaz.
 - Hosted migration'lar forward-only'dir; merge edilmiş eski migration'lar değiştirilmez.
 
 ## Clean checkout kontrolü
@@ -264,4 +300,4 @@ npm run test:http
 npm run test:ci-coverage
 ```
 
-F17-01 canlı kabulü ayrıca `Staging deploy` run `34679959999` ile kanıtlanmıştır. Yeni workflow değişiklikleri kabul edilirken gerçek staging run'ı yeniden yeşil gösterilmelidir.
+F17-01 base environment kabulü `34679959999`, F09-05 gerçek provider delivery kabulü `34681540142` ile kanıtlanmıştır. Yeni workflow değişiklikleri kabul edilirken base staging smoke ve ilgili opt-in gate yeniden yeşil gösterilmelidir.
