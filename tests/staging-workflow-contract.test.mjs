@@ -144,3 +144,19 @@ test('staging deploy verifies the persistent management key before smoke', () =>
   assert.ok(deployIndex >= 0 && verifyIndex > deployIndex && smokeIndex > verifyIndex);
   assert.match(workflow, /payload\?\.result\?\.name !== 'MANAGEMENT_LINK_ENCRYPTION_KEY_V1'/);
 });
+
+test('F09 real delivery gate is explicit opt-in and runs only after base staging smoke', () => {
+  assert.match(workflow, /run_f09_acceptance:/);
+  assert.match(workflow, /type: boolean/);
+  assert.match(workflow, /default: false/);
+  assert.match(workflow, /Verify F09 failure and recovery contracts/);
+  assert.match(workflow, /Verify F09-05 real booking and notification delivery/);
+  assert.match(workflow, /npm run staging:f09-acceptance/);
+
+  const smokeIndex = workflow.indexOf('- name: Verify real staging login and catalog');
+  const acceptanceIndex = workflow.indexOf('- name: Verify F09-05 real booking and notification delivery');
+  assert.ok(smokeIndex >= 0 && acceptanceIndex > smokeIndex, 'real F09 acceptance must run after the base staging smoke');
+
+  const guardedSteps = workflow.match(/if: \$\{\{ inputs\.run_f09_acceptance \}\}/g) ?? [];
+  assert.equal(guardedSteps.length, 2, 'only the F09 contract and real-delivery steps should be opt-in');
+});
