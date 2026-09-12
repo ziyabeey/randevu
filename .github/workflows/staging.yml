@@ -8,6 +8,11 @@ on:
         required: false
         default: false
         type: boolean
+      run_f10_auth_acceptance:
+        description: Run real F10-01 hosted signup, recovery and session gate
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -63,6 +68,10 @@ jobs:
             exit 1
           fi
           npm run test:http
+
+      - name: Verify F10 auth and request-security contracts
+        if: ${{ inputs.run_f10_auth_acceptance }}
+        run: npm run test:http
 
       - name: Prepare ephemeral staging job secrets
         run: |
@@ -288,6 +297,10 @@ jobs:
         env:
           RESEND_ACCEPTANCE_API_KEY: ${{ secrets.RESEND_ACCEPTANCE_API_KEY }}
         run: npm run staging:f09-acceptance
+
+      - name: Verify F10-01 real hosted signup, recovery and session security
+        if: ${{ inputs.run_f10_auth_acceptance }}
+        run: npm run staging:f10-auth-acceptance
 
       - name: Remove temporary Worker secret bundle
         if: always()
