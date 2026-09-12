@@ -1,6 +1,9 @@
 type ApiErrorBody = { error?: { code?: string; message?: string } };
 
-type ApiInit = RequestInit & { skipCsrfRetry?: boolean };
+type ApiInit = RequestInit & {
+  skipCsrfRetry?: boolean;
+  csrf?: 'required' | 'skip';
+};
 
 export class ApiRequestError extends Error {
   readonly code?: string;
@@ -68,7 +71,8 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
   headers.set('Accept', 'application/json');
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
-  if (unsafeMethod(init.method)) {
+  const csrfRequired = unsafeMethod(init.method) && init.csrf !== 'skip';
+  if (csrfRequired) {
     headers.set('X-YZT-CSRF', await obtainCsrfToken());
   }
 
@@ -82,7 +86,7 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
 
   if (!response.ok) {
     const code = body.error?.code;
-    if (response.status === 403 && code === 'CSRF_INVALID' && !init.skipCsrfRetry) {
+    if (csrfRequired && response.status === 403 && code === 'CSRF_INVALID' && !init.skipCsrfRetry) {
       clearCsrfToken();
       return api<T>(path, { ...init, skipCsrfRetry: true });
     }
