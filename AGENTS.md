@@ -1,52 +1,44 @@
 # Coding Agent Protocol
 
-## Başlangıç ve kaynak sırası
+## Kaynak sırası
 
-1. `PROJECT_STATE.md`: main'de gerçekten ne var, aktif faz ve açık eksikler.
-2. `PRODUCT_SPEC.md`: üç kolun işlev ve tasarım kuralları; `ROADMAP.md`: MVP sınırı ve faz sırası.
-3. `TASKS.md`, `CONTRIBUTING.md` ve yalnız ilgili `docs/plan/phase-xx.md`: görev, bağımlılık, sahiplenme ve devir. Tüm faz dosyalarını gereksiz yere okuma.
-4. Yalnız ilgili teknik karar için `DECISIONS.md`; UI işinde `docs/references/README.md` ve ilgili görseller.
-5. En küçük uygulama kesiti: ilgili sayfa + Worker + migration + test. Görev veya gerileme gerektirmedikçe eski PR geçmişini tarama.
+1. [PROJECT_STATE.md](PROJECT_STATE.md): `main` üzerinde doğrulanmış mevcut durum.
+2. [PRODUCT_SPEC.md](PRODUCT_SPEC.md) ve [ROADMAP.md](ROADMAP.md): üç yüzeyli MVP'nin ürün sınırı ve Faz 17'ye kadar sırası.
+3. [TASKS.md](TASKS.md), [CONTRIBUTING.md](CONTRIBUTING.md) ve [ajan çalışma akışı](docs/plan/agent-workflow.md): görev, sahiplik, bağımlılık ve devir.
+4. Yalnız görevin ilgili faz/kontrat belgesi, kodu ve testleri. Teknik karar gerekiyorsa [DECISIONS.md](DECISIONS.md); onaylı bir UI referansı varsa [referans matrisi](docs/references/README.md) okunur.
 
-Kullanıcının açık güncel talebi önceliklidir. Hedef, uygulanan durum ve doğrulanmış sonuç ayrı yazılır. Bir dosyadaki plan veya yeşil SQL testi tüm ürünün çalıştığı anlamına gelmez.
+Kullanıcının açık ve güncel talebi önceliklidir. Planlanan durum, uygulanmış kod ve doğrulanmış sonuç ayrı raporlanır. Sohbet tek kalıcı talimat veya devir kaynağı olamaz.
 
-## Ürün kuralları
+Teknik düzeltmeler `S01…S08` ve kapı `GS`, [stabilizasyon planında](docs/plan/stabilization.md) tanımlıdır. Güncel tamamlanma ve açık PR sahipliği TASKS/PROJECT_STATE üzerinden kontrol edilir; tarihsel teslim yeni iş gibi sahiplenilmez. `K01…K03`, [mimari sözleşmelerdeki](docs/plan/architecture-contracts.md) tasarım bölümleridir, bağımlılık düğümü değildir. Plan değişikliği uygulama başlatmaz. Koordinatör mimari ve bağımsız incelemeyi yürütür; kullanıcının seçtiği varsayılan uygulayıcı **GPT-5.6 Sol**'dür. İnsan veya başka ajan katkısı açık dosya/görev sınırıyla aynı protokole uyar.
 
-- Üç kol: **müşteri paneli, randevu paneli, SalonApp**. Tek repo, ortak backend ve ortak işletme/müşteri/randevu verisi kullanılır.
-- Müşteri tarafında işlev eşdeğerliği korunarak daha estetik bir deneyim yapılır.
-- Randevu paneli ve SalonApp'te referansın menü, alan ve işlem sırası korunur; farklar küçük görsel/ergonomik iyileştirmelerdir. Takvimin yerine başka bir ana deneyim koyma.
-- SalonApp alt menüsü: **Randevular / Adisyonlar / Yeni / Müşteriler / Diğer**. İşletme müşteri kayıtları ile halka açık müşteri panelini karıştırma.
-- 11 Eylül kararı adisyon, manuel tahsilat ve sınırlı ürün/stok/kasa genişlemesini kapsar. Eski genel ödeme/stok yasağını bu onaylı kapsama uygulama. Çevrimiçi ödeme, muhasebe, e-fatura, bordro, ERP, marketplace ve AI ayrı kapsamdır.
-- Çok hizmet/personel, adisyon, tahsilat ve kalan referans işlevleri henüz yapılmadıysa eksik olarak tutulur; sahte veri/buton ile tamamlandı gösterilmez.
-- Kullanıcı ekranları Türkçedir; faz, tenant, RPC ve benzeri uygulama ayrıntıları ürün metni değildir.
-- Referans görseller yalnız dokümantasyondadır; rakip kimliği ve örnek verileri üretim varlığına dönüştürme.
+## Ürün ve mimari sınırları
 
-## Mimari kurallar
+- MVP'nin üç yüzeyi **müşteri paneli, randevu paneli ve SalonApp**'tir. Ortak backend ile işletme, müşteri, personel, randevu ve mali kayıtları paylaşırlar.
+- Müşteri panelinde işlev eşdeğerliği korunarak özgün ve daha estetik bir deneyim kurulur. Randevu paneli ile SalonApp'te referansın bilgi, menü ve işlem sırası korunur. SalonApp alt menüsü **Randevular / Adisyonlar / Yeni / Müşteriler / Diğer** olarak kalır.
+- Adisyon, manuel tahsilat ve sınırlı ürün/stok/kasa kapsam içindedir. Çevrimiçi ödeme, muhasebe, e-fatura, bordro, ERP, marketplace ve AI kapsam dışıdır. Yapılmamış iş, sahte veri veya etkisiz butonla tamamlanmış gösterilmez.
+- Kullanıcı ekranları Türkçedir. `tenant`, RPC, faz ve benzeri uygulama ayrıntıları ürün metnine taşınmaz. Referanslardaki rakip kimliği ve örnek veri üretim varlığı yapılmaz.
+- `Business` tenant köküdür. Client business ID veya seçim cookie'si yetki değildir. Yetki Supabase Auth, aktif `Membership` ve RLS ile doğrulanır; Worker'a service-role anahtarı eklenmez.
+- Birleştirilmiş migration dosyaları değişmez. Yeni veri davranışı ileri migration ve anlamlı gerileme kanıtıyla eklenir. Cross-tenant FK/RLS sınırları korunur.
+- Zaman, işletmenin IANA timezone'u ve gerçek `timestamptz` anlarıyla hesaplanır. Personel çakışmasının son güvencesi tamponları da kapsayan PostgreSQL exclusion constraint'idir.
+- Oluşturma, taşıma, durum ve mali işlemler tekrar güvenlidir. Snapshot ve audit korunur; çok satırlı işlem yarım kayıt bırakmaz. Randevu durumu ile adisyon/tahsilat durumu ayrı tutulur.
+- Takvim ve SalonApp aynı randevu durum/çakışma motorunu kullanır. Para tutarı sunucuda hesaplanır; kapanmış mali kayıt sessizce değiştirilmez veya silinmez.
+- Public rezervasyon opt-in'dir. Anon kullanıcı yalnız dar yetkili RPC'leri kullanır. Yönetim bağlantısı `/m#<token>` ve POST body kullanır; düz token/link loga veya veritabanına yazılmaz.
+- Bildirim hatası randevu sonucunu belirsizleştirmez. İstemcinin sağlayıcı gönderim beyanına güvenilmez.
 
-- `Business` tenant köküdür. Client business ID veya işletme seçim cookie'si yetki değildir.
-- Üye yetkisi Supabase Auth + aktif `Membership` + RLS ile doğrulanır. Worker'a service-role anahtarı ekleme; cross-tenant composite FK/RLS sınırlarını koru.
-- Birleştirilmiş migration dosyaları değişmez. Onaylı yeni kapsam ileri migration ve gerileme testleriyle eklenir.
-- Zaman işletme IANA timezone'u ve gerçek `timestamptz` anlarıyla hesaplanır. Tamponlar dahil personel çakışmasının son kontrolü PostgreSQL exclusion constraint'idir.
-- Oluşturma/taşıma/durum işlemleri tekrar güvenlidir; geçmiş snapshot ve audit korunur. Çok hizmetli işlem yarım kayıt bırakmaz.
-- Public rezervasyon opt-in'dir. Anon kullanıcı yalnız dar yetkili RPC'leri kullanır; tenant tablolarına doğrudan erişim verilmez.
-- Yönetim bağlantısı `/m#<token>` ve POST body kullanır. Düz token/link loglanmaz veya veritabanına yazılmaz; kurtarma/yeniden gönderim de bu sınırı korur.
-- Takvim ve SalonApp mevcut randevuların görünümüdür; ikinci randevu durum/çakışma motoru oluşturma.
-- Adisyon ve tahsilat durumu randevu durumundan ayrıdır. Tutarlar sunucuda, tenant/yetki ve tekrar güvenliğiyle yönetilir; kapanmış mali kayıt sessizce değişmez/silinmez.
-- Bildirim başarısızlığı randevu sonucunu belirsizleştirmez. Sağlayıcıya ait gönderim kaydına istemci beyanıyla güvenme.
+## Görev ve inceleme protokolü
 
-## Branch ve değişiklik protokolü
+- Her uygulama işi TASKS'taki tek kimlik, tek sahibi, başlangıç `main` SHA'sı, kısa ömürlü branch, açık dosya sınırı, kontratlar, kapsam dışı maddeler ve kabul ölçütleriyle başlar. Koordinatör bunları yazılı hale getirir; uygulayıcı kapsamı kendiliğinden büyütmez.
+- TASKS ve açık PR'lar birlikte kontrol edilir. Açık devir veya sahip varken aynı kapsam tekrar sahiplenilmez. Ortak dosya ya da migration için yazım sırası, uygulamadan önce belirlenir.
+- Bağımlılık alanlarında yalnız `TEMEL`, `Sxx`, `Fxx-yy`, `GS` ve `Gxx` sembolleri kullanılır. Bir görev `K01…K03` sözleşmesine uyabilir veya atıf verebilir; bu atıf görev bağımlılığı değildir.
+- `GS`, S01…S08'in tümü kabul edilmeden yeni özellik uygulamasını engeller. F12-01 tasarım çalışması ayrı planlanabilir; bu istisna özellik kodunu başlatmaz.
+- Uygulayıcı görev türüne uygun beceriyi okuyup kullanılan sabit beceri adını devirde kaydeder. Beceri bulunamıyorsa okunmuş sayılmaz; eksik kaydedilir ve koordinatör belgelenmiş güvenli eşdeğeri seçer. Ayrıntılı yönlendirme [ajan çalışma akışındadır](docs/plan/agent-workflow.md).
+- Auth, para ve migration işleri uygulayıcı kanıtından sonra koordinatör tarafından bağımsız incelenir. İnceleme, uygulayıcının kendi yeşil test beyanıyla tamamlanmış sayılmaz.
+- Kapsam veya ajan rolü çatışması ile gerçek erişim/izin sınırları korunur. Bu belgeler yeni kullanıcı onayı icat etmez; oturumda verilmiş yetki yeniden istenmez.
+- Faz 1–8 yalnız kanıtlanmış hata veya onaylı yeni gereksinim için genişletilir. Eski branch ya da PR, güncel üç yüzeyli MVP kararını geri çeviremez.
 
-- Her uygulama işi `F09-01` gibi görev kimliğiyle yürür. TASKS ve açık PR'lardan sahip/bağımlılık kontrol edilir; tek görev/dosya alanı sahiplenilir. Ortak dosyaya iki ajan yazmadan sınırlar ve merge sırası netleşir.
-- Bu planlama teslimatı yeni uygulama fazı başlatmaz. Kullanıcının yetkilendirdiği iş kapsamında ilerle; başka ajanların katkı verebilmesi otomatik ajan görevlendirmesi değildir.
-- Yeni işe güncel main'den kısa ömürlü `phase-<n>-<concern>` veya `codex/<concern>` branch'iyle başla; PR tek faz/alt iş taşısın. Üç ürün kolu üç kalıcı geliştirme branch'i değildir.
-- `phase-2-auth-tenant` eski temeldir; güncel main'in auth uygulamasıyla karıştırma. Başka oturumun kaydedilmemiş yerel işini ezme veya doğrudan main'e taşıma.
-- Faz 1–8'i sırf yeni UI için yeniden yazma; kanıtlanan hata veya onaylı yeni gereksinim için ilgili kesiti genişlet.
-- Eski branch/PR birleştirilirken dokümanları eski ürün sınırına döndürme. Güncel üç kol kararı ve fazların mevcut/planlanan ayrımı korunur.
-- PR açıklamasında ürün kolunu, faz/alt işi, davranış değişimini ve doğrulama kanıtını belirt. Faz biterken `PROJECT_STATE.md` ve ilgili referans satırını güncelle.
-- Oturum sonunda görev/branch/commit/PR, test kanıtı, engel ve sonraki somut adımı CONTRIBUTING devir formatıyla bırak; TASKS'taki kendi satırını güncelle. Kod birleşmesi ile kartın tüm kabulünün tamamlanması ayrıdır.
-- Kullanıcının verdiği devam/merge yetkisini uygula; bu belge kendiliğinden yeni bir kullanıcı onay adımı eklemez.
+## Doğrulama
 
-## Zorunlu kontrol
+Kod değişikliklerinde mevcut zorunlu kapı, S06 kapsamında ayrı bir kod değişikliğiyle incelenip değiştirilene kadar korunur:
 
 ```bash
 npm ci
@@ -54,14 +46,10 @@ npm run typecheck
 npm run build
 ```
 
-GitHub CI tüm PostgreSQL migration/gerileme testlerini geçmelidir. Kırmızı DB kontrolü atlanarak merge yapılmaz. İlgili fazın HTTP/hata/tarayıcı kabul ölçütleri ayrıca doğrulanır; test kapsamı dışındaki canlı kullanım hazır diye raporlanmaz.
+GitHub CI içindeki tüm PostgreSQL migration/gerileme testleri de geçmelidir. Görevin riski auth, yetki, idempotency, concurrency, para, ağ hatası veya gerçek UI davranışıysa ilgili negatif/entegrasyon/tarayıcı kanıtı eklenir. Uygulamayı kopyalayan düşük değerli test yazılmaz. Aynı hipotez 2–3 kez başarısız olursa yeni varyasyon denemek yerine koordinatör incelemesi istenir. Somut yeni risk yoksa tüm test paketi tekrar tekrar çalıştırılmaz.
 
-## Dosya haritası
+Yalnız doküman değişikliğinde bağlantılar, bağımlılıklar, durum tutarlılığı ve diff doğrulanır; repo politikası ayrıca gerektiriyorsa mevcut CI çalıştırılır. Test kapsamı dışındaki canlı kullanım hazır diye raporlanmaz.
 
-- Takvim: `worker/calendar.ts`, `src/CalendarPage.tsx`, `src/calendar.css`, Faz 8 migration/test.
-- Randevu işlemleri: `worker/bookings.ts`, `src/BookingPage.tsx`.
-- Müsaitlik: `worker/availability.ts`, `src/AvailabilityPage.tsx`.
-- Public rezervasyon: `worker/public-booking.ts`, `src/PublicBookingPage.tsx`.
-- Müşteri yönetimi: `worker/customer-manage.ts`, `src/ManageAppointmentPage.tsx`.
-- Auth/işletme/katalog: `worker/index.ts`, `src/App.tsx`.
-- SalonApp/adisyon/tahsilat: planlandı; henüz varmış gibi dosya/route varsayma.
+## Devir
+
+Her oturumun kalıcı devri görev kimliğini, base SHA'yı, branch'i, head commit/PR'ı, değişen dosyaları, korunan/değişen kontratları, okunan beceriyi, test kanıtını ve sonraki tek somut adımı içerir. Engel ve başarısız kontroller açık yazılır; secret, düz yönetim token'ı, parola veya gerçek müşteri verisi yazılmaz. Tam şablon [CONTRIBUTING.md](CONTRIBUTING.md#oturum-sonu-devri) içindedir.

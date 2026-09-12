@@ -13,6 +13,7 @@ Okuma başlangıcı: `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx
 - **İş ve çıktı:** Üç kol için tipografi, renk, ikon, alan ve durum dili; müşteri için salon → hizmetler → saat/personel → özet → sonuç/yönetim akışını çiz. 360/390 px müşteri, tablet/masaüstü işletme örneklerini ve yükleniyor/boş/hata durumlarını tanımla. SalonApp'in sabit alt menüsünü ve işletme tarafındaki küçük fark sınırını koru.
 - **Kabul:** Referanstaki her temel alan bir hedef ekrana bağlıdır. Çoklu hizmet, fiyat aralığı, seçili özet ve geri dönüş davranışı görünürdür. Rakip kimliği/fotoğrafları üretim tasarımına taşınmaz. Ziya'nın sağlayacağı gerçek logo/fotoğraf/metin listesi açıkça çıkarılır; eksik varlıklar gerçek veri gibi sunulmaz.
 - **Devir:** Ekran/alan eşleştirmesi, görsel kurallar ve ürün sahibinin geri bildirim notları. Bu çıktı çalışan müşteri paneli sayılmaz.
+- **v3 kapsam:** Görsel yön ve yeni kullanıcı dostu fikirler ayrı kullanıcı çalışmasıdır; bu teknik revizyon tasarım yapmaz. Mevcut onaylı işlevler korunur. Ortak metin/formatlama sınırı F16-08 için baştan tanımlanır; yeni tasarım sistemi altyapısı sırf gelecekte lazım olabilir diye kurulmaz.
 
 ## F12-02
 
@@ -23,16 +24,18 @@ Okuma başlangıcı: `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx
 - **İş ve çıktı:** Salon adı, açıklama, iletişim/adres, çalışma bilgileri ve işletmenin yayınlayacağı fotoğrafları ekle; Hizmetler/Bilgiler yüzeylerine bağla. Fotoğraf yükleme/boyut/tür kısıtları, silme ve yayın görünürlüğü tanımlansın.
 - **Kabul:** İşletme yalnız kendi profilini/görsellerini değiştirir; public API özel operasyon verisini döndürmez. Public yayın kapalıyken sayfa uygun yanıtı verir. Eksik/hatalı görsel yerleşimi bozmaz. Müşteriye ait özel hizmet fotoğrafı bu public alana otomatik konulmaz.
 - **Devir:** Alan ve depolama izinleri, kullanılabilir gerçek varlıklar ve erişim/boş durum testleri.
+- **v3 depolama:** K03 girdi/adet sınırlarını ve S08 erişim kapısını uygula. Public medya için boyutlandırma/çıktı formatı ve silme/orphan temizliği testlidir; özel görseli public bucket’a taşıma.
 
 ## F12-03
 
 **Hizmet kategorileri ve fiyat aralığı**
 
-- **Bağımlılık:** F10-04, F11-01.
+- **Bağımlılık:** F10-04.
 - **Sorumluluk:** Veri/backend + katalog arayüzü. **Çakışma alanı:** Hizmet kataloğu ve fiyat snapshot sözleşmesi.
 - **İş ve çıktı:** Kategori/sıra ve sabit fiyat/fiyat aralığı desteğini ileri migration ile ekle. Tek fiyatlı eski hizmetleri koru. Çok hizmetli tahmini toplam, para birimi ve fiyatın kesinleşme anını açıkça tanımla; adisyonun kesin fiyatına aktarılacak alanları belgele.
 - **Kabul:** Negatif fiyat, alt > üst ve uyumsuz para birimi reddedilir. Fiyat değişimi geçmişi değiştirmez. Tahmini aralık kesin tahsilat olarak sunulmaz; istemci toplamı sunucu için yetkili kaynak değildir. Seçili/pasif hizmet davranışı korunur.
 - **Devir:** Fiyat alanları, örnek sabit/aralık toplamları, geriye uyum testleri ve F14/F16 promosyon entegrasyon sözleşmesi.
+- **Bağlayıcı sözleşme:** [K02](architecture-contracts.md#k02). Bu veri işi F11-01’den **önce**, F12 görsel işlerinden bağımsızdır. Eski fixed fiyat kayıpsız alt=üst olarak eşlenir; mevcut tek hizmetli appointment snapshot’ı değişmez. Sabit/aralık ayrımı ve ortak yuvarlama test edilir; F10-04 formu/API’si dar biçimde genişletilir.
 
 ## F12-04
 
@@ -43,6 +46,7 @@ Okuma başlangıcı: `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx
 - **İş ve çıktı:** Kategori/hizmet seçimi, seçili adet/özet, hizmet sırası, tercih edilen/uygun personel, bugün/yarın/tarih ve slot seçimini gerçek API'ye bağla. Favoriyi ilk sürümde cihazda tut; paylaşımı güvenli public salon bağlantısıyla yap.
 - **Kabul:** İki hizmetin süre/personel/fiyatı tüm adımlarda tutarlıdır. Dolu saat seçilemez; son anda dolan saatte seçim korunup yeni uygunluk sunulur. Hızlı filtre/tarih geçişinde eski cevap ekrana dönmez. İşlem kişisel veriyi URL'ye taşımaz.
 - **Devir:** Gerçek API ile mobil akış görüntüleri, boş/çakışma/yavaş bağlantı testleri ve F12-05'in kullanacağı seçim durumu.
+- **v3 uygulama sınırı:** K01 grup kimliği, K02 tahmin ve K03 limitleri tek sunucu yanıtından tüketilir. Yeni feature fetch/auth/formatlama kopyası eklenmez; S02 ortak istemci kullanılır.
 
 ## F12-05
 

@@ -38,8 +38,9 @@ Başlangıç F14 adisyon/tahsilat sözleşmesidir. Ürün/stok/rapor modülleri 
 
 **Kasa, gün sonu ve temel raporlar**
 
-- **Bağımlılık:** F15-02, F15-03, F14-05.
+- **Bağımlılık:** F15-02, F15-03, F14-03.
 - **Sorumluluk:** Veri/backend + işletme arayüzü/QA. **Çakışma alanı:** Mali rapor projeksiyonları.
 - **İş ve çıktı:** Nakit/kart tahsilat, iade/düzeltme, masraf, ürün satışı, kalan bakiye ve gelir-gider görünümü; işletme gününe göre filtre/gün sonu özeti ekle. Beklenen randevu bedeli, satış ve gerçekleşen tahsilatı ayrı adlandır; kasa toplamını randevu listesinden hesaplama.
 - **Kabul:** Örnek 1.000 TL tahsilat − 100 TL iade − 150 TL masraf = 750 TL net hareket; nakit ve kart kırılımı kaynak kayıtlarla eşleşir. Tahsil edilmemiş 300 TL bakiye para girişine eklenmez. Gece/DST gün sınırı, tarih filtresi, yetki ve iki tenant sınırı geçer.
 - **Devir:** Hesap tanımları, mutabakat veri seti ve G15 kanıtı. Gün sonu özeti mali kayıtları geriye dönük kilitleyen ayrı muhasebe motoru sayılmaz.
+- **v3 sıra:** Rapor/mutabakat PWA veya üç kol kabulünü beklemez; F14-03 mali sözleşmesi yeterlidir. G14/G15 birleşik kabulü F17’de ayrıca aranır. K02/K03 kaynak hareketi, tarih, sayfalama ve maliyet sınırları kullanılır.

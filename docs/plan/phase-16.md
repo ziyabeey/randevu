@@ -13,16 +13,18 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **İş ve çıktı:** Sıklık/adet, seri önizlemesi, çakışma listesi, tek oluşum ve gelecek oluşumlar için açık değişiklik kapsamı ekle. İlk sürümde sınırlı adetli seri atomik oluşturulur; bir oluşum çakışırsa tüm seri reddedilir. Adet üst sınırını performans ölçümüyle belgeleyip sunucuda uygula.
 - **Kabul:** DST/izin/kapanış içeren seri yanlış saate kaymaz; çakışmalar kullanıcıya hangi tarihte olduğunu gösterir. Tekrar istek ikinci seri üretmez. Tamamlanan geçmiş oluşum değişmez; geleceği taşıma/iptalde kapsam önizlemesi ve audit vardır.
 - **Devir:** Seri/oluşum kimlikleri, durum olayları, limit ve F16-02'nin kullanacağı güncel sürüm bilgisi.
+- **v3 olay kabulü:** Her seri oluşumu K01 grup kimliği ve S03/F16-02 olay-sürüm sözleşmesini kullanır. K03 başlangıç seri sınırı uygulanır. F16-02 henüz bitmediyse olay kontratı test edilir; G16’da gelecek seriyi taşıma/iptal ile eski hatırlatma baskılama birlikte doğrulanır.
 
 ## F16-02
 
 **Hatırlatma, SMS ve yaşam döngüsü bildirimleri · 16A**
 
-- **Bağımlılık:** F09-05, F16-01, F17-01.
+- **Bağımlılık:** F09-05, F11-03, F17-01.
 - **Sorumluluk:** Backend + işletme ayarları/QA. **Çakışma alanı:** Ortak bildirim işleri ve şablonlar.
 - **İş ve çıktı:** E-posta/SMS hatırlatma, iptal/taşıma bildirimi ve randevu başına kanal/hatırlatma tercihlerini ekle. Zamanlanmış gönderim güncel durum/sürüme bağlı olsun; işlem mesajlarıyla pazarlama amaçları karıştırılmasın. Sağlayıcı hesabı/gönderici ve test alıcıları ortam notunda belirtilsin.
 - **Kabul:** İptal edilen/taşınan randevunun eski saat mesajı gönderilmez. Kuyruk tekrarında aynı olay için kontrolsüz çift mesaj oluşmaz. Kanal yokluğu/sağlayıcı kesintisi randevuyu bozmaz; gerçek test alıcısında teslim doğrulanır. Mesaj içeriği başka tenant veya gereksiz özel bilgi taşımaz.
 - **Devir:** Olay/kanal matrisi, şablonlar, yeniden deneme sınırları, gerçek teslim kanıtları ve maliyet/limit ayarlarının nereden yönetildiği.
+- **v3 sıra ve sınır:** Seri özelliğini beklemez; tek/çok hizmetli normal grup olaylarına bağlanır. Aynı notification motoru ve S03 provider anahtarı/sabit içerik modeli kullanılır. Seri hazır olduğunda yalnız olay üreticisi entegre edilir; G16 ortak kabulü ikisini test eder. SMS sağlayıcı/ücret/limit ve güvenli test alıcısı uygulama öncesi somutlaştırılır.
 
 ## F16-03
 
@@ -33,16 +35,18 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **İş ve çıktı:** Randevu detayındaki Fotoğraf sekmesi ve işletme hizmet fotoğrafı arşivi; yükleme, görüntüleme ve silme kuralları ekle. Özel müşteri fotoğrafı ile public salon fotoğrafını ayır; yayınlama açık bir işlem olsun.
 - **Kabul:** Yetkisiz veya başka işletme kullanıcısı tahmin ettiği dosya yolu/URL ile erişemez. Geçici erişim süresi dolması/üyelik iptali davranışı testlidir. Dosya türü/boyutu doğrulanır; silinen veya başarısız yüklenen görsel ekranı bozmaz.
 - **Devir:** Erişim/yayınlama modeli ve public/özel negatif testleri; veri saklama/silme çalışma notu.
+- **v3 sınır:** K03 boyut/adet/saklama ve S08 storage/DB erişim kuralları kullanılır. Kalıcı public URL ile özel içerik sunulmaz; üyelik iptali ile geçici erişimin geçerlilik sınırı açıkça kaydedilir. Restore kapsamına görseller eklenir.
 
 ## F16-04
 
 **Yorum, geri bildirim ve destek · 16B**
 
-- **Bağımlılık:** F12-05, F16-03.
+- **Bağımlılık:** F12-05.
 - **Sorumluluk:** Backend + müşteri/SalonApp arayüzü. **Çakışma alanı:** Geri bildirim/yayın durumu.
 - **İş ve çıktı:** Randevuya bağlı müşteri geri bildirimi, yayınlanacak yorumlar ve işletmenin geri bildirim listesi; ulaşılabilir destek yolu ekle. Kaynak doğrulama, mükerrer yorum, moderasyon/yayınlama ve kişisel bilgi görünürlüğünü açıklaştır.
 - **Kabul:** Sahte/başka randevu kimliğiyle yorum oluşturulamaz. Özel geri bildirim onaylanmadan public olmaz; başka işletme yorumu değiştirilemez. Müşteri Yorumlar sekmesi gerçek yayınlanmış kayıtları gösterir; destek bağlantısı çalışır.
 - **Devir:** Yorum durumları, kötüye kullanım testleri ve müşteri/işletme iki yüzündeki gerçek kayıt kanıtı.
+- **v3 sıra:** Bu iş özel fotoğraf modülünü beklemez; doğrulanmış randevu/grup yetkisi yeterlidir. Public yorum yazımı S04 kaynak sınırları ve dar yetki modelini genişletir.
 
 ## F16-05
 
@@ -53,6 +57,7 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **İş ve çıktı:** Belirli hizmet/adet/süre koşullu paket, satış, kalan hak ve kullanım/düzeltme hareketlerini ekle. Yeni paket satışı yolunu aç; müşteri/adisyon geçmişine bağla. Hizmetin paketten karşılanması ile paket satış tahsilatının ilişkisini tanımla.
 - **Kabul:** İki eşzamanlı kullanım son hakkı iki kez tüketmez; süresi dolan/başka işletmeye ait paket reddedilir. İptal/iade/kullanım geri alma hak ve mali kayıtları tutarlı etkiler. Paket satışı ve hizmet kullanımı kasa/primde yanlışlıkla iki gelir olarak sayılmaz.
 - **Devir:** Hak/mali olay sözleşmesi, örnek hesaplar ve paket bakiye gerileme testleri.
+- **v3 mali sözleşme:** K02 kaynak satış/hak/para ayrımı kullanılır. Kullanım, iptal ve paket iadesi politikası Ziya’nın örnek hesabıyla başlarken netleştirilir; tüketilmiş hak ve iade tutarı ilişkisi deneysel rastgele karar değildir.
 
 ## F16-06
 
@@ -63,6 +68,7 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **İş ve çıktı:** Süre/hizmet/işletme/kullanım limiti ile sınırlı sabit veya yüzdelik indirim ekle. Müşteri özetindeki kodu adisyondaki gerçek hesapla bağla; indirimlerin birlikte kullanımı ve yuvarlamasını açık kurala bağla.
 - **Kabul:** İstemci fiyatı/indirim oranı kabul edilmez; kod koşulları kayıt anında yeniden doğrulanır. Aynı son kullanım hakkı eşzamanlı iki işlemde tüketilmez. İndirim toplamı negatife düşürmez; tarih/iptal ve fiyat aralığı belirsizliği doğru gösterilir.
 - **Devir:** Koşul/hesap sözleşmesi, yetki/limit testleri ve müşteri özetinden adisyona tutarlı örnek.
+- **v3 mali sözleşme:** K02 fiyat/politika snapshot’ı ve yuvarlama kullanılır. Başlarken paketle birlikte kullanım, kampanya limitinin rezervasyon anında ayrılması/kullanılması ve iptal sonrası serbest bırakılması örnekli karara bağlanır; kullanım kotası bu kararla transaction’da korunur.
 
 ## F16-07
 
@@ -73,6 +79,7 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **İş ve çıktı:** Hizmet/ürün/personel oranı ve hak kazanma temeli tanımla; paket, indirim, kısmi tahsilat ve iadeyi hesaba kat. Geçerli oranları geçmişe uygulayarak eski raporu sessizce değiştirme. Ziya'nın örnekleriyle tabloyu doğrula.
 - **Kabul:** Hesap tanımı raporda görünür; dağıtılan pay kaynak tutarı aşmaz. Düzeltme/iade prim etkisi izlenir, personel doğru satıra bağlanır. Yetkisiz staff başkasının/işletmenin mali raporunu göremez. Bordro/maaş motoru eklenmez.
 - **Devir:** Onaylı hesap örnekleri, tarihli oran/snapshot yaklaşımı ve kaynak hareketlerle mutabakat.
+- **v3 mali sözleşme:** K02 kaynak hareketi, fiyat ve oran sürümü kullanılır. Hak kazanmanın hizmet mi tahsilat mı temelli olduğu, paket/iskonto/kısmi ödeme/iade etkisi koddan önce Ziya’nın örnekleriyle kesinleşir. Bu bir performans deneyi değildir; karar değişirse tarihli yeni politika olur.
 
 ## F16-08
 
@@ -85,3 +92,4 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **Devir:** Menü/route eşleştirmesi, desteklenen diller, plan durumları ve referanstaki kalan açıkların listesi.
 
 G16 için sekiz görevin kabulü ve referans matrisi birlikte kapanır. Adisyon/rapor formunun görsellerde görünmeyen ayrıntıları YZT tasarımı olarak belgelenir; rakibin bilinmeyen davranışı hakkında iddia kurulmaz.
+- **v3 bakım sınırı:** F10/F12/F13’te kurulan ortak metin/tarih/tutar sınırını kullan; tüm ekranları yeni framework’le yeniden yazma. Plan/erişim modeli gelecekteki PDF abonelik/AI kredi sistemini bu MVP’ye taşımaz.

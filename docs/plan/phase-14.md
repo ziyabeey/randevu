@@ -23,6 +23,7 @@ Mevcut başlangıç: ortak kabuk, booking/calendar/customer API'leri. Adisyon/ta
 - **İş ve çıktı:** Randevu grubundan veya randevusuz adisyon aç; hizmet/personel/müşteri/fiyat snapshot'larını taşı. Açık/kapalı/iptal adisyon ile ödenmemiş/kısmi/ödenmiş bakiyeyi ayır. Fiyat aralığının kesin bedele dönüşümü ve iskonto yetkisini tanımla.
 - **Kabul:** Aynı randevudan eşzamanlı tekrar açma tek adisyon döndürür. Tenant composite ilişkiler ve RLS çalışır. Açık adisyonu kimlerin değiştireceği bellidir; kapalı kayıt sessizce değişmez/silinmez. Kesin tutarı belirlenmemiş hizmet tahsilata hazır sayılmaz.
 - **Devir:** Durum/izin matrisi, para birimi ve yuvarlama kuralları, API örnekleri, yeni migration/testler. Ürün satırı F15-02'de eklenir.
+- **Bağlayıcı sözleşme:** K01 grup/satır kaynak kimliği ve K02 para/fiyat/finalization. F10-02’nin owner tarafından yönetilen açık mali izin kaydı endpoint ve DB’de güncel olarak uygulanır; ikinci izin sistemi kurulmaz. Bu görev paket/prim/promosyon tablolarını erkenden kurmaz; kaynak kimliği ve düzeltme/politika alanlarını korur. Fiyat aralığı sınır dışı kesinleştirmede aktör/gerekçe kaydı zorunludur.
 
 ## F14-03
 
@@ -33,6 +34,7 @@ Mevcut başlangıç: ortak kabuk, booking/calendar/customer API'leri. Adisyon/ta
 - **İş ve çıktı:** Gerçekleşmiş nakit/kart tahsilatı, kısmi/bölünmüş ödeme, kalan bakiye, kapatma ve yetkili düzeltme/iade kaydı ekle. Tutarlar en küçük para birimiyle sunucuda hesaplanır; mali kayıtlar izlenebilir hareketlerle düzeltilir.
 - **Kabul:** Aynı tahsilat anahtarının tekrarı ikinci kayıt yaratmaz; farklı içerikle reddedilir. Eşzamanlı tahsilat/iskonto/iade bakiyeyi bozmaz, kalan tutardan fazla ödeme ve tahsil edilenden fazla iade engellenir. Staff varsayılan mali yetki alamaz. Randevu tamamlanması ödeme, iptali otomatik iade sayılmaz.
 - **Devir:** Hareket/bakiye örnekleri, kapatma/yeniden açma politikası ve concurrency/tenant/rol testleri. Kart tahsilatını kaydetmek çevrimiçi kart çekimi değildir.
+- **v3 mali kabul:** Açık mali izni geri alınan staff’ın açık tahsilat formundan yazımı reddedilir; owner/manager rol ve staff izin örnekleri API/DB’de birlikte test edilir. K02 yuvarlama/dağıtım ve kaynak iade referansı örnekleri geçer. Kısmi tahsilat sonrası fiyat/iskonto ve eşzamanlı kapatma negatif bakiye üretmez; timeout sonrası sonuç aynı anahtarla kurtarılır. İş politikasındaki açık karar kodlamadan önce örnek hesapla yazılır.
 
 ## F14-04
 
@@ -41,7 +43,7 @@ Mevcut başlangıç: ortak kabuk, booking/calendar/customer API'leri. Adisyon/ta
 - **Bağımlılık:** F14-01, F14-03.
 - **Sorumluluk:** Mobil/işletme arayüzü. **Çakışma alanı:** Adisyon listesi, editör ve tahsilat formu.
 - **İş ve çıktı:** Açık/kapalı adisyon listesi; hizmet/personel satırları, toplam/iskonto/bakiye, tahsilat ve işlem geçmişini göster. Randevu detayından ve Yeni menüsünden erişim ver; müşteri geçmişine bağla.
-- **Kabul:** 600 TL adisyonda 200 TL nakit + 400 TL kart toplamı 600, kalan 0 gösterir; tekrar gönderimde değişmez. Yetersiz yetki anlaşılırdır. Ağ belirsizliğinde sonucu sorgular; başarısız işlemi ödendi göstermez. Satır/toplamlar sunucu sonucunu izler.
+- **Kabul:** 600 TL adisyonda 200 TL nakit + 400 TL kart toplamı 600, kalan 0 gösterir; tekrar gönderimde değişmez. Yetersiz yetki anlaşılırdır; F10-02 izin yönetimi tüketilir, bu ekran kendi başına yetki üretmez. Ağ belirsizliğinde sonucu sorgular; başarısız işlemi ödendi göstermez. Satır/toplamlar sunucu sonucunu izler.
 - **Devir:** Referansa yakın alan/işlem düzeni, mobil görüntüler ve F15 ürün/masraf bağlantıları.
 
 ## F14-05

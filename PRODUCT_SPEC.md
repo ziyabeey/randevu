@@ -1,6 +1,6 @@
 # YZT Randevu — Ürün Kuralları
 
-Karar tarihi: 11 Eylül 2026. Kaynak: ürün sahibinin üç kol kararı ve paylaştığı 11 mobil ekran.
+Karar tarihi: 11 Eylül 2026. Kaynak: ürün sahibinin üç kol kararı ve paylaştığı 11 mobil ekran. 12 Eylül plan v3 teknik sıra/kontrat revizyonu bu ürün kapsamını korur; yeni kullanıcı dostu özellik/görsel kararlar ayrı çalışmadır.
 
 Bu dosya hedef davranışı tanımlar. Uygulanan özellikler için [PROJECT_STATE.md](PROJECT_STATE.md), sıra ve kabul ölçütleri için [ROADMAP.md](ROADMAP.md) esas alınır. Buradaki bir özelliğin listelenmesi, kodda hazır olduğu anlamına gelmez.
 
@@ -40,7 +40,7 @@ Temel sıra: **salon ve hizmetler → tarih/saat/personel → özet ve iletişim
 
 - Temel rezervasyon ve yönetim için müşteri hesabı zorunlu değildir. Favori ilk sürümde cihazda tutulabilir; cihazlar arası hesap senkronu ayrı kapsamdır.
 - Çoklu hizmet seçimi tek bir müşteri işlemi olarak yürür; her hizmetin gerçek süresi, personeli ve doluluk kontrolü vardır. Bunun veri temeli Faz 11'dir.
-- Fiyat aralığı tahmini bedel olarak gösterilir; alt sınır kesin tahsilat gibi sunulmaz. Mevcut tek fiyat modelinin genişletilmesi Faz 12'de açıkça uygulanır.
+- Fiyat aralığı tahmini bedel olarak gösterilir; alt sınır kesin tahsilat gibi sunulmaz. Fiyat veri desteği F12-03’te, F11-01 grup snapshot migration’ından önce uygulanır; görsel müşteri işini beklemez. [K02](docs/plan/architecture-contracts.md#k02) ortak para/fiyat anlamını tanımlar.
 - Salon bilgisi ve fotoğraflar gerçek işletme verisidir. Yorum, promosyon veya SMS altyapısı tamamlanmadan çalışıyor görünen denetimler yayımlanmaz; eşdeğerlik matrisi bunları açık eksik olarak tutar.
 - Randevu kaydolduktan sonra bağlantı/mesaj işlemi hata verirse müşteriye "randevu oluşmadı" denmez. Yenileme ve tekrar deneme aynı sonucu kurtarabilmelidir.
 
@@ -100,3 +100,7 @@ Tam muhasebe, e-fatura, bordro, karmaşık stok ERP, çevrimiçi ödeme altyapı
 - Referans ekranlar [görsel eşleştirme dosyasında](docs/references/README.md) saklanır. Rakibin marka/fotoğrafı uygulama varlığı olarak kullanılmaz; örnek isim, fiyat ve tarihler canlı veri yapılmaz.
 - Özellik eşdeğerliği ve görsel kalite ayrı kontrol edilir. Tamamlanma, [fazın kabul ölçütleri](ROADMAP.md) ve gerçek doğrulama kanıtıyla kaydedilir.
 - Bu üç kollu hedefin MVP kabulü Faz 17 sonundadır. Faz 9–16'daki onaylı referans işlevleri kapsamda kalır; Faz 13/14 ara teslimattır. İnsan/ajanlara devredilecek işler [TASKS.md](TASKS.md), birleşik ürün kabulü [MVP_ACCEPTANCE.md](MVP_ACCEPTANCE.md) içindedir.
+
+## Plan v3 teknik kabul bağlantısı
+
+[S01–S08 / GS](docs/plan/stabilization.md) yeni özelliklerden önce mevcut teknik açıkları kapatır. [K01/K02/K03](docs/plan/architecture-contracts.md) ortak kimlik, para ve kaynak sınırlarıdır; uygulayıcı bunları üç yüzeyde ayrı ayrı yeniden tasarlamaz. F12-01 görsel yön ve yeni kullanılabilirlik fikirleri ayrıca ele alınır. Gelecek planı PDF’si bu MVP kapsamına dahil edilmez veya repoya kopyalanmaz.
