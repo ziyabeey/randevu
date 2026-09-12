@@ -22,7 +22,7 @@
     "staging:smoke": "node scripts/staging-smoke.mjs",
     "staging:f09-acceptance": "node scripts/staging-f09-acceptance-runner.mjs",
     "staging:f10-auth-acceptance": "node scripts/staging-f10-auth-acceptance.mjs",
-    "staging:s01-acceptance": "node scripts/staging-s01-recovery-acceptance.mjs"
+    "staging:s01-acceptance": "node scripts/staging-s01-recovery-acceptance-runner.mjs"
   },
   "dependencies": {
     "hono": "4.13.7",
