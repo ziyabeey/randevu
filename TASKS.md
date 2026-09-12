@@ -15,7 +15,7 @@
 
 | Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / PR / kanıt veya engel |
 | --- | --- | --- | --- | --- | --- |
-| [S01](docs/plan/stabilization.md#s01) | Recovery oturum sınırı | F10-01 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
+| [S01](docs/plan/stabilization.md#s01) | Recovery oturum sınırı | F10-01 | Tamamlandı | ChatGPT / 2026-09-12T16:06Z | `s01-recovery-session-boundary` · [PR #34](https://github.com/ziyabeey1-ai/randevu/pull/34) · [Devir](docs/handoffs/S01.md) · kırmızı CI `34691808686` · code CI `34703904598` · staging [`34704131649`](https://github.com/ziyabeey1-ai/randevu/actions/runs/34704131649) success: public mailbox recovery, PKCE, marker silme/onarım, refresh, ikinci sekme, invalid/replay, parola değişimi ve eski bearer sınırı |
 | [S02](docs/plan/stabilization.md#s02) | Ortak auth ve cookie mutation koruması | S01 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
 | [S03](docs/plan/stabilization.md#s03) | Bildirim içeriği/sürüm/tekrar tutarlılığı | F09-03 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
 | [S04](docs/plan/stabilization.md#s04) | Güvenli tekrar ve yönetim kaynak sınırı | F09-04 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
@@ -79,7 +79,7 @@
 
 | Kapı | Kapsam | Durum / kanıt |
 | --- | --- | --- |
-| GS | S01…S08 | Açık — yeni teknik düzeltmeler bekliyor |
+| GS | S01…S08 | Açık — S01 tamamlandı; S02…S08 bekleniyor |
 | G09 | F09-01…F09-05 | Tarihsel kapalı — PR #30, staging `34681540142`; yeni bulgular GS içinde ayrıca açık |
 | G10 | F10-01…F10-06 | Açık — F10-01 tarihsel tamam, GS ve kalan F10 görevleri bekleniyor |
 | G11 | F11-01…F11-04 | Açık — fiyat veri desteği F12-03 önce gerekir |
