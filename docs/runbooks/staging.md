@@ -16,7 +16,7 @@ Bu komut `CLOUDFLARE_ENV=staging` ile `wrangler.jsonc` içindeki staging environ
 
 ## GitHub `staging` environment secret sözleşmesi
 
-Aşağıdaki adlar GitHub Environment `staging` içinde tanımlanır. Değerler repo içinde tutulmaz.
+GitHub Environment `staging` içinde yalnız aşağıdaki **11 dış değer** tanımlanır. Bunlar repo içinde tutulmaz.
 
 ### Cloudflare deploy erişimi
 
@@ -26,32 +26,30 @@ Aşağıdaki adlar GitHub Environment `staging` içinde tanımlanır. Değerler 
 ### Supabase staging erişimi
 
 - `STAGING_DATABASE_URL` — yalnız staging Postgres bağlantısı; percent-encoded bağlantı URL'si.
-- `STAGING_SUPABASE_PROJECT_REF`
-- `SUPABASE_URL`
 - `SUPABASE_ANON_KEY` — Worker'ın mevcut Data/Auth API istemcisi için publishable/legacy anon key.
 - `SUPABASE_ADMIN_KEY` — **yalnız workflow'da** test Auth kullanıcılarını oluşturmak/güncellemek için server-side secret/service-role key. Worker runtime secret bundle'ına girmez.
 
-`SUPABASE_URL`, `STAGING_DATABASE_URL` ve `STAGING_SUPABASE_PROJECT_REF` aynı staging projesini göstermelidir; workflow bunu fail-closed kontrol eder.
+`STAGING_SUPABASE_PROJECT_REF=smizhsagjpqexveitbqu` ve `SUPABASE_URL=https://smizhsagjpqexveitbqu.supabase.co` staging'e ait public metadata olarak workflow'da sabittir; secret değildir. `STAGING_DATABASE_URL` aynı project ref'i içermelidir ve workflow bunu fail-closed kontrol eder.
 
-### İki sahte owner hesabı
-
-- `STAGING_OWNER_A_EMAIL`
-- `STAGING_OWNER_A_PASSWORD`
-- `STAGING_OWNER_B_EMAIL`
-- `STAGING_OWNER_B_PASSWORD`
-
-Bunlar gerçek müşteri/personel hesapları değildir. Workflow `scripts/staging-ensure-users.mjs` ile Supabase Admin Auth üzerinden email-confirmed test kullanıcıları oluşturur veya mevcut test kullanıcılarının parolasını aynı secret'a getirir.
-
-### Worker runtime
+### Worker runtime ve provider
 
 - `MANAGEMENT_LINK_ENCRYPTION_KEY_V1`
 - `PUBLIC_BOOKING_GATE_SECRET`
 - `NOTIFICATION_DISPATCH_SECRET`
 - `RESEND_API_KEY`
 - `NOTIFICATION_FROM_EMAIL`
-- `STAGING_APP_ORIGIN` — ör. staging Worker/custom-domain HTTPS origin'i.
+- `STAGING_APP_ORIGIN` — staging Worker/custom-domain HTTPS origin'i.
 
 Worker'a ayrıca `COOKIE_SECURE=true` verilir. `PUBLIC_APP_ORIGIN`, deploy sırasında `STAGING_APP_ORIGIN` değerinden üretilir.
+
+## İki sahte owner hesabı
+
+Fixture hesaplarının email adresleri workflow metadata'sıdır:
+
+- `randevu-staging-owner-a@example.com`
+- `randevu-staging-owner-b@example.com`
+
+Parolalar her workflow run'ında `crypto.randomBytes()` ile yeniden üretilir, GitHub masking'e eklenir ve yalnız o job'ın `GITHUB_ENV` dosyasında tutulur. Repo veya GitHub Environment secret'ı değildir. `scripts/staging-ensure-users.mjs` Supabase Admin Auth üzerinden email-confirmed kullanıcıları oluşturur veya aynı kullanıcıların parolasını o run'ın geçici parolasına günceller. Smoke aynı job içindeki maskelenmiş değeri kullanır.
 
 ## Supabase Auth URL ayarı
 
@@ -103,15 +101,17 @@ Her birinde ayrı owner membership, bir hizmet, bir personel, service↔staff e�
 
 `.github/workflows/staging.yml` manual `workflow_dispatch` ile çalışır. Sıra:
 
-1. secret contract doğrulaması,
-2. migration push,
-3. gerçek Auth test owner'larının hazırlanması,
-4. DB runtime hash provisioning,
-5. fixture reset + seed,
-6. `npm run build:staging`,
-7. runtime secret'larının geçici `/tmp` JSON dosyasından `wrangler deploy --secrets-file` ile yüklenmesi,
-8. gerçek staging smoke,
-9. geçici secret dosyasının her durumda silinmesi.
+1. bağımlılık kurulumu,
+2. ephemeral owner parolalarının üretilip maskelenmesi,
+3. 11 dış değer + workflow metadata sözleşmesinin fail-closed doğrulanması,
+4. migration push,
+5. gerçek Auth test owner'larının hazırlanması,
+6. DB runtime hash provisioning,
+7. fixture reset + seed,
+8. `npm run build:staging`,
+9. runtime secret'larının geçici `/tmp` JSON dosyasından `wrangler deploy --secrets-file` ile yüklenmesi,
+10. gerçek staging smoke,
+11. geçici secret dosyasının her durumda silinmesi.
 
 Cloudflare config `workers_dev: true` kullanır; custom domain daha sonra eklenebilir. `STAGING_APP_ORIGIN` deploy edilen gerçek HTTPS origin ile birebir aynı olmalıdır.
 

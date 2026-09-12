@@ -30,6 +30,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | Durable public booking e-postası | Main'de, F09-03 / PR #13 | Outbox/lease/retry/provider receipt tamamlandı; gerçek provider teslimi F09-05/F17 |
 | Public booking abuse sınırı | Main'de, F09-04 / PR #14 | Direct RPC bypass kapalı; guarded RPC + actor/network/business rate-limit + retention tamamlandı |
 | Test/CI + dependency bakım temeli | Main'de, F17-02 / PR #15 | Coverage gate, gerçek Chrome smoke, blocking audit ve 0-vulnerability lock baseline tamamlandı |
+| Staging ortamı | Engelli, F17-01 | Supabase hosted + ACL canlı doğrulandı; GitHub `staging` dış contract 17→11'e daraltıldı; Cloudflare/Resend/privileged secret provisioning bekleniyor |
 | SalonApp mobil kabuğu, adisyon ve tahsilat | Planlandı, Faz 14 | Henüz uygulama/route/tablo yok |
 | Ürün/stok, masraf, kasa/raporlar | Planlandı, Faz 15 | Sınırlı operasyon işlevleri |
 | Tekrar/SMS, yorum/fotoğraf, paket/promosyon, prim, hesap menüsü | Planlandı, Faz 16 | Ayrı alt işler |
@@ -42,6 +43,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 - **F09-03 tamamlandı:** PR #13 durable e-posta outbox, lease/retry, scheduled dispatcher, upgrade backfill ve server-only provider receipt authority ekledi.
 - **F09-04 tamamlandı:** PR #14 raw public RPC bypass'larını kapattı; Worker-only gate secret, signed HttpOnly actor proof, coarse network HMAC, actor/network/business PostgreSQL rate-limit ve bounded counter retention ekledi.
 - **F17-02 tamamlandı:** PR #15 CI/test envanter kapısı, gerçek headless Chrome smoke, tek HTTP test komutu ve blocking high/critical dependency audit ekledi; Cloudflare toolchain dar yükseltmesiyle `npm ci` 0 vulnerability baseline'a geldi.
+- **F17-01 engelli:** Supabase hosted staging ve ACL hardening canlı doğrulandı; gerçek staging probe `34671008590` GitHub environment provisioning katmanında fail-closed durdu. Repo bootstrap dış contract'ı 17 değerden 11'e indirir, fakat privileged hesap kimlikleri hâlâ dışarıdan provision edilmelidir.
 - Notification intent F09-02 recovery satırı appointment'a bağlandığında aynı outer booking transaction'ında doğar; provider HTTP booking response yolunda değildir.
 - Notification job state'leri `pending`, `leased`, `retry_wait`, `sent`, `failed_terminal`; lease varsayılanı 45 saniye, provider timeout 10 saniye, max deneme 8, bounded retry penceresi en fazla 72 saattir.
 - `sent`, provider'ın isteği kabul edip message ID verdiğini ifade eder; inbox teslimi değildir.
@@ -55,6 +57,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 - `f09-03-durable-notifications`: [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13), F09-03 teslimidir.
 - `f09-04-public-abuse-control`: [PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14), F09-04 teslimidir; ayrıntı [handoff](docs/handoffs/F09-04.md) içindedir.
 - `f17-02-ci-test-dependency-baseline`: [PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15), F17-02 teslimidir; ayrıntı [handoff](docs/handoffs/F17-02.md) içindedir.
+- F17-01 repo/staging zinciri: [PR #16](https://github.com/ziyabeey1-ai/randevu/pull/16), hosted uyumluluk/ACL [PR #17](https://github.com/ziyabeey1-ai/randevu/pull/17) + [PR #18](https://github.com/ziyabeey1-ai/randevu/pull/18), canlı sınır kaydı [PR #19](https://github.com/ziyabeey1-ai/randevu/pull/19) + [PR #20](https://github.com/ziyabeey1-ai/randevu/pull/20), dış secret yüzeyi daraltması [PR #21](https://github.com/ziyabeey1-ai/randevu/pull/21).
 - `phase-9-email-delivery`: [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), superseded eski taslaktır; synchronous send ve anon receipt modeli kullanılmaz.
 - `phase-2-auth-tenant`, Faz 1 seviyesinde kalan eski branch'tir; main auth durumunu temsil etmez.
 
@@ -62,7 +65,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 
 | Bulgu | Etki | Faz |
 | --- | --- | --- |
-| Gerçek Supabase + Resend staging teslimi ve gerçek abuse/load davranışı henüz doğrulanmadı | CI fixture/stub kanıtı production davranışı değildir; gate/config/secret provisioning gerçek ortamda doğrulanmalı | 9 / F09-05, 17 |
+| Hosted Supabase staging + ACL doğrulandı; Cloudflare deploy, Resend sender ve GitHub `staging` privileged config henüz provision edilmedi | CI fixture/stub kanıtı provider/deploy davranışı değildir; 11 dış değer bağlanıp gerçek workflow/smoke yeşil olmalı | 9 / F09-05, 17 |
 | Personel kaydı üyelik/davet üretmiyor; parola kurtarma ve işletme geçişi UI'sı eksik | Çok kullanıcılı günlük kullanım tamamlanmış değil | 10 |
 | Auth/istek yardımcıları Worker modüllerinde tekrarlanıyor; hata/Origin/CSRF davranışı merkezi değil | Oturum ve güvenlik düzeltmeleri birlikte uygulanmalı | 10 |
 | Takvimde otomatik güncelleme ve eski yanıt koruması yok | Public/diğer çalışan işlemleri geç veya yanlış seçimde görünebilir | 13 |
@@ -163,7 +166,10 @@ Birleştirilmiş eski migration'lar değiştirilmez; yeni davranış ileri migra
 - [F09-03 PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13): CI `34653785166` success; provider stub + tam PostgreSQL + concurrency + upgrade/backfill kapsandı.
 - [F09-04 PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14): CI `34656950693` success; Worker abuse contract, direct-RPC deny, wrong-proof deny, actor/network/business quota, safe retry, recovery, public provenance ve counter retention kapsandı.
 - [F17-02 PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15): teknik kabul CI `34658041327` success; 34-file coverage gate, negatif gate testi, 0-vulnerability blocking audit, real Chrome smoke, 21/21 HTTP kontratı ve tam SQL zinciri kapsandı.
-- Testler yerel PostgreSQL/Auth fixture ve fake provider kullanır. Gerçek Resend hesabı, gerçek inbox teslimi, gerçek Supabase environment ve üretim abuse/load davranışı bu kanıtın kapsamı değildir.
-- Gerçek ortam/secret provisioning F17-01 ve F09-05 kabulinde doğrulanacaktır.
+- F17-01 canlı hosted kanıtı: `randevu-staging` Supabase `ACTIVE_HEALTHY`; ACL migration `20260912030000_f17_hosted_acl_hardening` uygulandı ve security advisor tekrar çalıştırıldı.
+- F17-01 canlı workflow probe `34671008590`: runner/toolchain/install geçti, environment contract dış config yokluğunda fail-closed durdu; deploy/smoke çalıştırılmadı.
+- F17-01 PR #21 staging contract'ı 11 dış değere daraltır ve bunun geri büyümesini Node kontrat testiyle kilitler.
+- Testler yerel PostgreSQL/Auth fixture ve fake provider kullanır. Gerçek Resend hesabı/inbox teslimi, Cloudflare deploy ve üretim abuse/load davranışı bu CI kanıtının kapsamı değildir.
+- Gerçek environment credential provisioning F17-01 ve provider entegrasyonu F09-05 kabulinde doğrulanacaktır.
 
 Her PR aynı zorunlu build/SQL kapısını geçer. G09 ancak F09-01…F09-05 kabul edildiğinde kapanır.
