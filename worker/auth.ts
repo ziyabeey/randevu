@@ -38,6 +38,12 @@ export type SupabaseResult<T> = {
   data: T | null;
 };
 export type AppContext<E extends AuthEnv = AuthEnv> = Context<{ Bindings: E }>;
+export type AuthAccess =
+  | { auth: AuthSession; error?: never }
+  | { error: Response; auth?: never };
+export type MemberAccess =
+  | { auth: AuthSession; membership: Membership; error?: never }
+  | { error: Response; auth?: never; membership?: never };
 export type AuthFlowAction = 'signup' | 'recovery';
 export type AuthFlow = {
   action: AuthFlowAction;
@@ -211,33 +217,33 @@ export async function activeMembership<E extends AuthEnv>(
   return membership;
 }
 
-export async function requireAuth<E extends AuthEnv>(context: AppContext<E>) {
+export async function requireAuth<E extends AuthEnv>(context: AppContext<E>): Promise<AuthAccess> {
   try {
     const auth = await resolveAuth(context);
     if (!auth) {
-      return { error: context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401) } as const;
+      return { error: context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401) };
     }
-    return { auth } as const;
+    return { auth };
   } catch (error) {
     if (error instanceof AuthUnavailableError) {
-      return { error: context.json({ error: { code: 'AUTH_UNAVAILABLE', message: 'Oturum şu anda doğrulanamıyor. Lütfen tekrar deneyin.' } }, 503) } as const;
+      return { error: context.json({ error: { code: 'AUTH_UNAVAILABLE', message: 'Oturum şu anda doğrulanamıyor. Lütfen tekrar deneyin.' } }, 503) };
     }
     throw error;
   }
 }
 
-export async function requireMember<E extends AuthEnv>(context: AppContext<E>) {
+export async function requireMember<E extends AuthEnv>(context: AppContext<E>): Promise<MemberAccess> {
   const resolved = await requireAuth(context);
-  if ('error' in resolved) return resolved;
+  if (resolved.error) return { error: resolved.error };
   try {
     const membership = await activeMembership(context, resolved.auth);
     if (!membership) {
-      return { error: context.json({ error: { code: 'TENANT_REQUIRED', message: 'Aktif işletme seçin.' } }, 403) } as const;
+      return { error: context.json({ error: { code: 'TENANT_REQUIRED', message: 'Aktif işletme seçin.' } }, 403) };
     }
-    return { auth: resolved.auth, membership } as const;
+    return { auth: resolved.auth, membership };
   } catch (error) {
     if (error instanceof AuthUnavailableError) {
-      return { error: context.json({ error: { code: 'AUTH_UNAVAILABLE', message: 'Üyelik şu anda doğrulanamıyor. Lütfen tekrar deneyin.' } }, 503) } as const;
+      return { error: context.json({ error: { code: 'AUTH_UNAVAILABLE', message: 'Üyelik şu anda doğrulanamıyor. Lütfen tekrar deneyin.' } }, 503) };
     }
     throw error;
   }
