@@ -1,135 +1,47 @@
 import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import authRoutes from './auth-routes.ts';
+import {
+  canManage,
+  first,
+  mutationSecurityError,
+  readJson,
+  requireAuth,
+  requireMember,
+  setBusinessCookie,
+  supabaseRequest,
+  type AuthEnv,
+  type Membership,
+  type Role,
+} from './auth.ts';
 
-type Env = {
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  COOKIE_SECURE?: string;
-};
-
-type AppContext = Context<{ Bindings: Env }>;
-type Role = 'owner' | 'manager' | 'staff';
-type AuthUser = { id: string; email?: string; user_metadata?: { full_name?: string } };
-type AuthSession = { accessToken: string; user: AuthUser };
-type Membership = { id: string; business_id: string; role: Role; active: boolean };
-
-type TokenResponse = {
-  access_token: string;
-  refresh_token: string;
-  expires_in?: number;
-  user: AuthUser;
-};
+type Env = AuthEnv;
 
 const app = new Hono<{ Bindings: Env }>();
 
 app.use('*', async (context, next) => {
   context.header('Cache-Control', 'no-store');
   context.header('X-Content-Type-Options', 'nosniff');
+  context.header('Referrer-Policy', 'strict-origin-when-cross-origin');
   await next();
 });
 
-function cookieOptions(env: Env, maxAge: number) {
-  return {
-    httpOnly: true,
-    secure: env.COOKIE_SECURE !== 'false',
-    sameSite: 'Lax' as const,
-    path: '/',
-    maxAge,
-  };
+function accountMutationPath(path: string) {
+  return path.startsWith('/api/auth/')
+    || path === '/api/businesses'
+    || path === '/api/businesses/select'
+    || path.startsWith('/api/services')
+    || path.startsWith('/api/staff');
 }
 
-function setSessionCookies(context: AppContext, token: TokenResponse) {
-  setCookie(context, 'yzt_access', token.access_token, cookieOptions(context.env, Math.max(60, token.expires_in ?? 3600)));
-  setCookie(context, 'yzt_refresh', token.refresh_token, cookieOptions(context.env, 60 * 60 * 24 * 30));
-}
-
-function clearSessionCookies(context: AppContext) {
-  deleteCookie(context, 'yzt_access', { path: '/' });
-  deleteCookie(context, 'yzt_refresh', { path: '/' });
-  deleteCookie(context, 'yzt_business', { path: '/' });
-}
-
-async function supabaseRequest<T = unknown>(
-  env: Env,
-  path: string,
-  init: RequestInit = {},
-  accessToken?: string,
-): Promise<{ ok: boolean; data: T | null }> {
-  const headers = new Headers(init.headers);
-  headers.set('apikey', env.SUPABASE_ANON_KEY);
-  headers.set('Authorization', `Bearer ${accessToken ?? env.SUPABASE_ANON_KEY}`);
-  headers.set('Accept', 'application/json');
-  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-
-  const response = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/${path}`, { ...init, headers });
-  const text = await response.text();
-  if (!text) return { ok: response.ok, data: null };
-
-  try {
-    return { ok: response.ok, data: JSON.parse(text) as T };
-  } catch {
-    return { ok: response.ok, data: null };
+app.use('/api/*', async (context, next) => {
+  if (accountMutationPath(context.req.path)) {
+    const security = mutationSecurityError(context);
+    if (security) return context.json({ error: security }, 403);
   }
-}
+  await next();
+});
 
-async function readJson(context: AppContext): Promise<Record<string, unknown> | null> {
-  try {
-    const value: unknown = await context.req.json();
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
-    return value as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function first<T>(items: T[] | null): T | null {
-  return items?.[0] ?? null;
-}
-
-async function resolveAuth(context: AppContext): Promise<AuthSession | null> {
-  const accessToken = getCookie(context, 'yzt_access');
-  const refreshToken = getCookie(context, 'yzt_refresh');
-
-  if (accessToken) {
-    const current = await supabaseRequest<AuthUser>(context.env, 'auth/v1/user', {}, accessToken);
-    if (current.ok && current.data) return { accessToken, user: current.data };
-  }
-
-  if (!refreshToken) return null;
-
-  const refreshed = await supabaseRequest<TokenResponse>(context.env, 'auth/v1/token?grant_type=refresh_token', {
-    method: 'POST',
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
-
-  if (!refreshed.ok || !refreshed.data?.access_token || !refreshed.data.refresh_token || !refreshed.data.user) {
-    clearSessionCookies(context);
-    return null;
-  }
-
-  setSessionCookies(context, refreshed.data);
-  return { accessToken: refreshed.data.access_token, user: refreshed.data.user };
-}
-
-async function activeMembership(context: AppContext, auth: AuthSession): Promise<Membership | null> {
-  const businessId = getCookie(context, 'yzt_business');
-  if (!businessId) return null;
-
-  const query = new URLSearchParams({
-    select: 'id,business_id,role,active',
-    business_id: `eq.${businessId}`,
-    user_id: `eq.${auth.user.id}`,
-    active: 'eq.true',
-    limit: '1',
-  });
-  const result = await supabaseRequest<Membership[]>(context.env, `rest/v1/memberships?${query}`, {}, auth.accessToken);
-  return result.ok ? first(result.data) : null;
-}
-
-function canManage(membership: Membership | null): membership is Membership {
-  return membership?.role === 'owner' || membership?.role === 'manager';
-}
+app.route('/api', authRoutes);
 
 function slugify(value: string) {
   return value
@@ -155,74 +67,43 @@ function integerIn(value: unknown, min: number, max: number) {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 }
 
-app.get('/api/health', (context) => context.json({ status: 'ok', service: 'yzt-randevu', phase: 8 }));
-
-app.post('/api/auth/signup', async (context) => {
-  const body = await readJson(context);
-  const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const password = typeof body?.password === 'string' ? body.password : '';
-  const fullName = typeof body?.fullName === 'string' ? body.fullName.trim() : '';
-  if (!email.includes('@') || password.length < 8) {
-    return context.json({ error: { code: 'INVALID_SIGNUP', message: 'Geçerli e-posta ve en az 8 karakter parola gerekli.' } }, 400);
+async function requireStandardAuth(context: Parameters<typeof requireAuth>[0]) {
+  const access = await requireAuth(context);
+  if ('error' in access) return access;
+  if (access.auth.passwordRecovery) {
+    return {
+      error: context.json({
+        error: {
+          code: 'PASSWORD_UPDATE_REQUIRED',
+          message: 'Devam etmeden önce yeni parolanızı belirleyin.',
+        },
+      }, 403),
+    } as const;
   }
+  return access;
+}
 
-  const result = await supabaseRequest<Partial<TokenResponse>>(context.env, 'auth/v1/signup', {
-    method: 'POST',
-    body: JSON.stringify({ email, password, data: { full_name: fullName || undefined } }),
-  });
-  if (!result.ok || !result.data) {
-    return context.json({ error: { code: 'SIGNUP_FAILED', message: 'Kayıt oluşturulamadı.' } }, 400);
+async function requireStandardMember(context: Parameters<typeof requireMember>[0]) {
+  const access = await requireMember(context);
+  if ('error' in access) return access;
+  if (access.auth.passwordRecovery) {
+    return {
+      error: context.json({
+        error: {
+          code: 'PASSWORD_UPDATE_REQUIRED',
+          message: 'Devam etmeden önce yeni parolanızı belirleyin.',
+        },
+      }, 403),
+    } as const;
   }
+  return access;
+}
 
-  const hasSession = Boolean(result.data.access_token && result.data.refresh_token && result.data.user);
-  if (hasSession) setSessionCookies(context, result.data as TokenResponse);
-  return context.json({ ok: true, requiresEmailConfirmation: !hasSession }, 201);
-});
-
-app.post('/api/auth/login', async (context) => {
-  const body = await readJson(context);
-  const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const password = typeof body?.password === 'string' ? body.password : '';
-  const result = await supabaseRequest<TokenResponse>(context.env, 'auth/v1/token?grant_type=password', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-  if (!result.ok || !result.data?.access_token || !result.data.refresh_token || !result.data.user) {
-    return context.json({ error: { code: 'LOGIN_FAILED', message: 'E-posta veya parola doğrulanamadı.' } }, 401);
-  }
-
-  setSessionCookies(context, result.data);
-  return context.json({ ok: true });
-});
-
-app.post('/api/auth/logout', async (context) => {
-  const auth = await resolveAuth(context);
-  if (auth) await supabaseRequest(context.env, 'auth/v1/logout', { method: 'POST' }, auth.accessToken);
-  clearSessionCookies(context);
-  return context.json({ ok: true });
-});
-
-app.get('/api/session', async (context) => {
-  const auth = await resolveAuth(context);
-  if (!auth) return context.json({ user: null, memberships: [], activeBusinessId: null });
-
-  const query = new URLSearchParams({
-    select: 'id,business_id,role,active,businesses(id,name,slug,timezone)',
-    user_id: `eq.${auth.user.id}`,
-    active: 'eq.true',
-    order: 'created_at.asc',
-  });
-  const memberships = await supabaseRequest<unknown[]>(context.env, `rest/v1/memberships?${query}`, {}, auth.accessToken);
-  return context.json({
-    user: { id: auth.user.id, email: auth.user.email ?? null, fullName: auth.user.user_metadata?.full_name ?? null },
-    memberships: memberships.ok && memberships.data ? memberships.data : [],
-    activeBusinessId: getCookie(context, 'yzt_business') ?? null,
-  });
-});
+app.get('/api/health', (context) => context.json({ status: 'ok', service: 'yzt-randevu', phase: 10 }));
 
 app.post('/api/businesses', async (context) => {
-  const auth = await resolveAuth(context);
-  if (!auth) return context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401);
+  const access = await requireStandardAuth(context);
+  if ('error' in access) return access.error;
 
   const body = await readJson(context);
   const name = typeof body?.name === 'string' ? body.name.trim() : '';
@@ -236,64 +117,68 @@ app.post('/api/businesses', async (context) => {
     context.env,
     'rest/v1/rpc/create_business_with_owner',
     { method: 'POST', body: JSON.stringify({ p_name: name, p_slug: slug, p_timezone: timezone }) },
-    auth.accessToken,
+    access.auth.accessToken,
   );
   const business = result.ok ? first(result.data) : null;
   if (!business) {
-    return context.json({ error: { code: 'BUSINESS_CREATE_FAILED', message: 'İşletme oluşturulamadı. Slug kullanımda olabilir.' } }, 400);
+    return context.json({ error: { code: 'BUSINESS_CREATE_FAILED', message: 'İşletme oluşturulamadı. Adres kullanımda olabilir.' } }, 400);
   }
 
-  setCookie(context, 'yzt_business', business.id, cookieOptions(context.env, 60 * 60 * 24 * 30));
+  setBusinessCookie(context, business.id);
   return context.json({ business }, 201);
 });
 
 app.post('/api/businesses/select', async (context) => {
-  const auth = await resolveAuth(context);
-  if (!auth) return context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401);
+  const access = await requireStandardAuth(context);
+  if ('error' in access) return access.error;
 
   const body = await readJson(context);
   const businessId = typeof body?.businessId === 'string' ? body.businessId : '';
   const query = new URLSearchParams({
     select: 'id,business_id,role,active',
     business_id: `eq.${businessId}`,
-    user_id: `eq.${auth.user.id}`,
+    user_id: `eq.${access.auth.user.id}`,
     active: 'eq.true',
     limit: '1',
   });
-  const result = await supabaseRequest<Membership[]>(context.env, `rest/v1/memberships?${query}`, {}, auth.accessToken);
+  const result = await supabaseRequest<Membership[]>(context.env, `rest/v1/memberships?${query}`, {}, access.auth.accessToken);
   if (!result.ok || !first(result.data)) {
     return context.json({ error: { code: 'TENANT_FORBIDDEN', message: 'Bu işletmeye erişiminiz yok.' } }, 403);
   }
 
-  setCookie(context, 'yzt_business', businessId, cookieOptions(context.env, 60 * 60 * 24 * 30));
+  setBusinessCookie(context, businessId);
   return context.json({ ok: true });
 });
 
 app.get('/api/catalog', async (context) => {
-  const auth = await resolveAuth(context);
-  if (!auth) return context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401);
-  const membership = await activeMembership(context, auth);
-  if (!membership) return context.json({ error: { code: 'TENANT_REQUIRED', message: 'Aktif işletme seçin.' } }, 403);
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
 
-  const businessId = membership.business_id;
+  const businessId = access.membership.business_id;
   const [services, staff, assignments] = await Promise.all([
-    supabaseRequest<unknown[]>(context.env, `rest/v1/services?select=id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,price_minor,currency,active&business_id=eq.${businessId}&order=created_at.asc`, {}, auth.accessToken),
-    supabaseRequest<unknown[]>(context.env, `rest/v1/staff_profiles?select=id,membership_id,name,phone,active&business_id=eq.${businessId}&order=created_at.asc`, {}, auth.accessToken),
-    supabaseRequest<unknown[]>(context.env, `rest/v1/staff_services?select=staff_id,service_id,active&business_id=eq.${businessId}`, {}, auth.accessToken),
+    supabaseRequest<unknown[]>(context.env, `rest/v1/services?select=id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,price_minor,currency,active&business_id=eq.${businessId}&order=created_at.asc`, {}, access.auth.accessToken),
+    supabaseRequest<unknown[]>(context.env, `rest/v1/staff_profiles?select=id,membership_id,name,phone,active&business_id=eq.${businessId}&order=created_at.asc`, {}, access.auth.accessToken),
+    supabaseRequest<unknown[]>(context.env, `rest/v1/staff_services?select=staff_id,service_id,active&business_id=eq.${businessId}`, {}, access.auth.accessToken),
   ]);
 
   if (!services.ok || !staff.ok || !assignments.ok) {
     return context.json({ error: { code: 'CATALOG_READ_FAILED', message: 'Hizmet ve ekip bilgileri okunamadı.' } }, 502);
   }
 
-  return context.json({ membership, services: services.data ?? [], staff: staff.data ?? [], assignments: assignments.data ?? [] });
+  return context.json({
+    membership: access.membership,
+    services: services.data ?? [],
+    staff: staff.data ?? [],
+    assignments: assignments.data ?? [],
+  });
 });
 
 app.post('/api/services', async (context) => {
-  const auth = await resolveAuth(context);
-  if (!auth) return context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401);
-  const membership = await activeMembership(context, auth);
-  if (!canManage(membership)) return context.json({ error: { code: 'NOT_ALLOWED', message: 'Hizmet yönetimi için owner veya manager rolü gerekli.' } }, 403);
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  if (!canManage(access.membership)) {
+    return context.json({ error: { code: 'NOT_ALLOWED', message: 'Hizmet yönetimi için yetkiniz yok.' } }, 403);
+  }
 
   const body = await readJson(context);
   if (!validName(body?.name) || !integerIn(body?.durationMinutes, 5, 720) || !integerIn(body?.priceMinor, 0, 100000000)) {
@@ -309,7 +194,7 @@ app.post('/api/services', async (context) => {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
     body: JSON.stringify({
-      business_id: membership.business_id,
+      business_id: access.membership.business_id,
       name: String(body?.name).trim(),
       duration_minutes: body?.durationMinutes,
       buffer_before_minutes: before,
@@ -317,17 +202,18 @@ app.post('/api/services', async (context) => {
       price_minor: body?.priceMinor,
       currency: 'TRY',
     }),
-  }, auth.accessToken);
+  }, access.auth.accessToken);
 
   if (!result.ok) return context.json({ error: { code: 'SERVICE_CREATE_FAILED', message: 'Hizmet kaydedilemedi.' } }, 400);
   return context.json({ service: first(result.data) }, 201);
 });
 
 app.patch('/api/services/:id', async (context) => {
-  const auth = await resolveAuth(context);
-  if (!auth) return context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401);
-  const membership = await activeMembership(context, auth);
-  if (!canManage(membership)) return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için yetkiniz yok.' } }, 403);
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  if (!canManage(access.membership)) {
+    return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için yetkiniz yok.' } }, 403);
+  }
 
   const body = await readJson(context);
   const patch: Record<string, unknown> = {};
@@ -346,19 +232,22 @@ app.patch('/api/services/:id', async (context) => {
   if (typeof body?.active === 'boolean') patch.active = body.active;
   if (!Object.keys(patch).length) return context.json({ error: { code: 'EMPTY_PATCH', message: 'Değiştirilecek alan yok.' } }, 400);
 
-  const result = await supabaseRequest<unknown[]>(context.env, `rest/v1/services?id=eq.${context.req.param('id')}&business_id=eq.${membership.business_id}`, {
-    method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(patch),
-  }, auth.accessToken);
+  const result = await supabaseRequest<unknown[]>(context.env, `rest/v1/services?id=eq.${context.req.param('id')}&business_id=eq.${access.membership.business_id}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify(patch),
+  }, access.auth.accessToken);
   const service = result.ok ? first(result.data) : null;
   if (!service) return context.json({ error: { code: 'SERVICE_UPDATE_FAILED', message: 'Hizmet güncellenemedi.' } }, 400);
   return context.json({ service });
 });
 
 app.post('/api/staff', async (context) => {
-  const auth = await resolveAuth(context);
-  if (!auth) return context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401);
-  const membership = await activeMembership(context, auth);
-  if (!canManage(membership)) return context.json({ error: { code: 'NOT_ALLOWED', message: 'Ekip yönetimi için owner veya manager rolü gerekli.' } }, 403);
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  if (!canManage(access.membership)) {
+    return context.json({ error: { code: 'NOT_ALLOWED', message: 'Ekip yönetimi için yetkiniz yok.' } }, 403);
+  }
 
   const body = await readJson(context);
   if (!validName(body?.name)) return context.json({ error: { code: 'INVALID_STAFF', message: 'Personel adı geçerli değil.' } }, 400);
@@ -368,17 +257,18 @@ app.post('/api/staff', async (context) => {
   const result = await supabaseRequest<unknown[]>(context.env, 'rest/v1/staff_profiles', {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ business_id: membership.business_id, name: String(body?.name).trim(), phone }),
-  }, auth.accessToken);
+    body: JSON.stringify({ business_id: access.membership.business_id, name: String(body?.name).trim(), phone }),
+  }, access.auth.accessToken);
   if (!result.ok) return context.json({ error: { code: 'STAFF_CREATE_FAILED', message: 'Personel kaydedilemedi.' } }, 400);
   return context.json({ staff: first(result.data) }, 201);
 });
 
 app.patch('/api/staff/:id', async (context) => {
-  const auth = await resolveAuth(context);
-  if (!auth) return context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401);
-  const membership = await activeMembership(context, auth);
-  if (!canManage(membership)) return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için yetkiniz yok.' } }, 403);
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  if (!canManage(access.membership)) {
+    return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için yetkiniz yok.' } }, 403);
+  }
 
   const body = await readJson(context);
   const patch: Record<string, unknown> = {};
@@ -390,31 +280,34 @@ app.patch('/api/staff/:id', async (context) => {
   if (typeof body?.active === 'boolean') patch.active = body.active;
   if (!Object.keys(patch).length) return context.json({ error: { code: 'EMPTY_PATCH', message: 'Değiştirilecek alan yok.' } }, 400);
 
-  const result = await supabaseRequest<unknown[]>(context.env, `rest/v1/staff_profiles?id=eq.${context.req.param('id')}&business_id=eq.${membership.business_id}`, {
-    method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(patch),
-  }, auth.accessToken);
+  const result = await supabaseRequest<unknown[]>(context.env, `rest/v1/staff_profiles?id=eq.${context.req.param('id')}&business_id=eq.${access.membership.business_id}`, {
+    method: 'PATCH',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify(patch),
+  }, access.auth.accessToken);
   const staff = result.ok ? first(result.data) : null;
   if (!staff) return context.json({ error: { code: 'STAFF_UPDATE_FAILED', message: 'Personel güncellenemedi.' } }, 400);
   return context.json({ staff });
 });
 
 app.put('/api/staff/:staffId/services/:serviceId', async (context) => {
-  const auth = await resolveAuth(context);
-  if (!auth) return context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401);
-  const membership = await activeMembership(context, auth);
-  if (!canManage(membership)) return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için yetkiniz yok.' } }, 403);
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  if (!canManage(access.membership)) {
+    return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için yetkiniz yok.' } }, 403);
+  }
 
   const body = await readJson(context);
   const result = await supabaseRequest<unknown[]>(context.env, 'rest/v1/staff_services?on_conflict=business_id,staff_id,service_id', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
     body: JSON.stringify({
-      business_id: membership.business_id,
+      business_id: access.membership.business_id,
       staff_id: context.req.param('staffId'),
       service_id: context.req.param('serviceId'),
       active: body?.active !== false,
     }),
-  }, auth.accessToken);
+  }, access.auth.accessToken);
 
   if (!result.ok) return context.json({ error: { code: 'ASSIGNMENT_FAILED', message: 'Hizmet yetkinliği güncellenemedi.' } }, 400);
   return context.json({ assignment: first(result.data) });
