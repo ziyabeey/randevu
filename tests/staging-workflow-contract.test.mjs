@@ -6,11 +6,9 @@ const workflow = readFileSync(new URL('../.github/workflows/staging.yml', import
 
 const externalSettings = [
   'CLOUDFLARE_API_TOKEN',
-  'CLOUDFLARE_ACCOUNT_ID',
   'STAGING_DATABASE_URL',
   'SUPABASE_ADMIN_KEY',
   'RESEND_API_KEY',
-  'NOTIFICATION_FROM_EMAIL',
 ];
 
 const ephemeralSettings = [
@@ -20,7 +18,7 @@ const ephemeralSettings = [
   'NOTIFICATION_DISPATCH_SECRET',
 ];
 
-test('staging workflow keeps the external provisioning surface at six values', () => {
+test('staging workflow keeps the external provisioning surface at four secrets', () => {
   const match = workflow.match(/const requiredExternal = \[([\s\S]*?)\];/);
   assert.ok(match, 'requiredExternal contract must remain explicit');
   const actual = [...match[1].matchAll(/'([A-Z0-9_]+)'/g)].map((entry) => entry[1]);
@@ -37,7 +35,10 @@ test('public staging metadata and generated job values are not treated as GitHub
   assert.match(workflow, /SUPABASE_ANON_KEY: sb_publishable_/);
   assert.match(workflow, /STAGING_OWNER_A_EMAIL: randevu-staging-owner-a@example\.com/);
   assert.match(workflow, /STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example\.com/);
+  assert.match(workflow, /NOTIFICATION_FROM_EMAIL: randevu@notify\.kepenk\.ai/);
 
+  assert.doesNotMatch(workflow, /secrets\.CLOUDFLARE_ACCOUNT_ID/);
+  assert.doesNotMatch(workflow, /secrets\.NOTIFICATION_FROM_EMAIL/);
   assert.doesNotMatch(workflow, /secrets\.STAGING_SUPABASE_PROJECT_REF/);
   assert.doesNotMatch(workflow, /secrets\.SUPABASE_URL/);
   assert.doesNotMatch(workflow, /secrets\.SUPABASE_ANON_KEY/);
@@ -46,6 +47,22 @@ test('public staging metadata and generated job values are not treated as GitHub
   assert.doesNotMatch(workflow, /secrets\.PUBLIC_BOOKING_GATE_SECRET/);
   assert.doesNotMatch(workflow, /secrets\.NOTIFICATION_DISPATCH_SECRET/);
   assert.doesNotMatch(workflow, /secrets\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1/);
+});
+
+test('Cloudflare account is derived from a single-account Wrangler token before runtime checks', () => {
+  assert.match(workflow, /Resolve Cloudflare account/);
+  assert.match(workflow, /npx wrangler whoami --json/);
+  assert.match(workflow, /payload\.loggedIn !== true/);
+  assert.match(workflow, /accounts\.length !== 1/);
+  assert.match(workflow, /CLOUDFLARE_ACCOUNT_ID=\$\{accountId\}/);
+  assert.match(workflow, /\^\[a-f0-9\]\{32\}\$/i);
+
+  const validateIndex = workflow.indexOf('- name: Validate staging external contract');
+  const accountIndex = workflow.indexOf('- name: Resolve Cloudflare account');
+  const buildIndex = workflow.indexOf('- name: Build Cloudflare staging environment');
+  const migrationIndex = workflow.indexOf('- name: Apply staging migrations');
+  assert.ok(validateIndex >= 0 && accountIndex > validateIndex, 'external secret validation must happen before account lookup');
+  assert.ok(buildIndex > accountIndex && migrationIndex > accountIndex, 'Cloudflare account resolution must fail closed before build/DB work');
 });
 
 test('owner passwords and non-persistent gate secrets are generated per run and masked', () => {

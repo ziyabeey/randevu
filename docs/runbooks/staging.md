@@ -16,12 +16,13 @@ Bu komut `CLOUDFLARE_ENV=staging` ile `wrangler.jsonc` içindeki staging environ
 
 ## GitHub `staging` environment dış sözleşmesi
 
-GitHub Environment `staging` içinde yalnız aşağıdaki **6 dış değer** tanımlanır. Bunlar repo içinde tutulmaz.
+GitHub Environment `staging` içinde yalnız aşağıdaki **4 secret** tanımlanır. Bunlar repo içinde tutulmaz.
 
 ### Cloudflare deploy erişimi
 
-- `CLOUDFLARE_API_TOKEN` — Workers script deploy, account Workers subdomain okuması ve Worker secret binding varlık kontrolü için gereken en dar yetki. Token Workers Scripts Read/Write erişimini karşılamalıdır.
-- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN` — Workers script deploy, account Workers subdomain okuması ve Worker secret binding varlık kontrolü için gereken en dar yetki. Token mümkünse yalnız Randevu'nun bulunduğu tek Cloudflare hesabına scope'lanmalıdır.
+
+`CLOUDFLARE_ACCOUNT_ID` artık GitHub secret değildir. Workflow `wrangler whoami --json` ile tokenın görebildiği hesapları okur ve **tam olarak bir hesap** görmeyi şart koşar. Tek hesap varsa ID yalnız job `GITHUB_ENV` içine yazılır; sıfır veya birden fazla hesap görünürse workflow DB işleminden önce fail-closed durur.
 
 ### Supabase privileged staging erişimi
 
@@ -33,13 +34,27 @@ Staging project ref, API URL ve düşük yetkili `sb_publishable_...` API key pu
 ### Bildirim sağlayıcısı
 
 - `RESEND_API_KEY`
-- `NOTIFICATION_FROM_EMAIL`
 
-Resend erişimi ve doğrulanmış gönderici dış provider sözleşmesidir.
+Gönderici adresi secret değildir ve workflow metadata'sıdır:
+
+```text
+randevu@notify.kepenk.ai
+```
+
+`notify.kepenk.ai`, Resend için ayrılmış sending domain'dir. DNS kayıtları Cloudflare üzerinden yönetilir. Gerçek provider acceptance sırasında Resend domain doğrulamasının tamamlanmış olması gerekir.
+
+## Alan adı planı
+
+- production uygulama: `https://randevu.kepenk.ai`
+- staging ilk kabul: workflow tarafından türetilen `workers.dev` origin
+- staging custom domain, temel deploy kabulünden sonra: `https://staging.randevu.kepenk.ai`
+- transactional e-posta sender domain: `notify.kepenk.ai`
+
+F17-01 ilk gerçek deploy kabulünde `workers.dev` origin bilinçli olarak korunur; custom domain eklemek Cloudflare token kapsamını gereksiz büyütmemelidir. Temel deploy/smoke yeşil olduktan sonra staging custom domain bağlanabilir. Production'da kullanıcıya açık hedef `randevu.kepenk.ai` olacaktır.
 
 ## Cloudflare'da kalıcı management encryption key
 
-`MANAGEMENT_LINK_ENCRYPTION_KEY_V1` artık GitHub Environment secret'ı değildir. Değer **Cloudflare Worker secret** olarak kalıcı tutulur ve normal deploy'larda geri okunmaz.
+`MANAGEMENT_LINK_ENCRYPTION_KEY_V1` GitHub Environment secret'ı değildir. Değer **Cloudflare Worker secret** olarak kalıcı tutulur ve normal deploy'larda geri okunmaz.
 
 Workflow `npm run build:staging` sonrasında generated Worker adını bulur ve Cloudflare'ın script-secret endpoint'inde yalnız `MANAGEMENT_LINK_ENCRYPTION_KEY_V1` binding'inin varlığını kontrol eder:
 
@@ -61,18 +76,21 @@ Aşağıdaki değerler GitHub Environment secret'ı değildir; workflow her run 
 
 Gate/dispatch secret'ları veri şifrelemez. PostgreSQL yalnız SHA-256 hash'lerini tutar; aynı job içindeki raw değerler hem `npm run staging:config` ile DB hash'lerine hem de Worker secret bundle'ına gider. Böylece her staging deploy bu iki capability secret'ını birlikte döndürür ve repo/GitHub'da kalıcı raw kopya tutmaz.
 
-## Otomatik staging origin
+## Otomatik Cloudflare hesap ve staging origin çözümü
 
-`STAGING_APP_ORIGIN` GitHub secret değildir. Workflow:
+Workflow:
 
-1. `npm run build:staging` ile generated `dist/yzt_randevu/wrangler.json` üretir,
-2. generated config içinden Worker adını okur ve `workers_dev=true` olduğunu doğrular,
-3. Cloudflare `GET /accounts/{account_id}/workers/subdomain` endpoint'inden account Workers subdomain'ini okur,
-4. gerçek origin'i `https://<worker-name>.<account-subdomain>.workers.dev` biçiminde üretir,
-5. Worker adını ve origin'i yalnız o job için `GITHUB_ENV` içine yazar,
-6. aynı Cloudflare erişimiyle persistent management secret binding varlığını kontrol eder.
+1. dört dış secret'ın varlığını doğrular,
+2. `wrangler whoami --json` ile tokenın görebildiği hesapları okur,
+3. tam olarak bir hesap varsa `CLOUDFLARE_ACCOUNT_ID` değerini yalnız job için çözer,
+4. `npm run build:staging` ile generated `dist/yzt_randevu/wrangler.json` üretir,
+5. generated config içinden Worker adını okur ve `workers_dev=true` olduğunu doğrular,
+6. Cloudflare `GET /accounts/{account_id}/workers/subdomain` endpoint'inden account Workers subdomain'ini okur,
+7. gerçek origin'i `https://<worker-name>.<account-subdomain>.workers.dev` biçiminde üretir,
+8. Worker adını ve origin'i yalnız o job için `GITHUB_ENV` içine yazar,
+9. aynı Cloudflare erişimiyle persistent management secret binding varlığını kontrol eder.
 
-Bu kontroller PostgreSQL migration/fixture işlemlerinden **önce** çalışır. Cloudflare token, account, workers.dev subdomain veya beklenmeyen secret-lookup hatası varsa workflow staging DB'ye dokunmadan fail-closed durur. Worker secret bundle'ında `PUBLIC_APP_ORIGIN`, bu türetilmiş HTTPS origin'den üretilir.
+Bu kontroller PostgreSQL migration/fixture işlemlerinden **önce** çalışır. Cloudflare token, hesap sayısı, workers.dev subdomain veya beklenmeyen secret-lookup hatası varsa workflow staging DB'ye dokunmadan fail-closed durur. Worker secret bundle'ında `PUBLIC_APP_ORIGIN`, bu türetilmiş HTTPS origin'den üretilir.
 
 ## İki sahte owner hesabı
 
@@ -135,21 +153,22 @@ Her birinde ayrı owner membership, bir hizmet, bir personel, service↔staff e�
 
 1. bağımlılık kurulumu,
 2. ephemeral owner parolaları + public-booking gate + notification dispatch secret'larının üretilip maskelenmesi,
-3. 6 dış değer + workflow metadata/ephemeral sözleşmesinin fail-closed doğrulanması,
-4. `npm run build:staging`,
-5. Cloudflare account subdomain lookup, gerçek `STAGING_APP_ORIGIN` türetimi ve persistent management secret varlık kontrolü,
-6. management secret yoksa yalnız bu run için maskelenmiş bootstrap key üretimi,
-7. PostgreSQL client kurulumu ve migration push,
-8. gerçek Auth test owner'larının hazırlanması,
-9. aynı job gate/dispatch secret'larıyla DB runtime hash provisioning,
-10. fixture reset + seed,
-11. geçici `/tmp` secret bundle'ının hazırlanması; management bootstrap key yalnız ilk gerektiği run'da eklenir,
-12. `wrangler deploy --secrets-file` ile deploy; mevcut management secret dosyada yoksa Cloudflare'da korunur,
-13. Cloudflare management secret binding doğrulaması,
-14. gerçek staging smoke,
-15. geçici secret dosyasının her durumda silinmesi.
+3. 4 dış secret + workflow metadata/ephemeral sözleşmesinin fail-closed doğrulanması,
+4. `wrangler whoami --json` ile tek-hesap Cloudflare account ID çözümü,
+5. `npm run build:staging`,
+6. Cloudflare account subdomain lookup, gerçek `STAGING_APP_ORIGIN` türetimi ve persistent management secret varlık kontrolü,
+7. management secret yoksa yalnız bu run için maskelenmiş bootstrap key üretimi,
+8. PostgreSQL client kurulumu ve migration push,
+9. gerçek Auth test owner'larının hazırlanması,
+10. aynı job gate/dispatch secret'larıyla DB runtime hash provisioning,
+11. fixture reset + seed,
+12. geçici `/tmp` secret bundle'ının hazırlanması; management bootstrap key yalnız ilk gerektiği run'da eklenir,
+13. `wrangler deploy --secrets-file` ile deploy; mevcut management secret dosyada yoksa Cloudflare'da korunur,
+14. Cloudflare management secret binding doğrulaması,
+15. gerçek staging smoke,
+16. geçici secret dosyalarının her durumda silinmesi.
 
-Cloudflare config `workers_dev: true` kullanır; custom domain daha sonra eklenebilir.
+Cloudflare config `workers_dev: true` kullanır; custom domain temel deploy kabulünden sonra eklenebilir.
 
 ## Gerçek staging smoke
 
@@ -170,7 +189,7 @@ zincirini gerçek staging owner hesabıyla doğrular. Owner'ın fixture üyeliğ
 
 ## Bildirim sağlayıcısı kabul sınırı
 
-`RESEND_API_KEY` ve `NOTIFICATION_FROM_EMAIL` staging'e ait gerçek sağlayıcı erişimiyle tanımlanmalıdır. Tercihen test amaçlı ayrı doğrulanmış sender/subdomain kullanılır. CI provider stub kanıtı, gerçek Resend acceptance yerine geçmez; gerçek teslim F09-05 ile kanıtlanır.
+`RESEND_API_KEY` staging'e ait gerçek sağlayıcı erişimidir. Gönderici `randevu@notify.kepenk.ai` workflow metadata'sıdır ve `notify.kepenk.ai` Resend domain'inin DNS doğrulaması tamamlanmış olmalıdır. CI provider stub kanıtı, gerçek Resend acceptance yerine geçmez; gerçek teslim F09-05 ile kanıtlanır.
 
 ## Temiz checkout kontrolü
 
