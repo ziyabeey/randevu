@@ -16,7 +16,7 @@
 | Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / PR / kanıt veya engel |
 | --- | --- | --- | --- | --- | --- |
 | [S01](docs/plan/stabilization.md#s01) | Recovery oturum sınırı | F10-01 | Tamamlandı | ChatGPT / 2026-09-12T16:06Z | `s01-recovery-session-boundary` · [PR #34](https://github.com/ziyabeey1-ai/randevu/pull/34) · [Devir](docs/handoffs/S01.md) · kırmızı CI `34691808686` · code CI `34703904598` · staging [`34704131649`](https://github.com/ziyabeey1-ai/randevu/actions/runs/34704131649) success: public mailbox recovery, PKCE, marker silme/onarım, refresh, ikinci sekme, invalid/replay, parola değişimi ve eski bearer sınırı |
-| [S02](docs/plan/stabilization.md#s02) | Ortak auth ve cookie mutation koruması | S01 | İncelemede | Ana ajan / 2026-09-12T17:27Z | `s02-common-auth-cookie-mutation` · [PR #36](https://github.com/ziyabeey1-ai/randevu/pull/36) · [Devir](docs/handoffs/S02.md) · Ortak auth/guard ve altı ekran tamamlandı; 265 yerel test; bağımsız inceleme. Exact-head CI ve gerçek hosted staging kabulü açık; merge edilmedi |
+| [S02](docs/plan/stabilization.md#s02) | Ortak auth ve cookie mutation koruması | S01 | Tamamlandı | Ana ajan / 2026-09-12T17:36Z | [PR #36](https://github.com/ziyabeey1-ai/randevu/pull/36) · main `1045abc` · [Devir](docs/handoffs/S02.md) · 265 test, bağımsız inceleme, [CI 34708432373](https://github.com/ziyabeey1-ai/randevu/actions/runs/34708432373) ve [gerçek staging 34708621675](https://github.com/ziyabeey1-ai/randevu/actions/runs/34708621675) aynı code head üzerinde başarılı |
 | [S03](docs/plan/stabilization.md#s03) | Bildirim içeriği/sürüm/tekrar tutarlılığı | F09-03 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
 | [S04](docs/plan/stabilization.md#s04) | Güvenli tekrar ve yönetim kaynak sınırı | F09-04 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
 | [S05](docs/plan/stabilization.md#s05) | Staging secret ve dağıtım tutarlılığı | F17-01 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
@@ -79,7 +79,7 @@
 
 | Kapı | Kapsam | Durum / kanıt |
 | --- | --- | --- |
-| GS | S01…S08 | Açık — S01 tamamlandı; S02…S08 bekleniyor |
+| GS | S01…S08 | Açık — S01 ve S02 tamamlandı; S03…S08 bekleniyor |
 | G09 | F09-01…F09-05 | Tarihsel kapalı — PR #30, staging `34681540142`; yeni bulgular GS içinde ayrıca açık |
 | G10 | F10-01…F10-06 | Açık — F10-01 tarihsel tamam, GS ve kalan F10 görevleri bekleniyor |
 | G11 | F11-01…F11-04 | Açık — fiyat veri desteği F12-03 önce gerekir |
