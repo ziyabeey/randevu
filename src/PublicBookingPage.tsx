@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { api } from './api';
 
 type PublicBusiness = {
   name: string;
@@ -40,7 +41,6 @@ type Confirmation = {
   manage_url?: string;
 };
 type PagePayload = { business: PublicBusiness; services: PublicService[] };
-type ApiError = { error?: { code?: string; message?: string } };
 type PendingRecovery = {
   slug: string;
   idempotencyKey: string;
@@ -59,26 +59,6 @@ type BookingIntent = {
 
 const RECOVERY_TTL_MS = 72 * 60 * 60 * 1000;
 const PENDING_PREFIX = 'yzt-public-booking-pending-v1:';
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(init?.headers ?? {}) },
-    cache: 'no-store',
-  });
-  const text = await response.text();
-  let body = {} as T & ApiError;
-  if (text) {
-    try { body = JSON.parse(text) as T & ApiError; }
-    catch { body = {} as T & ApiError; }
-  }
-  if (!response.ok) {
-    const error = new Error(body.error?.message ?? 'İşlem tamamlanamadı.');
-    (error as Error & { code?: string }).code = body.error?.code;
-    throw error;
-  }
-  return body;
-}
 
 function formatTime(value: string, timezone: string) {
   return new Intl.DateTimeFormat('tr-TR', {
@@ -175,6 +155,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
         recovery: { expiresAt: string };
       }>('/api/public/booking/recover', {
         method: 'POST',
+        csrf: 'skip',
         body: JSON.stringify({
           recoveryId: pending.recoveryId,
           idempotencyKey: pending.idempotencyKey,
@@ -335,6 +316,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
         recovery: { expiresAt: string };
       }>(`/api/public/business/${encodeURIComponent(slug)}/book`, {
         method: 'POST',
+        csrf: 'skip',
         headers: { 'Idempotency-Key': current.key },
         body: JSON.stringify({
           ...payload,
