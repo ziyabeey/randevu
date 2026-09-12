@@ -235,6 +235,16 @@ export async function requireAuth<E extends AuthEnv>(context: AppContext<E>): Pr
 export async function requireMember<E extends AuthEnv>(context: AppContext<E>): Promise<MemberAccess> {
   const resolved = await requireAuth(context);
   if (resolved.error) return { error: resolved.error };
+  if (resolved.auth.passwordRecovery) {
+    return {
+      error: context.json({
+        error: {
+          code: 'PASSWORD_UPDATE_REQUIRED',
+          message: 'Devam etmeden önce yeni parolanızı belirleyin.',
+        },
+      }, 403),
+    };
+  }
   try {
     const membership = await activeMembership(context, resolved.auth);
     if (!membership) {
