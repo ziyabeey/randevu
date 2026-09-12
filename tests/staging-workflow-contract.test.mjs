@@ -10,13 +10,18 @@ const externalSettings = [
   'STAGING_DATABASE_URL',
   'SUPABASE_ADMIN_KEY',
   'MANAGEMENT_LINK_ENCRYPTION_KEY_V1',
-  'PUBLIC_BOOKING_GATE_SECRET',
-  'NOTIFICATION_DISPATCH_SECRET',
   'RESEND_API_KEY',
   'NOTIFICATION_FROM_EMAIL',
 ];
 
-test('staging workflow keeps the external provisioning surface at nine values', () => {
+const ephemeralSettings = [
+  'STAGING_OWNER_A_PASSWORD',
+  'STAGING_OWNER_B_PASSWORD',
+  'PUBLIC_BOOKING_GATE_SECRET',
+  'NOTIFICATION_DISPATCH_SECRET',
+];
+
+test('staging workflow keeps the external provisioning surface at seven values', () => {
   const match = workflow.match(/const requiredExternal = \[([\s\S]*?)\];/);
   assert.ok(match, 'requiredExternal contract must remain explicit');
   const actual = [...match[1].matchAll(/'([A-Z0-9_]+)'/g)].map((entry) => entry[1]);
@@ -27,7 +32,7 @@ test('staging workflow keeps the external provisioning surface at nine values', 
   }
 });
 
-test('public staging metadata and fixture identities are not treated as GitHub secrets', () => {
+test('public staging metadata and generated job values are not treated as GitHub secrets', () => {
   assert.match(workflow, /STAGING_SUPABASE_PROJECT_REF: smizhsagjpqexveitbqu/);
   assert.match(workflow, /SUPABASE_URL: https:\/\/smizhsagjpqexveitbqu\.supabase\.co/);
   assert.match(workflow, /SUPABASE_ANON_KEY: eyJ/);
@@ -39,15 +44,27 @@ test('public staging metadata and fixture identities are not treated as GitHub s
   assert.doesNotMatch(workflow, /secrets\.SUPABASE_ANON_KEY/);
   assert.doesNotMatch(workflow, /secrets\.STAGING_OWNER_[AB]_(?:EMAIL|PASSWORD)/);
   assert.doesNotMatch(workflow, /secrets\.STAGING_APP_ORIGIN/);
+  assert.doesNotMatch(workflow, /secrets\.PUBLIC_BOOKING_GATE_SECRET/);
+  assert.doesNotMatch(workflow, /secrets\.NOTIFICATION_DISPATCH_SECRET/);
 });
 
-test('fixture owner passwords are generated per run and masked before use', () => {
-  assert.match(workflow, /Prepare ephemeral staging owner passwords/);
-  assert.match(workflow, /randomBytes\(24\)/);
+test('owner passwords and non-persistent gate secrets are generated per run and masked', () => {
+  assert.match(workflow, /Prepare ephemeral staging job secrets/);
+  assert.match(workflow, /STAGING_OWNER_A_PASSWORD: `Rdv!\$\{randomBytes\(24\)/);
+  assert.match(workflow, /STAGING_OWNER_B_PASSWORD: `Rdv!\$\{randomBytes\(24\)/);
+  assert.match(workflow, /PUBLIC_BOOKING_GATE_SECRET: randomBytes\(48\)\.toString\('base64url'\)/);
+  assert.match(workflow, /NOTIFICATION_DISPATCH_SECRET: randomBytes\(48\)\.toString\('base64url'\)/);
   assert.match(workflow, /::add-mask::\$\{value\}/);
   assert.match(workflow, /GITHUB_ENV/);
-  assert.match(workflow, /STAGING_OWNER_A_PASSWORD/);
-  assert.match(workflow, /STAGING_OWNER_B_PASSWORD/);
+
+  for (const name of ephemeralSettings) {
+    assert.match(workflow, new RegExp(name), `${name} must be generated or consumed by the workflow`);
+  }
+});
+
+test('management encryption key remains persistent external state', () => {
+  assert.match(workflow, /MANAGEMENT_LINK_ENCRYPTION_KEY_V1: \$\{\{ secrets\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1 \}\}/);
+  assert.doesNotMatch(workflow, /MANAGEMENT_LINK_ENCRYPTION_KEY_V1: randomBytes/);
 });
 
 test('workers.dev staging origin is resolved before any database mutation', () => {
@@ -63,4 +80,15 @@ test('workers.dev staging origin is resolved before any database mutation', () =
   const migrationIndex = workflow.indexOf('- name: Apply staging migrations');
   assert.ok(buildIndex >= 0 && originIndex > buildIndex, 'origin lookup must happen after generated staging config exists');
   assert.ok(psqlIndex > originIndex && migrationIndex > originIndex, 'Cloudflare origin lookup must fail closed before DB work');
+});
+
+test('generated gate secrets feed both DB hashes and Worker runtime in the same job', () => {
+  const generatedIndex = workflow.indexOf('- name: Prepare ephemeral staging job secrets');
+  const configIndex = workflow.indexOf('- name: Provision staging DB runtime hashes');
+  const bundleIndex = workflow.indexOf('- name: Build temporary Worker secret bundle');
+  const deployIndex = workflow.indexOf('- name: Deploy Cloudflare staging Worker');
+  assert.ok(generatedIndex >= 0 && configIndex > generatedIndex, 'DB hash provisioning must use generated secrets');
+  assert.ok(bundleIndex > configIndex && deployIndex > bundleIndex, 'the same generated secrets must reach the deployed Worker');
+  assert.match(workflow, /PUBLIC_BOOKING_GATE_SECRET: process\.env\.PUBLIC_BOOKING_GATE_SECRET/);
+  assert.match(workflow, /NOTIFICATION_DISPATCH_SECRET: process\.env\.NOTIFICATION_DISPATCH_SECRET/);
 });
