@@ -8,7 +8,6 @@ import {
   clearSessionCookies,
   ensureCsrfToken,
   findAuthFlow,
-  first,
   getActiveBusinessId,
   readJson,
   removeAuthFlow,
@@ -17,10 +16,10 @@ import {
   setPasswordRecoveryCookie,
   setSessionCookies,
   supabaseRequest,
+  type AppContext,
   type AuthEnv,
   type AuthUser,
   type Membership,
-  type Role,
   type TokenResponse,
 } from './auth.ts';
 
@@ -30,6 +29,7 @@ type MembershipWithBusiness = Membership & {
 type SignupResponse = Partial<TokenResponse> & { user?: AuthUser };
 type VerifyType = 'signup' | 'recovery';
 type SupabaseError = { code?: string; message?: string; msg?: string };
+type AuthContext = AppContext<AuthEnv>;
 
 const authRoutes = new Hono<{ Bindings: AuthEnv }>();
 
@@ -43,13 +43,13 @@ function validPassword(value: unknown) {
   return typeof value === 'string' && value.length >= 10 && value.length <= 128 && value.trim().length >= 10;
 }
 
-function callbackUrl(context: Parameters<typeof applicationOrigin>[0], state: string) {
+function callbackUrl(context: AuthContext, state: string) {
   const url = new URL('/api/auth/callback', applicationOrigin(context));
   url.searchParams.set('state', state);
   return url.toString();
 }
 
-function authResultUrl(context: Parameters<typeof applicationOrigin>[0], result: string) {
+function authResultUrl(context: AuthContext, result: string) {
   const url = new URL('/', applicationOrigin(context));
   url.searchParams.set('auth', result);
   return url.toString();
@@ -61,7 +61,7 @@ function upstreamMessage(data: unknown) {
   return String(error.message ?? error.msg ?? error.code ?? '');
 }
 
-function authLinkInvalid(context: Parameters<typeof applicationOrigin>[0]) {
+function authLinkInvalid(context: AuthContext) {
   clearPasswordRecoveryCookie(context);
   return context.json({
     error: {
