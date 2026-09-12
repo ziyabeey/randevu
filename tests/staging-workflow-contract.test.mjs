@@ -160,3 +160,22 @@ test('F09 real delivery gate is explicit opt-in and runs only after base staging
   const guardedSteps = workflow.match(/if: \$\{\{ inputs\.run_f09_acceptance \}\}/g) ?? [];
   assert.equal(guardedSteps.length, 2, 'only the F09 contract and real-delivery steps should be opt-in');
 });
+
+test('F10 hosted auth gate is explicit opt-in, post-smoke and never deploys the admin key', () => {
+  assert.match(workflow, /run_f10_auth_acceptance:/);
+  assert.match(workflow, /Verify F10 auth and request-security contracts/);
+  assert.match(workflow, /Verify F10-01 real hosted signup, recovery and session security/);
+  assert.match(workflow, /npm run staging:f10-auth-acceptance/);
+
+  const smokeIndex = workflow.indexOf('- name: Verify real staging login and catalog');
+  const acceptanceIndex = workflow.indexOf('- name: Verify F10-01 real hosted signup, recovery and session security');
+  assert.ok(smokeIndex >= 0 && acceptanceIndex > smokeIndex, 'real F10 acceptance must run after the base staging smoke');
+
+  const guardedSteps = workflow.match(/if: \$\{\{ inputs\.run_f10_auth_acceptance \}\}/g) ?? [];
+  assert.equal(guardedSteps.length, 2, 'only the F10 contract and hosted acceptance steps should be opt-in');
+
+  const bundleStart = workflow.indexOf('- name: Build temporary Worker secret bundle');
+  const bundleEnd = workflow.indexOf('- name: Deploy Cloudflare staging Worker');
+  const bundle = workflow.slice(bundleStart, bundleEnd);
+  assert.doesNotMatch(bundle, /SUPABASE_ADMIN_KEY/, 'admin key must never enter the Worker secret bundle');
+});

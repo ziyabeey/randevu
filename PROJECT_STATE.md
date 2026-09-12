@@ -19,7 +19,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | Alan | Durum | Sınır / sonraki iş |
 | --- | --- | --- |
 | React + Worker temeli | Main'de, Faz 1 | Ortak repo/backend korunacak |
-| Supabase Auth + Business/Membership + RLS | Main'de, Faz 2 temeli | Davet/rol yönetimi, parola kurtarma, görünür işletme geçişi Faz 10 |
+| Supabase Auth + Business/Membership + RLS | Main'de, Faz 2 + F10-01 | Davet/rol/aktiflik F10-02; görünür işletme geçişi ve onboarding F10-03 |
 | Hizmet/personel/eşleştirme | Main'de, Faz 3 | Düzenleme/pasifleştirme ve süre/fiyat arayüzleri Faz 10 |
 | Çalışma saatleri, kapanış, müsaitlik | Main'de, Faz 4 | Aynı motor üç kolda kullanılacak |
 | Müşteri + randevu çekirdeği | Main'de, Faz 5 | Tek hizmet/personel modeli; çoklu hizmet Faz 11 |
@@ -30,8 +30,9 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | Durable public booking e-postası | Tamamlandı, F09-03 + F09-05 / PR #13 + #30 | Outbox/lease/retry/provider receipt ve gerçek Resend `delivered` test kabulü tamamlandı |
 | Public booking abuse sınırı | Tamamlandı, F09-04 / PR #14 | Direct RPC bypass kapalı; guarded RPC + actor/network/business rate-limit + retention tamamlandı |
 | Faz 9 güvenilir rezervasyon/bildirim kapısı | Tamamlandı, G09 | CI `34681255156`, staging `34681540142`; booking/recovery/idempotency/capability/fake-receipt/provider-delivery zinciri yeşil |
+| Ortak oturum ve parola akışları | Tamamlandı, F10-01 / PR #31 | HttpOnly session, refresh rotation, PKCE signup/recovery, Origin/CSRF, güncel üyelik ve hosted staging kabulü tamamlandı |
 | Test/CI + dependency bakım temeli | Main'de, F17-02 / PR #15 | Coverage gate, gerçek Chrome smoke, blocking audit ve 0-vulnerability lock baseline tamamlandı |
-| Staging ortamı | Tamamlandı, F17-01 | Supabase hosted + ACL, gerçek DB credential/migration, Auth fixture, Cloudflare Worker, persistent management secret, base smoke ve F09 gerçek delivery acceptance çalışıyor |
+| Staging ortamı | Tamamlandı, F17-01 | Supabase hosted + ACL, gerçek DB credential/migration, Auth fixture, Cloudflare Worker, persistent management secret, base smoke, F09 delivery ve F10 hosted Auth acceptance çalışıyor |
 | SalonApp mobil kabuğu, adisyon ve tahsilat | Planlandı, Faz 14 | Henüz uygulama/route/tablo yok |
 | Ürün/stok, masraf, kasa/raporlar | Planlandı, Faz 15 | Sınırlı operasyon işlevleri |
 | Tekrar/SMS, yorum/fotoğraf, paket/promosyon, prim, hesap menüsü | Planlandı, Faz 16 | Ayrı alt işler |
@@ -54,6 +55,15 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 - Resend idempotency key'i job başına stabildir. Provider'ın güncel 24 saatlik idempotency saklama penceresi nedeniyle 24 saat sonrasındaki ambiguous retry'larda mutlak exactly-once iddiası yoktur.
 - Runtime `RESEND_API_KEY` gönderimle sınırlıdır. Staging-only `RESEND_ACCEPTANCE_API_KEY` yalnız manuel acceptance sırasında provider kaydını okumak için kullanılır ve Worker'a deploy edilmez.
 
+## Faz 10 ilerleme durumu
+
+- **F10-01 tamamlandı:** PR #31 ortak auth/session katmanını, kullanıcı arayüzündeki giriş-kayıt-kurtarma-parola akışlarını ve opt-in hosted acceptance'ı ekledi.
+- Son branch CI `34684288886` success; gerçek staging run `34684481828` success.
+- Canlı kabul Origin/CSRF negatiflerini, access-cookie bozulması sonrası refresh rotation'ı, güncel üyelik pasifleştirme/restore'u, hosted signup ve recovery confirmation/replay'i, recovery-only API sınırını, gerçek parola rotation ve fixture restore'unu doğruladı.
+- İlk canlı run `34684108931`, recovery oturumunda katalog kontrolünün tenant lookup'tan sonra kalmasını yakaladı. Kontrol sırası düzeltildi; ikinci run yeşil oldu.
+- **Sıradaki görev F10-02:** süreli/tek kullanımlı davet, kabul, üyelik aktifliği ve rol yönetimi. Son aktif owner korunacak; staff/manager yetki yükseltme sınırları ve açık oturumda pasifleştirme doğrulanacak.
+- **G10 açık:** F10-02…F10-06 kabul bekliyor.
+
 ## Branch / PR notu
 
 - `phase-3-services-team` → `phase-8-calendar` çalışmaları squash commit'lerle main'e alınmış.
@@ -61,6 +71,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 - `f09-03-durable-notifications`: [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13), F09-03 teslimidir.
 - `f09-04-public-abuse-control`: [PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14), F09-04 teslimidir; ayrıntı [handoff](docs/handoffs/F09-04.md) içindedir.
 - `f09-05-staging-integration`: [PR #30](https://github.com/ziyabeey1-ai/randevu/pull/30), G09 kapanışıdır; ayrıntı [handoff](docs/handoffs/F09-05.md), canlı kabul run'ı `34681540142`.
+- `f10-01-auth-session-password`: [PR #31](https://github.com/ziyabeey1-ai/randevu/pull/31), F10-01 teslimidir; ayrıntı [handoff](docs/handoffs/F10-01.md), canlı kabul run'ı `34684481828`.
 - `f17-02-ci-test-dependency-baseline`: [PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15), F17-02 teslimidir; ayrıntı [handoff](docs/handoffs/F17-02.md) içindedir.
 - F17-01 repo/staging zinciri: [PR #16](https://github.com/ziyabeey1-ai/randevu/pull/16), hosted uyumluluk/ACL [PR #17](https://github.com/ziyabeey1-ai/randevu/pull/17) + [PR #18](https://github.com/ziyabeey1-ai/randevu/pull/18), canlı sınır kaydı [PR #19](https://github.com/ziyabeey1-ai/randevu/pull/19) + [PR #20](https://github.com/ziyabeey1-ai/randevu/pull/20), dış secret yüzeyi ve gerçek deploy hazırlığı [PR #21](https://github.com/ziyabeey1-ai/randevu/pull/21) + [PR #22](https://github.com/ziyabeey1-ai/randevu/pull/22) + [PR #23](https://github.com/ziyabeey1-ai/randevu/pull/23) + [PR #25](https://github.com/ziyabeey1-ai/randevu/pull/25) + [PR #26](https://github.com/ziyabeey1-ai/randevu/pull/26) + [PR #27](https://github.com/ziyabeey1-ai/randevu/pull/27) + readiness [PR #28](https://github.com/ziyabeey1-ai/randevu/pull/28). Canlı kabul run'ı `34679959999` success.
 - `phase-9-email-delivery`: [PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8), superseded eski taslaktır; synchronous send ve anon receipt modeli kullanılmaz.
@@ -71,10 +82,10 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | Bulgu | Etki | Faz |
 | --- | --- | --- |
 | F09-05 gerçek staging provider delivery kabulü tamamlandı; production domain/deliverability izleme ve pilot trafik henüz yok | Staging güvenilirlik zinciri kanıtlandı, production operasyonel hazırlığı ayrıca gerekir | 17 / F17-03, F17-05 |
-| Personel kaydı üyelik/davet üretmiyor; parola kurtarma ve işletme geçişi UI'sı eksik | Çok kullanıcılı günlük kullanım tamamlanmış değil | 10 |
-| Auth/istek yardımcıları Worker modüllerinde tekrarlanıyor; hata/Origin/CSRF davranışı merkezi değil | Oturum ve güvenlik düzeltmeleri birlikte uygulanmalı | 10 |
+| Personel kaydı üyelik/davet üretmiyor; rol/aktiflik ve görünür işletme geçişi tamamlanmadı | Çok kullanıcılı günlük kullanım ve onboarding henüz tamamlanmış değil | 10 / F10-02, F10-03 |
+| Availability, bookings, calendar ve public-booking feature modüllerinde eski iç auth/Supabase helper gövdeleri sürüyor | Ortak recovery sınırı güvenli; bakım geçişleri ilgili modül değiştikçe dar biçimde yapılmalı | 10–13 |
 | Takvimde otomatik güncelleme ve eski yanıt koruması yok | Public/diğer çalışan işlemleri geç veya yanlış seçimde görünebilir | 13 |
-| Bazı ekranlarda Faz 3/tenant/StaffService metinleri ve eksik düzenleme kontrolleri var | Ürün dili ve operasyon kullanımı tamamlanmalı | 10, 12–14 |
+| Bazı feature ekranlarında teknik terimler ve eksik düzenleme kontrolleri var | Ürün dili ve operasyon kullanımı tamamlanmalı | 10, 12–14 |
 
 ## Mevcut tarayıcı yolları
 
@@ -83,7 +94,7 @@ Son kontrol: 12 Eylül 2026. Ürün planı Faz 9–17 görev sözleşmeleriyle t
 | `/calendar` | Gün/hafta takvimi — `src/CalendarPage.tsx` |
 | `/bookings` | Randevu oluşturma/taşıma/durum — `src/BookingPage.tsx` |
 | `/availability` | Mesai/kapanış/müsaitlik — `src/AvailabilityPage.tsx` |
-| `/` | Giriş, işletme, hizmet ve ekip — `src/App.tsx` |
+| `/` | Güvenli giriş/kayıt/kurtarma/parola, işletme, hizmet ve ekip — `src/App.tsx` |
 | `/public-booking` | Halka açık rezervasyon ayarları — `src/PublicBookingSettingsPage.tsx` |
 | `/r/:slug` | Müşteri rezervasyonu + F09-02 pending recovery — `src/PublicBookingPage.tsx` |
 | `/m#<token>` | Müşteri yönetimi — `src/ManageAppointmentPage.tsx` |
@@ -94,6 +105,8 @@ SalonApp/adisyon için çalışan yeni bir yol henüz yok.
 
 `worker/app.ts` feature router'larını birleştirir. F09-03 ile Wrangler entry `worker/entry.ts` olur: HTTP isteklerini Hono app'e aktarır ve her dakika scheduled notification maintenance + dispatcher çalıştırır.
 
+- `worker/auth.ts`: HttpOnly session/business/recovery/CSRF cookie'leri, Supabase Auth doğrulama/refresh, üyelik ve PKCE/Origin/CSRF yardımcıları.
+- `worker/auth-routes.ts`: signup/login/logout/session, recovery/callback/token-hash confirmation ve parola güncelleme uçları.
 - `worker/notifications.ts`: claim, AES-GCM decrypt, Resend request, timeout/retry sınıflandırması, complete/release.
 - `worker/notification-maintenance.ts`: provider configinden bağımsız terminalization/retention maintenance RPC çağrısı.
 - `worker/public-abuse.ts`: F09-04 gate validation, signed public client cookie, IPv4 `/24` / IPv6 `/64` coarse network anahtarı, HMAC-derived actor/network hash'leri ve HTTP 429 mapping.
@@ -108,7 +121,7 @@ Production env:
 - `NOTIFICATION_FROM_EMAIL`
 - `PUBLIC_APP_ORIGIN` — production için HTTPS zorunlu
 
-DB'de `notification_dispatch_config` yalnız `NOTIFICATION_DISPATCH_SECRET` SHA-256 hash'ini; `public_booking_abuse_config` yalnız `PUBLIC_BOOKING_GATE_SECRET` SHA-256 hash'ini tutar. Raw secret'lar repo/migration içine yazılmaz. Staging provisioning F17-01'de, gerçek provider delivery F09-05'te canlı doğrulandı; production provisioning ve operasyonel izleme F17 yayın aşamalarında ayrıca doğrulanır. Abuse config satırı yoksa public gate fail-closed davranır.
+DB'de `notification_dispatch_config` yalnız `NOTIFICATION_DISPATCH_SECRET` SHA-256 hash'ini; `public_booking_abuse_config` yalnız `PUBLIC_BOOKING_GATE_SECRET` SHA-256 hash'ini tutar. Raw secret'lar repo/migration içine yazılmaz. Staging provisioning F17-01'de, gerçek provider delivery F09-05'te ve hosted Auth F10-01'de canlı doğrulandı; production provisioning ve operasyonel izleme F17 yayın aşamalarında ayrıca doğrulanır. Abuse config satırı yoksa public gate fail-closed davranır.
 
 ## Migration sırası
 
@@ -155,6 +168,17 @@ Birleştirilmiş eski migration'lar değiştirilmez; yeni davranış ileri migra
 - Rate counters `updated_at` index'iyle 48 saatten eski state'i request-path'te en fazla 500 satır/call bounded prune eder.
 - 429 cevabı `Retry-After` taşır; rate-limit booking failure gibi raporlanmaz.
 
+## F10-01 auth/session invariant'ları
+
+- Access ve refresh bearer'ları yalnız HttpOnly cookie'de tutulur; uygulama JavaScript'ine veya URL'ye verilmez.
+- Her access cookie Supabase Auth ile doğrulanır; geçersiz access varsa refresh denenir ve dönen token çifti cookie'lerde döndürülür.
+- Session ve katalog erişimi güncel aktif membership kaydını yeniden okur; seçili işletme cookie'si yetki sayılmaz.
+- Browser mutation exact same-origin, `Sec-Fetch-Site` ve double-submit CSRF doğrulaması olmadan Supabase'e ulaşmaz.
+- PKCE verifier kısa ömürlü bounded HttpOnly flow cookie'sindedir; callback state/verifier eşleşmeden code exchange yapmaz.
+- Yanlış, süresi dolmuş ve replay edilmiş confirmation tek generic güvenli hataya düşer.
+- Recovery session yalnız session/logout/password yüzeyini kullanabilir; business/catalog/booking/calendar/settings tenant lookup'tan önce engellenir.
+- Parola değişimi sonrası global logout denenir ve yerel session kesin temizlenir.
+
 ## F17-02 CI/test invariant'ları
 
 - SQL migration ve SQL acceptance dosyaları CI workflow'unda açıkça bağlı değilse coverage gate kırılır.
@@ -162,7 +186,7 @@ Birleştirilmiş eski migration'lar değiştirilmez; yeni davranış ileri migra
 - Production build sonrası gerçek headless Chrome giriş ekranını render etmeden browser smoke geçmez.
 - `npm audit --audit-level=high` blocking'dir; high veya critical dependency advisory CI'ı kırar.
 - Güncel lock baseline: `@cloudflare/vite-plugin@1.54.8`, `wrangler@4.131.0`, transitive `sharp@0.35.4`; clean install/audit 0 vulnerability raporlar.
-- CI secret/provider/staging kanıtı değildir; gerçek staging kanıtı F17-01 live workflow, provider/notification kanıtı F09-05 ile tutulur.
+- CI secret/provider/staging kanıtı değildir; gerçek staging kanıtı F17-01 live workflow, provider/notification kanıtı F09-05, hosted Auth kanıtı F10-01 ile tutulur.
 
 ## Doğrulama kanıtı ve sınırı
 
@@ -171,6 +195,7 @@ Birleştirilmiş eski migration'lar değiştirilmez; yeni davranış ileri migra
 - [F09-03 PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13): CI `34653785166` success; provider stub + tam PostgreSQL + concurrency + upgrade/backfill kapsandı.
 - [F09-04 PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14): CI `34656950693` success; Worker abuse contract, direct-RPC deny, wrong-proof deny, actor/network/business quota, safe retry, recovery, public provenance ve counter retention kapsandı.
 - [F09-05 PR #30](https://github.com/ziyabeey1-ai/randevu/pull/30): CI `34681255156` success; gerçek staging acceptance `34681540142` success. Kayıp cevap recovery, idempotency duplicate/conflict, management/recovery authority, sahte receipt reddi, scheduled outbox, gerçek Resend provider ID, içerik origin'i ve güvenli test recipient'inde `delivered` kapsandı.
+- [F10-01 PR #31](https://github.com/ziyabeey1-ai/randevu/pull/31): CI `34684288886` success; gerçek hosted staging acceptance `34684481828` success. Origin/CSRF, refresh rotation, canlı üyelik kontrolü, hosted signup/recovery confirmation ve replay, recovery-only sınır, parola rotation/restore ve geçici kullanıcı cleanup kapsandı.
 - [F17-02 PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15): teknik kabul CI `34658041327` success; 34-file coverage gate, negatif gate testi, 0-vulnerability blocking audit, real Chrome smoke, 21/21 HTTP kontratı ve tam SQL zinciri kapsandı.
 - F17-01 canlı hosted kanıtı: `randevu-staging` Supabase `ACTIVE_HEALTHY`; ACL migration `20260912030000_f17_hosted_acl_hardening` uygulandı ve security advisor tekrar çalıştırıldı.
 - F17-01 canlı workflow probe `34671008590`: runner/toolchain/install geçti, environment contract dış config yokluğunda fail-closed durdu; deploy/smoke çalıştırılmadı.
@@ -184,4 +209,4 @@ Birleştirilmiş eski migration'lar değiştirilmez; yeni davranış ileri migra
 - **F17-01 canlı kabul run `34679959999` success:** DB credential testi, migrations, Auth owners, runtime hashes, fixture reset/seed, Cloudflare Worker deploy, persistent management secret doğrulaması ve gerçek health/login/session/business-select/catalog smoke tamamen geçti. Worker origin: `https://yzt-randevu-staging.ziyabeey1.workers.dev`.
 - F09-05 güvenli Resend test recipient'inde gerçek delivery eventini doğrular. Production domain, gerçek pilot alıcılar, deliverability metrikleri ve yük davranışı F17-03/F17-05 kapsamındadır.
 
-Her PR aynı zorunlu build/SQL kapısını geçer. **G09, F09-01…F09-05 kabulünün tamamlanmasıyla kapandı.**
+Her PR aynı zorunlu build/SQL kapısını geçer. **G09 kapalıdır. F10-01 tamamlanmıştır; G10, F10-02…F10-06 beklediği için açıktır.**
