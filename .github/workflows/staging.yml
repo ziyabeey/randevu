@@ -27,8 +27,6 @@ jobs:
       STAGING_OWNER_A_EMAIL: randevu-staging-owner-a@example.com
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
       MANAGEMENT_LINK_ENCRYPTION_KEY_V1: ${{ secrets.MANAGEMENT_LINK_ENCRYPTION_KEY_V1 }}
-      PUBLIC_BOOKING_GATE_SECRET: ${{ secrets.PUBLIC_BOOKING_GATE_SECRET }}
-      NOTIFICATION_DISPATCH_SECRET: ${{ secrets.NOTIFICATION_DISPATCH_SECRET }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       NOTIFICATION_FROM_EMAIL: ${{ secrets.NOTIFICATION_FROM_EMAIL }}
 
@@ -50,13 +48,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Prepare ephemeral staging owner passwords
+      - name: Prepare ephemeral staging job secrets
         run: |
           node <<'NODE'
           const { randomBytes } = require('node:crypto');
           const { appendFileSync } = require('node:fs');
-          for (const name of ['STAGING_OWNER_A_PASSWORD', 'STAGING_OWNER_B_PASSWORD']) {
-            const value = `Rdv!${randomBytes(24).toString('base64url')}9a`;
+
+          const generated = {
+            STAGING_OWNER_A_PASSWORD: `Rdv!${randomBytes(24).toString('base64url')}9a`,
+            STAGING_OWNER_B_PASSWORD: `Rdv!${randomBytes(24).toString('base64url')}9a`,
+            PUBLIC_BOOKING_GATE_SECRET: randomBytes(48).toString('base64url'),
+            NOTIFICATION_DISPATCH_SECRET: randomBytes(48).toString('base64url'),
+          };
+
+          for (const [name, value] of Object.entries(generated)) {
             process.stdout.write(`::add-mask::${value}\n`);
             appendFileSync(process.env.GITHUB_ENV, `${name}=${value}\n`, 'utf8');
           }
@@ -68,7 +73,6 @@ jobs:
           const requiredExternal = [
             'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'STAGING_DATABASE_URL',
             'SUPABASE_ADMIN_KEY', 'MANAGEMENT_LINK_ENCRYPTION_KEY_V1',
-            'PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET',
             'RESEND_API_KEY', 'NOTIFICATION_FROM_EMAIL',
           ];
           const missingExternal = requiredExternal.filter((name) => !process.env[name]);
@@ -80,6 +84,7 @@ jobs:
             'STAGING_SUPABASE_PROJECT_REF', 'SUPABASE_URL', 'SUPABASE_ANON_KEY',
             'STAGING_OWNER_A_EMAIL', 'STAGING_OWNER_A_PASSWORD',
             'STAGING_OWNER_B_EMAIL', 'STAGING_OWNER_B_PASSWORD',
+            'PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET',
           ];
           const missingWorkflow = requiredWorkflow.filter((name) => !process.env[name]);
           if (missingWorkflow.length) {
@@ -88,6 +93,12 @@ jobs:
           const projectRef = process.env.STAGING_SUPABASE_PROJECT_REF;
           if (!process.env.SUPABASE_URL.includes(projectRef) || !process.env.STAGING_DATABASE_URL.includes(projectRef)) {
             throw new Error('Supabase API URL, database URL and project ref do not describe the same staging project');
+          }
+          for (const name of ['PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET']) {
+            const value = process.env[name] ?? '';
+            if (value.length < 43 || value.length > 256) {
+              throw new Error(`${name} must satisfy the Worker secret length contract`);
+            }
           }
           NODE
 
