@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import { api } from './api';
 
 type Business = { id: string; name: string; slug: string; timezone: string };
 type Membership = {
@@ -13,6 +14,8 @@ type Session = {
   user: null | { id: string; email: string | null; fullName: string | null };
   memberships: Membership[];
   activeBusinessId: string | null;
+  passwordRecovery: boolean;
+  csrfToken: string;
 };
 type Service = {
   id: string;
@@ -32,22 +35,16 @@ type Catalog = {
   staff: Staff[];
   assignments: Assignment[];
 };
-
-type ApiError = { error?: { message?: string } };
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(init?.headers ?? {}) },
-    cache: 'no-store',
-  });
-  const body = await response.json() as T & ApiError;
-  if (!response.ok) throw new Error(body.error?.message ?? 'İşlem tamamlanamadı.');
-  return body;
-}
+type AuthMode = 'login' | 'signup' | 'recovery';
 
 function money(minor: number) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(minor / 100);
+}
+
+function roleLabel(role: Membership['role']) {
+  if (role === 'owner') return 'İşletme sahibi';
+  if (role === 'manager') return 'Yönetici';
+  return 'Çalışan';
 }
 
 export default function App() {
@@ -56,14 +53,15 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string>('');
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const nextSession = await api<Session>('/api/session');
       setSession(nextSession);
-      if (nextSession.user && nextSession.activeBusinessId) {
+      if (nextSession.user && nextSession.activeBusinessId && !nextSession.passwordRecovery) {
         try {
           setCatalog(await api<Catalog>('/api/catalog'));
         } catch {
@@ -79,20 +77,54 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authResult = params.get('auth');
+    if (!authResult) return;
+    if (authResult === 'confirmed') {
+      setNotice('E-posta adresiniz doğrulandı. Hesabınız hazır.');
+    } else if (authResult === 'recovery') {
+      setNotice('Kurtarma bağlantısı doğrulandı. Şimdi yeni parolanızı belirleyin.');
+      setShowPasswordChange(true);
+    } else if (authResult === 'unavailable') {
+      setNotice('Hesap servisine şu anda ulaşılamıyor. Bağlantıyı kısa süre sonra yeniden açın.');
+    } else {
+      setNotice('Doğrulama bağlantısı geçersiz veya süresi dolmuş. Yeni bir bağlantı isteyin.');
+    }
+    params.delete('auth');
+    const query = params.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+  }, []);
+
   useEffect(() => { void load(); }, [load]);
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true); setNotice('');
+    setBusy(true);
+    setNotice('');
     const data = new FormData(event.currentTarget);
     try {
+      if (authMode === 'recovery') {
+        const result = await api<{ ok: boolean; message: string }>('/api/auth/recovery', {
+          method: 'POST',
+          body: JSON.stringify({ email: data.get('email') }),
+        });
+        setNotice(result.message);
+        setAuthMode('login');
+        return;
+      }
+
       if (authMode === 'signup') {
         const result = await api<{ ok: boolean; requiresEmailConfirmation: boolean }>('/api/auth/signup', {
           method: 'POST',
-          body: JSON.stringify({ email: data.get('email'), password: data.get('password'), fullName: data.get('fullName') }),
+          body: JSON.stringify({
+            email: data.get('email'),
+            password: data.get('password'),
+            fullName: data.get('fullName'),
+          }),
         });
         if (result.requiresEmailConfirmation) {
-          setNotice('Hesap oluşturuldu. E-posta doğrulamasından sonra giriş yapabilirsiniz.');
+          setNotice('Hesap oluşturuldu. E-postanızdaki doğrulama bağlantısını açtıktan sonra çalışma alanına girebilirsiniz.');
           setAuthMode('login');
           return;
         }
@@ -104,13 +136,43 @@ export default function App() {
       }
       await load();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Kimlik işlemi başarısız.');
-    } finally { setBusy(false); }
+      setNotice(error instanceof Error ? error.message : 'Hesap işlemi tamamlanamadı.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const password = String(data.get('password') ?? '');
+    const confirmation = String(data.get('passwordConfirmation') ?? '');
+    if (password !== confirmation) {
+      setNotice('Parola tekrarı eşleşmiyor.');
+      return;
+    }
+
+    setBusy(true);
+    setNotice('');
+    try {
+      await api('/api/auth/password', {
+        method: 'PUT',
+        body: JSON.stringify({ password }),
+      });
+      setShowPasswordChange(false);
+      setNotice('Parolanız güncellendi. Güvenliğiniz için yeniden giriş yapın.');
+      await load();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Parola güncellenemedi.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function createBusiness(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true); setNotice('');
+    setBusy(true);
+    setNotice('');
     const data = new FormData(event.currentTarget);
     try {
       await api('/api/businesses', {
@@ -119,22 +181,30 @@ export default function App() {
       });
       setNotice('İşletme oluşturuldu. Şimdi ilk hizmetinizi ve ekibinizi ekleyebilirsiniz.');
       await load();
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'İşletme oluşturulamadı.'); }
-    finally { setBusy(false); }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'İşletme oluşturulamadı.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function selectBusiness(businessId: string) {
-    setBusy(true); setNotice('');
+    setBusy(true);
+    setNotice('');
     try {
       await api('/api/businesses/select', { method: 'POST', body: JSON.stringify({ businessId }) });
       await load();
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'İşletme seçilemedi.'); }
-    finally { setBusy(false); }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'İşletme seçilemedi.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function addService(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true); setNotice('');
+    setBusy(true);
+    setNotice('');
     const form = event.currentTarget;
     const data = new FormData(form);
     const price = Number(String(data.get('price')).replace(',', '.'));
@@ -150,46 +220,82 @@ export default function App() {
       form.reset();
       setNotice('Hizmet eklendi.');
       setCatalog(await api<Catalog>('/api/catalog'));
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Hizmet eklenemedi.'); }
-    finally { setBusy(false); }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Hizmet eklenemedi.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function addStaff(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true); setNotice('');
+    setBusy(true);
+    setNotice('');
     const form = event.currentTarget;
     const data = new FormData(form);
     try {
-      await api('/api/staff', { method: 'POST', body: JSON.stringify({ name: data.get('name'), phone: data.get('phone') }) });
+      await api('/api/staff', {
+        method: 'POST',
+        body: JSON.stringify({ name: data.get('name'), phone: data.get('phone') }),
+      });
       form.reset();
       setNotice('Personel eklendi.');
       setCatalog(await api<Catalog>('/api/catalog'));
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Personel eklenemedi.'); }
-    finally { setBusy(false); }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Personel eklenemedi.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function toggleAssignment(staffId: string, serviceId: string, active: boolean) {
-    setBusy(true); setNotice('');
+    setBusy(true);
+    setNotice('');
     try {
-      await api(`/api/staff/${staffId}/services/${serviceId}`, { method: 'PUT', body: JSON.stringify({ active }) });
+      await api(`/api/staff/${staffId}/services/${serviceId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ active }),
+      });
       setCatalog(await api<Catalog>('/api/catalog'));
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Yetkinlik güncellenemedi.'); }
-    finally { setBusy(false); }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Yetkinlik güncellenemedi.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function logout() {
     setBusy(true);
-    try { await api('/api/auth/logout', { method: 'POST' }); await load(); }
-    finally { setBusy(false); }
+    try {
+      await api('/api/auth/logout', { method: 'POST' });
+      setShowPasswordChange(false);
+      await load();
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (loading) return <main className="center-card"><p>Çalışma alanı hazırlanıyor…</p></main>;
 
+  const passwordRequired = Boolean(session?.user && session.passwordRecovery);
+  const showPasswordPanel = Boolean(session?.user && (passwordRequired || showPasswordChange));
+
   return (
     <div className="app-shell">
       <header className="app-header">
-        <a className="brand" href="/" aria-label="YZT Randevu ana sayfa"><span className="wordmark">yzt<span>.</span></span><span className="product-name">randevu</span></a>
-        {session?.user && <button className="ghost-button" type="button" onClick={() => void logout()} disabled={busy}>Çıkış yap</button>}
+        <a className="brand" href="/" aria-label="YZT Randevu ana sayfa">
+          <span className="wordmark">yzt<span>.</span></span><span className="product-name">randevu</span>
+        </a>
+        {session?.user && (
+          <div className="header-actions">
+            {!passwordRequired && (
+              <button className="ghost-button" type="button" onClick={() => setShowPasswordChange(true)} disabled={busy}>
+                Parolayı değiştir
+              </button>
+            )}
+            <button className="ghost-button" type="button" onClick={() => void logout()} disabled={busy}>Çıkış yap</button>
+          </div>
+        )}
       </header>
 
       <main className="workspace">
@@ -197,22 +303,64 @@ export default function App() {
 
         {!session?.user ? (
           <section className="panel auth-panel">
-            <p className="eyebrow">FAZ 3 · HİZMET + EKİP</p>
-            <h1>{authMode === 'login' ? 'Çalışma alanına girin' : 'İşletme hesabınızı oluşturun'}</h1>
+            <p className="eyebrow">GÜVENLİ HESAP ERİŞİMİ</p>
+            <h1>
+              {authMode === 'login'
+                ? 'Çalışma alanına girin'
+                : authMode === 'signup'
+                  ? 'İşletme hesabınızı oluşturun'
+                  : 'Parolanızı yenileyin'}
+            </h1>
             <form className="form-stack" onSubmit={submitAuth}>
-              {authMode === 'signup' && <label>Ad soyad<input name="fullName" autoComplete="name" /></label>}
+              {authMode === 'signup' && <label>Ad soyad<input name="fullName" autoComplete="name" maxLength={120} /></label>}
               <label>E-posta<input name="email" type="email" autoComplete="email" required /></label>
-              <label>Parola<input name="password" type="password" minLength={8} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} required /></label>
-              <button className="primary-button" disabled={busy}>{authMode === 'login' ? 'Giriş yap' : 'Hesap oluştur'}</button>
+              {authMode !== 'recovery' && (
+                <label>
+                  Parola
+                  <input
+                    name="password"
+                    type="password"
+                    minLength={10}
+                    maxLength={128}
+                    autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+                    required
+                  />
+                </label>
+              )}
+              <button className="primary-button" disabled={busy}>
+                {authMode === 'login' ? 'Giriş yap' : authMode === 'signup' ? 'Hesap oluştur' : 'Kurtarma bağlantısı gönder'}
+              </button>
             </form>
-            <button className="text-button" type="button" onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}>
-              {authMode === 'login' ? 'Yeni işletme hesabı oluştur' : 'Zaten hesabım var'}
-            </button>
+            <div className="auth-actions">
+              {authMode === 'login' && (
+                <>
+                  <button className="text-button" type="button" onClick={() => setAuthMode('recovery')}>Parolamı unuttum</button>
+                  <button className="text-button" type="button" onClick={() => setAuthMode('signup')}>Yeni işletme hesabı oluştur</button>
+                </>
+              )}
+              {authMode !== 'login' && (
+                <button className="text-button" type="button" onClick={() => setAuthMode('login')}>Giriş ekranına dön</button>
+              )}
+            </div>
+          </section>
+        ) : showPasswordPanel ? (
+          <section className="panel auth-panel">
+            <p className="eyebrow">{passwordRequired ? 'PAROLA KURTARMA' : 'HESAP GÜVENLİĞİ'}</p>
+            <h1>Yeni parolanızı belirleyin</h1>
+            <p className="muted">En az 10 karakter kullanın. Değişiklikten sonra bütün açık oturumlar kapatılır.</p>
+            <form className="form-stack" onSubmit={changePassword}>
+              <label>Yeni parola<input name="password" type="password" minLength={10} maxLength={128} autoComplete="new-password" required /></label>
+              <label>Yeni parola tekrar<input name="passwordConfirmation" type="password" minLength={10} maxLength={128} autoComplete="new-password" required /></label>
+              <button className="primary-button" disabled={busy}>Parolayı güncelle</button>
+            </form>
+            {!passwordRequired && (
+              <button className="text-button" type="button" onClick={() => setShowPasswordChange(false)}>Vazgeç</button>
+            )}
           </section>
         ) : session.memberships.length === 0 ? (
           <section className="panel setup-panel">
             <p className="eyebrow">İLK KURULUM</p><h1>İşletmenizi oluşturun</h1>
-            <p className="muted">Bu kayıt sizin tenant sınırınız olacak. Sonraki tüm hizmet ve ekip verileri bu işletmeye ait kalır.</p>
+            <p className="muted">Hizmetleriniz, ekibiniz ve randevularınız bu işletme altında güvenle ayrılır.</p>
             <form className="form-stack" onSubmit={createBusiness}>
               <label>İşletme adı<input name="name" minLength={2} maxLength={120} required placeholder="Örn. YZT Studio" /></label>
               <button className="primary-button" disabled={busy}>İşletmeyi oluştur</button>
@@ -224,7 +372,7 @@ export default function App() {
             <div className="choice-list">
               {session.memberships.map((membership) => (
                 <button key={membership.id} className="choice-button" disabled={busy} onClick={() => void selectBusiness(membership.business_id)}>
-                  <strong>{membership.businesses?.name ?? 'İşletme'}</strong><span>{membership.role}</span>
+                  <strong>{membership.businesses?.name ?? 'İşletme'}</strong><span>{roleLabel(membership.role)}</span>
                 </button>
               ))}
             </div>
@@ -232,8 +380,11 @@ export default function App() {
         ) : (
           <div className="dashboard-grid">
             <section className="panel span-two">
-              <div className="section-head"><div><p className="eyebrow">KURULUM</p><h1>Hizmet ve ekip</h1></div><span className="role-badge">{catalog.membership.role}</span></div>
-              <p className="muted">İlk booking altyapısının kataloğunu kuruyoruz. Müsaitlik ve randevu yazımı sonraki fazlarda gelecek.</p>
+              <div className="section-head">
+                <div><p className="eyebrow">İŞLETME AYARLARI</p><h1>Hizmet ve ekip</h1></div>
+                <span className="role-badge">{roleLabel(catalog.membership.role)}</span>
+              </div>
+              <p className="muted">Müşterilerin seçebileceği hizmetleri, ekibi ve hizmet yetkinliklerini yönetin.</p>
             </section>
 
             <section className="panel">
@@ -262,7 +413,7 @@ export default function App() {
             </section>
 
             <section className="panel span-two">
-              <div className="section-head"><h2>Hizmet yetkinlikleri</h2><span>StaffService</span></div>
+              <div className="section-head"><h2>Hizmet yetkinlikleri</h2><span>Ekip eşleştirmesi</span></div>
               {catalog.staff.length === 0 || catalog.services.length === 0 ? <p className="empty">Eşleştirme için en az bir hizmet ve bir personel ekleyin.</p> : (
                 <div className="matrix">
                   {catalog.staff.map((person) => <div className="matrix-row" key={person.id}>
@@ -281,7 +432,7 @@ export default function App() {
           </div>
         )}
       </main>
-      <footer className="app-footer">YZT Digital · tenant-safe foundation</footer>
+      <footer className="app-footer">YZT Digital · Randevu çalışma alanı</footer>
     </div>
   );
 }
