@@ -20,7 +20,7 @@
     "staging:reset": "node scripts/staging-db.mjs reset",
     "staging:config": "node scripts/staging-db.mjs config",
     "staging:smoke": "node scripts/staging-smoke.mjs",
-    "staging:f09-acceptance": "node scripts/staging-f09-acceptance.mjs"
+    "staging:f09-acceptance": "node scripts/staging-f09-acceptance-runner.mjs"
   },
   "dependencies": {
     "hono": "4.13.7",
