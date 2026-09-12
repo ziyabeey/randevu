@@ -108,13 +108,15 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170000_phase9_notification_outbox.sql
           psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170100_phase9_notification_maintenance.sql
           psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_upgrade_assert.sql
-      - name: Verify F09-04 public abuse gate and direct-RPC upgrade boundary
+      - name: Verify F09-04 public abuse gate and hosted ACL boundary
         env:
           PGPASSWORD: postgres
         run: |
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180000_phase9_public_abuse_control.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180200_phase9_public_abuse_retention.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/f17_hosted_acl_hardening.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_public_abuse_recovery_probe.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_public_abuse_control.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_public_abuse_retention.sql

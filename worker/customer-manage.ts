@@ -94,9 +94,6 @@ function rpcError(data: unknown, fallback: string) {
   if (message.includes('MANAGEMENT_NOT_FOUND') || message.includes('INVALID_MANAGEMENT_TOKEN')) {
     return { code: 'MANAGEMENT_NOT_FOUND', message: 'Bu randevu yönetim bağlantısı geçerli değil.', status: 404 as const };
   }
-  if (message.includes('INVALID_MANAGEMENT_BOOTSTRAP') || message.includes('MANAGEMENT_TOKEN_ALREADY_PROVISIONED')) {
-    return { code: 'MANAGEMENT_BOOTSTRAP_FAILED', message: 'Randevu yönetim bağlantısı hazırlanamadı.', status: 409 as const };
-  }
   if (message.includes('APPOINTMENT_NOT_MANAGEABLE')) {
     return { code: 'APPOINTMENT_NOT_MANAGEABLE', message: 'Bu randevu artık müşteri tarafından değiştirilemez.', status: 409 as const };
   }
@@ -114,30 +111,6 @@ function rpcError(data: unknown, fallback: string) {
   }
   return { code: 'MANAGEMENT_FAILED', message: fallback, status: 400 as const };
 }
-
-customerManage.post('/provision', async (context) => {
-  const body = await readJson(context.req.raw);
-  const appointmentId = body?.appointmentId;
-  const bookingKey = typeof body?.bookingIdempotencyKey === 'string' ? body.bookingIdempotencyKey.trim() : '';
-  const managementToken = typeof body?.managementToken === 'string' ? body.managementToken.trim() : '';
-  if (!validUuid(appointmentId) || !idempotencyKey(bookingKey) || !validToken(managementToken)) {
-    return context.json({ error: { code: 'INVALID_MANAGEMENT_BOOTSTRAP', message: 'Yönetim bağlantısı isteği geçerli değil.' } }, 400);
-  }
-
-  const result = await supabaseRequest<boolean>(context.env, 'rest/v1/rpc/provision_public_management_token', {
-    method: 'POST',
-    body: JSON.stringify({
-      p_appointment_id: appointmentId,
-      p_booking_idempotency_key: bookingKey,
-      p_management_token: managementToken,
-    }),
-  });
-  if (!result.ok || result.data !== true) {
-    const error = rpcError(result.data, 'Randevu yönetim bağlantısı hazırlanamadı.');
-    return context.json({ error: { code: error.code, message: error.message } }, error.status);
-  }
-  return context.json({ ok: true });
-});
 
 // The bearer token is always carried in a POST body, never in a URL path/query.
 // This keeps it out of ordinary HTTP access logs. The browser page itself stores

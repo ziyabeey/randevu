@@ -28,6 +28,12 @@ do $$ begin
 exception when duplicate_object then null;
 end $$;
 
+-- Hosted Supabase gives functions created by postgres in `public` explicit
+-- EXECUTE privileges to its API roles. Mirror that behavior so `REVOKE FROM
+-- PUBLIC` is not accidentally treated as sufficient in CI.
+alter default privileges for role postgres in schema public
+  grant execute on functions to anon, authenticated;
+
 -- Hosted Supabase grants both API roles USAGE on the extensions schema and
 -- EXECUTE on pgcrypto functions through their normal PUBLIC function grants.
 grant usage on schema extensions to anon, authenticated;
