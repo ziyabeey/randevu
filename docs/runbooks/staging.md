@@ -16,7 +16,7 @@ Bu komut `CLOUDFLARE_ENV=staging` ile `wrangler.jsonc` içindeki staging environ
 
 ## GitHub `staging` environment dış sözleşmesi
 
-GitHub Environment `staging` içinde yalnız aşağıdaki **9 dış değer** tanımlanır. Bunlar repo içinde tutulmaz.
+GitHub Environment `staging` içinde yalnız aşağıdaki **7 dış değer** tanımlanır. Bunlar repo içinde tutulmaz.
 
 ### Cloudflare deploy erişimi
 
@@ -30,19 +30,28 @@ GitHub Environment `staging` içinde yalnız aşağıdaki **9 dış değer** tan
 
 Staging project ref, API URL ve mevcut Worker ile uyumlu legacy anon key public metadata olarak workflow'da sabittir. `STAGING_DATABASE_URL` aynı project ref'i içermelidir ve workflow bunu fail-closed kontrol eder. Legacy anon key public istemci anahtarıdır; modern publishable-key geçişi mevcut Worker'ın Authorization yardımcılarıyla birlikte ayrı bir auth/refactor işi olarak ele alınır.
 
-### Worker runtime ve provider
+### Kalıcı Worker/provider secret'ları
 
 - `MANAGEMENT_LINK_ENCRYPTION_KEY_V1`
-- `PUBLIC_BOOKING_GATE_SECRET`
-- `NOTIFICATION_DISPATCH_SECRET`
 - `RESEND_API_KEY`
 - `NOTIFICATION_FROM_EMAIL`
 
-Bu anahtarlar stabil kalır. Management encryption key run başına üretilmez; mevcut recovery ciphertext'lerinin çözülebilir kalması gerekir. Gate/dispatch secret'ları da DB hash'i ile Worker runtime'ın eşleşmesini korur.
+Management encryption key **stabil kalır**. Run başına üretilmez; staging'de mevcut recovery ciphertext'lerinin çözülebilir kalması gerekir. Resend erişimi ve doğrulanmış gönderici de dış provider sözleşmesidir.
+
+### Run başına üretilen secret'lar
+
+Aşağıdaki değerler GitHub Environment secret'ı değildir; workflow her run başında `crypto.randomBytes()` ile üretir, GitHub log masking'e ekler ve yalnız o job'ın `GITHUB_ENV` dosyasında taşır:
+
+- `PUBLIC_BOOKING_GATE_SECRET`
+- `NOTIFICATION_DISPATCH_SECRET`
+- `STAGING_OWNER_A_PASSWORD`
+- `STAGING_OWNER_B_PASSWORD`
+
+Gate/dispatch secret'ları veri şifrelemez. PostgreSQL yalnız SHA-256 hash'lerini tutar; aynı job içindeki raw değerler hem `npm run staging:config` ile DB hash'lerine hem de Worker secret bundle'ına gider. Böylece her staging deploy bu iki capability secret'ını birlikte döndürür ve repo/GitHub'da kalıcı raw kopya tutmaz.
 
 ## Otomatik staging origin
 
-`STAGING_APP_ORIGIN` artık GitHub secret değildir. Workflow:
+`STAGING_APP_ORIGIN` GitHub secret değildir. Workflow:
 
 1. `npm run build:staging` ile generated `dist/yzt_randevu/wrangler.json` üretir,
 2. generated config içinden Worker adını okur ve `workers_dev=true` olduğunu doğrular,
@@ -59,7 +68,7 @@ Fixture hesaplarının email adresleri workflow metadata'sıdır:
 - `randevu-staging-owner-a@example.com`
 - `randevu-staging-owner-b@example.com`
 
-Parolalar her workflow run'ında `crypto.randomBytes()` ile yeniden üretilir, GitHub masking'e eklenir ve yalnız o job'ın `GITHUB_ENV` dosyasında tutulur. Repo veya GitHub Environment secret'ı değildir. `scripts/staging-ensure-users.mjs` Supabase Admin Auth üzerinden email-confirmed kullanıcıları oluşturur veya aynı kullanıcıların parolasını o run'ın geçici parolasına günceller. Smoke aynı job içindeki maskelenmiş değeri kullanır.
+Parolalar her workflow run'ında yeniden üretilir. `scripts/staging-ensure-users.mjs` Supabase Admin Auth üzerinden email-confirmed kullanıcıları oluşturur veya aynı kullanıcıların parolasını o run'ın geçici parolasına günceller. Smoke aynı job içindeki maskelenmiş değeri kullanır.
 
 ## Supabase Auth URL ayarı
 
@@ -81,7 +90,7 @@ supabase db push --db-url "$STAGING_DATABASE_URL" --include-all --yes
 
 çalıştırır.
 
-Ardından server-only gate secret'larının **yalnız SHA-256 hash'leri** PostgreSQL config tablolarına yazılır:
+Ardından run başında üretilen gate/dispatch secret'larının **yalnız SHA-256 hash'leri** PostgreSQL config tablolarına yazılır:
 
 ```bash
 npm run staging:config
@@ -112,15 +121,15 @@ Her birinde ayrı owner membership, bir hizmet, bir personel, service↔staff e�
 `.github/workflows/staging.yml` manual `workflow_dispatch` ile çalışır. Sıra:
 
 1. bağımlılık kurulumu,
-2. ephemeral owner parolalarının üretilip maskelenmesi,
-3. 9 dış değer + workflow metadata sözleşmesinin fail-closed doğrulanması,
+2. ephemeral owner parolaları + public-booking gate + notification dispatch secret'larının üretilip maskelenmesi,
+3. 7 dış değer + workflow metadata/ephemeral sözleşmesinin fail-closed doğrulanması,
 4. `npm run build:staging`,
 5. Cloudflare account subdomain lookup ve gerçek `STAGING_APP_ORIGIN` türetimi,
 6. PostgreSQL client kurulumu ve migration push,
 7. gerçek Auth test owner'larının hazırlanması,
-8. DB runtime hash provisioning,
+8. aynı job secret'larıyla DB runtime hash provisioning,
 9. fixture reset + seed,
-10. runtime secret'larının geçici `/tmp` JSON dosyasından `wrangler deploy --secrets-file` ile yüklenmesi,
+10. aynı job secret'larının geçici `/tmp` JSON dosyasından `wrangler deploy --secrets-file` ile yüklenmesi,
 11. gerçek staging smoke,
 12. geçici secret dosyasının her durumda silinmesi.
 
