@@ -2,12 +2,18 @@ create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 
 -- Supabase sessions resolve extension functions through this default path.
--- Individual SECURITY DEFINER functions still need their own explicit safe path.
+-- Apply it to the database and to the CI login role so fresh psql/dblink
+-- sessions behave like hosted Supabase. SECURITY DEFINER functions that call
+-- extension functions still declare `extensions` explicitly themselves.
 do $$
 begin
   execute format(
     'alter database %I set search_path = "$user", public, extensions',
     current_database()
+  );
+  execute format(
+    'alter role %I set search_path = "$user", public, extensions',
+    current_user
   );
 end
 $$;
