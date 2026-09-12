@@ -13,6 +13,16 @@ on:
         required: false
         default: false
         type: boolean
+      run_s01_acceptance:
+        description: Run S01 public mailbox recovery boundary
+        required: false
+        default: false
+        type: boolean
+      s01_recovery_email:
+        description: Resend Receiving test mailbox for S01
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -72,6 +82,22 @@ jobs:
       - name: Verify F10 auth and request-security contracts
         if: ${{ inputs.run_f10_auth_acceptance }}
         run: npm run test:http
+
+      - name: Verify S01 recovery contracts and mailbox input
+        if: ${{ inputs.run_s01_acceptance }}
+        env:
+          RESEND_ACCEPTANCE_API_KEY: ${{ secrets.RESEND_ACCEPTANCE_API_KEY }}
+          S01_RECOVERY_EMAIL: ${{ inputs.s01_recovery_email }}
+        run: |
+          if [ -z "$RESEND_ACCEPTANCE_API_KEY" ]; then
+            echo "::error::S01 acceptance requires staging secret RESEND_ACCEPTANCE_API_KEY (Resend full_access)."
+            exit 1
+          fi
+          if [ -z "$S01_RECOVERY_EMAIL" ]; then
+            echo "::error::S01 acceptance requires a Resend Receiving test mailbox input."
+            exit 1
+          fi
+          npm run test:http
 
       - name: Prepare ephemeral staging job secrets
         run: |
@@ -301,6 +327,13 @@ jobs:
       - name: Verify F10-01 real hosted signup, recovery and session security
         if: ${{ inputs.run_f10_auth_acceptance }}
         run: npm run staging:f10-auth-acceptance
+
+      - name: Verify S01 public mailbox recovery boundary
+        if: ${{ inputs.run_s01_acceptance }}
+        env:
+          RESEND_ACCEPTANCE_API_KEY: ${{ secrets.RESEND_ACCEPTANCE_API_KEY }}
+          S01_RECOVERY_EMAIL: ${{ inputs.s01_recovery_email }}
+        run: npm run staging:s01-acceptance
 
       - name: Remove temporary Worker secret bundle
         if: always()
