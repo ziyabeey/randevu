@@ -5,6 +5,8 @@ for (const name of required) {
 
 const origin = process.env.STAGING_APP_ORIGIN.replace(/\/$/, '');
 const cookies = new Map();
+const HEALTH_ATTEMPTS = 8;
+const HEALTH_RETRY_DELAY_MS = 1500;
 
 function absorbCookies(response) {
   const values = typeof response.headers.getSetCookie === 'function'
@@ -19,6 +21,10 @@ function absorbCookies(response) {
 
 function cookieHeader() {
   return [...cookies.entries()].map(([name, value]) => `${name}=${value}`).join('; ');
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function request(path, init = {}) {
@@ -39,10 +45,31 @@ async function request(path, init = {}) {
   return { response, data };
 }
 
-const health = await request('/api/health');
-if (!health.response.ok || health.data?.status !== 'ok') {
-  throw new Error(`Staging health check failed with HTTP ${health.response.status}`);
+async function waitForHealth() {
+  let lastStatus = 'no response';
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt += 1) {
+    try {
+      const health = await request('/api/health');
+      lastStatus = `HTTP ${health.response.status}`;
+      if (health.response.ok && health.data?.status === 'ok') return;
+    } catch (error) {
+      lastError = error;
+      lastStatus = error instanceof Error ? error.message : String(error);
+    }
+
+    if (attempt < HEALTH_ATTEMPTS) {
+      console.log(`Staging health not ready (${lastStatus}); retrying ${attempt}/${HEALTH_ATTEMPTS - 1}...`);
+      await sleep(HEALTH_RETRY_DELAY_MS);
+    }
+  }
+
+  const suffix = lastError ? `; last request error: ${lastStatus}` : `; last status: ${lastStatus}`;
+  throw new Error(`Staging health check failed after ${HEALTH_ATTEMPTS} attempts${suffix}`);
 }
+
+await waitForHealth();
 
 const login = await request('/api/auth/login', {
   method: 'POST',
