@@ -43,7 +43,7 @@ create or replace function public.enforce_public_booking_rate(
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_cfg public.public_booking_abuse_config;

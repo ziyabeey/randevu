@@ -98,9 +98,9 @@ begin
       'recovery-race','phase9-race-create-0001','Race Müşteri',
       '6a000000-0000-4000-8000-000000000002','7a000000-0000-4000-8000-000000000002',
       %L::timestamptz,
-      encode(digest('ggggggggggggggggggggggggggggggggggggggggggg','sha256'),'hex'),
+      encode(extensions.digest('ggggggggggggggggggggggggggggggggggggggggggg','sha256'),'hex'),
       '8a000000-0000-4000-8000-000000000002',
-      encode(digest('hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh','sha256'),'hex'),
+      encode(extensions.digest('hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh','sha256'),'hex'),
       'ciphertext-race-abcdefghijklmnopqrstuvwxyz0123456789','iv-race-12345678',1::smallint,
       '+90 555 900 00 03','phase9-race@example.test',null
     ) c
@@ -114,8 +114,6 @@ begin
     raise exception 'could not start concurrent create query';
   end if;
 
-  -- Do not guess how quickly the other session reaches the function. Probe the
-  -- exact advisory key until Session A owns it, releasing any probe lock at once.
   loop
     v_lock_available := pg_try_advisory_lock(v_lock_key);
     if not v_lock_available then
@@ -135,7 +133,7 @@ begin
     from public.recover_public_appointment(
       '8a000000-0000-4000-8000-000000000002',
       'phase9-race-create-0001',
-      encode(digest('hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh','sha256'),'hex')
+      encode(extensions.digest('hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh','sha256'),'hex')
     )
   $sql$;
 

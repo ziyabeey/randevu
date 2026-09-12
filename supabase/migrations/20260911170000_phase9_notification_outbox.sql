@@ -135,7 +135,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select p_dispatch_secret is not null
     and char_length(p_dispatch_secret) >= 43
@@ -191,7 +191,6 @@ begin
   v_limit := greatest(1, least(coalesce(p_limit, 10), 50));
   v_lease_seconds := greatest(15, least(coalesce(p_lease_seconds, 45), 300));
 
-  -- Terminalize jobs whose bounded retry window or attempt budget is exhausted.
   update public.appointment_notification_jobs j
   set state = 'failed_terminal',
       terminal_at = coalesce(j.terminal_at, now()),
@@ -208,8 +207,6 @@ begin
       )
     );
 
-  -- Encrypted management material is needed only while recovery is valid or a
-  -- notification is still non-terminal. Cleanup is therefore safe only after both.
   update public.public_booking_recoveries r
   set recovery_secret_hash = null,
       management_token_ciphertext = null,

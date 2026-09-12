@@ -1,4 +1,22 @@
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
+
+-- Supabase sessions resolve extension functions through this default path.
+-- Apply it to the database and to the CI login role so fresh psql/dblink
+-- sessions behave like hosted Supabase. SECURITY DEFINER functions that call
+-- extension functions still declare `extensions` explicitly themselves.
+do $$
+begin
+  execute format(
+    'alter database %I set search_path = "$user", public, extensions',
+    current_database()
+  );
+  execute format(
+    'alter role %I set search_path = "$user", public, extensions',
+    current_user
+  );
+end
+$$;
 
 do $$ begin
   create role anon nologin;
@@ -9,6 +27,10 @@ do $$ begin
   create role authenticated nologin;
 exception when duplicate_object then null;
 end $$;
+
+-- Hosted Supabase grants both API roles USAGE on the extensions schema and
+-- EXECUTE on pgcrypto functions through their normal PUBLIC function grants.
+grant usage on schema extensions to anon, authenticated;
 
 create schema if not exists auth;
 
