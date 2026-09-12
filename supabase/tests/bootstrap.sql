@@ -1,6 +1,17 @@
 create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 
+-- Supabase sessions resolve extension functions through this default path.
+-- Individual SECURITY DEFINER functions still need their own explicit safe path.
+do $$
+begin
+  execute format(
+    'alter database %I set search_path = "$user", public, extensions',
+    current_database()
+  );
+end
+$$;
+
 do $$ begin
   create role anon nologin;
 exception when duplicate_object then null;
