@@ -79,8 +79,8 @@ declare
   v_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '10:05') at time zone 'Europe/Istanbul';
   v_token text := 'ccccccccccccccccccccccccccccccccccccccccccc';
   v_secret text := 'ddddddddddddddddddddddddddddddddddddddddddd';
-  v_token_hash text := encode(digest(v_token,'sha256'),'hex');
-  v_secret_hash text := encode(digest(v_secret,'sha256'),'hex');
+  v_token_hash text := encode(extensions.digest(v_token,'sha256'),'hex');
+  v_secret_hash text := encode(extensions.digest(v_secret,'sha256'),'hex');
   v_id uuid;
   v_retry uuid;
   v_recovered record;
@@ -122,7 +122,7 @@ begin
 
   if (select count(*) from public.recover_public_appointment(
     '8a000000-0000-4000-8000-000000000001','phase9-create-0001',
-    encode(digest('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee','sha256'),'hex')
+    encode(extensions.digest('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee','sha256'),'hex')
   )) <> 0 then
     raise exception 'wrong recovery secret disclosed booking';
   end if;
@@ -139,7 +139,7 @@ begin
       '6a000000-0000-4000-8000-000000000001','7a000000-0000-4000-8000-000000000001',
       v_start,
       v_token_hash,'8a000000-0000-4000-8000-000000000001',
-      encode(digest('fffffffffffffffffffffffffffffffffffffffffff','sha256'),'hex'),
+      encode(extensions.digest('fffffffffffffffffffffffffffffffffffffffffff','sha256'),'hex'),
       'ciphertext-original-abcdefghijklmnopqrstuvwxyz012345','iv-original-1234',1::smallint,
       '+90 555 900 00 01','phase9@example.test',null
     );
@@ -191,10 +191,10 @@ begin
   if v_row.recovery_secret_hash = v_secret then
     raise exception 'plain recovery secret leaked into recovery storage';
   end if;
-  if v_row.management_token_hash <> encode(digest(v_token,'sha256'),'hex') then
+  if v_row.management_token_hash <> encode(extensions.digest(v_token,'sha256'),'hex') then
     raise exception 'management token hash binding is incorrect';
   end if;
-  if v_row.recovery_secret_hash <> encode(digest(v_secret,'sha256'),'hex') then
+  if v_row.recovery_secret_hash <> encode(extensions.digest(v_secret,'sha256'),'hex') then
     raise exception 'recovery secret hash binding is incorrect';
   end if;
 end
@@ -206,8 +206,8 @@ set local role anon;
 do $$
 declare
   v_start timestamptz := ((date_trunc('week', current_date)::date + 7) + time '11:05') at time zone 'Europe/Istanbul';
-  v_token_hash text := encode(digest('ccccccccccccccccccccccccccccccccccccccccccc','sha256'),'hex');
-  v_secret_hash text := encode(digest('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee','sha256'),'hex');
+  v_token_hash text := encode(extensions.digest('ccccccccccccccccccccccccccccccccccccccccccc','sha256'),'hex');
+  v_secret_hash text := encode(extensions.digest('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee','sha256'),'hex');
 begin
   begin
     perform public.create_public_appointment_with_recovery(
@@ -253,7 +253,7 @@ where recovery_id='8a000000-0000-4000-8000-000000000001';
 set local role anon;
 do $$
 declare
-  v_secret_hash text := encode(digest('ddddddddddddddddddddddddddddddddddddddddddd','sha256'),'hex');
+  v_secret_hash text := encode(extensions.digest('ddddddddddddddddddddddddddddddddddddddddddd','sha256'),'hex');
 begin
   if (select count(*) from public.recover_public_appointment(
     '8a000000-0000-4000-8000-000000000001','phase9-create-0001',v_secret_hash
