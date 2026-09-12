@@ -20,14 +20,12 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-      STAGING_SUPABASE_PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      STAGING_SUPABASE_PROJECT_REF: smizhsagjpqexveitbqu
+      SUPABASE_URL: https://smizhsagjpqexveitbqu.supabase.co
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       SUPABASE_ADMIN_KEY: ${{ secrets.SUPABASE_ADMIN_KEY }}
-      STAGING_OWNER_A_EMAIL: ${{ secrets.STAGING_OWNER_A_EMAIL }}
-      STAGING_OWNER_A_PASSWORD: ${{ secrets.STAGING_OWNER_A_PASSWORD }}
-      STAGING_OWNER_B_EMAIL: ${{ secrets.STAGING_OWNER_B_EMAIL }}
-      STAGING_OWNER_B_PASSWORD: ${{ secrets.STAGING_OWNER_B_PASSWORD }}
+      STAGING_OWNER_A_EMAIL: randevu-staging-owner-a@example.com
+      STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
       MANAGEMENT_LINK_ENCRYPTION_KEY_V1: ${{ secrets.MANAGEMENT_LINK_ENCRYPTION_KEY_V1 }}
       PUBLIC_BOOKING_GATE_SECRET: ${{ secrets.PUBLIC_BOOKING_GATE_SECRET }}
       NOTIFICATION_DISPATCH_SECRET: ${{ secrets.NOTIFICATION_DISPATCH_SECRET }}
@@ -53,18 +51,41 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Prepare ephemeral staging owner passwords
+        run: |
+          node <<'NODE'
+          const { randomBytes } = require('node:crypto');
+          const { appendFileSync } = require('node:fs');
+          for (const name of ['STAGING_OWNER_A_PASSWORD', 'STAGING_OWNER_B_PASSWORD']) {
+            const value = `Rdv!${randomBytes(24).toString('base64url')}9a`;
+            process.stdout.write(`::add-mask::${value}\n`);
+            appendFileSync(process.env.GITHUB_ENV, `${name}=${value}\n`, 'utf8');
+          }
+          NODE
+
       - name: Validate staging secret contract
         run: |
           node <<'NODE'
-          const required = [
+          const requiredExternal = [
             'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'STAGING_DATABASE_URL',
-            'STAGING_SUPABASE_PROJECT_REF', 'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_ADMIN_KEY',
-            'STAGING_OWNER_A_EMAIL', 'STAGING_OWNER_A_PASSWORD', 'STAGING_OWNER_B_EMAIL', 'STAGING_OWNER_B_PASSWORD',
+            'SUPABASE_ANON_KEY', 'SUPABASE_ADMIN_KEY',
             'MANAGEMENT_LINK_ENCRYPTION_KEY_V1', 'PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET',
             'RESEND_API_KEY', 'NOTIFICATION_FROM_EMAIL', 'STAGING_APP_ORIGIN',
           ];
-          const missing = required.filter((name) => !process.env[name]);
-          if (missing.length) throw new Error(`Missing staging settings: ${missing.join(', ')}`);
+          const missingExternal = requiredExternal.filter((name) => !process.env[name]);
+          if (missingExternal.length) {
+            throw new Error(`Missing staging external settings: ${missingExternal.join(', ')}`);
+          }
+
+          const requiredWorkflow = [
+            'STAGING_SUPABASE_PROJECT_REF', 'SUPABASE_URL',
+            'STAGING_OWNER_A_EMAIL', 'STAGING_OWNER_A_PASSWORD',
+            'STAGING_OWNER_B_EMAIL', 'STAGING_OWNER_B_PASSWORD',
+          ];
+          const missingWorkflow = requiredWorkflow.filter((name) => !process.env[name]);
+          if (missingWorkflow.length) {
+            throw new Error(`Missing workflow-generated staging settings: ${missingWorkflow.join(', ')}`);
+          }
           if (!process.env.STAGING_APP_ORIGIN.startsWith('https://')) {
             throw new Error('STAGING_APP_ORIGIN must use HTTPS');
           }
