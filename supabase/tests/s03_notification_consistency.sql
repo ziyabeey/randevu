@@ -133,6 +133,19 @@ begin
 end
 $$;
 
+-- Earlier F09 regression fixtures share this database and may contain ready
+-- jobs. Keep the S03 claim assertions deterministic without changing production
+-- ordering or discarding any row outside this rolled-back test transaction.
+update public.appointment_notification_jobs
+set state='failed_terminal',
+    terminal_at=coalesce(terminal_at, now()),
+    last_error_class='s03_test_isolation',
+    lease_token=null,
+    lease_expires_at=null,
+    updated_at=now()
+where business_id <> '4b000000-0000-4000-8000-000000000103'
+  and state not in ('sent','failed_terminal');
+
 -- Rename live rows after enqueue. Claim must still return the frozen event payload.
 update public.businesses
 set name='S03 Live Salon Renamed'
@@ -152,6 +165,9 @@ begin
     'sssssssssssssssssssssssssssssssssssssssssss', 1, 45
   );
   if v_claim.job_id is null then raise exception 'S03 first event was not claimed'; end if;
+  if v_claim.recipient <> 's03-1@example.test' then
+    raise exception 'S03 first claim selected an unexpected event';
+  end if;
   if v_claim.business_name_snapshot <> 'S03 Frozen Salon'
      or v_claim.staff_name_snapshot <> 'S03 Ayşe' then
     raise exception 'S03 claim read mutable live business/staff data';
