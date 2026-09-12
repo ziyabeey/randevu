@@ -22,11 +22,10 @@ jobs:
       STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       STAGING_SUPABASE_PROJECT_REF: smizhsagjpqexveitbqu
       SUPABASE_URL: https://smizhsagjpqexveitbqu.supabase.co
-      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtaXpoc2FnanBxZXh2ZWl0YnF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjQzNzIsImV4cCI6MjEwNDc0MDM3Mn0.47pevW2e3DJ3zB_mDIaKyN3aEjYvpCTfMNybHYDD6gU
+      SUPABASE_ANON_KEY: sb_publishable_smh_KUbC7hv3fhTEX21xXQ_zzn6qZnY
       SUPABASE_ADMIN_KEY: ${{ secrets.SUPABASE_ADMIN_KEY }}
       STAGING_OWNER_A_EMAIL: randevu-staging-owner-a@example.com
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
-      MANAGEMENT_LINK_ENCRYPTION_KEY_V1: ${{ secrets.MANAGEMENT_LINK_ENCRYPTION_KEY_V1 }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       NOTIFICATION_FROM_EMAIL: ${{ secrets.NOTIFICATION_FROM_EMAIL }}
 
@@ -72,8 +71,7 @@ jobs:
           node <<'NODE'
           const requiredExternal = [
             'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'STAGING_DATABASE_URL',
-            'SUPABASE_ADMIN_KEY', 'MANAGEMENT_LINK_ENCRYPTION_KEY_V1',
-            'RESEND_API_KEY', 'NOTIFICATION_FROM_EMAIL',
+            'SUPABASE_ADMIN_KEY', 'RESEND_API_KEY', 'NOTIFICATION_FROM_EMAIL',
           ];
           const missingExternal = requiredExternal.filter((name) => !process.env[name]);
           if (missingExternal.length) {
@@ -94,6 +92,9 @@ jobs:
           if (!process.env.SUPABASE_URL.includes(projectRef) || !process.env.STAGING_DATABASE_URL.includes(projectRef)) {
             throw new Error('Supabase API URL, database URL and project ref do not describe the same staging project');
           }
+          if (!process.env.SUPABASE_ANON_KEY.startsWith('sb_publishable_')) {
+            throw new Error('Staging API key must use the hosted Supabase publishable-key model');
+          }
           for (const name of ['PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET']) {
             const value = process.env[name] ?? '';
             if (value.length < 43 || value.length > 256) {
@@ -105,9 +106,10 @@ jobs:
       - name: Build Cloudflare staging environment
         run: npm run build:staging
 
-      - name: Resolve Cloudflare staging origin
+      - name: Resolve Cloudflare staging runtime
         run: |
           node --input-type=module <<'NODE'
+          import { randomBytes } from 'node:crypto';
           import { appendFileSync, readFileSync } from 'node:fs';
 
           const generated = JSON.parse(readFileSync('dist/yzt_randevu/wrangler.json', 'utf8'));
@@ -115,20 +117,37 @@ jobs:
           if (!workerName) throw new Error('Generated staging Wrangler config has no Worker name');
           if (generated.workers_dev !== true) throw new Error('Generated staging Wrangler config must enable workers_dev');
 
-          const response = await fetch(
+          const headers = { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` };
+          const subdomainResponse = await fetch(
             `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/subdomain`,
-            { headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` } },
+            { headers },
           );
-          const payload = await response.json().catch(() => null);
-          const subdomain = String(payload?.result?.subdomain ?? '').trim();
-          if (!response.ok || payload?.success !== true || !subdomain) {
-            throw new Error(`Cloudflare Workers subdomain lookup failed with HTTP ${response.status}`);
+          const subdomainPayload = await subdomainResponse.json().catch(() => null);
+          const subdomain = String(subdomainPayload?.result?.subdomain ?? '').trim();
+          if (!subdomainResponse.ok || subdomainPayload?.success !== true || !subdomain) {
+            throw new Error(`Cloudflare Workers subdomain lookup failed with HTTP ${subdomainResponse.status}`);
           }
 
           const origin = `https://${workerName}.${subdomain}.workers.dev`;
           new URL(origin);
+          appendFileSync(process.env.GITHUB_ENV, `STAGING_WORKER_NAME=${workerName}\n`, 'utf8');
           appendFileSync(process.env.GITHUB_ENV, `STAGING_APP_ORIGIN=${origin}\n`, 'utf8');
           console.log(`Resolved staging origin: ${origin}`);
+
+          const secretUrl = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${encodeURIComponent(workerName)}/secrets/MANAGEMENT_LINK_ENCRYPTION_KEY_V1`;
+          const secretResponse = await fetch(secretUrl, { headers });
+          const secretPayload = await secretResponse.json().catch(() => null);
+
+          if (secretResponse.ok && secretPayload?.success === true && secretPayload?.result?.name === 'MANAGEMENT_LINK_ENCRYPTION_KEY_V1') {
+            console.log('Persistent management encryption key is already configured in Cloudflare.');
+          } else if (secretResponse.status === 404) {
+            const bootstrapKey = randomBytes(32).toString('base64url');
+            process.stdout.write(`::add-mask::${bootstrapKey}\n`);
+            appendFileSync(process.env.GITHUB_ENV, `MANAGEMENT_LINK_ENCRYPTION_KEY_V1_BOOTSTRAP=${bootstrapKey}\n`, 'utf8');
+            console.log('Persistent management encryption key will be bootstrapped on this deploy.');
+          } else {
+            throw new Error(`Cloudflare management secret lookup failed with HTTP ${secretResponse.status}`);
+          }
           NODE
 
       - name: Install PostgreSQL client
@@ -162,18 +181,34 @@ jobs:
             SUPABASE_URL: process.env.SUPABASE_URL,
             SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
             COOKIE_SECURE: 'true',
-            MANAGEMENT_LINK_ENCRYPTION_KEY_V1: process.env.MANAGEMENT_LINK_ENCRYPTION_KEY_V1,
             PUBLIC_BOOKING_GATE_SECRET: process.env.PUBLIC_BOOKING_GATE_SECRET,
             NOTIFICATION_DISPATCH_SECRET: process.env.NOTIFICATION_DISPATCH_SECRET,
             RESEND_API_KEY: process.env.RESEND_API_KEY,
             NOTIFICATION_FROM_EMAIL: process.env.NOTIFICATION_FROM_EMAIL,
             PUBLIC_APP_ORIGIN: process.env.STAGING_APP_ORIGIN,
           };
+          if (process.env.MANAGEMENT_LINK_ENCRYPTION_KEY_V1_BOOTSTRAP) {
+            payload.MANAGEMENT_LINK_ENCRYPTION_KEY_V1 = process.env.MANAGEMENT_LINK_ENCRYPTION_KEY_V1_BOOTSTRAP;
+          }
           fs.writeFileSync('/tmp/randevu-staging-secrets.json', JSON.stringify(payload), { mode: 0o600 });
           NODE
 
       - name: Deploy Cloudflare staging Worker
         run: npx wrangler deploy --secrets-file /tmp/randevu-staging-secrets.json
+
+      - name: Verify persistent management secret
+        run: |
+          node --input-type=module <<'NODE'
+          const response = await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${encodeURIComponent(process.env.STAGING_WORKER_NAME)}/secrets/MANAGEMENT_LINK_ENCRYPTION_KEY_V1`,
+            { headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` } },
+          );
+          const payload = await response.json().catch(() => null);
+          if (!response.ok || payload?.success !== true || payload?.result?.name !== 'MANAGEMENT_LINK_ENCRYPTION_KEY_V1') {
+            throw new Error(`Persistent management secret verification failed with HTTP ${response.status}`);
+          }
+          console.log('Persistent management encryption key binding verified.');
+          NODE
 
       - name: Verify real staging login and catalog
         run: npm run staging:smoke
