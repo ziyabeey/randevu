@@ -26,15 +26,15 @@ function mutationClass(method: string, path: string): MutationClass {
     return 'safe';
   }
 
-  if (path === '/api/public/booking/recover'
-      || /^\/api\/public\/business\/[^/]+\/book$/.test(path)) {
+  if (normalizedMethod === 'POST' && (path === '/api/public/booking/recover'
+      || /^\/api\/public\/business\/[^/]+\/book$/.test(path))) {
     return 'public';
   }
 
-  if (path === '/api/manage/view'
+  if (normalizedMethod === 'POST' && (path === '/api/manage/view'
       || path === '/api/manage/slots'
       || path === '/api/manage/reschedule'
-      || path === '/api/manage/cancel') {
+      || path === '/api/manage/cancel')) {
     return 'capability';
   }
 
@@ -49,15 +49,6 @@ app.use('/api/*', async (context, next) => {
   if (mutationClass(context.req.method, context.req.path) !== 'cookie') {
     await next();
     return;
-  }
-
-  if (!context.req.header('Origin')) {
-    return context.json({
-      error: {
-        code: 'ORIGIN_FORBIDDEN',
-        message: 'İstek kaynağı doğrulanamadı. Sayfayı yenileyip tekrar deneyin.',
-      },
-    }, 403);
   }
 
   const securityError = mutationSecurityError(context);

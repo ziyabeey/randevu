@@ -3,12 +3,12 @@ import authRoutes from './auth-routes.ts';
 import {
   canManage,
   first,
-  mutationSecurityError,
   readJson,
   requireAuth,
   requireMember,
   setBusinessCookie,
   supabaseRequest,
+  upstreamUnavailable,
   type AppContext,
   type AuthEnv,
   type Membership,
@@ -24,22 +24,6 @@ app.use('*', async (context, next) => {
   context.header('Cache-Control', 'no-store');
   context.header('X-Content-Type-Options', 'nosniff');
   context.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-  await next();
-});
-
-function accountMutationPath(path: string) {
-  return path.startsWith('/api/auth/')
-    || path === '/api/businesses'
-    || path === '/api/businesses/select'
-    || path.startsWith('/api/services')
-    || path.startsWith('/api/staff');
-}
-
-app.use('/api/*', async (context, next) => {
-  if (accountMutationPath(context.req.path)) {
-    const security = mutationSecurityError(context);
-    if (security) return context.json({ error: security }, 403);
-  }
   await next();
 });
 
@@ -144,6 +128,9 @@ app.post('/api/businesses/select', async (context) => {
     limit: '1',
   });
   const result = await supabaseRequest<Membership[]>(context.env, `rest/v1/memberships?${query}`, {}, access.auth.accessToken);
+  if (upstreamUnavailable(result.status)) {
+    return context.json({ error: { code: 'AUTH_UNAVAILABLE', message: 'Üyelik şu anda doğrulanamıyor. Lütfen tekrar deneyin.' } }, 503);
+  }
   if (!result.ok || !first(result.data)) {
     return context.json({ error: { code: 'TENANT_FORBIDDEN', message: 'Bu işletmeye erişiminiz yok.' } }, 403);
   }

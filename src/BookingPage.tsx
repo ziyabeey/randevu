@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api } from './api';
 
 type Role = 'owner' | 'manager' | 'staff';
 type Session = {
@@ -30,18 +31,6 @@ type AppointmentEvent = {
   id: string; event_type: string; actor_user_id: string; from_status: string | null;
   to_status: string | null; payload: Record<string, unknown>; created_at: string;
 };
-type ApiError = { error?: { message?: string } };
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(init?.headers ?? {}) },
-    cache: 'no-store',
-  });
-  const body = await response.json() as T & ApiError;
-  if (!response.ok) throw new Error(body.error?.message ?? 'İşlem tamamlanamadı.');
-  return body;
-}
 
 function commandKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;

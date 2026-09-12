@@ -145,4 +145,45 @@ if (!Array.isArray(catalog.data?.staff) || catalog.data.staff.length < 1) {
   throw new Error('Staging catalog did not return the fixture staff member');
 }
 
-console.log(`Staging smoke passed at ${origin} for business ${businessId}.`);
+// S02: exercise the same feature routers as the browser, using a real hosted
+// session. Invalid bodies deliberately avoid writing salon/business data.
+for (const path of ['/api/bookings', '/api/calendar', '/api/availability/setup', '/api/public/settings']) {
+  const result = await request(path);
+  if (!result.response.ok) throw new Error(`S02 feature read ${path} failed with HTTP ${result.response.status}`);
+}
+
+for (const [headers, expectedCode] of [
+  [{}, 'ORIGIN_FORBIDDEN'],
+  [{ Origin: 'https://invalid.example' }, 'ORIGIN_FORBIDDEN'],
+  [{ Origin: origin, 'Sec-Fetch-Site': 'cross-site' }, 'ORIGIN_FORBIDDEN'],
+  [{ Origin: origin }, 'CSRF_INVALID'],
+  [browserHeaders('X'.repeat(43)), 'CSRF_INVALID'],
+]) {
+  const result = await request('/api/public/settings', { method: 'PUT', headers, body: '{}' });
+  if (result.response.status !== 403 || result.data?.error?.code !== expectedCode) {
+    throw new Error(`S02 mutation guard expected ${expectedCode}; got HTTP ${result.response.status}`);
+  }
+}
+
+const validatedMutation = await request('/api/public/settings', {
+  method: 'PUT', headers: browserHeaders(mutationCsrf), body: '{}',
+});
+if (validatedMutation.response.status !== 400 || validatedMutation.data?.error?.code !== 'INVALID_PUBLIC_SETTINGS') {
+  throw new Error(`S02 valid Origin/CSRF did not reach settings validation: HTTP ${validatedMutation.response.status}`);
+}
+
+// Simulate an expired access cookie; Supabase must rotate refresh and preserve
+// the selected business. Only this acceptance process's cookie jar is changed.
+cookies.delete('yzt_access');
+const refreshedFeature = await request('/api/bookings');
+if (!refreshedFeature.response.ok || !cookies.has('yzt_access') || !cookies.has('yzt_refresh')
+    || cookies.get('yzt_business') !== businessId) {
+  throw new Error(`S02 feature refresh failed with HTTP ${refreshedFeature.response.status}`);
+}
+
+const invalidCapability = await request('/api/manage/view', { method: 'POST', body: '{}' });
+if (invalidCapability.response.status !== 404 || invalidCapability.data?.error?.code !== 'MANAGEMENT_NOT_FOUND') {
+  throw new Error(`S02 capability exception did not reach token validation: HTTP ${invalidCapability.response.status}`);
+}
+
+console.log(`Staging smoke and S02 auth/mutation checks passed at ${origin} for business ${businessId}.`);

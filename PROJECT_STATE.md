@@ -4,7 +4,7 @@
 
 ## Devam noktası
 
-**GS teknik düzeltme kapısında sıradaki bağımlı iş S02'dir.** S01 recovery session authority ve gerçek public mailbox kabulü tamamlandı. S03/S04/S05/S06/S08 dosya ve merge sırası ayrılarak bağımsız hazırlanabilir. S07, S02/S03/S04'ü bekler. Yeni özellik kodu GS tamamlanmadan başlamaz.
+**S02 uygulaması [PR #36](https://github.com/ziyabeey1-ai/randevu/pull/36) üzerinde incelemede.** Kullanıcının talebiyle ana ajan yarım kalan işi devraldı; ortak auth/guard, altı frontend yüzeyi ve testleri tamamlandı. Exact-head CI ve gerçek hosted staging kabulü açık; henüz main'e birleşmedi. [Devir ve devam adımı](docs/handoffs/S02.md). S01 recovery session authority ve gerçek public mailbox kabulü tamamlandı. S03/S04/S05/S06/S08 dosya ve merge sırası ayrılarak bağımsız hazırlanabilir. S07, S02/S03/S04'ü bekler. Yeni özellik kodu GS tamamlanmadan başlamaz.
 
 F10-02 için açık [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), branch `f10-02-invites-memberships-roles`, incelenen head `5099ea307ac806e958a7a29a674462558570b0d5` yalnız `docs/handoffs/F10-02.md` içerir. Mevcut sahibi korunur; GS nedeniyle görev **Engelli** kalır. Devralmadan önce canlı PR tekrar kontrol edilir; aynı işi ikinci branch'te başlatma.
 
@@ -95,4 +95,4 @@ Worker entry `worker/entry.ts`, router `worker/app.ts`; auth `worker/auth.ts` + 
 
 ## Sonraki çalışma sınırı
 
-S01 recovery oturum sınırı ve gerçek mailbox acceptance tamamlandı. Sonraki teknik görev güncel main ve açık PR kontrolünden sonra S02'dir. S02 yalnız ortak auth/cookie mutation korumasını ele alır; yeni davet/rol özelliği, migration veya F10-02 kapsamına girmez. GS kapanmadan yeni özellik kodu başlatılmaz.
+S01 recovery oturum sınırı ve gerçek mailbox acceptance tamamlandı. S02 için yeni branch açılmaz; mevcut PR #36'nın hosted staging kabulü ve exact-head CI sonucu tamamlanır. S02 yalnız ortak auth/cookie mutation korumasını ele alır; yeni davet/rol özelliği, migration veya F10-02 kapsamına girmez. GS kapanmadan yeni özellik kodu başlatılmaz.
