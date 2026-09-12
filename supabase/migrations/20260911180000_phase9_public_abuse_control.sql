@@ -46,7 +46,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select p_gate_secret is not null
     and char_length(p_gate_secret) between 43 and 256
@@ -133,7 +133,7 @@ create or replace function public.enforce_public_booking_rate(
 returns void
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_cfg public.public_booking_abuse_config;
