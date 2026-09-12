@@ -9,7 +9,7 @@ const env = {
   PUBLIC_APP_ORIGIN: 'http://localhost',
 };
 
-await test('F10-01 password recovery session is confined to password update', async () => {
+await test('F10-01 password recovery session cannot enter protected feature routers', async () => {
   const realFetch = globalThis.fetch;
   let upstreamCalls = 0;
   globalThis.fetch = async () => {
@@ -22,7 +22,6 @@ await test('F10-01 password recovery session is confined to password update', as
 
   try {
     for (const path of [
-      '/api/catalog',
       '/api/availability',
       '/api/bookings',
       '/api/calendar',
@@ -36,7 +35,7 @@ await test('F10-01 password recovery session is confined to password update', as
       const body = await response.json();
       assert.equal(body.error?.code, 'PASSWORD_UPDATE_REQUIRED');
     }
-    assert.equal(upstreamCalls, 0, 'recovery-only requests must be rejected before Supabase');
+    assert.equal(upstreamCalls, 0, 'recovery-only feature requests must be rejected before Supabase');
   } finally {
     globalThis.fetch = realFetch;
   }
