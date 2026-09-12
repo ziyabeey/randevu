@@ -15,7 +15,11 @@ function absorbCookies(response) {
   for (const value of values) {
     const pair = value.split(';', 1)[0];
     const index = pair.indexOf('=');
-    if (index > 0) cookies.set(pair.slice(0, index), pair.slice(index + 1));
+    if (index < 1) continue;
+    const name = pair.slice(0, index);
+    const cookieValue = pair.slice(index + 1);
+    if (!cookieValue || /(?:^|;)\s*max-age=0(?:;|$)/i.test(value)) cookies.delete(name);
+    else cookies.set(name, cookieValue);
   }
 }
 
@@ -31,6 +35,7 @@ async function request(path, init = {}) {
   const headers = new Headers(init.headers);
   if (cookies.size) headers.set('Cookie', cookieHeader());
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+  headers.set('Accept', 'application/json');
   const response = await fetch(`${origin}${path}`, { ...init, headers, redirect: 'manual' });
   absorbCookies(response);
   const text = await response.text();
@@ -43,6 +48,23 @@ async function request(path, init = {}) {
     }
   }
   return { response, data };
+}
+
+function browserHeaders(csrfToken) {
+  return {
+    Origin: origin,
+    'Sec-Fetch-Site': 'same-origin',
+    'X-YZT-CSRF': csrfToken,
+  };
+}
+
+async function csrf() {
+  const result = await request('/api/csrf');
+  const token = String(result.data?.csrfToken ?? '');
+  if (!result.response.ok || !/^[A-Za-z0-9_-]{43,128}$/.test(token) || cookies.get('yzt_csrf') !== token) {
+    throw new Error(`Staging CSRF bootstrap failed with HTTP ${result.response.status}`);
+  }
+  return token;
 }
 
 async function waitForHealth() {
@@ -70,9 +92,11 @@ async function waitForHealth() {
 }
 
 await waitForHealth();
+const loginCsrf = await csrf();
 
 const login = await request('/api/auth/login', {
   method: 'POST',
+  headers: browserHeaders(loginCsrf),
   body: JSON.stringify({
     email: process.env.STAGING_OWNER_A_EMAIL,
     password: process.env.STAGING_OWNER_A_PASSWORD,
@@ -98,9 +122,14 @@ if (!Array.isArray(session.data.memberships) || session.data.memberships.length 
 
 const businessId = session.data.memberships[0]?.business_id;
 if (!businessId) throw new Error('Staging session membership did not include a business id');
+const mutationCsrf = String(session.data.csrfToken ?? '');
+if (!/^[A-Za-z0-9_-]{43,128}$/.test(mutationCsrf)) {
+  throw new Error('Staging session did not return a usable CSRF token');
+}
 
 const selectBusiness = await request('/api/businesses/select', {
   method: 'POST',
+  headers: browserHeaders(mutationCsrf),
   body: JSON.stringify({ businessId }),
 });
 if (!selectBusiness.response.ok || selectBusiness.data?.ok !== true || !cookies.has('yzt_business')) {
