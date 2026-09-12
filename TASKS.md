@@ -21,7 +21,7 @@ Görev kimliğine tıklayarak kapsam, okuma başlangıcı, çıktı, kabul ve de
 | [F09-02](docs/plan/phase-09.md#f09-02) | Rezervasyon sonucunu ve yönetim erişimini kurtarma | F09-01 | Tamamlandı | ChatGPT / 2026-09-11T21:58Z | `f09-02-booking-recovery` · [PR #12](https://github.com/ziyabeey1-ai/randevu/pull/12) · [Devir](docs/handoffs/F09-02.md) · CI `34651571690` |
 | [F09-03](docs/plan/phase-09.md#f09-03) | Kalıcı gönderim ve güvenilir sağlayıcı kaydı | F09-02 | Tamamlandı | ChatGPT / 2026-09-11T22:25Z | `f09-03-durable-notifications` · [PR #13](https://github.com/ziyabeey1-ai/randevu/pull/13) · [Devir](docs/handoffs/F09-03.md) · CI `34653785166` |
 | [F09-04](docs/plan/phase-09.md#f09-04) | Public rezervasyonda kötüye kullanım kontrolü | F09-02 | Tamamlandı | ChatGPT / 2026-09-11T23:10Z | `f09-04-public-abuse-control` · [PR #14](https://github.com/ziyabeey1-ai/randevu/pull/14) · [Devir](docs/handoffs/F09-04.md) · CI `34656950693` |
-| [F09-05](docs/plan/phase-09.md#f09-05) | Rezervasyon/bildirim entegrasyon kapısı | F09-03, F09-04, F17-01, F17-02 | Planlandı | — | Önkoşullar tamamlandı; F17-01 canlı kabul run `34679959999` success |
+| [F09-05](docs/plan/phase-09.md#f09-05) | Rezervasyon/bildirim entegrasyon kapısı | F09-03, F09-04, F17-01, F17-02 | Çalışılıyor | ChatGPT / 2026-09-12T07:25Z | `f09-05-staging-integration` · canlı booking/recovery/idempotency/capability + Resend delivered acceptance hazırlanıyor |
 | [F10-01](docs/plan/phase-10.md#f10-01) | Ortak oturum ve parola akışları | F09-05 | Planlandı | — | — |
 | [F10-02](docs/plan/phase-10.md#f10-02) | Davet, üyelik ve rol yönetimi | F10-01 | Planlandı | — | — |
 | [F10-03](docs/plan/phase-10.md#f10-03) | İşletme geçişi ve kurulum akışı | F10-02 | Planlandı | — | — |
