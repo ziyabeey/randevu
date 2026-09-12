@@ -9,7 +9,6 @@ const externalSettings = [
   'CLOUDFLARE_ACCOUNT_ID',
   'STAGING_DATABASE_URL',
   'SUPABASE_ADMIN_KEY',
-  'MANAGEMENT_LINK_ENCRYPTION_KEY_V1',
   'RESEND_API_KEY',
   'NOTIFICATION_FROM_EMAIL',
 ];
@@ -21,7 +20,7 @@ const ephemeralSettings = [
   'NOTIFICATION_DISPATCH_SECRET',
 ];
 
-test('staging workflow keeps the external provisioning surface at seven values', () => {
+test('staging workflow keeps the external provisioning surface at six values', () => {
   const match = workflow.match(/const requiredExternal = \[([\s\S]*?)\];/);
   assert.ok(match, 'requiredExternal contract must remain explicit');
   const actual = [...match[1].matchAll(/'([A-Z0-9_]+)'/g)].map((entry) => entry[1]);
@@ -35,7 +34,7 @@ test('staging workflow keeps the external provisioning surface at seven values',
 test('public staging metadata and generated job values are not treated as GitHub secrets', () => {
   assert.match(workflow, /STAGING_SUPABASE_PROJECT_REF: smizhsagjpqexveitbqu/);
   assert.match(workflow, /SUPABASE_URL: https:\/\/smizhsagjpqexveitbqu\.supabase\.co/);
-  assert.match(workflow, /SUPABASE_ANON_KEY: eyJ/);
+  assert.match(workflow, /SUPABASE_ANON_KEY: sb_publishable_/);
   assert.match(workflow, /STAGING_OWNER_A_EMAIL: randevu-staging-owner-a@example\.com/);
   assert.match(workflow, /STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example\.com/);
 
@@ -46,6 +45,7 @@ test('public staging metadata and generated job values are not treated as GitHub
   assert.doesNotMatch(workflow, /secrets\.STAGING_APP_ORIGIN/);
   assert.doesNotMatch(workflow, /secrets\.PUBLIC_BOOKING_GATE_SECRET/);
   assert.doesNotMatch(workflow, /secrets\.NOTIFICATION_DISPATCH_SECRET/);
+  assert.doesNotMatch(workflow, /secrets\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1/);
 });
 
 test('owner passwords and non-persistent gate secrets are generated per run and masked', () => {
@@ -62,24 +62,31 @@ test('owner passwords and non-persistent gate secrets are generated per run and 
   }
 });
 
-test('management encryption key remains persistent external state', () => {
-  assert.match(workflow, /MANAGEMENT_LINK_ENCRYPTION_KEY_V1: \$\{\{ secrets\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1 \}\}/);
-  assert.doesNotMatch(workflow, /MANAGEMENT_LINK_ENCRYPTION_KEY_V1: randomBytes/);
+test('management encryption key is bootstrapped once and persisted only in Cloudflare', () => {
+  assert.match(workflow, /workers\/scripts\/\$\{encodeURIComponent\(workerName\)\}\/secrets\/MANAGEMENT_LINK_ENCRYPTION_KEY_V1/);
+  assert.match(workflow, /secretResponse\.status === 404/);
+  assert.match(workflow, /randomBytes\(32\)\.toString\('base64url'\)/);
+  assert.match(workflow, /MANAGEMENT_LINK_ENCRYPTION_KEY_V1_BOOTSTRAP=\$\{bootstrapKey\}/);
+  assert.match(workflow, /payload\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1 = process\.env\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1_BOOTSTRAP/);
+  assert.match(workflow, /Verify persistent management secret/);
+  assert.doesNotMatch(workflow, /secrets\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1/);
+  assert.doesNotMatch(workflow, /MANAGEMENT_LINK_ENCRYPTION_KEY_V1: process\.env\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1,/);
 });
 
-test('workers.dev staging origin is resolved before any database mutation', () => {
-  assert.match(workflow, /Resolve Cloudflare staging origin/);
+test('workers.dev staging runtime is resolved before any database mutation', () => {
+  assert.match(workflow, /Resolve Cloudflare staging runtime/);
   assert.match(workflow, /dist\/yzt_randevu\/wrangler\.json/);
   assert.match(workflow, /generated\.workers_dev !== true/);
   assert.match(workflow, /workers\/subdomain/);
+  assert.match(workflow, /STAGING_WORKER_NAME=\$\{workerName\}/);
   assert.match(workflow, /STAGING_APP_ORIGIN=\$\{origin\}/);
 
   const buildIndex = workflow.indexOf('- name: Build Cloudflare staging environment');
-  const originIndex = workflow.indexOf('- name: Resolve Cloudflare staging origin');
+  const runtimeIndex = workflow.indexOf('- name: Resolve Cloudflare staging runtime');
   const psqlIndex = workflow.indexOf('- name: Install PostgreSQL client');
   const migrationIndex = workflow.indexOf('- name: Apply staging migrations');
-  assert.ok(buildIndex >= 0 && originIndex > buildIndex, 'origin lookup must happen after generated staging config exists');
-  assert.ok(psqlIndex > originIndex && migrationIndex > originIndex, 'Cloudflare origin lookup must fail closed before DB work');
+  assert.ok(buildIndex >= 0 && runtimeIndex > buildIndex, 'runtime lookup must happen after generated staging config exists');
+  assert.ok(psqlIndex > runtimeIndex && migrationIndex > runtimeIndex, 'Cloudflare runtime checks must fail closed before DB work');
 });
 
 test('generated gate secrets feed both DB hashes and Worker runtime in the same job', () => {
@@ -91,4 +98,12 @@ test('generated gate secrets feed both DB hashes and Worker runtime in the same 
   assert.ok(bundleIndex > configIndex && deployIndex > bundleIndex, 'the same generated secrets must reach the deployed Worker');
   assert.match(workflow, /PUBLIC_BOOKING_GATE_SECRET: process\.env\.PUBLIC_BOOKING_GATE_SECRET/);
   assert.match(workflow, /NOTIFICATION_DISPATCH_SECRET: process\.env\.NOTIFICATION_DISPATCH_SECRET/);
+});
+
+test('staging deploy verifies the persistent management key before smoke', () => {
+  const deployIndex = workflow.indexOf('- name: Deploy Cloudflare staging Worker');
+  const verifyIndex = workflow.indexOf('- name: Verify persistent management secret');
+  const smokeIndex = workflow.indexOf('- name: Verify real staging login and catalog');
+  assert.ok(deployIndex >= 0 && verifyIndex > deployIndex && smokeIndex > verifyIndex);
+  assert.match(workflow, /payload\?\.result\?\.name !== 'MANAGEMENT_LINK_ENCRYPTION_KEY_V1'/);
 });

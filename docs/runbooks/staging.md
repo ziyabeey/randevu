@@ -16,11 +16,11 @@ Bu komut `CLOUDFLARE_ENV=staging` ile `wrangler.jsonc` içindeki staging environ
 
 ## GitHub `staging` environment dış sözleşmesi
 
-GitHub Environment `staging` içinde yalnız aşağıdaki **7 dış değer** tanımlanır. Bunlar repo içinde tutulmaz.
+GitHub Environment `staging` içinde yalnız aşağıdaki **6 dış değer** tanımlanır. Bunlar repo içinde tutulmaz.
 
 ### Cloudflare deploy erişimi
 
-- `CLOUDFLARE_API_TOKEN` — Workers script deploy ve account Workers subdomain okuması için gereken en dar yetki. Token Workers Scripts Read/Write erişimini karşılamalıdır.
+- `CLOUDFLARE_API_TOKEN` — Workers script deploy, account Workers subdomain okuması ve Worker secret binding varlık kontrolü için gereken en dar yetki. Token Workers Scripts Read/Write erişimini karşılamalıdır.
 - `CLOUDFLARE_ACCOUNT_ID`
 
 ### Supabase privileged staging erişimi
@@ -28,17 +28,29 @@ GitHub Environment `staging` içinde yalnız aşağıdaki **7 dış değer** tan
 - `STAGING_DATABASE_URL` — yalnız staging Postgres bağlantısı; percent-encoded bağlantı URL'si.
 - `SUPABASE_ADMIN_KEY` — **yalnız workflow'da** test Auth kullanıcılarını oluşturmak/güncellemek için server-side secret/service-role key. Worker runtime secret bundle'ına girmez.
 
-Staging project ref, API URL ve mevcut Worker ile uyumlu legacy anon key public metadata olarak workflow'da sabittir. `STAGING_DATABASE_URL` aynı project ref'i içermelidir ve workflow bunu fail-closed kontrol eder. Legacy anon key public istemci anahtarıdır; modern publishable-key geçişi mevcut Worker'ın Authorization yardımcılarıyla birlikte ayrı bir auth/refactor işi olarak ele alınır.
+Staging project ref, API URL ve düşük yetkili `sb_publishable_...` API key public metadata olarak workflow'da sabittir. `STAGING_DATABASE_URL` aynı project ref'i içermelidir ve workflow bunu fail-closed kontrol eder. Env binding adı geriye dönük uyumluluk için şimdilik `SUPABASE_ANON_KEY` olarak kalır; staging değeri modern publishable key'dir.
 
-### Kalıcı Worker/provider secret'ları
+### Bildirim sağlayıcısı
 
-- `MANAGEMENT_LINK_ENCRYPTION_KEY_V1`
 - `RESEND_API_KEY`
 - `NOTIFICATION_FROM_EMAIL`
 
-Management encryption key **stabil kalır**. Run başına üretilmez; staging'de mevcut recovery ciphertext'lerinin çözülebilir kalması gerekir. Resend erişimi ve doğrulanmış gönderici de dış provider sözleşmesidir.
+Resend erişimi ve doğrulanmış gönderici dış provider sözleşmesidir.
 
-### Run başına üretilen secret'lar
+## Cloudflare'da kalıcı management encryption key
+
+`MANAGEMENT_LINK_ENCRYPTION_KEY_V1` artık GitHub Environment secret'ı değildir. Değer **Cloudflare Worker secret** olarak kalıcı tutulur ve normal deploy'larda geri okunmaz.
+
+Workflow `npm run build:staging` sonrasında generated Worker adını bulur ve Cloudflare'ın script-secret endpoint'inde yalnız `MANAGEMENT_LINK_ENCRYPTION_KEY_V1` binding'inin varlığını kontrol eder:
+
+- binding varsa değer okunmadan korunur,
+- Worker veya binding henüz yoksa workflow `crypto.randomBytes(32).toString('base64url')` ile tek seferlik bootstrap key üretir, GitHub masking'e ekler ve yalnız o deploy'un geçici secret bundle'ına koyar,
+- `wrangler deploy --secrets-file` mevcut olup dosyada yer almayan Worker secret'larını koruduğu için sonraki deploy'lar key'i değiştirmez,
+- deploy sonrasında binding yeniden kontrol edilir; management key gerçekten Cloudflare'da yoksa smoke çalıştırılmaz.
+
+Bu model recovery ciphertext'lerinin aynı key ile çözülebilir kalmasını sağlar ve encryption key'i hem staging DB'den hem GitHub secret deposundan ayırır. Key rotasyonu ayrı, bilinçli bir operasyon olmalıdır.
+
+## Run başına üretilen secret'lar
 
 Aşağıdaki değerler GitHub Environment secret'ı değildir; workflow her run başında `crypto.randomBytes()` ile üretir, GitHub log masking'e ekler ve yalnız o job'ın `GITHUB_ENV` dosyasında taşır:
 
@@ -57,9 +69,10 @@ Gate/dispatch secret'ları veri şifrelemez. PostgreSQL yalnız SHA-256 hash'ler
 2. generated config içinden Worker adını okur ve `workers_dev=true` olduğunu doğrular,
 3. Cloudflare `GET /accounts/{account_id}/workers/subdomain` endpoint'inden account Workers subdomain'ini okur,
 4. gerçek origin'i `https://<worker-name>.<account-subdomain>.workers.dev` biçiminde üretir,
-5. değeri yalnız o job için `GITHUB_ENV` içine `STAGING_APP_ORIGIN` olarak yazar.
+5. Worker adını ve origin'i yalnız o job için `GITHUB_ENV` içine yazar,
+6. aynı Cloudflare erişimiyle persistent management secret binding varlığını kontrol eder.
 
-Bu lookup PostgreSQL migration/fixture işlemlerinden **önce** çalışır. Cloudflare token, account veya workers.dev subdomain yanlışsa workflow staging DB'ye dokunmadan fail-closed durur. Worker secret bundle'ında `PUBLIC_APP_ORIGIN`, bu türetilmiş HTTPS origin'den üretilir.
+Bu kontroller PostgreSQL migration/fixture işlemlerinden **önce** çalışır. Cloudflare token, account, workers.dev subdomain veya beklenmeyen secret-lookup hatası varsa workflow staging DB'ye dokunmadan fail-closed durur. Worker secret bundle'ında `PUBLIC_APP_ORIGIN`, bu türetilmiş HTTPS origin'den üretilir.
 
 ## İki sahte owner hesabı
 
@@ -122,16 +135,19 @@ Her birinde ayrı owner membership, bir hizmet, bir personel, service↔staff e�
 
 1. bağımlılık kurulumu,
 2. ephemeral owner parolaları + public-booking gate + notification dispatch secret'larının üretilip maskelenmesi,
-3. 7 dış değer + workflow metadata/ephemeral sözleşmesinin fail-closed doğrulanması,
+3. 6 dış değer + workflow metadata/ephemeral sözleşmesinin fail-closed doğrulanması,
 4. `npm run build:staging`,
-5. Cloudflare account subdomain lookup ve gerçek `STAGING_APP_ORIGIN` türetimi,
-6. PostgreSQL client kurulumu ve migration push,
-7. gerçek Auth test owner'larının hazırlanması,
-8. aynı job secret'larıyla DB runtime hash provisioning,
-9. fixture reset + seed,
-10. aynı job secret'larının geçici `/tmp` JSON dosyasından `wrangler deploy --secrets-file` ile yüklenmesi,
-11. gerçek staging smoke,
-12. geçici secret dosyasının her durumda silinmesi.
+5. Cloudflare account subdomain lookup, gerçek `STAGING_APP_ORIGIN` türetimi ve persistent management secret varlık kontrolü,
+6. management secret yoksa yalnız bu run için maskelenmiş bootstrap key üretimi,
+7. PostgreSQL client kurulumu ve migration push,
+8. gerçek Auth test owner'larının hazırlanması,
+9. aynı job gate/dispatch secret'larıyla DB runtime hash provisioning,
+10. fixture reset + seed,
+11. geçici `/tmp` secret bundle'ının hazırlanması; management bootstrap key yalnız ilk gerektiği run'da eklenir,
+12. `wrangler deploy --secrets-file` ile deploy; mevcut management secret dosyada yoksa Cloudflare'da korunur,
+13. Cloudflare management secret binding doğrulaması,
+14. gerçek staging smoke,
+15. geçici secret dosyasının her durumda silinmesi.
 
 Cloudflare config `workers_dev: true` kullanır; custom domain daha sonra eklenebilir.
 
@@ -152,7 +168,7 @@ Smoke yalnız health endpoint'ine bakmaz. Uygulamanın kendi API'si üzerinden:
 
 zincirini gerçek staging owner hesabıyla doğrular. Owner'ın fixture üyeliği, hizmeti ve personeli görünmezse workflow kırılır.
 
-## Bildirim sağlayıcısı
+## Bildirim sağlayıcısı kabul sınırı
 
 `RESEND_API_KEY` ve `NOTIFICATION_FROM_EMAIL` staging'e ait gerçek sağlayıcı erişimiyle tanımlanmalıdır. Tercihen test amaçlı ayrı doğrulanmış sender/subdomain kullanılır. CI provider stub kanıtı, gerçek Resend acceptance yerine geçmez; gerçek teslim F09-05 ile kanıtlanır.
 
