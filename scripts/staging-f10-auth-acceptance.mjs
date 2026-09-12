@@ -222,7 +222,7 @@ try {
     where business_id = ${sqlLiteral(ownerBusinessId)}::uuid
       and user_id = ${sqlLiteral(ownerUserId)}::uuid
       and active
-    returning count(*) over ()
+    returning 1
   `);
   if (disabled !== '1') throw new Error('Could not temporarily disable the staging owner membership');
   membershipDisabled = true;
