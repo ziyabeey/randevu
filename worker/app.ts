@@ -5,7 +5,7 @@ import publicBookingRecovery from './public-booking-recovery.ts';
 import publicBooking from './public-booking.ts';
 import customerManage from './customer-manage.ts';
 import calendar from './calendar.ts';
-import { isPasswordRecovery } from './auth.ts';
+import { AuthUnavailableError, resolveAuth } from './auth.ts';
 
 function protectedFeaturePath(path: string) {
   return path === '/api/availability'
@@ -17,18 +17,37 @@ function protectedFeaturePath(path: string) {
     || path === '/api/public/settings';
 }
 
-// Account routes defined in index.ts already enforce the same recovery-only gate.
-// This middleware is registered before the remaining feature routers so a recovery
-// session cannot use booking/calendar/settings APIs until a new password is set.
+// Account routes defined in index.ts use the same verified-session authority.
+// Remaining feature modules still own their normal membership checks, but a
+// recovery session is stopped here before those legacy helpers can widen it.
 app.use('/api/*', async (context, next) => {
-  if (protectedFeaturePath(context.req.path) && isPasswordRecovery(context)) {
-    return context.json({
-      error: {
-        code: 'PASSWORD_UPDATE_REQUIRED',
-        message: 'Devam etmeden önce yeni parolanızı belirleyin.',
-      },
-    }, 403);
+  if (!protectedFeaturePath(context.req.path)) {
+    await next();
+    return;
   }
+
+  try {
+    const auth = await resolveAuth(context);
+    if (auth?.passwordRecovery) {
+      return context.json({
+        error: {
+          code: 'PASSWORD_UPDATE_REQUIRED',
+          message: 'Devam etmeden önce yeni parolanızı belirleyin.',
+        },
+      }, 403);
+    }
+  } catch (error) {
+    if (error instanceof AuthUnavailableError) {
+      return context.json({
+        error: {
+          code: 'AUTH_UNAVAILABLE',
+          message: 'Oturum şu anda doğrulanamıyor. Lütfen tekrar deneyin.',
+        },
+      }, 503);
+    }
+    throw error;
+  }
+
   await next();
 });
 
