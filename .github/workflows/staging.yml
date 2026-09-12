@@ -22,7 +22,7 @@ jobs:
       STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       STAGING_SUPABASE_PROJECT_REF: smizhsagjpqexveitbqu
       SUPABASE_URL: https://smizhsagjpqexveitbqu.supabase.co
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtaXpoc2FnanBxZXh2ZWl0YnF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxNjQzNzIsImV4cCI6MjEwNDc0MDM3Mn0.47pevW2e3DJ3zB_mDIaKyN3aEjYvpCTfMNybHYDD6gU
       SUPABASE_ADMIN_KEY: ${{ secrets.SUPABASE_ADMIN_KEY }}
       STAGING_OWNER_A_EMAIL: randevu-staging-owner-a@example.com
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
@@ -31,7 +31,6 @@ jobs:
       NOTIFICATION_DISPATCH_SECRET: ${{ secrets.NOTIFICATION_DISPATCH_SECRET }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       NOTIFICATION_FROM_EMAIL: ${{ secrets.NOTIFICATION_FROM_EMAIL }}
-      STAGING_APP_ORIGIN: ${{ secrets.STAGING_APP_ORIGIN }}
 
     steps:
       - name: Checkout
@@ -63,14 +62,14 @@ jobs:
           }
           NODE
 
-      - name: Validate staging secret contract
+      - name: Validate staging external contract
         run: |
           node <<'NODE'
           const requiredExternal = [
             'CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'STAGING_DATABASE_URL',
-            'SUPABASE_ANON_KEY', 'SUPABASE_ADMIN_KEY',
-            'MANAGEMENT_LINK_ENCRYPTION_KEY_V1', 'PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET',
-            'RESEND_API_KEY', 'NOTIFICATION_FROM_EMAIL', 'STAGING_APP_ORIGIN',
+            'SUPABASE_ADMIN_KEY', 'MANAGEMENT_LINK_ENCRYPTION_KEY_V1',
+            'PUBLIC_BOOKING_GATE_SECRET', 'NOTIFICATION_DISPATCH_SECRET',
+            'RESEND_API_KEY', 'NOTIFICATION_FROM_EMAIL',
           ];
           const missingExternal = requiredExternal.filter((name) => !process.env[name]);
           if (missingExternal.length) {
@@ -78,21 +77,47 @@ jobs:
           }
 
           const requiredWorkflow = [
-            'STAGING_SUPABASE_PROJECT_REF', 'SUPABASE_URL',
+            'STAGING_SUPABASE_PROJECT_REF', 'SUPABASE_URL', 'SUPABASE_ANON_KEY',
             'STAGING_OWNER_A_EMAIL', 'STAGING_OWNER_A_PASSWORD',
             'STAGING_OWNER_B_EMAIL', 'STAGING_OWNER_B_PASSWORD',
           ];
           const missingWorkflow = requiredWorkflow.filter((name) => !process.env[name]);
           if (missingWorkflow.length) {
-            throw new Error(`Missing workflow-generated staging settings: ${missingWorkflow.join(', ')}`);
-          }
-          if (!process.env.STAGING_APP_ORIGIN.startsWith('https://')) {
-            throw new Error('STAGING_APP_ORIGIN must use HTTPS');
+            throw new Error(`Missing workflow-provided staging settings: ${missingWorkflow.join(', ')}`);
           }
           const projectRef = process.env.STAGING_SUPABASE_PROJECT_REF;
           if (!process.env.SUPABASE_URL.includes(projectRef) || !process.env.STAGING_DATABASE_URL.includes(projectRef)) {
             throw new Error('Supabase API URL, database URL and project ref do not describe the same staging project');
           }
+          NODE
+
+      - name: Build Cloudflare staging environment
+        run: npm run build:staging
+
+      - name: Resolve Cloudflare staging origin
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+
+          const generated = JSON.parse(readFileSync('dist/yzt_randevu/wrangler.json', 'utf8'));
+          const workerName = String(generated.name ?? '').trim();
+          if (!workerName) throw new Error('Generated staging Wrangler config has no Worker name');
+          if (generated.workers_dev !== true) throw new Error('Generated staging Wrangler config must enable workers_dev');
+
+          const response = await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/subdomain`,
+            { headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` } },
+          );
+          const payload = await response.json().catch(() => null);
+          const subdomain = String(payload?.result?.subdomain ?? '').trim();
+          if (!response.ok || payload?.success !== true || !subdomain) {
+            throw new Error(`Cloudflare Workers subdomain lookup failed with HTTP ${response.status}`);
+          }
+
+          const origin = `https://${workerName}.${subdomain}.workers.dev`;
+          new URL(origin);
+          appendFileSync(process.env.GITHUB_ENV, `STAGING_APP_ORIGIN=${origin}\n`, 'utf8');
+          console.log(`Resolved staging origin: ${origin}`);
           NODE
 
       - name: Install PostgreSQL client
@@ -116,9 +141,6 @@ jobs:
           STAGING_OWNER_A_ID: ${{ steps.owners.outputs.owner_a }}
           STAGING_OWNER_B_ID: ${{ steps.owners.outputs.owner_b }}
         run: npm run staging:seed
-
-      - name: Build Cloudflare staging environment
-        run: npm run build:staging
 
       - name: Build temporary Worker secret bundle
         run: |
