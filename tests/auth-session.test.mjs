@@ -70,11 +70,34 @@ function decodeFlowCookie(value) {
 }
 
 const user = { id: '10000000-0000-4000-8000-000000000001', email: 'owner@example.test' };
+
+function jwt(method, sessionId) {
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    iss: 'https://supabase.example.test/auth/v1',
+    aud: 'authenticated',
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    iat: Math.floor(Date.now() / 1000),
+    sub: user.id,
+    role: 'authenticated',
+    session_id: sessionId,
+    amr: [{ method, timestamp: Math.floor(Date.now() / 1000) }],
+  })).toString('base64url');
+  return `${header}.${payload}.test-signature`;
+}
+
 const token = {
-  access_token: 'access-token-one',
+  access_token: jwt('password', '40000000-0000-4000-8000-000000000001'),
   refresh_token: 'refresh-token-one',
   expires_in: 3600,
   user,
+};
+const recoveryToken = {
+  access_token: jwt('recovery', '40000000-0000-4000-8000-000000000002'),
+  refresh_token: 'recovery-refresh-token-one',
+  expires_in: 3600,
+  user,
+  type: 'recovery',
 };
 
 await test('F10-01 auth, session and request security contract', async (t) => {
@@ -136,7 +159,7 @@ await test('F10-01 auth, session and request security contract', async (t) => {
     ]);
     const refreshed = {
       ...token,
-      access_token: 'access-token-two',
+      access_token: jwt('password', '40000000-0000-4000-8000-000000000003'),
       refresh_token: 'refresh-token-two',
     };
     const membership = {
@@ -178,8 +201,8 @@ await test('F10-01 auth, session and request security contract', async (t) => {
 
   await t.test('a removed membership invalidates the selected business cookie immediately', async () => {
     const jar = new Map([
-      ['yzt_access', 'current-access'],
-      ['yzt_refresh', 'current-refresh'],
+      ['yzt_access', token.access_token],
+      ['yzt_refresh', token.refresh_token],
       ['yzt_business', '20000000-0000-4000-8000-000000000001'],
     ]);
     globalThis.fetch = async (input) => {
@@ -249,19 +272,19 @@ await test('F10-01 auth, session and request security contract', async (t) => {
     globalThis.fetch = async (input, init = {}) => {
       assert.match(String(input), /auth\/v1\/token\?grant_type=pkce$/);
       exchangedBody = JSON.parse(String(init.body));
-      return json({ ...token, type: 'recovery' });
+      return json(recoveryToken);
     };
 
     const callback = await request(jar, `/api/auth/callback?state=${encodeURIComponent(flow.state)}&code=auth-code-one`);
     assert.equal(callback.status, 303);
     assert.equal(callback.headers.get('location'), 'http://localhost/?auth=recovery');
     assert.deepEqual(exchangedBody, { auth_code: 'auth-code-one', code_verifier: flow.verifier });
-    assert.equal(callback.headers.get('location').includes(token.access_token), false);
-    assert.equal(jar.get('yzt_access'), token.access_token);
+    assert.equal(callback.headers.get('location').includes(recoveryToken.access_token), false);
+    assert.equal(jar.get('yzt_access'), recoveryToken.access_token);
     assert.equal(jar.get('yzt_password_recovery'), '1');
 
     let replayCalls = 0;
-    globalThis.fetch = async () => { replayCalls += 1; return json(token); };
+    globalThis.fetch = async () => { replayCalls += 1; return json(recoveryToken); };
     const replay = await request(jar, `/api/auth/callback?state=${encodeURIComponent(flow.state)}&code=auth-code-one`);
     assert.equal(replay.status, 303);
     assert.equal(replay.headers.get('location'), 'http://localhost/?auth=link-invalid');
@@ -286,8 +309,8 @@ await test('F10-01 auth, session and request security contract', async (t) => {
 
   await t.test('password change signs out globally and never returns tokens', async () => {
     const jar = new Map([
-      ['yzt_access', token.access_token],
-      ['yzt_refresh', token.refresh_token],
+      ['yzt_access', recoveryToken.access_token],
+      ['yzt_refresh', recoveryToken.refresh_token],
       ['yzt_password_recovery', '1'],
     ]);
     const csrfToken = await csrf(jar);
