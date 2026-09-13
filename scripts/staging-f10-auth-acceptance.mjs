@@ -94,7 +94,7 @@ async function login(email, password) {
   const jar = new Map();
   const csrfToken = await csrf(jar);
   const result = await browserMutation(jar, '/api/auth/login', 'POST', { email, password }, csrfToken);
-  return { ...result, jar, csrfToken };
+  return { ...result, jar };
 }
 
 async function adminRequest(path, init = {}) {
@@ -245,58 +245,50 @@ try {
   `);
   membershipDisabled = false;
 
+  const restoredMembership = await appRequest(loggedIn.jar, '/api/session');
+  if (!restoredMembership.response.ok
+      || !Array.isArray(restoredMembership.data?.memberships)
+      || restoredMembership.data.memberships.length < 1) {
+    throw new Error('Staging owner membership did not restore before password rotation');
+  }
+
+  // S01 made recovery authority a verified JWT property. An admin-generated
+  // token-hash shortcut is not the product recovery path and must not create a
+  // password-recovery session when the provider does not attest recovery AMR.
+  // The real public recovery + PKCE + marker/refresh/replay chain is exercised
+  // immediately after this F10 gate by the dedicated S01 hosted acceptance.
   const recoveryLink = await generateLink('recovery', ownerEmail);
-  const recoveryJar = new Map();
-  const recoveryCsrf = await csrf(recoveryJar);
-  const confirmedRecovery = await browserMutation(
-    recoveryJar,
+  const shortcutJar = new Map();
+  const shortcutCsrf = await csrf(shortcutJar);
+  const shortcut = await browserMutation(
+    shortcutJar,
     '/api/auth/confirm',
     'POST',
     { tokenHash: recoveryLink.tokenHash, type: 'recovery' },
-    recoveryCsrf,
+    shortcutCsrf,
   );
-  if (!confirmedRecovery.response.ok || confirmedRecovery.data?.ok !== true || confirmedRecovery.data?.type !== 'recovery') {
-    throw new Error(`Hosted recovery token confirmation failed with HTTP ${confirmedRecovery.response.status}`);
+  await expectError(shortcut, 400, 'AUTH_LINK_INVALID', 'unattested admin recovery shortcut');
+  if (shortcutJar.has('yzt_access') || shortcutJar.has('yzt_refresh') || shortcutJar.has('yzt_password_recovery')) {
+    throw new Error('Rejected admin recovery shortcut installed a browser session');
   }
-  if (confirmedRecovery.text.includes('access_token') || confirmedRecovery.text.includes('refresh_token')) {
-    throw new Error('Recovery confirmation exposed session tokens to application JavaScript');
-  }
-
-  const recoverySession = await appRequest(recoveryJar, '/api/session');
-  if (!recoverySession.response.ok || recoverySession.data?.user?.id !== ownerUserId || recoverySession.data?.passwordRecovery !== true) {
-    throw new Error('Hosted recovery session did not enter password-update-only mode');
-  }
-  const blockedCatalog = await appRequest(recoveryJar, '/api/catalog');
-  await expectError(blockedCatalog, 403, 'PASSWORD_UPDATE_REQUIRED', 'recovery-session catalog');
-
-  const replayJar = new Map();
-  const replayCsrf = await csrf(replayJar);
-  const replay = await browserMutation(
-    replayJar,
-    '/api/auth/confirm',
-    'POST',
-    { tokenHash: recoveryLink.tokenHash, type: 'recovery' },
-    replayCsrf,
-  );
-  await expectError(replay, 400, 'AUTH_LINK_INVALID', 'reused recovery token');
 
   const passwordUpdate = await browserMutation(
-    recoveryJar,
+    loggedIn.jar,
     '/api/auth/password',
     'PUT',
     { password: temporaryPassword },
-    recoverySession.data.csrfToken,
+    restoredMembership.data.csrfToken,
   );
   if (!passwordUpdate.response.ok || passwordUpdate.data?.ok !== true || passwordUpdate.data?.signedOut !== true) {
-    throw new Error(`Recovery password update failed with HTTP ${passwordUpdate.response.status}`);
+    throw new Error(`Authenticated password update failed with HTTP ${passwordUpdate.response.status}`);
   }
   ownerPasswordChanged = true;
-  if (recoveryJar.has('yzt_access') || recoveryJar.has('yzt_refresh') || recoveryJar.has('yzt_password_recovery')) {
+  if (loggedIn.jar.has('yzt_access') || loggedIn.jar.has('yzt_refresh') || loggedIn.jar.has('yzt_password_recovery')) {
     throw new Error('Password update did not clear the browser session');
   }
 
   const oldPasswordLogin = await login(ownerEmail, ownerPassword);
-  await expectError(oldPasswordLogin, 401, 'LOGIN_FAILED', 'old password login after recovery');
+  await expectError(oldPasswordLogin, 401, 'LOGIN_FAILED', 'old password login after password rotation');
   const newPasswordLogin = await login(ownerEmail, temporaryPassword);
   if (!newPasswordLogin.response.ok || newPasswordLogin.data?.ok !== true) {
     throw new Error(`New password login failed with HTTP ${newPasswordLogin.response.status}`);
@@ -345,7 +337,7 @@ try {
   );
   await expectError(signupReplay, 400, 'AUTH_LINK_INVALID', 'reused signup token');
 
-  console.log('F10-01 staging acceptance passed: Origin/CSRF, refresh rotation, live membership re-check, hosted signup confirmation, recovery and password rotation verified.');
+  console.log('F10-01 staging acceptance passed: Origin/CSRF, refresh rotation, live membership re-check, recovery-shortcut rejection, authenticated password rotation and hosted signup/replay verified.');
 } finally {
   if (membershipDisabled && ownerBusinessId && ownerUserId) {
     try {
