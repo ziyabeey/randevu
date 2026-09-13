@@ -13,7 +13,7 @@
     "build": "npm run typecheck && vite build",
     "build:staging": "npm run typecheck && CLOUDFLARE_ENV=staging vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test:http": "node --test --experimental-strip-types tests/*.test.mjs",
+    "test:http": "node scripts/run-http-tests.mjs",
     "test:ci-coverage": "node scripts/verify-ci-coverage.mjs",
     "test:browser-smoke": "bash scripts/browser-smoke.sh",
     "staging:seed": "node scripts/staging-db.mjs seed",
@@ -21,7 +21,10 @@
     "staging:smoke": "node scripts/staging-smoke.mjs",
     "staging:f09-acceptance": "node scripts/staging-f09-acceptance-runner.mjs",
     "staging:f10-auth-acceptance": "node scripts/staging-f10-auth-acceptance.mjs",
-    "staging:s01-acceptance": "node scripts/staging-s01-recovery-acceptance-runner.mjs"
+    "staging:s01-acceptance": "node scripts/staging-s01-recovery-acceptance-runner.mjs",
+    "build:ci": "vite build",
+    "build:staging:ci": "CLOUDFLARE_ENV=staging vite build",
+    "test:docs": "node scripts/ci-docs.mjs"
   },
   "dependencies": {
     "hono": "4.13.7",
