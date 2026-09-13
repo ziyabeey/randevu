@@ -9,10 +9,7 @@ const deployment = readFileSync(new URL('../scripts/staging-deploy.mjs', import.
 const script = readFileSync(new URL('../scripts/staging-s01-recovery-acceptance.mjs', import.meta.url), 'utf8');
 
 test('S01 public recovery acceptance is a dedicated opt-in workflow gate', () => {
-  assert.equal(
-    pkg.scripts['staging:s01-acceptance'],
-    'node scripts/staging-s01-recovery-acceptance-runner.mjs && npm run staging:s07-acceptance',
-  );
+  assert.equal(pkg.scripts['staging:s01-acceptance'], 'node scripts/staging-s01-recovery-acceptance-runner.mjs');
   assert.match(runner, /await import\('\.\/staging-s01-recovery-acceptance\.mjs'\)/);
   assert.match(runner, /max-age=0/i);
   assert.match(workflow, /run_s01_acceptance:/);
