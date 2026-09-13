@@ -35,6 +35,8 @@ test('S01 live gate exercises the public email and PKCE path instead of admin ge
 test('S01 live gate keeps recovery authority through marker loss, refresh, second tab and replay', () => {
   assert.match(script, /recoveryJar\.delete\('yzt_password_recovery'\)/);
   assert.match(script, /const secondTab = new Map/);
+  assert.match(script, /appRequest\(secondTab, '\/api\/availability\/setup'\)/);
+  assert.doesNotMatch(script, /appRequest\(secondTab, '\/api\/availability'\)/);
   assert.match(script, /s01-expired-access-token/);
   assert.match(script, /invalid confirmation during recovery/);
   assert.match(script, /Replayed PKCE callback was not rejected/);
