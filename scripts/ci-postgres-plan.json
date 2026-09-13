@@ -409,6 +409,10 @@
         {
           "database": "yzt_test",
           "file": "supabase/tests/s07_snapshot_overflow.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/s07_load_measurement.sql"
         }
       ]
     }
