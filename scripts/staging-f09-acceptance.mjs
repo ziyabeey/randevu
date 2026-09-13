@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { derivePublicBookingIntentV2 } from '../shared/public-booking-intent.ts';
 
 const required = [
   'STAGING_APP_ORIGIN',
@@ -171,6 +172,25 @@ async function recover(recoveryId, idempotencyKey, recoverySecret) {
   });
 }
 
+async function resolveBooking(recoveryId, idempotencyKey, recoverySecret) {
+  return appRequest('/api/public/booking/resolve', {
+    method: 'POST',
+    body: JSON.stringify({ recoveryId, idempotencyKey, recoverySecret }),
+  });
+}
+
+async function currentBookingClock() {
+  const page = await appRequest(`/api/public/business/${slug}`);
+  const clock = page.data?.bookingClock;
+  if (!page.response.ok
+      || !Number.isInteger(clock?.serverNowEpochSeconds)
+      || !Number.isInteger(clock?.submitWindowSeconds)
+      || clock.submitWindowSeconds !== 300) {
+    throw new Error(`Public booking clock failed with HTTP ${page.response.status}`);
+  }
+  return clock;
+}
+
 async function waitForNotificationJob(appointmentId) {
   const safeAppointment = sqlLiteral(appointmentId);
   const deadline = Date.now() + DISPATCH_TIMEOUT_MS;
@@ -251,10 +271,17 @@ async function waitForResendDelivery(providerMessageId, recipient, businessName)
 await verifyAnonymousCannotForgeReceipt();
 
 const selected = await findAvailableSlot();
-const idempotencyKey = `f09-${randomUUID()}`;
 const managementToken = createSecret();
 const recoveryId = randomUUID();
 const recoverySecret = createSecret();
+const bookingClock = await currentBookingClock();
+const intent = await derivePublicBookingIntentV2(
+  recoveryId,
+  bookingClock.serverNowEpochSeconds + bookingClock.submitWindowSeconds,
+  recoverySecret,
+);
+if (!intent) throw new Error('Could not derive the canonical v2 staging booking intent');
+const idempotencyKey = intent.idempotencyKey;
 const runLabel = String(process.env.GITHUB_RUN_ID ?? Date.now()).replace(/\D/g, '').slice(-30) || Date.now().toString();
 const recipient = `delivered+f0905${runLabel}@resend.dev`;
 
@@ -282,6 +309,15 @@ if (!recovered.response.ok || !recovered.data?.appointment?.appointment_id) {
 const appointmentId = recovered.data.appointment.appointment_id;
 if (recovered.data?.management?.url !== `/m#${encodeURIComponent(managementToken)}`) {
   throw new Error('Recovered management URL did not match the original capability');
+}
+
+const resolved = await resolveBooking(recoveryId, idempotencyKey, recoverySecret);
+if (!resolved.response.ok
+    || resolved.data?.resolution !== 'committed'
+    || resolved.data?.recoveryId !== recoveryId
+    || resolved.data?.appointment?.appointment_id !== appointmentId
+    || resolved.data?.management?.url !== `/m#${encodeURIComponent(managementToken)}`) {
+  throw new Error(`V2 committed resolution did not preserve the existing booking identity (HTTP ${resolved.response.status})`);
 }
 
 const managed = await appRequest('/api/manage/view', {
@@ -360,6 +396,16 @@ await expectError(
   'BOOKING_RECOVERY_NOT_FOUND',
 );
 
+const expiredResolution = await resolveBooking(recoveryId, idempotencyKey, recoverySecret);
+if (!expiredResolution.response.ok
+    || expiredResolution.data?.resolution !== 'exists_nolink'
+    || expiredResolution.data?.recoveryId !== recoveryId
+    || expiredResolution.data?.appointment !== undefined
+    || expiredResolution.data?.management !== undefined
+    || expiredResolution.data?.recovery !== undefined) {
+  throw new Error(`Expired v2 resolution did not preserve link-free booking existence (HTTP ${expiredResolution.response.status})`);
+}
+
 console.log(
-  `F09-05 staging acceptance passed at ${origin}: booking/recovery/idempotency/capability/fake-receipt/provider-delivery verified for appointment ${appointmentId}.`,
+  `F09-05 staging acceptance passed at ${origin}: v2 booking/recovery/resolution/idempotency/capability/fake-receipt/provider-delivery verified for appointment ${appointmentId}.`,
 );

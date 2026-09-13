@@ -3,17 +3,20 @@ type ApiErrorBody = { error?: { code?: string; message?: string } };
 type ApiInit = RequestInit & {
   skipCsrfRetry?: boolean;
   csrf?: 'required' | 'skip';
+  timeoutMs?: number;
 };
 
 export class ApiRequestError extends Error {
   readonly code?: string;
   readonly status: number;
+  readonly retryAfter?: number;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(message: string, status: number, code?: string, retryAfter?: number) {
     super(message);
     this.name = 'ApiRequestError';
     this.status = status;
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -59,15 +62,65 @@ async function obtainCsrfToken() {
   return csrfRequest;
 }
 
-async function parseBody<T>(response: Response) {
-  const text = await response.text();
+function abortReason(signal: AbortSignal) {
+  return signal.reason ?? new DOMException('The operation was aborted', 'AbortError');
+}
+
+async function fetchText(path: string, init: RequestInit, timeoutMs?: number) {
+  if (timeoutMs === undefined) {
+    const response = await fetch(path, init);
+    return { response, text: await response.text() };
+  }
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new RangeError('timeoutMs must be a positive finite number');
+
+  const callerSignal = init.signal;
+  if (callerSignal?.aborted) throw abortReason(callerSignal);
+  const controller = new AbortController();
+  let rejectBoundary: (reason?: unknown) => void = () => undefined;
+  const boundary = new Promise<never>((_resolve, reject) => { rejectBoundary = reject; });
+  const abortFromCaller = () => {
+    const reason = abortReason(callerSignal!);
+    controller.abort(reason);
+    rejectBoundary(reason);
+  };
+  callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timer = setTimeout(() => {
+    const error = new ApiRequestError(
+      'İstek zamanında tamamlanamadı. Lütfen sonucu tekrar kontrol edin.',
+      0,
+      'REQUEST_TIMEOUT',
+    );
+    controller.abort(error);
+    rejectBoundary(error);
+  }, timeoutMs);
+  const operation = (async () => {
+    const response = await fetch(path, { ...init, signal: controller.signal });
+    return { response, text: await response.text() };
+  })();
+  try {
+    return await Promise.race([operation, boundary]);
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', abortFromCaller);
+  }
+}
+
+function parseBody<T>(text: string) {
   if (!text) return {} as T & ApiErrorBody;
   try { return JSON.parse(text) as T & ApiErrorBody; }
   catch { return {} as T & ApiErrorBody; }
 }
 
+function retryAfterSeconds(response: Response) {
+  const value = response.headers.get('Retry-After');
+  if (!value) return undefined;
+  if (/^[0-9]+$/.test(value)) return Number(value);
+  const deadline = Date.parse(value);
+  return Number.isFinite(deadline) ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : undefined;
+}
+
 export async function api<T = unknown>(path: string, init: ApiInit = {}): Promise<T> {
-  const { csrf = 'required', skipCsrfRetry = false, ...requestInit } = init;
+  const { csrf = 'required', skipCsrfRetry = false, timeoutMs, ...requestInit } = init;
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
@@ -77,13 +130,13 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
     headers.set('X-YZT-CSRF', await obtainCsrfToken());
   }
 
-  const response = await fetch(path, {
+  const { response, text } = await fetchText(path, {
     ...requestInit,
     headers,
     cache: 'no-store',
     credentials: 'same-origin',
-  });
-  const body = await parseBody<T>(response);
+  }, timeoutMs);
+  const body = parseBody<T>(text);
 
   if (!response.ok) {
     const code = body.error?.code;
@@ -95,6 +148,7 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
       body.error?.message ?? 'İşlem tamamlanamadı.',
       response.status,
       code,
+      retryAfterSeconds(response),
     );
   }
 

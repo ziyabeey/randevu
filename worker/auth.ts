@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { fetchTextWithTimeout } from './outbound-request.ts';
 
 export type AuthEnv = {
   SUPABASE_URL: string;
@@ -145,8 +146,10 @@ export async function supabaseRequest<T = unknown>(
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
   try {
-    const response = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/${path}`, { ...init, headers });
-    const text = await response.text();
+    const { response, bodyText: text } = await fetchTextWithTimeout(
+      `${env.SUPABASE_URL.replace(/\/$/, '')}/${path}`,
+      { ...init, headers },
+    );
     let data: T | null = null;
     if (text) {
       try { data = JSON.parse(text) as T; }

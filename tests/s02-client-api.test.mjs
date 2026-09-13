@@ -150,7 +150,7 @@ test('S02 client: failed CSRF bootstrap prevents the cookie mutation from being 
 test('S02 client: public create and recovery skip CSRF without changing proof or command body', async (t) => {
   const calls = stubFetch(t, () => json({ recovered: true }));
   const body = JSON.stringify({ recoveryId: 'test-recovery', recoverySecret: 'test-proof' });
-  for (const path of ['/api/public/business/test-salon/book', '/api/public/booking/recover']) {
+  for (const path of ['/api/public/business/test-salon/book', '/api/public/booking/recover', '/api/public/booking/resolve']) {
     assert.deepEqual(await api(path, {
       method: 'POST',
       csrf: 'skip',
@@ -158,13 +158,97 @@ test('S02 client: public create and recovery skip CSRF without changing proof or
       body,
     }), { recovered: true });
   }
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   for (const call of calls) {
     assert.equal(call.headers.get('X-YZT-CSRF'), null);
     assert.equal(call.headers.get('Idempotency-Key'), 'public-client-command');
     assert.equal(call.body, body);
     assert.equal(call.credentials, 'same-origin');
   }
+});
+
+test('S07 client: caller timeout covers response headers and body consumption', async (t) => {
+  const calls = stubFetch(t, (call) => {
+    if (call.path.endsWith('/headers')) {
+      return new Promise((_resolve, reject) => {
+        call.signal.addEventListener('abort', () => reject(call.signal.reason), { once: true });
+      });
+    }
+    let streamController;
+    const stream = new ReadableStream({
+      start(controller) {
+        streamController = controller;
+        controller.enqueue(new TextEncoder().encode('{"partial":'));
+      },
+    });
+    call.signal.addEventListener('abort', () => streamController.error(call.signal.reason), { once: true });
+    return new Response(stream, { status: 200, headers: { 'Content-Type': 'application/json' } });
+  });
+
+  for (const path of ['/api/public/booking/headers', '/api/public/booking/body']) {
+    await assert.rejects(api(path, { csrf: 'skip', timeoutMs: 25 }), (error) => {
+      assert.ok(error instanceof ApiRequestError);
+      assert.equal(error.status, 0);
+      assert.equal(error.code, 'REQUEST_TIMEOUT');
+      return true;
+    });
+  }
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((call) => call.signal instanceof AbortSignal));
+});
+
+test('S07 client: bounded request preserves caller abort and cleans timer/listener', async (t) => {
+  const caller = new AbortController();
+  const signal = caller.signal;
+  const originalAdd = signal.addEventListener.bind(signal);
+  const originalRemove = signal.removeEventListener.bind(signal);
+  let adds = 0;
+  let removes = 0;
+  signal.addEventListener = (...args) => { adds += 1; return originalAdd(...args); };
+  signal.removeEventListener = (...args) => { removes += 1; return originalRemove(...args); };
+  const calls = stubFetch(t, (call) => new Promise((_resolve, reject) => {
+    call.signal.addEventListener('abort', () => reject(call.signal.reason), { once: true });
+  }));
+  const reason = new DOMException('caller stopped', 'AbortError');
+  const request = api('/api/public/booking/resolve', {
+    method: 'POST', csrf: 'skip', body: '{}', signal, timeoutMs: 500,
+  });
+  caller.abort(reason);
+  await assert.rejects(request, (error) => error === reason);
+  assert.equal(calls[0].signal.aborted, true);
+  assert.equal(calls[0].signal.reason, reason);
+  assert.equal(adds, 1);
+  assert.equal(removes, 1);
+
+  const successfulCaller = new AbortController();
+  let completedSignal;
+  globalThis.fetch.mock.mockImplementation(async (_path, init) => {
+    completedSignal = init.signal;
+    return json({ ok: true });
+  });
+  assert.deepEqual(await api('/api/public/business/test-salon', {
+    signal: successfulCaller.signal, timeoutMs: 15,
+  }), { ok: true });
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  assert.equal(completedSignal.aborted, false);
+});
+
+test('S07 client: Retry-After is exposed on the typed API error', async (t) => {
+  stubFetch(t, () => new Response(JSON.stringify({
+    error: { code: 'PUBLIC_BOOKING_RATE_LIMITED', message: 'Çok fazla istek yapıldı.' },
+  }), {
+    status: 429,
+    headers: { 'Content-Type': 'application/json', 'Retry-After': '17' },
+  }));
+  await assert.rejects(api('/api/public/booking/resolve', {
+    method: 'POST', csrf: 'skip', body: '{}', timeoutMs: 100,
+  }), (error) => {
+    assert.ok(error instanceof ApiRequestError);
+    assert.equal(error.status, 429);
+    assert.equal(error.code, 'PUBLIC_BOOKING_RATE_LIMITED');
+    assert.equal(error.retryAfter, 17);
+    return true;
+  });
 });
 
 for (const succeeds of [true, false]) {

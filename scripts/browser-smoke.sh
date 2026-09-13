@@ -62,3 +62,5 @@ if ! grep -Fq 'Yeni işletme hesabı oluştur' "$HTML_FILE"; then
 fi
 
 echo "Browser smoke passed with $CHROME_BIN at $BASE_URL/."
+
+CHROME_BIN="$CHROME_BIN" node scripts/browser-booking-recovery.mjs
