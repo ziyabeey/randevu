@@ -1,12 +1,12 @@
 # YZT Randevu — Mevcut durum
 
-**Kontrol: 12 Eylül 2026.** Plan v3 ürün ve teknik sıra kaynağıdır. Aşağıdaki tablo doğrulanmış kodu, test geçmişini ve açık işleri ayırır. S01 ve S02 tamamlandı; S03…S08 ve GS açıktır. Canlı sahip/durum [TASKS](TASKS.md), sıra [ROADMAP](ROADMAP.md), ürün sınırı [PRODUCT_SPEC](PRODUCT_SPEC.md) içindedir.
+**Kontrol: 13 Eylül 2026.** Plan v3 ürün ve teknik sıra kaynağıdır. Aşağıdaki tablo doğrulanmış kodu, test geçmişini ve açık işleri ayırır. S01 ve S02 tamamlandı; S03…S08 ve GS açıktır. Canlı sahip/durum [TASKS](TASKS.md), sıra [ROADMAP](ROADMAP.md), ürün sınırı [PRODUCT_SPEC](PRODUCT_SPEC.md) içindedir.
 
 ## Devam noktası
 
 **S02 tamamlandı ve [PR #36](https://github.com/ziyabeey1-ai/randevu/pull/36) ile main'e birleşti** (`1045abc7be62920b98e960cab1602efd30dbda75`). Aynı code head üzerinde [CI 34708432373](https://github.com/ziyabeey1-ai/randevu/actions/runs/34708432373) ve [gerçek staging 34708621675](https://github.com/ziyabeey1-ai/randevu/actions/runs/34708621675) başarılı; [devir](docs/handoffs/S02.md) kabul kapsamını kaydeder. S01'in gerçek public mailbox kabulü de tamamlandı.
 
-Sıradaki mevcut çalışma **S03 / [PR #35](https://github.com/ziyabeey1-ai/randevu/pull/35)**, `s03-notification-version-consistency`, kontrol edilen head `eb146118fe88e2740ea65f3f53f6b1f612589907` üzerinde açıktır. Aynı kapsam için ikinci branch açılmaz; güncel main ile devir/sahiplik karşılaştırılarak devam edilir. S04/S05/S06/S08 dosya ve merge sırası ayrılarak hazırlanabilir. S07 artık S03/S04 kabulünü bekler. Yeni özellik kodu GS tamamlanmadan başlamaz.
+Devralınan mevcut çalışma **S03 / [PR #35](https://github.com/ziyabeey1-ai/randevu/pull/35)**, `s03-notification-version-consistency`, başlangıç head `eb146118fe88e2740ea65f3f53f6b1f612589907`; ana ajan güncel main ile birleştirip lease/ambiguity/upgrade bulgularını aynı PR içinde kapatıyor. Code head `96cc2e46be875be8fb659f0021b099f6f96b4db3` için 272 HTTP testi, build, bağımsız inceleme ve [PG17/Chrome CI 34733323339](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733323339) geçti; gerçek F09 staging kabulü bekleniyor. [S03 devri](docs/handoffs/S03.md) güncel dosya ve kanıt kaynağıdır. Aynı kapsam için ikinci branch açılmaz; güncel main ile devir/sahiplik karşılaştırılarak devam edilir. S04/S05/S06/S08 dosya ve merge sırası ayrılarak hazırlanabilir. S07 artık S03/S04 kabulünü bekler. Yeni özellik kodu GS tamamlanmadan başlamaz.
 
 F10-02 için açık [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), branch `f10-02-invites-memberships-roles`, incelenen head `5099ea307ac806e958a7a29a674462558570b0d5` yalnız `docs/handoffs/F10-02.md` içerir. Mevcut sahibi korunur; GS nedeniyle görev **Engelli** kalır. Devralmadan önce canlı PR tekrar kontrol edilir; aynı işi ikinci branch'te başlatma.
 

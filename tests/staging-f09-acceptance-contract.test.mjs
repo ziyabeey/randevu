@@ -25,10 +25,14 @@ test('F09 live acceptance keeps recovery, idempotency and capability negative ca
   assert.match(script, /set expires_at = now\(\) - interval '1 minute'/);
 });
 
-test('F09 live acceptance proves provider receipt authority and real Resend delivery', () => {
-  assert.match(script, /rpc\/complete_notification_job/);
+test('F09 live acceptance proves S03 receipt authority and real Resend delivery', () => {
+  assert.match(script, /rpc\/complete_notification_job_v2/);
+  assert.doesNotMatch(script, /rpc\/complete_notification_job[`'\"]/);
+  assert.match(script, /p_request_fingerprint: 'f'\.repeat\(64\)/);
   assert.match(script, /NOTIFICATION_DISPATCH_UNAUTHORIZED/);
   assert.match(script, /appointment_notification_jobs/);
+  assert.match(script, /and is_current/);
+  assert.match(script, /order by event_version desc, created_at desc/);
   assert.match(script, /state === 'sent'/);
   assert.match(script, /https:\/\/api\.resend\.com\/emails\/\$\{encodeURIComponent\(providerMessageId\)\}/);
   assert.match(script, /lastEvent === 'delivered'/);
