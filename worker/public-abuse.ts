@@ -14,7 +14,7 @@ export type PublicAbuseIdentity = {
   networkHash: string;
 };
 
-const COOKIE_NAME = 'yzt_public_client';
+const COOKIE_NAME = 'yzt_public_client_v2';
 const COOKIE_TTL_SECONDS = 60 * 60 * 24;
 
 function base64Url(bytes: Uint8Array) {
@@ -117,7 +117,7 @@ async function issueClient(context: AbuseContext, secret: string) {
     httpOnly: true,
     secure: context.env.COOKIE_SECURE !== 'false',
     sameSite: 'Lax',
-    path: '/api/public',
+    path: '/api',
     maxAge: COOKIE_TTL_SECONDS,
   });
   return clientId;

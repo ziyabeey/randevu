@@ -1,3 +1,5 @@
+import { boundedRpc } from './public-rpc.ts';
+import { rateLimitFromRpcError } from './public-abuse.ts';
 import { Hono } from 'hono';
 import authRoutes from './auth-routes.ts';
 import {
@@ -99,12 +101,22 @@ app.post('/api/businesses', async (context) => {
     return context.json({ error: { code: 'INVALID_BUSINESS', message: 'İşletme adı geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<Array<{ id: string; name: string; slug: string; timezone: string; role: Role }>>(
+  const result = await boundedRpc<Array<{ id: string; name: string; slug: string; timezone: string; role: Role }>>(
     context.env,
-    'rest/v1/rpc/create_business_with_owner',
-    { method: 'POST', body: JSON.stringify({ p_name: name, p_slug: slug, p_timezone: timezone }) },
+    'create_business_with_owner_guarded',
+    { p_name: name, p_slug: slug, p_timezone: timezone },
     access.auth.accessToken,
   );
+  if (!result.ok) {
+    const retryAfter = rateLimitFromRpcError(result.data);
+    if (retryAfter) {
+      context.header('Retry-After', String(retryAfter));
+      return context.json({ error: { code: 'BUSINESS_CREATE_RATE_LIMITED', message: 'Kısa sürede çok fazla işletme oluşturma isteği yapıldı. Lütfen daha sonra tekrar deneyin.', retryAfterSeconds: retryAfter } }, 429);
+    }
+    if (result.data.message === 'PUBLIC_OPERATION_UNAVAILABLE') {
+      return context.json({ error: { code: 'BUSINESS_CREATE_UNAVAILABLE', message: 'İşletme oluşturma sonucu doğrulanamadı. İşletme listenizi kontrol edin.' } }, 503);
+    }
+  }
   const business = result.ok ? first(result.data) : null;
   if (!business) {
     return context.json({ error: { code: 'BUSINESS_CREATE_FAILED', message: 'İşletme oluşturulamadı. Adres kullanımda olabilir.' } }, 400);

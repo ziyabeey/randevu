@@ -1,3 +1,4 @@
+import { publicOperation } from './public-rpc.ts';
 import { Hono } from 'hono';
 import {
   publicGateUnavailableBody,
@@ -45,22 +46,6 @@ type RecoveryRow = {
 const bookingRecovery = new Hono<{ Bindings: Env }>();
 const AAD_PREFIX = 'public-booking-recovery:v1|';
 
-async function supabaseRequest<T>(env: Env, path: string, init: RequestInit): Promise<{ ok: boolean; data: T | null }> {
-  const headers = new Headers(init.headers);
-  headers.set('apikey', env.SUPABASE_ANON_KEY);
-  headers.set('Authorization', `Bearer ${env.SUPABASE_ANON_KEY}`);
-  headers.set('Accept', 'application/json');
-  if (init.body) headers.set('Content-Type', 'application/json');
-  try {
-    const response = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/${path}`, { ...init, headers });
-    const text = await response.text();
-    if (!text) return { ok: response.ok, data: null };
-    try { return { ok: response.ok, data: JSON.parse(text) as T }; }
-    catch { return { ok: response.ok, data: null }; }
-  } catch {
-    return { ok: false, data: null };
-  }
-}
 
 async function readJson(request: Request): Promise<Record<string, unknown> | null> {
   try {
@@ -237,9 +222,7 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
     sha256Hex(recoverySecret),
   ]);
 
-  const result = await supabaseRequest<PublicConfirmation[]>(context.env, 'rest/v1/rpc/create_public_appointment_with_recovery_guarded', {
-    method: 'POST',
-    body: JSON.stringify({
+  const result = await publicOperation<PublicConfirmation[]>(context.env, 'book', {
       p_slug: slug,
       p_idempotency_key: key,
       p_customer_name: customerName,
@@ -252,14 +235,10 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
       p_management_token_ciphertext: encrypted.ciphertext,
       p_management_token_iv: encrypted.iv,
       p_key_version: encrypted.keyVersion,
-      p_gate_secret: abuse.gateSecret,
-      p_actor_hash: abuse.actorHash,
-      p_network_hash: abuse.networkHash,
       p_customer_phone: customerPhone,
       p_customer_email: customerEmail,
       p_notes: notes,
-    }),
-  });
+    }, abuse);
 
   if (!result.ok) {
     return errorResponse(context, rpcError(result.data, 'Rezervasyon sonucunuz doğrulanamadı. Aynı işlemle sonucu kontrol edin.'));
@@ -290,17 +269,11 @@ bookingRecovery.post('/booking/recover', async (context) => {
   if (!abuse) return context.json(publicGateUnavailableBody(), 503);
 
   const recoverySecretHash = await sha256Hex(recoverySecret);
-  const result = await supabaseRequest<RecoveryRow[]>(context.env, 'rest/v1/rpc/recover_public_appointment_guarded', {
-    method: 'POST',
-    body: JSON.stringify({
+  const result = await publicOperation<RecoveryRow[]>(context.env, 'recover', {
       p_recovery_id: recoveryId,
       p_idempotency_key: key,
       p_recovery_secret_hash: recoverySecretHash,
-      p_gate_secret: abuse.gateSecret,
-      p_actor_hash: abuse.actorHash,
-      p_network_hash: abuse.networkHash,
-    }),
-  });
+    }, abuse);
   if (!result.ok) {
     const error = rpcError(result.data, 'Randevu sonucu bulunamadı.');
     if (error.status === 429 || error.status === 503) return errorResponse(context, error);

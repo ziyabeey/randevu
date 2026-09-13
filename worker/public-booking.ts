@@ -1,3 +1,4 @@
+import { publicOperation } from './public-rpc.ts';
 import { Hono } from 'hono';
 import {
   canManage,
@@ -81,6 +82,7 @@ function rpcError(data: unknown, fallback: string) {
     };
   }
   const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  if (message === 'PUBLIC_OPERATION_UNAVAILABLE') return { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon bilgileri şu anda alınamıyor. Lütfen tekrar deneyin.', status: 503 as const };
   if (message.includes('PUBLIC_BOOKING_GATE_UNAVAILABLE') || message.includes('PUBLIC_BOOKING_GATE_INVALID_PROOF')) {
     return { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon güvenlik kontrolü şu anda hazır değil.', status: 503 as const };
   }
@@ -115,14 +117,6 @@ function errorResponse(context: BaseContext, error: ReturnType<typeof rpcError>)
     return response;
   }
   return context.json({ error: { code: error.code, message: error.message } }, error.status);
-}
-
-function abuseProof(identity: NonNullable<Awaited<ReturnType<typeof resolvePublicAbuseIdentity>>>) {
-  return {
-    p_gate_secret: identity.gateSecret,
-    p_actor_hash: identity.actorHash,
-    p_network_hash: identity.networkHash,
-  };
 }
 
 // Authenticated business-side settings. Public booking is opt-in and manager-only mutable.
@@ -195,15 +189,10 @@ publicBooking.get('/business/:slug', async (context) => {
 
   const abuse = await resolvePublicAbuseIdentity(context);
   if (!abuse) return context.json(publicGateUnavailableBody(), 503);
-  const proof = abuseProof(abuse);
 
   const [business, services] = await Promise.all([
-    supabaseRequest<PublicBusiness[]>(context.env, 'rest/v1/rpc/get_public_booking_business_guarded', {
-      method: 'POST', body: JSON.stringify({ p_slug: slug, ...proof }),
-    }),
-    supabaseRequest<PublicService[]>(context.env, 'rest/v1/rpc/get_public_booking_services_guarded', {
-      method: 'POST', body: JSON.stringify({ p_slug: slug, ...proof }),
-    }),
+    publicOperation<PublicBusiness[]>(context.env, 'business', { p_slug: slug }, abuse),
+    publicOperation<PublicService[]>(context.env, 'services', { p_slug: slug }, abuse),
   ]);
   if (!business.ok) return errorResponse(context, rpcError(business.data, 'Rezervasyon bağlantısı yüklenemedi.'));
   if (!services.ok) return errorResponse(context, rpcError(services.data, 'Hizmetler yüklenemedi.'));
@@ -225,9 +214,7 @@ publicBooking.get('/business/:slug/staff', async (context) => {
 
   const abuse = await resolvePublicAbuseIdentity(context);
   if (!abuse) return context.json(publicGateUnavailableBody(), 503);
-  const result = await supabaseRequest<PublicStaff[]>(context.env, 'rest/v1/rpc/get_public_booking_staff_guarded', {
-    method: 'POST', body: JSON.stringify({ p_slug: slug, p_service_id: serviceId, ...abuseProof(abuse) }),
-  });
+  const result = await publicOperation<PublicStaff[]>(context.env, 'staff', { p_slug: slug, p_service_id: serviceId }, abuse);
   if (!result.ok) return errorResponse(context, rpcError(result.data, 'Personel bilgileri yüklenemedi.'));
   return context.json({ staff: result.data ?? [] });
 });
@@ -244,16 +231,12 @@ publicBooking.get('/business/:slug/slots', async (context) => {
 
   const abuse = await resolvePublicAbuseIdentity(context);
   if (!abuse) return context.json(publicGateUnavailableBody(), 503);
-  const result = await supabaseRequest<PublicSlot[]>(context.env, 'rest/v1/rpc/compute_public_booking_slots_guarded', {
-    method: 'POST',
-    body: JSON.stringify({
+  const result = await publicOperation<PublicSlot[]>(context.env, 'slots', {
       p_slug: slug,
       p_service_id: serviceId,
       p_date: date,
-      p_staff_id: staffId,
-      ...abuseProof(abuse),
-    }),
-  });
+      p_staff_id: staffId
+    }, abuse);
   if (!result.ok) return errorResponse(context, rpcError(result.data, 'Uygun saatler hesaplanamadı.'));
   return context.json({ slots: result.data ?? [] });
 });

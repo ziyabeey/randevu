@@ -150,3 +150,10 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/s03_notification_upgrade_fixture.sql
           psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260912123000_s03_notification_consistency.sql
           psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/s03_notification_upgrade_assert.sql
+      - name: Verify S04 resource limits and concurrent recovery
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260913030912_s04_resource_limits.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s04_resource_limits.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s04_resource_limits_concurrency.sql

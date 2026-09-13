@@ -171,8 +171,8 @@ await test('S02 capability mutations remain an explicit non-cookie exception', a
   const token = 'T'.repeat(48);
   globalThis.fetch = async (input) => {
     const url = String(input);
-    if (url.endsWith('/rest/v1/rpc/get_public_managed_appointment')) {
-      return json([{
+    if (url.endsWith('/rest/v1/rpc/execute_public_operation')) {
+      return json({ ok: true, data: [{
         appointment_id: '50000000-0000-4000-8000-000000000001',
         business_name: 'Test Salon',
         status: 'confirmed',
@@ -183,7 +183,7 @@ await test('S02 capability mutations remain an explicit non-cookie exception', a
         staff_name: 'Ada',
         price_minor: 10000,
         currency: 'TRY',
-      }]);
+      }] });
     }
     throw new Error(`unexpected capability fetch: ${url}`);
   };
