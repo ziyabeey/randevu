@@ -10,7 +10,7 @@
 
 İlk staging denemesi 180 saniyede `pending` görüp durdu; aynı iş yaklaşık üç saniye sonra ilk denemede sağlayıcı kabulü aldı. Aynı kod ve eşiklerle ikinci run gerçek teslim kontrolünü geçti. Dağıtım sonrası Cron hazır olma penceresi S05'e kanıtlı takip olarak bırakıldı; genel teslim hızı garantisi verilmedi.
 
-S01 ve S02'nin önceki kabul kanıtları korunur. Sıradaki teknik çalışma **S05**; başlamadan canlı TASKS/açık PR sahipliği ve güncel main kontrol edilir. S06/S07/S08 dosya ve merge sırası ayrılarak hazırlanabilir. S07’nin S02/S03/S04 önkoşulları artık tamamdır. Yeni özellik kodu GS tamamlanmadan başlamaz.
+S01 ve S02'nin önceki kabul kanıtları korunur. **S05 çalışılıyor**: `s05-deploy-consistency`, base `72c4665`; [devir](docs/handoffs/S05.md). Rutin anahtar koruma, explicit rotasyon ve hata toparlama uygulanıyor; gerçek staging kabulü henüz yok. Sonraki oturum aynı işi ikinci branch'te başlatmadan canlı TASKS/açık PR kaydını kontrol eder. S06/S07/S08 dosya ve merge sırası ayrılarak hazırlanabilir. S07’nin S02/S03/S04 önkoşulları artık tamamdır. Yeni özellik kodu GS tamamlanmadan başlamaz.
 
 F10-02 için açık [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), branch `f10-02-invites-memberships-roles`, incelenen head `5099ea307ac806e958a7a29a674462558570b0d5` yalnız `docs/handoffs/F10-02.md` içerir. Mevcut sahibi korunur; GS nedeniyle görev **Engelli** kalır. Devralmadan önce canlı PR tekrar kontrol edilir; aynı işi ikinci branch'te başlatma.
 

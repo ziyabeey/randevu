@@ -5,6 +5,7 @@ import test from 'node:test';
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 const workflow = readFileSync(new URL('../.github/workflows/staging.yml', import.meta.url), 'utf8');
 const runner = readFileSync(new URL('../scripts/staging-s01-recovery-acceptance-runner.mjs', import.meta.url), 'utf8');
+const deployment = readFileSync(new URL('../scripts/staging-deploy.mjs', import.meta.url), 'utf8');
 const script = readFileSync(new URL('../scripts/staging-s01-recovery-acceptance.mjs', import.meta.url), 'utf8');
 
 test('S01 public recovery acceptance is a dedicated opt-in workflow gate', () => {
@@ -15,10 +16,10 @@ test('S01 public recovery acceptance is a dedicated opt-in workflow gate', () =>
   assert.match(workflow, /s01_recovery_email:/);
   assert.match(workflow, /RESEND_ACCEPTANCE_API_KEY: \$\{\{ secrets\.RESEND_ACCEPTANCE_API_KEY \}\}/);
   assert.match(workflow, /S01_RECOVERY_EMAIL: \$\{\{ inputs\.s01_recovery_email \}\}/);
-  assert.match(workflow, /npm run staging:s01-acceptance/);
+  assert.match(deployment, /if \(gates\.s01\) command\('npm', \['run', 'staging:s01-acceptance'\]\)/);
 
-  const smokeIndex = workflow.indexOf('Verify real staging login and catalog');
-  const acceptanceIndex = workflow.indexOf('Verify S01 public mailbox recovery boundary');
+  const smokeIndex = deployment.indexOf("command('npm', ['run', 'staging:smoke'])");
+  const acceptanceIndex = deployment.indexOf("command('npm', ['run', 'staging:s01-acceptance'])");
   assert.ok(smokeIndex >= 0 && acceptanceIndex > smokeIndex, 'S01 acceptance must run after base staging smoke');
 });
 

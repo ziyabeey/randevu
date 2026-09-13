@@ -11,13 +11,6 @@ const externalSettings = [
   'RESEND_API_KEY',
 ];
 
-const ephemeralSettings = [
-  'STAGING_OWNER_A_PASSWORD',
-  'STAGING_OWNER_B_PASSWORD',
-  'PUBLIC_BOOKING_GATE_SECRET',
-  'NOTIFICATION_DISPATCH_SECRET',
-];
-
 test('staging workflow keeps the external provisioning surface at four secrets', () => {
   const match = workflow.match(/const requiredExternal = \[([\s\S]*?)\];/);
   assert.ok(match, 'requiredExternal contract must remain explicit');
@@ -85,97 +78,38 @@ test('Cloudflare account is derived from a single-account Wrangler token before 
   assert.ok(buildIndex > accountIndex && migrationIndex > accountIndex, 'Cloudflare account resolution must fail closed before build/DB work');
 });
 
-test('owner passwords and non-persistent gate secrets are generated per run and masked', () => {
-  assert.match(workflow, /Prepare ephemeral staging job secrets/);
-  assert.match(workflow, /STAGING_OWNER_A_PASSWORD: `Rdv!\$\{randomBytes\(24\)/);
-  assert.match(workflow, /STAGING_OWNER_B_PASSWORD: `Rdv!\$\{randomBytes\(24\)/);
-  assert.match(workflow, /PUBLIC_BOOKING_GATE_SECRET: randomBytes\(48\)\.toString\('base64url'\)/);
-  assert.match(workflow, /NOTIFICATION_DISPATCH_SECRET: randomBytes\(48\)\.toString\('base64url'\)/);
-  assert.match(workflow, /::add-mask::\$\{value\}/);
-  assert.match(workflow, /GITHUB_ENV/);
+const deploy = readFileSync(new URL('../scripts/staging-deploy.mjs', import.meta.url), 'utf8');
 
-  for (const name of ephemeralSettings) {
-    assert.match(workflow, new RegExp(name), `${name} must be generated or consumed by the workflow`);
+test('staging serializes runs and uses an explicit operation with routine as default', () => {
+  assert.match(workflow, /group: randevu-staging/);
+  assert.match(workflow, /cancel-in-progress: false/);
+  assert.match(workflow, /default: deploy/);
+  assert.match(workflow, /options: \[deploy, rotate, resume, rollback, bootstrap\]/);
+  assert.match(workflow, /node scripts\/staging-deploy\.mjs resolve/);
+  assert.match(workflow, /run: node scripts\/staging-deploy\.mjs\n/);
+  assert.doesNotMatch(workflow, /staging:config|staging:reset|staging:seed|PUBLIC_BOOKING_GATE_SECRET: randomBytes/);
+});
+
+test('staging keeps ephemeral owner passwords but moves critical key handling into the tested coordinator', () => {
+  assert.match(workflow, /STAGING_OWNER_A_PASSWORD: `Rdv!/);
+  assert.match(workflow, /STAGING_OWNER_B_PASSWORD: `Rdv!/);
+  assert.match(workflow, /::add-mask::/);
+  assert.match(deploy, /pinBindings\(config, s\.previous, supplied\)/);
+  assert.match(deploy, /mode === 'bootstrap'/);
+  assert.match(deploy, /mode === 'rotate'/);
+  assert.match(deploy, /mode !== 'resume' && mode !== 'rollback'/);
+});
+
+test('staging resolves runtime before migrations and runs existing real acceptance after smoke', () => {
+  assert.ok(workflow.indexOf('Resolve Cloudflare staging runtime') < workflow.indexOf('Apply staging migrations'));
+  assert.ok(workflow.indexOf('Apply staging migrations') < workflow.indexOf('Deploy and verify consistent staging generation'));
+  const smoke = deploy.indexOf("command('npm', ['run', 'staging:smoke'])");
+  for (const gate of ['staging:f09-acceptance', 'staging:f10-auth-acceptance', 'staging:s01-acceptance']) {
+    assert.ok(deploy.indexOf(gate) > smoke);
   }
-});
-
-test('management encryption key is bootstrapped once and persisted only in Cloudflare', () => {
-  assert.match(workflow, /workers\/scripts\/\$\{encodeURIComponent\(workerName\)\}\/secrets\/MANAGEMENT_LINK_ENCRYPTION_KEY_V1/);
-  assert.match(workflow, /secretResponse\.status === 404/);
-  assert.match(workflow, /randomBytes\(32\)\.toString\('base64url'\)/);
-  assert.match(workflow, /MANAGEMENT_LINK_ENCRYPTION_KEY_V1_BOOTSTRAP=\$\{bootstrapKey\}/);
-  assert.match(workflow, /payload\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1 = process\.env\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1_BOOTSTRAP/);
-  assert.match(workflow, /Verify persistent management secret/);
-  assert.doesNotMatch(workflow, /secrets\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1/);
-  assert.doesNotMatch(workflow, /MANAGEMENT_LINK_ENCRYPTION_KEY_V1: process\.env\.MANAGEMENT_LINK_ENCRYPTION_KEY_V1,/);
-});
-
-test('workers.dev staging runtime is resolved before any database mutation', () => {
-  assert.match(workflow, /Resolve Cloudflare staging runtime/);
-  assert.match(workflow, /dist\/yzt_randevu\/wrangler\.json/);
-  assert.match(workflow, /generated\.workers_dev !== true/);
-  assert.match(workflow, /workers\/subdomain/);
-  assert.match(workflow, /STAGING_WORKER_NAME=\$\{workerName\}/);
-  assert.match(workflow, /STAGING_APP_ORIGIN=\$\{origin\}/);
-
-  const buildIndex = workflow.indexOf('- name: Build Cloudflare staging environment');
-  const runtimeIndex = workflow.indexOf('- name: Resolve Cloudflare staging runtime');
-  const psqlIndex = workflow.indexOf('- name: Install PostgreSQL client');
-  const migrationIndex = workflow.indexOf('- name: Apply staging migrations');
-  assert.ok(buildIndex >= 0 && runtimeIndex > buildIndex, 'runtime lookup must happen after generated staging config exists');
-  assert.ok(psqlIndex > runtimeIndex && migrationIndex > runtimeIndex, 'Cloudflare runtime checks must fail closed before DB work');
-});
-
-test('generated gate secrets feed both DB hashes and Worker runtime in the same job', () => {
-  const generatedIndex = workflow.indexOf('- name: Prepare ephemeral staging job secrets');
-  const configIndex = workflow.indexOf('- name: Provision staging DB runtime hashes');
-  const bundleIndex = workflow.indexOf('- name: Build temporary Worker secret bundle');
-  const deployIndex = workflow.indexOf('- name: Deploy Cloudflare staging Worker');
-  assert.ok(generatedIndex >= 0 && configIndex > generatedIndex, 'DB hash provisioning must use generated secrets');
-  assert.ok(bundleIndex > configIndex && deployIndex > bundleIndex, 'the same generated secrets must reach the deployed Worker');
-  assert.match(workflow, /PUBLIC_BOOKING_GATE_SECRET: process\.env\.PUBLIC_BOOKING_GATE_SECRET/);
-  assert.match(workflow, /NOTIFICATION_DISPATCH_SECRET: process\.env\.NOTIFICATION_DISPATCH_SECRET/);
-});
-
-test('staging deploy verifies the persistent management key before smoke', () => {
-  const deployIndex = workflow.indexOf('- name: Deploy Cloudflare staging Worker');
-  const verifyIndex = workflow.indexOf('- name: Verify persistent management secret');
-  const smokeIndex = workflow.indexOf('- name: Verify real staging login and catalog');
-  assert.ok(deployIndex >= 0 && verifyIndex > deployIndex && smokeIndex > verifyIndex);
-  assert.match(workflow, /payload\?\.result\?\.name !== 'MANAGEMENT_LINK_ENCRYPTION_KEY_V1'/);
-});
-
-test('F09 real delivery gate is explicit opt-in and runs only after base staging smoke', () => {
-  assert.match(workflow, /run_f09_acceptance:/);
-  assert.match(workflow, /type: boolean/);
-  assert.match(workflow, /default: false/);
-  assert.match(workflow, /Verify F09 failure and recovery contracts/);
-  assert.match(workflow, /Verify F09-05 real booking and notification delivery/);
-  assert.match(workflow, /npm run staging:f09-acceptance/);
-
-  const smokeIndex = workflow.indexOf('- name: Verify real staging login and catalog');
-  const acceptanceIndex = workflow.indexOf('- name: Verify F09-05 real booking and notification delivery');
-  assert.ok(smokeIndex >= 0 && acceptanceIndex > smokeIndex, 'real F09 acceptance must run after the base staging smoke');
-
-  const guardedSteps = workflow.match(/if: \$\{\{ inputs\.run_f09_acceptance \}\}/g) ?? [];
-  assert.equal(guardedSteps.length, 2, 'only the F09 contract and real-delivery steps should be opt-in');
-});
-
-test('F10 hosted auth gate is explicit opt-in, post-smoke and never deploys the admin key', () => {
-  assert.match(workflow, /run_f10_auth_acceptance:/);
-  assert.match(workflow, /Verify F10 auth and request-security contracts/);
-  assert.match(workflow, /Verify F10-01 real hosted signup, recovery and session security/);
-  assert.match(workflow, /npm run staging:f10-auth-acceptance/);
-
-  const smokeIndex = workflow.indexOf('- name: Verify real staging login and catalog');
-  const acceptanceIndex = workflow.indexOf('- name: Verify F10-01 real hosted signup, recovery and session security');
-  assert.ok(smokeIndex >= 0 && acceptanceIndex > smokeIndex, 'real F10 acceptance must run after the base staging smoke');
-
-  const guardedSteps = workflow.match(/if: \$\{\{ inputs\.run_f10_auth_acceptance \}\}/g) ?? [];
-  assert.equal(guardedSteps.length, 2, 'only the F10 contract and hosted acceptance steps should be opt-in');
-
-  const bundleStart = workflow.indexOf('- name: Build temporary Worker secret bundle');
-  const bundleEnd = workflow.indexOf('- name: Deploy Cloudflare staging Worker');
-  const bundle = workflow.slice(bundleStart, bundleEnd);
-  assert.doesNotMatch(bundle, /SUPABASE_ADMIN_KEY/, 'admin key must never enter the Worker secret bundle');
+  assert.match(workflow, /inputs\.run_f09_acceptance \|\| inputs\.operation == 'rotate' \|\| inputs\.operation == 'resume'/);
+  assert.match(workflow, /RUN_F10_ACCEPTANCE: \$\{\{ inputs\.run_f10_auth_acceptance/);
+  assert.match(workflow, /RUN_S01_ACCEPTANCE: \$\{\{ inputs\.run_s01_acceptance/);
+  assert.match(workflow, /if: always\(\)/);
+  assert.match(workflow, /rm -f \/tmp\/randevu-staging-secrets\.json/);
 });

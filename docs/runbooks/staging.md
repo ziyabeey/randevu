@@ -1,7 +1,6 @@
 # Staging runbook
 
-> Plan v3 notu: Bu runbook mevcut uygulamanın çalışma biçimini anlatır. Run başına gate/dispatch secret rotasyonunun kısmi deploy riski [S05](../plan/stabilization.md#s05) altında açıktır. Yeni güvenli rotasyon uygulanana kadar bu belge düzeltmenin tamamlandığına kanıt değildir.
-Bu runbook F17-01 ile kabul edilmiş **production'dan ayrılmış** Randevu staging ortamını tekrar üretilebilir biçimde kurar ve F09-05 gerçek rezervasyon/bildirim kabulünü çalıştırır. Secret değerleri hiçbir zaman Git'e, PR'a, handoff metnine veya sohbete yazılmaz.
+S05, anahtar değişimini rutin dağıtımdan ayırır. Bu dalın otomatik/gerçek kabul durumu [S05 devrinde](../handoffs/S05.md) tutulur; aşağıdaki prosedürün yazılmış olması canlı kabul değildir. Secret, DB verifier, probe yanıtı, parola ve şifresiz yönetim bağlantısı Git'e, loga veya artifact'a yazılmaz.
 
 ## Canlı kabul durumu
 
@@ -63,7 +62,7 @@ F09-05 opt-in gerçek delivery kabulü için ayrıca:
 
 - `RESEND_ACCEPTANCE_API_KEY`: yalnız GitHub acceptance adımında kullanılan `full_access` anahtar.
 
-Acceptance key normal deploy'un zorunlu secret'ı değildir. Yalnız `run_f09_acceptance=true` seçildiğinde fail-closed doğrulanır. Worker secret bundle'a, Cloudflare binding'lerine veya uygulama runtime'ına girmez. Runtime gönderim anahtarının kapsamı kabul için genişletilmez.
+Acceptance key normal deploy'un zorunlu secret'ı değildir. `run_f09_acceptance=true`, `operation=rotate` veya `operation=resume` seçildiğinde fail-closed doğrulanır. Worker secret bundle'a, Cloudflare binding'lerine veya uygulama runtime'ına girmez. Runtime gönderim anahtarının kapsamı kabul için genişletilmez.
 
 Gerçek booking → notification → provider → güvenli test recipient delivery zinciri F09-05 run `34681540142` ile kanıtlanmıştır. Bu, production/pilot deliverability iddiası değildir.
 
@@ -79,28 +78,13 @@ GitHub secret olmayan sabit metadata:
 - `STAGING_OWNER_B_EMAIL`
 - `NOTIFICATION_FROM_EMAIL`
 
-Run başına üretilen ve maskelenen değerler:
-
-- `STAGING_OWNER_A_PASSWORD`
-- `STAGING_OWNER_B_PASSWORD`
-- `PUBLIC_BOOKING_GATE_SECRET`
-- `NOTIFICATION_DISPATCH_SECRET`
-
-Gate/dispatch secret'ları veri şifreleme anahtarı değildir. Aynı run içindeki raw değerler hem DB hash provisioning hem Worker runtime için kullanılır; DB yalnız SHA-256 hash'lerini tutar.
+Her run yalnız iki test owner parolası yeniden üretilir ve maskelenir. Gate/dispatch anahtarları rutin dağıtımda üretilmez; Cloudflare'daki doğrulanmış çalışan sürümden explicit `inherit.version_id` ile devralınır. Veritabanındaki hash'ler korunur. Rotasyonda yalnız yeni gate/dispatch üretilir; plaintext job sonu silinir, DB yalnız SHA-256 verifier tutar.
 
 ## Kalıcı management encryption key
 
-`MANAGEMENT_LINK_ENCRYPTION_KEY_V1` GitHub Environment secret'ı değildir. Cloudflare Worker secret olarak kalıcı tutulur.
+`MANAGEMENT_LINK_ENCRYPTION_KEY_V1` yalnız Cloudflare'da tutulur. Rutin deploy ve rotasyon bu binding'i doğrulanmış önceki sürüm UUID'sinden devralır. Mevcut ortamda binding'in eksik olması bootstrap izni vermez. Bootstrap yalnız Worker sürümü ve işletme/şifreli materyal olmayan açıkça seçilmiş boş ortamda 32 byte anahtar oluşturur.
 
-Workflow:
-
-- binding varsa değerini okumadan korur,
-- ilk deploy'da binding yoksa `crypto.randomBytes(32).toString('base64url')` ile bootstrap key üretir ve maskeler,
-- yalnız ilk gerekli deploy'un geçici secret bundle'ına ekler,
-- sonraki deploy'larda secret bundle'dan çıkararak Cloudflare'daki mevcut binding'i korur,
-- deploy sonrasında binding varlığını API ile tekrar doğrular.
-
-Key rotasyonu ayrı ve bilinçli operasyon olmalıdır.
+S05 baseline sonrası authenticated probe; eski sürümde AES-GCM ile şifrelenmiş deneme materyalini yeni sürümde çözer ve nonce'a bağlı management HMAC'ini karşılaştırır. Bu kontrol gerçek müşteri token'ını açığa çıkarmaz. Management anahtarı rotasyonu bu işin kapsamında değildir; ayrı sürümlü veri geçişi gerektirir.
 
 ## Build ve Cloudflare runtime çözümü
 
@@ -153,48 +137,53 @@ Parolalar her workflow run'ında yeniden üretilir, maskelenir ve job sonu kaybo
 
 `scripts/staging-ensure-users.mjs` Supabase Admin Auth ile email-confirmed test kullanıcılarını oluşturur veya var olan kullanıcıların parolasını o run'ın geçici parolasına günceller.
 
-## Runtime config ve fixture
+## İşlem seçimi ve fixture
 
-DB runtime hash provisioning:
+GitHub Actions → **Staging deploy** → **Run workflow**; incelenen branch/commit seçilir.
 
-```bash
-npm run staging:config
-```
+| operation | Davranış |
+| --- | --- |
+| `deploy` (varsayılan) | Mevcut gate/dispatch/management korunur. Pending rotasyon varsa durur. S04'ten S05'e ilk yükseltme bu modla yapılır. |
+| `rotate` | S05 probe'u bulunan çalışan sürümden başlar. İki yeni anahtar owner-only CAS ile pending olur; eski yetki açık kalır. F09 otomatik zorunludur. |
+| `resume` | Kesilen rotasyonun aynı commit'inde, kayıtlı tek aday sürümü yeniden doğrular/gerekirse etkinleştirir. İlk run'ın F10/S01 seçimleri düşürülemez. F09 zorunludur. |
+| `rollback` | Pending rotasyonun kayıtlı önceki sürümüne döner. Eski HTTP/key/canary ve Cron doğrulandıktan sonra pending'i kaldırır. Yeni ürün/veri migration'ını geri almaz. |
+| `bootstrap` | Yalnız boş yeni ortam için. Mevcut staging'de seçilmez. Üç kritik anahtar bir kez üretilir. |
 
-Fixture reset:
+Fixture iki işletmedir: `staging-salon-a` ve `staging-salon-b`. S05 otomatik reset yapmaz. İkisi de yoksa yalnız ilk deploy/bootstrap sırasında mevcut seed çalışır. Tek işletme eksikse veya rotasyonda fixture yoksa işlem durur. Test owner parolaları değişebilir; randevular, recovery ciphertext ve bildirim geçmişi korunur. `staging:reset` ve `staging:seed` komutları silici bakım araçlarıdır; rotasyon kabulünün parçası değildir.
 
-```bash
-npm run staging:reset
-```
+Eski `staging:config` ve hash'leri koşulsuz değiştiren seed kaldırılmıştır. Önceki F17 devirlerindeki bu komut tarihsel bilgidir; kullanılmaz.
 
-Fixture seed:
+## Dağıtım, doğrulama ve anahtar geçişi
 
-```bash
-STAGING_OWNER_A_ID=<uuid> STAGING_OWNER_B_ID=<uuid> npm run staging:seed
-```
+1. Dış credential ve Cloudflare origin/aktif sürüm/binding metadata doğrulanır; DB credential kontrolünden sonra yalnız ileri migration uygulanır.
+2. Mevcut hash çifti ile aktif Worker'ın kısa süreli HMAC challenge yanıtı karşılaştırılır. İlk S04 yükseltmesinde henüz probe olmadığından mevcut binding metadata esas alınır; rotasyon bu istisnayı kullanamaz.
+3. Rotasyonda owner-only `begin_staging_key_rotation` tek pending çift ve önceki sürüm/commit/kabul/canary kaydı oluşturur. Mevcut iki verifier henüz değişmez.
+4. Generated Wrangler config'e açık version UUID'siyle `inherit` binding'leri eklenir. Rutin deploy üç anahtarı; rotasyon yalnız management anahtarını önceki sürümden alır. Böylece `latest uploaded version` üzerindeki başarısız bir adaydan secret alınmaz. [Cloudflare API](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/versions/methods/create/).
+5. Sadece gerekli değerleri içeren `/tmp/randevu-staging-secrets.json` (0600) ile pinned Wrangler deploy yapılır. Admin ve Resend acceptance credential'ları bundle'a girmez. Operation UUID'si sürüm etiketi olarak kaydedilir.
+6. Aynı CF sürümü, gate/dispatch çifti, management canary ve gerçek scheduled heartbeat doğrulanır. Başlangıç için 15 dakika ayrılır; [Cron yayılımı](https://developers.cloudflare.com/workers/configuration/cron-triggers/) ile gerçek teslimat bütçesi ayrıdır. F09'un 180 saniyelik provider teslimat kontrolü değiştirilmez.
+7. Base smoke ve seçilmiş/zorunlu gerçek kabul geçer. Son çalışan sürüm/proof yeniden kontrol edilir. Tek DB transaction yeni çiftin ikisini promote eder, pending'i kaldırır; eski çift artık kabul edilmez.
+8. Geçici secret dosyası başarı/hata durumunda silinir. Migration dosyaları, anahtarlar ve acceptance sonuçları birbirinin yerine kanıt sayılmaz.
 
-Fixture iki tenant oluşturur:
+## Kısmi hata ve geri dönüş
 
-- `Staging Salon A` / `staging-salon-a`
-- `Staging Salon B` / `staging-salon-b`
+| Gözlenen durum | Güvenli devam |
+| --- | --- |
+| Rutin deploy başlamadan hata | DB anahtarları değişmez; sebebi düzeltip `deploy` yeniden çalıştırılır. |
+| Rotasyon DB hazırlığından sonra upload/deploy/smoke hatası | Runner bilinen önceki sürüme dönüşü dener. Eski anahtarlar bu sırada geçerlidir. Eski sürüm/canary/Cron ispatlanınca pending temizlenir. |
+| Runner öldürüldü veya rollback kanıtlanamadı | İki verifier geçerli kalır; ikinci rotasyon/rutin deploy engellenir. Pending operation, previous version ve commit metadata owner DB erişimiyle okunur; hash/evidence loglanmaz. Aynı commit'te `resume` veya `rollback` seçilir. |
+| Upload var, deployment yok | Pending'in UUID etiketiyle eşleşen tek aday bulunursa `resume` etkinleştirip tüm kabulü tekrar çalıştırır. Aday yoksa `rollback` eski sürümü doğrulayıp pending'i kaldırır; sonra yeni `rotate` açılır. |
+| Resume commit'i/kabul seçimi farklı | İşlem durur. Önce kayıtlı commit/seçimle devam edilir; kod düzeltmesi gerekiyorsa `rollback`, ardından düzeltilmiş commit'te `deploy` uygulanır. |
+| Finalize DB cevabı kayboldu | DB zaten yeni çift + boş pending gösteriyorsa eski anahtarlı sürüme dönülmez. `resume` tekrar doğrulama yapar. |
+| Bootstrap, ilk upload'dan önce kesildi | Worker sürümü/işletme/şifreli materyal hâlâ yoksa açık `bootstrap` yeniden çalıştırılabilir. |
+| Bootstrap upload edildi fakat etkin sürüm yok | Otomatik yeni anahtar üretimi durur. Cloudflare'da o run'ın etiketli adayı ve DB verifier durumu yetkili operatörce eşleştirilir; aday %100 etkinleştirilir, ardından `deploy` gerçek kabulü çalıştırır. Rastgele Worker silme veya management anahtarı değiştirme uygulanmaz. |
 
-Her birinde ayrı owner membership, bir hizmet, bir personel, service↔staff eşleşmesi, Pazartesi–Cumartesi 09:00–18:00 işletme/personel saatleri ve açık public booking ayarı bulunur.
+Rollback hedefi UUID ile sabittir; varsayılan 'önceki' veya 'latest' kullanılmaz. Cloudflare `force=true`, yalnız kayıtlı önceki/adayı etkinleştiren recovery çağrısında kullanılır; secret'lar sürümlü olduğu için gereklidir. Bağlı DB kaynakları geri alınmaz. [Cloudflare rollback](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
 
-`supabase/tests/f17_staging_fixture.sql` tenant isolation ve reset sınırını CI'da doğrular.
+Başarılı rotasyondan sonra eski secret taşıyan sürümü doğrudan aktif etmek uygun değildir. Kod geri dönüşü gerekiyorsa eski kod, güncel anahtarları mevcut doğrulanmış aktif UUID'den devralan yeni deploy olarak hazırlanır. Operasyon sırasında GitHub concurrency grubu dışından dashboard/CLI ile paralel yayın veya DB verifier değişikliği yapılmaz. Beklenmeyen aktif sürüm bulunursa runner müdahale etmeden durur.
 
-## Worker deploy
+## S05 canlı kabul sırası
 
-Geçici secret bundle `/tmp/randevu-staging-secrets.json` altında `0600` izinle oluşturulur. İçerik yalnız o run'ın gerekli Worker runtime değerleridir.
-
-Deploy:
-
-```bash
-npx wrangler deploy --secrets-file /tmp/randevu-staging-secrets.json
-```
-
-Workflow her durumda geçici dosyayı siler.
-
-Deploy sonrası `MANAGEMENT_LINK_ENCRYPTION_KEY_V1` binding varlığı Cloudflare API ile tekrar doğrulanır. Binding yoksa smoke başlamaz.
+Önce bu dalda `operation=deploy`, `run_f09_acceptance=true`; başarıdan sonra aynı incelenmiş commit'te `operation=rotate`. İki run'ın head, CF version ve sonuçları devirde kaydedilir. Rutin yükseltmenin yeşil olması rotasyon kabulünü kapatmaz. S05, gerçek rotasyon ve bağımsız inceleme tamamlanmadan tamamlandı gösterilmez.
 
 ## Readiness ve gerçek smoke
 
@@ -243,30 +232,16 @@ Acceptance şunları kanıtlar:
 
 Kişisel mailbox veya gerçek müşteri adresi kullanılmaz. Acceptance job sonrasında recovery authority'yi bilinçli biçimde expire eder; management bearer ve secret değerleri loglanmaz.
 
-## Tam workflow sırası
+## Kesilmiş ilk kurulumun operatör adımları
 
-`.github/workflows/staging.yml` manual `workflow_dispatch` ile çalışır:
+Bu yol yalnız hiç aktif deployment oluşmamış **boş bootstrap** içindir. Yerleşik staging veya pending rotasyon için yukarıdaki `resume`/`rollback` kullanılır.
 
-1. checkout / Node / Supabase CLI / `npm ci`
-2. F09 opt-in ise acceptance read key kontrolü + HTTP failure/recovery kontratları
-3. ephemeral owner + gate/dispatch secret üretimi ve masking
-4. 4 dış runtime secret + workflow metadata contract doğrulaması
-5. raw DB password'dan maskelenmiş session-pooler URL üretimi
-6. `wrangler whoami --json` ile tek Cloudflare account çözümü
-7. `npm run build:staging`
-8. Workers subdomain lookup + staging origin çözümü + management secret lookup
-9. PostgreSQL client kurulumu
-10. DB credential smoke
-11. migration push
-12. Auth owner bootstrap
-13. DB runtime hash provisioning
-14. fixture reset + seed
-15. geçici Worker secret bundle
-16. Cloudflare Worker deploy
-17. persistent management secret verification
-18. bounded health readiness + gerçek login/session/business/catalog smoke
-19. F09 opt-in ise gerçek booking/recovery/idempotency/capability/fake-receipt/Resend delivery acceptance
-20. geçici dosya cleanup
+1. GitHub'daki başarısız run'ın head SHA'sını ve Wrangler upload çıktısındaki version UUID/operation tag'ini kaydet. Cloudflare **Workers & Pages → yzt-randevu-staging → Deployments/Versions** ekranında aynı UUID ve etiketi doğrula; aynı run'a ait tek aday yoksa dur.
+2. Yetkili DB bağlantısıyla yalnız işletme ve şifreli recovery sayısının sıfır, iki runtime config kaydının mevcut olduğunu kontrol et. Hash veya gerçek credential'ları ekran görüntüsü/loga alma. Bu koşullar sağlanmıyorsa bootstrap kurtarması uygulanmaz.
+3. Cloudflare'da bu **belirli UUID** için **Deploy → 100%** seç; yeni secret üretme, binding düzenleme veya Worker silme yapma.
+4. GitHub'da **aynı head** için `operation=deploy`, `run_f09_acceptance=true` çalıştır. Runner etkin adayın DB hash çiftiyle uyuştuğunu authenticated probe ile doğrulamadan ilerlemez. Eşleşmezse iki sistemde de anahtarları elle değiştirme; incelenmek üzere metadata/hata adımını kaydet.
+
+İlk upload'dan önce kesilmede bu manuel adımlar gerekmez; sürüm ve veri yoksa açık `bootstrap` tekrar kullanılabilir. Genel workflow tek koordinatör scripti üzerinden mevcut smoke ve kabul komutlarını çağırır; iş akışının ikinci bir sırası burada kopyalanmaz.
 
 ## Supabase Auth URL ayarı
 
@@ -284,7 +259,7 @@ Custom staging domain bağlandığında veya gerçek redirect tabanlı auth akı
 - Fixture owner parolaları kalıcı değildir.
 - Cloudflare account ID secret değildir.
 - Runtime `RESEND_API_KEY` gönderimle sınırlı tutulur.
-- `RESEND_ACCEPTANCE_API_KEY` yalnız opt-in GitHub acceptance process'ine verilir; Worker bundle'a girmez.
+- `RESEND_ACCEPTANCE_API_KEY` yalnız seçilmiş/zorunlu GitHub acceptance process'ine verilir; Worker bundle'a girmez.
 - Provider API key değerleri Git/PR/handoff'a yazılmaz.
 - Hosted migration'lar forward-only'dir; merge edilmiş eski migration'lar değiştirilmez.
 

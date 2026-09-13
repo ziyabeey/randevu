@@ -157,3 +157,11 @@ jobs:
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260913030912_s04_resource_limits.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s04_resource_limits.sql
           psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s04_resource_limits_concurrency.sql
+      - name: Verify S05 key overlap, upgrade preservation and concurrent transitions
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s05_upgrade_fixture.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260913042902_s05_deploy_consistency.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s05_deploy_consistency.sql
+          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s05_deploy_concurrency.sql

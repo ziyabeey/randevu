@@ -11,8 +11,9 @@ import {
   type AuthEnv,
 } from './auth.ts';
 import type { PublicAbuseEnv } from './public-abuse.ts';
+import { deploymentHealth, type DeploymentEnv } from './deployment-health.ts';
 
-type Env = AuthEnv & PublicAbuseEnv & {
+type Env = AuthEnv & PublicAbuseEnv & DeploymentEnv & {
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
 };
 
@@ -56,6 +57,7 @@ app.use('/api/*', async (context, next) => {
   await next();
 });
 
+app.get('/api/deployment-health', (context) => deploymentHealth(context.req.raw, context.env));
 app.route('/', coreApp);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);

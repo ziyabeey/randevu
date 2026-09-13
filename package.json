@@ -18,7 +18,6 @@
     "test:browser-smoke": "bash scripts/browser-smoke.sh",
     "staging:seed": "node scripts/staging-db.mjs seed",
     "staging:reset": "node scripts/staging-db.mjs reset",
-    "staging:config": "node scripts/staging-db.mjs config",
     "staging:smoke": "node scripts/staging-smoke.mjs",
     "staging:f09-acceptance": "node scripts/staging-f09-acceptance-runner.mjs",
     "staging:f10-auth-acceptance": "node scripts/staging-f10-auth-acceptance.mjs",

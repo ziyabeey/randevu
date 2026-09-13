@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
@@ -24,17 +23,6 @@ if (mode === 'seed') {
   runPsql('supabase/seeds/staging_fixture.sql', { owner_a: ownerA, owner_b: ownerB });
 } else if (mode === 'reset') {
   runPsql('supabase/seeds/staging_reset.sql');
-} else if (mode === 'config') {
-  const gateSecret = process.env.PUBLIC_BOOKING_GATE_SECRET;
-  const dispatchSecret = process.env.NOTIFICATION_DISPATCH_SECRET;
-  if (!gateSecret || !dispatchSecret) {
-    throw new Error('config requires PUBLIC_BOOKING_GATE_SECRET and NOTIFICATION_DISPATCH_SECRET');
-  }
-  const sha256 = (value) => createHash('sha256').update(value).digest('hex');
-  runPsql('supabase/seeds/staging_runtime_config.sql', {
-    gate_hash: sha256(gateSecret),
-    dispatch_hash: sha256(dispatchSecret),
-  });
 } else {
-  throw new Error('Usage: node scripts/staging-db.mjs <seed|reset|config>');
+  throw new Error('Usage: node scripts/staging-db.mjs <seed|reset>');
 }
