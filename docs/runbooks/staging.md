@@ -78,11 +78,11 @@ GitHub secret olmayan sabit metadata:
 - `STAGING_OWNER_B_EMAIL`
 - `NOTIFICATION_FROM_EMAIL`
 
-Her run yalnız iki test owner parolası yeniden üretilir ve maskelenir. Gate/dispatch anahtarları rutin dağıtımda üretilmez; Cloudflare'daki doğrulanmış çalışan sürümden explicit `inherit.version_id` ile devralınır. Veritabanındaki hash'ler korunur. Rotasyonda yalnız yeni gate/dispatch üretilir; plaintext job sonu silinir, DB yalnız SHA-256 verifier tutar.
+Her run yalnız iki test owner parolası yeniden üretilir ve maskelenir. Gate/dispatch anahtarları rutin dağıtımda üretilmez; veritabanındaki hash'ler korunur. Cloudflare'ın desteklediği `inherit.version_id: latest` yalnız trafiğe alınmamış adayı yüklerken kullanılır. Yeni incelenmiş kodun gerçek binding'leri doğrulanmadan aday aktive edilmez. Rotasyonda yalnız yeni gate/dispatch üretilir; plaintext job sonu silinir, DB yalnız SHA-256 verifier tutar.
 
 ## Kalıcı management encryption key
 
-`MANAGEMENT_LINK_ENCRYPTION_KEY_V1` yalnız Cloudflare'da tutulur. Rutin deploy ve rotasyon bu binding'i doğrulanmış önceki sürüm UUID'sinden devralır. Mevcut ortamda binding'in eksik olması bootstrap izni vermez. Bootstrap yalnız Worker sürümü ve işletme/şifreli materyal olmayan açıkça seçilmiş boş ortamda 32 byte anahtar oluşturur.
+`MANAGEMENT_LINK_ENCRYPTION_KEY_V1` yalnız Cloudflare'da tutulur. Rutin deploy ve rotasyon bu binding'i latest upload'dan adaya devralır; eski aktif sürümün management canary'si yeni adayda çözülmeden trafik değiştirilmez. Bilinmeyen eski adayın kodu kanıt kaynağı yapılmaz. Mevcut ortamda binding'in eksik olması bootstrap izni vermez. Bootstrap yalnız Worker sürümü ve işletme/şifreli materyal olmayan açıkça seçilmiş boş ortamda 32 byte anahtar oluşturur.
 
 S05 baseline sonrası authenticated probe; eski sürümde AES-GCM ile şifrelenmiş deneme materyalini yeni sürümde çözer ve nonce'a bağlı management HMAC'ini karşılaştırır. Bu kontrol gerçek müşteri token'ını açığa çıkarmaz. Management anahtarı rotasyonu bu işin kapsamında değildir; ayrı sürümlü veri geçişi gerektirir.
 
@@ -156,13 +156,15 @@ Eski `staging:config` ve hash'leri koşulsuz değiştiren seed kaldırılmışt�
 ## Dağıtım, doğrulama ve anahtar geçişi
 
 1. Dış credential ve Cloudflare origin/aktif sürüm/binding metadata doğrulanır; DB credential kontrolünden sonra yalnız ileri migration uygulanır.
-2. Mevcut hash çifti ile aktif Worker'ın kısa süreli HMAC challenge yanıtı karşılaştırılır. İlk S04 yükseltmesinde henüz probe olmadığından mevcut binding metadata esas alınır; rotasyon bu istisnayı kullanamaz.
+2. Mevcut hash çifti ile aktif Worker'ın kısa süreli HMAC challenge yanıtı karşılaştırılır. İlk S04 yükseltmesinde henüz probe/canary olmadığından latest==active, eksiksiz sürüm sırası ve tek yazıcı şartı aranır. Bu tek geçiş eski-yeni management canary kanıtı üretmez; rotasyon bu istisnayı kullanamaz.
 3. Rotasyonda owner-only `begin_staging_key_rotation` tek pending çift ve önceki sürüm/commit/kabul/canary kaydı oluşturur. Mevcut iki verifier henüz değişmez.
-4. Generated Wrangler config'e açık version UUID'siyle `inherit` binding'leri eklenir. Rutin deploy üç anahtarı; rotasyon yalnız management anahtarını önceki sürümden alır. Böylece `latest uploaded version` üzerindeki başarısız bir adaydan secret alınmaz. [Cloudflare API](https://developers.cloudflare.com/api/resources/workers/subresources/scripts/subresources/versions/methods/create/).
-5. Sadece gerekli değerleri içeren `/tmp/randevu-staging-secrets.json` (0600) ile pinned Wrangler deploy yapılır. Admin ve Resend acceptance credential'ları bundle'a girmez. Operation UUID'si sürüm etiketi olarak kaydedilir.
-6. Aynı CF sürümü, gate/dispatch çifti, management canary ve gerçek scheduled heartbeat doğrulanır. Başlangıç için 15 dakika ayrılır; [Cron yayılımı](https://developers.cloudflare.com/workers/configuration/cron-triggers/) ile gerçek teslimat bütçesi ayrıdır. F09'un 180 saniyelik provider teslimat kontrolü değiştirilmez.
-7. Base smoke ve seçilmiş/zorunlu gerçek kabul geçer. Son çalışan sürüm/proof yeniden kontrol edilir. Tek DB transaction yeni çiftin ikisini promote eder, pending'i kaldırır; eski çift artık kabul edilmez.
-8. Geçici secret dosyası başarı/hata durumunda silinir. Migration dosyaları, anahtarlar ve acceptance sonuçları birbirinin yerine kanıt sayılmaz.
+4. Latest kaynak UUID ve sequential number kaydedilir. Generated config desteklenen literal `latest` inheritance kullanır; `bindings_inherit=strict` korunur. Rutin deploy üç anahtarı, rotasyon yalnız management anahtarını devralır. API şeması UUID tarif etse de staging #16/#17 canlı API'si yalnız latest kabul etti; tekrar UUID gönderilmez.
+5. Sadece gerekli değerleri içeren `/tmp/randevu-staging-secrets.json` (0600) ile pinned `wrangler versions upload` yapılır. Admin ve Resend acceptance credential'ları bundle'a girmez. Aday tek operation etiketiyle bulunmalı; newest olmalı; hemen önceki UUID kaydedilmiş kaynak ve sıra numarası kaynak+1 olmalıdır. Çakışma/eksik metadata aktivasyonu durdurur; bu kontrol atomik provider CAS yerine geçmez.
+6. `wrangler triggers deploy` mevcut workers.dev/preview/Cron ayarlarını uygular; kod yüklemez. Aday henüz deployment'a %0 ile dahi eklenmez. Yeni build'in immutable version preview URL'sinde yalnız kesin `GET /api/deployment-health` açıktır; diğer bütün Worker yolları request URL origin kontrolüyle routing/auth/DB öncesinde kapanır. Preview ayarı Worker genelindedir; bu kod koruması tarihsel sürümlere geriye dönük uygulanmaz. [Preview URL](https://developers.cloudflare.com/workers/versions-and-deployments/preview-urls/) ve [%0 version override sınırı](https://developers.cloudflare.com/workers/versions-and-deployments/version-overrides/).
+7. Bizim yüklediğimiz adayın tam UUID, gerçek gate/dispatch çifti ve eski management canary'si doğrulanır. Bilinmeyen orphan kodu çalıştırılarak güven kurulmaz. Aktif önceki UUID ve DB çift/pending sahipliği yeniden kontrol edilir; yalnız bu kanıtlanmış aday %100 aktive edilir.
+8. Çalışan sürüm/proof ve gerçek scheduled heartbeat doğrulanır. Cron başlangıcı için 15 dakika ayrılır; [Cron yayılımı](https://developers.cloudflare.com/workers/configuration/cron-triggers/) ile F09'un değişmeyen 180 saniyelik provider teslimat bütçesi ayrıdır.
+9. Base smoke ve seçilmiş/zorunlu gerçek kabul geçer. Son çalışan sürüm/proof yeniden kontrol edilir. Tek DB transaction yeni çiftin ikisini promote eder, pending'i kaldırır; eski çift artık kabul edilmez.
+10. Geçici secret dosyası başarı/hata durumunda silinir. Migration dosyaları, anahtarlar ve acceptance sonuçları birbirinin yerine kanıt sayılmaz.
 
 ## Kısmi hata ve geri dönüş
 
@@ -171,15 +173,18 @@ Eski `staging:config` ve hash'leri koşulsuz değiştiren seed kaldırılmışt�
 | Rutin deploy başlamadan hata | DB anahtarları değişmez; sebebi düzeltip `deploy` yeniden çalıştırılır. |
 | Rotasyon DB hazırlığından sonra upload/deploy/smoke hatası | Runner bilinen önceki sürüme dönüşü dener. Eski anahtarlar bu sırada geçerlidir. Eski sürüm/canary/Cron ispatlanınca pending temizlenir. |
 | Runner öldürüldü veya rollback kanıtlanamadı | İki verifier geçerli kalır; ikinci rotasyon/rutin deploy engellenir. Pending operation, previous version ve commit metadata owner DB erişimiyle okunur; hash/evidence loglanmaz. Aynı commit'te `resume` veya `rollback` seçilir. |
-| Upload var, deployment yok | Pending'in UUID etiketiyle eşleşen tek aday bulunursa `resume` etkinleştirip tüm kabulü tekrar çalıştırır. Aday yoksa `rollback` eski sürümü doğrulayıp pending'i kaldırır; sonra yeni `rotate` açılır. |
-| Resume commit'i/kabul seçimi farklı | İşlem durur. Önce kayıtlı commit/seçimle devam edilir; kod düzeltmesi gerekiyorsa `rollback`, ardından düzeltilmiş commit'te `deploy` uygulanır. |
+| Upload var, deployment yok | Pending'in UUID etiketiyle eşleşen tek aday bulunursa `resume` önce aday preview/proof'unu ve DB sahipliğini doğrular, sonra etkinleştirir. Aday yoksa/kanıtı geçmiyorsa `rollback` eski sürümü doğrulayıp pending'i kaldırır; sonra yeni `rotate` açılır. |
+| Resume commit'i/kabul seçimi farklı | İşlem durur. Önce kayıtlı commit/seçimle devam edilir; kod düzeltmesi gerekiyorsa `rollback`, ardından düzeltilmiş commit'te açık `rotate` uygulanır. |
+| Modern routine rollback sonrası aynı anahtarlı orphan | Yeni routine run yalnız yeni incelenmiş adayı yükler; aynı DB çifti ve eski management canary kanıtıyla trafik değiştirmeden doğrular. |
+| Rotasyon abort edildi, latest farklı gate/dispatch taşıyor | Trafik eski sürüme dönmüş olsa da upload geçmişi değişmez. Routine aday pair kontrolünde durur; abort doğrulandıktan sonra açık `rotate` yeni çifti sağlar, management canary korunur. Otomatik kritik anahtar reseti yapılmaz. |
+| İlk legacy baseline'da latest aktiften farklı | Eski canary bulunmadığından otomatik inheritance/aktivasyon durur. Yetkili operatör önceki run'ın kaynak/adayı ve geçtiği proof adımını inceler; kanıtlanmamış aday veya rastgele eski sürüm aktive edilmez. |
 | Finalize DB cevabı kayboldu | DB zaten yeni çift + boş pending gösteriyorsa eski anahtarlı sürüme dönülmez. `resume` tekrar doğrulama yapar. |
 | Bootstrap, ilk upload'dan önce kesildi | Worker sürümü/işletme/şifreli materyal hâlâ yoksa açık `bootstrap` yeniden çalıştırılabilir. |
 | Bootstrap upload edildi fakat etkin sürüm yok | Otomatik yeni anahtar üretimi durur. Cloudflare'da o run'ın etiketli adayı ve DB verifier durumu yetkili operatörce eşleştirilir; aday %100 etkinleştirilir, ardından `deploy` gerçek kabulü çalıştırır. Rastgele Worker silme veya management anahtarı değiştirme uygulanmaz. |
 
-Rollback hedefi UUID ile sabittir; varsayılan 'önceki' veya 'latest' kullanılmaz. Cloudflare `force=true`, yalnız kayıtlı önceki/adayı etkinleştiren recovery çağrısında kullanılır; secret'lar sürümlü olduğu için gereklidir. Bağlı DB kaynakları geri alınmaz. [Cloudflare rollback](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
+Rollback hedefi UUID ile sabittir; varsayılan 'önceki' veya 'latest' kullanılmaz. Cloudflare `force=true`, yalnız kanıtlanmış aday veya kayıtlı önceki sürümün aktivasyonunda kullanılır; secret'lar sürümlü olduğu için gereklidir. Bağlı DB kaynakları geri alınmaz. [Cloudflare rollback](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
 
-Başarılı rotasyondan sonra eski secret taşıyan sürümü doğrudan aktif etmek uygun değildir. Kod geri dönüşü gerekiyorsa eski kod, güncel anahtarları mevcut doğrulanmış aktif UUID'den devralan yeni deploy olarak hazırlanır. Operasyon sırasında GitHub concurrency grubu dışından dashboard/CLI ile paralel yayın veya DB verifier değişikliği yapılmaz. Beklenmeyen aktif sürüm bulunursa runner müdahale etmeden durur.
+Başarılı rotasyondan sonra eski secret taşıyan sürümü doğrudan aktif etmek uygun değildir. Kod geri dönüşü gerekiyorsa eski ürün kodu, mevcut S05 karantina/probe korumasını ve güncel anahtar doğrulamasını koruyan yeni aday olarak hazırlanır. Operasyon sırasında GitHub concurrency grubu dışından dashboard/CLI ile paralel yayın veya DB verifier değişikliği yapılmaz. Beklenmeyen aktif sürüm bulunursa runner müdahale etmeden durur. İlk legacy yükseltmede bu tek yazıcı sınırı özellikle gereklidir; latest liste/sıra kontrolü sağlayıcı tarafında atomik kilit değildir.
 
 ## S05 canlı kabul sırası
 
@@ -238,7 +243,7 @@ Bu yol yalnız hiç aktif deployment oluşmamış **boş bootstrap** içindir. Y
 
 1. GitHub'daki başarısız run'ın head SHA'sını ve Wrangler upload çıktısındaki version UUID/operation tag'ini kaydet. Cloudflare **Workers & Pages → yzt-randevu-staging → Deployments/Versions** ekranında aynı UUID ve etiketi doğrula; aynı run'a ait tek aday yoksa dur.
 2. Yetkili DB bağlantısıyla yalnız işletme ve şifreli recovery sayısının sıfır, iki runtime config kaydının mevcut olduğunu kontrol et. Hash veya gerçek credential'ları ekran görüntüsü/loga alma. Bu koşullar sağlanmıyorsa bootstrap kurtarması uygulanmaz.
-3. Cloudflare'da bu **belirli UUID** için **Deploy → 100%** seç; yeni secret üretme, binding düzenleme veya Worker silme yapma.
+3. Aynı run'da bu aday için `Candidate <UUID> verified before activation` kaydı bulunmalı ve kanıttan sonra DB config'i değiştirilmemiş olmalıdır. Bu kanıt oluşmadan kesilen upload doğrudan aktive edilmez; aday doğrulaması yeniden kurulmadan burada durulur. Kanıtı bulunan bu **belirli UUID** için Cloudflare'da **Deploy → 100%** seç; yeni secret üretme, binding düzenleme veya Worker silme yapma.
 4. GitHub'da **aynı head** için `operation=deploy`, `run_f09_acceptance=true` çalıştır. Runner etkin adayın DB hash çiftiyle uyuştuğunu authenticated probe ile doğrulamadan ilerlemez. Eşleşmezse iki sistemde de anahtarları elle değiştirme; incelenmek üzere metadata/hata adımını kaydet.
 
 İlk upload'dan önce kesilmede bu manuel adımlar gerekmez; sürüm ve veri yoksa açık `bootstrap` tekrar kullanılabilir. Genel workflow tek koordinatör scripti üzerinden mevcut smoke ve kabul komutlarını çağırır; iş akışının ikinci bir sırası burada kopyalanmaz.

@@ -94,7 +94,10 @@ test('staging keeps ephemeral owner passwords but moves critical key handling in
   assert.match(workflow, /STAGING_OWNER_A_PASSWORD: `Rdv!/);
   assert.match(workflow, /STAGING_OWNER_B_PASSWORD: `Rdv!/);
   assert.match(workflow, /::add-mask::/);
-  assert.match(deploy, /pinBindings\(config, s\.previous, supplied\)/);
+  assert.match(deploy, /inheritBindings\(config, source, supplied\)/);
+  assert.match(deploy, /\['wrangler', 'versions', 'upload'/);
+  assert.match(deploy, /\['wrangler', 'triggers', 'deploy'\]/);
+  assert.doesNotMatch(deploy, /\['wrangler', 'deploy'/);
   assert.match(deploy, /mode === 'bootstrap'/);
   assert.match(deploy, /mode === 'rotate'/);
   assert.match(deploy, /mode !== 'resume' && mode !== 'rollback'/);

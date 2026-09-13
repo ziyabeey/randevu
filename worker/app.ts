@@ -21,6 +21,21 @@ type MutationClass = 'safe' | 'cookie' | 'public' | 'capability';
 
 const app = new Hono<{ Bindings: Env }>();
 
+// A version preview is a key-verification surface, never a second booking/auth
+// origin. Run this before routing or session work; client Origin headers do not
+// establish which Worker hostname received the request.
+app.use('*', async (context, next) => {
+  if (context.env.DEPLOYMENT_PROBE_ENABLED === 'true'
+      && !(context.req.method === 'GET' && context.req.path === '/api/deployment-health')) {
+    let canonical = '';
+    try { canonical = new URL(context.env.PUBLIC_APP_ORIGIN ?? '').origin; } catch { /* fail closed */ }
+    if (new URL(context.req.url).origin !== canonical) {
+      return context.json({ error: 'NOT_FOUND' }, 404, { 'Cache-Control': 'no-store' });
+    }
+  }
+  await next();
+});
+
 function mutationClass(method: string, path: string): MutationClass {
   const normalizedMethod = method.toUpperCase();
   if (normalizedMethod === 'GET' || normalizedMethod === 'HEAD' || normalizedMethod === 'OPTIONS') {

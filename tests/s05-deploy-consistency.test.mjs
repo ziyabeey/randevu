@@ -3,7 +3,7 @@ import test from 'node:test';
 import { randomBytes } from 'node:crypto';
 import app from '../worker/app.ts';
 import { recordStagingHeartbeat } from '../worker/deployment-health.ts';
-import { KEY_NAMES, newKeys, keyPair, challenge, verifyProof, pinBindings, secretBundle, executeCutover, requireResumeContract } from '../scripts/staging-deployment.mjs';
+import { KEY_NAMES, newKeys, keyPair, challenge, verifyProof, inheritBindings, secretBundle, executeCutover, requireResumeContract } from '../scripts/staging-deployment.mjs';
 const oldVersion = '50500000-0000-4000-8000-000000000001';
 const nextVersion = '50500000-0000-4000-8000-000000000002';
 const keys = newKeys(true);
@@ -60,15 +60,16 @@ test('S05 proof refuses mixed generations, altered responses and changed managem
   assert.equal((await app.fetch(request(post), changedKey)).status, 403, 'old AES-GCM canary must no longer decrypt');
 });
 
-test('S05 pins omitted secrets to the proven active version, including after an orphan candidate upload', () => {
+test('S05 supported inheritance preserves required bindings and never imports ambient critical keys', () => {
   const config = { secrets: { required: KEY_NAMES } };
-  const routine = pinBindings(config, oldVersion, {});
-  assert.deepEqual(routine.unsafe.bindings, KEY_NAMES.map((name) => ({ name, type: 'inherit', version_id: oldVersion })));
-  const rotation = pinBindings(config, oldVersion, newKeys());
-  assert.deepEqual(rotation.unsafe.bindings, [{ name: KEY_NAMES[2], type: 'inherit', version_id: oldVersion }]);
-  assert.deepEqual(pinBindings(config, null, newKeys(true)).unsafe.bindings, []);
-  assert.throws(() => pinBindings(config, null, {}));
-  assert.throws(() => pinBindings(config, 'latest', {}));
+  const source = { id: oldVersion, number: 12 };
+  const routine = inheritBindings(config, source, {});
+  assert.deepEqual(routine.unsafe.bindings, KEY_NAMES.map((name) => ({ name, type: 'inherit', version_id: 'latest' })));
+  const rotation = inheritBindings(config, source, newKeys());
+  assert.deepEqual(rotation.unsafe.bindings, [{ name: KEY_NAMES[2], type: 'inherit', version_id: 'latest' }]);
+  assert.deepEqual(inheritBindings(config, null, newKeys(true)).unsafe.bindings, []);
+  assert.throws(() => inheritBindings(config, null, {}));
+  assert.throws(() => inheritBindings(config, { id: 'latest', number: 12 }, {}));
   const supplied = secretBundle({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'public', RESEND_API_KEY: 'sending',
     NOTIFICATION_FROM_EMAIL: 'test@example.com', STAGING_APP_ORIGIN: 'https://example.com', SUPABASE_ADMIN_KEY: 'never-deploy', ...keys });
   assert.equal('SUPABASE_ADMIN_KEY' in supplied, false);
@@ -148,7 +149,7 @@ test('S05 real Cloudflare adapter fails closed for orphan bootstrap and split tr
   traffic = [{ version_id: oldVersion, percentage: 100 }];
   const actual = await readCloudState(cf, 'https://local/script');
   assert.equal(actual.version, oldVersion);
-  assert.equal(actual.versions[0].id, nextVersion, 'orphan uploaded latest must not become inheritance source');
+  assert.equal(actual.versions[0].id, nextVersion, 'upload history does not replace the active-version identity');
   assert.equal(actual.legacy, true);
 });
 

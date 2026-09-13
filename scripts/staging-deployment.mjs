@@ -6,21 +6,66 @@ export const sign = (hash, value) => createHmac('sha256', Buffer.from(hash, 'hex
 const equal = (a, b) => /^[a-f0-9]{64}$/.test(a ?? '') && /^[a-f0-9]{64}$/.test(b ?? '') && timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
 export const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 
-// Wrangler's API defaults inherit to latest *uploaded* version, not active.
-// Pin all omitted critical bindings, including management, to the proven version.
-export function pinBindings(config, version, supplied) {
-  if (version !== null && !UUID.test(version)) throw new Error('Invalid inheritance version');
+// The hosted API accepts only latest (observed 10057 for explicit UUIDs).
+// Inheritance is not proof: only deployCandidate may activate the uploaded code,
+// after source lineage and its actual runtime keys have been verified.
+export function inheritBindings(config, source, supplied) {
+  if (source !== null && (!UUID.test(source?.id) || !Number.isSafeInteger(source?.number) || source.number < 1)) throw new Error('Invalid inheritance source');
   const required = config.secrets?.required ?? [];
   if (!KEY_NAMES.every((name) => required.includes(name))) throw new Error('Critical required-secret contract missing');
   const inherited = KEY_NAMES.filter((name) => !Object.hasOwn(supplied, name));
-  if (inherited.length && !version) throw new Error('Bootstrap requires all critical secrets');
+  if (inherited.length && !source) throw new Error('Bootstrap requires all critical secrets');
   const existing = config.unsafe?.bindings ?? [];
   if (existing.some((binding) => KEY_NAMES.includes(binding.name))) throw new Error('Conflicting critical binding');
   // Wrangler rejects a name declared both in secrets.required and unsafe.
   // Explicit inherit with bindings_inherit=strict validates existence instead.
   return { ...config, secrets: { ...config.secrets, required: required.filter((name) => !inherited.includes(name)) }, unsafe: { ...config.unsafe, bindings: [
-    ...existing, ...inherited.map((name) => ({ name, type: 'inherit', version_id: version })),
+    ...existing, ...inherited.map((name) => ({ name, type: 'inherit', version_id: 'latest' })),
   ] } };
+}
+
+export function captureUploadSource(cloud) {
+  if (!cloud.version && cloud.versions.length === 0) return null;
+  const source = cloud.versions[0]; // Provider contract: newest version first.
+  if (!UUID.test(source?.id) || !Number.isSafeInteger(source?.number) || source.number < 1) throw new Error('Missing upload source sequence');
+  if (cloud.legacy && source.id !== cloud.version) throw new Error('Legacy baseline requires latest to be active; resolve the orphan without changing management keys');
+  return { id: source.id, number: source.number };
+}
+
+export function uploadedCandidate(cloud, state, source) {
+  if (cloud.version !== state.previous) throw new Error('Active deployment changed during upload');
+  const matches = cloud.versions.filter((version) => version.annotations?.['workers/tag'] === state.operation);
+  if (matches.length !== 1 || matches[0].id !== cloud.versions[0]?.id || !UUID.test(matches[0].id)) throw new Error('Uploaded candidate is missing, ambiguous or no longer latest');
+  const candidate = matches[0];
+  if (!Number.isSafeInteger(candidate.number) || candidate.number !== (source?.number ?? 0) + 1
+      || (source ? cloud.versions[1]?.id !== source.id : cloud.versions.length !== 1)) throw new Error('Concurrent upload or incomplete source lineage; candidate stays inactive');
+  return candidate.id;
+}
+
+export function previewOrigin(origin, version) {
+  if (!UUID.test(version)) throw new Error('Invalid preview version');
+  const url = new URL(origin);
+  if (url.protocol !== 'https:' || url.port || url.username || url.password || !/^[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$/.test(url.hostname)) throw new Error('Invalid staging preview origin');
+  return `https://${version.slice(0, 8)}-${url.hostname}`;
+}
+
+// The provider upload and activation are intentionally separate. Unknown old
+// code is never asked to attest: prove the bindings in our fresh reviewed build.
+export async function deployCandidate(io, state) {
+  const before = await io.cloudState();
+  if (before.version !== state.previous && (!state.target || before.version !== state.target)) throw new Error('Unrelated active deployment before candidate verification');
+  if (state.previous && !state.legacy && !state.evidence.canary) throw new Error('Modern deployment requires the old management canary');
+  if (!state.target) {
+    const source = captureUploadSource(before);
+    await io.upload(state, source);
+    state.target = uploadedCandidate(await io.cloudState(), state, source);
+  }
+  await io.configureTriggers();
+  await io.verifyCandidate(state);
+  const current = await io.cloudState();
+  if (current.version !== state.previous && current.version !== state.target) throw new Error('Active deployment changed before activation');
+  await io.verifyDatabase(state);
+  if (current.version !== state.target) await io.activate(state.target);
 }
 
 export function secretBundle(env, generated = {}) {
@@ -101,10 +146,11 @@ export async function executeCutover(io, state) {
   }
 }
 
-export async function readCloudState(cf, scriptRoot) {
+export async function readCloudState(cf, scriptRoot, allowEmptyBootstrap = false) {
   const versions = (await cf(`${scriptRoot}/versions`, {}, true))?.items ?? [];
   if (!versions.length) return { version: null, versions, legacy: false };
   const deployments = (await cf(`${scriptRoot}/deployments`))?.deployments ?? [];
+  if (allowEmptyBootstrap && deployments.length === 0) return { version: null, versions, legacy: false };
   const traffic = deployments[0]?.versions ?? [];
   if (traffic.length !== 1 || traffic[0].percentage !== 100) throw new Error('Staging requires one active version at 100%; resolve unassigned/split traffic first');
   const version = traffic[0].version_id;

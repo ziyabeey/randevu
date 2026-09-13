@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { controlSql } from './staging-control-db.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
-import { KEY_NAMES, UUID, newKeys, keyPair, pinBindings, secretBundle, probe, requireResumeContract, executeCutover, readCloudState, rollbackTransition } from './staging-deployment.mjs';
+import { UUID, newKeys, keyPair, inheritBindings, secretBundle, probe, previewOrigin, deployCandidate, requireResumeContract, executeCutover, readCloudState, rollbackTransition } from './staging-deployment.mjs';
 
 const env = process.env;
 const mode = env.STAGING_OPERATION ?? 'deploy';
@@ -24,7 +24,7 @@ async function cf(url, options = {}, allow404 = false) {
   if (!response.ok || payload?.success !== true) throw new Error(`Cloudflare control-plane request failed (HTTP ${response.status})`);
   return payload.result;
 }
-const cloudState = () => readCloudState(cf, scriptRoot);
+const cloudState = () => readCloudState(cf, scriptRoot, mode === 'bootstrap');
 const subdomain = String((await cf(`${root}/workers/subdomain`))?.subdomain ?? '');
 if (!/^[a-z0-9-]+$/.test(subdomain)) throw new Error('Invalid Cloudflare subdomain');
 const origin = `https://${workerName}.${subdomain}.workers.dev`;
@@ -67,11 +67,11 @@ async function until(check, timeout, description) {
 }
 async function activate(version) {
   if (!UUID.test(version)) throw new Error('Invalid activation target');
-  // Explicit rollback/resume only. Cloudflare requires force when versioned
-  // secrets differ; caller restricts this to its known previous/candidate pair.
+  // Only an attested candidate or the recorded previous release reaches here.
+  // Cloudflare requires force when their versioned secrets differ.
   await cf(`${scriptRoot}/deployments?force=true`, {
     method: 'POST', body: JSON.stringify({ strategy: 'percentage', versions: [{ version_id: version, percentage: 100 }],
-      annotations: { 'workers/message': 'S05 verified key transition recovery' } }),
+      annotations: { 'workers/message': 'S05 verified version activation' } }),
   });
 }
 async function verifyRuntime(state, old = false) {
@@ -105,6 +105,19 @@ function finish(state, promote) {
     ${literal(state.before.gate)}, ${literal(state.before.dispatch)}, ${promote});`);
 }
 const rollback = (state) => rollbackTransition({ database, cloudState, activate, verifyRuntime, verifyCron, finish, log: console.log }, state);
+
+function verifyDatabase(state) {
+  const current = database();
+  const expected = mode === 'bootstrap' ? state.after : state.before;
+  if (!samePair(current, expected)) throw new Error('DB key generation changed before activation');
+  if (state.rotating) {
+    if (current.pending?.operation_id !== state.operation
+        || current.pending.gate_hash !== state.after.gate || current.pending.dispatch_hash !== state.after.dispatch
+        || current.pending.previous_version !== state.previous || current.pending.commit_sha !== env.GITHUB_SHA) {
+      throw new Error('Pending rotation ownership changed before activation');
+    }
+  } else if (current.pending) throw new Error('Unexpected pending rotation before activation');
+}
 
 const beforeCloud = await cloudState();
 const db = database();
@@ -176,23 +189,28 @@ await executeCutover({
     s.prepared = true;
   },
   async deploy(s) {
-    if (s.target) {
-      const current = await cloudState();
-      if (current.version !== s.previous && current.version !== s.target) throw new Error('Resume found an unrelated active version');
-      if (current.version !== s.target) await activate(s.target);
-      return;
-    }
-    const supplied = secretBundle(env, s.keys);
-    const pinned = pinBindings(config, s.previous, supplied);
-    writeFileSync(configPath, JSON.stringify(pinned), { mode: 0o600 });
-    writeFileSync(bundlePath, JSON.stringify(supplied), { mode: 0o600 });
-    // The pinned Wrangler recognizes unsafe inherit.version_id and preserves
-    // strict existence validation; no latest-version implicit critical bindings.
-    command('npx', ['wrangler', 'deploy', '--secrets-file', bundlePath, '--tag', s.operation]);
-    const active = await cloudState();
-    if (active.detail?.annotations?.['workers/tag'] !== s.operation) throw new Error('Deployed version tag does not match this operation');
-    s.target = active.version;
-    console.log(`Candidate version: ${s.target}; source commit: ${commit}`);
+    await deployCandidate({
+      cloudState, activate, verifyDatabase,
+      async upload(candidate, source) {
+        const supplied = secretBundle(env, candidate.keys);
+        writeFileSync(configPath, JSON.stringify(inheritBindings(config, source, supplied)), { mode: 0o600 });
+        writeFileSync(bundlePath, JSON.stringify(supplied), { mode: 0o600 });
+        command('npx', ['wrangler', 'versions', 'upload', '--secrets-file', bundlePath, '--tag', candidate.operation]);
+      },
+      async configureTriggers() {
+        // versions upload does not apply workers.dev/preview/Cron settings.
+        // This command keeps the existing trigger contract and uploads no code.
+        command('npx', ['wrangler', 'triggers', 'deploy']);
+      },
+      async verifyCandidate(candidate) {
+        const preview = previewOrigin(origin, candidate.target);
+        await until(async () => {
+          candidate.evidence = await probe(fetch, preview, candidate.after, candidate.target, candidate.evidence);
+          return true;
+        }, 120000, 'Inactive candidate key/management verification');
+        console.log(`Candidate ${candidate.target} verified before activation; source commit: ${commit}`);
+      },
+    }, s);
   },
   verifyRuntime,
   verifyCron,
