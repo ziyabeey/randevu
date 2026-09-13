@@ -35,6 +35,13 @@ test('S02 staging smoke performs feature reads, negative guards and refresh with
     if (path === '/rest/v1/memberships') return json([member]);
     if (path === '/rest/v1/businesses') return json([business]);
     if (path === '/rest/v1/public_booking_settings') return json([{ business_id: business.id, enabled: false }]);
+    if (path === '/rest/v1/rpc/get_catalog_snapshot') {
+      return json([{
+        services: [{ id: business.id, name: 'Fixture', active: true }],
+        staff: [{ id: business.id, name: 'Fixture', active: true }],
+        assignments: [],
+      }]);
+    }
     if (path === '/rest/v1/services' || path === '/rest/v1/staff_profiles') return json([{ id: business.id, name: 'Fixture', active: true }]);
     if (['/rest/v1/staff_services', '/rest/v1/business_hours', '/rest/v1/staff_hours', '/rest/v1/availability_blocks', '/rest/v1/rpc/get_calendar_appointments', '/rest/v1/rpc/list_appointments_page'].includes(path)) return json([]);
     unknown.push(path); return json({}, 500);
