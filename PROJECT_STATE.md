@@ -1,10 +1,10 @@
 # YZT Randevu — Mevcut durum
 
-**Kontrol: 13 Eylül 2026.** Plan v3 ürün ve teknik sıra kaynağıdır. Aşağıdaki tablo doğrulanmış kodu, test geçmişini ve açık işleri ayırır. S01…S05 tamamlandı; S06…S08 ve GS açıktır. Canlı sahip/durum [TASKS](TASKS.md), sıra [ROADMAP](ROADMAP.md), ürün sınırı [PRODUCT_SPEC](PRODUCT_SPEC.md) içindedir.
+**Kontrol: 13 Eylül 2026.** Plan v3 ürün ve teknik sıra kaynağıdır. Aşağıdaki tablo doğrulanmış kodu, test geçmişini ve açık işleri ayırır. S01…S06 tamamlandı; S07…S08 ve GS açıktır. Canlı sahip/durum [TASKS](TASKS.md), sıra [ROADMAP](ROADMAP.md), ürün sınırı [PRODUCT_SPEC](PRODUCT_SPEC.md) içindedir.
 
 ## Devam noktası
 
-**S06 uygulaması [PR #43](https://github.com/ziyabeey1-ai/randevu/pull/43) üzerinde:** `9840bca` main tabanı korunuyor. Tek `CI gate`, belge/kod seçimi, gerçek SQL/Node yürütme envanteri ve kural paketi hazır. [S06 devri](docs/handoffs/S06.md) kanıt ve süreleri, [CI rehberi](docs/runbooks/ci.md) uygulama adımını tutar. S06 **İncelemede**: main'e birleşmedi; aktif main koruması [23159972](https://github.com/ziyabeey1-ai/randevu/rules/23159972) doğrulandı. PR incelemesindeki aktif görev önkoşulu kontrolü düzeltiliyor. Kullanıcı tek kişilik modeli onayladı: GitHub insan onayı 0, PR ve strict CI zorunlu; bağımsız ajan incelemesi protokolde kalır. S06/GS kabulü açıktır.
+**S06 tamamlandı ve [PR #43](https://github.com/ziyabeey1-ai/randevu/pull/43) ile main'e birleşti** (`b93d256a75a4c85223b673070bde27e023fb04a0`). Kabul head'i `b41bf7a766c86aba04d974211a0a34026459c67f`: [CI 34753034546](https://github.com/ziyabeey1-ai/randevu/actions/runs/34753034546), 336 Node testi, 78 PostgreSQL adımı, S05 gerçek psql, Chrome ve iki build başarılı. Main ağacı kabul ağacıyla birebir eşleşti; [main CI 34753146467](https://github.com/ziyabeey1-ai/randevu/actions/runs/34753146467) başarılı. [Aktif main koruması](https://github.com/ziyabeey1-ai/randevu/rules/23159972) PR, strict CI gate ve çözülmüş inceleme konuşmaları gerektiriyor; bypass yok, tek kişilik modelde insan onayı 0. Sol'un bağımsız son incelemesi ve aktif görev önkoşulu gerileme kanıtı [S06 devrinde](docs/handoffs/S06.md). Belge değişiklikleri npm/DB başlatmadan kontrol edilir; kod değişikliklerinde tüm zorunlu kontroller korunur. GS henüz kapanmadı.
 
 **S05 tamamlandı ve [PR #41](https://github.com/ziyabeey1-ai/randevu/pull/41) ile main'e birleşti** (`1335018f1dbc5587483058475670e8495fb7ddbc`). Kabul head'i `71336500c42d9011ab5ce190541ea2323538e710`: 299 test, bağımsız kod/kabul incelemesi, [PG17/Chrome CI 34742491243](https://github.com/ziyabeey1-ai/randevu/actions/runs/34742491243), [routine staging #18](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747433290) ve [açık rotation #19](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747719210) aynı kodda başarılı. Yeni aday aktive edilmeden doğrulanır; rotasyonda eski S05 management canary korunmuş, Cron ve gerçek F09 kabulünden sonra DB çiftinin atomik geçişi tamamlanmıştır. 08:30:22 UTC salt okunur kontrolde pending 0, fixture 2 ve yeni sürümle eşleşen dispatch görüldü. Merge ağacı kabul ağacıyla birebir aynıdır. [S05 devri](docs/handoffs/S05.md) geçmiş hataları, kanıtları ve kalan operasyon sınırlarını kaydeder.
 
@@ -14,7 +14,7 @@
 
 S03'ün ilk staging denemesi 180 saniyede `pending` görüp durdu; aynı iş yaklaşık üç saniye sonra ilk denemede sağlayıcı kabulü aldı. Aynı kod ve eşiklerle ikinci run gerçek teslim kontrolünü geçti. Bu bulgunun Cron hazır olma takibi S05'te ayrı başlangıç kontrolü ve gerçek routine/rotation kabulüyle tamamlandı; F09'un 180 saniyelik teslimat eşiği korunur, genel teslim hızı garantisi verilmez.
 
-S01 ve S02'nin önceki kabul kanıtları korunur. S06 görev paketi güncel main, TASKS ve açık PR sahipliği kontrol edilerek hazırlandı; CI uygulaması PR #43 üzerinde; aktif repo koruması doğrulandı; güncel düzeltme CI ve birleşme kabulü bekliyor. S05 yeniden başlatılmaz; SQL URI ve Cloudflare 10057 düzeltmelerinin tarihçesi kendi devrinde korunur. S06/S07/S08 dosya ve merge sırası ayrılarak hazırlanabilir; S07'nin S02/S03/S04 önkoşulları tamamdır. Yeni özellik kodu GS tamamlanmadan başlamaz.
+S01…S06 kabul kanıtları korunur; tamamlanan işler yeniden başlatılmaz. Sonraki teknik kapsam S07/S08'dir. S07'nin S02/S03/S04 önkoşulları tamamdır; başlamadan güncel main, TASKS ve açık PR sahipliği kontrol edilip dar görev paketi yazılır. Yeni özellik kodu GS tamamlanmadan başlamaz.
 
 F10-02 için açık [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), branch `f10-02-invites-memberships-roles`, incelenen head `5099ea307ac806e958a7a29a674462558570b0d5` yalnız `docs/handoffs/F10-02.md` içerir. Mevcut sahibi korunur; GS nedeniyle görev **Engelli** kalır. Devralmadan önce canlı PR tekrar kontrol edilir; aynı işi ikinci branch'te başlatma.
 
@@ -33,7 +33,7 @@ F10-02 için açık [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), b
 | Gün/hafta takvimi | Faz 8 main'de | F13 güncellik, liste ve referans düzeni |
 | Durable e-posta outbox / scheduled dispatcher | F09-03/05 + S03 main'de; içerik/sürüm/tekrar tutarlılığı doğrulandı | S07 veri ömrü; F16-02 yaşam döngüsü/SMS |
 | Public abuse guard | F09-04 + S04 main'de; ayrı retry/manage/business-create kotaları, kalıcı hata sayacı | S07 gerçek yük ve runtime ölçümü |
-| Test/CI ve gerçek staging | F17-01/02 + S05 main'de; routine ve açık rotation doğrulandı | S06 CI/koruma, S08 yeni nesne erişimi |
+| Test/CI ve gerçek staging | F17-01/02 + S05/S06 main'de; staging ve CI/koruma kabulü ayrı doğrulandı | S08 yeni nesne erişimi |
 | SalonApp/adisyon/tahsilat | Planlandı | Faz 14; henüz çalışan tablo/route yok |
 | Ürün/stok/masraf/kasa | Planlandı | Faz 15 |
 | Seri, hatırlatma/SMS, fotoğraf/yorum, paket/promosyon/prim, dil/plan | Planlandı | Faz 16; bazı temel hesap yolları F10'dan gelecek |
@@ -43,7 +43,7 @@ Mevcut veri erişimi Supabase HTTP/RPC'dir. Önceki ilk önerideki pg/Hyperdrive
 
 ## Tamamlanan kabul kanıtları
 
-Bu on üç görev kendi kayıtlı kapsamıyla tamamlandı. Sonraki bulgular ayrı S görevlerinde tutulur; eski başarılı koşuların kapsamı kendiliğinden genişletilmez.
+Bu on dört görev kendi kayıtlı kapsamıyla tamamlandı. Sonraki bulgular ayrı S görevlerinde tutulur; eski başarılı koşuların kapsamı kendiliğinden genişletilmez.
 
 | Görev | Teslim / kanıt | Kanıtın sınırı |
 | --- | --- | --- |
@@ -58,6 +58,7 @@ Bu on üç görev kendi kayıtlı kapsamıyla tamamlandı. Sonraki bulgular ayr�
 | S03 | [PR #35](https://github.com/ziyabeey1-ai/randevu/pull/35), [devir](docs/handoffs/S03.md), [CI 34733476367](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733476367), [staging deneme 2](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733661007/attempts/2) | 272 HTTP testi; PG17 snapshot/lease/lifecycle/upgrade/yarış; hosted recovery/idempotency/capability, sahte receipt reddi ve Resend test alıcısında delivered. İlk startup zaman aşımı S05 takibinde |
 | S04 | [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39), [devir](docs/handoffs/S04.md), [CI 34735531168](https://github.com/ziyabeey1-ai/randevu/actions/runs/34735531168), [staging 34737231931](https://github.com/ziyabeey1-ai/randevu/actions/runs/34737231931) | 277 HTTP; PG17 kota/ACL/hata/yenilenme ve iki bağlantılı yarışlar; hosted auth, booking/recovery/idempotency/capability ve Resend teslimi. 1000 tekrar ölçümü CI fixture'ıdır, production kapasite garantisi değildir |
 | S05 | [PR #41](https://github.com/ziyabeey1-ai/randevu/pull/41), [devir](docs/handoffs/S05.md), [CI 34742491243](https://github.com/ziyabeey1-ai/randevu/actions/runs/34742491243), [routine #18](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747433290), [rotate #19](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747719210) | 299 test; gerçek PG17 URI/ACL/geçiş/yarış; aday aktivasyon öncesi proof, eski S05 management canary, Cron ve F09 Resend test teslimi; DB promote/pending 0. Kesinti/rollback/resume kanıtı CI'dadır, canlı felaket tatbikatı değildir |
+| S06 | [PR #43](https://github.com/ziyabeey1-ai/randevu/pull/43), [devir](docs/handoffs/S06.md), [CI 34753034546](https://github.com/ziyabeey1-ai/randevu/actions/runs/34753034546), [main ruleset](https://github.com/ziyabeey1-ai/randevu/rules/23159972) | Tek required job; belge yolu 9 sn, gerçek SQL/eksik envanter negatifleri; son head 336 Node/78 PG adımı; aktif görev önkoşulları. Ürün veya staging deployment değişikliği değil |
 | F17-01 | [Devir](docs/handoffs/F17-01.md), staging [34679959999](https://github.com/ziyabeey1-ai/randevu/actions/runs/34679959999) | Hosted DB/ACL/credential, fixtures, Worker deploy, management key koruma, health/login/session/business/catalog |
 | F17-02 | [PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15), [devir](docs/handoffs/F17-02.md), CI `34658041327` | Test envanteri/Chrome smoke/HTTP/SQL; o tarihte 0-vulnerability baseline. CI verimliliği ve repo koruması ayrıca S06 |
 
@@ -69,7 +70,6 @@ Ayrıntılı dosya/sınır/kanıt ve kabul [S kartlarında](docs/plan/stabilizat
 
 | Bulgu / kanıt türü | Etki / sınır | Görev |
 | --- | --- | --- |
-| Üç typecheck/docs tam CI/source regex; main protected=false ve rulesets boş — kaynak/API | Test maliyeti ve merge zorunluluğu eksik | S06 |
 | Terminal PII retention ve bazı dış RPC timeout'ları eksik — kaynak incelemesi | Büyüme/bakım/uzun bekleme sınırı; canlı maliyet ölçümü yapılmadı | S07 |
 | Future table/sequence/view erişim testi eksik — kaynak incelemesi | Gelecek migration güvenlik kapısı; mevcut tenant izolasyonu bozuk iddiası değil | S08 |
 
@@ -105,4 +105,4 @@ Worker entry `worker/entry.ts`, router `worker/app.ts`; auth `worker/auth.ts` + 
 
 ## Sonraki çalışma sınırı
 
-S01…S05 kabulü tamamlandı. S06 görev paketi yazıldı ve dar dosya sınırlarıyla CI uygulaması PR #43 üzerinde; aktif repo koruması doğrulandı; güncel düzeltme CI ve birleşme kabulü bekliyor. Mevcut tüm CI kapıları S06'nın kendi kabulüne kadar korunur. Aktif ruleset, strict CI gate ve çözülmüş inceleme konuşmaları birleşme öncesinde geri okunur. S07/S08 ve GS açık; F10-02 veya diğer yeni özellik kodu GS'yi bekler. Staging'e uygulanmış S05 migration dahil mevcut migration'lar değiştirilmez.
+S01…S06 kabulü tamamlandı. S07 runtime bütçeleri/veri ömrü ve S08 yeni veritabanı nesnelerinin erişim kontrolü açıktır. Sonraki tek somut adım: güncel main ve açık PR sahipliğini okuyup S07'nin ilk dar görev paketini hazırlamak. S07/S08 bu kapanışta başlatılmadı; F10-02 ve diğer özellik uygulamaları GS'yi bekler. Staging'e uygulanmış S05 migration dahil mevcut migration'lar değiştirilmez.
