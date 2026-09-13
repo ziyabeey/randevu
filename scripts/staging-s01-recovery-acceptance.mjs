@@ -301,7 +301,7 @@ try {
   }
   const secondTabCatalog = await appRequest(secondTab, '/api/catalog');
   await expectError(secondTabCatalog, 403, 'PASSWORD_UPDATE_REQUIRED', 'second-tab recovery catalog');
-  const secondTabAvailability = await appRequest(secondTab, '/api/availability');
+  const secondTabAvailability = await appRequest(secondTab, '/api/availability/setup');
   await expectError(secondTabAvailability, 403, 'PASSWORD_UPDATE_REQUIRED', 'second-tab recovery availability');
 
   const accessBeforeRefresh = secondTab.get('yzt_access');
