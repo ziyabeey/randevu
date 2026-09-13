@@ -11,10 +11,12 @@ Tek staging workflow run'ı aynı `GITHUB_SHA` üzerinde aşağıdakileri kabul 
 1. `operation=deploy` routine staging deploy; secret rotasyonu yoktur.
 2. Mevcut staging smoke.
 3. Gerçek F09 acceptance açık: booking/recovery/idempotency/capability ve gerçek Resend delivery kanıtı.
-4. Gerçek F10 hosted auth acceptance açık: Origin/CSRF, refresh rotation, güncel membership, signup/recovery/password rotation.
-5. Gerçek S01 public recovery acceptance açık: gerçek Resend Receiving mailbox, PKCE, marker kaybı/onarımı, refresh, ikinci sekme, replay/invalid ve parola değişimi.
+4. Gerçek F10 hosted auth acceptance açık: Origin/CSRF, refresh rotation, güncel membership, hosted signup/replay, doğrulanmış normal oturumdan parola rotasyonu ve S01 sonrası recovery authority sınırı. Admin `generate_link` recovery shortcut'ı doğrulanmış recovery AMR üretmiyorsa fail-closed `AUTH_LINK_INVALID` kalır; bu kestirme gerçek recovery başarı kanıtı sayılmaz.
+5. Gerçek S01 public recovery acceptance açık ve recovery başarısının yetkili kaynağıdır: gerçek Resend Receiving mailbox, PKCE, doğrulanmış recovery AMR, marker kaybı/onarımı, refresh, ikinci sekme, replay/invalid ve parola değişimi.
 6. S07 C1/C2/C3 staging DB acceptance: yalnız sentetik transaction+rollback fixture ile retention, pagination/snapshot ve load measurement testleri staging PostgreSQL üzerinde çalışır.
 7. Run sonunda pending key transition yoktur; staging fixtures bütünlüğü korunur; aktif Worker version/deployment exact workflow commit'ten gelir.
+
+F10'un tarihsel kabulünde kullanılan admin recovery token-hash kestirmesi, S01 ile recovery authority JWT `amr=recovery` kanıtına taşındıktan sonra recovery başarı yolu değildir. C4 bu sınırı geri gevşetmez: F10 kestirmenin yetki yaratmadığını doğrular, gerçek recovery başarı ve password-update-only oturumu aynı run'daki S01 kapısında gerçek public e-posta/PKCE yolu ile kanıtlanır.
 
 ## S07 staging DB acceptance paketi
 
@@ -69,7 +71,7 @@ S01 input'u repo/secrete yazılmaz. Workflow dispatch sırasında mevcut Resend 
 
 C4 code PR'ı dar tutulur:
 
-- `package.json`: tek `staging:s07-acceptance` komutu;
+- `package.json`: tek `staging:s07-acceptance` komutu; F10 hosted komutu S01-sonrası recovery authority sözleşmesini taşıyan acceptance scriptine bağlanır;
 - yeni `scripts/staging-s07-acceptance.mjs`: sabit allowlistteki dört SQL dosyasını staging DB'ye sırayla `psql` ile çalıştırır; URI/SQL/secret hata çıktısına yansıtılmaz;
 - `scripts/staging-deploy.mjs`: `accept()` içinde mevcut smoke/F09/F10/S01 sonrası S07 gate çağrısı;
 - staging workflow contract/testleri: C4 run'ında F09/F10/S01'in açık olması ve S07 gate'in smoke/provider/auth kabulundan sonra, commit'ten önce bulunması doğrulanır.
@@ -87,6 +89,7 @@ S07 ancak aşağıdakiler birlikte mevcutsa `Tamamlandı` yapılır:
 - C4 code PR exact-head required CI yeşil;
 - aynı exact head ile routine staging run success;
 - smoke + F09 + F10 + S01 adımları success;
+- F10 admin recovery shortcut'ı recovery authority yaratmaz ve S01 gerçek public recovery/PKCE yolu başarıyla password-update-only oturumu kanıtlar;
 - S07 staging DB acceptance success ve iki `S07_C3_METRIC` receipt'i;
 - pending transition readback temiz, fixture sayısı beklenen, aktif deployment exact head;
 - açık review thread yok;
