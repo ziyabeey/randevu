@@ -98,6 +98,8 @@ Bu değerler **başlangıç mühendislik bütçeleridir**, ölçülmüş perform
 
 HTTP timeout, DB işinin kesin iptal edildiği anlamına gelmez. Slot/read RPC'leri için DB tarafında da sınır ve ölçülmüş sorgu planı gerekir. Mevcut API'yi bozan limit adaptasyonu açıkça sözleşme/teste işlenir; geçmiş kayıt gizlenmez. Geniş veri üzerinde N+1, limitsiz liste veya gereksiz indeks eklenmez; sorgu ölçümü gerekçeyi gösterir.
 
+S07'nin [v2 sonuç kesinleştirme sözleşmesi](s07-recovery-resolution.md) genel Auth/veri HTTP sınırından önce uygulanır: generic recovery 404 yokluk kanıtı değildir; mevcut commit doğrulanır veya aynı işlemin geç yazımı kilit altında kapatılır. Yeni kapanış satırları PII/sır içermez ve ilk yazım deadline'ı geçince sınırlı batch ile temizlenir. Komut/recovery sonuç referansı randevu yaşarken korunur. Tarayıcıda 72 saatlik proof ile süre aşımı sonrası sırsız belirsizlik işaretinin ayrımı bu ekte tanımlıdır; tek başına doküman runtime kabulü değildir.
+
 ### Saklama ve temizleme
 
 | Veri | Başlangıç teknik politikası | Uygulama / kanıt |

@@ -4,6 +4,8 @@ Durum: **F09-01 sözleşme teslimi**
 Başlangıç main: `f48ee3735171bbb8b9c7d3e41864ea73ffa91cbe`  
 İncelenen eski taslak: PR #8 / `phase-9-email-delivery` / head `9b5a6ceab648c70b8c892d831d041021d8568e37`
 
+**13 Eylül 2026 eki:** [S07 v2 sonuç kesinleştirme sözleşmesi](s07-recovery-resolution.md), erken recovery 404'ün kesin yokluk sayılmasını düzeltmek üzere yazıldı. V2 deadline/atomik kapatma, ortak tarayıcı pending kaydı ve TTL sonrası sınırlı commit teyidi bu ekte tanımlıdır; bu belge v1'in tarihsel/proof sınırını korur. Ekin yazılması kodun uygulanmış veya S07'nin tamamlanmış olduğu anlamına gelmez.
+
 Bu belge Faz 9 uygulamasının bağlayıcı hata, güvenlik ve veri yaşam döngüsü sözleşmesidir. F09-01 kodlanmış kurtarma, kuyruk veya rate-limit teslim etmez. Bunlar sırasıyla F09-02, F09-03 ve F09-04 görevleridir.
 
 ## 1. Sorun ve değişmezler
