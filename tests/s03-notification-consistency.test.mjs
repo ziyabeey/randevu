@@ -118,7 +118,7 @@ test('S03 accepted-response-loss retry keeps byte-identical provider request aft
         assert.equal(body.p_origin, storedLock.p_origin);
         assert.equal(body.p_request_fingerprint, storedLock.p_request_fingerprint);
       }
-      return json(true);
+      return json(sendGate());
     }
     if (url === 'https://api.resend.com/emails') {
       providerBodies.push(String(init.body));
@@ -176,4 +176,65 @@ test('S03 mismatched stored request fingerprint is terminal before provider HTTP
   assert.equal(providerCalls, 0);
   assert.equal(release.p_error_class, 'notification_request_mismatch');
   assert.equal(release.p_retryable, false);
+});
+
+function sendGate(offset = 30_000) {
+  return { server_time: new Date().toISOString(), send_before: new Date(Date.now() + offset).toISOString(), receipt_token: 'cc000000-0000-4000-8000-000000000103' };
+}
+
+for (const [name, gate] of [
+  ['expired permission', () => sendGate(-1_000)],
+  ['malformed permission', () => true],
+  ['missing deadline', () => ({ server_time: new Date().toISOString() })],
+]) {
+  test(`S03 ${name} never starts a provider request`, async () => {
+    const claimed = await row();
+    let calls = 0;
+    const summary = await dispatchNotificationBatch(baseEnv, async (input) => {
+      const url = String(input);
+      if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([claimed]);
+      if (url.endsWith('/rpc/lock_notification_request_v2')) return json(gate());
+      if (url === 'https://api.resend.com/emails') { calls += 1; return json({ id: 'unsafe' }); }
+      if (url.endsWith('/rpc/complete_notification_job_v2')) return json(sendGate());
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    assert.equal(calls, 0);
+    assert.equal(summary.leaseErrors, 1);
+    assert.equal(summary.sent, 0);
+  });
+}
+
+test('S03 delayed send permission is rejected even if Worker wall clock is behind DB', async () => {
+  const claimed = await row();
+  let calls = 0;
+  const summary = await dispatchNotificationBatch(baseEnv, async (input) => {
+    const url = String(input);
+    if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([claimed]);
+    if (url.endsWith('/rpc/lock_notification_request_v2')) {
+      const server = Date.now() + 60_000;
+      const gate = { server_time: new Date(server).toISOString(), send_before: new Date(server + 5).toISOString(), receipt_token: 'cc000000-0000-4000-8000-000000000103' };
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      return json(gate);
+    }
+    if (url === 'https://api.resend.com/emails') { calls += 1; return json({ id: 'unsafe' }); }
+    throw new Error(`unexpected fetch ${url}`);
+  });
+  assert.equal(calls, 0);
+  assert.equal(summary.leaseErrors, 1);
+});
+
+test('S03 a false completion acknowledgement cannot count as a recorded send', async () => {
+  const claimed = await row();
+  let calls = 0;
+  const summary = await dispatchNotificationBatch(baseEnv, async (input) => {
+    const url = String(input);
+    if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([claimed]);
+    if (url.endsWith('/rpc/lock_notification_request_v2')) return json(sendGate());
+    if (url === 'https://api.resend.com/emails') { calls += 1; return json({ id: 'real-receipt' }); }
+    if (url.endsWith('/rpc/complete_notification_job_v2')) return json(false);
+    throw new Error(`unexpected fetch ${url}`);
+  });
+  assert.equal(calls, 1);
+  assert.equal(summary.sent, 0);
+  assert.equal(summary.leaseErrors, 1);
 });

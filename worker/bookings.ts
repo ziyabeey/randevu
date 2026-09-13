@@ -1,18 +1,15 @@
 import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import {
+  first,
+  readJson,
+  requireMember,
+  supabaseRequest,
+  type AppContext,
+  type AuthEnv,
+} from './auth.ts';
 
-type Env = {
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  COOKIE_SECURE?: string;
-};
-type AppContext = Context<{ Bindings: Env }>;
-type Role = 'owner' | 'manager' | 'staff';
-type AuthUser = { id: string; email?: string };
-type AuthSession = { accessToken: string; user: AuthUser };
-type Membership = { id: string; business_id: string; role: Role; active: boolean };
-type TokenResponse = { access_token: string; refresh_token: string; expires_in?: number; user: AuthUser };
+type Env = AuthEnv;
+type BaseContext = AppContext<Env>;
 type SupabaseError = { message?: string; code?: string; details?: string };
 
 type Appointment = {
@@ -40,44 +37,6 @@ type Slot = { staff_id: string; staff_name: string; starts_at: string; ends_at: 
 
 const bookings = new Hono<{ Bindings: Env }>();
 
-function cookieOptions(env: Env, maxAge: number) {
-  return { httpOnly: true, secure: env.COOKIE_SECURE !== 'false', sameSite: 'Lax' as const, path: '/', maxAge };
-}
-
-function setSessionCookies(context: AppContext, token: TokenResponse) {
-  setCookie(context, 'yzt_access', token.access_token, cookieOptions(context.env, Math.max(60, token.expires_in ?? 3600)));
-  setCookie(context, 'yzt_refresh', token.refresh_token, cookieOptions(context.env, 60 * 60 * 24 * 30));
-}
-
-function clearSessionCookies(context: AppContext) {
-  deleteCookie(context, 'yzt_access', { path: '/' });
-  deleteCookie(context, 'yzt_refresh', { path: '/' });
-  deleteCookie(context, 'yzt_business', { path: '/' });
-}
-
-async function supabaseRequest<T = unknown>(env: Env, path: string, init: RequestInit = {}, accessToken?: string) {
-  const headers = new Headers(init.headers);
-  headers.set('apikey', env.SUPABASE_ANON_KEY);
-  headers.set('Authorization', `Bearer ${accessToken ?? env.SUPABASE_ANON_KEY}`);
-  headers.set('Accept', 'application/json');
-  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-  const response = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/${path}`, { ...init, headers });
-  const text = await response.text();
-  let data: T | null = null;
-  if (text) {
-    try { data = JSON.parse(text) as T; } catch { data = null; }
-  }
-  return { ok: response.ok, status: response.status, data };
-}
-
-async function readJson(context: AppContext): Promise<Record<string, unknown> | null> {
-  try {
-    const value: unknown = await context.req.json();
-    return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : null;
-  } catch { return null; }
-}
-
-function first<T>(items: T[] | null) { return items?.[0] ?? null; }
 function isUuid(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
@@ -95,46 +54,9 @@ function cleanOptional(value: unknown, max: number) {
   const result = value.trim();
   return result.length <= max ? (result || null) : undefined;
 }
-function idempotencyKey(context: AppContext) {
+function idempotencyKey(context: BaseContext) {
   const value = context.req.header('Idempotency-Key')?.trim() ?? '';
   return value.length >= 8 && value.length <= 128 ? value : null;
-}
-
-async function resolveAuth(context: AppContext): Promise<AuthSession | null> {
-  const accessToken = getCookie(context, 'yzt_access');
-  const refreshToken = getCookie(context, 'yzt_refresh');
-  if (accessToken) {
-    const current = await supabaseRequest<AuthUser>(context.env, 'auth/v1/user', {}, accessToken);
-    if (current.ok && current.data) return { accessToken, user: current.data };
-  }
-  if (!refreshToken) return null;
-  const refreshed = await supabaseRequest<TokenResponse>(context.env, 'auth/v1/token?grant_type=refresh_token', {
-    method: 'POST', body: JSON.stringify({ refresh_token: refreshToken }),
-  });
-  if (!refreshed.ok || !refreshed.data?.access_token || !refreshed.data.refresh_token || !refreshed.data.user) {
-    clearSessionCookies(context); return null;
-  }
-  setSessionCookies(context, refreshed.data);
-  return { accessToken: refreshed.data.access_token, user: refreshed.data.user };
-}
-
-async function activeMembership(context: AppContext, auth: AuthSession): Promise<Membership | null> {
-  const businessId = getCookie(context, 'yzt_business');
-  if (!businessId) return null;
-  const query = new URLSearchParams({
-    select: 'id,business_id,role,active', business_id: `eq.${businessId}`,
-    user_id: `eq.${auth.user.id}`, active: 'eq.true', limit: '1',
-  });
-  const result = await supabaseRequest<Membership[]>(context.env, `rest/v1/memberships?${query}`, {}, auth.accessToken);
-  return result.ok ? first(result.data) : null;
-}
-
-async function requireMember(context: AppContext) {
-  const auth = await resolveAuth(context);
-  if (!auth) return { error: context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401) } as const;
-  const membership = await activeMembership(context, auth);
-  if (!membership) return { error: context.json({ error: { code: 'TENANT_REQUIRED', message: 'Aktif işletme seçin.' } }, 403) } as const;
-  return { auth, membership } as const;
 }
 
 function rpcMessage(data: unknown, fallback: string) {

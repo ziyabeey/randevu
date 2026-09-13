@@ -1,7 +1,7 @@
 do $$
 begin
   if (select count(*) from public.appointment_notification_jobs
-      where business_id='4b000000-0000-4000-8000-000000000104') <> 5 then
+      where business_id='4b000000-0000-4000-8000-000000000104') <> 8 then
     raise exception 'S03 upgrade lost legacy jobs';
   end if;
 
@@ -61,6 +61,14 @@ begin
         or currency_snapshot is null
       )
   ) then raise exception 'S03 upgrade left incomplete frozen event snapshots'; end if;
+
+  if (select count(*) from public.appointment_notification_jobs
+      where recipient in ('s03-upgrade-6@example.test','s03-upgrade-7@example.test','s03-upgrade-8@example.test')
+        and state='failed_terminal' and not is_current
+        and last_error_class='legacy_appointment_inactive'
+        and request_fingerprint is null and receipt_token is null) <> 3 then
+    raise exception 'S03 upgrade left inactive legacy confirmations sendable';
+  end if;
 
   if has_function_privilege('anon','public.claim_notification_jobs(text,integer,integer)','execute') then
     raise exception 'S03 upgrade left legacy claim RPC open';

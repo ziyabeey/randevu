@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import {
   AuthUnavailableError,
+  accessTokenRecoveryState,
   applicationOrigin,
   beginAuthFlow,
   clearBusinessCookie,
@@ -18,6 +19,7 @@ import {
   supabaseRequest,
   type AppContext,
   type AuthEnv,
+  type AuthFlowAction,
   type AuthUser,
   type Membership,
   type TokenResponse,
@@ -61,8 +63,12 @@ function upstreamMessage(data: unknown) {
   return String(error.message ?? error.msg ?? error.code ?? '');
 }
 
+function sessionMatchesAction(token: TokenResponse, action: AuthFlowAction) {
+  const passwordRecovery = accessTokenRecoveryState(token.access_token);
+  return passwordRecovery !== null && passwordRecovery === (action === 'recovery');
+}
+
 function authLinkInvalid(context: AuthContext) {
-  clearPasswordRecoveryCookie(context);
   return context.json({
     error: {
       code: 'AUTH_LINK_INVALID',
@@ -115,8 +121,13 @@ authRoutes.post('/auth/signup', async (context) => {
 
   const hasSession = Boolean(result.data.access_token && result.data.refresh_token && result.data.user);
   if (hasSession) {
+    const token = result.data as TokenResponse;
+    if (!sessionMatchesAction(token, 'signup')) {
+      removeAuthFlow(context, flow.state);
+      return context.json({ error: { code: 'AUTH_UNAVAILABLE', message: 'Hesap oturumu doğrulanamadı.' } }, 503);
+    }
     clearSessionCookies(context);
-    setSessionCookies(context, result.data as TokenResponse);
+    setSessionCookies(context, token);
     clearPasswordRecoveryCookie(context);
     removeAuthFlow(context, flow.state);
   }
@@ -140,6 +151,9 @@ authRoutes.post('/auth/login', async (context) => {
   }
   if (!result.ok || !result.data?.access_token || !result.data.refresh_token || !result.data.user) {
     return context.json({ error: { code: 'LOGIN_FAILED', message: 'E-posta veya parola doğrulanamadı.' } }, 401);
+  }
+  if (!sessionMatchesAction(result.data, 'signup')) {
+    return context.json({ error: { code: 'AUTH_UNAVAILABLE', message: 'Giriş oturumu doğrulanamadı.' } }, 503);
   }
 
   clearSessionCookies(context);
@@ -220,7 +234,7 @@ authRoutes.get('/auth/callback', async (context) => {
     removeAuthFlow(context, flow.state);
     return context.redirect(authResultUrl(context, 'link-invalid'), 303);
   }
-  if (result.data.type && result.data.type !== flow.action) {
+  if ((result.data.type && result.data.type !== flow.action) || !sessionMatchesAction(result.data, flow.action)) {
     removeAuthFlow(context, flow.state);
     return context.redirect(authResultUrl(context, 'link-invalid'), 303);
   }
@@ -249,6 +263,7 @@ authRoutes.post('/auth/confirm', async (context) => {
   if (!result.ok || !result.data?.access_token || !result.data.refresh_token || !result.data.user) {
     return authLinkInvalid(context);
   }
+  if (!sessionMatchesAction(result.data, type)) return authLinkInvalid(context);
 
   clearSessionCookies(context);
   setSessionCookies(context, result.data);

@@ -75,7 +75,7 @@ declare
   v_index integer;
   v_start timestamptz;
 begin
-  for v_index in 1..5 loop
+  for v_index in 1..8 loop
     v_start := (v_day + time '09:05') at time zone 'Europe/Istanbul'
       + make_interval(hours => v_index - 1);
     perform public.create_public_appointment_with_recovery(
@@ -131,3 +131,12 @@ set state='failed_terminal',
     last_error_class='legacy_validation_error',
     terminal_at=now()-interval '3 hours'
 where recipient='s03-upgrade-5@example.test';
+
+-- Inactive legacy appointments still have unsent jobs under the old schema.
+update public.appointments
+set status='cancelled', cancelled_at=now()
+where customer_email_snapshot='s03-upgrade-6@example.test';
+update public.appointments set status='completed'
+where customer_email_snapshot='s03-upgrade-7@example.test';
+update public.appointments set status='no_show'
+where customer_email_snapshot='s03-upgrade-8@example.test';

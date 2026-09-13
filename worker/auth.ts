@@ -52,6 +52,13 @@ export type AuthFlow = {
   expiresAt: number;
 };
 
+type AccessSessionClaims = {
+  subject: string;
+  sessionId: string;
+  methods: string[];
+  passwordRecovery: boolean;
+};
+
 const ACCESS_COOKIE = 'yzt_access';
 const REFRESH_COOKIE = 'yzt_refresh';
 const BUSINESS_COOKIE = 'yzt_business';
@@ -60,6 +67,7 @@ const AUTH_FLOW_COOKIE = 'yzt_auth_flows';
 const PASSWORD_RECOVERY_COOKIE = 'yzt_password_recovery';
 const FLOW_TTL_SECONDS = 10 * 60;
 const MAX_AUTH_FLOWS = 4;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class AuthUnavailableError extends Error {
   constructor() {
@@ -110,8 +118,14 @@ export function clearPasswordRecoveryCookie<E extends AuthEnv>(context: AppConte
   deleteCookie(context, PASSWORD_RECOVERY_COOKIE, { path: '/' });
 }
 
-export function isPasswordRecovery<E extends AuthEnv>(context: AppContext<E>) {
+function hasPasswordRecoveryHint<E extends AuthEnv>(context: AppContext<E>) {
   return getCookie(context, PASSWORD_RECOVERY_COOKIE) === '1';
+}
+
+function syncPasswordRecoveryHint<E extends AuthEnv>(context: AppContext<E>, passwordRecovery: boolean) {
+  const current = hasPasswordRecoveryHint(context);
+  if (passwordRecovery && !current) setPasswordRecoveryCookie(context);
+  if (!passwordRecovery && current) clearPasswordRecoveryCookie(context);
 }
 
 export function getActiveBusinessId<E extends AuthEnv>(context: AppContext<E>) {
@@ -159,8 +173,64 @@ export function first<T>(items: T[] | null): T | null {
   return items?.[0] ?? null;
 }
 
-function upstreamUnavailable(status: number) {
+export function upstreamUnavailable(status: number) {
   return status === 0 || status >= 500;
+}
+
+function authenticationMethod(value: unknown) {
+  if (typeof value === 'string' && value.trim()) return value.trim().toLowerCase();
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const method = (value as { method?: unknown }).method;
+  return typeof method === 'string' && method.trim() ? method.trim().toLowerCase() : null;
+}
+
+function parseAccessSessionClaims(accessToken: string): AccessSessionClaims | null {
+  const parts = accessToken.split('.');
+  if (parts.length !== 3 || !parts[1]) return null;
+
+  try {
+    const value: unknown = JSON.parse(base64UrlToText(parts[1]));
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+    const claims = value as { sub?: unknown; session_id?: unknown; amr?: unknown };
+    if (typeof claims.sub !== 'string' || !UUID_PATTERN.test(claims.sub)) return null;
+    if (typeof claims.session_id !== 'string' || !UUID_PATTERN.test(claims.session_id)) return null;
+    if (!Array.isArray(claims.amr) || claims.amr.length === 0) return null;
+
+    const methods = claims.amr.map(authenticationMethod);
+    if (methods.some((method) => method === null)) return null;
+    const validMethods = methods as string[];
+    return {
+      subject: claims.sub,
+      sessionId: claims.session_id,
+      methods: validMethods,
+      passwordRecovery: validMethods.includes('recovery'),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Supabase verifies the bearer before resolveAuth trusts these claims. Callers that
+// inspect this helper before verification may only use a positive result to deny,
+// never to grant access.
+export function accessTokenRecoveryState(accessToken: string | undefined) {
+  if (!accessToken) return null;
+  return parseAccessSessionClaims(accessToken)?.passwordRecovery ?? null;
+}
+
+function verifiedAuthSession<E extends AuthEnv>(
+  context: AppContext<E>,
+  accessToken: string,
+  user: AuthUser,
+): AuthSession | null {
+  const claims = parseAccessSessionClaims(accessToken);
+  if (!claims || claims.subject !== user.id) return null;
+  syncPasswordRecoveryHint(context, claims.passwordRecovery);
+  return {
+    accessToken,
+    user,
+    passwordRecovery: claims.passwordRecovery,
+  };
 }
 
 export async function resolveAuth<E extends AuthEnv>(context: AppContext<E>): Promise<AuthSession | null> {
@@ -170,12 +240,16 @@ export async function resolveAuth<E extends AuthEnv>(context: AppContext<E>): Pr
   if (accessToken) {
     const current = await supabaseRequest<AuthUser>(context.env, 'auth/v1/user', {}, accessToken);
     if (current.ok && current.data) {
-      return { accessToken, user: current.data, passwordRecovery: isPasswordRecovery(context) };
+      const session = verifiedAuthSession(context, accessToken, current.data);
+      if (session) return session;
     }
     if (upstreamUnavailable(current.status)) throw new AuthUnavailableError();
   }
 
-  if (!refreshToken) return null;
+  if (!refreshToken) {
+    if (accessToken || hasPasswordRecoveryHint(context)) clearSessionCookies(context);
+    return null;
+  }
 
   const refreshed = await supabaseRequest<TokenResponse>(context.env, 'auth/v1/token?grant_type=refresh_token', {
     method: 'POST',
@@ -188,12 +262,14 @@ export async function resolveAuth<E extends AuthEnv>(context: AppContext<E>): Pr
     return null;
   }
 
+  const session = verifiedAuthSession(context, refreshed.data.access_token, refreshed.data.user);
+  if (!session) {
+    clearSessionCookies(context);
+    return null;
+  }
+
   setSessionCookies(context, refreshed.data);
-  return {
-    accessToken: refreshed.data.access_token,
-    user: refreshed.data.user,
-    passwordRecovery: isPasswordRecovery(context),
-  };
+  return session;
 }
 
 export async function activeMembership<E extends AuthEnv>(
@@ -398,9 +474,6 @@ export function mutationSecurityError<E extends AuthEnv>(context: AppContext<E>)
 
   const origin = context.req.header('Origin');
   const fetchSite = context.req.header('Sec-Fetch-Site');
-  const browserLike = Boolean(origin || fetchSite);
-  if (!browserLike) return null;
-
   if (!origin || origin !== applicationOrigin(context) || fetchSite === 'cross-site') {
     return {
       code: 'ORIGIN_FORBIDDEN',

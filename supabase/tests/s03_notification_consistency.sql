@@ -78,16 +78,16 @@ values (
 )
 on conflict(config_key) do update set secret_hash=excluded.secret_hash, updated_at=now();
 
--- Six independent public bookings give each lifecycle case its own event.
+-- Independent public bookings give each lifecycle case its own event.
 do $$
 declare
   v_day date := date_trunc('week', current_date)::date + 7;
   v_index integer;
   v_start timestamptz;
 begin
-  for v_index in 1..6 loop
+  for v_index in 1..16 loop
     v_start := (v_day + time '09:05') at time zone 'Europe/Istanbul'
-      + make_interval(hours => v_index - 1);
+      + make_interval(days => ((v_index - 1) / 8) * 7, hours => (v_index - 1) % 8);
     perform public.create_public_appointment_with_recovery(
       's03-frozen-salon',
       's03-create-000' || v_index,
@@ -95,9 +95,9 @@ begin
       '6b000000-0000-4000-8000-000000000103',
       '7b000000-0000-4000-8000-000000000103',
       v_start,
-      encode(digest(repeat(chr(96 + v_index),43),'sha256'),'hex'),
+      encode(digest('s03-management-' || v_index,'sha256'),'hex'),
       ('8b000000-0000-4000-8000-' || lpad((100 + v_index)::text,12,'0'))::uuid,
-      encode(digest(repeat(chr(102 + v_index),43),'sha256'),'hex'),
+      encode(digest('s03-recovery-' || v_index,'sha256'),'hex'),
       'ciphertext-s03-' || v_index || '-abcdefghijklmnopqrstuvwxyz0123456789',
       'iv-s03-' || lpad(v_index::text,12,'0'),
       1::smallint,
@@ -112,8 +112,8 @@ $$;
 do $$
 begin
   if (select count(*) from public.appointment_notification_jobs
-      where business_id='4b000000-0000-4000-8000-000000000103') <> 6 then
-    raise exception 'S03 did not create six notification events';
+      where business_id='4b000000-0000-4000-8000-000000000103') <> 16 then
+    raise exception 'S03 did not create sixteen notification events';
   end if;
   if exists (
     select 1 from public.appointment_notification_jobs j
@@ -198,6 +198,7 @@ set local role anon;
 do $$
 declare
   v_claim record;
+  v_permission jsonb;
 begin
   select * into v_claim
   from public.claim_notification_jobs_v2(
@@ -210,14 +211,14 @@ begin
      or v_claim.business_name_snapshot <> 'S03 Frozen Salon' then
     raise exception 'S03 retry did not preserve frozen request inputs';
   end if;
-  perform public.lock_notification_request_v2(
+  v_permission := public.lock_notification_request_v2(
     'sssssssssssssssssssssssssssssssssssssssssss',
     v_claim.job_id,v_claim.lease_token,
     v_claim.sender_snapshot,v_claim.origin_snapshot,v_claim.request_fingerprint
   );
   perform public.complete_notification_job_v2(
     'sssssssssssssssssssssssssssssssssssssssssss',
-    v_claim.job_id,v_claim.lease_token,
+    v_claim.job_id,(v_permission->>'receipt_token')::uuid,
     'resend-s03-frozen-1',v_claim.request_fingerprint
   );
 end
@@ -464,5 +465,153 @@ begin
   end if;
 end
 $$;
+
+
+-- Targeted lifecycle/send boundaries. Helpers exist only in this rolled-back test.
+create function pg_temp.s03_claim(p_index integer)
+returns public.appointment_notification_jobs language plpgsql as $$
+declare v_job public.appointment_notification_jobs;
+begin
+  update public.appointment_notification_jobs set available_at=now()-interval '1 second'
+  where recipient='s03-' || p_index || '@example.test' and is_current;
+  perform public.claim_notification_jobs_v2(repeat('s',43),1,45);
+  select * into strict v_job from public.appointment_notification_jobs
+  where recipient='s03-' || p_index || '@example.test' and is_current;
+  if v_job.state <> 'leased' then raise exception 'S03 target was not claimed: %',p_index; end if;
+  return v_job;
+end $$;
+
+create function pg_temp.s03_gate(p_job public.appointment_notification_jobs)
+returns jsonb language sql as $$
+  select public.lock_notification_request_v2(repeat('s',43),p_job.id,p_job.lease_token,
+    'Sender <sender@example.test>','https://sender.example.test',repeat('f',64));
+$$;
+
+create function pg_temp.s03_move(p_id uuid)
+returns void language sql as $$
+  update public.appointments set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day',
+    occupied_starts_at=occupied_starts_at+interval '1 day',occupied_ends_at=occupied_ends_at+interval '1 day'
+  where id=p_id;
+$$;
+
+do $$
+declare v_job public.appointment_notification_jobs; v_gate jsonb; v_second jsonb; v_index integer;
+begin
+  v_job := pg_temp.s03_claim(7);
+  update public.appointment_notification_jobs set lease_expires_at=clock_timestamp()-interval '1 second' where id=v_job.id;
+  begin
+    perform pg_temp.s03_gate(v_job);
+    raise exception 'S03 expired lease was allowed to send';
+  exception when others then
+    if sqlerrm <> 'NOTIFICATION_LEASE_EXPIRED' then raise; end if;
+  end;
+  update public.appointment_notification_jobs set state='failed_terminal',lease_token=null,lease_expires_at=null where id=v_job.id;
+
+  -- An earlier possibly accepted request cannot become safe after a later 401/422.
+  v_job := pg_temp.s03_claim(8);
+  v_gate := pg_temp.s03_gate(v_job);
+  perform public.release_notification_job_v2(repeat('s',43),v_job.id,v_job.lease_token,'resend_network_error',true,1,false);
+  v_job := pg_temp.s03_claim(8);
+  perform pg_temp.s03_gate(v_job);
+  perform public.release_notification_job_v2(repeat('s',43),v_job.id,v_job.lease_token,'resend_http_401',false,1,true);
+  perform pg_temp.s03_move(v_job.appointment_id);
+  if (select count(*) from public.appointment_notification_jobs where appointment_id=v_job.appointment_id) <> 1
+     or not exists (select 1 from public.appointment_notification_jobs where id=v_job.id
+       and delivery_certainty='ambiguous' and has_ambiguous_history and not is_current) then
+    raise exception 'S03 later rejection erased earlier ambiguity or created a duplicate';
+  end if;
+
+  -- A first, definitely rejected attempt is still safe to replace.
+  v_job := pg_temp.s03_claim(9);
+  perform pg_temp.s03_gate(v_job);
+  perform public.release_notification_job_v2(repeat('s',43),v_job.id,v_job.lease_token,'resend_http_422',false,1,true);
+  perform pg_temp.s03_move(v_job.appointment_id);
+  if (select count(*) from public.appointment_notification_jobs where appointment_id=v_job.appointment_id) <> 2 then
+    raise exception 'S03 first definite rejection did not allow safe replacement';
+  end if;
+  update public.appointment_notification_jobs set available_at=now()+interval '1 day' where appointment_id=v_job.appointment_id;
+
+  -- A retried rejected job becomes ambiguous again before external HTTP starts.
+  v_job := pg_temp.s03_claim(10);
+  perform pg_temp.s03_gate(v_job);
+  perform public.release_notification_job_v2(repeat('s',43),v_job.id,v_job.lease_token,'test_definite_retry',true,1,true);
+  v_job := pg_temp.s03_claim(10);
+  v_gate := pg_temp.s03_gate(v_job);
+  if not exists (select 1 from public.appointment_notification_jobs where id=v_job.id and delivery_certainty='ambiguous') then
+    raise exception 'S03 retry remained replacement-safe while provider request was in flight';
+  end if;
+  perform pg_temp.s03_move(v_job.appointment_id);
+  perform public.complete_notification_job_v2(repeat('s',43),v_job.id,(v_gate->>'receipt_token')::uuid,'late-after-move',repeat('f',64));
+  if (select count(*) from public.appointment_notification_jobs where appointment_id=v_job.appointment_id) <> 1
+     or not exists (select 1 from public.appointment_notification_jobs where id=v_job.id and not is_current
+       and state='sent' and provider_message_id='late-after-move') then
+    raise exception 'S03 late reschedule receipt was lost or reactivated';
+  end if;
+
+  -- Enough time for the bounded provider call must remain before every deadline.
+  v_job := pg_temp.s03_claim(11);
+  update public.appointment_notification_jobs set retry_until=clock_timestamp()+interval '5 seconds' where id=v_job.id;
+  begin
+    perform pg_temp.s03_gate(v_job);
+    raise exception 'S03 insufficient send budget was allowed';
+  exception when others then
+    if sqlerrm <> 'NOTIFICATION_SEND_BUDGET_EXHAUSTED' then raise; end if;
+  end;
+  update public.appointment_notification_jobs set state='failed_terminal',lease_token=null,lease_expires_at=null where id=v_job.id;
+
+  -- Receipt proof survives cancellation; a lease token cannot forge completion.
+  v_job := pg_temp.s03_claim(12);
+  begin
+    perform public.complete_notification_job_v2(repeat('s',43),v_job.id,v_job.lease_token,'forged-before-send',repeat('f',64));
+    raise exception 'S03 lease alone forged a send receipt';
+  exception when others then
+    if sqlerrm <> 'NOTIFICATION_LEASE_LOST' then raise; end if;
+  end;
+  v_gate := pg_temp.s03_gate(v_job);
+  update public.appointments set status='cancelled',cancelled_at=now() where id=v_job.appointment_id;
+  perform public.complete_notification_job_v2(repeat('s',43),v_job.id,(v_gate->>'receipt_token')::uuid,'late-after-cancel',repeat('f',64));
+  if not exists (select 1 from public.appointment_notification_jobs where id=v_job.id and not is_current
+    and state='sent' and provider_message_id='late-after-cancel' and superseded_reason='cancelled_after_attempt') then
+    raise exception 'S03 late cancel receipt was lost or reactivated';
+  end if;
+
+  for v_index in 13..14 loop
+    v_job := pg_temp.s03_claim(v_index);
+    update public.appointments set status=case v_index when 13 then 'completed' else 'no_show' end where id=v_job.appointment_id;
+    if not exists (select 1 from public.appointment_notification_jobs where id=v_job.id and not is_current and state='failed_terminal') then
+      raise exception 'S03 inactive appointment retained a sendable confirmation';
+    end if;
+  end loop;
+
+  -- A starts, its lease expires, B starts, then A returns a real receipt.
+  v_job := pg_temp.s03_claim(15);
+  v_gate := pg_temp.s03_gate(v_job);
+  update public.appointment_notification_jobs set lease_expires_at=clock_timestamp()-interval '1 second' where id=v_job.id;
+  v_job := pg_temp.s03_claim(15);
+  v_second := pg_temp.s03_gate(v_job);
+  if v_gate->>'receipt_token' is distinct from v_second->>'receipt_token' then
+    raise exception 'S03 reclamation replaced stable request receipt proof';
+  end if;
+  perform public.complete_notification_job_v2(repeat('s',43),v_job.id,(v_gate->>'receipt_token')::uuid,'accepted-by-A',repeat('f',64));
+  perform public.complete_notification_job_v2(repeat('s',43),v_job.id,(v_second->>'receipt_token')::uuid,'accepted-by-A',repeat('f',64));
+  if not exists (select 1 from public.appointment_notification_jobs where id=v_job.id and state='sent' and delivery_certainty='accepted') then
+    raise exception 'S03 old attempt receipt was lost after reclaim';
+  end if;
+  begin
+    perform public.complete_notification_job_v2(repeat('s',43),v_job.id,(v_gate->>'receipt_token')::uuid,'conflicting-id',repeat('f',64));
+    raise exception 'S03 overwrote a real provider receipt';
+  exception when others then
+    if sqlerrm <> 'NOTIFICATION_LEASE_LOST' then raise; end if;
+  end;
+
+  v_job := pg_temp.s03_claim(16);
+  update public.appointments set status='cancelled',cancelled_at=now() where id=v_job.appointment_id;
+  begin
+    perform pg_temp.s03_gate(v_job);
+    raise exception 'S03 cancellation between claim and gate still sent';
+  exception when others then
+    if sqlerrm <> 'NOTIFICATION_LEASE_LOST' then raise; end if;
+  end;
+end $$;
 
 rollback;

@@ -58,6 +58,7 @@ type ProviderResult =
   };
 
 type RpcResult<T> = { ok: boolean; data: T | null; status: number };
+type SendPermission = { server_time: string; send_before: string; receipt_token: string };
 
 export type NotificationDispatchSummary = {
   status: 'ok' | 'disabled' | 'claim_failed';
@@ -448,7 +449,8 @@ export async function dispatchNotificationBatch(
       return;
     }
 
-    const locked = await rpc<boolean>(env, 'lock_notification_request_v2', {
+    const lockStarted = performance.now();
+    const locked = await rpc<SendPermission>(env, 'lock_notification_request_v2', {
       p_dispatch_secret: dispatchSecret,
       p_job_id: row.job_id,
       p_lease_token: row.lease_token,
@@ -456,7 +458,15 @@ export async function dispatchNotificationBatch(
       p_origin: prepared.origin,
       p_request_fingerprint: prepared.fingerprint,
     }, fetchImpl);
-    if (!locked.ok || locked.data !== true) {
+    const deadline = Date.parse(locked.data?.send_before ?? '');
+    const serverTime = Date.parse(locked.data?.server_time ?? '');
+    const receiptToken = locked.data?.receipt_token;
+    // Do not start on a stale RPC reply. The elapsed-time check also covers a
+    // Worker clock behind PostgreSQL; subtracting the full RPC time is conservative.
+    if (!locked.ok || !Number.isFinite(deadline) || !Number.isFinite(serverTime)
+        || deadline <= Date.now() || deadline - serverTime <= performance.now() - lockStarted
+        || typeof receiptToken !== 'string'
+        || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(receiptToken)) {
       summary.leaseErrors += 1;
       return;
     }
@@ -466,11 +476,11 @@ export async function dispatchNotificationBatch(
       const completed = await rpc<boolean>(env, 'complete_notification_job_v2', {
         p_dispatch_secret: dispatchSecret,
         p_job_id: row.job_id,
-        p_lease_token: row.lease_token,
+        p_receipt_token: receiptToken,
         p_provider_message_id: provider.providerMessageId,
         p_request_fingerprint: prepared.fingerprint,
       }, fetchImpl);
-      if (completed.ok) summary.sent += 1;
+      if (completed.ok && completed.data === true) summary.sent += 1;
       else summary.leaseErrors += 1;
       return;
     }

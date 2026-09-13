@@ -100,7 +100,7 @@ async function verifyAnonymousCannotForgeReceipt() {
     body: JSON.stringify({
       p_dispatch_secret: createSecret(48),
       p_job_id: randomUUID(),
-      p_lease_token: randomUUID(),
+      p_receipt_token: randomUUID(),
       p_provider_message_id: 'forged-f09-05',
       p_request_fingerprint: 'f'.repeat(64),
     }),

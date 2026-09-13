@@ -1,37 +1,62 @@
-import app from './index.ts';
+import { Hono } from 'hono';
+import coreApp from './index.ts';
 import availability from './availability.ts';
 import bookings from './bookings.ts';
 import publicBookingRecovery from './public-booking-recovery.ts';
 import publicBooking from './public-booking.ts';
 import customerManage from './customer-manage.ts';
 import calendar from './calendar.ts';
-import { isPasswordRecovery } from './auth.ts';
+import {
+  mutationSecurityError,
+  type AuthEnv,
+} from './auth.ts';
+import type { PublicAbuseEnv } from './public-abuse.ts';
 
-function protectedFeaturePath(path: string) {
-  return path === '/api/availability'
-    || path.startsWith('/api/availability/')
-    || path === '/api/bookings'
-    || path.startsWith('/api/bookings/')
-    || path === '/api/calendar'
-    || path.startsWith('/api/calendar/')
-    || path === '/api/public/settings';
+type Env = AuthEnv & PublicAbuseEnv & {
+  MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
+};
+
+type MutationClass = 'safe' | 'cookie' | 'public' | 'capability';
+
+const app = new Hono<{ Bindings: Env }>();
+
+function mutationClass(method: string, path: string): MutationClass {
+  const normalizedMethod = method.toUpperCase();
+  if (normalizedMethod === 'GET' || normalizedMethod === 'HEAD' || normalizedMethod === 'OPTIONS') {
+    return 'safe';
+  }
+
+  if (normalizedMethod === 'POST' && (path === '/api/public/booking/recover'
+      || /^\/api\/public\/business\/[^/]+\/book$/.test(path))) {
+    return 'public';
+  }
+
+  if (normalizedMethod === 'POST' && (path === '/api/manage/view'
+      || path === '/api/manage/slots'
+      || path === '/api/manage/reschedule'
+      || path === '/api/manage/cancel')) {
+    return 'capability';
+  }
+
+  return 'cookie';
 }
 
-// Account routes defined in index.ts already enforce the same recovery-only gate.
-// This middleware is registered before the remaining feature routers so a recovery
-// session cannot use booking/calendar/settings APIs until a new password is set.
+// Cookie-authenticated browser mutations fail closed. Public booking and
+// management-capability routes are explicit exceptions with their own proof,
+// abuse and idempotency contracts. Unknown unsafe /api routes never inherit an
+// exception accidentally.
 app.use('/api/*', async (context, next) => {
-  if (protectedFeaturePath(context.req.path) && isPasswordRecovery(context)) {
-    return context.json({
-      error: {
-        code: 'PASSWORD_UPDATE_REQUIRED',
-        message: 'Devam etmeden önce yeni parolanızı belirleyin.',
-      },
-    }, 403);
+  if (mutationClass(context.req.method, context.req.path) !== 'cookie') {
+    await next();
+    return;
   }
+
+  const securityError = mutationSecurityError(context);
+  if (securityError) return context.json({ error: securityError }, 403);
   await next();
 });
 
+app.route('/', coreApp);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);
 app.route('/api/public', publicBookingRecovery);

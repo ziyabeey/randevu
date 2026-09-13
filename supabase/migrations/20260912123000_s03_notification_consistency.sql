@@ -26,7 +26,9 @@ alter table public.appointment_notification_jobs
   add column request_locked_at timestamptz,
   add column first_provider_attempt_at timestamptz,
   add column provider_idempotency_expires_at timestamptz,
-  add column delivery_certainty text not null default 'unattempted';
+  add column delivery_certainty text not null default 'unattempted',
+  add column has_ambiguous_history boolean not null default false,
+  add column receipt_token uuid;
 
 update public.appointment_notification_jobs j
 set event_id = gen_random_uuid(),
@@ -72,6 +74,23 @@ set state = 'failed_terminal',
     updated_at = now()
 where state not in ('sent','failed_terminal')
   and (attempt_count > 0 or last_attempt_at is not null);
+
+-- Legacy inactive appointments must not re-enter the delivery queue. Preserve
+-- accepted/terminal evidence, including unverifiable attempted-job reasons.
+update public.appointment_notification_jobs j
+set is_current = false,
+    superseded_at = now(),
+    superseded_reason = 'legacy_appointment_inactive',
+    state = case when j.state in ('sent','failed_terminal') then j.state else 'failed_terminal' end,
+    terminal_at = coalesce(j.terminal_at, now()),
+    last_error_class = case
+      when j.state in ('sent','failed_terminal') then j.last_error_class
+      else 'legacy_appointment_inactive'
+    end,
+    lease_token = null,
+    lease_expires_at = null
+from public.appointments a
+where a.id = j.appointment_id and a.status not in ('scheduled','confirmed');
 
 alter table public.appointment_notification_jobs
   alter column event_id set default gen_random_uuid(),
@@ -306,8 +325,8 @@ begin
     or new.staff_name_snapshot is distinct from old.staff_name_snapshot
     or new.timezone is distinct from old.timezone;
 
-  if new.status is not distinct from 'cancelled' and not v_changed then
-    if old.status = 'cancelled' then return new; end if;
+  if new.status not in ('scheduled','confirmed') then
+    if new.status = old.status and not v_changed then return new; end if;
   elsif not v_changed then
     return new;
   end if;
@@ -326,23 +345,24 @@ begin
 
   v_safe_to_replace := (
     v_job.delivery_certainty in ('unattempted','rejected')
+    and not v_job.has_ambiguous_history
     and v_job.provider_message_id is null
   );
 
-  if new.status = 'cancelled' then
+  if new.status not in ('scheduled','confirmed') then
     update public.appointment_notification_jobs
     set is_current = false,
         superseded_at = now(),
         superseded_reason = case
-          when v_safe_to_replace then 'cancelled_before_send'
-          else 'cancelled_after_attempt'
+          when v_safe_to_replace then new.status || '_before_send'
+          else new.status || '_after_attempt'
         end,
         state = case when state = 'sent' then state else 'failed_terminal' end,
         terminal_at = case when state = 'sent' then terminal_at else coalesce(terminal_at, now()) end,
         last_error_class = case
           when state = 'sent' then last_error_class
-          when v_safe_to_replace then 'cancelled_before_send'
-          else 'cancelled_after_attempt_needs_review'
+          when v_safe_to_replace then new.status || '_before_send'
+          else new.status || '_after_attempt_needs_review'
         end,
         lease_token = null,
         lease_expires_at = null,
@@ -584,13 +604,18 @@ create or replace function public.lock_notification_request_v2(
   p_origin text,
   p_request_fingerprint text
 )
-returns boolean
+returns jsonb
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
   v_job public.appointment_notification_jobs;
+  v_appointment public.appointments;
+  v_now timestamptz;
+  v_window_end timestamptz;
+  v_send_before timestamptz;
+  v_receipt_token uuid;
 begin
   if not public.notification_dispatch_authorized(p_dispatch_secret) then
     raise exception 'NOTIFICATION_DISPATCH_UNAUTHORIZED';
@@ -598,57 +623,81 @@ begin
   if p_sender is null or char_length(btrim(p_sender)) not between 3 and 320 then
     raise exception 'INVALID_NOTIFICATION_SENDER';
   end if;
-  if p_origin is null or p_origin !~ '^https://[^/]+(?:\:[0-9]+)?$' then
+  if p_origin is null or p_origin !~ '^https://[^/@?#[:space:]]+$|^http://(localhost|127[.]0[.]0[.]1|\[::1\])(:[0-9]+)?$' then
     raise exception 'INVALID_NOTIFICATION_ORIGIN';
   end if;
   if p_request_fingerprint is null or p_request_fingerprint !~ '^[0-9a-f]{64}$' then
     raise exception 'INVALID_NOTIFICATION_FINGERPRINT';
   end if;
 
+  -- Lifecycle updates lock appointment then job. Take the same order: a
+  -- committed cancel/reschedule wins over a send that has not crossed this gate.
+  select a.* into v_appointment
+  from public.appointments a
+  where a.id = (select j.appointment_id from public.appointment_notification_jobs j where j.id = p_job_id)
+  for share;
+
   select * into v_job
   from public.appointment_notification_jobs j
-  where j.id = p_job_id
-    and j.state = 'leased'
-    and j.lease_token = p_lease_token
+  where j.id = p_job_id and j.state = 'leased' and j.lease_token = p_lease_token
   for update;
 
   if v_job.id is null then raise exception 'NOTIFICATION_LEASE_LOST'; end if;
-  if not v_job.is_current then raise exception 'NOTIFICATION_EVENT_STALE'; end if;
+  if not v_job.is_current or v_appointment.id is null
+     or v_appointment.status not in ('scheduled','confirmed')
+     or v_appointment.starts_at is distinct from v_job.starts_at_snapshot
+     or v_appointment.timezone is distinct from v_job.timezone_snapshot then
+    raise exception 'NOTIFICATION_EVENT_STALE';
+  end if;
+
+  -- now() is the transaction start; it can predate a long row-lock wait.
+  v_now := clock_timestamp();
+  if v_job.lease_expires_at is null or v_job.lease_expires_at <= v_now then
+    raise exception 'NOTIFICATION_LEASE_EXPIRED';
+  end if;
+  if v_job.retry_until <= v_now then raise exception 'NOTIFICATION_RETRY_EXPIRED'; end if;
+  v_window_end := coalesce(v_job.provider_idempotency_expires_at, v_now + interval '24 hours');
+  if v_window_end <= v_now then raise exception 'NOTIFICATION_IDEMPOTENCY_WINDOW_EXPIRED'; end if;
+  -- Worker provider timeout is 10 seconds; leave one further second of margin.
+  v_send_before := least(v_job.lease_expires_at, v_job.retry_until, v_window_end) - interval '11 seconds';
+  if v_send_before <= v_now then raise exception 'NOTIFICATION_SEND_BUDGET_EXHAUSTED'; end if;
 
   if v_job.request_fingerprint is null then
-    if v_job.first_provider_attempt_at is not null
-       or v_job.delivery_certainty <> 'unattempted' then
+    if v_job.first_provider_attempt_at is not null or v_job.delivery_certainty <> 'unattempted' then
       raise exception 'NOTIFICATION_REQUEST_UNVERIFIABLE';
     end if;
-
-    update public.appointment_notification_jobs
-    set sender_snapshot = btrim(p_sender),
-        origin_snapshot = p_origin,
-        request_fingerprint = p_request_fingerprint,
-        request_locked_at = now(),
-        first_provider_attempt_at = now(),
-        provider_idempotency_expires_at = now() + interval '24 hours',
-        delivery_certainty = 'ambiguous',
-        updated_at = now()
-    where id = p_job_id;
   elsif v_job.request_fingerprint <> p_request_fingerprint
      or v_job.sender_snapshot <> btrim(p_sender)
      or v_job.origin_snapshot <> p_origin then
     raise exception 'NOTIFICATION_REQUEST_MISMATCH';
   end if;
 
-  if coalesce(v_job.provider_idempotency_expires_at, now() + interval '24 hours') <= now() then
-    raise exception 'NOTIFICATION_IDEMPOTENCY_WINDOW_EXPIRED';
-  end if;
+  -- One receipt proof per immutable request, shared by its authorized attempts.
+  -- It survives lease reclamation/cancellation so a late real acceptance is kept.
+  v_receipt_token := coalesce(v_job.receipt_token, gen_random_uuid());
+  update public.appointment_notification_jobs
+  set sender_snapshot = btrim(p_sender),
+      origin_snapshot = p_origin,
+      request_fingerprint = p_request_fingerprint,
+      request_locked_at = coalesce(request_locked_at, v_now),
+      first_provider_attempt_at = coalesce(first_provider_attempt_at, v_now),
+      provider_idempotency_expires_at = v_window_end,
+      has_ambiguous_history = has_ambiguous_history or (
+        first_provider_attempt_at is not null and delivery_certainty = 'ambiguous'
+      ),
+      delivery_certainty = 'ambiguous',
+      receipt_token = v_receipt_token,
+      updated_at = v_now
+  where id = p_job_id;
 
-  return true;
+  return jsonb_build_object('server_time', v_now, 'send_before', v_send_before, 'receipt_token', v_receipt_token);
 end
 $$;
 
 create or replace function public.complete_notification_job_v2(
   p_dispatch_secret text,
   p_job_id uuid,
-  p_lease_token uuid,
+  p_receipt_token uuid,
   p_provider_message_id text,
   p_request_fingerprint text
 )
@@ -682,10 +731,9 @@ begin
       delivery_certainty = 'accepted',
       updated_at = now()
   where j.id = p_job_id
-    and j.is_current
-    and j.state = 'leased'
-    and j.lease_token = p_lease_token
-    and j.request_fingerprint = p_request_fingerprint;
+    and j.receipt_token = p_receipt_token
+    and j.request_fingerprint = p_request_fingerprint
+    and (j.provider_message_id is null or j.provider_message_id = p_provider_message_id);
 
   get diagnostics v_updated = row_count;
   if v_updated <> 1 then raise exception 'NOTIFICATION_LEASE_LOST'; end if;
@@ -713,6 +761,8 @@ declare
   v_state text;
   v_error text;
   v_window_expired boolean;
+  v_certainty text;
+  v_ambiguous_history boolean;
 begin
   if not public.notification_dispatch_authorized(p_dispatch_secret) then
     raise exception 'NOTIFICATION_DISPATCH_UNAUTHORIZED';
@@ -730,8 +780,17 @@ begin
 
   if v_job.id is null then raise exception 'NOTIFICATION_LEASE_LOST'; end if;
 
+  v_ambiguous_history := v_job.has_ambiguous_history or (
+    v_job.first_provider_attempt_at is not null and not coalesce(p_definitely_rejected, false)
+  );
+  v_certainty := case
+    when v_job.first_provider_attempt_at is null then v_job.delivery_certainty
+    when coalesce(p_definitely_rejected, false) and not v_ambiguous_history then 'rejected'
+    else 'ambiguous'
+  end;
+
   v_delay := greatest(1, least(coalesce(p_retry_after_seconds, 60), 86400));
-  v_window_expired := v_job.delivery_certainty = 'ambiguous'
+  v_window_expired := v_certainty = 'ambiguous'
     and v_job.provider_idempotency_expires_at is not null
     and now() + make_interval(secs => v_delay) >= v_job.provider_idempotency_expires_at;
   v_error := case
@@ -751,10 +810,8 @@ begin
         last_error_class = v_error,
         lease_token = null,
         lease_expires_at = null,
-        delivery_certainty = case
-          when coalesce(p_definitely_rejected, false) then 'rejected'
-          else delivery_certainty
-        end,
+        delivery_certainty = v_certainty,
+        has_ambiguous_history = v_ambiguous_history,
         updated_at = now()
     where id = p_job_id;
   else
@@ -765,10 +822,8 @@ begin
         last_error_class = p_error_class,
         lease_token = null,
         lease_expires_at = null,
-        delivery_certainty = case
-          when coalesce(p_definitely_rejected, false) then 'rejected'
-          else delivery_certainty
-        end,
+        delivery_certainty = v_certainty,
+        has_ambiguous_history = v_ambiguous_history,
         updated_at = now()
     where id = p_job_id;
   end if;

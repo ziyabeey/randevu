@@ -142,7 +142,7 @@ test('F09-03/S03 notification dispatcher contract', async (t) => {
         assert.equal(body.p_origin, env.PUBLIC_APP_ORIGIN);
         assert.match(body.p_request_fingerprint, /^[0-9a-f]{64}$/);
         lockedFingerprint = body.p_request_fingerprint;
-        return json(true);
+        return json(sendGate());
       }
       if (url === 'https://api.resend.com/emails') {
         assert.equal(new Headers(init.headers).get('Idempotency-Key'), row.provider_idempotency_key);
@@ -157,7 +157,7 @@ test('F09-03/S03 notification dispatcher contract', async (t) => {
         const body = JSON.parse(String(init.body));
         assert.equal(body.p_dispatch_secret, dispatchSecret);
         assert.equal(body.p_job_id, row.job_id);
-        assert.equal(body.p_lease_token, row.lease_token);
+        assert.equal(body.p_receipt_token, sendGate().receipt_token);
         assert.equal(body.p_provider_message_id, 'resend-message-success');
         assert.equal(body.p_request_fingerprint, lockedFingerprint);
         return json(true);
@@ -208,7 +208,7 @@ test('F09-03/S03 notification dispatcher contract', async (t) => {
           assert.equal(body.p_origin, persistedLock.p_origin);
           assert.equal(body.p_request_fingerprint, persistedLock.p_request_fingerprint);
         }
-        return json(true);
+        return json(sendGate());
       }
       if (url === 'https://api.resend.com/emails') {
         providerKeys.push(new Headers(init.headers).get('Idempotency-Key'));
@@ -248,7 +248,7 @@ test('F09-03/S03 notification dispatcher contract', async (t) => {
     const fakeFetch = async (input, init = {}) => {
       const url = String(input);
       if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([row]);
-      if (url.endsWith('/rpc/lock_notification_request_v2')) return json(true);
+      if (url.endsWith('/rpc/lock_notification_request_v2')) return json(sendGate());
       if (url === 'https://api.resend.com/emails') {
         return json({ name: 'validation_error' }, 400);
       }
@@ -266,3 +266,7 @@ test('F09-03/S03 notification dispatcher contract', async (t) => {
     assert.equal(releaseBody.p_error_class, 'resend_validation_error');
   });
 });
+
+function sendGate() {
+  return { server_time: new Date().toISOString(), send_before: new Date(Date.now() + 30_000).toISOString(), receipt_token: 'cc000000-0000-4000-8000-000000000103' };
+}
