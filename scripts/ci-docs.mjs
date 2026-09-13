@@ -15,6 +15,9 @@ const STATES = new Set([
   'Tamamlandı',
 ]);
 
+// Ownership/planning may wait on prerequisites; implementation and acceptance may not.
+const PREREQUISITES_REQUIRED = new Set(['Çalışılıyor', 'İncelemede', "Main'de / kabul açık", 'Tamamlandı']);
+
 function trackedFiles(root) {
   const output = execFileSync('git', ['ls-files', '-z'], {
     cwd: root,
@@ -233,10 +236,10 @@ function checkTasks(root, tracked, errors) {
   for (const id of graph.keys()) visit(id, []);
 
   for (const [id, task] of tasks) {
-    if (task.state !== 'Tamamlandı') continue;
+    if (!PREREQUISITES_REQUIRED.has(task.state)) continue;
     for (const dep of task.deps) {
-      if (TASK_ID.test(dep) && tasks.get(dep)?.state !== 'Tamamlandı') errors.push(`TASKS.md: completed task ${id} has incomplete dependency ${dep}`);
-      if (gates.has(dep) && gateStates.get(dep) !== true) errors.push(`TASKS.md: completed task ${id} depends on open gate ${dep}`);
+      if (TASK_ID.test(dep) && tasks.get(dep)?.state !== 'Tamamlandı') errors.push(`TASKS.md: task ${id} (${task.state}) has incomplete dependency ${dep}`);
+      if (gates.has(dep) && gateStates.get(dep) !== true) errors.push(`TASKS.md: task ${id} (${task.state}) depends on open gate ${dep}`);
     }
   }
 

@@ -141,3 +141,28 @@ test('does not require a fixed PROJECT_STATE summary sentence', () => {
   const root = fixture({ projectState: '# State\n\nGüncel görev durumu TASKS belgesindedir.\n' });
   assert.deepEqual(validate(root), []);
 });
+
+for (const state of ['Çalışılıyor', 'İncelemede', "Main'de / kabul açık", 'Tamamlandı']) {
+  test(`rejects ${state} tasks with open gates or incomplete task prerequisites`, () => {
+    const errors = validate(fixture({ change: (tasks) => {
+      Object.assign(tasks.find(({ id }) => id === 'F10-02'), { state, dep: 'F10-01, GS' });
+    } }));
+    assert.ok(errors.some((error) => error.includes('F10-02') && error.includes('incomplete dependency F10-01')));
+    assert.ok(errors.some((error) => error.includes('F10-02') && error.includes('open gate GS')));
+  });
+}
+
+for (const state of ['Planlandı', 'Üstlenildi', 'Engelli']) {
+  test(`allows ${state} tasks to wait for prerequisites`, () => {
+    assert.deepEqual(validate(fixture({ change: (tasks) => {
+      Object.assign(tasks.find(({ id }) => id === 'F10-02'), { state, dep: 'F10-01, GS' });
+    } })), []);
+  });
+}
+
+test('allows work with accepted prerequisites and TEMEL design work while GS stays open', () => {
+  assert.deepEqual(validate(fixture({ change: (tasks) => {
+    Object.assign(tasks.find(({ id }) => id === 'F10-01'), { state: 'Çalışılıyor', dep: 'F09-05, G09' });
+    tasks.find(({ id }) => id === 'F12-01').state = 'Çalışılıyor';
+  } })), []);
+});

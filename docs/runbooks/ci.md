@@ -47,7 +47,7 @@ Repo sahibi `Settings → Rules → Rulesets → New ruleset → Import a rulese
 gh api --method POST repos/ziyabeey1-ai/randevu/rulesets --input .github/main-ruleset.json
 ```
 
-Aynı kural varsa ikinci kez oluşturma; mevcut ID'nin ayarını karşılaştırıp güncelle. Yönetici erişimi bağlı uygulamada yoktur: branch-protection okuması `403 Resource not accessible by integration`, rulesets listesi boş ve main `protected:false` döndü. Bu erişim sınırı nedeniyle kod PR'ı ile gerçek koruma kabulü ayrı kaydedilir.
+Aynı kural varsa ikinci kez oluşturma; mevcut ID'nin ayarını karşılaştırıp güncelle. Yönetici erişimi bağlı uygulamada yoktur; ilk branch-protection okuması `403 Resource not accessible by integration` döndü. Repo sahibinin kurulumu sonrası 13 Eylül 2026'da [23159972 numaralı ruleset](https://github.com/ziyabeey1-ai/randevu/rules/23159972) etkin ve main `protected:true` doğrulandı. Kapsam main, bypass yok, insan onayı 0, last-push approval false, konuşma çözümü ve strict CI gate / Actions 15368 zorunludur. Koruma ruleset ile sağlandığından eski branch-protection alanlarının boş olması korumasızlık anlamına gelmez.
 
 Uygulamadan sonra geri oku:
 
