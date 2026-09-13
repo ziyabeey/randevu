@@ -16,6 +16,7 @@ import {
   resolvePublicAbuseIdentity,
   type PublicAbuseEnv,
 } from './public-abuse.ts';
+import { PUBLIC_BOOKING_SUBMIT_WINDOW_SECONDS } from '../shared/public-booking-intent.ts';
 
 type Env = AuthEnv & PublicAbuseEnv;
 type BaseContext = AppContext<Env>;
@@ -202,7 +203,14 @@ publicBooking.get('/business/:slug', async (context) => {
     return context.json({ error: { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.' } }, 404);
   }
 
-  return context.json({ business: publicBusiness, services: services.data ?? [] });
+  return context.json({
+    business: publicBusiness,
+    services: services.data ?? [],
+    bookingClock: {
+      serverNowEpochSeconds: Math.floor(Date.now() / 1000),
+      submitWindowSeconds: PUBLIC_BOOKING_SUBMIT_WINDOW_SECONDS,
+    },
+  });
 });
 
 publicBooking.get('/business/:slug/staff', async (context) => {

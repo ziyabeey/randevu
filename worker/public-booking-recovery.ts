@@ -7,6 +7,15 @@ import {
   resolvePublicAbuseIdentity,
   type PublicAbuseEnv,
 } from './public-abuse.ts';
+import {
+  PUBLIC_BOOKING_MAX_FUTURE_SECONDS,
+  isCanonicalPublicBookingRecoveryId,
+  isCanonicalPublicBookingSecret,
+  looksLikePublicBookingIntentV2,
+  parsePublicBookingIntentV2Key,
+  sha256Hex,
+  verifyPublicBookingIntentV2,
+} from '../shared/public-booking-intent.ts';
 
 type Env = PublicAbuseEnv & {
   SUPABASE_URL: string;
@@ -41,6 +50,24 @@ type RecoveryRow = {
   management_token_iv: string;
   key_version: number;
   recovery_expires_at: string;
+};
+type ResolutionRow = {
+  resolution: 'committed' | 'exists_nolink' | 'closed_absent';
+  recovery_id: string;
+  appointment_id: string | null;
+  business_name: string | null;
+  status: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  timezone: string | null;
+  service_name: string | null;
+  staff_name: string | null;
+  price_minor: number | null;
+  currency: string | null;
+  management_token_ciphertext: string | null;
+  management_token_iv: string | null;
+  key_version: number | null;
+  recovery_expires_at: string | null;
 };
 
 const bookingRecovery = new Hono<{ Bindings: Env }>();
@@ -91,10 +118,6 @@ function base64UrlToBytes(value: string) {
   const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
   const binary = atob(padded);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-}
-async function sha256Hex(value: string) {
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
-  return Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 async function encryptionKey(env: Env) {
   const raw = env.MANAGEMENT_LINK_ENCRYPTION_KEY_V1?.trim();
@@ -188,7 +211,8 @@ function errorResponse(context: any, error: ReturnType<typeof rpcError>) {
 
 bookingRecovery.post('/business/:slug/book', async (context) => {
   const slug = context.req.param('slug');
-  const key = validIdempotencyKey(context.req.header('Idempotency-Key'));
+  const rawKey = context.req.header('Idempotency-Key');
+  let key = validIdempotencyKey(rawKey);
   const body = await readJson(context.req.raw);
   const customerName = typeof body?.customerName === 'string' ? body.customerName.trim() : '';
   const customerPhone = cleanOptional(body?.customerPhone, 40);
@@ -207,6 +231,17 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
       || (customerEmail !== null && !customerEmail.includes('@'))
       || !validUuid(body?.serviceId) || !validUuid(body?.staffId) || !validTimestamp(body?.startsAt)) {
     return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Ad, iletişim, hizmet veya saat bilgileri geçerli değil.' } }, 400);
+  }
+
+  if (looksLikePublicBookingIntentV2(rawKey)) {
+    const proof = await verifyPublicBookingIntentV2(rawKey, recoveryId, recoverySecret);
+    const nowEpochSeconds = Math.floor(Date.now() / 1000);
+    if (!proof
+        || !isCanonicalPublicBookingSecret(managementToken)
+        || proof.deadlineEpochSeconds > nowEpochSeconds + PUBLIC_BOOKING_MAX_FUTURE_SECONDS) {
+      return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon isteği geçerli değil.' } }, 400);
+    }
+    key = rawKey;
   }
 
   const abuse = await resolvePublicAbuseIdentity(context);
@@ -289,6 +324,81 @@ bookingRecovery.post('/booking/recover', async (context) => {
   }
 
   return context.json({
+    appointment: {
+      appointment_id: row.appointment_id,
+      business_name: row.business_name,
+      status: row.status,
+      starts_at: row.starts_at,
+      ends_at: row.ends_at,
+      timezone: row.timezone,
+      service_name: row.service_name,
+      staff_name: row.staff_name,
+      price_minor: row.price_minor,
+      currency: row.currency,
+    },
+    management: { url: `/m#${encodeURIComponent(managementToken)}` },
+    recovery: { expiresAt: row.recovery_expires_at },
+  });
+});
+
+bookingRecovery.post('/booking/resolve', async (context) => {
+  const body = await readJson(context.req.raw);
+  const recoveryId = body?.recoveryId;
+  const key = body?.idempotencyKey;
+  const recoverySecret = body?.recoverySecret;
+  const parsed = parsePublicBookingIntentV2Key(key);
+  if (!parsed
+      || !isCanonicalPublicBookingRecoveryId(recoveryId)
+      || !isCanonicalPublicBookingSecret(recoverySecret)) {
+    return context.json({ error: { code: 'BOOKING_RECOVERY_NOT_FOUND', message: 'Randevu sonucu bulunamadı.' } }, 404);
+  }
+
+  const proof = await verifyPublicBookingIntentV2(key, recoveryId, recoverySecret);
+  if (!proof
+      || proof.deadlineEpochSeconds > Math.floor(Date.now() / 1000) + PUBLIC_BOOKING_MAX_FUTURE_SECONDS) {
+    return context.json({ error: { code: 'BOOKING_RECOVERY_NOT_FOUND', message: 'Randevu sonucu bulunamadı.' } }, 404);
+  }
+
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+
+  const result = await publicOperation<ResolutionRow[]>(context.env, 'resolve', {
+    p_recovery_id: recoveryId,
+    p_idempotency_key: key,
+    p_recovery_secret_hash: proof.secretHash,
+  }, abuse);
+  if (!result.ok) {
+    const error = rpcError(result.data, 'Randevu sonucu doğrulanamadı.');
+    if (error.status === 429 || error.status === 503) return errorResponse(context, error);
+    return context.json({ error: { code: 'BOOKING_RECOVERY_NOT_FOUND', message: 'Randevu sonucu bulunamadı.' } }, 404);
+  }
+
+  const row = first(result.data);
+  if (!row || row.recovery_id !== recoveryId
+      || !['committed', 'exists_nolink', 'closed_absent'].includes(row.resolution)) {
+    return context.json({ error: { code: 'BOOKING_RECOVERY_NOT_FOUND', message: 'Randevu sonucu bulunamadı.' } }, 404);
+  }
+
+  if (row.resolution === 'closed_absent' || row.resolution === 'exists_nolink') {
+    return context.json({ resolution: row.resolution, recoveryId });
+  }
+
+  if (!row.appointment_id || !row.business_name || !row.status || !row.starts_at
+      || !row.ends_at || !row.timezone || !row.service_name || !row.staff_name
+      || !Number.isInteger(row.price_minor) || !row.currency
+      || !row.management_token_ciphertext || !row.management_token_iv
+      || !row.key_version || !row.recovery_expires_at) {
+    return context.json({ error: { code: 'BOOKING_RESULT_UNKNOWN', message: 'Randevu sonucu doğrulanamadı.' } }, 503);
+  }
+
+  const managementToken = await decryptManagementToken(context.env, row as RecoveryRow, recoveryId);
+  if (!managementToken || !isCanonicalPublicBookingSecret(managementToken)) {
+    return context.json({ resolution: 'exists_nolink', recoveryId });
+  }
+
+  return context.json({
+    resolution: 'committed',
+    recoveryId,
     appointment: {
       appointment_id: row.appointment_id,
       business_name: row.business_name,

@@ -43,6 +43,7 @@ function mutationClass(method: string, path: string): MutationClass {
   }
 
   if (normalizedMethod === 'POST' && (path === '/api/public/booking/recover'
+      || path === '/api/public/booking/resolve'
       || /^\/api\/public\/business\/[^/]+\/book$/.test(path))) {
     return 'public';
   }
