@@ -46,7 +46,8 @@ Bu iki liste `limit+1` okuyarak `hasMore/nextCursor` üretir; kullanıcıya dön
 - Cursor kullanıcı kimliği veya sır taşımaz; yine de biçim, sürüm, UUID ve timestamp doğrulanır.
 - Cursor business/appointment yetkisini aşamaz. RPC her sayfada güncel membership/appointment kapsamını yeniden doğrular.
 - Aynı timestamp'teki satırlar UUID tie-breaker ile kararlı ilerler.
-- Sayfalar arasında yeni kayıt eklenmesi önceki cursor'dan önceki veriyi yeniden göstermeye veya sonraki eski kayıtları atlamaya yol açmaz.
+- Keyset continuation, dışarıdan eşzamanlı sıralama-anahtarı mutasyonu olmayan veri kümesinde `(timestamp,id)` düzenini atlama/tekrar olmadan yürütür. Sayfalar arasında yeni kayıt eklenmesi önceki cursor'dan önceki veriyi yeniden göstermeye veya sonraki mevcut kayıtları atlamaya yol açmaz.
+- Sayfalar arasında `starts_at` / `created_at` sıralama anahtarının eşzamanlı değişmesi altındaki snapshot-consistency garantisi bu S07 kabulünün kapsamında değildir. Bu yarış ve liste güncelliği F13-01/F13-02 kapsamına taşınır.
 
 ## Negatif kabul
 
@@ -56,6 +57,7 @@ Bu iki liste `limit+1` okuyarak `hasMore/nextCursor` üretir; kullanıcıya dön
 - Başka işletme kaydı -> görünmez.
 - İlk sayfa ile ikinci sayfa birleşiminde atlama/çoğaltma yok.
 - İlk sayfa sonrası daha eski/sıralamada önce kalan yeni kayıt eklemek mevcut continuation'ı bozmaz.
+- Eşzamanlı `starts_at` / `created_at` mutasyonu bu kabulde test edilmez; F13-01/F13-02 yarış/güncellik kontratında ele alınır.
 - DB timeout -> açık `*_READ_TIMEOUT/UNAVAILABLE`, boş dizi değil.
 - Calendar 100+ fixture -> eksiksiz tarih aralığı sonucu veya açık timeout; 100'de sessiz kesme yok.
 
