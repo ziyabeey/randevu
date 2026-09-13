@@ -98,6 +98,7 @@ declare
   v_hash text:=repeat('a',64);
   v_created uuid;
   v_resolution text;
+  v_drained bigint;
   v_waited boolean:=false;
 begin
   perform dblink_connect('s07_create','host=127.0.0.1 port=5432 dbname=yzt_test user=postgres password=postgres application_name=s07_create');
@@ -122,6 +123,11 @@ begin
   if not v_waited then raise exception 'S07 create-first resolver never waited on recovery lock'; end if;
   perform dblink_exec('s07_create','commit');
   select resolution into v_resolution from dblink_get_result('s07_resolve') as t(resolution text);
+  perform * from dblink_get_result('s07_resolve') as t(resolution text);
+  get diagnostics v_drained = row_count;
+  if v_drained is distinct from 0 then
+    raise exception 'S07 create-first async result did not drain cleanly: %',v_drained;
+  end if;
   if v_created is null or v_resolution is distinct from 'committed' then
     raise exception 'S07 create-first result mismatch: %, %',v_created,v_resolution;
   end if;
@@ -145,6 +151,7 @@ declare
   v_hash text:=repeat('b',64);
   v_result text;
   v_resolution text;
+  v_drained bigint;
   v_waited boolean:=false;
 begin
   perform dblink_connect('s07_gate','host=127.0.0.1 port=5432 dbname=yzt_test user=postgres password=postgres application_name=s07_gate');
@@ -177,6 +184,11 @@ begin
   end if;
   perform dblink_exec('s07_gate','commit');
   select result into v_result from dblink_get_result('s07_precreate') as t(result text);
+  perform * from dblink_get_result('s07_precreate') as t(result text);
+  get diagnostics v_drained = row_count;
+  if v_drained is distinct from 0 then
+    raise exception 'S07 pre-lock async result did not drain cleanly: %',v_drained;
+  end if;
   if v_result is null or position('BOOKING_INTENT_CLOSED' in v_result)=0 then
     raise exception 'S07 released pre-lock create did not consume fence: %',v_result;
   end if;
@@ -202,6 +214,7 @@ declare
   v_hash text:=repeat('c',64);
   v_result text;
   v_started bigint;
+  v_drained bigint;
   v_waited boolean:=false;
 begin
   perform dblink_connect('s07_deadlock','host=127.0.0.1 port=5432 dbname=yzt_test user=postgres password=postgres application_name=s07_deadlock');
@@ -237,6 +250,11 @@ begin
   )::double precision);
   perform dblink_exec('s07_deadlock','commit');
   select result into v_result from dblink_get_result('s07_deadcreate') as t(result text);
+  perform * from dblink_get_result('s07_deadcreate') as t(result text);
+  get diagnostics v_drained = row_count;
+  if v_drained is distinct from 0 then
+    raise exception 'S07 deadline async result did not drain cleanly: %',v_drained;
+  end if;
   perform dblink_exec('s07_deadcreate','commit');
   if v_result is null or position('BOOKING_INTENT_DEADLINE_EXPIRED' in v_result)=0 then
     raise exception 'S07 blocked create used transaction now(): %',v_result;
@@ -273,6 +291,7 @@ declare
   v_key text;
   v_pruned integer;
   v_result text;
+  v_drained bigint;
   v_waited boolean:=false;
 begin
   select idempotency_key,submit_deadline into strict v_key,v_deadline
@@ -297,6 +316,11 @@ begin
   if not v_waited then raise exception 'S07 create did not wait on in-flight fence prune'; end if;
   perform dblink_exec('s07_prune','commit');
   select result into v_result from dblink_get_result('s07_prunecreate') as t(result text);
+  perform * from dblink_get_result('s07_prunecreate') as t(result text);
+  get diagnostics v_drained = row_count;
+  if v_drained is distinct from 0 then
+    raise exception 'S07 prune async result did not drain cleanly: %',v_drained;
+  end if;
   if v_result is null or position('BOOKING_INTENT_DEADLINE_EXPIRED' in v_result)=0 then
     raise exception 'S07 pruned fence allowed stale create: %',v_result;
   end if;
