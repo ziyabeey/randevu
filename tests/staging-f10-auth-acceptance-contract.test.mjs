@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const script = readFileSync(new URL('../scripts/staging-f10-auth-acceptance-current.mjs', import.meta.url), 'utf8');
+const script = readFileSync(new URL('../scripts/staging-f10-auth-acceptance.mjs', import.meta.url), 'utf8');
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-test('F10 hosted auth acceptance command is wired to the post-S01 script', () => {
-  assert.equal(pkg.scripts['staging:f10-auth-acceptance'], 'node scripts/staging-f10-auth-acceptance-current.mjs');
+test('F10 hosted auth acceptance command is wired to its canonical script', () => {
+  assert.equal(pkg.scripts['staging:f10-auth-acceptance'], 'node scripts/staging-f10-auth-acceptance.mjs');
 });
 
 test('F10 hosted acceptance proves Origin, CSRF, refresh and current membership state', () => {
