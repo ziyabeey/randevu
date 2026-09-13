@@ -160,6 +160,12 @@ select pg_temp.s04_assert(pg_temp.s04_call('recover',jsonb_build_object('p_recov
 select pg_temp.s04_assert(pg_temp.s04_call('recover','{}')#>>'{error,message}' like 'PUBLIC_BOOKING_RATE_LIMITED:%','recovery quota missing');
 reset role;
 
+-- Pin only disposable request counters beyond this subsecond measurement. The
+-- production monotonic-window rule prevents clock rollover from resetting them.
+update public.public_booking_rate_counters
+set window_started_at=to_timestamp(floor(extract(epoch from clock_timestamp())/60)*60)+interval '10 minutes'
+where action='request';
+
 -- 1,000 proof-bearing repeats: exactly remaining 57 fit the 60/min request
 -- window; rejected ones never invoke the booking implementation. No DB sleeps.
 do $$ declare v_result jsonb; v_allowed int:=0; v_blocked int:=0; v_before bigint; v_after bigint; v_start timestamptz:=clock_timestamp(); begin
@@ -204,7 +210,7 @@ do $$ declare v_result jsonb; begin
 end $$;
 reset role;
 -- Advance only fixture windows; no wall-clock sleep / flaky minute-boundary test.
-update public.public_booking_rate_counters set window_started_at=window_started_at-interval '2 minutes' where action='request';
+update public.public_booking_rate_counters set window_started_at=to_timestamp(floor(extract(epoch from clock_timestamp())/60)*60)-interval '2 minutes' where action='request';
 set local role anon;
 select pg_temp.s04_assert(pg_temp.s04_call('book',pg_temp.s04_payload())->>'ok'='true','window did not renew safe retry');
 reset role;
