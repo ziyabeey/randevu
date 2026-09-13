@@ -4,7 +4,7 @@
 
 ## Devam noktası
 
-**S04 uygulaması [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39) içinde; main'e henüz alınmadı.** Ana ajan `s04-resource-limits` branch'ini `main@1ee934a` üzerinden sahiplenmiştir. `c1588e7` kodu 277 HTTP testi, tüm PG17/upgrade/Chrome CI ve bağımsız güvenlik incelemesinden geçti. Son test sabitleme commit'inin CI sonucu ve aynı head'in gerçek staging/F09 kabulü beklenir; [S04 devri](docs/handoffs/S04.md) sayısal kotaları, ölçümü ve tek sonraki adımı içerir. Aynı görevi başka branch'te başlatma. Aşağıdaki ana branch durum tablosu kabul gerçekleşene kadar korunur.
+**S04 uygulaması [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39) içinde; main'e henüz alınmadı.** Ana ajan `s04-resource-limits` branch'ini `main@1ee934a` üzerinden sahiplenmiştir. `4211d07` kodu ve sabitlenmiş testler 277 HTTP testi, [tüm PG17/upgrade/Chrome CI](https://github.com/ziyabeey1-ai/randevu/actions/runs/34735435177) ve bağımsız son güvenlik incelemesinden geçti. Gerçek staging/F09 kabulü beklenir; [S04 devri](docs/handoffs/S04.md) sayısal kotaları, ölçümü ve tek sonraki adımı içerir. Aynı görevi başka branch'te başlatma. Aşağıdaki ana branch durum tablosu kabul gerçekleşene kadar korunur.
 
 **S03 tamamlandı ve [PR #35](https://github.com/ziyabeey1-ai/randevu/pull/35) ile main'e birleşti** (`aa5b6b209ac0440e918abdcf21f830b7468df250`). Kabul head'i `89c048cbca3ebd888defd6535c8abd06df057add`: 272 HTTP testi, bağımsız inceleme, [PG17/Chrome CI 34733476367](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733476367) ve [gerçek staging 34733661007 / deneme 2](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733661007/attempts/2) başarılı. Merge ağacı kabul ağacıyla birebir doğrulandı. [S03 devri](docs/handoffs/S03.md) kapsamı ve ilk staging zaman aşımını kaydeder.
 
@@ -101,4 +101,4 @@ Worker entry `worker/entry.ts`, router `worker/app.ts`; auth `worker/auth.ts` + 
 
 ## Sonraki çalışma sınırı
 
-S01, S02 ve S03 kabulü tamamlandı. S04 PR #39 üzerinde uygulanmış ve CI/bağımsız incelemeden geçmiştir; son test sabitlemesinin CI sonucu ve aynı head ile gerçek staging/F09 kabulü doğrulanır. Başarıdan önce main merge veya S04 tamamlandı beyanı yapılmaz. GS kapanmadan F10-02 veya diğer yeni özellik kodu başlatılmaz.
+S01, S02 ve S03 kabulü tamamlandı. S04 PR #39 üzerinde uygulanmış ve CI/bağımsız incelemeden geçmiştir; PR’ın en son head’i ile gerçek staging/F09 kabulü doğrulanır. Başarıdan önce main merge veya S04 tamamlandı beyanı yapılmaz. GS kapanmadan F10-02 veya diğer yeni özellik kodu başlatılmaz.
