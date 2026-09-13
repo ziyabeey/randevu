@@ -309,7 +309,7 @@ const cookieMutations = [
   ['PUT', '/api/public/settings'],
 ];
 const exceptions = [
-  '/api/public/business/:slug/book', '/api/public/booking/recover',
+  '/api/public/business/:slug/book', '/api/public/booking/recover', '/api/public/booking/resolve',
   '/api/manage/view', '/api/manage/slots', '/api/manage/reschedule', '/api/manage/cancel',
 ];
 const concrete = (path) => path.replace(':weekday', '1').replace(':slug', 'test-salon').replace(/:[A-Za-z]+/g, businessId);
