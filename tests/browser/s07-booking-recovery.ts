@@ -66,6 +66,17 @@ function hasLegacy(slug: string) {
   return sessionStorage.getItem(`${LEGACY_PREFIX}${slug}`) !== null;
 }
 
+type AbortHook = {
+  add: typeof IDBObjectStore.prototype.add;
+  put: typeof IDBObjectStore.prototype.put;
+  database: string;
+  store: string;
+  slug: string;
+  matched: boolean;
+  abortError: string | null;
+};
+let abortHook: AbortHook | null = null;
+
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.addEventListener('success', () => resolve(request.result), { once: true });
@@ -73,15 +84,73 @@ function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
-async function injectCorruptRecord(slug: string) {
-  const databases = await indexedDB.databases();
-  const metadata = databases.find((item) => item.name?.includes('public-booking-pending'));
+async function productionStore() {
+  const metadata = (await indexedDB.databases()).find((item) => item.name?.includes('public-booking-pending'));
   if (!metadata?.name) throw new Error('production IndexedDB database not found');
   const database = await requestResult(indexedDB.open(metadata.name, metadata.version));
-  const storeName = database.objectStoreNames.item(0);
-  if (!storeName) throw new Error('production IndexedDB store not found');
-  const transaction = database.transaction(storeName, 'readwrite');
-  transaction.objectStore(storeName).put({
+  const store = database.objectStoreNames.item(0);
+  if (!store) throw new Error('production IndexedDB store not found');
+  return { database, store };
+}
+
+async function armTransactionAbort(slug: string) {
+  if (abortHook) throw new Error('transaction abort hook already armed');
+  const { database, store } = await productionStore();
+  abortHook = {
+    add: IDBObjectStore.prototype.add,
+    put: IDBObjectStore.prototype.put,
+    database: database.name,
+    store,
+    slug: slug.toLocaleLowerCase('en-US'),
+    matched: false,
+    abortError: null,
+  };
+  database.close();
+  const wrap = (original: typeof IDBObjectStore.prototype.add) => function wrapped(
+    this: IDBObjectStore,
+    ...args: unknown[]
+  ) {
+    const request = Reflect.apply(original, this, args) as IDBRequest;
+    const value = args[0] as { slug?: unknown } | undefined;
+    const hook = abortHook;
+    if (hook && !hook.matched && this.transaction.db.name === hook.database
+        && this.name === hook.store && value?.slug === hook.slug) {
+      hook.matched = true;
+      IDBObjectStore.prototype.add = hook.add;
+      IDBObjectStore.prototype.put = hook.put;
+      const transaction = this.transaction;
+      request.addEventListener('success', () => {
+        try { transaction.abort(); }
+        catch (error) { hook.abortError = error instanceof Error ? error.message : String(error); }
+      }, { once: true });
+    }
+    return request;
+  };
+  IDBObjectStore.prototype.add = wrap(abortHook.add);
+  IDBObjectStore.prototype.put = wrap(abortHook.put) as typeof IDBObjectStore.prototype.put;
+}
+
+function clearTransactionAbort() {
+  const hook = abortHook;
+  if (!hook) return { matched: false, abortError: 'hook was not armed' };
+  IDBObjectStore.prototype.add = hook.add;
+  IDBObjectStore.prototype.put = hook.put;
+  abortHook = null;
+  return { matched: hook.matched, abortError: hook.abortError };
+}
+
+async function storedRecordCount(slug: string) {
+  const { database, store } = await productionStore();
+  const transaction = database.transaction(store, 'readonly');
+  const values = await requestResult(transaction.objectStore(store).getAll()) as Array<{ slug?: unknown }>;
+  database.close();
+  return values.filter((value) => value?.slug === slug.toLocaleLowerCase('en-US')).length;
+}
+
+async function injectCorruptRecord(slug: string) {
+  const { database, store } = await productionStore();
+  const transaction = database.transaction(store, 'readwrite');
+  transaction.objectStore(store).put({
     id: `corrupt:${slug}`,
     slug: slug.toLowerCase(),
     version: 2,
@@ -153,6 +222,9 @@ const testApi = {
   legacyValue,
   setLegacy,
   hasLegacy,
+  armTransactionAbort,
+  clearTransactionAbort,
+  storedRecordCount,
   injectCorruptRecord,
   load: loadPublicBookingRecords,
   acquire: acquirePublicBookingIntent,

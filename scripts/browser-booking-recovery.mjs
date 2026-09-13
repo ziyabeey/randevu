@@ -492,24 +492,36 @@ try {
   assert.equal(await call(pageA, 'forgetLegacy', unresolvedRecord.id), false);
   passed('only legacy state has the explicit device-only forget action');
 
-  const quotaSlug = 'quota-import-salon';
-  const quotaRaw = await call(pageA, 'legacyValue', quotaSlug, 12, 0);
-  await call(pageA, 'setLegacy', quotaSlug, quotaRaw);
-  await pageA.send('Storage.overrideQuotaForOrigin', { origin, quotaSize: 1 });
-  await assert.rejects(() => call(pageA, 'load', quotaSlug));
-  assert.equal(await call(pageA, 'hasLegacy', quotaSlug), true, 'aborted import discarded the proof');
-  await pageA.send('Storage.overrideQuotaForOrigin', { origin });
-  await call(pageA, 'load', quotaSlug);
-  assert.equal(await call(pageA, 'hasLegacy', quotaSlug), false);
+  const abortImportSlug = 'abort-import-salon';
+  const abortRaw = await call(pageA, 'legacyValue', abortImportSlug, 12, 0);
+  await call(pageA, 'setLegacy', abortImportSlug, abortRaw);
+  await call(pageA, 'armTransactionAbort', abortImportSlug);
+  let importRejected = false;
+  let importAbort;
+  try { await call(pageA, 'load', abortImportSlug); }
+  catch { importRejected = true; }
+  finally { importAbort = await call(pageA, 'clearTransactionAbort'); }
+  assert.equal(importRejected, true, 'real transaction abort did not reject the import');
+  assert.deepEqual(importAbort, { matched: true, abortError: null });
+  assert.equal(await call(pageA, 'hasLegacy', abortImportSlug), true, 'aborted import discarded the proof');
+  assert.equal(await call(pageA, 'storedRecordCount', abortImportSlug), 0, 'aborted import left a partial row');
+  await call(pageA, 'load', abortImportSlug);
+  assert.equal(await call(pageA, 'hasLegacy', abortImportSlug), false);
+  assert.equal(await call(pageA, 'storedRecordCount', abortImportSlug), 1);
 
-  const beforeQuotaPosts = requestCount('/quota-create-salon/book');
-  await navigate(pageB, `${origin}/harness?mode=ui&slug=quota-create-salon`);
-  await pageB.send('Storage.overrideQuotaForOrigin', { origin, quotaSize: 1 });
-  await call(pageB, 'uiSubmit');
-  await uiContains(pageB, 'güvenli olarak saklanamadı');
-  assert.equal(requestCount('/quota-create-salon/book'), beforeQuotaPosts, 'create POST ran after IndexedDB abort');
-  await pageB.send('Storage.overrideQuotaForOrigin', { origin });
-  passed('real IndexedDB abort retains legacy proof and blocks create POST');
+  const abortCreateSlug = 'abort-create-salon';
+  const beforeAbortPosts = requestCount(`/${abortCreateSlug}/book`);
+  await navigate(pageB, `${origin}/harness?mode=ui&slug=${abortCreateSlug}`);
+  await call(pageB, 'armTransactionAbort', abortCreateSlug);
+  let createAbort;
+  try {
+    await call(pageB, 'uiSubmit');
+    await uiContains(pageB, 'güvenli olarak saklanamadı');
+  } finally { createAbort = await call(pageB, 'clearTransactionAbort'); }
+  assert.deepEqual(createAbort, { matched: true, abortError: null });
+  assert.equal(requestCount(`/${abortCreateSlug}/book`), beforeAbortPosts, 'create POST ran after IndexedDB abort');
+  assert.equal(await call(pageA, 'storedRecordCount', abortCreateSlug), 0, 'aborted create left a partial row');
+  passed('real IndexedDB transaction abort retains proof and blocks create POST');
 
   console.log('S07 browser booking recovery passed in two Chrome pages.');
 } catch (error) {
