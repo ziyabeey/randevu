@@ -1,6 +1,7 @@
 import { appendFileSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { controlSql } from './staging-control-db.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { KEY_NAMES, UUID, newKeys, keyPair, pinBindings, secretBundle, probe, requireResumeContract, executeCutover, readCloudState, rollbackTransition } from './staging-deployment.mjs';
 
@@ -38,14 +39,8 @@ if (process.argv[2] === 'resolve') {
 
 // Never forward SQL text, error detail, verifiers, or credential-bearing output.
 const literal = (value) => value === null ? 'null' : `'${String(value).replaceAll("'", "''")}'`;
-function sql(statement) {
-  const result = spawnSync('psql', ['-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1'], {
-    input: statement, encoding: 'utf8', timeout: 25000, maxBuffer: 1024 * 1024,
-    env: { ...env, PGDATABASE: env.STAGING_DATABASE_URL, PGCONNECT_TIMEOUT: '10', PGOPTIONS: '-c statement_timeout=15000 -c lock_timeout=10000' },
-  });
-  if (result.error || result.status !== 0) throw new Error('Staging control-plane SQL failed; details suppressed to protect verifiers');
-  return result.stdout.trim();
-}
+const sql = (statement) => controlSql(env.STAGING_DATABASE_URL, statement, env);
+
 function database() {
   return JSON.parse(sql(`select json_build_object(
     'gate', (select gate_secret_hash from public.public_booking_abuse_config where config_key = 'default'),
