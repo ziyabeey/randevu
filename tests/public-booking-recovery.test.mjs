@@ -42,8 +42,8 @@ const appointment = {
 };
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
+  return new Response(JSON.stringify(status < 300 ? { ok: true, data } : { ok: false, error: data }), {
+    status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
 }
@@ -87,18 +87,20 @@ test('F09-02 booking recovery HTTP contract under F09-04 guard', async (t) => {
   await t.test('atomic booking request sends only hashes/ciphertext plus server gate proof to Supabase', async () => {
     globalThis.fetch = async (input, init) => {
       const url = String(input);
-      assert.match(url, /create_public_appointment_with_recovery_guarded$/);
+      assert.match(url, /execute_public_operation$/);
+      assert.equal(JSON.parse(init.body).p_action, 'book');
       assert.ok(!url.includes(managementToken));
       assert.ok(!url.includes(recoverySecret));
-      encryptedPayload = JSON.parse(String(init?.body ?? '{}'));
+      const wire = JSON.parse(String(init?.body ?? '{}'));
+      encryptedPayload = wire.p_args;
       assert.ok(!String(init?.body).includes(managementToken));
       assert.ok(!String(init?.body).includes(recoverySecret));
       assert.ok(!String(init?.body).includes(clientIp));
       assert.match(encryptedPayload.p_management_token_hash, /^[0-9a-f]{64}$/);
       assert.match(encryptedPayload.p_recovery_secret_hash, /^[0-9a-f]{64}$/);
-      assert.match(encryptedPayload.p_actor_hash, /^[0-9a-f]{64}$/);
-      assert.match(encryptedPayload.p_network_hash, /^[0-9a-f]{64}$/);
-      assert.equal(encryptedPayload.p_gate_secret, gateSecret);
+      assert.match(wire.p_actor_hash, /^[0-9a-f]{64}$/);
+      assert.match(wire.p_network_hash, /^[0-9a-f]{64}$/);
+      assert.equal(wire.p_gate_secret, gateSecret);
       assert.equal(encryptedPayload.p_recovery_id, recoveryId);
       assert.equal(encryptedPayload.p_key_version, 1);
       return json([appointment]);
@@ -115,7 +117,7 @@ test('F09-02 booking recovery HTTP contract under F09-04 guard', async (t) => {
     assert.equal(body.appointment.appointment_id, appointment.appointment_id);
     assert.equal(body.management.url, `/m#${managementToken}`);
     assert.equal(body.recovery.expiresAt, appointment.recovery_expires_at);
-    assert.match(response.headers.get('set-cookie') ?? '', /yzt_public_client=/);
+    assert.match(response.headers.get('set-cookie') ?? '', /yzt_public_client_v2=/);
   });
 
   await t.test('ambiguous Supabase failure is not reported as a failed booking', async () => {
@@ -135,7 +137,8 @@ test('F09-02 booking recovery HTTP contract under F09-04 guard', async (t) => {
     assert.ok(encryptedPayload);
     globalThis.fetch = async (input, init) => {
       const url = String(input);
-      assert.match(url, /recover_public_appointment_guarded$/);
+      assert.match(url, /execute_public_operation$/);
+      assert.equal(JSON.parse(init.body).p_action, 'recover');
       assert.ok(!url.includes(recoverySecret));
       const requestBody = JSON.parse(String(init?.body ?? '{}'));
       assert.ok(!String(init?.body).includes(recoverySecret));
@@ -143,7 +146,7 @@ test('F09-02 booking recovery HTTP contract under F09-04 guard', async (t) => {
       assert.equal(requestBody.p_gate_secret, gateSecret);
       assert.match(requestBody.p_actor_hash, /^[0-9a-f]{64}$/);
       assert.match(requestBody.p_network_hash, /^[0-9a-f]{64}$/);
-      assert.match(requestBody.p_recovery_secret_hash, /^[0-9a-f]{64}$/);
+      assert.match(requestBody.p_args.p_recovery_secret_hash, /^[0-9a-f]{64}$/);
       return json([{
         appointment_id: appointment.appointment_id,
         business_name: 'Recovery Test',

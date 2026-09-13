@@ -1,6 +1,8 @@
-import { Hono } from 'hono';
+import { publicOperation } from './public-rpc.ts';
+import { Hono, type Context } from 'hono';
+import { publicGateUnavailableBody, publicRateLimitedBody, rateLimitFromRpcError, resolvePublicAbuseIdentity, type PublicAbuseEnv } from './public-abuse.ts';
 
-type Env = {
+type Env = PublicAbuseEnv & {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
 };
@@ -31,22 +33,6 @@ type ManagedSlot = {
 
 const customerManage = new Hono<{ Bindings: Env }>();
 
-async function supabaseRequest<T>(env: Env, path: string, init: RequestInit): Promise<{ ok: boolean; data: T | null }> {
-  const headers = new Headers(init.headers);
-  headers.set('apikey', env.SUPABASE_ANON_KEY);
-  headers.set('Authorization', `Bearer ${env.SUPABASE_ANON_KEY}`);
-  headers.set('Accept', 'application/json');
-  if (init.body) headers.set('Content-Type', 'application/json');
-
-  const response = await fetch(`${env.SUPABASE_URL.replace(/\/$/, '')}/${path}`, { ...init, headers });
-  const text = await response.text();
-  if (!text) return { ok: response.ok, data: null };
-  try {
-    return { ok: response.ok, data: JSON.parse(text) as T };
-  } catch {
-    return { ok: response.ok, data: null };
-  }
-}
 
 function first<T>(items: T[] | null): T | null {
   return items?.[0] ?? null;
@@ -90,7 +76,12 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
 }
 
 function rpcError(data: unknown, fallback: string) {
+  const retryAfter = rateLimitFromRpcError(data);
+  if (retryAfter) return { code: 'PUBLIC_BOOKING_RATE_LIMITED', message: 'Çok fazla istek yapıldı.', status: 429 as const, retryAfter };
   const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  if (message.includes('PUBLIC_BOOKING_GATE_') || message === 'PUBLIC_OPERATION_UNAVAILABLE') {
+    return { code: 'MANAGEMENT_UNAVAILABLE', message: 'Randevu yönetimi şu anda kullanılamıyor. Lütfen tekrar deneyin.', status: 503 as const };
+  }
   if (message.includes('MANAGEMENT_NOT_FOUND') || message.includes('INVALID_MANAGEMENT_TOKEN')) {
     return { code: 'MANAGEMENT_NOT_FOUND', message: 'Bu randevu yönetim bağlantısı geçerli değil.', status: 404 as const };
   }
@@ -112,6 +103,14 @@ function rpcError(data: unknown, fallback: string) {
   return { code: 'MANAGEMENT_FAILED', message: fallback, status: 400 as const };
 }
 
+function errorResponse(context: Context<{ Bindings: Env }>, error: ReturnType<typeof rpcError>) {
+  if ('retryAfter' in error && error.retryAfter) {
+    context.header('Retry-After', String(error.retryAfter));
+    return context.json(publicRateLimitedBody(error.retryAfter), 429);
+  }
+  return context.json({ error: { code: error.code, message: error.message } }, error.status);
+}
+
 // The bearer token is always carried in a POST body, never in a URL path/query.
 // This keeps it out of ordinary HTTP access logs. The browser page itself stores
 // the capability in the URL fragment (`/m#token`), which is not sent to the server.
@@ -122,11 +121,11 @@ customerManage.post('/view', async (context) => {
     return context.json({ error: { code: 'MANAGEMENT_NOT_FOUND', message: 'Bu randevu yönetim bağlantısı geçerli değil.' } }, 404);
   }
 
-  const result = await supabaseRequest<ManagedAppointment[]>(context.env, 'rest/v1/rpc/get_public_managed_appointment', {
-    method: 'POST',
-    body: JSON.stringify({ p_token: token }),
-  });
-  const appointment = result.ok ? first(result.data) : null;
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+  const result = await publicOperation<ManagedAppointment[]>(context.env, 'manage_view', { p_token: token }, abuse);
+  if (!result.ok) return errorResponse(context, rpcError(result.data, 'Randevu bilgisi alınamadı.'));
+  const appointment = first(result.data);
   if (!appointment) {
     return context.json({ error: { code: 'MANAGEMENT_NOT_FOUND', message: 'Bu randevu yönetim bağlantısı geçerli değil.' } }, 404);
   }
@@ -143,13 +142,12 @@ customerManage.post('/slots', async (context) => {
     return context.json({ error: { code: 'INVALID_MANAGEMENT_QUERY', message: 'Tarih veya personel bilgisi geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<ManagedSlot[]>(context.env, 'rest/v1/rpc/compute_public_management_slots', {
-    method: 'POST',
-    body: JSON.stringify({ p_token: token, p_date: date, p_staff_id: staffId }),
-  });
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+  const result = await publicOperation<ManagedSlot[]>(context.env, 'manage_slots', { p_token: token, p_date: date, p_staff_id: staffId }, abuse);
   if (!result.ok) {
     const error = rpcError(result.data, 'Uygun saatler hesaplanamadı.');
-    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+    return errorResponse(context, error);
   }
   return context.json({ slots: result.data ?? [] });
 });
@@ -162,18 +160,17 @@ customerManage.post('/reschedule', async (context) => {
     return context.json({ error: { code: 'INVALID_RESCHEDULE', message: 'Yeni randevu saati geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<ManagedAppointment[]>(context.env, 'rest/v1/rpc/reschedule_public_managed_appointment', {
-    method: 'POST',
-    body: JSON.stringify({
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+  const result = await publicOperation<ManagedAppointment[]>(context.env, 'manage_reschedule', {
       p_token: token,
       p_idempotency_key: key,
       p_staff_id: body.staffId,
       p_starts_at: body.startsAt,
-    }),
-  });
+    }, abuse);
   if (!result.ok) {
     const error = rpcError(result.data, 'Randevu taşınamadı.');
-    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+    return errorResponse(context, error);
   }
   const appointment = first(result.data);
   if (!appointment) return context.json({ error: { code: 'MANAGEMENT_FAILED', message: 'Randevu sonucu alınamadı.' } }, 502);
@@ -189,17 +186,16 @@ customerManage.post('/cancel', async (context) => {
     return context.json({ error: { code: 'INVALID_CANCEL', message: 'İptal isteği geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<ManagedAppointment[]>(context.env, 'rest/v1/rpc/cancel_public_managed_appointment', {
-    method: 'POST',
-    body: JSON.stringify({
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+  const result = await publicOperation<ManagedAppointment[]>(context.env, 'manage_cancel', {
       p_token: token,
       p_idempotency_key: key,
       p_reason: reason || null,
-    }),
-  });
+    }, abuse);
   if (!result.ok) {
     const error = rpcError(result.data, 'Randevu iptal edilemedi.');
-    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+    return errorResponse(context, error);
   }
   const appointment = first(result.data);
   if (!appointment) return context.json({ error: { code: 'MANAGEMENT_FAILED', message: 'Randevu sonucu alınamadı.' } }, 502);

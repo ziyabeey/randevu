@@ -33,8 +33,8 @@ const service = {
 };
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
+  return new Response(JSON.stringify(status < 300 ? { ok: true, data } : { ok: false, error: data }), {
+    status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
 }
@@ -73,8 +73,8 @@ test('F09-04 public abuse Worker boundary', async (t) => {
       const url = String(input);
       const body = JSON.parse(String(init?.body ?? '{}'));
       bodies.push({ url, body });
-      if (url.endsWith('/rpc/get_public_booking_business_guarded')) return json([business]);
-      if (url.endsWith('/rpc/get_public_booking_services_guarded')) return json([service]);
+      if (url.endsWith('/rpc/execute_public_operation') && JSON.parse(init.body).p_action === 'business') return json([business]);
+      if (url.endsWith('/rpc/execute_public_operation') && JSON.parse(init.body).p_action === 'services') return json([service]);
       throw new Error(`unexpected fetch ${url}`);
     };
 
@@ -89,13 +89,13 @@ test('F09-04 public abuse Worker boundary', async (t) => {
     assert.equal(payload.services.length, 1);
 
     const setCookie = response.headers.get('set-cookie') ?? '';
-    assert.match(setCookie, /yzt_public_client=/);
+    assert.match(setCookie, /yzt_public_client_v2=/);
     assert.match(setCookie, /HttpOnly/i);
     assert.match(setCookie, /SameSite=Lax/i);
     assert.ok(!setCookie.includes(gateSecret));
 
     for (const { url, body } of bodies) {
-      assert.match(url, /_guarded$/);
+      assert.match(url, /execute_public_operation$/);
       assert.equal(body.p_gate_secret, gateSecret);
       assert.match(body.p_actor_hash, /^[0-9a-f]{64}$/);
       assert.match(body.p_network_hash, /^[0-9a-f]{64}$/);
@@ -111,8 +111,8 @@ test('F09-04 public abuse Worker boundary', async (t) => {
       const url = String(input);
       const body = JSON.parse(String(init?.body ?? '{}'));
       seen.push(body);
-      if (url.endsWith('/rpc/get_public_booking_business_guarded')) return json([business]);
-      if (url.endsWith('/rpc/get_public_booking_services_guarded')) return json([service]);
+      if (url.endsWith('/rpc/execute_public_operation') && JSON.parse(init.body).p_action === 'business') return json([business]);
+      if (url.endsWith('/rpc/execute_public_operation') && JSON.parse(init.body).p_action === 'services') return json([service]);
       throw new Error(`unexpected fetch ${url}`);
     };
 
@@ -145,8 +145,8 @@ test('F09-04 public abuse Worker boundary', async (t) => {
     globalThis.fetch = async (input, init) => {
       const url = String(input);
       seen.push(JSON.parse(String(init?.body ?? '{}')));
-      if (url.endsWith('/rpc/get_public_booking_business_guarded')) return json([business]);
-      if (url.endsWith('/rpc/get_public_booking_services_guarded')) return json([service]);
+      if (url.endsWith('/rpc/execute_public_operation') && JSON.parse(init.body).p_action === 'business') return json([business]);
+      if (url.endsWith('/rpc/execute_public_operation') && JSON.parse(init.body).p_action === 'services') return json([service]);
       throw new Error(`unexpected fetch ${url}`);
     };
 
@@ -168,13 +168,13 @@ test('F09-04 public abuse Worker boundary', async (t) => {
     );
     await second.text();
     assert.notEqual(seen[0].p_actor_hash, originalActor);
-    assert.match(second.headers.get('set-cookie') ?? '', /yzt_public_client=/);
+    assert.match(second.headers.get('set-cookie') ?? '', /yzt_public_client_v2=/);
   });
 
   await t.test('rate-limit RPC error becomes clear HTTP 429 with Retry-After', async () => {
-    globalThis.fetch = async (input) => {
+    globalThis.fetch = async (input, init) => {
       const url = String(input);
-      if (url.endsWith('/rpc/compute_public_booking_slots_guarded')) {
+      if (url.endsWith('/rpc/execute_public_operation') && JSON.parse(init.body).p_action === 'slots') {
         return json({ message: 'PUBLIC_BOOKING_RATE_LIMITED:37' }, 400);
       }
       throw new Error(`unexpected fetch ${url}`);
@@ -193,9 +193,9 @@ test('F09-04 public abuse Worker boundary', async (t) => {
   });
 
   await t.test('booking create also surfaces 429 without reporting appointment failure', async () => {
-    globalThis.fetch = async (input) => {
+    globalThis.fetch = async (input, init) => {
       const url = String(input);
-      if (url.endsWith('/rpc/create_public_appointment_with_recovery_guarded')) {
+      if (url.endsWith('/rpc/execute_public_operation') && JSON.parse(init.body).p_action === 'book') {
         return json({ message: 'PUBLIC_BOOKING_RATE_LIMITED:19' }, 400);
       }
       throw new Error(`unexpected fetch ${url}`);
