@@ -31,6 +31,7 @@ type AppointmentEvent = {
   id: string; event_type: string; actor_user_id: string; from_status: string | null;
   to_status: string | null; payload: Record<string, unknown>; created_at: string;
 };
+type PageInfo = { limit: number; hasMore: boolean; nextCursor: string | null };
 
 function commandKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -74,6 +75,7 @@ export default function BookingPage() {
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [timezone, setTimezone] = useState('Europe/Istanbul');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [bookingsNextCursor, setBookingsNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -96,6 +98,7 @@ export default function BookingPage() {
   const [selectedRescheduleSlot, setSelectedRescheduleSlot] = useState<Slot | null>(null);
   const [eventsFor, setEventsFor] = useState<Appointment | null>(null);
   const [events, setEvents] = useState<AppointmentEvent[]>([]);
+  const [eventsNextCursor, setEventsNextCursor] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -103,16 +106,17 @@ export default function BookingPage() {
       const nextSession = await api<Session>('/api/session');
       setSession(nextSession);
       if (!nextSession.user || !nextSession.activeBusinessId) {
-        setCatalog(null); setAppointments([]); return;
+        setCatalog(null); setAppointments([]); setBookingsNextCursor(null); return;
       }
       const [nextCatalog, nextSetup, nextBookings] = await Promise.all([
         api<Catalog>('/api/catalog'),
         api<Setup>('/api/availability/setup'),
-        api<{ appointments: Appointment[] }>('/api/bookings'),
+        api<{ appointments: Appointment[]; page: PageInfo }>('/api/bookings?limit=25'),
       ]);
       setCatalog(nextCatalog);
       setTimezone(nextSetup.timezone);
       setAppointments(nextBookings.appointments);
+      setBookingsNextCursor(nextBookings.page.nextCursor);
       setServiceId((current) => current || nextCatalog.services.find((item) => item.active)?.id || '');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Randevu ekranı yüklenemedi.');
@@ -134,6 +138,21 @@ export default function BookingPage() {
     const ids = new Set(catalog.assignments.filter((item) => item.active && item.service_id === rescheduleTarget.service_id).map((item) => item.staff_id));
     return activeStaff.filter((person) => ids.has(person.id));
   }, [activeStaff, catalog, rescheduleTarget]);
+
+  async function loadMoreBookings() {
+    if (!bookingsNextCursor) return;
+    setBusy(true); setNotice('');
+    try {
+      const params = new URLSearchParams({ limit: '25', cursor: bookingsNextCursor });
+      const result = await api<{ appointments: Appointment[]; page: PageInfo }>(`/api/bookings?${params}`);
+      setAppointments((current) => {
+        const existing = new Set(current.map((item) => item.id));
+        return [...current, ...result.appointments.filter((item) => !existing.has(item.id))];
+      });
+      setBookingsNextCursor(result.page.nextCursor);
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'Diğer randevular yüklenemedi.'); }
+    finally { setBusy(false); }
+  }
 
   async function previewSlots() {
     if (!serviceId) return;
@@ -216,9 +235,24 @@ export default function BookingPage() {
   async function showHistory(appointment: Appointment) {
     setBusy(true); setNotice('');
     try {
-      const result = await api<{ events: AppointmentEvent[] }>(`/api/bookings/${appointment.id}/events`);
-      setEventsFor(appointment); setEvents(result.events);
+      const result = await api<{ events: AppointmentEvent[]; page: PageInfo }>(`/api/bookings/${appointment.id}/events?limit=25`);
+      setEventsFor(appointment); setEvents(result.events); setEventsNextCursor(result.page.nextCursor);
     } catch (error) { setNotice(error instanceof Error ? error.message : 'Randevu geçmişi okunamadı.'); }
+    finally { setBusy(false); }
+  }
+
+  async function loadMoreEvents() {
+    if (!eventsFor || !eventsNextCursor) return;
+    setBusy(true); setNotice('');
+    try {
+      const params = new URLSearchParams({ limit: '25', cursor: eventsNextCursor });
+      const result = await api<{ events: AppointmentEvent[]; page: PageInfo }>(`/api/bookings/${eventsFor.id}/events?${params}`);
+      setEvents((current) => {
+        const existing = new Set(current.map((item) => item.id));
+        return [...current, ...result.events.filter((item) => !existing.has(item.id))];
+      });
+      setEventsNextCursor(result.page.nextCursor);
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'Diğer geçmiş kayıtları yüklenemedi.'); }
     finally { setBusy(false); }
   }
 
@@ -262,7 +296,7 @@ export default function BookingPage() {
       </section>
 
       <section className="booking-card booking-list-card">
-        <div className="section-head"><h2>Randevular</h2><span>{appointments.length}</span></div>
+        <div className="section-head"><h2>Randevular</h2><span>{appointments.length}{bookingsNextCursor ? '+' : ''}</span></div>
         <div className="appointment-list">
           {appointments.map((appointment) => <article className={`appointment-row status-${appointment.status}`} key={appointment.id}>
             <div className="appointment-time"><strong>{formatDateTime(appointment.starts_at, appointment.timezone)}</strong><span>{appointment.staff_name_snapshot}</span></div>
@@ -278,6 +312,7 @@ export default function BookingPage() {
           </article>)}
           {!appointments.length && <p className="empty">Henüz randevu yok. İlk slotu soldan kilitle.</p>}
         </div>
+        {bookingsNextCursor && <div className="booking-actions"><button className="secondary-button" disabled={busy} onClick={() => void loadMoreBookings()}>Daha fazla randevu yükle</button></div>}
       </section>
     </div>
 
@@ -293,8 +328,9 @@ export default function BookingPage() {
     </section>}
 
     {eventsFor && <section className="booking-card booking-modal-card">
-      <div className="section-head"><div><p className="eyebrow">AUDIT</p><h2>{eventsFor.customer_name_snapshot} · geçmiş</h2></div><button onClick={() => { setEventsFor(null); setEvents([]); }}>Kapat</button></div>
+      <div className="section-head"><div><p className="eyebrow">AUDIT</p><h2>{eventsFor.customer_name_snapshot} · geçmiş</h2></div><button onClick={() => { setEventsFor(null); setEvents([]); setEventsNextCursor(null); }}>Kapat</button></div>
       <div className="event-list">{events.map((event) => <div className="event-row" key={event.id}><strong>{event.event_type}</strong><span>{formatDateTime(event.created_at, timezone)}</span><small>{event.from_status ?? '∅'} → {event.to_status ?? '∅'}</small></div>)}</div>
+      {eventsNextCursor && <div className="booking-actions"><button className="secondary-button" disabled={busy} onClick={() => void loadMoreEvents()}>Daha fazla geçmiş yükle</button></div>}
     </section>}
   </div>;
 }

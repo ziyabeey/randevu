@@ -393,6 +393,14 @@
         {
           "database": "yzt_test",
           "file": "supabase/tests/s07_terminal_pii_retention.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/migrations/20260913163000_s07_list_pagination_budgets.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/s07_list_pagination.sql"
         }
       ]
     }

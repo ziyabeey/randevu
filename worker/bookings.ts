@@ -7,6 +7,11 @@ import {
   type AppContext,
   type AuthEnv,
 } from './auth.ts';
+import {
+  decodePageCursor,
+  pageResult,
+  parsePageLimit,
+} from './pagination.ts';
 
 type Env = AuthEnv;
 type BaseContext = AppContext<Env>;
@@ -31,6 +36,16 @@ type Appointment = {
   currency_snapshot: string;
   notes: string | null;
   cancellation_reason: string | null;
+};
+
+type AppointmentEvent = {
+  id: string;
+  event_type: string;
+  actor_user_id: string;
+  from_status: string | null;
+  to_status: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
 };
 
 type Slot = { staff_id: string; staff_name: string; starts_at: string; ends_at: string; timezone: string };
@@ -70,18 +85,49 @@ function rpcMessage(data: unknown, fallback: string) {
   return { code: 'BOOKING_FAILED', message: fallback, status: 400 as const };
 }
 
+function readPage(context: BaseContext, kind: 'bookings' | 'events') {
+  const limit = parsePageLimit(context.req.query('limit'));
+  const cursor = decodePageCursor(context.req.query('cursor'), kind);
+  if (limit === null || cursor === undefined) return null;
+  return { limit, cursor };
+}
+
+function readFailure(context: BaseContext, data: unknown, status: number, code: string, fallback: string) {
+  const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  if (message.includes('NOT_ALLOWED')) {
+    return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işletme için işlem yetkiniz yok.' } }, 403);
+  }
+  if (message.includes('APPOINTMENT_NOT_FOUND')) {
+    return context.json({ error: { code: 'APPOINTMENT_NOT_FOUND', message: 'Randevu bulunamadı.' } }, 404);
+  }
+  const unavailable = status === 0 || status >= 500;
+  return context.json({
+    error: {
+      code: unavailable ? `${code}_UNAVAILABLE` : `${code}_FAILED`,
+      message: unavailable ? `${fallback} Lütfen tekrar deneyin.` : fallback,
+    },
+  }, unavailable ? 503 : 502);
+}
+
 bookings.get('/', async (context) => {
   const access = await requireMember(context);
   if ('error' in access) return access.error;
-  const params = new URLSearchParams({
-    select: 'id,business_id,customer_id,service_id,staff_id,status,starts_at,ends_at,timezone,customer_name_snapshot,customer_phone_snapshot,customer_email_snapshot,service_name_snapshot,staff_name_snapshot,price_minor_snapshot,currency_snapshot,notes,cancellation_reason,created_at,updated_at',
-    business_id: `eq.${access.membership.business_id}`,
-    order: 'starts_at.asc',
-    limit: '250',
-  });
-  const result = await supabaseRequest<Appointment[]>(context.env, `rest/v1/appointments?${params}`, {}, access.auth.accessToken);
-  if (!result.ok) return context.json({ error: { code: 'BOOKINGS_READ_FAILED', message: 'Randevular okunamadı.' } }, 502);
-  return context.json({ membership: access.membership, appointments: result.data ?? [] });
+  const page = readPage(context, 'bookings');
+  if (!page) return context.json({ error: { code: 'INVALID_PAGE', message: 'Sayfa boyutu veya devam anahtarı geçerli değil.' } }, 400);
+
+  const result = await supabaseRequest<Appointment[]>(context.env, 'rest/v1/rpc/list_appointments_page', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_business_id: access.membership.business_id,
+      p_limit: page.limit + 1,
+      p_after_starts_at: page.cursor?.at ?? null,
+      p_after_id: page.cursor?.id ?? null,
+    }),
+  }, access.auth.accessToken);
+  if (!result.ok) return readFailure(context, result.data, result.status, 'BOOKINGS_READ', 'Randevular okunamadı.');
+
+  const paged = pageResult(result.data ?? [], page.limit, 'bookings', (row) => ({ at: row.starts_at, id: row.id }));
+  return context.json({ membership: access.membership, appointments: paged.items, page: paged.page });
 });
 
 bookings.post('/', async (context) => {
@@ -209,15 +255,23 @@ bookings.get('/:id/events', async (context) => {
   if ('error' in access) return access.error;
   const appointmentId = context.req.param('id');
   if (!isUuid(appointmentId)) return context.json({ error: { code: 'INVALID_APPOINTMENT', message: 'Randevu kimliği geçerli değil.' } }, 400);
-  const params = new URLSearchParams({
-    select: 'id,event_type,actor_user_id,from_status,to_status,payload,created_at',
-    business_id: `eq.${access.membership.business_id}`,
-    appointment_id: `eq.${appointmentId}`,
-    order: 'created_at.asc',
-  });
-  const result = await supabaseRequest<unknown[]>(context.env, `rest/v1/appointment_events?${params}`, {}, access.auth.accessToken);
-  if (!result.ok) return context.json({ error: { code: 'EVENTS_READ_FAILED', message: 'Randevu geçmişi okunamadı.' } }, 502);
-  return context.json({ events: result.data ?? [] });
+  const page = readPage(context, 'events');
+  if (!page) return context.json({ error: { code: 'INVALID_PAGE', message: 'Sayfa boyutu veya devam anahtarı geçerli değil.' } }, 400);
+
+  const result = await supabaseRequest<AppointmentEvent[]>(context.env, 'rest/v1/rpc/list_appointment_events_page', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_business_id: access.membership.business_id,
+      p_appointment_id: appointmentId,
+      p_limit: page.limit + 1,
+      p_after_created_at: page.cursor?.at ?? null,
+      p_after_id: page.cursor?.id ?? null,
+    }),
+  }, access.auth.accessToken);
+  if (!result.ok) return readFailure(context, result.data, result.status, 'EVENTS_READ', 'Randevu geçmişi okunamadı.');
+
+  const paged = pageResult(result.data ?? [], page.limit, 'events', (row) => ({ at: row.created_at, id: row.id }));
+  return context.json({ events: paged.items, page: paged.page });
 });
 
 export default bookings;

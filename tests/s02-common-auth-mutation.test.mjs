@@ -291,7 +291,7 @@ await test('S02 refresh rotation happens once and refreshed authority reaches th
   try {
     const response = await app.request('http://localhost/api/bookings', { headers: { Cookie: cookieHeader() } }, env);
     assert.equal(response.status, 200);
-    assert.deepEqual(calls, ['/auth/v1/user', '/auth/v1/token', '/rest/v1/memberships', '/rest/v1/appointments']);
+    assert.deepEqual(calls, ['/auth/v1/user', '/auth/v1/token', '/rest/v1/memberships', '/rest/v1/rpc/list_appointments_page']);
     assert.match(setCookieValues(response).join('\n'), /yzt_refresh=rotated-refresh/);
     assert.deepEqual((await response.json()).appointments, []);
   } finally { globalThis.fetch = realFetch; }
