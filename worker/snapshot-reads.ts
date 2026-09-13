@@ -28,6 +28,11 @@ type SnapshotContext = Context<{ Bindings: Env }>;
 type MembershipWithBusiness = Membership & {
   businesses: null | { id: string; name: string; slug: string; timezone: string };
 };
+type CatalogSnapshot = {
+  services: unknown[];
+  staff: unknown[];
+  assignments: unknown[];
+};
 type CalendarAppointment = {
   appointment_id: string;
   staff_id: string;
@@ -110,10 +115,14 @@ function dateInTimezone(timezone: string) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-function calendarRpcError(data: unknown) {
-  const message = typeof data === 'object' && data !== null
+function errorMessage(data: unknown) {
+  return typeof data === 'object' && data !== null
     ? String((data as SupabaseError).message ?? '')
     : '';
+}
+
+function calendarRpcError(data: unknown) {
+  const message = errorMessage(data);
   if (message.includes('NOT_ALLOWED')) {
     return { code: 'NOT_ALLOWED', message: 'Bu işletmenin takvimine erişiminiz yok.', status: 403 as const };
   }
@@ -133,9 +142,7 @@ function publicSnapshotError(data: unknown, fallback: string) {
       retryAfter,
     };
   }
-  const message = typeof data === 'object' && data !== null
-    ? String((data as SupabaseError).message ?? '')
-    : '';
+  const message = errorMessage(data);
   if (message.includes('PUBLIC_SERVICES_LIMIT_EXCEEDED')) {
     return {
       code: 'PUBLIC_SERVICES_LIMIT_EXCEEDED',
@@ -260,46 +267,46 @@ snapshotReads.get('/api/catalog', async (context) => {
   const access = await requireMember(context);
   if ('error' in access) return access.error;
 
-  const businessId = access.membership.business_id;
-  const [services, staff, assignments] = await Promise.all([
-    supabaseRequest<unknown[]>(
-      context.env,
-      `rest/v1/services?select=id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,price_minor,currency,active&business_id=eq.${businessId}&order=created_at.asc&limit=${snapshotProbeLimit(SNAPSHOT_LIMITS.services)}`,
-      {},
-      access.auth.accessToken,
-    ),
-    supabaseRequest<unknown[]>(
-      context.env,
-      `rest/v1/staff_profiles?select=id,membership_id,name,phone,active&business_id=eq.${businessId}&order=created_at.asc&limit=${snapshotProbeLimit(SNAPSHOT_LIMITS.staff)}`,
-      {},
-      access.auth.accessToken,
-    ),
-    supabaseRequest<unknown[]>(
-      context.env,
-      `rest/v1/staff_services?select=staff_id,service_id,active&business_id=eq.${businessId}&limit=${snapshotProbeLimit(SNAPSHOT_LIMITS.assignments)}`,
-      {},
-      access.auth.accessToken,
-    ),
-  ]);
+  const result = await supabaseRequest<CatalogSnapshot[]>(
+    context.env,
+    'rest/v1/rpc/get_catalog_snapshot',
+    {
+      method: 'POST',
+      body: JSON.stringify({ p_business_id: access.membership.business_id }),
+    },
+    access.auth.accessToken,
+  );
 
-  if (!services.ok || !staff.ok || !assignments.ok) {
+  if (!result.ok) {
+    const message = errorMessage(result.data);
+    if (message.includes('CATALOG_SERVICES_LIMIT_EXCEEDED')) {
+      return limitExceeded(context, 'CATALOG_SERVICES_LIMIT_EXCEEDED', 'Hizmet kataloğu güvenli snapshot sınırını aşıyor.');
+    }
+    if (message.includes('CATALOG_STAFF_LIMIT_EXCEEDED')) {
+      return limitExceeded(context, 'CATALOG_STAFF_LIMIT_EXCEEDED', 'Personel kataloğu güvenli snapshot sınırını aşıyor.');
+    }
+    if (message.includes('CATALOG_ASSIGNMENTS_LIMIT_EXCEEDED')) {
+      return limitExceeded(context, 'CATALOG_ASSIGNMENTS_LIMIT_EXCEEDED', 'Personel-hizmet eşleşmeleri güvenli snapshot sınırını aşıyor.');
+    }
+    if (message.includes('NOT_ALLOWED')) {
+      return context.json({ error: { code: 'TENANT_FORBIDDEN', message: 'Bu işletmeye erişiminiz yok.' } }, 403);
+    }
     return context.json({ error: { code: 'CATALOG_READ_FAILED', message: 'Hizmet ve ekip bilgileri okunamadı.' } }, 502);
   }
-  if (snapshotOverflow(services.data, SNAPSHOT_LIMITS.services)) {
-    return limitExceeded(context, 'CATALOG_SERVICES_LIMIT_EXCEEDED', 'Hizmet kataloğu güvenli snapshot sınırını aşıyor.');
-  }
-  if (snapshotOverflow(staff.data, SNAPSHOT_LIMITS.staff)) {
-    return limitExceeded(context, 'CATALOG_STAFF_LIMIT_EXCEEDED', 'Personel kataloğu güvenli snapshot sınırını aşıyor.');
-  }
-  if (snapshotOverflow(assignments.data, SNAPSHOT_LIMITS.assignments)) {
-    return limitExceeded(context, 'CATALOG_ASSIGNMENTS_LIMIT_EXCEEDED', 'Personel-hizmet eşleşmeleri güvenli snapshot sınırını aşıyor.');
+
+  const snapshot = first(result.data);
+  if (!snapshot
+      || !Array.isArray(snapshot.services)
+      || !Array.isArray(snapshot.staff)
+      || !Array.isArray(snapshot.assignments)) {
+    return context.json({ error: { code: 'CATALOG_READ_FAILED', message: 'Hizmet ve ekip bilgileri okunamadı.' } }, 502);
   }
 
   return context.json({
     membership: access.membership,
-    services: services.data ?? [],
-    staff: staff.data ?? [],
-    assignments: assignments.data ?? [],
+    services: snapshot.services,
+    staff: snapshot.staff,
+    assignments: snapshot.assignments,
   });
 });
 
