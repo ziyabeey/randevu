@@ -105,6 +105,11 @@ create temp table s07_c3_measurements(
   primary key(workload,sample_no)
 ) on commit drop;
 
+-- The temp table is created by the fixture owner, while the measured database
+-- calls deliberately run as the real authenticated role. Grant only the
+-- measurement-table access needed to record and summarize samples.
+grant select, insert on table pg_temp.s07_c3_measurements to authenticated;
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','b7000000-0000-4000-8000-000000000001',true);
 
