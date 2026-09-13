@@ -18,7 +18,7 @@
 | [S01](docs/plan/stabilization.md#s01) | Recovery oturum sınırı | F10-01 | Tamamlandı | ChatGPT / 2026-09-12T16:06Z | `s01-recovery-session-boundary` · [PR #34](https://github.com/ziyabeey1-ai/randevu/pull/34) · [Devir](docs/handoffs/S01.md) · kırmızı CI `34691808686` · code CI `34703904598` · staging [`34704131649`](https://github.com/ziyabeey1-ai/randevu/actions/runs/34704131649) success: public mailbox recovery, PKCE, marker silme/onarım, refresh, ikinci sekme, invalid/replay, parola değişimi ve eski bearer sınırı |
 | [S02](docs/plan/stabilization.md#s02) | Ortak auth ve cookie mutation koruması | S01 | Tamamlandı | Ana ajan / 2026-09-12T17:36Z | [PR #36](https://github.com/ziyabeey1-ai/randevu/pull/36) · main `1045abc` · [Devir](docs/handoffs/S02.md) · 265 test, bağımsız inceleme, [CI 34708432373](https://github.com/ziyabeey1-ai/randevu/actions/runs/34708432373) ve [gerçek staging 34708621675](https://github.com/ziyabeey1-ai/randevu/actions/runs/34708621675) aynı code head üzerinde başarılı |
 | [S03](docs/plan/stabilization.md#s03) | Bildirim içeriği/sürüm/tekrar tutarlılığı | F09-03 | Tamamlandı | Ana ajan / 2026-09-13 | [PR #35](https://github.com/ziyabeey1-ai/randevu/pull/35) · main `aa5b6b2` · [devir](docs/handoffs/S03.md) · 272 test, bağımsız inceleme, [CI 34733476367](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733476367) ve [staging deneme 2](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733661007/attempts/2) başarılı; ilk zaman aşımı/deployment hazır olma S05 takibinde |
-| [S04](docs/plan/stabilization.md#s04) | Güvenli tekrar ve yönetim kaynak sınırı | F09-04 | Uygulanıyor | Ana ajan / 2026-09-13 | [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39) · `s04-resource-limits` · base `1ee934a` · [devir](docs/handoffs/S04.md) · 277 HTTP, bağımsız son inceleme ve [PG17 CI](https://github.com/ziyabeey1-ai/randevu/actions/runs/34735435177) geçti (`4211d07`); gerçek staging kabulü açık |
+| [S04](docs/plan/stabilization.md#s04) | Güvenli tekrar ve yönetim kaynak sınırı | F09-04 | Tamamlandı | Ana ajan / 2026-09-13 | [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39) · main `a00b66a` · [devir](docs/handoffs/S04.md) · 277 HTTP, bağımsız son inceleme, [PG17 CI 34735531168](https://github.com/ziyabeey1-ai/randevu/actions/runs/34735531168) ve [gerçek staging 34737231931](https://github.com/ziyabeey1-ai/randevu/actions/runs/34737231931) aynı head üzerinde başarılı |
 | [S05](docs/plan/stabilization.md#s05) | Staging secret ve dağıtım tutarlılığı | F17-01 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
 | [S06](docs/plan/stabilization.md#s06) | CI maliyeti ve zorunlu merge kapısı | F17-02 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
 | [S07](docs/plan/stabilization.md#s07) | Runtime bütçeleri ve operasyonel veri ömrü | S02, S03, S04 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
@@ -79,7 +79,7 @@
 
 | Kapı | Kapsam | Durum / kanıt |
 | --- | --- | --- |
-| GS | S01…S08 | Açık — S01, S02 ve S03 tamamlandı; S04…S08 bekleniyor |
+| GS | S01…S08 | Açık — S01…S04 tamamlandı; S05…S08 bekleniyor |
 | G09 | F09-01…F09-05 | Tarihsel kapalı — PR #30, staging `34681540142`; yeni bulgular GS içinde ayrıca açık |
 | G10 | F10-01…F10-06 | Açık — F10-01 tarihsel tamam, GS ve kalan F10 görevleri bekleniyor |
 | G11 | F11-01…F11-04 | Açık — fiyat veri desteği F12-03 önce gerekir |

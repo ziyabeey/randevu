@@ -1,16 +1,16 @@
 # YZT Randevu — Mevcut durum
 
-**Kontrol: 13 Eylül 2026.** Plan v3 ürün ve teknik sıra kaynağıdır. Aşağıdaki tablo doğrulanmış kodu, test geçmişini ve açık işleri ayırır. S01, S02 ve S03 tamamlandı; S04…S08 ve GS açıktır. Canlı sahip/durum [TASKS](TASKS.md), sıra [ROADMAP](ROADMAP.md), ürün sınırı [PRODUCT_SPEC](PRODUCT_SPEC.md) içindedir.
+**Kontrol: 13 Eylül 2026.** Plan v3 ürün ve teknik sıra kaynağıdır. Aşağıdaki tablo doğrulanmış kodu, test geçmişini ve açık işleri ayırır. S01…S04 tamamlandı; S05…S08 ve GS açıktır. Canlı sahip/durum [TASKS](TASKS.md), sıra [ROADMAP](ROADMAP.md), ürün sınırı [PRODUCT_SPEC](PRODUCT_SPEC.md) içindedir.
 
 ## Devam noktası
 
-**S04 uygulaması [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39) içinde; main'e henüz alınmadı.** Ana ajan `s04-resource-limits` branch'ini `main@1ee934a` üzerinden sahiplenmiştir. `4211d07` kodu ve sabitlenmiş testler 277 HTTP testi, [tüm PG17/upgrade/Chrome CI](https://github.com/ziyabeey1-ai/randevu/actions/runs/34735435177) ve bağımsız son güvenlik incelemesinden geçti. Gerçek staging/F09 kabulü beklenir; [S04 devri](docs/handoffs/S04.md) sayısal kotaları, ölçümü ve tek sonraki adımı içerir. Aynı görevi başka branch'te başlatma. Aşağıdaki ana branch durum tablosu kabul gerçekleşene kadar korunur.
+**S04 tamamlandı ve [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39) ile main'e birleşti** (`a00b66a80f9ce81c33d49608c391e11486d9523d`). Kabul head'i `0f8cd59f6b35f0fd791f75dd74140460ae5d00bd`: 277 HTTP testi, bağımsız son inceleme, [PG17/Chrome CI 34735531168](https://github.com/ziyabeey1-ai/randevu/actions/runs/34735531168) ve [gerçek staging 34737231931](https://github.com/ziyabeey1-ai/randevu/actions/runs/34737231931) başarılı. Migration/deploy, hosted auth/mutation smoke ve F09 booking/recovery/idempotency/capability/fake-receipt/provider-delivery aynı head'de doğrulandı. Merge ağacı kabul ağacıyla birebir eşleşti. [S04 devri](docs/handoffs/S04.md) kota tablosu, sınırlar ve ölçümü içerir; aynı görev yeniden başlatılmaz.
 
 **S03 tamamlandı ve [PR #35](https://github.com/ziyabeey1-ai/randevu/pull/35) ile main'e birleşti** (`aa5b6b209ac0440e918abdcf21f830b7468df250`). Kabul head'i `89c048cbca3ebd888defd6535c8abd06df057add`: 272 HTTP testi, bağımsız inceleme, [PG17/Chrome CI 34733476367](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733476367) ve [gerçek staging 34733661007 / deneme 2](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733661007/attempts/2) başarılı. Merge ağacı kabul ağacıyla birebir doğrulandı. [S03 devri](docs/handoffs/S03.md) kapsamı ve ilk staging zaman aşımını kaydeder.
 
 İlk staging denemesi 180 saniyede `pending` görüp durdu; aynı iş yaklaşık üç saniye sonra ilk denemede sağlayıcı kabulü aldı. Aynı kod ve eşiklerle ikinci run gerçek teslim kontrolünü geçti. Dağıtım sonrası Cron hazır olma penceresi S05'e kanıtlı takip olarak bırakıldı; genel teslim hızı garantisi verilmedi.
 
-S01 ve S02'nin önceki kabul kanıtları korunur. Sıradaki teknik çalışma **S04**; başlamadan canlı TASKS/açık PR sahipliği ve güncel main kontrol edilir. S05/S06/S08 dosya ve merge sırası ayrılarak hazırlanabilir. S07 artık S04 kabulünü bekler. Yeni özellik kodu GS tamamlanmadan başlamaz.
+S01 ve S02'nin önceki kabul kanıtları korunur. Sıradaki teknik çalışma **S05**; başlamadan canlı TASKS/açık PR sahipliği ve güncel main kontrol edilir. S06/S07/S08 dosya ve merge sırası ayrılarak hazırlanabilir. S07’nin S02/S03/S04 önkoşulları artık tamamdır. Yeni özellik kodu GS tamamlanmadan başlamaz.
 
 F10-02 için açık [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), branch `f10-02-invites-memberships-roles`, incelenen head `5099ea307ac806e958a7a29a674462558570b0d5` yalnız `docs/handoffs/F10-02.md` içerir. Mevcut sahibi korunur; GS nedeniyle görev **Engelli** kalır. Devralmadan önce canlı PR tekrar kontrol edilir; aynı işi ikinci branch'te başlatma.
 
@@ -25,10 +25,10 @@ F10-02 için açık [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), b
 | Hizmet/personel/eşleştirme | Faz 3 main'de | F10-04 düzenleme; F12-03 fiyat/kategori verisi |
 | Mesai/kapanış/timezone | Faz 4 main'de | F11 çok hizmet uyumu |
 | Tek hizmetli booking, customer, audit/idempotency | Faz 5 main'de | F11 grup modeli; eski veriler ve yetki linkleri korunacak |
-| Public booking ve capability yönetimi | Faz 6–7 + F09 recovery main'de | S04 yönetim/tekrar kotaları; F12 yeni müşteri yüzeyi |
+| Public booking ve capability yönetimi | Faz 6–7 + F09 recovery + S04 main'de; yönetim/tekrar kotaları doğrulandı | F12 yeni müşteri yüzeyi |
 | Gün/hafta takvimi | Faz 8 main'de | F13 güncellik, liste ve referans düzeni |
 | Durable e-posta outbox / scheduled dispatcher | F09-03/05 + S03 main'de; içerik/sürüm/tekrar tutarlılığı doğrulandı | S07 veri ömrü; F16-02 yaşam döngüsü/SMS |
-| Public abuse guard | F09-04 main'de | S04 safe retry/manage kapsamı |
+| Public abuse guard | F09-04 + S04 main'de; ayrı retry/manage/business-create kotaları, kalıcı hata sayacı | S07 gerçek yük ve runtime ölçümü |
 | Test/CI ve gerçek staging | F17-01/02 main'de | S05 kısmi deploy, S06 CI/koruma, S08 yeni nesne erişimi |
 | SalonApp/adisyon/tahsilat | Planlandı | Faz 14; henüz çalışan tablo/route yok |
 | Ürün/stok/masraf/kasa | Planlandı | Faz 15 |
@@ -39,7 +39,7 @@ Mevcut veri erişimi Supabase HTTP/RPC'dir. Önceki ilk önerideki pg/Hyperdrive
 
 ## Tamamlanan kabul kanıtları
 
-Bu on bir görev kendi kayıtlı kapsamıyla tamamlandı. Sonraki bulgular ayrı S görevlerinde tutulur; eski başarılı koşuların kapsamı kendiliğinden genişletilmez.
+Bu on iki görev kendi kayıtlı kapsamıyla tamamlandı. Sonraki bulgular ayrı S görevlerinde tutulur; eski başarılı koşuların kapsamı kendiliğinden genişletilmez.
 
 | Görev | Teslim / kanıt | Kanıtın sınırı |
 | --- | --- | --- |
@@ -52,10 +52,11 @@ Bu on bir görev kendi kayıtlı kapsamıyla tamamlandı. Sonraki bulgular ayrı
 | S01 | [PR #34](https://github.com/ziyabeey1-ai/randevu/pull/34), [devir](docs/handoffs/S01.md), code CI `34703904598`, staging [34704131649](https://github.com/ziyabeey1-ai/randevu/actions/runs/34704131649) | Supabase-doğrulanmış JWT AMR recovery authority; gerçek public e-posta/Receiving/PKCE, marker silme/onarım, refresh, ikinci sekme, replay, parola değişimi ve eski bearer sınırı |
 | S02 | [PR #36](https://github.com/ziyabeey1-ai/randevu/pull/36), [devir](docs/handoffs/S02.md), [CI 34708432373](https://github.com/ziyabeey1-ai/randevu/actions/runs/34708432373), [staging 34708621675](https://github.com/ziyabeey1-ai/randevu/actions/runs/34708621675) | 265 HTTP/client/contract testi, SQL/Chrome kapıları; hosted login/session/işletme seçimi, dört feature read, Origin/CSRF negatifleri, refresh ve capability doğrulaması. Bu run F09/F10/S01 opt-in yolculuklarını yeniden çalıştırmadı |
 | S03 | [PR #35](https://github.com/ziyabeey1-ai/randevu/pull/35), [devir](docs/handoffs/S03.md), [CI 34733476367](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733476367), [staging deneme 2](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733661007/attempts/2) | 272 HTTP testi; PG17 snapshot/lease/lifecycle/upgrade/yarış; hosted recovery/idempotency/capability, sahte receipt reddi ve Resend test alıcısında delivered. İlk startup zaman aşımı S05 takibinde |
+| S04 | [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39), [devir](docs/handoffs/S04.md), [CI 34735531168](https://github.com/ziyabeey1-ai/randevu/actions/runs/34735531168), [staging 34737231931](https://github.com/ziyabeey1-ai/randevu/actions/runs/34737231931) | 277 HTTP; PG17 kota/ACL/hata/yenilenme ve iki bağlantılı yarışlar; hosted auth, booking/recovery/idempotency/capability ve Resend teslimi. 1000 tekrar ölçümü CI fixture'ıdır, production kapasite garantisi değildir |
 | F17-01 | [Devir](docs/handoffs/F17-01.md), staging [34679959999](https://github.com/ziyabeey1-ai/randevu/actions/runs/34679959999) | Hosted DB/ACL/credential, fixtures, Worker deploy, management key koruma, health/login/session/business/catalog |
 | F17-02 | [PR #15](https://github.com/ziyabeey1-ai/randevu/pull/15), [devir](docs/handoffs/F17-02.md), CI `34658041327` | Test envanteri/Chrome smoke/HTTP/SQL; o tarihte 0-vulnerability baseline. CI verimliliği ve repo koruması ayrıca S06 |
 
-S01 için son doğrulanmış code head `8b4e2a70188061f8f38979ab539bc47d2c409980`, CI `34703904598` ve gerçek staging `34704131649` success'tir. S02 kabul head'i `dc4424b34570aa78949d08a10a108b3bfc8083a7`, CI `34708432373` ve staging `34708621675` success'tir; main merge ağacı bu kabul ağacıyla birebir doğrulandı. S03 kabul head'i `89c048cbca3ebd888defd6535c8abd06df057add`, CI `34733476367` ve staging `34733661007` deneme 2 success'tir; merge ağacı kabul ağacıyla aynıdır. G09 tarihsel kapalı, **GS ve G10–G17 açıktır**.
+S01 için son doğrulanmış code head `8b4e2a70188061f8f38979ab539bc47d2c409980`, CI `34703904598` ve gerçek staging `34704131649` success'tir. S02 kabul head'i `dc4424b34570aa78949d08a10a108b3bfc8083a7`, CI `34708432373` ve staging `34708621675` success'tir; main merge ağacı bu kabul ağacıyla birebir doğrulandı. S03 kabul head'i `89c048cbca3ebd888defd6535c8abd06df057add`, CI `34733476367` ve staging `34733661007` deneme 2 success'tir; merge ağacı kabul ağacıyla aynıdır. S04 kabul head'i `0f8cd59f6b35f0fd791f75dd74140460ae5d00bd`, CI `34735531168` ve staging `34737231931` success; main merge ağacı aynı. G09 tarihsel kapalı, **GS ve G10–G17 açıktır**.
 
 ## Açık inceleme bulguları
 
@@ -63,7 +64,6 @@ Ayrıntılı dosya/sınır/kanıt ve kabul [S kartlarında](docs/plan/stabilizat
 
 | Bulgu / kanıt türü | Etki / sınır | Görev |
 | --- | --- | --- |
-| Safe retry tüm sayaçları atlıyor; manage RPC kotaları eksik — kaynak incelemesi | Yetkili/anon kaynak tüketimi sınırı; tenant erişim ihlali kanıtı değil | S04 |
 | Run başına DB hash değişimi Worker'dan önce — workflow incelemesi | Kısmi dağıtımda eski Worker uyumsuz kalabilir; S03 ilk staging denemesinde Cron başlangıcı 180 sn test penceresini aştı, deployment hazır olma kontrolü de izlenecek | S05 |
 | Üç typecheck/docs tam CI/source regex; main protected=false ve rulesets boş — kaynak/API | Test maliyeti ve merge zorunluluğu eksik | S06 |
 | Terminal PII retention ve bazı dış RPC timeout'ları eksik — kaynak incelemesi | Büyüme/bakım/uzun bekleme sınırı; canlı maliyet ölçümü yapılmadı | S07 |
@@ -101,4 +101,4 @@ Worker entry `worker/entry.ts`, router `worker/app.ts`; auth `worker/auth.ts` + 
 
 ## Sonraki çalışma sınırı
 
-S01, S02 ve S03 kabulü tamamlandı. S04 PR #39 üzerinde uygulanmış ve CI/bağımsız incelemeden geçmiştir; PR’ın en son head’i ile gerçek staging/F09 kabulü doğrulanır. Başarıdan önce main merge veya S04 tamamlandı beyanı yapılmaz. GS kapanmadan F10-02 veya diğer yeni özellik kodu başlatılmaz.
+S01…S04 kabulü tamamlandı. S05 için güncel main/TASKS/açık PR sahipliği kontrol edilip staging secret ve dağıtım tutarlılığına dar görev paketi hazırlanır. Rutin deploy'da gate/dispatch secret korunması, açık rotasyon/geri dönüş sırası ve S03'ten kalan Cron hazır olma bulgusu ele alınır. S05 henüz üstlenilmedi veya uygulanmadı; mevcut S04 migration değiştirilmez. GS kapanmadan F10-02 veya diğer yeni özellik kodu başlatılmaz.
