@@ -1,6 +1,6 @@
 # Staging runbook
 
-S05, anahtar değişimini rutin dağıtımdan ayırır. Bu dalın otomatik/gerçek kabul durumu [S05 devrinde](../handoffs/S05.md) tutulur; aşağıdaki prosedürün yazılmış olması canlı kabul değildir. Secret, DB verifier, probe yanıtı, parola ve şifresiz yönetim bağlantısı Git'e, loga veya artifact'a yazılmaz.
+S05, anahtar değişimini rutin dağıtımdan ayırır. Rutin deploy ve açık rotation gerçek staging'de doğrulanmış ve PR #41 ile main'e alınmıştır; kanıtın kapsamı ve operasyon sınırları [S05 devrinde](../handoffs/S05.md) tutulur. Bu kayıt production/pilot kabulü değildir. Secret, DB verifier, probe yanıtı, parola ve şifresiz yönetim bağlantısı Git'e, loga veya artifact'a yazılmaz.
 
 ## Canlı kabul durumu
 
@@ -9,6 +9,7 @@ S05, anahtar değişimini rutin dağıtımdan ayırır. Bu dalın otomatik/gerç
 - Kabul edilen workers.dev origin: `https://yzt-randevu-staging.ziyabeey1.workers.dev`.
 - F17-01 base environment acceptance: GitHub Actions `Staging deploy` run `34679959999` → **success**.
 - F09-05 gerçek booking/provider delivery acceptance: run `34681540142` → **success**.
+- S05 aynı `7133650` kodunda [routine #18](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747433290) ve [rotate #19](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747719210) → **success**; yeni pair/önceki S05 management canary/Cron/F09 ve atomik DB promote doğrulandı. F09 sağlayıcı teslimi Resend test alıcısınadır.
 - Base smoke: health → login → session → business select → catalog.
 - F09 acceptance: lost-response recovery → idempotency/capability/receipt authority → durable outbox → Resend provider record → güvenli test recipient `delivered`.
 - Production verisi staging fixture'a kopyalanmaz.
@@ -180,7 +181,7 @@ Eski `staging:config` ve hash'leri koşulsuz değiştiren seed kaldırılmışt�
 | İlk legacy baseline'da latest aktiften farklı | Eski canary bulunmadığından otomatik inheritance/aktivasyon durur. Yetkili operatör önceki run'ın kaynak/adayı ve geçtiği proof adımını inceler; kanıtlanmamış aday veya rastgele eski sürüm aktive edilmez. |
 | Finalize DB cevabı kayboldu | DB zaten yeni çift + boş pending gösteriyorsa eski anahtarlı sürüme dönülmez. `resume` tekrar doğrulama yapar. |
 | Bootstrap, ilk upload'dan önce kesildi | Worker sürümü/işletme/şifreli materyal hâlâ yoksa açık `bootstrap` yeniden çalıştırılabilir. |
-| Bootstrap upload edildi fakat etkin sürüm yok | Otomatik yeni anahtar üretimi durur. Cloudflare'da o run'ın etiketli adayı ve DB verifier durumu yetkili operatörce eşleştirilir; aday %100 etkinleştirilir, ardından `deploy` gerçek kabulü çalıştırır. Rastgele Worker silme veya management anahtarı değiştirme uygulanmaz. |
+| Bootstrap upload edildi fakat etkin sürüm yok | Otomatik yeni anahtar üretimi durur. Aşağıdaki operatör adımlarıyla o run'ın etiketli adayı, aktivasyon öncesi proof kaydı ve değişmemiş DB config'i eşleştirilir. Kanıt yoksa doğrudan etkinleştirilmez; kanıtlı aday %100 etkinleştirildikten sonra `deploy` gerçek kabulü çalıştırır. Worker silme veya management anahtarı değiştirme uygulanmaz. |
 
 Rollback hedefi UUID ile sabittir; varsayılan 'önceki' veya 'latest' kullanılmaz. Cloudflare `force=true`, yalnız kanıtlanmış aday veya kayıtlı önceki sürümün aktivasyonunda kullanılır; secret'lar sürümlü olduğu için gereklidir. Bağlı DB kaynakları geri alınmaz. [Cloudflare rollback](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
 
