@@ -6,6 +6,7 @@ import publicBookingRecovery from './public-booking-recovery.ts';
 import publicBooking from './public-booking.ts';
 import customerManage from './customer-manage.ts';
 import calendar from './calendar.ts';
+import snapshotReads from './snapshot-reads.ts';
 import {
   mutationSecurityError,
   type AuthEnv,
@@ -74,6 +75,10 @@ app.use('/api/*', async (context, next) => {
 });
 
 app.get('/api/deployment-health', (context) => deploymentHealth(context.req.raw, context.env));
+// C2b exact read routes preserve existing response shapes while probing max+1.
+// They are registered before the legacy handlers so overflow can never become a
+// partial successful snapshot. Mutations continue through their existing routers.
+app.route('/', snapshotReads);
 app.route('/', coreApp);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);

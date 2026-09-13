@@ -112,9 +112,9 @@ await test('S01 a forged recovery marker cannot downgrade a normal password sess
     const url = String(input);
     if (url.endsWith('/auth/v1/user')) return json(user);
     if (url.includes('/rest/v1/memberships?')) return json([membership]);
-    if (url.includes('/rest/v1/services?')) return json([]);
-    if (url.includes('/rest/v1/staff_profiles?')) return json([]);
-    if (url.includes('/rest/v1/staff_services?')) return json([]);
+    if (url.endsWith('/rest/v1/rpc/get_catalog_snapshot')) {
+      return json([{ services: [], staff: [], assignments: [] }]);
+    }
     throw new Error(`unexpected normal-session fetch: ${url}`);
   };
 
