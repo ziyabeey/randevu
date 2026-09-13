@@ -4,6 +4,8 @@
 
 ## Devam noktası
 
+**S06 çalışılıyor:** `9840bca` main üzerinden `s06-ci-gate` görev paketi açıldı. CI belge/kod seçimi, gerçek yürütme envanteri ve sabit `CI gate` hazırlanıyor. [S06 devri](docs/handoffs/S06.md) kapsamı ve kanıtı, [CI rehberi](docs/runbooks/ci.md) katkı ve main koruma adımını tutar. Gerçek repo koruması yönetim erişimini bekler; S06/GS kabulü açıktır.
+
 **S05 tamamlandı ve [PR #41](https://github.com/ziyabeey1-ai/randevu/pull/41) ile main'e birleşti** (`1335018f1dbc5587483058475670e8495fb7ddbc`). Kabul head'i `71336500c42d9011ab5ce190541ea2323538e710`: 299 test, bağımsız kod/kabul incelemesi, [PG17/Chrome CI 34742491243](https://github.com/ziyabeey1-ai/randevu/actions/runs/34742491243), [routine staging #18](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747433290) ve [açık rotation #19](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747719210) aynı kodda başarılı. Yeni aday aktive edilmeden doğrulanır; rotasyonda eski S05 management canary korunmuş, Cron ve gerçek F09 kabulünden sonra DB çiftinin atomik geçişi tamamlanmıştır. 08:30:22 UTC salt okunur kontrolde pending 0, fixture 2 ve yeni sürümle eşleşen dispatch görüldü. Merge ağacı kabul ağacıyla birebir aynıdır. [S05 devri](docs/handoffs/S05.md) geçmiş hataları, kanıtları ve kalan operasyon sınırlarını kaydeder.
 
 **S04 tamamlandı ve [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39) ile main'e birleşti** (`a00b66a80f9ce81c33d49608c391e11486d9523d`). Kabul head'i `0f8cd59f6b35f0fd791f75dd74140460ae5d00bd`: 277 HTTP testi, bağımsız son inceleme, [PG17/Chrome CI 34735531168](https://github.com/ziyabeey1-ai/randevu/actions/runs/34735531168) ve [gerçek staging 34737231931](https://github.com/ziyabeey1-ai/randevu/actions/runs/34737231931) başarılı. Migration/deploy, hosted auth/mutation smoke ve F09 booking/recovery/idempotency/capability/fake-receipt/provider-delivery aynı head'de doğrulandı. Merge ağacı kabul ağacıyla birebir eşleşti. [S04 devri](docs/handoffs/S04.md) kota tablosu, sınırlar ve ölçümü içerir; aynı görev yeniden başlatılmaz.
@@ -12,7 +14,7 @@
 
 S03'ün ilk staging denemesi 180 saniyede `pending` görüp durdu; aynı iş yaklaşık üç saniye sonra ilk denemede sağlayıcı kabulü aldı. Aynı kod ve eşiklerle ikinci run gerçek teslim kontrolünü geçti. Bu bulgunun Cron hazır olma takibi S05'te ayrı başlangıç kontrolü ve gerçek routine/rotation kabulüyle tamamlandı; F09'un 180 saniyelik teslimat eşiği korunur, genel teslim hızı garantisi verilmez.
 
-S01 ve S02'nin önceki kabul kanıtları korunur. Sonraki teknik iş S06 için güncel main, TASKS ve açık PR sahipliği kontrol edilerek dar görev paketi hazırlamaktır. S05 yeniden başlatılmaz; SQL URI ve Cloudflare 10057 düzeltmelerinin tarihçesi kendi devrinde korunur. S06/S07/S08 dosya ve merge sırası ayrılarak hazırlanabilir; S07'nin S02/S03/S04 önkoşulları tamamdır. Yeni özellik kodu GS tamamlanmadan başlamaz.
+S01 ve S02'nin önceki kabul kanıtları korunur. S06 görev paketi güncel main, TASKS ve açık PR sahipliği kontrol edilerek hazırlandı; CI uygulaması sürüyor. S05 yeniden başlatılmaz; SQL URI ve Cloudflare 10057 düzeltmelerinin tarihçesi kendi devrinde korunur. S06/S07/S08 dosya ve merge sırası ayrılarak hazırlanabilir; S07'nin S02/S03/S04 önkoşulları tamamdır. Yeni özellik kodu GS tamamlanmadan başlamaz.
 
 F10-02 için açık [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), branch `f10-02-invites-memberships-roles`, incelenen head `5099ea307ac806e958a7a29a674462558570b0d5` yalnız `docs/handoffs/F10-02.md` içerir. Mevcut sahibi korunur; GS nedeniyle görev **Engelli** kalır. Devralmadan önce canlı PR tekrar kontrol edilir; aynı işi ikinci branch'te başlatma.
 
@@ -103,4 +105,4 @@ Worker entry `worker/entry.ts`, router `worker/app.ts`; auth `worker/auth.ts` + 
 
 ## Sonraki çalışma sınırı
 
-S01…S05 kabulü tamamlandı. S06 için güncel main, TASKS ve açık PR'lar doğrulanarak CI maliyeti/merge kapısı görev paketi yazılır; henüz S06 uygulaması başlamadı. Mevcut tüm CI kapıları S06'nın kendi kabulüne kadar korunur. Repo koruması için gerçek yönetim erişimi ve uygulanabilir required check ayrıca doğrulanır; erişim yoksa S06 tamamlandı sayılmaz. S07/S08 ve GS açık; F10-02 veya diğer yeni özellik kodu GS'yi bekler. Staging'e uygulanmış S05 migration dahil mevcut migration'lar değiştirilmez.
+S01…S05 kabulü tamamlandı. S06 görev paketi yazıldı ve dar dosya sınırlarıyla CI uygulaması sürüyor. Mevcut tüm CI kapıları S06'nın kendi kabulüne kadar korunur. Repo koruması için gerçek yönetim erişimi ve uygulanabilir required check ayrıca doğrulanır; erişim yoksa S06 tamamlandı sayılmaz. S07/S08 ve GS açık; F10-02 veya diğer yeni özellik kodu GS'yi bekler. Staging'e uygulanmış S05 migration dahil mevcut migration'lar değiştirilmez.

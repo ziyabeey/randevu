@@ -2,16 +2,49 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - f17-01-staging-environment
+    branches: [main]
+  # All PR source and target branches, including stacked review/acceptance PRs.
+  # No path filter: every PR receives the same final check.
   pull_request:
-    branches:
-      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  verify:
+  scope:
+    name: Scope and documents
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.scope.outputs.mode }}
+      docs_complete: ${{ steps.docs.outputs.complete }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Select required checks
+        id: scope
+        run: node scripts/ci-scope.mjs
+      - name: Check documentation and task graph
+        id: docs
+        run: node scripts/ci-docs.mjs
+
+  code:
+    name: Code and PostgreSQL
+    needs: scope
+    if: ${{ needs.scope.outputs.mode == 'code' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      complete: ${{ steps.verify.outputs.complete }}
     services:
       postgres:
         image: postgres:17
@@ -26,144 +59,41 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - name: Install
+      - name: Install dependencies once
         run: npm ci
-      - name: Verify CI test and migration coverage
-        run: npm run test:ci-coverage
-      - name: Verify dependency audit
-        run: |
-          set +e
-          npm audit --audit-level=high --json > /tmp/npm-audit.json
-          audit_status=$?
-          set -e
-          node scripts/report-npm-audit.mjs /tmp/npm-audit.json
-          if [ "$audit_status" -ne 0 ]; then
-            echo "High/critical dependency audit failed."
-            exit "$audit_status"
-          fi
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Build
-        run: npm run build
-      - name: Verify browser smoke
-        run: npm run test:browser-smoke
-      - name: Verify scheduled Worker bundle
-        run: npx wrangler deploy --dry-run --outdir /tmp/randevu-worker
-      - name: Verify HTTP contracts
-        run: npm run test:http
-      - name: Verify staging Cloudflare config build
-        run: npm run build:staging
       - name: Install PostgreSQL client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Verify migrations, tenancy, booking, management, calendar, recovery and notifications
+      - name: Run all required code checks
+        id: verify
         env:
           PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911090000_phase2_auth_tenancy.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911100000_phase3_services_team.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911110000_phase4_availability.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911120000_phase5_booking_core.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911121000_phase5_booking_hardening.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911130000_phase6_public_booking.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911140000_phase7_customer_manage.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911150000_phase8_calendar.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911160000_phase9_booking_recovery.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170000_phase9_notification_outbox.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170100_phase9_notification_maintenance.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase3_services_team.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase4_availability.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase5_booking_core.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase6_public_booking.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase7_customer_manage.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase8_calendar.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_outbox.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_outbox_concurrency.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_booking_recovery_concurrency.sql
-      - name: Verify F09-03 upgrade and backfill path
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists yzt_upgrade;"
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "create database yzt_upgrade;"
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911090000_phase2_auth_tenancy.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911100000_phase3_services_team.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911110000_phase4_availability.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911120000_phase5_booking_core.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911121000_phase5_booking_hardening.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911130000_phase6_public_booking.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911140000_phase7_customer_manage.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911150000_phase8_calendar.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911160000_phase9_booking_recovery.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_upgrade_fixture.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170000_phase9_notification_outbox.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170100_phase9_notification_maintenance.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/phase9_notification_upgrade_assert.sql
-      - name: Verify F09-04 public abuse gate and hosted ACL boundary
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180000_phase9_public_abuse_control.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180200_phase9_public_abuse_retention.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/f17_hosted_acl_hardening.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_public_abuse_recovery_probe.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_public_abuse_control.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/phase9_public_abuse_retention.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/f17_staging_fixture.sql
-      - name: Verify S03 frozen notification events and conservative upgrade
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260912123000_s03_notification_consistency.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s03_notification_consistency.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s03_notification_concurrency.sql
+        run: node scripts/ci-code.mjs
 
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists yzt_s03_upgrade;"
-          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "create database yzt_s03_upgrade;"
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/bootstrap.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911090000_phase2_auth_tenancy.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911100000_phase3_services_team.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911110000_phase4_availability.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911120000_phase5_booking_core.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911121000_phase5_booking_hardening.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911130000_phase6_public_booking.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911140000_phase7_customer_manage.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911150000_phase8_calendar.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911160000_phase9_booking_recovery.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170000_phase9_notification_outbox.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911170100_phase9_notification_maintenance.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180000_phase9_public_abuse_control.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260911180200_phase9_public_abuse_retention.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/s03_notification_upgrade_fixture.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/migrations/20260912123000_s03_notification_consistency.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_s03_upgrade -v ON_ERROR_STOP=1 -f supabase/tests/s03_notification_upgrade_assert.sql
-      - name: Verify S04 resource limits and concurrent recovery
+  gate:
+    name: CI gate
+    if: ${{ always() }}
+    needs: [scope, code]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Require the selected checks to complete
         env:
-          PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260913030912_s04_resource_limits.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s04_resource_limits.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s04_resource_limits_concurrency.sql
-      - name: Verify S05 key overlap, upgrade preservation and concurrent transitions
-        env:
-          PGPASSWORD: postgres
-        run: |
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s05_upgrade_fixture.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/migrations/20260913042902_s05_deploy_consistency.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s05_deploy_consistency.sql
-          psql -h 127.0.0.1 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -f supabase/tests/s05_deploy_concurrency.sql
-      - name: Verify S05 staging SQL connection with the real psql client
-        run: node scripts/test-staging-control-db.mjs
+          CI_MODE: ${{ needs.scope.outputs.mode }}
+          CI_SCOPE_RESULT: ${{ needs.scope.result }}
+          CI_DOCS_COMPLETE: ${{ needs.scope.outputs.docs_complete }}
+          CI_CODE_RESULT: ${{ needs.code.result }}
+          CI_CODE_COMPLETE: ${{ needs.code.outputs.complete }}
+        run: node scripts/ci-result.mjs

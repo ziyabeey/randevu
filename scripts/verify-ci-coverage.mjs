@@ -1,38 +1,68 @@
-import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { discoverFiles } from './ci-files.mjs';
+import {
+  defaultPostgresPlanPath,
+  flattenPostgresPlan,
+  readPostgresPlan,
+} from './ci-postgres.mjs';
 
-const root = process.cwd();
-const workflow = await readFile(path.join(root, '.github/workflows/ci.yml'), 'utf8');
-const packageJsonText = await readFile(path.join(root, 'package.json'), 'utf8');
-const packageJson = JSON.parse(packageJsonText);
-const searchable = `${workflow}\n${JSON.stringify(packageJson.scripts ?? {})}`;
+const modulePath = fileURLToPath(import.meta.url);
+const repoRoot = path.resolve(path.dirname(modulePath), '..');
 
-const groups = [
-  { dir: 'supabase/migrations', suffix: '.sql', wildcard: null },
-  { dir: 'supabase/tests', suffix: '.sql', wildcard: null },
-  { dir: 'tests', suffix: '.test.mjs', wildcard: 'tests/*.test.mjs' },
-];
+export async function verifyCiCoverage(options = {}) {
+  const root = path.resolve(options.root ?? repoRoot);
+  const planPath = options.planPath ?? defaultPostgresPlanPath;
+  const [migrations, sqlTests, nodeTests] = await Promise.all([
+    discoverFiles(root, 'supabase/migrations', '.sql'),
+    discoverFiles(root, 'supabase/tests', '.sql'),
+    discoverFiles(root, 'tests', '.test.mjs'),
+  ]);
 
-const missing = [];
-let checked = 0;
+  const discoveredSql = [...migrations, ...sqlTests].sort((left, right) => left.localeCompare(right, 'en'));
+  const plan = readPostgresPlan(planPath);
+  const steps = flattenPostgresPlan(plan);
+  const planFiles = steps.filter((step) => Object.hasOwn(step, 'file')).map((step) => step.file);
+  const executableSql = new Set(planFiles);
+  const discoveredSet = new Set(discoveredSql);
+  const missing = discoveredSql.filter((file) => !executableSql.has(file));
+  const unknown = [...executableSql].filter((file) => !discoveredSet.has(file)).sort((left, right) => left.localeCompare(right, 'en'));
 
-for (const group of groups) {
-  const absoluteDir = path.join(root, group.dir);
-  const entries = await readdir(absoluteDir, { withFileTypes: true });
-  const wildcardCovered = group.wildcard ? searchable.includes(group.wildcard) : false;
+  if (missing.length > 0 || unknown.length > 0) {
+    const lines = ['CI coverage gate failed.'];
+    if (missing.length > 0) {
+      lines.push('SQL files missing from the executable PostgreSQL plan:');
+      lines.push(...missing.map((file) => `- ${file}`));
+    }
+    if (unknown.length > 0) {
+      lines.push('Unknown SQL files referenced by the executable PostgreSQL plan:');
+      lines.push(...unknown.map((file) => `- ${file}`));
+    }
+    throw new Error(lines.join('\n'));
+  }
+  if (nodeTests.length === 0) throw new Error('CI coverage gate failed: no Node test files were discovered');
 
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith(group.suffix)) continue;
-    const relative = `${group.dir}/${entry.name}`;
-    checked += 1;
-    if (!wildcardCovered && !searchable.includes(relative)) missing.push(relative);
+  return {
+    sqlFiles: discoveredSql.length,
+    sqlInvocations: planFiles.length,
+    inlineSqlSteps: steps.length - planFiles.length,
+    nodeTests: nodeTests.length,
+  };
+}
+
+function isMain() {
+  return Boolean(process.argv[1]) && path.resolve(process.argv[1]) === modulePath;
+}
+
+if (isMain()) {
+  try {
+    const result = await verifyCiCoverage();
+    console.log(
+      `CI coverage gate passed: ${result.sqlFiles} SQL files, ${result.sqlInvocations} SQL file invocations, `
+      + `${result.inlineSqlSteps} inline SQL steps, and ${result.nodeTests} recursive Node tests.`,
+    );
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
   }
 }
-
-if (missing.length > 0) {
-  console.error('CI coverage gate failed. These test/migration files are not wired into CI:');
-  for (const file of missing.sort()) console.error(`- ${file}`);
-  process.exit(1);
-}
-
-console.log(`CI coverage gate passed for ${checked} migration/test files.`);
