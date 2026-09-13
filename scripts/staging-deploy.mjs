@@ -222,6 +222,14 @@ await executeCutover({
     if (gates.f09) command('npm', ['run', 'staging:f09-acceptance']);
     if (gates.f10) command('npm', ['run', 'staging:f10-auth-acceptance']);
     if (gates.s01) command('npm', ['run', 'staging:s01-acceptance']);
+    if (mode === 'deploy' && gates.f09 && gates.f10 && gates.s01) {
+      command('npm', ['run', 'staging:s07-acceptance']);
+      const readback = database();
+      if (readback.pending || readback.fixtures !== 2) throw new Error('S07 C4 staging readback failed');
+      const active = await cloudState();
+      if (active.version !== state.target) throw new Error('S07 C4 active Worker version changed during acceptance');
+      console.log(`S07 C4 staging readback passed: fixtures=2, pending=0, Worker ${state.target}, source commit ${commit}.`);
+    }
   },
   async commit(s) {
     if (s.rotating) {
