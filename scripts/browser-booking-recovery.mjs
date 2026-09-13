@@ -147,9 +147,19 @@ class Cdp {
     this.ws = new WebSocket(url);
     this.nextId = 1;
     this.pending = new Map();
+    this.diagnostics = [];
     this.ws.addEventListener('message', (event) => {
       const message = JSON.parse(String(event.data));
-      if (!message.id || !this.pending.has(message.id)) return;
+      if (!message.id) {
+        if (message.method === 'Runtime.exceptionThrown') {
+          const details = message.params?.exceptionDetails;
+          const summary = details?.exception?.description ?? details?.text ?? 'Unknown browser exception';
+          this.diagnostics.push(String(summary).slice(0, 2_000));
+          if (this.diagnostics.length > 8) this.diagnostics.shift();
+        }
+        return;
+      }
+      if (!this.pending.has(message.id)) return;
       const { resolve, reject, timer } = this.pending.get(message.id);
       clearTimeout(timer);
       this.pending.delete(message.id);
@@ -187,11 +197,18 @@ let origin;
 let chromeStartError;
 
 async function openPage(debugUrl, url) {
-  const target = await (await fetch(`${debugUrl}/json/new?${encodeURIComponent(url)}`, { method: 'PUT', signal: AbortSignal.timeout(5_000) })).json();
+  const target = await (await fetch(`${debugUrl}/json/new?about%3Ablank`, { method: 'PUT', signal: AbortSignal.timeout(5_000) })).json();
   const page = await Cdp.connect(target.webSocketDebuggerUrl);
   await page.send('Runtime.enable');
-  await waitFor(() => page.evaluate('document.documentElement.dataset.s07Ready === "true"', 500), 'browser entry did not load');
+  await page.send('Page.enable');
   page.targetId = target.id;
+  try {
+    await navigate(page, url);
+  } catch (error) {
+    const details = page.diagnostics.length ? `\nBrowser exceptions:\n${page.diagnostics.join('\n')}` : '';
+    page.close();
+    throw new Error(`${error.message}${details}`);
+  }
   return page;
 }
 
@@ -229,6 +246,7 @@ try {
     root,
     publicDir: false,
     logLevel: 'error',
+    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
     build: {
       outDir: bundleDir,
       emptyOutDir: true,
@@ -496,6 +514,9 @@ try {
   console.log('S07 browser booking recovery passed in two Chrome pages.');
 } catch (error) {
   console.error(error);
+  for (const [name, page] of [['page A', pageA], ['page B', pageB]]) {
+    if (page?.diagnostics.length) console.error(`${name} browser exceptions:\n${page.diagnostics.join('\n')}`);
+  }
   try { console.error(readFileSync(chromeLog, 'utf8').slice(-4_000)); } catch { /* Chrome may not have started. */ }
   process.exitCode = 1;
 } finally {
