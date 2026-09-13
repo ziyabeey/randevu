@@ -20,7 +20,7 @@
 | [S03](docs/plan/stabilization.md#s03) | Bildirim içeriği/sürüm/tekrar tutarlılığı | F09-03 | Tamamlandı | Ana ajan / 2026-09-13 | [PR #35](https://github.com/ziyabeey1-ai/randevu/pull/35) · main `aa5b6b2` · [devir](docs/handoffs/S03.md) · 272 test, bağımsız inceleme, [CI 34733476367](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733476367) ve [staging deneme 2](https://github.com/ziyabeey1-ai/randevu/actions/runs/34733661007/attempts/2) başarılı; ilk zaman aşımı/deployment hazır olma S05 takibinde |
 | [S04](docs/plan/stabilization.md#s04) | Güvenli tekrar ve yönetim kaynak sınırı | F09-04 | Tamamlandı | Ana ajan / 2026-09-13 | [PR #39](https://github.com/ziyabeey1-ai/randevu/pull/39) · main `a00b66a` · [devir](docs/handoffs/S04.md) · 277 HTTP, bağımsız son inceleme, [PG17 CI 34735531168](https://github.com/ziyabeey1-ai/randevu/actions/runs/34735531168) ve [gerçek staging 34737231931](https://github.com/ziyabeey1-ai/randevu/actions/runs/34737231931) aynı head üzerinde başarılı |
 | [S05](docs/plan/stabilization.md#s05) | Staging secret ve dağıtım tutarlılığı | F17-01 | Tamamlandı | Ana ajan / 2026-09-13 | [PR #41](https://github.com/ziyabeey1-ai/randevu/pull/41) · main `1335018` · [devir](docs/handoffs/S05.md) · kabul head `7133650`: 299 test, bağımsız inceleme, [CI 34742491243](https://github.com/ziyabeey1-ai/randevu/actions/runs/34742491243), [routine #18](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747433290) ve [rotate #19](https://github.com/ziyabeey1-ai/randevu/actions/runs/34747719210) başarılı; eski management canary korundu, pending 0 ve yeni DB/Worker eşleşti; merge ağacı kabul ağacıyla aynı |
-| [S06](docs/plan/stabilization.md#s06) | CI maliyeti ve zorunlu merge kapısı | F17-02 | İncelemede | Ana ajan / 2026-09-13 | `s06-ci-gate` · base `9840bca` · [PR #43](https://github.com/ziyabeey1-ai/randevu/pull/43) · [devir](docs/handoffs/S06.md) · tek CI gate, 328 test ve gerçek belge/negatif kabul kayıtlı; main'e birleşmedi, kullanıcı onaylı tek kişilik koruma paketi hazır (insan onayı 0, PR/CI zorunlu); aktif main koruması 23159972 doğrulandı; incelemedeki görev önkoşulu düzeltmesi ve birleşme bekleniyor |
+| [S06](docs/plan/stabilization.md#s06) | CI maliyeti ve zorunlu merge kapısı | F17-02 | Tamamlandı | Ana ajan / 2026-09-13 | [PR #43](https://github.com/ziyabeey1-ai/randevu/pull/43) · main `b93d256` · [devir](docs/handoffs/S06.md) · [CI 34753034546](https://github.com/ziyabeey1-ai/randevu/actions/runs/34753034546), 336 Node/78 PG; belge ve SQL negatifleri; aktif ruleset 23159972; bağımsız son inceleme |
 | [S07](docs/plan/stabilization.md#s07) | Runtime bütçeleri ve operasyonel veri ömrü | S02, S03, S04 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
 | [S08](docs/plan/stabilization.md#s08) | Yeni DB nesnelerinde erişim kapısı | F17-01, F17-02 | Planlandı | — | İnceleme bulgusu var; düzeltme/kanıt henüz yok |
 
@@ -79,7 +79,7 @@
 
 | Kapı | Kapsam | Durum / kanıt |
 | --- | --- | --- |
-| GS | S01…S08 | Açık — S01…S05 tamamlandı; S06…S08 bekleniyor |
+| GS | S01…S08 | Açık — S01…S06 tamamlandı; S07…S08 bekleniyor |
 | G09 | F09-01…F09-05 | Tarihsel kapalı — PR #30, staging `34681540142`; yeni bulgular GS içinde ayrıca açık |
 | G10 | F10-01…F10-06 | Açık — F10-01 tarihsel tamam, GS ve kalan F10 görevleri bekleniyor |
 | G11 | F11-01…F11-04 | Açık — fiyat veri desteği F12-03 önce gerekir |
