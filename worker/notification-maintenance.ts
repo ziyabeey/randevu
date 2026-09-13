@@ -1,4 +1,5 @@
 import type { NotificationEnv } from './notifications';
+import { fetchTextWithTimeout } from './outbound-request.ts';
 
 export async function maintainNotificationState(
   env: NotificationEnv,
@@ -15,13 +16,14 @@ export async function maintainNotificationState(
   });
 
   try {
-    const response = await fetchImpl(
+    const { response } = await fetchTextWithTimeout(
       `${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/maintain_notification_jobs`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({ p_dispatch_secret: secret }),
       },
+      fetchImpl,
     );
     return response.ok;
   } catch {
