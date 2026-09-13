@@ -4,7 +4,9 @@ import { controlSql } from './staging-control-db.mjs';
 
 // CI-only fake credentials. Exercise the exact helper used by staging against
 // a real PostgreSQL service, without depending on a preconfigured PGHOST/socket.
-const uri = 'postgresql://postgres:postgres@127.0.0.1:5432/yzt_test?sslmode=disable';
+// Keep the fake URI below PostgreSQL's 63-byte database-name limit so the
+// legacy failure reports the entire literal value instead of a truncation.
+const uri = 'postgresql://postgres:postgres@127.0.0.1:5432/yzt_test';
 const env = { PATH: process.env.PATH, LANG: 'C', PGCONNECT_TIMEOUT: '2' };
 // Supply known TCP defaults only to the legacy arm. Its failure must be the
 // literal URI database name, not an absent local socket or failed password.
