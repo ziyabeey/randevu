@@ -85,17 +85,23 @@ await test('S07 C2b session probes 101 memberships and fails instead of returnin
   }
 });
 
-await test('S07 C2b catalog accepts exact ceilings with explicit max+1 probes', async () => {
+await test('S07 C2b catalog returns exact ceilings from one DB snapshot and never raw-lists assignments', async () => {
   const realFetch = globalThis.fetch;
   const calls = [];
-  globalThis.fetch = async (input) => {
+  globalThis.fetch = async (input, init = {}) => {
     const url = String(input);
     calls.push(url);
     const auth = authenticatedBaseFetch(url);
     if (auth) return auth;
-    if (url.includes('/rest/v1/services?')) return json(Array.from({ length: 100 }, (_, i) => ({ id: `service-${i}` })));
-    if (url.includes('/rest/v1/staff_profiles?')) return json(Array.from({ length: 100 }, (_, i) => ({ id: `staff-${i}` })));
-    if (url.includes('/rest/v1/staff_services?')) return json(Array.from({ length: 5000 }, () => ({})));
+    if (url.endsWith('/rest/v1/rpc/get_catalog_snapshot')) {
+      assert.equal(init.method, 'POST');
+      assert.deepEqual(JSON.parse(String(init.body)), { p_business_id: businessId });
+      return json([{
+        services: Array.from({ length: 100 }, (_, i) => ({ id: `service-${i}` })),
+        staff: Array.from({ length: 100 }, (_, i) => ({ id: `staff-${i}` })),
+        assignments: Array.from({ length: 5000 }, () => ({})),
+      }]);
+    }
     throw new Error(`unexpected catalog fetch ${url}`);
   };
 
@@ -108,58 +114,69 @@ await test('S07 C2b catalog accepts exact ceilings with explicit max+1 probes', 
     assert.equal(body.services.length, 100);
     assert.equal(body.staff.length, 100);
     assert.equal(body.assignments.length, 5000);
-    assert.ok(calls.some((url) => url.includes('/rest/v1/services?') && url.includes('limit=101')));
-    assert.ok(calls.some((url) => url.includes('/rest/v1/staff_profiles?') && url.includes('limit=101')));
-    assert.ok(calls.some((url) => url.includes('/rest/v1/staff_services?') && url.includes('limit=5001')));
+    assert.equal(calls.filter((url) => url.endsWith('/rest/v1/rpc/get_catalog_snapshot')).length, 1);
+    assert.equal(calls.some((url) => url.includes('/rest/v1/services?')), false);
+    assert.equal(calls.some((url) => url.includes('/rest/v1/staff_profiles?')), false);
+    assert.equal(calls.some((url) => url.includes('/rest/v1/staff_services?')), false);
   } finally {
     globalThis.fetch = realFetch;
   }
 });
 
-await test('S07 C2b catalog rejects service and assignment overflow without a partial success', async (t) => {
-  await t.test('101 services', async () => {
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = async (input) => {
-      const url = String(input);
-      const auth = authenticatedBaseFetch(url);
-      if (auth) return auth;
-      if (url.includes('/rest/v1/services?')) return json(Array.from({ length: 101 }, () => ({})));
-      if (url.includes('/rest/v1/staff_profiles?')) return json([]);
-      if (url.includes('/rest/v1/staff_services?')) return json([]);
-      throw new Error(`unexpected service-overflow fetch ${url}`);
-    };
-    try {
-      const response = await app.request('http://localhost/api/catalog', {
-        headers: { Cookie: cookieHeader() },
-      }, env);
-      assert.equal(response.status, 409);
-      assert.equal((await response.json()).error?.code, 'CATALOG_SERVICES_LIMIT_EXCEEDED');
-    } finally {
-      globalThis.fetch = realFetch;
-    }
-  });
+await test('S07 C2b catalog maps DB-side overflow atomically instead of accepting a capped REST list', async (t) => {
+  for (const [dbCode, httpCode] of [
+    ['CATALOG_SERVICES_LIMIT_EXCEEDED', 'CATALOG_SERVICES_LIMIT_EXCEEDED'],
+    ['CATALOG_STAFF_LIMIT_EXCEEDED', 'CATALOG_STAFF_LIMIT_EXCEEDED'],
+    ['CATALOG_ASSIGNMENTS_LIMIT_EXCEEDED', 'CATALOG_ASSIGNMENTS_LIMIT_EXCEEDED'],
+  ]) {
+    await t.test(dbCode, async () => {
+      const realFetch = globalThis.fetch;
+      const calls = [];
+      globalThis.fetch = async (input) => {
+        const url = String(input);
+        calls.push(url);
+        const auth = authenticatedBaseFetch(url);
+        if (auth) return auth;
+        if (url.endsWith('/rest/v1/rpc/get_catalog_snapshot')) {
+          return json({ message: dbCode }, 400);
+        }
+        throw new Error(`unexpected catalog-overflow fetch ${url}`);
+      };
+      try {
+        const response = await app.request('http://localhost/api/catalog', {
+          headers: { Cookie: cookieHeader() },
+        }, env);
+        assert.equal(response.status, 409);
+        assert.equal((await response.json()).error?.code, httpCode);
+        assert.equal(calls.some((url) => url.includes('/rest/v1/staff_services?')), false);
+      } finally {
+        globalThis.fetch = realFetch;
+      }
+    });
+  }
+});
 
-  await t.test('5001 assignments', async () => {
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = async (input) => {
-      const url = String(input);
-      const auth = authenticatedBaseFetch(url);
-      if (auth) return auth;
-      if (url.includes('/rest/v1/services?')) return json([]);
-      if (url.includes('/rest/v1/staff_profiles?')) return json([]);
-      if (url.includes('/rest/v1/staff_services?')) return json(Array.from({ length: 5001 }, () => ({})));
-      throw new Error(`unexpected assignment-overflow fetch ${url}`);
-    };
-    try {
-      const response = await app.request('http://localhost/api/catalog', {
-        headers: { Cookie: cookieHeader() },
-      }, env);
-      assert.equal(response.status, 409);
-      assert.equal((await response.json()).error?.code, 'CATALOG_ASSIGNMENTS_LIMIT_EXCEEDED');
-    } finally {
-      globalThis.fetch = realFetch;
+await test('S07 C2b catalog treats a membership race inside the DB snapshot as tenant denial', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    const auth = authenticatedBaseFetch(url);
+    if (auth) return auth;
+    if (url.endsWith('/rest/v1/rpc/get_catalog_snapshot')) {
+      return json({ message: 'NOT_ALLOWED' }, 400);
     }
-  });
+    throw new Error(`unexpected catalog-denial fetch ${url}`);
+  };
+
+  try {
+    const response = await app.request('http://localhost/api/catalog', {
+      headers: { Cookie: cookieHeader() },
+    }, env);
+    assert.equal(response.status, 403);
+    assert.equal((await response.json()).error?.code, 'TENANT_FORBIDDEN');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });
 
 await test('S07 C2b calendar staff probe fails before appointment RPC when 101st staff exists', async () => {
