@@ -1,3 +1,5 @@
+import { fetchTextWithTimeout } from './outbound-request.ts';
+
 export type NotificationEnv = {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
@@ -162,12 +164,15 @@ async function rpc<T>(
     'Content-Type': 'application/json',
   });
   try {
-    const response = await fetchImpl(`${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/${fn}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-    const text = await response.text();
+    const { response, bodyText: text } = await fetchTextWithTimeout(
+      `${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/${fn}`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+      },
+      fetchImpl,
+    );
     let data: T | null = null;
     if (text) {
       try { data = JSON.parse(text) as T; }

@@ -1,8 +1,8 @@
-import app from './app';
-import { maintainNotificationState } from './notification-maintenance';
-import { dispatchNotificationBatch } from './notifications';
-import type { NotificationEnv } from './notifications';
-import { recordStagingHeartbeat, type DeploymentEnv } from './deployment-health';
+import app from './app.ts';
+import { maintainNotificationState } from './notification-maintenance.ts';
+import { dispatchNotificationBatch } from './notifications.ts';
+import type { NotificationEnv } from './notifications.ts';
+import { recordStagingHeartbeat, type DeploymentEnv } from './deployment-health.ts';
 
 type WaitUntilContext = {
   waitUntil(promise: Promise<unknown>): void;
@@ -14,9 +14,7 @@ export default {
   },
   scheduled(_controller: unknown, env: NotificationEnv & DeploymentEnv, context: WaitUntilContext) {
     context.waitUntil(recordStagingHeartbeat(env));
-    context.waitUntil((async () => {
-      await maintainNotificationState(env);
-      await dispatchNotificationBatch(env);
-    })());
+    context.waitUntil(maintainNotificationState(env));
+    context.waitUntil(dispatchNotificationBatch(env));
   },
 };
