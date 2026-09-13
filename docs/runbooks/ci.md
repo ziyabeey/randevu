@@ -24,13 +24,22 @@ Tam kolun tek yürütücüsü `scripts/ci-code.mjs` şu sırayı uygular: çalı
 - Yeni SQL dosyası: `scripts/ci-postgres-plan.json` içine doğru database ve upgrade aşamasında gerçek adımı ekle; `npm run test:ci-coverage` çalıştır. Yalnız YAML yorumuna isim eklemek geçmez. Birleştirilmiş migration içeriği değişmez.
 - Yeni Node testi: `tests/` altında `.test.mjs`; alt dizinler dahil gerçek runner keşfeder. Elle wildcard veya ayrı isim listesi tutulmaz.
 - SQL yerel tam çalıştırma yalnız **atılabilir test PostgreSQL 17** üzerinde yapılır; plan `yzt_upgrade` ve `yzt_s03_upgrade` test DB'lerini yeniden oluşturur. Hosted Supabase/staging/production bağlantısı verilmez.
-- Herhangi bir CI altyapısı değişimi aynı PR'ın kod incelemesine tabidir. Repo içindeki testler, kendi dosyalarının kasıtlı değiştirilmesine karşı harici güvenlik sınırı değildir; gerekli inceleme kuralı bunun için ayrıca kurulur.
+- Herhangi bir CI altyapısı değişimi aynı PR'ın kod incelemesine tabidir. Repo içindeki testler, kendi dosyalarının kasıtlı değiştirilmesine karşı harici güvenlik sınırı değildir; bu değişikliklerde bağımsız ajan incelemesi ve kanıt kaydı proje protokolünde sürer. Tek kişilik GitHub hesabında bu inceleme ayrı bir insan onayı olarak zorlanmaz.
 
 ## Main kural paketi — yöneticiye hazır
 
-[main-ruleset.json](../../.github/main-ruleset.json) main için şunları ister: PR üzerinden değişiklik, en az bir yetkili onay, yeni commit'te eski onayın düşmesi, son push'ı yapan dışından onay, çözülmüş inceleme konuşmaları, güncel base üzerinde **CI gate** başarısı, force-push ve silme engeli. Bypass listesi boştur. GitHub Actions app ID `15368`, mevcut main'in gerçek check-run kaydından okunmuştur; S06 check adı da gerçek run'dan ayrıca doğrulanır.
+[main-ruleset.json](../../.github/main-ruleset.json) kullanıcı tarafından 13 Eylül 2026'da onaylanan tek kişilik repo düzenidir. Main'e değişiklik PR üzerinden gelir; güncel base üzerinde GitHub Actions kaynaklı **CI gate** başarılı olmalıdır. İnceleme konuşmaları çözülür; force-push ve silme engellenir, bypass listesi boştur. GitHub Actions app ID `15368` gerçek check-run kaydından doğrulanmıştır.
 
-**Önkoşul:** PR yazarından/son push yapan kişiden farklı, inceleme onayı verebilen yetkili GitHub hesabı bulunmalıdır. Aynı hesaba bağlı iki ajan bağımsız GitHub onayı oluşturmaz. Bu kimlik hazır olmadan tek kişilik repoda körlemesine etkinleştirme yapılmaz; inceleme şartı sıfıra indirilmez ve bypass eklenmez.
+| Ayar | Onaylanan değer |
+| --- | --- |
+| GitHub'da zorunlu insan onayı | `required_approving_review_count: 0` |
+| Son push yapan dışında onay | `require_last_push_approval: false` |
+| PR üzerinden değişiklik | Zorunlu |
+| Güncel base üzerinde CI | `CI gate`, strict, GitHub Actions `15368` |
+| Çözülmüş inceleme konuşmaları | Zorunlu |
+| Bypass / force-push / main silme | Bypass yok; force-push ve silme engelli |
+
+Önceki ikinci yetkili GitHub hesabı önkoşulu, kullanıcının açık onayıyla kaldırıldı. Sol ve koordinatörün bağımsız kod incelemesi, bulguları ve test kanıtı PR/devirde tutulmaya devam eder. Bu süreç GitHub'ın başka insan hesabından approval kontrolü değildir; hesap sahibi yeşil PR'ı tek hesabıyla birleştirebilir. Kod incelemesi protokolü korunur.
 
 Repo sahibi `Settings → Rules → Rulesets → New ruleset → Import a ruleset` üzerinden JSON'u içe aktarabilir. Yetkili yönetici CLI alternatifi (değerler secret içermez):
 
@@ -49,7 +58,7 @@ gh api repos/ziyabeey1-ai/randevu/pulls/PR_NUMBER
 gh api repos/ziyabeey1-ai/randevu/commits/HEAD_SHA/check-runs
 ```
 
-Aktif main kapsamı, bypass yokluğu, review sayısı ve son-push şartı, strict required `CI gate`/GitHub Actions kaynağı; PR'ın güncel head/merge sonucu ve uygun onayı birlikte doğrulanır. Yeşil eski commit yeterli değildir. Başarısız CI ve eksik inceleme merge'i gerçekten engellemelidir. Bu kanıt gelmeden S06 tamamlanmış sayılmaz.
+Aktif main kapsamı, bypass yokluğu, insan onayı sayısı 0, son-push approval false ve strict required `CI gate`/GitHub Actions kaynağı doğrulanır. PR'ın güncel head/merge sonucu ile bağımsız ajan inceleme kaydı birlikte değerlendirilir. Yeşil eski commit yeterli değildir. Başarısız veya eksik CI birleşmeyi engellemelidir; başka insan hesabının bulunmaması engel değildir. Aktif koruma ve güncel CI doğrulanmadan S06 tamamlanmış sayılmaz.
 
 ## Maliyet kanıtının sınırı
 
