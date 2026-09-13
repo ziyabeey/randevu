@@ -33,11 +33,22 @@ insert into public.services(
   ('a7300000-0000-4000-8000-000000000002','a7100000-0000-4000-8000-000000000002','S07 Page Service B',30,0,0,10000,'TRY')
 on conflict (id) do nothing;
 
+-- Busy-calendar coverage needs >100 active rows without violating the existing
+-- per-staff overlap exclusion. Give each appointment its own valid staff member;
+-- this tests calendar completeness without weakening booking integrity.
 insert into public.staff_profiles(id,business_id,name)
-values
-  ('a7400000-0000-4000-8000-000000000001','a7100000-0000-4000-8000-000000000001','S07 Page Staff A'),
-  ('a7400000-0000-4000-8000-000000000002','a7100000-0000-4000-8000-000000000002','S07 Page Staff B')
-on conflict (id) do nothing;
+select
+  format('a7400000-0000-4000-8000-%s',lpad(g::text,12,'0'))::uuid,
+  'a7100000-0000-4000-8000-000000000001'::uuid,
+  'S07 Page Staff '||g
+from generate_series(1,105) g;
+
+insert into public.staff_profiles(id,business_id,name)
+values (
+  'a74f0000-0000-4000-8000-999999999999',
+  'a7100000-0000-4000-8000-000000000002',
+  'S07 Page Staff B'
+);
 
 insert into public.customers(id,business_id,name,email,created_by)
 select
@@ -68,14 +79,14 @@ select
   'a7100000-0000-4000-8000-000000000001'::uuid,
   format('a7500000-0000-4000-8000-%s',lpad(g::text,12,'0'))::uuid,
   'a7300000-0000-4000-8000-000000000001'::uuid,
-  'a7400000-0000-4000-8000-000000000001'::uuid,
-  'cancelled',
+  format('a7400000-0000-4000-8000-%s',lpad(g::text,12,'0'))::uuid,
+  'scheduled',
   '2027-01-15 09:00:00+00'::timestamptz + make_interval(mins => ((g-1)/3)::integer),
   '2027-01-15 09:30:00+00'::timestamptz + make_interval(mins => ((g-1)/3)::integer),
   '2027-01-15 09:00:00+00'::timestamptz + make_interval(mins => ((g-1)/3)::integer),
   '2027-01-15 09:30:00+00'::timestamptz + make_interval(mins => ((g-1)/3)::integer),
   'Europe/Istanbul','S07 Page Customer '||g,'s07-page-'||g||'@example.test',
-  'S07 Page Service A','S07 Page Staff A',30,0,0,10000,'TRY',
+  'S07 Page Service A','S07 Page Staff '||g,30,0,0,10000,'TRY',
   'a7000000-0000-4000-8000-000000000001'::uuid,'operator'
 from generate_series(1,105) g;
 
@@ -91,7 +102,7 @@ insert into public.appointments(
   'a7100000-0000-4000-8000-000000000002',
   'a7500000-0000-4000-8000-999999999999',
   'a7300000-0000-4000-8000-000000000002',
-  'a7400000-0000-4000-8000-000000000002','cancelled',
+  'a74f0000-0000-4000-8000-999999999999','cancelled',
   '2027-01-15 09:00:00+00','2027-01-15 09:30:00+00',
   '2027-01-15 09:00:00+00','2027-01-15 09:30:00+00','Europe/Istanbul',
   'S07 Other Customer','s07-other@example.test','S07 Page Service B','S07 Page Staff B',
@@ -143,7 +154,7 @@ begin
   end if;
 
   begin
-    perform * from public.list_appointments_page(
+    perform 1 from public.list_appointments_page(
       'a7100000-0000-4000-8000-000000000001',102,null,null);
     raise exception 'S07 C2a accepted p_limit > 101';
   exception when others then
@@ -151,7 +162,7 @@ begin
   end;
 
   begin
-    perform * from public.list_appointments_page(
+    perform 1 from public.list_appointments_page(
       'a7100000-0000-4000-8000-000000000001',25,now(),null);
     raise exception 'S07 C2a accepted half cursor';
   exception when others then
@@ -159,7 +170,7 @@ begin
   end;
 
   begin
-    perform * from public.list_appointments_page(
+    perform 1 from public.list_appointments_page(
       'a7100000-0000-4000-8000-000000000002',25,null,null);
     raise exception 'S07 C2a allowed caller to switch to unauthorized business';
   exception when others then
