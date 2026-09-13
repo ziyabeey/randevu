@@ -429,7 +429,7 @@
         },
         {
           "database": "yzt_test",
-          "file": "supabase/tests/f17_hosted_acl_hardening.sql"
+          "file": "supabase/tests/s08_post_s04_acl_regression.sql"
         },
         {
           "database": "postgres",
@@ -545,7 +545,7 @@
         },
         {
           "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f17_hosted_acl_hardening.sql"
+          "file": "supabase/tests/s08_post_s04_acl_regression.sql"
         }
       ]
     }
