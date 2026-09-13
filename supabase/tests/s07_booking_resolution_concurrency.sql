@@ -63,7 +63,7 @@ begin
     's07-race-salon',v_key,p_name,
     '6c000000-0000-4000-8000-000000000227','7c000000-0000-4000-8000-000000000227',
     ((date_trunc('week',current_date)::date+7)+time '09:00'+make_interval(hours=>p_hour)) at time zone 'Europe/Istanbul',
-    encode(extensions.digest('management-'||p_recovery_id::text,'sha256'),'hex'),
+    encode(extensions.digest('s07:race:management:'||p_recovery_id::text,'sha256'),'hex'),
     p_recovery_id,p_hash,repeat('c',64),repeat('i',16),1::smallint,
     null,lower(substr(p_recovery_id::text,1,8))||'@example.test',null
   );

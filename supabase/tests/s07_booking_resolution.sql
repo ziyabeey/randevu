@@ -104,7 +104,8 @@ begin
     's07-resolution-salon',v_key,'S07 Committed',
     '6c000000-0000-4000-8000-000000000217','7c000000-0000-4000-8000-000000000217',
     (v_day+time '10:00') at time zone 'Europe/Istanbul',
-    repeat('1',64),'8c000000-0000-4000-8000-000000000217',v_hash,
+    encode(extensions.digest('s07:management:8c000000-0000-4000-8000-000000000217','sha256'),'hex'),
+    '8c000000-0000-4000-8000-000000000217',v_hash,
     repeat('c',64),repeat('i',16),1::smallint,
     '+90 555 217 00 01','s07-committed@example.test',null
   );
@@ -113,7 +114,8 @@ begin
     's07-resolution-salon',v_key,'S07 Committed',
     '6c000000-0000-4000-8000-000000000217','7c000000-0000-4000-8000-000000000217',
     (v_day+time '10:00') at time zone 'Europe/Istanbul',
-    repeat('1',64),'8c000000-0000-4000-8000-000000000217',v_hash,
+    encode(extensions.digest('s07:management:8c000000-0000-4000-8000-000000000217','sha256'),'hex'),
+    '8c000000-0000-4000-8000-000000000217',v_hash,
     repeat('c',64),repeat('i',16),1::smallint,
     '+90 555 217 00 01','s07-committed@example.test',null
   );
@@ -127,7 +129,8 @@ begin
       's07-resolution-salon',v_key,'S07 Changed Payload',
       '6c000000-0000-4000-8000-000000000217','7c000000-0000-4000-8000-000000000217',
       (v_day+time '10:00') at time zone 'Europe/Istanbul',
-      repeat('1',64),'8c000000-0000-4000-8000-000000000217',v_hash,
+      encode(extensions.digest('s07:management:8c000000-0000-4000-8000-000000000217','sha256'),'hex'),
+      '8c000000-0000-4000-8000-000000000217',v_hash,
       repeat('c',64),repeat('i',16),1::smallint,
       '+90 555 217 00 01','s07-committed@example.test',null
     );
@@ -140,7 +143,8 @@ begin
       's07-resolution-salon',v_key,'S07 Committed',
       '6c000000-0000-4000-8000-000000000217','7c000000-0000-4000-8000-000000000217',
       (v_day+time '10:00') at time zone 'Europe/Istanbul',
-      repeat('9',64),'8c000000-0000-4000-8000-000000000217',v_hash,
+      encode(extensions.digest('s07:management-conflict:8c000000-0000-4000-8000-000000000217','sha256'),'hex'),
+      '8c000000-0000-4000-8000-000000000217',v_hash,
       repeat('c',64),repeat('i',16),1::smallint,
       '+90 555 217 00 01','s07-committed@example.test',null
     );
@@ -168,7 +172,8 @@ begin
       's07-resolution-salon',upper(v_key),'Must Not Downgrade',
       '6c000000-0000-4000-8000-000000000217','7c000000-0000-4000-8000-000000000217',
       ((date_trunc('week',current_date)::date+7)+time '09:00') at time zone 'Europe/Istanbul',
-      repeat('8',64),'8c000000-0000-4000-8000-000000000216',v_hash,
+      encode(extensions.digest('s07:management:8c000000-0000-4000-8000-000000000216','sha256'),'hex'),
+      '8c000000-0000-4000-8000-000000000216',v_hash,
       repeat('z',64),repeat('v',16),1::smallint,null,'downgrade@example.test',null
     );
     raise exception 'malformed pub2 namespace downgraded to v1';
@@ -196,7 +201,8 @@ begin
     's07-resolution-salon',v_key,'S07 Scrubbed',
     '6c000000-0000-4000-8000-000000000217','7c000000-0000-4000-8000-000000000217',
     (v_day+time '11:00') at time zone 'Europe/Istanbul',
-    repeat('2',64),'8c000000-0000-4000-8000-000000000218',v_hash,
+    encode(extensions.digest('s07:management:8c000000-0000-4000-8000-000000000218','sha256'),'hex'),
+    '8c000000-0000-4000-8000-000000000218',v_hash,
     repeat('d',64),repeat('j',16),1::smallint,null,'scrubbed@example.test',null
   );
   -- Simulate resolving this known commit after its signed submission deadline.
@@ -231,7 +237,8 @@ begin
     's07-resolution-salon',v_key,'S07 Revoked',
     '6c000000-0000-4000-8000-000000000217','7c000000-0000-4000-8000-000000000217',
     (v_day+time '12:00') at time zone 'Europe/Istanbul',
-    repeat('3',64),'8c000000-0000-4000-8000-000000000219',v_hash,
+    encode(extensions.digest('s07:management:8c000000-0000-4000-8000-000000000219','sha256'),'hex'),
+    '8c000000-0000-4000-8000-000000000219',v_hash,
     repeat('e',64),repeat('k',16),1::smallint,null,'revoked@example.test',null
   );
   update public.appointment_management_capabilities set revoked_at=clock_timestamp()
@@ -274,7 +281,8 @@ begin
       's07-resolution-salon',v_key,'Must Not Exist',
       '6c000000-0000-4000-8000-000000000217','7c000000-0000-4000-8000-000000000217',
       ((date_trunc('week',current_date)::date+7)+time '13:00') at time zone 'Europe/Istanbul',
-      repeat('4',64),'8c000000-0000-4000-8000-000000000220',v_hash,
+      encode(extensions.digest('s07:management:8c000000-0000-4000-8000-000000000220','sha256'),'hex'),
+      '8c000000-0000-4000-8000-000000000220',v_hash,
       repeat('f',64),repeat('l',16),1::smallint,null,'closed@example.test',null
     );
     raise exception 'closed v2 create unexpectedly succeeded';

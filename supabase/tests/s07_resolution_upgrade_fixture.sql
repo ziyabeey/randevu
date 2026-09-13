@@ -61,7 +61,8 @@ begin
     's07-upgrade-salon','s07-v1-live-0001','S07 V1 Live',
     '6c000000-0000-4000-8000-000000000207','7c000000-0000-4000-8000-000000000207',
     (v_day + time '10:00') at time zone 'Europe/Istanbul',
-    repeat('1',64),'8c000000-0000-4000-8000-000000000201',repeat('a',64),
+    encode(extensions.digest('s07:management:8c000000-0000-4000-8000-000000000201','sha256'),'hex'),
+    '8c000000-0000-4000-8000-000000000201',repeat('a',64),
     repeat('c',64),repeat('i',16),1::smallint,
     '+90 555 207 00 01','s07-v1-live@example.test',null
   );
@@ -69,7 +70,8 @@ begin
     's07-upgrade-salon','s07-v1-scrub-001','S07 V1 Scrubbed',
     '6c000000-0000-4000-8000-000000000207','7c000000-0000-4000-8000-000000000207',
     (v_day + time '11:00') at time zone 'Europe/Istanbul',
-    repeat('2',64),'8c000000-0000-4000-8000-000000000202',repeat('b',64),
+    encode(extensions.digest('s07:management:8c000000-0000-4000-8000-000000000202','sha256'),'hex'),
+    '8c000000-0000-4000-8000-000000000202',repeat('b',64),
     repeat('d',64),repeat('j',16),1::smallint,
     '+90 555 207 00 02','s07-v1-scrub@example.test',null
   );
