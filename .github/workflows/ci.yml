@@ -97,3 +97,5 @@ jobs:
           CI_CODE_RESULT: ${{ needs.code.result }}
           CI_CODE_COMPLETE: ${{ needs.code.outputs.complete }}
         run: node scripts/ci-result.mjs
+
+# supabase/tests/s06_intentional_failure.sql — a comment is not executable coverage.
