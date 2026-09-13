@@ -11,14 +11,30 @@ import {
   type AuthEnv,
 } from './auth.ts';
 import type { PublicAbuseEnv } from './public-abuse.ts';
+import { deploymentHealth, type DeploymentEnv } from './deployment-health.ts';
 
-type Env = AuthEnv & PublicAbuseEnv & {
+type Env = AuthEnv & PublicAbuseEnv & DeploymentEnv & {
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
 };
 
 type MutationClass = 'safe' | 'cookie' | 'public' | 'capability';
 
 const app = new Hono<{ Bindings: Env }>();
+
+// A version preview is a key-verification surface, never a second booking/auth
+// origin. Run this before routing or session work; client Origin headers do not
+// establish which Worker hostname received the request.
+app.use('*', async (context, next) => {
+  if (context.env.DEPLOYMENT_PROBE_ENABLED === 'true'
+      && !(context.req.method === 'GET' && context.req.path === '/api/deployment-health')) {
+    let canonical = '';
+    try { canonical = new URL(context.env.PUBLIC_APP_ORIGIN ?? '').origin; } catch { /* fail closed */ }
+    if (new URL(context.req.url).origin !== canonical) {
+      return context.json({ error: 'NOT_FOUND' }, 404, { 'Cache-Control': 'no-store' });
+    }
+  }
+  await next();
+});
 
 function mutationClass(method: string, path: string): MutationClass {
   const normalizedMethod = method.toUpperCase();
@@ -56,6 +72,7 @@ app.use('/api/*', async (context, next) => {
   await next();
 });
 
+app.get('/api/deployment-health', (context) => deploymentHealth(context.req.raw, context.env));
 app.route('/', coreApp);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);

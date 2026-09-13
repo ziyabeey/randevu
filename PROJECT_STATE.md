@@ -10,7 +10,7 @@
 
 İlk staging denemesi 180 saniyede `pending` görüp durdu; aynı iş yaklaşık üç saniye sonra ilk denemede sağlayıcı kabulü aldı. Aynı kod ve eşiklerle ikinci run gerçek teslim kontrolünü geçti. Dağıtım sonrası Cron hazır olma penceresi S05'e kanıtlı takip olarak bırakıldı; genel teslim hızı garantisi verilmedi.
 
-S01 ve S02'nin önceki kabul kanıtları korunur. Sıradaki teknik çalışma **S05**; başlamadan canlı TASKS/açık PR sahipliği ve güncel main kontrol edilir. S06/S07/S08 dosya ve merge sırası ayrılarak hazırlanabilir. S07’nin S02/S03/S04 önkoşulları artık tamamdır. Yeni özellik kodu GS tamamlanmadan başlamaz.
+S01 ve S02'nin önceki kabul kanıtları korunur. **S05 incelemede**: [PR #41](https://github.com/ziyabeey1-ai/randevu/pull/41), `s05-deploy-consistency`, base `72c4665`; [devir](docs/handoffs/S05.md). Rutin anahtar koruma, explicit rotasyon ve hata toparlama uygulandı. Staging #15'in SQL bağlantısı düzeltildi; aynı head CI ve #16/#17'nin SQL/Auth adımları geçti. İki son run Cloudflare'ın UUID inheritance'ı reddeden 10057 hatasında durdu; Worker aktive edilmedi. Yeni düzeltme desteklenen latest ile yalnız aday yükler, gerçek anahtarlarını izole preview'da kanıtlar ve sonra aktive eder. 299 yerel test ve bağımsız ek inceleme geçti; son head CI sonucu PR'dan doğrulanır. S05 migration uygulandı; 05:52:48 UTC kontrolünde pending geçiş yoktu. Yeni routine/rotate staging kabulü bekleniyor. Sonraki oturum aynı işi ikinci branch'te başlatmadan canlı TASKS/açık PR kaydını kontrol eder. S06/S07/S08 dosya ve merge sırası ayrılarak hazırlanabilir. S07’nin S02/S03/S04 önkoşulları artık tamamdır. Yeni özellik kodu GS tamamlanmadan başlamaz.
 
 F10-02 için açık [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), branch `f10-02-invites-memberships-roles`, incelenen head `5099ea307ac806e958a7a29a674462558570b0d5` yalnız `docs/handoffs/F10-02.md` içerir. Mevcut sahibi korunur; GS nedeniyle görev **Engelli** kalır. Devralmadan önce canlı PR tekrar kontrol edilir; aynı işi ikinci branch'te başlatma.
 
@@ -92,7 +92,7 @@ Worker entry `worker/entry.ts`, router `worker/app.ts`; auth `worker/auth.ts` + 
 
 ## Ortam ve korunacak sınırlar
 
-- Doğrulanmış staging origin: `https://yzt-randevu-staging.ziyabeey1.workers.dev`. Kurulum/erişim ayrıntısı [staging runbook](docs/runbooks/staging.md) ve F17 devirlerindedir; runbook'taki run-başına gate/dispatch rotasyonu S05'e kadar bilinen risk taşır.
+- Doğrulanmış staging origin: `https://yzt-randevu-staging.ziyabeey1.workers.dev`. Kurulum/erişim ayrıntısı [staging runbook](docs/runbooks/staging.md) ve F17 devirlerindedir. Eski run-başına gate/dispatch rotasyonu S05'in giderdiği risktir; PR #41'deki rutin koruma ve ayrı rotasyon henüz gerçek staging kabulünü tamamlamadı.
 - Hedef production `randevu.kepenk.ai`, staging custom domain `staging.randevu.kepenk.ai`, sender `randevu@notify.kepenk.ai`. Bunlar tek başına production/pilot hazır olduğunun kanıtı değildir.
 - Mevcut runtime secret/config adları: `MANAGEMENT_LINK_ENCRYPTION_KEY_V1`, `PUBLIC_BOOKING_GATE_SECRET`, `NOTIFICATION_DISPATCH_SECRET`, `RESEND_API_KEY`, `NOTIFICATION_FROM_EMAIL`, `PUBLIC_APP_ORIGIN`. Değerleri Git'e yazılmaz; Worker service-role veya acceptance-admin key taşımaz.
 - Outbox mevcut batch 10, lease 45 sn, provider timeout 10 sn, en fazla 8 deneme/72 saat; provider kabulü delivered ile aynı değildir. 24 saatlik provider idempotency sınırının dışındaki belirsiz retry için mutlak exactly-once iddiası yoktur; S03 bu pencere dışındaki belirsiz tekrarları durdurur.
@@ -101,4 +101,4 @@ Worker entry `worker/entry.ts`, router `worker/app.ts`; auth `worker/auth.ts` + 
 
 ## Sonraki çalışma sınırı
 
-S01…S04 kabulü tamamlandı. S05 için güncel main/TASKS/açık PR sahipliği kontrol edilip staging secret ve dağıtım tutarlılığına dar görev paketi hazırlanır. Rutin deploy'da gate/dispatch secret korunması, açık rotasyon/geri dönüş sırası ve S03'ten kalan Cron hazır olma bulgusu ele alınır. S05 henüz üstlenilmedi veya uygulanmadı; mevcut S04 migration değiştirilmez. GS kapanmadan F10-02 veya diğer yeni özellik kodu başlatılmaz.
+S01…S04 kabulü tamamlandı. S05 aynı `s05-deploy-consistency` branch'i ve PR #41 üzerinden sürdürülür. Son head'in CI ve bağımsız incelemesi başarılıysa yeni `Staging deploy` çalıştırması `operation=deploy` ve F09 açık başlatılır; #16/#17'yi yeniden çalıştırmak yeni Cloudflare düzeltmesini almaz. Rutin kabul başarılı olduktan sonra aynı commit'te açık rotasyon doğrulanır. Staging'e uygulanmış S05 migration dahil mevcut migration'lar değiştirilmez. GS kapanmadan F10-02 veya diğer yeni özellik kodu başlatılmaz.

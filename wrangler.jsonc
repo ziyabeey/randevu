@@ -13,6 +13,9 @@
   "env": {
     "staging": {
       "workers_dev": true,
+      "preview_urls": true,
+      "version_metadata": { "binding": "WORKER_VERSION" },
+      "vars": { "DEPLOYMENT_PROBE_ENABLED": "true" },
       "secrets": {
         "required": [
           "SUPABASE_URL",
