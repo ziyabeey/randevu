@@ -342,6 +342,15 @@
           "file": "supabase/tests/s05_deploy_concurrency.sql"
         }
       ]
+    },
+    {
+      "name": "Intentional S06 acceptance failure; never merge",
+      "steps": [
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/s06_intentional_failure.sql"
+        }
+      ]
     }
   ]
 }
