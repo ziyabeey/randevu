@@ -10,6 +10,13 @@ values (
 )
 on conflict(id) do nothing;
 
+-- The earlier concurrency fixture intentionally commits this exact disposable
+-- business. Recreate it inside this transaction so the unit's first-create and
+-- slot-count assertions start from their original isolated state; ROLLBACK
+-- restores the committed race fixture afterwards.
+delete from public.businesses
+where id='4b000000-0000-4000-8000-000000000204';
+
 insert into public.businesses(id,name,slug,timezone,created_by)
 values (
   '4b000000-0000-4000-8000-000000000204','Abuse Test','s04-test','Europe/Istanbul',
