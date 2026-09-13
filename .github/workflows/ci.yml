@@ -3,8 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
-  # All PR source and target branches, including stacked review/acceptance PRs.
-  # No path filter: every PR receives the same final check.
+  # Includes stacked PRs; no source-branch or path filters.
   pull_request:
 
 permissions:
@@ -15,13 +14,11 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  scope:
-    name: Scope and documents
+  verify:
+    # One fixed required job avoids per-job runner startup/billing overhead.
+    name: CI gate
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      mode: ${{ steps.scope.outputs.mode }}
-      docs_complete: ${{ steps.docs.outputs.complete }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,70 +27,51 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
       - name: Select required checks
         id: scope
         run: node scripts/ci-scope.mjs
       - name: Check documentation and task graph
         id: docs
         run: node scripts/ci-docs.mjs
-
-  code:
-    name: Code and PostgreSQL
-    needs: scope
-    if: ${{ needs.scope.outputs.mode == 'code' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    outputs:
-      complete: ${{ steps.verify.outputs.complete }}
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: yzt_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d yzt_test"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
       - name: Install dependencies once
+        if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm ci
       - name: Install PostgreSQL client
+        if: ${{ steps.scope.outputs.mode == 'code' }}
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Start disposable PostgreSQL 17
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        timeout-minutes: 2
+        run: |
+          docker run --detach --name randevu-ci-postgres \
+            --env POSTGRES_PASSWORD=postgres --env POSTGRES_DB=yzt_test \
+            --publish 127.0.0.1:5432:5432 \
+            --health-cmd='pg_isready -U postgres -d yzt_test' \
+            --health-interval=1s --health-timeout=3s --health-retries=30 postgres:17
+          for attempt in {1..30}; do
+            if [ "$(docker inspect --format '{{.State.Health.Status}}' randevu-ci-postgres)" = healthy ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'Test PostgreSQL did not become healthy.'
+          exit 1
       - name: Run all required code checks
         id: verify
+        if: ${{ steps.scope.outputs.mode == 'code' }}
         env:
           PGPASSWORD: postgres
         run: node scripts/ci-code.mjs
-
-  gate:
-    name: CI gate
-    if: ${{ always() }}
-    needs: [scope, code]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
       - name: Require the selected checks to complete
+        if: ${{ always() }}
         env:
-          CI_MODE: ${{ needs.scope.outputs.mode }}
-          CI_SCOPE_RESULT: ${{ needs.scope.result }}
-          CI_DOCS_COMPLETE: ${{ needs.scope.outputs.docs_complete }}
-          CI_CODE_RESULT: ${{ needs.code.result }}
-          CI_CODE_COMPLETE: ${{ needs.code.outputs.complete }}
+          CI_MODE: ${{ steps.scope.outputs.mode }}
+          CI_SCOPE_RESULT: ${{ steps.scope.outcome }}
+          CI_DOCS_COMPLETE: ${{ steps.docs.outputs.complete }}
+          CI_CODE_RESULT: ${{ steps.verify.outcome }}
+          CI_CODE_COMPLETE: ${{ steps.verify.outputs.complete }}
         run: node scripts/ci-result.mjs
+      - name: Remove disposable test database
+        if: ${{ always() && steps.scope.outputs.mode == 'code' }}
+        run: docker rm --force --volumes randevu-ci-postgres

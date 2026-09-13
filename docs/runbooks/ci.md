@@ -4,18 +4,18 @@ S06 uygulaması; güncel kabul ve açık erişim işi [S06 devrinde](../handoffs
 
 ## Çalışma yolu
 
-CI her kaynak/hedef branch'teki PR ve main push için çalışır. Böylece üst üste kurulan PR'lar da main'e alınmadan test edilebilir. Workflow düzeyinde dosya filtresi yoktur; `CI gate` sabit sonuçtur. Aynı PR'a yeni commit eski run'ı iptal eder; farklı PR ve staging koşularına dokunmaz. CI secrets/deploy/admin yetkisi kullanmaz; checkout credential'ı saklanmaz.
+CI her kaynak/hedef branch'teki PR ve main push için çalışır. Böylece üst üste kurulan PR'lar da main'e alınmadan test edilebilir. Workflow düzeyinde dosya filtresi yoktur; tek ve koşulsuz job olan `CI gate` sabit sonuçtur. Aynı PR'a yeni commit eski run'ı iptal eder; farklı PR ve staging koşularına dokunmaz. CI secrets/deploy/admin yetkisi kullanmaz; checkout credential'ı saklanmaz.
 
 `ci-scope.mjs` PR merge-base/head veya push before/after arasındaki bütün yolları NUL ayrımlı Git diff ile okur. Yalnız izinli kök Markdown dosyaları ve `docs/**/*.md` belge kolunu seçer. Silinen dosya ve rename'in iki tarafı dahildir. Bilinmeyen, karma, bozuk veya eksik diff tam kod kontrolüne düşer. Yeni bir dosya türü kendiliğinden hafif sayılmaz.
 
 | Yol | Çalışan işler | Kurulum / typecheck / PG17 |
 | --- | --- | --- |
-| Yalnız izinli belge | Scope and documents → CI gate | 0 / 0 / 0 |
-| Kod, migration, CI, karma veya belirsiz | Scope and documents → Code and PostgreSQL → CI gate | 1 / 1 / 1 |
+| Yalnız izinli belge | CI gate: belge kontrolü ve sonuç | 0 / 0 / 0 |
+| Kod, migration, CI, karma veya belirsiz | CI gate: belge + tam kod kontrolleri ve sonuç | 1 / 1 / 1 |
 
 Belge doğrulayıcı Git'te izlenen Markdown'ın yerel linklerini, TASKS bağımlılıklarını/döngülerini/durumlarını, faz kapılarını ve mevcut durumdaki açık S-görev beyanlarını denetler. Tarihsel devir metni güncel durum gibi yorumlanmaz. Harici URL erişilebilirliği ve bölüm anchor'ları ağ taramasıyla doğrulanmaz.
 
-Tam kolun tek yürütücüsü `scripts/ci-code.mjs` şu sırayı uygular: çalıştırılabilir envanter, high/critical bağımlılık denetimi, typecheck, default build, Chrome smoke, Worker dry-run, recursive Node testleri, staging build, PostgreSQL planı ve S05 gerçek psql bağlantı testi. Default build'in smoke/dry-run kontrolü staging build'den önce kalır. Sonuç ancak bütün alt süreçler başarılıysa `complete=true` üretir. Belge doğrulayıcısının ayrıca tamamlanma çıktısı vardır. Aggregate; sonuç/kol/çıktı eşleşmezse, zorunlu kontrol eksik/iptal/atlandıysa kırılır.
+Tam kolun tek yürütücüsü `scripts/ci-code.mjs` şu sırayı uygular: çalıştırılabilir envanter, high/critical bağımlılık denetimi, typecheck, default build, Chrome smoke, Worker dry-run, recursive Node testleri, staging build, PostgreSQL planı ve S05 gerçek psql bağlantı testi. Default build'in smoke/dry-run kontrolü staging build'den önce kalır. PostgreSQL 17 yalnız kod kolunda, job'a ait atılabilir Docker container ile localhost portunda başlar; readiness en fazla 30 tur bekler, cleanup hata/iptalde de denenir. Sonuç ancak bütün alt süreçler başarılıysa `complete=true` üretir. Belge doğrulayıcısının ayrıca tamamlanma çıktısı vardır. Son aggregate adımı `always()` ile önceki adımların gerçek sonuçlarını/çıktılarını denetler. Sonuç/kol/çıktı eşleşmezse, zorunlu kontrol eksik/iptal/atlandıysa kırılır. Job koşulsuzdur; kod adımlarının beklenen şekilde atlanması tüm job'ı skipped yapmaz.
 
 ## Katkıda bulunurken
 
@@ -53,7 +53,7 @@ Aktif main kapsamı, bypass yokluğu, review sayısı ve son-push şartı, stric
 
 ## Maliyet kanıtının sınırı
 
-Belge kolunda npm kurulumu ve DB container yoktur; kod kolunda üç typecheck bir olur. Ayrı aggregate/scope işleri runner başlatma ve dakika yuvarlama maliyeti ekler. Bu nedenle daha az typecheck'i doğrudan daha düşük fatura diye sunma. Önce/sonra gerçek süre, çalışan job sayısı ve yuvarlanmış runner süresi S06 devrinde kaydedilir; tek örnek hız veya fiyat garantisi değildir. İptal edilen eski PR koşusunun o ana kadar tükettiği süre silinmez.
+Belge kolunda npm kurulumu ve DB container yoktur; kod kolunda üç typecheck bir olur. İlk üç-job tasarımında 81 runner-saniyesi ve 4 yuvarlanmış dakika, eski tek-job 63 saniye/2 dakikaya göre gereksiz ek yük gösterdi. Bu ölçüm üzerine son tasarım tek job'a indirildi. Daha az typecheck'i doğrudan daha düşük fatura diye sunma. Önce/sonra gerçek süre, çalışan job sayısı ve yuvarlanmış runner süresi S06 devrinde kaydedilir; tek örnek hız veya fiyat garantisi değildir. İptal edilen eski PR koşusunun o ana kadar tükettiği süre silinmez.
 
 ## Resmi kaynaklar
 
