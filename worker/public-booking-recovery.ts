@@ -182,6 +182,9 @@ function rpcError(data: unknown, fallback: string) {
   if (message.includes('PUBLIC_BOOKING_NOT_FOUND') || message.includes('PUBLIC_BOOKING_DISABLED')) {
     return { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.', status: 404 as const };
   }
+  if (message.includes('BOOKING_CLIENT_UPDATE_REQUIRED')) {
+    return { code: 'BOOKING_CLIENT_UPDATE_REQUIRED', message: 'Rezervasyon sayfası güncellendi. Sayfayı yenileyip tekrar deneyin.', status: 409 as const };
+  }
   if (message.includes('IDEMPOTENCY_CONFLICT')) {
     return { code: 'IDEMPOTENCY_CONFLICT', message: 'Bu işlem anahtarı farklı bir rezervasyon için kullanılmış.', status: 409 as const };
   }
