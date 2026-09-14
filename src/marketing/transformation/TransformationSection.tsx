@@ -10,21 +10,35 @@ interface StoryProps {
 }
 
 function ReminderStory({ active }: StoryProps) {
+  const reminderReleased = MARKETING_RELEASE_GATES.reminders;
+
   return (
     <div className="mkt-story mkt-story--reminder" aria-hidden={!active}>
-      <p className="mkt-eyebrow">Kepenk.ai sunar</p>
-      <h2>Unuttu mu? Biz hatırlatırız.</h2>
+      <p className="mkt-eyebrow">{reminderReleased ? "Kepenk.ai sunar" : "Yakında"}</p>
+      <h2>
+        {reminderReleased
+          ? "Unuttu mu? Biz hatırlatırız."
+          : "Müşteri kimdi? Hatırlamak zorunda değilsin."}
+      </h2>
       <p className="mkt-story-copy">
-        {MARKETING_RELEASE_GATES.customerMemory
-          ? "Müşteri kimdi? Hatırlamak zorunda değilsin."
-          : "Randevu yaklaşınca saatini sistem takip etsin."}
+        {reminderReleased
+          ? "Randevu yaklaşınca saatini sistem takip etsin."
+          : "Son randevusu ve notu bir yerde dursun. Hatırlatma akışını da hazırlıyoruz."}
       </p>
       <div className="mkt-proof-stack" aria-label="Randevu ürün kanıtları">
-        <div className="mkt-proof-card mkt-proof-card--reminder">
-          <span className="mkt-proof-kicker">Randevu hatırlatması</span>
-          <strong>Randevunuz yarın 14:30&apos;da.</strong>
-          <span>Saç kesimi</span>
-        </div>
+        {reminderReleased ? (
+          <div className="mkt-proof-card mkt-proof-card--reminder">
+            <span className="mkt-proof-kicker">Randevu hatırlatması</span>
+            <strong>Randevunuz yarın 14:30&apos;da.</strong>
+            <span>Saç kesimi</span>
+          </div>
+        ) : (
+          <div className="mkt-proof-card mkt-proof-card--reminder">
+            <span className="mkt-proof-kicker">Yakında</span>
+            <strong>Hatırlatma akışı hazırlanıyor.</strong>
+            <span>Yayına girdiğinde burada gerçek akışı göstereceğiz.</span>
+          </div>
+        )}
         {MARKETING_RELEASE_GATES.customerMemory ? (
           <div className="mkt-proof-card mkt-proof-card--customer">
             <div><span className="mkt-proof-kicker">Müşteri</span><strong>Burcu Yılmaz</strong></div>
@@ -79,7 +93,7 @@ function StaticTransformationFallback() {
   return (
     <section className="mkt-transformation-fallback" id="donusum" aria-labelledby="mkt-fallback-title">
       <div className="mkt-fallback-panel mkt-fallback-panel--motion-start">
-        <p className="mkt-eyebrow">Kepenk.ai sunar</p><h2 id="mkt-fallback-title">Karışıklık gider, düzen kalır.</h2><p>Müşteri kendi alsın, sistem hatırlatsın, kurulumda da seni yalnız bırakmayalım.</p>
+        <p className="mkt-eyebrow">Kepenk.ai sunar</p><h2 id="mkt-fallback-title">Karışıklık gider, düzen kalır.</h2><p>Müşteri kendi alsın, müşteri detayları tek yerde dursun, kurulumda da seni yalnız bırakmayalım.</p>
       </div>
       <div className="mkt-fallback-panel mkt-fallback-panel--pricing mkt-fallback-panel--motion-final">
         <p className="mkt-eyebrow">Sonuç</p><h2>Fiyatı da kolay olsun.</h2><p>Randevu kolay. İşin sana kalsın.</p>
