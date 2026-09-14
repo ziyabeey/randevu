@@ -248,15 +248,16 @@ export class TransformationFrameLoader {
     const previous = this.cache.get(index);
     if (previous && previous !== frame) previous.close();
     this.cache.delete(index);
-    this.cache.set(index, frame);
-    this.metrics.cachePeakFrames = Math.max(this.metrics.cachePeakFrames, this.cache.size);
 
-    while (this.cache.size > this.cacheLimit) {
+    while (this.cache.size >= this.cacheLimit) {
       const oldest = this.cache.entries().next().value as [number, DecodedTransformationFrame] | undefined;
       if (!oldest) break;
       this.cache.delete(oldest[0]);
       oldest[1].close();
     }
+
+    this.cache.set(index, frame);
+    this.metrics.cachePeakFrames = Math.max(this.metrics.cachePeakFrames, this.cache.size);
   }
 }
 
