@@ -10,6 +10,7 @@ import {
 
 type RpcError = { message?: string };
 type RpcRow = Record<string, unknown>;
+type AssignmentVersion = { updated_at: string };
 
 const catalogManagement = new Hono<{ Bindings: AuthEnv }>();
 
@@ -22,7 +23,11 @@ function integerIn(value: unknown, min: number, max: number) {
 }
 
 function validExpected(value: unknown) {
-  return value === undefined || value === null || (typeof value === 'string' && Number.isFinite(Date.parse(value)));
+  return typeof value === 'string' && Number.isFinite(Date.parse(value));
+}
+
+function validOptionalExpected(value: unknown) {
+  return value === undefined || value === null || validExpected(value);
 }
 
 function rpcMessage(data: unknown) {
@@ -59,7 +64,7 @@ function mutationError(message: string, fallbackCode: string, fallbackMessage: s
     return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
   }
   if (message.includes('NOT_ALLOWED')) {
-    return { code: 'NOT_ALLOWED', message: 'Bu işlem için owner veya manager yetkisi gerekli.', status: 403 as const };
+    return { code: 'NOT_ALLOWED', message: 'Bu işlem için işletme sahibi veya yönetici yetkisi gerekli.', status: 403 as const };
   }
   if (message.includes('INVALID_')) {
     return { code: fallbackCode, message: fallbackMessage, status: 400 as const };
@@ -79,7 +84,7 @@ async function requireManager(context: Parameters<typeof requireMember>[0]) {
   }
   if (!canManage(access.membership)) {
     return {
-      error: context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için owner veya manager yetkisi gerekli.' } }, 403),
+      error: context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için işletme sahibi veya yönetici yetkisi gerekli.' } }, 403),
     } as const;
   }
   return access;
@@ -122,7 +127,9 @@ catalogManagement.patch('/services/:id', async (context) => {
   if ('error' in access) return access.error;
   const body = await readJson(context);
   if (!validExpected(body?.expectedUpdatedAt)) {
-    return context.json({ error: { code: 'INVALID_SERVICE', message: 'Kayıt sürümü geçerli değil.' } }, 400);
+    return context.json({
+      error: { code: 'STALE_WRITE', message: 'Hizmeti değiştirmeden önce güncel bilgileri yeniden yükleyin.' },
+    }, 409);
   }
 
   const patch: Record<string, unknown> = {};
@@ -157,7 +164,7 @@ catalogManagement.patch('/services/:id', async (context) => {
     body: JSON.stringify({
       p_business_id: access.membership.business_id,
       p_service_id: context.req.param('id'),
-      p_expected_updated_at: body?.expectedUpdatedAt ?? null,
+      p_expected_updated_at: body.expectedUpdatedAt,
       p_patch: patch,
     }),
   }, access.auth.accessToken);
@@ -196,7 +203,9 @@ catalogManagement.patch('/staff/:id', async (context) => {
   if ('error' in access) return access.error;
   const body = await readJson(context);
   if (!validExpected(body?.expectedUpdatedAt)) {
-    return context.json({ error: { code: 'INVALID_STAFF', message: 'Kayıt sürümü geçerli değil.' } }, 400);
+    return context.json({
+      error: { code: 'STALE_WRITE', message: 'Personeli değiştirmeden önce güncel bilgileri yeniden yükleyin.' },
+    }, 409);
   }
   const patch: Record<string, unknown> = {};
   if (body?.name !== undefined) {
@@ -220,7 +229,7 @@ catalogManagement.patch('/staff/:id', async (context) => {
     body: JSON.stringify({
       p_business_id: access.membership.business_id,
       p_staff_id: context.req.param('id'),
-      p_expected_updated_at: body?.expectedUpdatedAt ?? null,
+      p_expected_updated_at: body.expectedUpdatedAt,
       p_patch: patch,
     }),
   }, access.auth.accessToken);
@@ -235,9 +244,31 @@ catalogManagement.put('/staff/:staffId/services/:serviceId', async (context) => 
   const access = await requireManager(context);
   if ('error' in access) return access.error;
   const body = await readJson(context);
-  if (typeof body?.active !== 'boolean' || !validExpected(body?.expectedUpdatedAt)) {
+  if (typeof body?.active !== 'boolean' || !validOptionalExpected(body?.expectedUpdatedAt)) {
     return context.json({ error: { code: 'INVALID_ASSIGNMENT', message: 'Hizmet yetkinliği bilgisi geçerli değil.' } }, 400);
   }
+
+  let expectedUpdatedAt = body?.expectedUpdatedAt ?? null;
+  if (expectedUpdatedAt === null) {
+    const query = new URLSearchParams({
+      select: 'updated_at',
+      business_id: `eq.${access.membership.business_id}`,
+      staff_id: `eq.${context.req.param('staffId')}`,
+      service_id: `eq.${context.req.param('serviceId')}`,
+      limit: '1',
+    });
+    const current = await supabaseRequest<AssignmentVersion[]>(
+      context.env,
+      `rest/v1/staff_services?${query}`,
+      {},
+      access.auth.accessToken,
+    );
+    if (!current.ok) {
+      return context.json({ error: { code: 'ASSIGNMENT_READ_FAILED', message: 'Hizmet yetkinliğinin güncel durumu doğrulanamadı.' } }, 502);
+    }
+    expectedUpdatedAt = first(current.data)?.updated_at ?? null;
+  }
+
   const result = await supabaseRequest<RpcRow | RpcRow[]>(context.env, 'rest/v1/rpc/set_staff_service_guarded', {
     method: 'POST',
     body: JSON.stringify({
@@ -245,7 +276,7 @@ catalogManagement.put('/staff/:staffId/services/:serviceId', async (context) => 
       p_staff_id: context.req.param('staffId'),
       p_service_id: context.req.param('serviceId'),
       p_active: body.active,
-      p_expected_updated_at: body?.expectedUpdatedAt ?? null,
+      p_expected_updated_at: expectedUpdatedAt,
     }),
   }, access.auth.accessToken);
   if (!result.ok) {
