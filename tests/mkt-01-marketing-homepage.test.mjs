@@ -10,6 +10,7 @@ const read = (relativePath) => readFileSync(resolve(repoRoot, relativePath), 'ut
 const hero = read('src/marketing/MarketingHero.tsx');
 const home = read('src/marketing/MarketingHome.tsx');
 const productStories = read('src/marketing/ProductStorySections.tsx');
+const marketingCss = read('src/marketing/marketing.css');
 const mobileNavCss = read('src/marketing/mobile-nav.css');
 const marketingPolishCss = read('src/marketing/marketing-polish.css');
 const transformation = read('src/marketing/transformation/TransformationSection.tsx');
@@ -24,6 +25,25 @@ const previewModes = read('src/marketing/previewModes.ts');
 const previewHtml = read('marketing-preview.html');
 const marketingCopy = `${hero}\n${home}\n${productStories}\n${transformation}`;
 const timeline = await import('../src/marketing/transformation/timeline.ts');
+
+function cssHexToken(name) {
+  const match = new RegExp(`--${name}:\\s*(#[0-9a-f]{6})`, 'i').exec(marketingCss);
+  assert.ok(match, `Missing CSS color token --${name}`);
+  return match[1];
+}
+
+function relativeLuminance(hex) {
+  const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
+  const linear = channels.map((channel) => channel <= 0.04045
+    ? channel / 12.92
+    : ((channel + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function contrastRatio(a, b) {
+  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((left, right) => right - left);
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 test('MKT-01 keeps the approved homepage story spine and navigation contract', () => {
   for (const copy of [
@@ -55,6 +75,20 @@ test('MKT-01 keeps the approved homepage story spine and navigation contract', (
   assert.match(mobileNavCss, /\.mkt-mobile-nav-panel a \{[\s\S]*?min-height:\s*44px/);
   assert.match(mobileNavCss, /\.mkt-nav-actions \.mkt-nav-cta \{[\s\S]*?min-height:\s*44px/);
   assert.match(marketingPolishCss, /\.mkt-skip-link:focus,[\s\S]*?\.mkt-skip-link:focus-visible/);
+});
+
+test('MKT-01 brand text color pairs keep WCAG AA contrast', () => {
+  const pairs = [
+    [cssHexToken('mkt-cobalt-deep'), '#ffffff', 7],
+    [cssHexToken('mkt-lime'), cssHexToken('mkt-cobalt-deep'), 7],
+    [cssHexToken('mkt-cobalt'), '#ffffff', 4.5],
+    [cssHexToken('mkt-ink'), cssHexToken('mkt-cream'), 7],
+  ];
+
+  for (const [foreground, background, minimum] of pairs) {
+    const ratio = contrastRatio(foreground, background);
+    assert.ok(ratio >= minimum, `${foreground} on ${background} contrast ${ratio.toFixed(2)} is below ${minimum}:1`);
+  }
 });
 
 test('MKT-01 hero exposes its LCP media as a priority image', () => {
