@@ -1,6 +1,6 @@
 -- Temporary F10-02 ACL diagnostic wrapper. Keep production migration clean: this
 -- file prints only role/object ACL metadata, then executes the real functional
--- acceptance body from f10_team_access_core.sql.
+-- acceptance body from f10_team_access_core.inc.
 select
   c.relname,
   coalesce(c.relacl::text, '<null>') as relacl,
@@ -29,4 +29,4 @@ where r.rolname in ('anon', 'authenticated')
 group by r.rolname, r.rolsuper, r.rolinherit
 order by r.rolname;
 
-\ir f10_team_access_core.sql
+\ir f10_team_access_core.inc
