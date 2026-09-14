@@ -121,7 +121,13 @@ f4984cc62143e744ee5bffd378a00eee0efdae909d6170d5a9210465b1873bc3  randevu-transf
 cbcfb696ee7e9669052113f106ff988912bad315498f92101ee6288b0c90072a  randevu-hero-model.webp
 ```
 
-If production intentionally re-encodes the source, update the hashes and re-run browser scrub acceptance.
+After copying or unzipping the binary handoff into the repository root, verify every required file before browser QA:
+
+```bash
+node scripts/verify-marketing-assets.mjs
+```
+
+The verifier fails closed on a missing file or SHA-256 mismatch. If production intentionally re-encodes a source, update the hash contract deliberately and re-run browser scrub acceptance.
 
 Optional later optimization:
 
@@ -130,3 +136,5 @@ Optional later optimization:
 ## Runtime contract
 
 `src/marketing/transformation/TransformationSection.tsx` expects the canonical transformation paths above. `src/marketing/MarketingHero.tsx` expects the hero WebP path. Motion is muted, inline and scroll-scrubbed. Pricing, copy and product UI remain React/DOM overlays and must not be baked into the video.
+
+`marketing-preview.html` is a development-only Vite entry used before the production root cutover. It is intentionally `noindex,nofollow`; production metadata and canonical behavior live in `src/marketing/useMarketingDocumentMeta.ts` and become relevant when `/` is handed to `MarketingHome`.
