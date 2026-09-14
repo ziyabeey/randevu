@@ -28,6 +28,24 @@ values (
   2,'09:00','17:00',true
 );
 
+-- Bounded catalog reads are an exposed authenticated RPC, so recovery AMR must
+-- be rejected at the database boundary even when Worker routes are bypassed.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','b9000000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"recovery"}]}',true);
+do $$
+begin
+  begin
+    perform * from public.get_catalog_snapshot('b9100000-0000-4000-8000-000000000001');
+    raise exception 'recovery unexpectedly read catalog snapshot';
+  exception when others then
+    if sqlerrm = 'recovery unexpectedly read catalog snapshot' then raise; end if;
+    if position('PASSWORD_UPDATE_REQUIRED' in sqlerrm)=0 then raise; end if;
+  end;
+end
+$$;
+reset role;
+
 -- Eight daily intervals is the direct-RPC ceiling as well as the Worker ceiling.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','b9000000-0000-4000-8000-000000000001',true);
