@@ -1,4 +1,4 @@
-import { clamp01, getTransformationPhase } from "./timeline";
+import { clamp01, getTransformationPhase } from "./timeline.ts";
 
 export const TRANSFORMATION_FRAME_COUNT = 121;
 export const TRANSFORMATION_FRAME_CACHE_SIZE = 8;
