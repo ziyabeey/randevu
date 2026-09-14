@@ -106,6 +106,8 @@ test('MKT-01 motion remains scroll-owned, bounded, and non-autoplay', () => {
   assert.match(transformation, /muted/);
   assert.match(transformation, /playsInline/);
   assert.match(transformation, /preload="metadata"/);
+  assert.match(transformation, /MARKETING_ASSETS\.transformationMobileVideo/);
+  assert.match(transformation, /media="\(max-width: 680px\)"/);
   assert.match(transformation, /MARKETING_ASSETS\.transformationVideo/);
   assert.match(transformation, /MARKETING_ASSETS\.transformationPoster/);
   assert.match(transformationTuning, /randevu-transformation-final\.webp/);
@@ -115,6 +117,7 @@ test('MKT-01 canonical asset manifest contains every required binary handoff', (
   for (const asset of [
     'randevu-hero-model.webp',
     'randevu-transformation-master.mp4',
+    'randevu-transformation-mobile.mp4',
     'randevu-transformation-poster.webp',
     'randevu-transformation-final.webp',
   ]) {
