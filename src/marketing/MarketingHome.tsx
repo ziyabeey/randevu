@@ -4,6 +4,7 @@ import "./marketing.css";
 import "./marketing-sections.css";
 import "./marketing-overrides.css";
 import "./marketing-polish.css";
+import "./mobile-nav.css";
 import "./final-cta.css";
 
 import { MarketingHero } from "./MarketingHero";
@@ -46,11 +47,26 @@ function MarketingNav() {
           <span>randevu</span>
           <small>kolay</small>
         </a>
+
         <div className="mkt-nav-links">
           <a href="#nasil-calisiyor">Nasıl çalışır?</a>
           <a href="#isletmen-icin">İşletmen için</a>
           <a href="#yardim">Yardım</a>
         </div>
+
+        <details className="mkt-mobile-nav">
+          <summary aria-label="Randevu menüsünü aç">
+            <span>Menü</span>
+            <i aria-hidden="true">+</i>
+          </summary>
+          <div className="mkt-mobile-nav-panel">
+            <a href="#nasil-calisiyor">Nasıl çalışır?</a>
+            <a href="#isletmen-icin">İşletmen için</a>
+            <a href="#donusum">Dönüşüm</a>
+            <a href="#yardim">Yardım</a>
+          </div>
+        </details>
+
         <a className="mkt-nav-cta" href="#kurulum">Birlikte kuralım</a>
       </nav>
     </header>
