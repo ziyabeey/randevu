@@ -14,7 +14,9 @@ interface VideoScrollScrubResult {
 }
 
 export function usePrefersReducedMotion(): boolean {
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -38,7 +40,7 @@ export function useVideoScrollScrub(
   const [metadataReady, setMetadataReady] = useState(false);
   const targetTimeRef = useRef(0);
   const frameRef = useRef<number | null>(null);
-  const visibleRef = useRef(true);
+  const visibleRef = useRef(false);
   const phaseRef = useRef<TransformationPhase>("reminder");
 
   useEffect(() => {
