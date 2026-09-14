@@ -71,10 +71,17 @@ test('MKT-01 production document metadata is explicit while standalone preview s
   assert.match(home, /useMarketingDocumentMeta\(\)/);
   assert.match(documentMeta, /Randevu kolay\. \| Kepenk\.ai/);
   assert.match(documentMeta, /https:\/\/randevu\.kepenk\.ai\//);
+  assert.match(documentMeta, /randevu-hero-model\.webp/);
+  assert.match(documentMeta, /tr_TR/);
   assert.match(documentMeta, /og:title/);
   assert.match(documentMeta, /og:description/);
   assert.match(documentMeta, /og:type/);
-  assert.match(documentMeta, /endsWith\("\/marketing-preview\.html"\)/);
+  assert.match(documentMeta, /og:url/);
+  assert.match(documentMeta, /og:image/);
+  assert.match(documentMeta, /og:image:alt/);
+  assert.match(documentMeta, /twitter:card/);
+  assert.match(documentMeta, /summary_large_image/);
+  assert.match(documentMeta, /twitter:image/);
   assert.match(previewHtml, /name="robots" content="noindex,nofollow"/);
 });
 
