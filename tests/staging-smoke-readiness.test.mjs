@@ -24,3 +24,20 @@ test('readiness retry is bounded and does not retry login/session/catalog assert
   assert.match(smoke, /Staging session lookup failed with HTTP/);
   assert.match(smoke, /Staging catalog failed with HTTP/);
 });
+
+test('session failure emits only a bounded classification receipt, never raw session identity or bearer values', () => {
+  assert.match(smoke, /STAGING_SESSION_DIAGNOSTIC/);
+  for (const field of [
+    'hasUser',
+    'membershipsCount',
+    'hasActiveBusiness',
+    'passwordRecovery',
+    'errorCode',
+    'hasAccessCookie',
+    'hasRefreshCookie',
+  ]) {
+    assert.match(smoke, new RegExp(field));
+  }
+  assert.doesNotMatch(smoke, /STAGING_SESSION_DIAGNOSTIC[^\n]*(email|fullName|access_token|refresh_token|STAGING_OWNER_A_EMAIL)/);
+  assert.doesNotMatch(smoke, /JSON\.stringify\(session\.data\)/);
+});
