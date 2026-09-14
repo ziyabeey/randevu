@@ -13,14 +13,22 @@ interface VideoScrollScrubResult {
   metadataReady: boolean;
 }
 
+function isReducedMotionForced(): boolean {
+  return typeof document !== "undefined" && document.documentElement.dataset.mktReducedMotion === "true";
+}
+
 export function usePrefersReducedMotion(): boolean {
-  const [reducedMotion, setReducedMotion] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
+  const [reducedMotion, setReducedMotion] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return isReducedMotionForced() || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReducedMotion(query.matches);
+    const sync = () => setReducedMotion(isReducedMotionForced() || query.matches);
 
     sync();
     query.addEventListener("change", sync);
