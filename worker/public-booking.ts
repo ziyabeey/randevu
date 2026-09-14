@@ -90,6 +90,12 @@ function rpcError(data: unknown, fallback: string) {
   if (message.includes('PUBLIC_BOOKING_NOT_FOUND') || message.includes('PUBLIC_BOOKING_DISABLED')) {
     return { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.', status: 404 as const };
   }
+  if (message.includes('PUBLIC_BOOKING_NOT_READY')) {
+    return { code: 'PUBLIC_BOOKING_NOT_READY', message: 'Yayınlamadan önce hizmet, personel ve çalışma saatlerini tamamlayın.', status: 409 as const };
+  }
+  if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
+    return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
+  }
   if (message.includes('IDEMPOTENCY_CONFLICT')) {
     return { code: 'IDEMPOTENCY_CONFLICT', message: 'Bu işlem anahtarı farklı bir rezervasyon için kullanılmış.', status: 409 as const };
   }

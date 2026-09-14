@@ -211,7 +211,7 @@ await test('S02 unknown unsafe API routes fail closed instead of inheriting an e
   assert.equal((await response.json()).error?.code, 'ORIGIN_FORBIDDEN');
 });
 
-const memberReads = ['/api/catalog', '/api/calendar', '/api/availability/setup', '/api/bookings', '/api/public/settings'];
+const memberReads = ['/api/catalog', '/api/calendar', '/api/availability/setup', '/api/bookings', '/api/public/settings', '/api/team'];
 
 await test('S02 every member surface shares auth, refresh and membership failure semantics', async (t) => {
   const cases = [
@@ -307,6 +307,9 @@ const cookieMutations = [
   ['PUT', '/api/availability/business-hours/:weekday'], ['PUT', '/api/availability/staff/:staffId/hours/:weekday'],
   ['POST', '/api/availability/blocks'], ['DELETE', '/api/availability/blocks/:id'],
   ['PUT', '/api/public/settings'],
+  ['POST', '/api/team/invitations'], ['POST', '/api/team/invitations/accept'], ['POST', '/api/team/invitations/:id/revoke'],
+  ['PATCH', '/api/team/members/:id'], ['PUT', '/api/team/staff/:staffId/membership'],
+  ['PUT', '/api/team/members/:id/financial-permissions/:permission'],
 ];
 const exceptions = [
   '/api/public/business/:slug/book', '/api/public/booking/recover', '/api/public/booking/resolve',
