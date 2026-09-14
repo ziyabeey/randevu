@@ -33,8 +33,12 @@
     display: none;
   }
 
+  .mkt-nav-actions .mkt-nav-cta {
+    min-height: 44px;
+  }
+
   .mkt-mobile-nav summary {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 12px;
     display: inline-flex;
     align-items: center;
@@ -102,7 +106,7 @@
   }
 
   .mkt-mobile-nav summary {
-    width: 40px;
+    width: 44px;
     padding: 0;
     justify-content: center;
   }
