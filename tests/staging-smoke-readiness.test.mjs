@@ -65,9 +65,9 @@ test('failed hosted session snapshots only access-claim shape before the session
     assert.match(smoke, new RegExp(field));
   }
 
-  const snapshotIndex = smoke.indexOf("const accessClaims = accessClaimsDiagnostic(cookies.get('yzt_access'));");
+  const snapshotIndex = smoke.indexOf("const accessToken = cookies.get('yzt_access') ?? '';");
   const sessionIndex = smoke.indexOf("const session = await request('/api/session');");
-  assert.ok(snapshotIndex >= 0 && sessionIndex > snapshotIndex, 'access claim shape must be captured before /api/session can clear the cookie jar');
+  assert.ok(snapshotIndex >= 0 && sessionIndex > snapshotIndex, 'access token must be captured before /api/session can clear the cookie jar');
 
   assert.doesNotMatch(smoke, /console\.(?:log|error)\([^\n]*(?:accessToken|cookies\.get\('yzt_access'\)|payload\.sub|payload\.session_id|payload\.email)/);
   assert.doesNotMatch(smoke, /JSON\.stringify\(payload\)/);
@@ -91,7 +91,7 @@ test('login failure performs one bounded direct hosted auth diagnostic without l
   }
 
   const functionStart = smoke.indexOf('async function directPasswordDiagnostic()');
-  const functionEnd = smoke.indexOf('\n}\n\nfunction sessionDiagnostic', functionStart);
+  const functionEnd = smoke.indexOf('\n}\n\nfunction jwtSubject', functionStart);
   assert.ok(functionStart >= 0 && functionEnd > functionStart, 'direct diagnostic helper must stay bounded and inspectable');
   const helper = smoke.slice(functionStart, functionEnd);
   assert.equal((helper.match(/\bfetch\(/g) ?? []).length, 1, 'direct diagnostic must issue exactly one provider request');
@@ -107,4 +107,48 @@ test('login failure performs one bounded direct hosted auth diagnostic without l
     /STAGING_DIRECT_AUTH_DIAGNOSTIC[^\n]*(?:STAGING_OWNER_A_EMAIL|STAGING_OWNER_A_PASSWORD|SUPABASE_ANON_KEY|access_token|refresh_token|payload\.sub|payload\.session_id|payload\.email)/,
   );
   assert.doesNotMatch(smoke, /JSON\.stringify\(data\)/);
+});
+
+test('session failure performs exactly two bounded upstream probes and logs only classification', () => {
+  assert.match(smoke, /function jwtSubject\(accessToken\)/);
+  assert.match(smoke, /async function directSessionProviderDiagnostic\(accessToken\)/);
+  assert.match(smoke, /auth\/v1\/user/);
+  assert.match(smoke, /rest\/v1\/memberships/);
+  assert.match(smoke, /STAGING_SESSION_PROVIDER_DIAGNOSTIC/);
+
+  for (const field of [
+    'configReady',
+    'jwtSubjectUuid',
+    'jwtSubjectMatchesExpectedOwner',
+    'authUserStatus',
+    'authUserStatusClass',
+    'authUserPresent',
+    'authUserIdUuid',
+    'authUserMatchesJwtSubject',
+    'membershipsStatus',
+    'membershipsStatusClass',
+    'membershipsArray',
+    'membershipsCount',
+    'embeddedBusinessesCount',
+  ]) {
+    assert.match(smoke, new RegExp(field));
+  }
+
+  const functionStart = smoke.indexOf('async function directSessionProviderDiagnostic(accessToken)');
+  const functionEnd = smoke.indexOf('\n}\n\nfunction sessionDiagnostic', functionStart);
+  assert.ok(functionStart >= 0 && functionEnd > functionStart, 'session provider diagnostic must stay bounded and inspectable');
+  const helper = smoke.slice(functionStart, functionEnd);
+  assert.equal((helper.match(/\bfetch\(/g) ?? []).length, 2, 'session provider diagnostic must issue exactly auth-user and membership probes');
+  assert.doesNotMatch(helper, /for\s*\(|while\s*\(|await sleep\(/, 'session provider diagnostic must not retry');
+  assert.doesNotMatch(helper, /console\.(?:log|error)/, 'raw provider responses must not be logged inside the helper');
+
+  const sessionFailure = /if \(!session\.response\.ok \|\| !session\.data\?\.user\?\.id\) \{([\s\S]*?)\n\}/.exec(smoke)?.[1] ?? '';
+  assert.match(sessionFailure, /await directSessionProviderDiagnostic\(accessToken\)/);
+  assert.match(sessionFailure, /STAGING_SESSION_PROVIDER_DIAGNOSTIC/);
+
+  assert.doesNotMatch(
+    smoke,
+    /STAGING_SESSION_PROVIDER_DIAGNOSTIC[^\n]*(?:STAGING_OWNER_A_EMAIL|STAGING_OWNER_A_PASSWORD|SUPABASE_ANON_KEY|accessToken|access_token|refresh_token|payload\.sub|payload\.session_id|payload\.email)/,
+  );
+  assert.doesNotMatch(smoke, /JSON\.stringify\(authUserData\)|JSON\.stringify\(membershipsData\)/);
 });
