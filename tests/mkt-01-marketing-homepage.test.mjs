@@ -36,6 +36,8 @@ test('MKT-01 keeps the approved homepage story spine', () => {
   assert.match(productStories, /id="isletmen-icin"/);
   assert.match(productStories, /id="yardim"/);
   assert.match(home, /id="kurulum"/);
+  assert.match(home, /<details className="mkt-mobile-nav">/);
+  assert.match(home, /<summary aria-label="Randevu menüsünü aç">/);
 });
 
 test('MKT-01 publish gates stay explicit and fail closed where policy is not ready', () => {
