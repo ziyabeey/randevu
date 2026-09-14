@@ -18,6 +18,28 @@
   box-shadow: 0 14px 34px rgba(198, 232, 0, 0.18);
 }
 
+.mkt-contact-pending {
+  display: inline-grid;
+  gap: 0.35rem;
+  max-width: min(100%, 34rem);
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.mkt-contact-pending strong {
+  color: var(--mkt-lime);
+  font-size: 0.98rem;
+}
+
+.mkt-contact-pending span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
 .mkt-final-orb {
   background: var(--mkt-cobalt);
   opacity: 0.74;
