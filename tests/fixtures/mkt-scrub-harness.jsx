@@ -49,7 +49,8 @@ function ScrubHarness() {
   const { phase, metadataReady } = useVideoScrollScrub(sectionRef, videoRef, false);
 
   return (
-    <main style={{ margin: 0, minHeight: '3600px' }}>
+    <main style={{ margin: 0, minHeight: '3720px', overflowAnchor: 'none' }}>
+      <div id="mkt-scrub-spacer" style={{ height: '120px' }} />
       <section
         ref={sectionRef}
         className="mkt-transformation"
