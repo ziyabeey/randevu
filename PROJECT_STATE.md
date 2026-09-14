@@ -38,7 +38,7 @@ Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekra
 | CI / staging | F17-01/02 + S05/S06; required CI gate ve staging rollback/rotation temeli | F17-03 |
 | Future DB ACL | S08; yeni nesnelerde explicit grant/RLS disiplini | Her yeni migration + F17-03 |
 | Görsel ürün sözleşmesi | F12-01 main'de | F12-02+ |
-| Marketing brand/motion | PR #69 ile `docs/brand/**` main'de; scroll-scrub video + gerçek DOM UI production yönü onaylı | MKT-01 / Issue #70 |
+| Marketing brand/motion | PR #69 ile `docs/brand/**` main'de; scroll-scrub video + gerçek DOM UI production yönü onaylı | MKT-01 / PR #77 |
 | SalonApp / adisyon / tahsilat | Henüz ürün uygulaması yok | F14 |
 | Ürün / stok / masraf / kasa | Henüz ürün uygulaması yok | F15 |
 | Paket / promosyon / prim / yorum / dil | Planlandı | F16 |
@@ -87,6 +87,22 @@ Draft PR'dır. `worker/app.ts` ve `src/main.tsx` F10-05 lane'ine bırakılmışt
 
 Draft PR'dır. Gerçek marka/fotoğraf varlıklarının eksikliği işlevsel kodu engellemez; final gerçek-varlık kabulü ayrıca kaydedilir.
 
+### PR #77 — MKT-01 / ChatGPT-Sol
+
+`mkt-01-scroll-motion-homepage`
+
+İlk izole marketing slice'ı:
+
+- `src/marketing/**` floating nav + `Randevu kolay.` hero shell,
+- sticky transformation stage,
+- native scroll progress → deterministic video scrub,
+- Frame 05–08 DOM story overlay'leri,
+- mobile crop,
+- reduced-motion / video-failure fallback,
+- production motion asset path contract.
+
+PR #77 bilinçli olarak `src/main.tsx`, `src/App.tsx`, `TASKS.md`, worker/DB/migration alanlarına dokunmaz. Route/entry entegrasyonu shared-file sırası açılınca yapılır. Draft PR'dır; gerçek motion binary + browser smoke tamamlanmadan main sayılmaz.
+
 ## Aktif entegrasyon sırası
 
 F10-04 ve F10-05 `scripts/ci-postgres-plan.json` ortak alanına ihtiyaç duyuyor.
@@ -94,14 +110,15 @@ F10-04 ve F10-05 `scripts/ci-postgres-plan.json` ortak alanına ihtiyaç duyuyor
 1. **F10-05 / PR #74** CI-plan tek-yazıcısı olarak önce entegre edilir.
 2. #74 kabul+merge sonrası **F10-04 / PR #75** yeni main'e taşınır ve yalnız kendi CI-plan adımı eklenir.
 3. F12-02 bağımsız ilerler; ortak migration/router/CI alanına girerse Issue #65'te sıra belirlenir.
+4. MKT-01 / PR #77 `src/marketing/**` içinde izole kalır; ortak `src/main.tsx` / `src/App.tsx` route bağlantısı aktif entry yazıcısı kapandıktan sonra coordinator sırasıyla yapılır.
 
 Bu sıra ürün önceliği değil conflict önleme sırasıdır.
 
 ## Marketing / site track
 
-**MKT-01 / Issue #70 aktif ve ürün sahibi onaylıdır.** 54 MVP ürün/teknik görevinin dışında ayrı bir marketing track'idir.
+**MKT-01 / Issue #70 aktif ve ürün sahibi onaylıdır.** 54 MVP ürün/teknik görevinin dışında ayrı bir marketing track'idir. Bağlayıcı tasarım kaynağı `docs/brand/**` ve PR #69'dur; ilk implementation slice'ı PR #77'dir.
 
-Bağlayıcı tasarım kaynağı `docs/brand/**` ve PR #69'dur. Güncel production yönü:
+Güncel production yönü:
 
 - sticky/pinned stage,
 - deterministik scroll-scrub video,
@@ -110,8 +127,6 @@ Bağlayıcı tasarım kaynağı `docs/brand/**` ve PR #69'dur. Güncel productio
 - mobile ve `prefers-reduced-motion` fallback,
 - scroll hijack yok,
 - kilitlenmemiş fiyat veya tamamlanmamış ürün işlevi gerçekmiş gibi yayınlanmaz.
-
-Kod branch'i, aktif F10/F12 lane'lerinin ortak entry/router alanını ezmeyecek exact main + dosya sahipliğiyle coordinator tarafından açılır.
 
 ## Açık ama tamamlanmış kartları yeniden açmayan takipler
 
