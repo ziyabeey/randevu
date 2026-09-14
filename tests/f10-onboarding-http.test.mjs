@@ -139,8 +139,7 @@ await test('F10-03 recovery session cannot read onboarding setup', async () => {
     const url = new URL(String(input));
     calls.push(url.pathname);
     if (url.pathname === '/auth/v1/user') return json(user);
-    if (url.pathname === '/rest/v1/memberships') return json([membership()]);
-    throw new Error(`recovery unexpectedly reached setup data: ${url}`);
+    throw new Error(`recovery unexpectedly reached membership or setup data: ${url}`);
   };
   try {
     const response = await app.request('http://localhost/api/onboarding', {
@@ -148,7 +147,7 @@ await test('F10-03 recovery session cannot read onboarding setup', async () => {
     }, env);
     assert.equal(response.status, 403);
     assert.equal((await response.json()).error?.code, 'PASSWORD_UPDATE_REQUIRED');
-    assert.deepEqual(calls, ['/auth/v1/user', '/rest/v1/memberships']);
+    assert.deepEqual(calls, ['/auth/v1/user']);
   } finally { globalThis.fetch = realFetch; }
 });
 
