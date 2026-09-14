@@ -2,11 +2,35 @@
   display: none;
 }
 
+.mkt-nav-actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.mkt-nav-login {
+  padding: 10px 2px;
+  color: var(--mkt-cobalt-deep);
+  font-size: 0.82rem;
+  font-weight: 780;
+  white-space: nowrap;
+  transition: opacity 180ms ease;
+}
+
+.mkt-nav-login:hover {
+  opacity: 0.62;
+}
+
 @media (max-width: 980px) {
   .mkt-mobile-nav {
     position: relative;
     display: block;
     justify-self: end;
+  }
+
+  .mkt-nav-actions .mkt-nav-login {
+    display: none;
   }
 
   .mkt-mobile-nav summary {
@@ -73,6 +97,10 @@
 }
 
 @media (max-width: 390px) {
+  .mkt-nav-actions {
+    gap: 0;
+  }
+
   .mkt-mobile-nav summary {
     width: 40px;
     padding: 0;
@@ -90,7 +118,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mkt-mobile-nav summary i {
+  .mkt-mobile-nav summary i,
+  .mkt-nav-login {
     transition: none;
   }
 }
