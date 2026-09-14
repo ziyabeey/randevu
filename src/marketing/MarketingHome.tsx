@@ -158,6 +158,7 @@ function MarketingFooter() {
 
 export function MarketingHome() {
   useMarketingDocumentMeta();
+  const [skipFocused, setSkipFocused] = useState(false);
 
   const handleSkipToContent = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -173,7 +174,15 @@ export function MarketingHome() {
 
   return (
     <div className="mkt-root" id="top">
-      <a className="mkt-skip-link" href="#mkt-main" onClick={handleSkipToContent}>İçeriğe geç</a>
+      <a
+        className={`mkt-skip-link${skipFocused ? " is-focused" : ""}`}
+        href="#mkt-main"
+        onClick={handleSkipToContent}
+        onFocus={() => setSkipFocused(true)}
+        onBlur={() => setSkipFocused(false)}
+      >
+        İçeriğe geç
+      </a>
       <MarketingNav />
       <main id="mkt-main" tabIndex={-1}>
         <MarketingHero />
