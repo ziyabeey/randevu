@@ -9,6 +9,7 @@ Randevu ürününün onaylı marka ve marketing sistemi bu klasörde tutulur.
 - [`randevu-homepage-implementation-handoff.md`](randevu-homepage-implementation-handoff.md) — frontend component tree, dosya sınırı, acceptance ve uygulama devri.
 - [`randevu-transformation-scrollytelling-storyboard.md`](randevu-transformation-scrollytelling-storyboard.md) — saç dönüşümü, düşen fazlalıklar, sweep temizliği ve pricing geçişi için 3D/2.5D scroll hikâyesi.
 - [`randevu-transformation-shotlist.md`](randevu-transformation-shotlist.md) — 8 ana frame için scroll yüzdesi, kamera, saç durumu, UI, copy, renk, 3D asset ve responsive/reduced-motion kabulü.
+- [`randevu-transformation-asset-direction.md`](randevu-transformation-asset-direction.md) — model casting, H0–H3 saç sistemi, wardrobe, ışık, kamera, makas/tarak/sweep objeleri, 3D/HTML ayrımı ve asset üretim checklist'i.
 
 Ürün ekranlarının bağlayıcı işlev/akış sınırı ayrıca [`../plan/f12-01-visual-flow-contract.md`](../plan/f12-01-visual-flow-contract.md) içindedir.
 
