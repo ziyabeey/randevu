@@ -77,6 +77,7 @@ export default function CustomersPage() {
   const listController = useRef<AbortController | null>(null);
   const historyController = useRef<AbortController | null>(null);
   const pageController = useRef<AbortController | null>(null);
+  const selectedIdRef = useRef<string | null>(null);
   const listGeneration = useRef(0);
   const historyGeneration = useRef(0);
   const tenantGeneration = useRef(0);
@@ -90,6 +91,11 @@ export default function CustomersPage() {
     () => session?.memberships.find((membership) => membership.business_id === session.activeBusinessId) ?? null,
     [session],
   );
+
+  const setSelectedCustomerId = useCallback((customerId: string | null) => {
+    selectedIdRef.current = customerId;
+    setSelectedId(customerId);
+  }, []);
 
   const cancelBusinessScopedReads = useCallback(() => {
     listController.current?.abort();
@@ -114,9 +120,9 @@ export default function CustomersPage() {
       setCustomers((current) => append ? [...current, ...result.customers] : result.customers);
       setCustomerPage(result.page);
       if (!append) {
-        const stillSelected = result.customers.some((row) => row.customer_id === selectedId);
+        const stillSelected = result.customers.some((row) => row.customer_id === selectedIdRef.current);
         if (!stillSelected) {
-          setSelectedId(null);
+          setSelectedCustomerId(null);
           setHistory([]);
           setHistoryPage(null);
         }
@@ -125,7 +131,7 @@ export default function CustomersPage() {
       if (controller.signal.aborted || generation !== listGeneration.current || tenant !== tenantGeneration.current) return;
       setNotice(message(error, 'Müşteriler yüklenemedi.'));
     }
-  }, [selectedId]);
+  }, [setSelectedCustomerId]);
 
   const loadHistory = useCallback(async (customerId: string, cursor: string | null = null, append = false) => {
     historyController.current?.abort();
@@ -177,7 +183,7 @@ export default function CustomersPage() {
   async function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNotice('');
-    setSelectedId(null);
+    setSelectedCustomerId(null);
     setHistory([]);
     setHistoryPage(null);
     await loadCustomers(search, null, false);
@@ -190,7 +196,7 @@ export default function CustomersPage() {
     cancelBusinessScopedReads();
     setCustomers([]);
     setCustomerPage(null);
-    setSelectedId(null);
+    setSelectedCustomerId(null);
     setHistory([]);
     setHistoryPage(null);
     try {
@@ -225,7 +231,7 @@ export default function CustomersPage() {
       form.reset();
       setSearch('');
       await loadCustomers('', null, false);
-      setSelectedId(result.customer.customer_id);
+      setSelectedCustomerId(result.customer.customer_id);
       await loadHistory(result.customer.customer_id);
       setNotice('Müşteri kaydı oluşturuldu.');
     } catch (error) {
@@ -265,7 +271,7 @@ export default function CustomersPage() {
   }
 
   function chooseCustomer(customerId: string) {
-    setSelectedId(customerId);
+    setSelectedCustomerId(customerId);
     setHistory([]);
     setHistoryPage(null);
     setNotice('');
