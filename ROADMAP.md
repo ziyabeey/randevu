@@ -1,84 +1,115 @@
 # YZT Randevu — MVP yol haritası
 
-**Plan v3 · 12 Eylül 2026.** İncelenen başlangıç: `main@3b73bf827346542cd36f5bc6ed32d4d8a0b30cea`. V2'nin üç kol kapsamı ve F09–F17 görev kimlikleri korunur. Bu revizyon **doküman teslimidir**; yeni kod, migration, deployment veya MVP sonrası PDF değişikliği yapmaz.
+**Plan v3 · güncel durum 14 Eylül 2026.** Ürün üç kolu ve F09–F17 görev kimlikleri korunur. Canlı durum `TASKS.md`, doğrulanmış main `PROJECT_STATE.md`, detay kabul ölçütleri ilgili faz dosyalarındadır.
 
-## Başlangıç ve kaynaklar
+## Kaynak sırası
 
 | Soru | Kaynak |
 | --- | --- |
-| Ürün ve referans sınırı nedir? | [PRODUCT_SPEC](PRODUCT_SPEC.md), [11 referans](docs/references/README.md) |
-| Main'de ne var, hangi bulgu açık? | [PROJECT_STATE](PROJECT_STATE.md) |
-| Hangi işi kim devralabilir? | [TASKS](TASKS.md), açık PR'lar, [CONTRIBUTING](CONTRIBUTING.md) |
-| Ortak mimari neye göre uygulanacak? | [K01/K02/K03 sözleşmeleri](docs/plan/architecture-contracts.md), [DECISIONS](DECISIONS.md) |
-| Önce hangi düzeltmeler gerekir? | [S01–S08 / GS](docs/plan/stabilization.md) |
-| Sol hangi beceri ve kanıtla çalışacak? | [Ajan çalışma düzeni](docs/plan/agent-workflow.md) |
-| MVP ne zaman kabul edilir? | [MVP_ACCEPTANCE](MVP_ACCEPTANCE.md), F17-04/05 |
+| Ürün kapsamı nedir? | [PRODUCT_SPEC](PRODUCT_SPEC.md) |
+| Main'de gerçekten ne var? | [PROJECT_STATE](PROJECT_STATE.md) |
+| Hangi görev kimin ve hangi durumda? | [TASKS](TASKS.md) |
+| Faz/dependency sırası nedir? | Bu dosya + `docs/plan/phase-*.md` |
+| Ortak teknik kurallar nedir? | [K01/K02/K03](docs/plan/architecture-contracts.md), [DECISIONS](DECISIONS.md) |
+| Release/pilot ne zaman kabul edilir? | [MVP_ACCEPTANCE](MVP_ACCEPTANCE.md), F17-04/05 |
+| Marketing homepage yönü nedir? | [docs/brand/README.md](docs/brand/README.md), MKT-01 / Issue #70 |
 
-TASKS durum/sahip kaynağı, faz kartları iş/kabul sözleşmesidir. ROADMAP sıra ve kapsamı tutar. Devir notu görev/branch/commit/kanıt/ilk adımı taşır; konuşma geçmişi tek bilgi kaynağı olamaz.
+TASKS sahiplik/durum kaynağıdır. ROADMAP yalnız ürün sırası ve bağımlılıkları özetler; eski PR/branch durumlarını tekrar etmez.
 
-## Korunan MVP hedefi
+## MVP hedefi
 
 | Kol | Çalışan sonuç | Tasarım sınırı |
 | --- | --- | --- |
-| Müşteri paneli | Salon profili, çoklu hizmet/personel, uygun saat, özet/kampanya, rezervasyon, güvenli taşıma/iptal, bildirim, yorum | Daha estetik ve özgün müşteri deneyimi; işlev eşdeğerliği |
-| Randevu paneli | Gün/hafta/liste, ekip/müşteri/katalog, mesai/kapanış, çok hizmetli/tekrarlı randevu, detay ve mali/fotoğraf bağlantıları | Takvim ana yüzey; referansın alan ve işlem düzeni |
-| SalonApp | Randevular / Adisyonlar / Yeni / Müşteriler / Diğer; adisyon, manuel tahsilat, ürün/stok, masraf/kasa, paket/prim, hesap | Referansa yakın mobil menü ve adisyon akışı |
+| Müşteri Paneli | Salon profili, çoklu hizmet/personel, uygun saat, özet, rezervasyon ve güvenli yönetim | Özgün, estetik müşteri deneyimi |
+| Randevu Paneli | Gün/hafta/liste, ekip/müşteri/katalog, mesai/kapanış, randevu detayları | Takvim merkezli günlük operasyon |
+| SalonApp | Randevular / Adisyonlar / Yeni / Müşteriler / Diğer; tahsilat, stok, kasa, paket/prim | Tanıdık mobil işlem akışı |
 
-Tek repo/backend ve ortak veriler korunur. İlk mobil teslim responsive/PWA'dır. **MVP Faz 17 sonunda**, Faz 9–16'nın onaylı işlevleri ve gerçek pilotla kabul edilir. Faz 13/14 ara teslimattır. Ürün kapsamı sessizce küçültülmez.
+Tek repo/backend ve ortak veriler korunur. İlk mobil teslim responsive/PWA'dır. **MVP Faz 17 sonunda**, Faz 9–16'nın kabul edilmiş işlevleri ve gerçek pilotla biter.
 
-Çevrimiçi kart çekimi, otomatik abonelik tahsilatı, native mağaza dağıtımı, tam muhasebe/e-fatura/bordro/ERP, marketplace, AI ve gelişmiş şube hiyerarşisi kapsam dışındadır. Manuel tahsilat, temel stok, paket/promosyon ve prim kapsam içindedir. MVP sonrası gelecek planı PDF'si ayrı kalır; bu revizyona bağlanmaz ve repoya konulmaz. Yeni kullanıcı dostu özellik fikirleri/görsel kararlar ayrı çalışmada ele alınır; mevcut kabul ölçütleri korunur.
+Çevrimiçi kart çekimi, otomatik abonelik tahsilatı, native mağaza dağıtımı, tam muhasebe/e-fatura/bordro/ERP, marketplace, AI ve gelişmiş şube hiyerarşisi MVP dışıdır. Manuel tahsilat, temel stok, paket/promosyon ve prim MVP içindedir.
 
-## Mevcut durum ve revizyonun nedeni
+## Tamamlanan temel
 
-Faz 1–8'in React/Worker, Auth/tenant, katalog, müsaitlik, tek hizmetli booking, public/manage ve takvim temeli main'dedir. F09-01…05, F10-01, F17-01 ve F17-02'nin **sekiz tarihsel teslimi** kanıtlarıyla korunur. Yeni inceleme bu testlerin kapsamadığı recovery, ortak guard, bildirim, quota ve kısmi dağıtım senaryolarını açtı; geçmişteki yeşil kontrol yeni bulgunun kapandığı anlamına gelmez.
+- Faz 1–8 React/Worker, Auth/tenant, katalog, müsaitlik, tek hizmetli booking, public/manage ve takvim temeli main'de.
+- **G09 / F09-01…05** tamamlandı.
+- **GS / S01…S08** tamamlandı ve kapalı. Recovery, ortak auth guard, notification consistency, quota/resource budget, deploy consistency, CI gate ve future-object ACL kabul edildi.
+- **F10-01, F10-02, F10-03** tamamlandı. Oturum/parola, davet/üyelik/rol, ikinci işletme + onboarding + fail-closed publish readiness main'de.
+- **F12-01** görsel yön/akış sözleşmesi tamamlandı.
+- **F17-01/02** staging ve CI temeli tamamlandı.
+- **PR #69 brand/motion docs** main'e girdi; ayrı **MKT-01** marketing track'i aktif.
 
-[PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32) F10-02 için açık taslaktır; incelenen head `5099ea307ac806e958a7a29a674462558570b0d5` yalnız devir dosyası içerir. Görev sahibi korunur, GS tamamlanmadan yeni üyelik uygulaması ilerletilmez. PR #8 kapalı ve superseded'dır; synchronous e-posta/anon receipt yaklaşımı geri alınmaz. Eski yerel Faz 2 ve eski branch'ler main yerine kullanılmaz.
+GS artık yeni feature kodunu engelleyen bir kapı değildir; aşağıdaki dependency'ler geçerlidir.
 
-## Yeni önkoşul: GS
+## Şu anki dalga
 
-| Görev | Amaç | Beklenen kanıt |
+Aynı temel üzerinden üç dependency-safe ürün lane'i açık:
+
+1. **F10-05 — müşteri kayıtları / Ajan A / PR #74**
+   - tenant-scoped arama/liste/create/edit,
+   - duplicate iletişim ve concurrency,
+   - randevu geçmişi snapshot korunumu,
+   - K03 pagination ve stale-response koruması.
+2. **F10-04 — hizmet/personel/çalışma ayarları / Ajan C / PR #75**
+   - guarded service/staff/assignment yönetimi,
+   - mesai/kapanış ayarları,
+   - stale write ve archive davranışı,
+   - F10-03 readiness sözleşmesini genişletme.
+3. **F12-02 — salon profili/public fotoğraflar / Ajan B / PR #76**
+   - profil + public medya,
+   - upload type/size/count,
+   - public/private ayrımı, orphan cleanup ve fallback.
+
+### Shared-file entegrasyon sırası
+
+F10-04 ve F10-05 `scripts/ci-postgres-plan.json` ortak alanını kullanıyor. Çakışma önlemek için:
+
+1. F10-05 / PR #74 CI-plan yazıcısı olarak önce kapanır.
+2. F10-04 branch'i yeni main'e taşınır ve kendi plan adımını ekler.
+3. F12-02 bağımsız ilerler; ortak router/migration alanına girerse Issue #65'te sıra verilir.
+
+Bu sıra ürün önceliği değil Git/CI conflict önleme sırasıdır.
+
+## Fazlar ve bağımlılık sırası
+
+| Faz | Görevler | Güncel kapanış / sonraki kapı |
 | --- | --- | --- |
-| S01 | Recovery oturumunun hata/expiry/refresh sonrası sınırını koruma | Negatif session testleri + gerçek public e-posta/PKCE yolculuğu |
-| S02 | Ortak auth/HTTP ve cookie mutation guard kapsamı | Route matrisi; 401/403/503, CSRF ve üyelik testleri |
-| S03 | Değişmeyen bildirim içeriği ve sürüm/iptal tutarlılığı | Kayıp cevap, değişen randevu, lease ve provider retry testleri |
-| S04 | Safe retry/manage/RPC kaynak sınırı | Meşru recovery korunurken kota ve atlama testleri |
-| S05 | Dağıtımda secret sürekliliği ve güvenli rotasyon | Kısmi hata/eşzamanlı run/geri dönüş staging kanıtı |
-| S06 | CI tekrar maliyeti ve zorunlu merge kapısı | Docs/code ayrımı, negatif test, required-check/protection kanıtı |
-| S07 | Timeout, sınırlı sorgu/bakım ve PII ömrü | Replay'i bozmayan temizlik, örnek yük ölçümü |
-| S08 | Yeni DB nesneleri için grant/RLS kapısı | Table/sequence/function/view negatif ve pozitif erişim testleri |
+| [9 — Güvenilir rezervasyon/bildirim](docs/plan/phase-09.md) | F09-01…05 | **Tamamlandı**; kalan operasyon takipleri F17-03'te |
+| [10 — Hesap ve işletme](docs/plan/phase-10.md) | F10-01…06 | F10-01/02/03 **tamam**; F10-04 + F10-05 aktif → F10-06 |
+| [12 — Fiyat veri desteği](docs/plan/phase-12.md#f12-03) | F12-03 | F10-04 sonrası; F11-01'den önce |
+| [11 — Çok hizmetli çekirdek](docs/plan/phase-11.md) | F11-01…04 | F12-03 → F11-01 → F11-02 → F11-03 → F11-04 |
+| [12 — Müşteri yüzeyi](docs/plan/phase-12.md) | F12-01…05 | F12-01 tamam; F12-02 PR #76 aktif; F12-04 F12-02 + F12-03 + F11-02 bekler |
+| [13 — Randevu Paneli](docs/plan/phase-13.md) | F13-01…04 | F11/F10/F12 bağımlılıkları sonrası |
+| [14 — SalonApp ve mali çekirdek](docs/plan/phase-14.md) | F14-01…05 | F13/F11/F12 sonrasında mobil kabuk + adisyon/tahsilat |
+| [15 — Ürün ve kasa](docs/plan/phase-15.md) | F15-01…04 | F14 mali model sonrası stok, satış/iade, masraf ve rapor |
+| [16 — Referans eşdeğerliği](docs/plan/phase-16.md) | F16-01…08 | Tekrar, bildirim/SMS, fotoğraf/yorum, paket/promosyon/prim ve hesap/dil |
+| [17 — Yayın adayı ve pilot](docs/plan/phase-17.md) | F17-01…05 | F17-01/02 tamam; F17-03 → F17-04 → F17-05 gerçek pilot |
 
-GS bu sekiz düzeltmenin kabulüdür; yeni bir ürün fazı veya mevcut G09 geçmişinin yeniden numaralandırılması değildir. [Kartlar](docs/plan/stabilization.md) bulgu, gerçek dosya alanı, sınır ve devir kanıtını içerir. Yeni özellik kodu GS'yi bekler; teknik düzeltme ve plan/tasarım çalışması bu kapıyı tamamlamak için yürür.
+**54 MVP ürün/teknik görev = korunan 46 görev + 8 stabilization görevi.** MKT-01 marketing/site işi bu sayıya dahil değildir. Görev sayısı ürün tamamlanma yüzdesi değildir.
 
-## Fazlar ve doğru sıra
+## Paralellik kuralları
 
-| Faz | Görevler | Çıktı / kapanış |
-| --- | --- | --- |
-| [9 — Güvenilir rezervasyon/bildirim](docs/plan/phase-09.md) | F09-01…05 | Tarihsel G09 kabulü tamam; yeni açıklar S03/S04/S07'de |
-| [10 — Hesap ve işletme](docs/plan/phase-10.md) | F10-01…06 | F10-01 tarihsel tamam; GS sonrası mevcut F10-02 → kurulum/katalog/müşteri → G10 |
-| [12 — Fiyat veri desteği](docs/plan/phase-12.md#f12-03) | F12-03 | F10-04 sonrası sabit/aralık fiyat ve kategori; **F11-01'den önce**, görsel tasarım beklemez |
-| [11 — Çok hizmetli çekirdek](docs/plan/phase-11.md) | F11-01…04 | K01/K02'ye göre grup/satır, eski kayıt uyumu, atomik işlemler ve concurrency → G11 |
-| [12 — Müşteri yüzeyi](docs/plan/phase-12.md) | F12-01/02/04/05 | Ayrı görsel karar, salon profili, gerçek çoklu booking ve yönetim → G12 |
-| [13 — Randevu paneli](docs/plan/phase-13.md) | F13-01…04 | Güncellik, gün/hafta/liste, editör/detay ve ortak işletme kabuğu → G13 |
-| [14 — SalonApp ve mali çekirdek](docs/plan/phase-14.md) | F14-01…05 | Mobil kabuk, adisyon, manuel/kısmi tahsilat ve PWA kabulü → G14 |
-| [15 — Ürün ve kasa](docs/plan/phase-15.md) | F15-01…04 | Ürün/stok, satış/iade, masraf ve mutabakat → G15 |
-| [16 — Referans eşdeğerliği](docs/plan/phase-16.md) | F16-01…08 | Tekrar, bildirim/SMS, fotoğraf/yorum/destek, paket/promosyon/prim ve hesap/dil → G16 |
-| [17 — Yayın adayı ve pilot](docs/plan/phase-17.md) | F17-01…05 | Ortam/CI temeli tarihsel tamam; tüm veri türleriyle restore/yayın, birleşik kabul ve pilot → G17 |
+- Aynı router/entry, ortak SQL fonksiyonu, lockfile veya CI planına iki eşzamanlı yazıcı verilmez.
+- Paralel ajan yalnız kendi `TASKS.md` satırını değiştirir.
+- Migration/security/mali değişiklikler bağımsız review ister.
+- Main kaydığında branch güncellenir; eski branch state'i main yerine kaynak sayılmaz.
+- 2–3 başarısız yaklaşımda aynı deneme tekrar edilmez; varsayım ve kanıt yeniden incelenir.
 
-**54 görev paketi = korunan 46 görev + 8 teknik düzeltme.** Revizyon başlangıcında 8'i tarihsel tamam, 45'i planlandı, F10-02 önkoşul nedeniyle engelli. Bu sayı ürün yüzdesi, süre, oturum veya PR taahhüdü değildir. K01/K02/K03 bu revizyonda yazılan sözleşmelerdir; ilave kod görevi sayılmaz.
+## Marketing / site track
 
-## Dalga ve paralellik
+**MKT-01 / Issue #70** ürün sahibi kontrollü ayrı track'tir ve 54 MVP görevine eklenmez. PR #69 ile bağlayıcı brand/motion belgeleri main'e girdi. İlk izole implementation slice'ı **PR #77 / `mkt-01-scroll-motion-homepage`** üzerinde draft olarak ilerliyor.
 
-1. **Teknik temel:** S01/S03/S04/S05/S06/S08 uygun dosya sahipliğiyle başlayabilir; S02 S01'i, S07 S02/S03/S04'ü bekler. S05'in güvenli staging düzeni canlı kabul çalıştırmalarında önce tercih edilir. Tüm işleri tek oturuma sığdırma şartı yoktur.
-2. **Erişim ve veri:** GS → F10-02/03 → F10-04 + F10-05. F12-03 fiyat veri desteği → F11-01; K01 uyum ve K02 para anlamları önceden bellidir. F10-06 ortak hesap kabulünü tamamlar.
-3. **İki ana yüzey:** F11 sonrası F12/F13 kendi önkoşullarıyla farklı dosyalarda ilerler. Görsel F12-01 kullanıcıyla ayrı çalışmadır; teknik plan teslimi bunu tamamlandı göstermez.
-4. **Salon işlemleri:** F14-02 mali veri ve F14-01 kabuk uygun önkoşullarla ayrılabilir; F14-04 ikisini birleştirir. F15 rapor hesapları PWA kabulünü beklemez; birleşik ürün kabulü daha sonra yapılır.
-5. **Eşdeğerlik:** F16-02 bildirimleri seri özelliğini beklemeden normal grup olayları üzerinden yapılabilir. F16-01 aynı olayları üretir; G16 birleşik seri/bildirim kabulünü içerir. F16-04 yorum işi özel fotoğraf işini beklemez. Paket/promosyon/prim aynı mali kaynak sözleşmesini kullanır.
-6. **Yayın ve pilot:** S07/S08 erken işletim temelini sağlar. F17-03, G14/G15/G16 sonrası bütün nihai veri türleriyle restore/retention/yayın doğrulamasını yapar. F17-04 teknik kabul, F17-05 gerçek pilot; M23 pilot senaryosu F17-05'te kapanır.
+Güncel production yönü:
 
-Bu sıralama görev tablosundaki bağımlılıkların özetidir. Aynı router/SQL fonksiyonu/CI dosyasına iki yazıcı verilmez; bağımsız işlerin entegrasyon sırası belirlenir. Kontrat çelişkisi bulunursa Sol kanıtla koordinatöre döner; kendi başına iş kapsamını büyütmez.
+- sticky/pinned scrollytelling,
+- deterministik scroll-scrub video,
+- gerçek React/HTML/CSS overlay,
+- mobile + reduced-motion fallback,
+- tamamlanmamış özellik veya kilitlenmemiş fiyatı gerçekmiş gibi göstermeme.
+
+PR #77 ilk slice'ta `src/marketing/**` ile izole kalır; `src/main.tsx` / `src/App.tsx` route entegrasyonu aktif F10 lane'lerinin ortak entry sahipliği kapanınca coordinator sırasıyla yapılır.
 
 ## Bitti sayılma kuralı
 
-Görev sonucu, davranış kanıtı ve main'e birleşme birlikte değerlendirilir. Mevcut zorunlu CI S06 kabul edilene kadar korunur; doküman revizyonu CI kodunu değiştirmez. Güvenlik, mali bütünlük ve migration değişiklikleri bağımsız inceleme ister. Geçici test/sağlayıcı hatasını çözmeden yeni benzer denemelerle oturum tüketilmez; 2–3 başarısız yaklaşımda varsayım ve kanıt yeniden incelenir.
+Bir görev yalnız davranış kanıtı + gerekli bağımsız review + kabul edilen exact-head CI + main merge birlikte sağlandığında `Tamamlandı` olur. Staging/CI yeşili tek başına pilot kabulü değildir.
 
-Her oturum görev/base SHA/branch/son commit/PR, okunan beceriler, yapılanlar, açık kabul ve **tek somut sonraki adım** ile biter. Tamamlanmış davranış somut gerileme riski olmadan tekrar tekrar test edilmez. MVP kabulünde birleşik sürümün açık güvenlik/veri/para kusuru kalamaz; doğrulanan kapsam ve bilinen sınır raporlanır.
+F17-04 birleşik teknik/ürün kabulünü, F17-05 gerçek 1–3 işletmeli kontrollü pilotu kapatır. Açık güvenlik/veri/para kusuru MVP tesliminde kalamaz.
