@@ -83,7 +83,7 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 
 | Kimlik | İş | Durum | Sahip | Kanıt / sonraki kapı |
 | --- | --- | --- | --- | --- |
-| [MKT-01](https://github.com/ziyabeey1-ai/randevu/issues/70) | Randevu marketing homepage — scroll-motion implementation | Çalışılıyor (ürün/motion) | Ziya / ürün sahibi | [PR #69](https://github.com/ziyabeey1-ai/randevu/pull/69) brand/motion docs main'de; `docs/brand/**` bağlayıcı kaynak. Kod uygulama branch'i exact main + dosya sahipliği coordinator tarafından sabitlenince açılır. |
+| [MKT-01](https://github.com/ziyabeey1-ai/randevu/issues/70) | Randevu marketing homepage — scroll-motion implementation | Çalışılıyor | Ziya / ürün sahibi + ChatGPT/Sol kod | [PR #69](https://github.com/ziyabeey1-ai/randevu/pull/69) brand/motion docs main'de; [PR #77](https://github.com/ziyabeey1-ai/randevu/pull/77) ilk izole implementation slice'ı draft. Route/entry entegrasyonu shared-file sırasını bekler. |
 
 ## Kabul kapıları
 
@@ -93,7 +93,7 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | G09 | F09-01…F09-05 | **Kapalı** — PR #30 / staging `34681540142`; stabilization takipleri GS içinde kapatıldı |
 | G10 | F10-01…F10-06 | Açık — F10-01/02/03 tamamlandı; F10-04 ve F10-05 dependency gate'i açık ve aktif branch/PR'larda; F10-06 ikisini bekler |
 | G11 | F11-01…F11-04 | Açık — F12-03 fiyat veri desteği önce gerekir |
-| G12 | F12-01…F12-05 | Açık — F12-01 tamamlandı; F12-02 aktif branch'te; F12-03 F10-04'ü bekler |
+| G12 | F12-01…F12-05 | Açık — F12-01 tamamlandı; F12-02 PR #76 aktif; F12-03 F10-04'ü bekler |
 | G13 | F13-01…F13-04 | Açık |
 | G14 | F14-01…F14-05 | Açık |
 | G15 | F15-01…F15-04 | Açık |
