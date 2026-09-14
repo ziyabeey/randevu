@@ -185,6 +185,15 @@
         { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_team_snapshot.sql" },
         { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_team_security_hardening.sql" }
       ]
+    },
+    {
+      "name": "Verify F10-03 onboarding readiness and publish guard",
+      "steps": [
+        { "database": "yzt_test", "file": "supabase/migrations/20260914090000_f10_onboarding_readiness.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_onboarding_readiness.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914090000_f10_onboarding_readiness.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_onboarding_readiness.sql" }
+      ]
     }
   ]
 }
