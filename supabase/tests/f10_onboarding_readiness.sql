@@ -30,7 +30,7 @@ values ('a7500000-0000-4000-8000-000000000003', 'a7100000-0000-4000-8000-0000000
 insert into public.staff_hours(id, business_id, staff_id, weekday, starts_local, ends_local, active)
 values ('a7600000-0000-4000-8000-000000000003', 'a7100000-0000-4000-8000-000000000002', 'a7400000-0000-4000-8000-000000000003', 1, '10:00', '16:00', true);
 
--- S08 object-ACL boundary: only the authenticated wrapper is an API surface.
+-- S08 object-ACL boundary: only authenticated onboarding wrappers are API surfaces.
 do $$
 begin
   if has_function_privilege('anon', 'public.get_business_onboarding_readiness(uuid)', 'EXECUTE') then
@@ -38,6 +38,12 @@ begin
   end if;
   if not has_function_privilege('authenticated', 'public.get_business_onboarding_readiness(uuid)', 'EXECUTE') then
     raise exception 'authenticated onboarding readiness grant missing';
+  end if;
+  if has_function_privilege('anon', 'public.get_business_onboarding_snapshot(uuid)', 'EXECUTE') then
+    raise exception 'anon unexpectedly executes onboarding snapshot';
+  end if;
+  if not has_function_privilege('authenticated', 'public.get_business_onboarding_snapshot(uuid)', 'EXECUTE') then
+    raise exception 'authenticated onboarding snapshot grant missing';
   end if;
   if has_function_privilege('anon', 'public.business_onboarding_readiness_internal(uuid)', 'EXECUTE')
      or has_function_privilege('authenticated', 'public.business_onboarding_readiness_internal(uuid)', 'EXECUTE') then
@@ -52,6 +58,23 @@ begin
   end if;
   if has_function_privilege('anon', 'public.update_public_booking_settings(uuid,boolean,integer,integer,integer)', 'EXECUTE') then
     raise exception 'anon unexpectedly mutates public settings';
+  end if;
+  if has_function_privilege('anon', 'public.get_public_booking_services(text)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.get_public_booking_services(text)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.get_public_booking_staff(text,uuid)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.get_public_booking_staff(text,uuid)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.compute_public_booking_slots(text,uuid,date,uuid)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.compute_public_booking_slots(text,uuid,date,uuid)', 'EXECUTE') then
+    raise exception 'raw public booking implementation unexpectedly exposed';
+  end if;
+  if not exists (
+    select 1
+    from pg_trigger t
+    where t.tgrelid = 'public.appointments'::regclass
+      and t.tgname = 'f10_public_appointment_readiness_guard'
+      and not t.tgisinternal
+  ) then
+    raise exception 'public appointment readiness trigger missing';
   end if;
 end
 $$;
@@ -68,6 +91,13 @@ begin
     raise exception 'recovery unexpectedly read onboarding readiness';
   exception when others then
     if sqlerrm = 'recovery unexpectedly read onboarding readiness' then raise; end if;
+    if position('PASSWORD_UPDATE_REQUIRED' in sqlerrm) = 0 then raise; end if;
+  end;
+  begin
+    perform public.get_business_onboarding_snapshot('a7100000-0000-4000-8000-000000000001');
+    raise exception 'recovery unexpectedly read onboarding snapshot';
+  exception when others then
+    if sqlerrm = 'recovery unexpectedly read onboarding snapshot' then raise; end if;
     if position('PASSWORD_UPDATE_REQUIRED' in sqlerrm) = 0 then raise; end if;
   end;
 end
@@ -237,17 +267,81 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a7000000-0000-4000-8000-000000000001', true);
 select set_config('request.jwt.claims', '{"amr":[{"method":"password"}]}', true);
 do $$
-declare r record;
+declare
+  r record;
+  s record;
 begin
   select * into r from public.get_business_onboarding_readiness('a7100000-0000-4000-8000-000000000001');
   if not r.publishable or cardinality(r.missing_reasons) <> 0 then
     raise exception 'complete structural setup not publishable';
   end if;
+
+  select * into s from public.get_business_onboarding_snapshot('a7100000-0000-4000-8000-000000000001');
+  if s.business->>'id' <> 'a7100000-0000-4000-8000-000000000001'
+     or jsonb_array_length(s.services) <> 1
+     or jsonb_array_length(s.staff) <> 1
+     or jsonb_array_length(s.assignments) <> 1
+     or jsonb_array_length(s.business_hours) <> 1
+     or jsonb_array_length(s.staff_hours) <> 1
+     or coalesce((s.readiness->>'publishable')::boolean, false) is not true then
+    raise exception 'bounded onboarding snapshot did not return complete tenant A state';
+  end if;
 end
 $$;
+reset role;
+
+-- Hosted row caps must never turn oversized setup state into a partial success.
+insert into public.business_hours(id, business_id, weekday, starts_local, ends_local, active)
+select gen_random_uuid(), 'a7100000-0000-4000-8000-000000000001', (g % 7)::smallint, '06:00', '06:30', true
+from generate_series(1, 100) g;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a7000000-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claims', '{"amr":[{"method":"password"}]}', true);
+do $$
+begin
+  begin
+    perform public.get_business_onboarding_snapshot('a7100000-0000-4000-8000-000000000001');
+    raise exception 'oversized business hours returned a partial snapshot';
+  exception when others then
+    if sqlerrm = 'oversized business hours returned a partial snapshot' then raise; end if;
+    if position('ONBOARDING_BUSINESS_HOURS_LIMIT_EXCEEDED' in sqlerrm) = 0 then raise; end if;
+  end;
+end
+$$;
+reset role;
+delete from public.business_hours
+where business_id = 'a7100000-0000-4000-8000-000000000001'
+  and starts_local = '06:00' and ends_local = '06:30';
+
+insert into public.staff_hours(id, business_id, staff_id, weekday, starts_local, ends_local, active)
+select gen_random_uuid(), 'a7100000-0000-4000-8000-000000000001', 'a7400000-0000-4000-8000-000000000001',
+       (g % 7)::smallint, '06:30', '07:00', true
+from generate_series(1, 5000) g;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a7000000-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claims', '{"amr":[{"method":"password"}]}', true);
+do $$
+begin
+  begin
+    perform public.get_business_onboarding_snapshot('a7100000-0000-4000-8000-000000000001');
+    raise exception 'oversized staff hours returned a partial snapshot';
+  exception when others then
+    if sqlerrm = 'oversized staff hours returned a partial snapshot' then raise; end if;
+    if position('ONBOARDING_STAFF_HOURS_LIMIT_EXCEEDED' in sqlerrm) = 0 then raise; end if;
+  end;
+end
+$$;
+reset role;
+delete from public.staff_hours
+where business_id = 'a7100000-0000-4000-8000-000000000001'
+  and starts_local = '06:30' and ends_local = '07:00';
 
 -- A staff membership cannot publish even when the business is fully ready.
+set local role authenticated;
 select set_config('request.jwt.claim.sub', 'a7000000-0000-4000-8000-000000000002', true);
+select set_config('request.jwt.claims', '{"amr":[{"method":"password"}]}', true);
 do $$
 begin
   begin
@@ -275,8 +369,8 @@ end
 $$;
 reset role;
 
--- Public visibility follows live readiness. Breaking a required prerequisite
--- hides the public header without silently changing the saved enabled choice.
+-- Public visibility follows live readiness on every browse/slot surface. Breaking
+-- one prerequisite keeps the saved enabled preference but exposes no stale data.
 do $$
 declare
   v_count integer;
@@ -285,6 +379,12 @@ begin
   select count(*) into v_count
   from public.get_public_booking_business('f10-onboarding-a');
   if v_count <> 1 then raise exception 'ready published business missing publicly'; end if;
+  select count(*) into v_count
+  from public.get_public_booking_services('f10-onboarding-a');
+  if v_count <> 1 then raise exception 'ready published service missing publicly'; end if;
+  select count(*) into v_count
+  from public.get_public_booking_staff('f10-onboarding-a', 'a7300000-0000-4000-8000-000000000001');
+  if v_count <> 1 then raise exception 'ready published staff missing publicly'; end if;
 
   update public.services
   set active = false
@@ -298,6 +398,25 @@ begin
   select count(*) into v_count
   from public.get_public_booking_business('f10-onboarding-a');
   if v_count <> 0 then raise exception 'incomplete published business remained publicly visible'; end if;
+  select count(*) into v_count
+  from public.get_public_booking_services('f10-onboarding-a');
+  if v_count <> 0 then raise exception 'incomplete published services remained publicly visible'; end if;
+  select count(*) into v_count
+  from public.get_public_booking_staff('f10-onboarding-a', 'a7300000-0000-4000-8000-000000000001');
+  if v_count <> 0 then raise exception 'incomplete published staff remained publicly visible'; end if;
+
+  begin
+    perform * from public.compute_public_booking_slots(
+      'f10-onboarding-a',
+      'a7300000-0000-4000-8000-000000000001',
+      (now() at time zone 'Europe/Istanbul')::date,
+      'a7400000-0000-4000-8000-000000000001'
+    );
+    raise exception 'incomplete published business still exposed slot surface';
+  exception when others then
+    if sqlerrm = 'incomplete published business still exposed slot surface' then raise; end if;
+    if position('PUBLIC_BOOKING_NOT_FOUND' in sqlerrm) = 0 then raise; end if;
+  end;
 end
 $$;
 
