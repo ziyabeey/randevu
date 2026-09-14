@@ -29,26 +29,26 @@ values
 
 insert into public.business_invitations(
   id, business_id, email_normalized, role, token_hash,
-  invited_by_membership_id, expires_at
+  invited_by_membership_id, created_at, expires_at
 )
 values
   (
     'a3400000-0000-4000-8000-000000000001',
     'a3100000-0000-4000-8000-000000000001',
     'f10-snapshot-invite-staff@example.invalid', 'staff', repeat('1', 64),
-    'a3200000-0000-4000-8000-000000000001', now() + interval '24 hours'
+    'a3200000-0000-4000-8000-000000000001', now(), now() + interval '24 hours'
   ),
   (
     'a3400000-0000-4000-8000-000000000002',
     'a3100000-0000-4000-8000-000000000001',
     'f10-snapshot-invite-owner@example.invalid', 'owner', repeat('2', 64),
-    'a3200000-0000-4000-8000-000000000001', now() + interval '24 hours'
+    'a3200000-0000-4000-8000-000000000001', now(), now() + interval '24 hours'
   ),
   (
     'a3400000-0000-4000-8000-000000000003',
     'a3100000-0000-4000-8000-000000000001',
     'f10-snapshot-expired@example.invalid', 'staff', repeat('3', 64),
-    'a3200000-0000-4000-8000-000000000001', now() - interval '1 hour'
+    'a3200000-0000-4000-8000-000000000001', now() - interval '2 hours', now() - interval '1 hour'
   );
 
 insert into public.membership_financial_permissions(
