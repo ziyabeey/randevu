@@ -5,6 +5,7 @@ Runtime paths are intentionally stable so motion production can be replaced with
 Required production files:
 
 - `public/marketing/transformation/randevu-transformation-master.mp4`
+- `public/marketing/transformation/randevu-transformation-mobile.mp4`
 - `public/marketing/transformation/randevu-transformation-poster.webp`
 - `public/marketing/transformation/randevu-transformation-final.webp`
 - `public/marketing/hero/randevu-hero-model.webp`
@@ -20,9 +21,9 @@ The product-owner supplied Kling MOV is the visual source of truth:
 - no visible generator watermark in the clean source
 - audio is not required by the marketing experience
 
-## Scrub-friendly web encode
+## Scrub-friendly desktop web encode
 
-The runtime MP4 is intentionally optimized for scroll seeking rather than minimum byte size:
+The desktop runtime MP4 is intentionally optimized for scroll seeking rather than minimum byte size:
 
 - H.264 High profile
 - GOP / keyframe interval: `6` frames (`0.25 s` at 24 fps)
@@ -48,6 +49,39 @@ ffmpeg -i INPUT.mov \
   -pix_fmt yuv420p \
   -movflags +faststart \
   public/marketing/transformation/randevu-transformation-master.mp4
+```
+
+## Mobile scrub encode
+
+Small screens use a lighter source with the same duration, frame rate and GOP structure so scroll timing remains identical while network cost drops substantially.
+
+Current mobile handoff:
+
+- dimensions: `1280×712`
+- frame rate: `24 fps`
+- frames: `121`
+- duration: `5.041667 s`
+- approximate size: `2.0 MB`
+- selected by `<source media="(max-width: 680px)">`
+
+Reference command from the scrub-friendly desktop encode:
+
+```bash
+ffmpeg -i public/marketing/transformation/randevu-transformation-master.mp4 \
+  -an \
+  -vf "scale=1280:-2" \
+  -c:v libx264 \
+  -preset slow \
+  -crf 21 \
+  -profile:v high \
+  -level 4.1 \
+  -g 6 \
+  -keyint_min 6 \
+  -sc_threshold 0 \
+  -bf 0 \
+  -pix_fmt yuv420p \
+  -movflags +faststart \
+  public/marketing/transformation/randevu-transformation-mobile.mp4
 ```
 
 ## Hero frame
@@ -81,6 +115,7 @@ ffmpeg -ss 4.75 -i INPUT.mov \
 
 ```text
 b82e9fe486e9dd9706c8294a4cd3c07efe526034d6feb7b543930455ba96fdef  randevu-transformation-master.mp4
+f4984cc62143e744ee5bffd378a00eee0efdae909d6170d5a9210465b1873bc3  randevu-transformation-mobile.mp4
 39814c4ed94b1127de62e096cb2940c6138a27b365450a5e88af77d869e5bbb8  randevu-transformation-poster.webp
 40dd0196638aaa73fea2bdbd82f8a283bf3c24357b960557580fd5565dda0a70  randevu-transformation-final.webp
 cbcfb696ee7e9669052113f106ff988912bad315498f92101ee6288b0c90072a  randevu-hero-model.webp
