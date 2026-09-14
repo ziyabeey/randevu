@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   captureTeamInviteFromLocation,
@@ -8,6 +9,8 @@ import {
 } from '../src/teamInvite.ts';
 
 const token = 'A'.repeat(43);
+const invitePage = readFileSync(new URL('../src/InvitePage.tsx', import.meta.url), 'utf8');
+const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
 
 function browser(pathname = '/', hash = '') {
   const store = new Map();
@@ -50,4 +53,10 @@ test('F10 management capability hash is never consumed as an invitation', () => 
   assert.equal(page.replaced(), null);
   assert.equal(readPendingTeamInvite(), null);
   delete globalThis.window;
+});
+
+test('F10 recovery invite keeps the token while routing to the real password surface', () => {
+  assert.match(invitePage, /href="\/account">Parola ekranına dön<\/a>/);
+  assert.match(main, /const isInviteFlow = path === '\/' && Boolean\(readPendingTeamInvite\(\)\)/);
+  assert.doesNotMatch(main, /path === '\/account'.*InvitePage/);
 });
