@@ -12,6 +12,7 @@
   transition: transform 160ms ease;
 }
 
+.mkt-skip-link:focus,
 .mkt-skip-link:focus-visible {
   transform: translateY(0);
 }
