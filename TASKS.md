@@ -1,17 +1,19 @@
 # YZT Randevu — Görev takip tablosu
 
-**Plan v3 · 12 Eylül 2026.** İncelenen main `3b73bf827346542cd36f5bc6ed32d4d8a0b30cea`. 46 mevcut kimlik ve 8 tarihsel tamamlanma korunur; S01…S08 teknik düzeltmeleriyle toplam **54 görev** vardır. Başlangıç durumu: 8 Tamamlandı, 45 Planlandı, 1 Engelli (F10-02 / mevcut PR #32). Bu sayılar ürün tamamlanma yüzdesi değildir.
+**Plan v3 · güncel ana tablo 14 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 19 `Tamamlandı`, 35 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
 
-**13 Eylül 2026 stabilization kapanışı:** S01…S08 kabul edildi. GS, [kapanış devri](docs/handoffs/GS.md) ve bu durum kaydı main'e girdikten sonra kapalıdır; GS önkoşullu ürün işleri diğer bağımlılıkları sağlandığı ölçüde devam edebilir.
+**GS stabilization kapısı kapalıdır.** S01…S08 kabul edildi; GS artık yeni özellikleri engelleyen bir önkoşul değildir. [GS kapanış devri](docs/handoffs/GS.md) tarihsel kanıt kaynağıdır.
+
+Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP görev sayısına dahil değildir.
 
 ## Kullanım ve bağımlılıklar
 
-- [CONTRIBUTING](CONTRIBUTING.md) sahip/PR, [ajan çalışma düzeni](docs/plan/agent-workflow.md) görev başına beceri/kanıt/devir kuralıdır. Başlamadan güncel main ve açık PR'ı karşılaştır; bu dosya atomik kilit değildir.
-- `TEMEL`: main'de mevcut temel. `Sxx` / `Fxx-yy`: kabulü tamamlanacak görev. `Gxx`: ilgili F fazının bütün görevleri. `GS`: S01…S08'in bütünü. K01…K03 [bağlayıcı sözleşme bölümleridir](docs/plan/architecture-contracts.md), görev veya bağımlılık düğümü değildir.
-- GS bitmeden yeni özellik koduna başlanmaz. Tarihsel Tamamlandı kaydı korunur; yeni güvenlik bulgusu ilgili sahip görevde izlenir. F12-01 tasarım çalışması teknik uygulama değildir ve ayrı ürün oturumunda ele alınabilir.
-- İlk bağımsız teknik adaylar S01, S03, S04, S05, S06, S08; hepsi otomatik atanmış değildir. Ortak SQL/router/CI yazımları ayrı sahip ve merge sırasıyla yürür. S02 ve S07 kendi önkoşullarını bekler.
-- Durumlar: Planlandı, Üstlenildi, Çalışılıyor, Engelli, İncelemede, Main'de / kabul açık, Tamamlandı. Tamamlandı = main + kart kabulü; sadece PR açılması değildir.
-- Büyük görev somut incelemeden sonra ana kapsam korunarak `.a/.b` alt işlerine ayrılabilir; kart/bağımlılık/kanıt birlikte güncellenir. Oturum/PR/süre garantisi verilmez.
+- [CONTRIBUTING](CONTRIBUTING.md) sahip/PR, [ajan çalışma düzeni](docs/plan/agent-workflow.md) görev başına beceri/kanıt/devir kuralıdır.
+- `TEMEL`: main'de mevcut temel. `Sxx` / `Fxx-yy`: kabulü tamamlanacak görev. `Gxx`: ilgili F fazının bütünü. `GS`: tamamlanmış S01…S08 kapısı. K01…K03 [bağlayıcı sözleşmelerdir](docs/plan/architecture-contracts.md), görev değildir.
+- Durumlar: Planlandı, Üstlenildi, Çalışılıyor, Engelli, İncelemede, Main'de / kabul açık, Tamamlandı. **Tamamlandı = kabul + main merge**; yalnız branch/PR açılması değildir.
+- Ajan kendi branch'inde yalnız kendi görev satırını değiştirir. Açık branch/PR sahipliği ve shared-file sırası canlı olarak [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) üzerinden koordine edilir.
+- Ortak migration zinciri, router/entry, ortak stiller, lockfile ve CI planında tek-yazıcı kuralı geçerlidir.
+- Büyük görev somut incelemeden sonra ana kapsam korunarak `.a/.b` alt işlerine ayrılabilir; görev/bağımlılık/kanıt birlikte güncellenir.
 
 ## Teknik düzeltmeler
 
@@ -77,19 +79,25 @@
 | [F17-04](docs/plan/phase-17.md#f17-04) | MVP kabul matrisi ve referans doğrulaması | GS, G09, G10, G11, G12, G13, G14, G15, G16, F17-03 | Planlandı | — | — |
 | [F17-05](docs/plan/phase-17.md#f17-05) | Kontrollü pilot ve MVP teslimi | F17-04 | Planlandı | — | — |
 
+## Marketing / site track — 54 MVP görevinin dışında
+
+| Kimlik | İş | Durum | Sahip | Kanıt / sonraki kapı |
+| --- | --- | --- | --- | --- |
+| [MKT-01](https://github.com/ziyabeey1-ai/randevu/issues/70) | Randevu marketing homepage — scroll-motion implementation | Çalışılıyor (ürün/motion) | Ziya / ürün sahibi | [PR #69](https://github.com/ziyabeey1-ai/randevu/pull/69) brand/motion docs main'de; `docs/brand/**` bağlayıcı kaynak. Kod uygulama branch'i exact main + dosya sahipliği coordinator tarafından sabitlenince açılır. |
+
 ## Kabul kapıları
 
 | Kapı | Kapsam | Durum / kanıt |
 | --- | --- | --- |
-| GS | S01…S08 | **Kapalı** — S01…S08 tamamlandı; [GS kapanış devri](docs/handoffs/GS.md). S07: PR #60 + staging #23; S08: PR #64 + staging #24 + hosted `pg_default_acl` readback (`forbidden_default_grants=0`) |
-| G09 | F09-01…F09-05 | Tarihsel kapalı — PR #30, staging `34681540142`; stabilization bulguları GS içinde ayrıca kapatıldı |
-| G10 | F10-01…F10-06 | Açık — GS tamamlandı; mevcut F10-02 PR #32 devam edebilir, F10-03…F10-06 kendi bağımlılıklarını bekliyor |
-| G11 | F11-01…F11-04 | Açık — fiyat veri desteği F12-03 önce gerekir |
-| G12 | F12-01…F12-05 | Açık — F12-03 veri işi görsel işlerden önce yapılır |
+| GS | S01…S08 | **Kapalı** — S01…S08 tamamlandı; [GS kapanış devri](docs/handoffs/GS.md) |
+| G09 | F09-01…F09-05 | **Kapalı** — PR #30 / staging `34681540142`; stabilization takipleri GS içinde kapatıldı |
+| G10 | F10-01…F10-06 | Açık — F10-01/02/03 tamamlandı; F10-04 ve F10-05 dependency gate'i açık ve aktif branch/PR'larda; F10-06 ikisini bekler |
+| G11 | F11-01…F11-04 | Açık — F12-03 fiyat veri desteği önce gerekir |
+| G12 | F12-01…F12-05 | Açık — F12-01 tamamlandı; F12-02 aktif branch'te; F12-03 F10-04'ü bekler |
 | G13 | F13-01…F13-04 | Açık |
 | G14 | F14-01…F14-05 | Açık |
 | G15 | F15-01…F15-04 | Açık |
-| G16 | F16-01…F16-08 | Açık — seri/bildirim ve mali etkileşim ortak kabulü dahil |
-| G17 | F17-01…F17-05 | Açık — GS tamamlandı; kalan ürün kapıları ile F17-03/04/05 ve M23 pilot kanıtı bekleniyor |
+| G16 | F16-01…F16-08 | Açık |
+| G17 | F17-01…F17-05 | Açık — F17-01/02 tamam; kalan ürün kapıları + F17-03/04/05 ve M23 pilot kanıtı bekleniyor |
 
-G09'un tarihsel kapanışı yeni açıkları yok saymaz. G17 için GS dahil tüm bağımlı kapılar ve MVP_ACCEPTANCE satırları geçer. Kanıt, sorumlu ve sonraki somut adım devir kaydında tutulur; başka ajanın kaydedilmemiş işi ezilmez. PR #8 kapalı/superseded'dır; mevcut F10-02 PR #32 ile ikinci sahiplenme yapılmaz.
+Kapanmış/superseded branch veya eski PR metni güncel görev durumu oluşturmaz. Güncel durum için main `TASKS.md` + `PROJECT_STATE.md`, aktif claim/conflict için Issue #65 kullanılır.
