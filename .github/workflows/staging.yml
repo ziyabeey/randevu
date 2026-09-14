@@ -172,9 +172,6 @@ jobs:
           }
           NODE
 
-      - name: Build Cloudflare staging environment
-        run: npm run build:staging
-
       - name: Build staging database URL
         run: |
           node <<'NODE'
@@ -217,6 +214,9 @@ jobs:
             rmSync(path, { force: true });
           }
           NODE
+
+      - name: Build Cloudflare staging environment
+        run: npm run build:staging
 
       - name: Resolve Cloudflare staging runtime
         run: node scripts/staging-deploy.mjs resolve
