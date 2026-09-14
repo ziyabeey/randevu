@@ -50,10 +50,15 @@ function FinalCta() {
       <p className="mkt-eyebrow">Hazırsan</p>
       <h2 id="mkt-final-title">Randevu kolay.<br />İşin sana kalsın.</h2>
       <p>İşletmeni birlikte hazırlayalım, randevu tarafını sadeleştirelim.</p>
-      <a className="mkt-button mkt-button--dark" href="mailto:merhaba@kepenk.ai?subject=Randevu%20kurulumu">
+      <button
+        className="mkt-button mkt-button--dark"
+        type="button"
+        disabled
+        title="İletişim akışı route entegrasyonuyla birlikte aktif olacak"
+      >
         Birlikte kuralım
         <span aria-hidden="true">→</span>
-      </a>
+      </button>
     </section>
   );
 }
