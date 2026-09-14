@@ -10,6 +10,10 @@ import { createServer } from 'vite';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const FRAME_BYTES = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZSPcAAAAASUVORK5CYII=',
+  'base64',
+);
 
 function findChrome() {
   if (process.env.CHROME_BIN) return process.env.CHROME_BIN;
@@ -35,19 +39,34 @@ async function waitFor(read, message, timeoutMs = 10_000) {
   throw new Error(`${message}${lastError ? `: ${lastError.message}` : ''}`);
 }
 
-function harnessHtmlPlugin() {
+function createFrameStats() {
+  return {
+    requests: 0,
+    active: 0,
+    maxActive: 0,
+    failFrames: false,
+    byVariant: { desktop: 0, mobile: 0 },
+  };
+}
+
+function resetFrameStats(stats) {
+  stats.requests = 0;
+  stats.active = 0;
+  stats.maxActive = 0;
+  stats.byVariant.desktop = 0;
+  stats.byVariant.mobile = 0;
+}
+
+function harnessHtmlPlugin(frameStats) {
   return {
     name: 'mkt-scrub-harness-html',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if (req.url?.split('?')[0] !== '/__mkt-scrub-harness.html') {
-          next();
-          return;
-        }
-
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.end(`<!doctype html>
+        const pathname = req.url?.split('?')[0] ?? '';
+        if (pathname === '/__mkt-scrub-harness.html') {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.end(`<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -59,16 +78,44 @@ function harnessHtmlPlugin() {
     <script type="module" src="/tests/fixtures/mkt-scrub-harness.jsx"></script>
   </body>
 </html>`);
+          return;
+        }
+
+        const frameMatch = pathname.match(/^\/marketing\/transformation\/frames\/(desktop|mobile)\/frame-\d{3}\.webp$/);
+        if (!frameMatch) {
+          next();
+          return;
+        }
+
+        const variant = frameMatch[1];
+        frameStats.requests += 1;
+        frameStats.byVariant[variant] += 1;
+        if (frameStats.failFrames) {
+          res.statusCode = 503;
+          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+          res.end('frame unavailable');
+          return;
+        }
+
+        frameStats.active += 1;
+        frameStats.maxActive = Math.max(frameStats.maxActive, frameStats.active);
+        setTimeout(() => {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'image/png');
+          res.setHeader('Content-Length', String(FRAME_BYTES.length));
+          res.end(FRAME_BYTES);
+          frameStats.active -= 1;
+        }, 18);
       });
     },
   };
 }
 
-async function createHarnessServer() {
+async function createHarnessServer(frameStats) {
   const server = await createServer({
     root: repoRoot,
     configFile: false,
-    plugins: [harnessHtmlPlugin(), react()],
+    plugins: [harnessHtmlPlugin(frameStats), react()],
     appType: 'mpa',
     logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, strictPort: false },
@@ -196,22 +243,81 @@ async function scrollToProgress(page, progress, expectedPhase) {
   }, `Scrub did not settle at ${Math.round(progress * 100)}% / ${expectedPhase}`);
 }
 
-test('MKT-01 Chrome scrub maps real scroll to media time and story phases', { timeout: 35_000 }, async (t) => {
+async function navigatePreview(page, url, viewport) {
+  await page.send('Emulation.setDeviceMetricsOverride', {
+    ...viewport,
+    deviceScaleFactor: 1,
+    mobile: viewport.mobile,
+    screenWidth: viewport.width,
+    screenHeight: viewport.height,
+  });
+  await page.send('Page.navigate', { url });
+  await waitFor(
+    () => page.evaluate('document.readyState === "complete" && Boolean(document.querySelector("#mkt-main"))'),
+    `Marketing preview did not render at ${viewport.width}px`,
+  );
+}
+
+async function readFrameState(page) {
+  return page.evaluate(`(() => {
+    const section = document.querySelector('.mkt-transformation');
+    const canvas = document.querySelector('.mkt-transformation-frame-canvas');
+    if (!section || !canvas) return null;
+    return {
+      phase: section.dataset.phase ?? null,
+      frameIndex: Number(section.dataset.frameIndex),
+      progress: Number(section.style.getPropertyValue('--mkt-progress')),
+      requestCount: Number(section.dataset.frameRequestCount || 0),
+      compressedBytes: Number(section.dataset.frameCompressedBytes || 0),
+      cachePeak: Number(section.dataset.frameCachePeak || 0),
+      staleCount: Number(section.dataset.frameStaleCount || 0),
+      failureCount: Number(section.dataset.frameFailureCount || 0),
+      firstDrawMs: Number(section.dataset.frameFirstDrawMs || 0),
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    };
+  })()`);
+}
+
+async function scrollFramesToProgress(page, progress, expectedPhase) {
+  await page.evaluate(`(() => {
+    const section = document.querySelector('.mkt-transformation');
+    if (!section) return false;
+    const top = window.scrollY + section.getBoundingClientRect().top;
+    const range = Math.max(1, section.offsetHeight - window.innerHeight);
+    window.scrollTo(0, top + range * ${progress});
+    return true;
+  })()`);
+
+  const expectedIndex = Math.round(progress * 120);
+  return waitFor(async () => {
+    const state = await readFrameState(page);
+    if (!state || state.failureCount !== 0 || state.phase !== expectedPhase) return false;
+    if (state.canvasWidth <= 0 || state.canvasHeight <= 0) return false;
+    if (Math.abs(state.frameIndex - expectedIndex) > 1) return false;
+    return state;
+  }, `Frame scrub did not settle at ${Math.round(progress * 100)}% / ${expectedPhase}`);
+}
+
+test('MKT-01 Chrome video control and frame renderer preserve scroll parity and bounded media behavior', { timeout: 55_000 }, async (t) => {
   const chromeBin = findChrome();
   if (!chromeBin) {
     t.skip('Chrome/Chromium is unavailable in this environment');
     return;
   }
 
+  const frameStats = createFrameStats();
   const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? tmpdir(), 'randevu-mkt-video-scrub-'));
-  const { server, origin } = await createHarnessServer();
+  const { server, origin } = await createHarnessServer(frameStats);
   let chrome;
   let page;
 
   try {
-    const url = `${origin}/__mkt-scrub-harness.html`;
+    const videoUrl = `${origin}/__mkt-scrub-harness.html`;
     await waitFor(async () => {
-      const response = await fetch(url, { signal: AbortSignal.timeout(1_000) });
+      const response = await fetch(videoUrl, { signal: AbortSignal.timeout(1_000) });
       return response.ok;
     }, 'Scrub harness server did not become ready');
 
@@ -224,7 +330,7 @@ test('MKT-01 Chrome scrub maps real scroll to media time and story phases', { ti
       screenWidth: 1440,
       screenHeight: 900,
     });
-    await page.send('Page.navigate', { url });
+    await page.send('Page.navigate', { url: videoUrl });
 
     const initial = await waitFor(async () => {
       const state = await readScrubState(page);
@@ -263,6 +369,81 @@ test('MKT-01 Chrome scrub maps real scroll to media time and story phases', { ti
 
     const reverse = await scrollToProgress(page, 0.2, 'reminder');
     assert.ok(reverse.currentTime < reverse.duration * 0.3, 'Reverse scrub did not seek back toward the opening beat');
+
+    resetFrameStats(frameStats);
+    frameStats.failFrames = false;
+    const framePreview = `${origin}/marketing-preview.html?renderer=frames&clean=1`;
+    await navigatePreview(page, framePreview, { width: 1440, height: 900, mobile: false });
+
+    for (const [progress, phase] of checkpoints) {
+      await scrollFramesToProgress(page, progress, phase);
+    }
+    await page.evaluate(`(() => {
+      const section = document.querySelector('.mkt-transformation');
+      if (!section) return false;
+      const top = window.scrollY + section.getBoundingClientRect().top;
+      const range = Math.max(1, section.offsetHeight - window.innerHeight);
+      window.scrollTo(0, top + range * 0.1);
+      window.scrollTo(0, top + range * 0.92);
+      window.scrollTo(0, top + range * 0.2);
+      return true;
+    })()`);
+    const frameReverse = await scrollFramesToProgress(page, 0.2, 'reminder');
+    assert.ok(frameReverse.requestCount > 0, 'Frame renderer did not request compressed frames');
+    assert.ok(frameReverse.compressedBytes > 0, 'Frame renderer did not record compressed bytes');
+    assert.ok(frameReverse.cachePeak > 0 && frameReverse.cachePeak <= 8, `Decoded cache escaped its 8-frame bound: ${frameReverse.cachePeak}`);
+    assert.ok(frameReverse.firstDrawMs >= 0, 'Frame renderer did not record first draw latency');
+    assert.ok(frameReverse.scrollWidth <= frameReverse.clientWidth + 1, 'Frame renderer introduced horizontal overflow');
+    assert.ok(frameStats.maxActive <= 4, `Desktop frame fetch concurrency escaped its bound: ${frameStats.maxActive}`);
+    assert.ok(frameStats.byVariant.desktop > 0, 'Desktop frame renderer did not use desktop URLs');
+
+    await waitFor(() => frameStats.active === 0, 'Desktop frame requests did not settle');
+    resetFrameStats(frameStats);
+    await navigatePreview(page, framePreview, { width: 390, height: 844, mobile: true });
+    const mobileFrames = await scrollFramesToProgress(page, 0.45, 'friction');
+    assert.equal(mobileFrames.failureCount, 0);
+    assert.ok(frameStats.byVariant.mobile > 0, 'Mobile frame renderer did not use mobile URLs');
+    assert.equal(frameStats.byVariant.desktop, 0, 'Mobile renderer fetched desktop frame bytes');
+    assert.ok(frameStats.maxActive <= 4, `Mobile frame fetch concurrency escaped its bound: ${frameStats.maxActive}`);
+
+    await waitFor(() => frameStats.active === 0, 'Mobile frame requests did not settle');
+    resetFrameStats(frameStats);
+    await page.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+    });
+    await navigatePreview(page, framePreview, { width: 390, height: 844, mobile: true });
+    await waitFor(
+      () => page.evaluate('Boolean(document.querySelector(".mkt-transformation-fallback"))'),
+      'Reduced-motion frame preview did not render static fallback',
+    );
+    await sleep(250);
+    assert.equal(frameStats.requests, 0, 'Reduced-motion frame renderer must fetch zero sequence frames');
+
+    await page.send('Emulation.setEmulatedMedia', { features: [] });
+    resetFrameStats(frameStats);
+    frameStats.failFrames = true;
+    await navigatePreview(page, framePreview, { width: 1440, height: 900, mobile: false });
+    await page.evaluate(`(() => {
+      const section = document.querySelector('.mkt-transformation');
+      if (!section) return false;
+      const top = window.scrollY + section.getBoundingClientRect().top;
+      window.scrollTo(0, top);
+      return true;
+    })()`);
+    const fallback = await waitFor(() => page.evaluate(`(() => {
+      const fallback = document.querySelector('.mkt-transformation-fallback');
+      if (!fallback) return null;
+      return {
+        text: fallback.textContent ?? '',
+        canvas: Boolean(document.querySelector('.mkt-transformation-frame-canvas')),
+        video: Boolean(document.querySelector('video.mkt-transformation-video')),
+      };
+    })()`), 'Failed frame request did not degrade to the static transformation story');
+    assert.ok(frameStats.requests > 0, 'Failure path did not attempt a frame request');
+    assert.equal(fallback.canvas, false, 'Failed frame renderer kept the canvas mounted');
+    assert.equal(fallback.video, false, 'Failed frame renderer unexpectedly mounted video');
+    assert.match(fallback.text, /Karışıklık gider, düzen kalır\./);
+    frameStats.failFrames = false;
   } finally {
     page?.close();
     if (chrome && chrome.exitCode === null) chrome.kill('SIGKILL');
