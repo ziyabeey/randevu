@@ -37,6 +37,12 @@ await test('F10-04 service editor preserves fixed-price minor units, duration an
   assert.match(panel, /Intl\.NumberFormat\('tr-TR'/);
 });
 
+await test('F10-04 failed create keeps user input and resets only after a successful mutation', () => {
+  assert.match(panel, /return true;[\s\S]*return false;/);
+  assert.equal((panel.match(/if \(saved\) form\.reset\(\);/g) ?? []).length, 2);
+  assert.doesNotMatch(panel, /await mutate\([\s\S]{0,700}\);\s*form\.reset\(\);/);
+});
+
 await test('F10-04 archive semantics are active=false and historical rows are described as preserved', () => {
   assert.ok(panel.includes('Hizmet arşivlendi. Geçmiş randevular değişmedi.'));
   assert.ok(panel.includes('Personel arşivlendi. Geçmiş randevular değişmedi.'));
