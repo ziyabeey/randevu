@@ -4,11 +4,12 @@ import App from './App';
 import AvailabilityPage from './AvailabilityPage';
 import BookingPage from './BookingPage';
 import CalendarPage from './CalendarPage';
+import InvitePage from './InvitePage';
 import PublicBookingPage from './PublicBookingPage';
 import PublicBookingSettingsPage from './PublicBookingSettingsPage';
 import ManageAppointmentPage from './ManageAppointmentPage';
 import TeamPage from './TeamPage';
-import { captureTeamInviteFromLocation } from './teamInvite';
+import { captureTeamInviteFromLocation, readPendingTeamInvite } from './teamInvite';
 import './styles.css';
 import './phase4.css';
 import './phase5.css';
@@ -35,6 +36,7 @@ const managementToken = isManagementPage ? window.location.hash.replace(/^#/, ''
 const isPublicPage = publicSlug !== null;
 
 if (!isManagementPage) captureTeamInviteFromLocation();
+const isInviteFlow = path === '/' && Boolean(readPendingTeamInvite());
 
 createRoot(root).render(
   <StrictMode>
@@ -42,18 +44,20 @@ createRoot(root).render(
       ? <ManageAppointmentPage token={managementToken ?? ''} />
       : isPublicPage && publicSlug
         ? <PublicBookingPage slug={publicSlug} />
-        : isCalendar
-          ? <CalendarPage />
-          : isAvailability
-            ? <AvailabilityPage />
-            : isBookings
-              ? <BookingPage />
-              : isPublicSettings
-                ? <PublicBookingSettingsPage />
-                : isTeam
-                  ? <TeamPage />
-                  : <App />}
-    {!isPublicPage && !isManagementPage && (
+        : isInviteFlow
+          ? <InvitePage />
+          : isCalendar
+            ? <CalendarPage />
+            : isAvailability
+              ? <AvailabilityPage />
+              : isBookings
+                ? <BookingPage />
+                : isPublicSettings
+                  ? <PublicBookingSettingsPage />
+                  : isTeam
+                    ? <TeamPage />
+                    : <App />}
+    {!isPublicPage && !isManagementPage && !isInviteFlow && (
       <nav className="phase-nav" aria-label="Çalışma alanları">
         <a href="/calendar" aria-current={isCalendar ? 'page' : undefined}>Takvim</a>
         <a href="/bookings" aria-current={isBookings ? 'page' : undefined}>Randevular</a>
