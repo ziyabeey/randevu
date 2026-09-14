@@ -112,12 +112,23 @@ function EaseStrip() {
 }
 
 function FinalCta() {
+  const contactReady = MARKETING_CONTACT_HREF !== null;
+
   return (
-    <section className="mkt-final-cta" id="kurulum" aria-labelledby="mkt-final-title">
+    <section
+      className="mkt-final-cta"
+      id="kurulum"
+      aria-labelledby="mkt-final-title"
+      data-contact-flow-ready={contactReady ? "true" : "false"}
+    >
       <div className="mkt-final-orb" aria-hidden="true" />
-      <p className="mkt-eyebrow">Hazırsan</p>
+      <p className="mkt-eyebrow">{contactReady ? "Hazırsan" : "Yakında"}</p>
       <h2 id="mkt-final-title">Randevu kolay.<br />İşin sana kalsın.</h2>
-      <p>İşletmeni birlikte hazırlayalım, randevu tarafını sadeleştirelim.</p>
+      <p>
+        {contactReady
+          ? "İşletmeni birlikte hazırlayalım, randevu tarafını sadeleştirelim."
+          : "İletişim kanalını açtığımızda işletmeni birlikte hazırlayıp randevu tarafını sadeleştireceğiz."}
+      </p>
 
       {MARKETING_CONTACT_HREF ? (
         <a className="mkt-button mkt-button--dark" href={MARKETING_CONTACT_HREF}>
@@ -125,15 +136,10 @@ function FinalCta() {
           <span aria-hidden="true">→</span>
         </a>
       ) : (
-        <button
-          className="mkt-button mkt-button--dark"
-          type="button"
-          disabled
-          title="İletişim akışı yayın entegrasyonuyla birlikte aktif olacak"
-        >
-          Birlikte kuralım
-          <span aria-hidden="true">→</span>
-        </button>
+        <div className="mkt-contact-pending" aria-label="İletişim yakında">
+          <strong>Birlikte kurulum yakında açılıyor.</strong>
+          <span>İletişim kanalı yayın entegrasyonuyla birlikte aktif olacak.</span>
+        </div>
       )}
 
       <div className="mkt-final-lockup" aria-label="Randevu kolay">
