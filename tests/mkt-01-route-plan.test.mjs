@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const routePlan = await import('../src/marketing/routePlan.ts');
+const wranglerConfig = readFileSync(resolve(repoRoot, 'wrangler.jsonc'), 'utf8');
 
 const {
   MARKETING_HOME_PATH,
@@ -41,4 +46,9 @@ test('MKT-01 production route plan moves the existing workspace root to /app wit
       `Marketing route plan must not claim ${path}`,
     );
   }
+});
+
+test('MKT-01 /app deep links remain compatible with the deployment SPA fallback', () => {
+  assert.match(wranglerConfig, /"not_found_handling"\s*:\s*"single-page-application"/);
+  assert.match(wranglerConfig, /"run_worker_first"\s*:\s*\["\/api",\s*"\/api\/\*"\]/);
 });
