@@ -4,7 +4,7 @@
   inset: 0;
   background:
     linear-gradient(90deg, rgba(248, 249, 250, 0.99) 0%, rgba(248, 249, 250, 0.96) 31%, rgba(248, 249, 250, 0.52) 47%, rgba(248, 249, 250, 0.08) 68%, rgba(248, 249, 250, 0) 78%),
-    url("/marketing/hero/randevu-hero-model.webp") center center / cover no-repeat;
+    var(--mkt-hero-image) center center / cover no-repeat;
 }
 
 .mkt-hero-media::after {
@@ -35,7 +35,7 @@
   .mkt-hero-media {
     background:
       linear-gradient(180deg, rgba(248, 249, 250, 0.98) 0%, rgba(248, 249, 250, 0.82) 31%, rgba(248, 249, 250, 0.2) 58%, transparent 76%),
-      url("/marketing/hero/randevu-hero-model.webp") 67% center / cover no-repeat;
+      var(--mkt-hero-image) 67% center / cover no-repeat;
   }
 
   .mkt-hero:has(.mkt-hero-media) .mkt-hero-demo {
@@ -48,7 +48,7 @@
   .mkt-hero-media {
     background:
       linear-gradient(180deg, rgba(248, 249, 250, 0.99) 0%, rgba(248, 249, 250, 0.91) 34%, rgba(248, 249, 250, 0.28) 58%, transparent 76%),
-      url("/marketing/hero/randevu-hero-model.webp") 70% 54% / auto 72% no-repeat;
+      var(--mkt-hero-image) 70% 54% / auto 72% no-repeat;
     background-color: var(--mkt-cream);
   }
 
