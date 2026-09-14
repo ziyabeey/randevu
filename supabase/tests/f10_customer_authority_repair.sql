@@ -244,6 +244,164 @@ end
 $$;
 reset role;
 
+-- Two different masters may legitimately own the submitted phone and email separately.
+-- Reuse must never pick an arbitrary winner in that split-contact state.
+insert into public.customers(id, business_id, name, phone, email, notes, created_by)
+values
+  ('cf000000-0000-4000-8000-000000000001', 'cb000000-0000-4000-8000-000000000001', 'Split Phone Master', '0555 920 00 01', 'split-phone@example.invalid', 'split phone note', 'ca000000-0000-4000-8000-000000000001'),
+  ('cf000000-0000-4000-8000-000000000002', 'cb000000-0000-4000-8000-000000000001', 'Split Email Master', '0555 920 00 02', 'split-email@example.invalid', 'split email note', 'ca000000-0000-4000-8000-000000000001');
+
+-- CRM create preserves its existing explicit duplicate contract for any contact match,
+-- including a split phone/email request that reaches two distinct masters.
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'ca000000-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claims', '{"amr":[{"method":"password"}]}', true);
+do $$
+begin
+  begin
+    perform * from public.create_business_customer(
+      'cb000000-0000-4000-8000-000000000001',
+      'Split CRM Attempt',
+      '0555 920 00 01',
+      'split-email@example.invalid',
+      null
+    );
+    raise exception 'split CRM contact unexpectedly created a customer';
+  exception when others then
+    if sqlerrm = 'split CRM contact unexpectedly created a customer' then raise; end if;
+    if position('CUSTOMER_CONTACT_EXISTS' in sqlerrm) = 0 then raise; end if;
+  end;
+end
+$$;
+reset role;
+
+-- Public split-contact booking fails closed. No appointment is created and neither master changes.
+do $$
+declare
+  v_date date := (now() at time zone 'Europe/Istanbul')::date + 7;
+  v_starts timestamptz := (v_date + time '12:00') at time zone 'Europe/Istanbul';
+  v_before integer;
+  v_after integer;
+  v_phone_master public.customers;
+  v_email_master public.customers;
+begin
+  select count(*) into v_before
+  from public.appointments a
+  where a.business_id = 'cb000000-0000-4000-8000-000000000001';
+
+  begin
+    perform * from public.create_public_appointment(
+      'authority-tenant-a',
+      'authority-public-split-0001',
+      'Split Public Attempt',
+      'cd000000-0000-4000-8000-000000000001',
+      'ce000000-0000-4000-8000-000000000001',
+      v_starts,
+      '+90 555 920 00 01',
+      'SPLIT-EMAIL@example.invalid',
+      null
+    );
+    raise exception 'public split contact unexpectedly created an appointment';
+  exception when others then
+    if sqlerrm = 'public split contact unexpectedly created an appointment' then raise; end if;
+    if position('CUSTOMER_CONTACT_CONFLICT' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  select count(*) into v_after
+  from public.appointments a
+  where a.business_id = 'cb000000-0000-4000-8000-000000000001';
+  if v_after <> v_before then
+    raise exception 'public split contact changed appointment count from % to %', v_before, v_after;
+  end if;
+
+  select * into v_phone_master from public.customers where id='cf000000-0000-4000-8000-000000000001';
+  select * into v_email_master from public.customers where id='cf000000-0000-4000-8000-000000000002';
+  if v_phone_master.name <> 'Split Phone Master'
+     or v_phone_master.phone <> '0555 920 00 01'
+     or v_phone_master.email <> 'split-phone@example.invalid'
+     or v_phone_master.notes <> 'split phone note' then
+    raise exception 'public split contact mutated phone master';
+  end if;
+  if v_email_master.name <> 'Split Email Master'
+     or v_email_master.phone <> '0555 920 00 02'
+     or v_email_master.email <> 'split-email@example.invalid'
+     or v_email_master.notes <> 'split email note' then
+    raise exception 'public split contact mutated email master';
+  end if;
+end
+$$;
+
+-- Operator split-contact booking has the same fail-closed identity contract.
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'ca000000-0000-4000-8000-000000000001', true);
+select set_config('request.jwt.claims', '{"amr":[{"method":"password"}]}', true);
+do $$
+declare
+  v_date date := (now() at time zone 'Europe/Istanbul')::date + 7;
+  v_starts timestamptz := (v_date + time '13:00') at time zone 'Europe/Istanbul';
+  v_before integer;
+  v_after integer;
+begin
+  select count(*) into v_before
+  from public.list_appointments_page(
+    'cb000000-0000-4000-8000-000000000001', 101, null, null
+  );
+
+  begin
+    perform public.create_appointment(
+      'cb000000-0000-4000-8000-000000000001',
+      'authority-operator-split-0001',
+      'Split Operator Attempt',
+      'cd000000-0000-4000-8000-000000000001',
+      'ce000000-0000-4000-8000-000000000001',
+      v_starts,
+      '0090 555 920 00 01',
+      'split-email@example.invalid',
+      null
+    );
+    raise exception 'operator split contact unexpectedly created an appointment';
+  exception when others then
+    if sqlerrm = 'operator split contact unexpectedly created an appointment' then raise; end if;
+    if position('CUSTOMER_CONTACT_CONFLICT' in sqlerrm) = 0 then raise; end if;
+  end;
+
+  select count(*) into v_after
+  from public.list_appointments_page(
+    'cb000000-0000-4000-8000-000000000001', 101, null, null
+  );
+  if v_after <> v_before then
+    raise exception 'operator split contact changed appointment count from % to %', v_before, v_after;
+  end if;
+end
+$$;
+reset role;
+
+-- Legacy duplicates for one normalized contact also fail closed instead of choosing by recency.
+insert into public.customers(id, business_id, name, phone, email, created_by)
+values
+  ('cf000000-0000-4000-8000-000000000003', 'cb000000-0000-4000-8000-000000000001', 'Legacy Duplicate One', '0555 930 00 00', 'legacy-one@example.invalid', 'ca000000-0000-4000-8000-000000000001'),
+  ('cf000000-0000-4000-8000-000000000004', 'cb000000-0000-4000-8000-000000000001', 'Legacy Duplicate Two', '+90 555 930 00 00', 'legacy-two@example.invalid', 'ca000000-0000-4000-8000-000000000001');
+
+do $$
+begin
+  begin
+    perform public.f10_resolve_or_create_customer(
+      'cb000000-0000-4000-8000-000000000001',
+      'Legacy Duplicate Attempt',
+      '0090 555 930 00 00',
+      null,
+      null,
+      null,
+      true
+    );
+    raise exception 'legacy duplicate contact unexpectedly chose a winner';
+  exception when others then
+    if sqlerrm = 'legacy duplicate contact unexpectedly chose a winner' then raise; end if;
+    if position('CUSTOMER_CONTACT_CONFLICT' in sqlerrm) = 0 then raise; end if;
+  end;
+end
+$$;
+
 -- One canonical row remains in tenant A while tenant B remains independent.
 do $$
 declare
