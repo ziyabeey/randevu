@@ -86,8 +86,8 @@ function PricingStory({ active }: StoryProps) {
       <div className="mkt-pricing-card">
         <div>
           <span className="mkt-proof-kicker">Randevu</span>
-          <strong>Tek, açık paket.</strong>
-          <p>Net fiyat politikası yayın öncesi ticari kararla kilitlenecek.</p>
+          <strong>Net fiyat, sürpriz yok.</strong>
+          <p>Fiyat ve paket yapısı yayın öncesi ticari kararla netleşecek.</p>
         </div>
         <a className="mkt-button mkt-button--lime" href="#kurulum">
           Birlikte kuralım
