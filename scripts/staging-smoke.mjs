@@ -91,6 +91,28 @@ async function waitForHealth() {
   throw new Error(`Staging health check failed after ${HEALTH_ATTEMPTS} attempts${suffix}`);
 }
 
+function sessionDiagnostic(result) {
+  const data = typeof result.data === 'object' && result.data !== null && !Array.isArray(result.data)
+    ? result.data
+    : {};
+  const user = typeof data.user === 'object' && data.user !== null && !Array.isArray(data.user)
+    ? data.user
+    : null;
+  const error = typeof data.error === 'object' && data.error !== null && !Array.isArray(data.error)
+    ? data.error
+    : null;
+  return {
+    status: result.response.status,
+    hasUser: Boolean(user?.id),
+    membershipsCount: Array.isArray(data.memberships) ? data.memberships.length : null,
+    hasActiveBusiness: Boolean(data.activeBusinessId),
+    passwordRecovery: data.passwordRecovery === true,
+    errorCode: typeof error?.code === 'string' ? error.code : null,
+    hasAccessCookie: cookies.has('yzt_access'),
+    hasRefreshCookie: cookies.has('yzt_refresh'),
+  };
+}
+
 await waitForHealth();
 const loginCsrf = await csrf();
 
@@ -111,6 +133,7 @@ if (!cookies.has('yzt_access') || !cookies.has('yzt_refresh')) {
 
 const session = await request('/api/session');
 if (!session.response.ok || !session.data?.user?.id) {
+  console.error(`STAGING_SESSION_DIAGNOSTIC ${JSON.stringify(sessionDiagnostic(session))}`);
   throw new Error(`Staging session lookup failed with HTTP ${session.response.status}`);
 }
 if (String(session.data.user.email ?? '').toLowerCase() !== process.env.STAGING_OWNER_A_EMAIL.toLowerCase()) {
