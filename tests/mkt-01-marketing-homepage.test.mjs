@@ -19,6 +19,7 @@ const previewEntry = read('src/marketing/preview-entry.tsx');
 const previewModes = read('src/marketing/previewModes.ts');
 const previewHtml = read('marketing-preview.html');
 const marketingCopy = `${hero}\n${home}\n${productStories}\n${transformation}`;
+const timeline = await import('../src/marketing/transformation/timeline.ts');
 
 test('MKT-01 keeps the approved homepage story spine', () => {
   for (const copy of [
@@ -68,6 +69,31 @@ test('MKT-01 does not publish fake pricing, finance claims, or fabricated social
 
   assert.match(productStories, /Gerçek işletme sonuçları geldikçe/);
   assert.match(transformation, /Fiyat ve paket yapısı yayın öncesi ticari kararla netleşecek/);
+});
+
+test('MKT-01 timeline follows the real Kling beats and keeps local progress bounded', () => {
+  const {
+    TRANSFORMATION_PHASES,
+    clamp01,
+    getTransformationPhase,
+    getTransformationPhaseProgress,
+  } = timeline;
+  const epsilon = 1e-6;
+
+  assert.equal(clamp01(-1), 0);
+  assert.equal(clamp01(2), 1);
+  assert.equal(getTransformationPhase(-1), 'reminder');
+  assert.equal(getTransformationPhase(TRANSFORMATION_PHASES.reminder.end - epsilon), 'reminder');
+  assert.equal(getTransformationPhase(TRANSFORMATION_PHASES.reminder.end), 'friction');
+  assert.equal(getTransformationPhase(TRANSFORMATION_PHASES.friction.end), 'sweep');
+  assert.equal(getTransformationPhase(TRANSFORMATION_PHASES.sweep.end), 'pricing');
+  assert.equal(getTransformationPhase(2), 'pricing');
+
+  assert.equal(getTransformationPhaseProgress(TRANSFORMATION_PHASES.sweep.start, 'sweep'), 0);
+  assert.equal(getTransformationPhaseProgress(TRANSFORMATION_PHASES.sweep.end, 'sweep'), 1);
+
+  const sweepMid = (TRANSFORMATION_PHASES.sweep.start + TRANSFORMATION_PHASES.sweep.end) / 2;
+  assert.ok(Math.abs(getTransformationPhaseProgress(sweepMid, 'sweep') - 0.5) < epsilon);
 });
 
 test('MKT-01 motion remains scroll-owned, bounded, and non-autoplay', () => {
