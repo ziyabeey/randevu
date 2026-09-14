@@ -3,7 +3,8 @@ export const MARKETING_CONTACT_HREF: string | null = null;
 export const MARKETING_RELEASE_GATES = {
   publicBooking: true,
   calendarAvailability: true,
-  reminders: true,
+  // F16-02 is still planned. Keep reminder proof in explicit upcoming/concept language only.
+  reminders: false,
   onboardingAssistance: true,
   dailyAppointmentSummary: true,
   customerMemory: true,
