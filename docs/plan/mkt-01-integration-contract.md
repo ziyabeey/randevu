@@ -95,11 +95,72 @@ Mevcut yaklaşık 2.0 MB mobile ve 4.5 MB desktop encode bu cap içinde kalır. 
 ### Preload policy
 
 - video başlangıçta `preload="metadata"`,
-- near-section IntersectionObserver promotion mevcut `75%` rootMargin üst sınırını aşmaz; değişiklik gerekçelendirilir,
+- near-section IntersectionObserver promotion mevcut `75%` rootMargin ile başlar; daha erken promotion yalnız ölçümle gerekçelendirilir,
 - reduced-motion modunda scrub video mount edilmez,
 - video failure static fallback'e döner.
 
 Production browser acceptance en az bir mobile ve bir desktop profile'da network waterfall ile asset seçimini ve promotion zamanını doğrular.
+
+### Scrub yükleme optimizasyon merdiveni
+
+Bu bölüm performans **öneri sırasıdır**. Ölçüm olmadan daha karmaşık tekniğe atlanmaz.
+
+#### 1. Explicit `video.load()` resetini kaldır
+
+Current PR #77 hook'unda near-section promotion sırasında `video.preload = "auto"` sonrasında explicit `video.load()` çağrısı vardır. Promotion yalnız `preload` ipucunu değiştirir; normal scroll sırasında explicit `load()` ile media element resetlenmez.
+
+Kabul:
+- preload promotion sırasında `video.load()` çağrısı yoktur,
+- daha önce alınmış metadata/buffer'ın gereksiz resetlenmediği gerçek Chrome network/media davranışıyla doğrulanır,
+- metadata guard yüzünden section girişinde scrub'ın yapay olarak tekrar beklemeye dönmediği kontrol edilir.
+
+Bu değişiklik küçük ve izole olduğundan MKT-01 branch'inde route cutover beklemeden yapılabilir.
+
+#### 2. Doğrudan media loading hâlâ scrub stall üretiyorsa Blob-prefetch deneyini ölç
+
+Paused `<video>` üzerinde `preload="auto"` tarayıcı için ipucudur; browser/network koşullarında bütün dosyanın ileri buffer'lanacağı garanti değildir. Hızlı seek ayrıca birden çok HTTP Range isteği üretebilir. `video.load()` kaldırıldıktan sonra throttled gerçek-browser testinde anlamlı stall devam ederse ikinci aday, seçilmiş MP4 kaynağını uygulamanın `fetch` ile indirip `Blob` / `URL.createObjectURL(...)` üzerinden video elementine vermesidir.
+
+Blob deneyi için sınırlar:
+- mobile/desktop doğru source viewport'a göre **fetch başlamadan önce** seçilir; iki encode aynı anda indirilmez,
+- fetch yalnız transformation prefetch eşiğine girildiğinde başlar; first-viewport MP4 body budget'ı korunur,
+- `AbortController` ile unmount/navigation iptali yapılır,
+- object URL cleanup'ta `URL.revokeObjectURL` çağrılır,
+- fetch/non-2xx/abort dışı decode hatası mevcut static fallback yoluna bağlanır,
+- reduced-motion modunda MP4 fetch edilmez,
+- Blob hazır olmadan poster/static fallback kullanıcıyı boş stage ile bırakmaz,
+- aynı asset için hem doğrudan `<source>` download hem fetch download oluşmaması gerekir,
+- `blobReady` ve media metadata readiness ayrı state olarak gözlenebilir/test edilebilir kalır.
+
+Blob yaklaşımı production zorunluluğu değildir. Şu ölçümlerde doğrudan `<video>` yüklemeye göre net kazanım gösterirse kabul edilir:
+- section-entry → usable scrub hazır olma süresi,
+- scroll sırasında stall/frame miss gözlemi,
+- MP4 request/range request sayısı,
+- toplam transferred bytes,
+- JS heap / media memory davranışı,
+- Chrome + en az bir Safari/iOS-representative profile davranışı.
+
+Mevcut yaklaşık 2.0 MB mobile / 4.5 MB desktop boyutları Blob deneyi için makul adaydır; bu tek başına çözüm kararı değildir.
+
+#### 3. Cloudflare static media delivery kontrolü
+
+Production/staging acceptance sırasında MP4 cevaplarında en az şunlar kaydedilir:
+- `Cache-Control` / edge cache davranışı,
+- `Accept-Ranges` ve gerçek Range response davranışı,
+- Range isteklerinin edge'den servis edilip edilmediği,
+- beklenmedik origin round-trip veya cache bypass olup olmadığı.
+
+Sorun asset delivery/header tarafındaysa önce o katman düzeltilir; playback mimarisi gereksiz yere karmaşıklaştırılmaz.
+
+#### 4. Daha erken prefetch yalnız ölçümle
+
+Blob veya direct-media deneyi section'a geç hazır oluyorsa `rootMargin` örneğin `150%` seviyesine çıkarılabilir. Bu bir varsayılan değildir. Değişiklik:
+- first-viewport eager MP4 body bütçesini bozmamalı,
+- mobile data cost'u gereksiz öne çekmemeli,
+- old/new margin için section-ready timing ve transferred-byte receipt bırakmalıdır.
+
+#### 5. Image-sequence / canvas son seçenek
+
+Blob-prefetch ve doğru edge delivery'ye rağmen özellikle iOS seek davranışı kabul edilemez kalıyorsa transformation video WebP/AVIF frame sequence + canvas/image renderer olarak değerlendirilebilir. Bu yol codec seek'i ortadan kaldırır fakat çok sayıda asset/request, decode memory ve daha karmaşık preload/cache makinesi getirir. MKT-01 için ilk çözüm değildir; ayrı ölçümlü teknik karar ister.
 
 ## MKT-PROOF-06 — production claim gate
 
@@ -116,8 +177,11 @@ Cutover adayı için minimum kanıt:
 5. transformation full MP4 first viewport'ta eager indirilmez,
 6. mobile/desktop MP4 cap'leri geçmez,
 7. sectionTop layout-shift regression geçer,
-8. 360/390 no-overflow + keyboard/reduced-motion akışı,
-9. CSS layer/token kararı uygulanmış veya açık cleanup receipt'i bırakılmıştır,
-10. production proof gate'leri gerçek accepted feature durumuyla eşleşir.
+8. preload promotion sırasında explicit `video.load()` reseti yoktur,
+9. scrub stall sürerse direct-media → Blob deneyi ölçüm receipt'i vardır; Blob zorunlu değilse neden gerekmediği kaydedilir,
+10. deployed media response/cache/range davranışı final hosted acceptance'ta ölçülür,
+11. 360/390 no-overflow + keyboard/reduced-motion akışı,
+12. CSS layer/token kararı uygulanmış veya açık cleanup receipt'i bırakılmıştır,
+13. production proof gate'leri gerçek accepted feature durumuyla eşleşir.
 
 Bu sözleşme production route'u kendi başına açmaz. Shared-entry token ve current dependency queue Issue #65 tarafından yönetilir.
