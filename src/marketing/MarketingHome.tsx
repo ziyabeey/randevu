@@ -10,6 +10,7 @@ import "./final-cta.css";
 import { MarketingHero } from "./MarketingHero";
 import { ProductStorySections, TrustSections } from "./ProductStorySections";
 import { MARKETING_CONTACT_HREF } from "./releaseGates";
+import { WORKSPACE_HOME_PATH } from "./routePlan";
 import { TransformationSection } from "./transformation/TransformationSection";
 import { useMarketingDocumentMeta } from "./useMarketingDocumentMeta";
 
@@ -61,7 +62,7 @@ function MarketingNav() {
         </div>
 
         <details className="mkt-mobile-nav" ref={mobileMenuRef}>
-          <summary aria-label="Randevu menüsünü aç">
+          <summary aria-label="Randevu menüsü">
             <span>Menü</span>
             <i aria-hidden="true">+</i>
           </summary>
@@ -70,10 +71,14 @@ function MarketingNav() {
             <a href="#isletmen-icin" onClick={closeMobileMenu}>İşletmen için</a>
             <a href="#donusum" onClick={closeMobileMenu}>Dönüşüm</a>
             <a href="#yardim" onClick={closeMobileMenu}>Yardım</a>
+            <a href={WORKSPACE_HOME_PATH} onClick={closeMobileMenu}>Giriş yap</a>
           </div>
         </details>
 
-        <a className="mkt-nav-cta" href="#kurulum">Birlikte kuralım</a>
+        <div className="mkt-nav-actions">
+          <a className="mkt-nav-login" href={WORKSPACE_HOME_PATH}>Giriş yap</a>
+          <a className="mkt-nav-cta" href="#kurulum">Birlikte kuralım</a>
+        </div>
       </nav>
     </header>
   );
