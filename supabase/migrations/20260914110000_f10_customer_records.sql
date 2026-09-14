@@ -11,7 +11,16 @@ immutable
 strict
 set search_path = pg_catalog
 as $$
-  select nullif(regexp_replace(trim(p_value), '[^0-9]+', '', 'g'), '');
+  with normalized as (
+    select nullif(regexp_replace(trim(p_value), '[^0-9]+', '', 'g'), '') as digits
+  )
+  select case
+    when char_length(digits) = 14 and digits like '0090%' then substring(digits from 5)
+    when char_length(digits) = 12 and digits like '90%' then substring(digits from 3)
+    when char_length(digits) = 11 and digits like '0%' then substring(digits from 2)
+    else digits
+  end
+  from normalized;
 $$;
 
 create or replace function public.f10_normalize_customer_email(p_value text)
