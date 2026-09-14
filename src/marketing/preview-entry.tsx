@@ -10,6 +10,13 @@ const PREVIEW_ASSETS = [
   "/marketing/transformation/randevu-transformation-master.mp4",
 ] as const;
 
+const previewParams = new URLSearchParams(window.location.search);
+const forcedReducedMotion = previewParams.get("reduced") === "1";
+
+if (forcedReducedMotion) {
+  document.documentElement.dataset.mktReducedMotion = "true";
+}
+
 type PreviewAssetStatus = "checking" | "ready" | "missing";
 
 function PreviewDiagnostics() {
@@ -52,9 +59,10 @@ function PreviewDiagnostics() {
   return (
     <aside className={`mkt-preview-diagnostics is-${status}`} aria-live="polite">
       <strong>Preview</strong>
-      {status === "checking" ? <span>Assetler kontrol ediliyor…</span> : null}
-      {status === "ready" ? <span>Motion assetleri hazır ✓</span> : null}
-      {status === "missing" ? (
+      {forcedReducedMotion ? <span>Reduced motion</span> : null}
+      {!forcedReducedMotion && status === "checking" ? <span>Assetler kontrol ediliyor…</span> : null}
+      {!forcedReducedMotion && status === "ready" ? <span>Motion assetleri hazır ✓</span> : null}
+      {!forcedReducedMotion && status === "missing" ? (
         <span>{missing.length} asset eksik. ZIP&apos;i repo köküne aç.</span>
       ) : null}
     </aside>
