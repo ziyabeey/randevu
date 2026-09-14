@@ -8,10 +8,10 @@ import "./preview-reduced.css";
 const previewParams = new URLSearchParams(window.location.search);
 const forcedReducedMotion = previewParams.get("reduced") === "1";
 const cleanPreview = previewParams.get("clean") === "1";
+const debugPreview = previewParams.get("debug") === "1";
 
-if (forcedReducedMotion) {
-  document.documentElement.dataset.mktReducedMotion = "true";
-}
+if (forcedReducedMotion) document.documentElement.dataset.mktReducedMotion = "true";
+if (debugPreview) document.documentElement.dataset.mktDebug = "true";
 
 type PreviewAssetStatus = "checking" | "ready" | "missing";
 
@@ -37,7 +37,6 @@ function PreviewDiagnostics() {
       );
 
       if (cancelled) return;
-
       const missingAssets: string[] = checks.flatMap((asset) => (asset === null ? [] : [asset]));
       setMissing(missingAssets);
       setStatus(missingAssets.length === 0 ? "ready" : "missing");
@@ -51,6 +50,7 @@ function PreviewDiagnostics() {
     <aside className={`mkt-preview-diagnostics is-${status}`} aria-live="polite">
       <strong>Preview</strong>
       {forcedReducedMotion ? <span>Reduced motion</span> : null}
+      {debugPreview ? <span>Debug</span> : null}
       {!forcedReducedMotion && status === "checking" ? <span>Assetler kontrol ediliyor…</span> : null}
       {!forcedReducedMotion && status === "ready" ? <span>Motion assetleri hazır ✓</span> : null}
       {!forcedReducedMotion && status === "missing" ? <span>{missing.length} asset eksik. ZIP&apos;i repo köküne aç.</span> : null}
