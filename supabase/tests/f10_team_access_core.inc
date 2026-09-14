@@ -113,7 +113,8 @@ begin
 end
 $$;
 
-select * from public.create_business_invitation(
+select set_config('f10.owner_invitation_id', invitation_id::text, true)
+from public.create_business_invitation(
   'a1100000-0000-4000-8000-000000000001',
   'f10-owner-candidate@example.invalid', 'owner', repeat('d', 64)
 );
@@ -144,10 +145,7 @@ begin
     null;
   end;
 
-  select i.id into v_owner_invite
-  from public.business_invitations i
-  where i.business_id = 'a1100000-0000-4000-8000-000000000001'
-    and i.token_hash = repeat('d', 64);
+  v_owner_invite := current_setting('f10.owner_invitation_id')::uuid;
 
   begin
     perform public.revoke_business_invitation(
