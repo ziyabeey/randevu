@@ -118,10 +118,12 @@ test('MKT-01 standalone preview renders the approved reduced-motion homepage in 
       'Bugün ne olmuş? Tek yerde.',
       'Kısa cevaplar.',
       'İşin sana kalsın.',
+      'Giriş yap',
     ]) {
       assert.ok(html.includes(expected), `Rendered preview is missing: ${expected}`);
     }
 
+    assert.match(html, /href="\/app"/);
     assert.match(html, /class="mkt-mobile-nav"/);
     assert.match(html, /id="nasil-calisiyor"/);
     assert.match(html, /id="donusum"/);
