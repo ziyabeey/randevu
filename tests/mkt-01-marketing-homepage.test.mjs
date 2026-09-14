@@ -47,6 +47,7 @@ test('MKT-01 keeps the approved homepage story spine', () => {
 test('MKT-01 hero exposes its LCP media as a priority image', () => {
   assert.match(hero, /<img/);
   assert.match(hero, /src=\{MARKETING_ASSETS\.heroModel\}/);
+  assert.match(hero, /loading="eager"/);
   assert.match(hero, /fetchPriority="high"/);
   assert.match(hero, /decoding="async"/);
   assert.match(hero, /width=\{1928\}/);
