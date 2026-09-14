@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 
+import "./transformation-tuning.css";
 import { usePrefersReducedMotion, useVideoScrollScrub } from "./useVideoScrollScrub";
 
 const VIDEO_MP4 = "/marketing/transformation/randevu-transformation-master.mp4";
