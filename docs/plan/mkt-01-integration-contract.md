@@ -21,6 +21,10 @@ Bu sözleşme MKT-01'in izole `src/marketing/**` uygulamasını production root'
 - Real-browser regression üst içerik yüksekliğini section'ın kendi boyutunu değiştirmeden kaydırır ve aynı scroll position için geometry'nin yeniden hesaplandığını kanıtlar.
 - Bu bug production route cutover'dan önce kapanır. İzole PR #77 içinde düzeltilebilir; shared entry gerektirmez.
 
+### Test sınırı
+
+Davranış zaten gerçek Chrome harness'iyle kanıtlanıyorsa implementation değişken adlarını/kaynak satır biçimini regex'le kilitleyen ikinci bir test yazılmaz. `geometryFrame`, `scheduleGeometry` gibi identifier'ların adı sözleşme değildir. Kaynak-metni testi yalnız bilinen tehlikeli API'nin geri gelmesini dar biçimde engelliyorsa meşrudur; örneğin normal promotion yolunda explicit `video.load()` veya autoplay `video.play()` çağrısının bulunmaması. Geometry invalidation, cleanup ve scroll sonucu gerçek browser davranışıyla kabul edilir.
+
 ## MKT-ARCH-02 — root cutover bir URL migration'dır
 
 Marketing'i `/` adresine koymak yalnız yeni bir sayfa eklemek değildir. Bugünkü operator workspace root'u `/` adresinden `/app` altına taşınır. E'nin router/common-shell contract'ı (Issue #65 `5666148046`) route authority'dir.
@@ -47,8 +51,8 @@ Current `src/main.tsx` pathname seçimi tek uygulama entry/bundle modelidir. Mar
 Production candidate'ta route-level lazy boundary veya eşdeğer Vite dynamic-import ayrımı bulunur:
 
 - normal `/` marketing chunk'ını yükleyebilir,
-- `/r/*` initial load için marketing'e özgü JS/CSS/video eager transferi **0 B** olmalıdır,
-- `/app/*` initial load için marketing'e özgü JS/CSS/video eager transferi **0 B** olmalıdır,
+- `/r/*` initial load için marketing'e özgü JS/CSS/transformation-media eager transferi **0 B** olmalıdır,
+- `/app/*` initial load için marketing'e özgü JS/CSS/transformation-media eager transferi **0 B** olmalıdır,
 - marketing `/` initial load private workspace implementation chunk'ını yalnız route gerektiriyorsa yükler; private operator ekranlarının tamamı marketing entry'ye eager bağlanmaz,
 - bundle analyzer/build manifest veya network acceptance hangi route'un hangi chunk'ları çektiğini sayısal receipt olarak bırakır.
 
@@ -69,7 +73,7 @@ Paylaşılan katman:
 
 Marketing'e özel kalan katman:
 - hero/story/scrollytelling layout,
-- transformation/video stage,
+- transformation renderer stage,
 - marketing-only CTA/proof/FAQ bileşenleri,
 - page-specific responsive tuning.
 
@@ -81,35 +85,41 @@ Bütçe mevcut asset handoff'una göre sayısallaştırılır; asset büyümesi 
 
 ### Route isolation budgets
 
-- `/r/*` initial load'da marketing-specific JS/CSS/video eager transfer: **0 B**.
-- `/app/*` initial load'da marketing-specific JS/CSS/video eager transfer: **0 B**.
-- Marketing `/` ilk viewport'ta, transformation section preload promotion eşiğine girmeden transfer edilen transformation MP4 body byte'ı: **0 B**. `preload="metadata"` tarayıcı davranışının küçük metadata/range isteği ayrıca raporlanabilir; tam video gövdesi eager indirilmez.
+- `/r/*` initial load'da marketing-specific JS/CSS/transformation-media eager transfer: **0 B**.
+- `/app/*` initial load'da marketing-specific JS/CSS/transformation-media eager transfer: **0 B**.
+- Marketing `/` ilk viewport'ta transformation section prefetch/promotion eşiğine girmeden transfer edilen full transformation media body byte'ı: **0 B**. Video `preload="metadata"` için küçük metadata/range isteği ayrıca raporlanabilir; frame renderer seçilirse aynı ilke frame fetch'leri için geçerlidir.
 
-### Transformation asset caps
+### Transformation asset caps / comparison targets
 
+Video kontrol kolu:
 - mobile MP4: **≤ 2.2 MB**,
 - desktop MP4: **≤ 5.0 MB**.
 
-Mevcut yaklaşık 2.0 MB mobile ve 4.5 MB desktop encode bu cap içinde kalır. Cap artırımı ancak görüntü kalitesi/seek güvenilirliği gibi ölçülmüş gerekçeyle contract güncellemesi olarak yapılır.
+Frame-sequence deney kolu için başlangıç comparison target'ı production cap değildir:
+- mobile toplam compressed WebP sequence tercihen **≤ 2.75 MB**,
+- desktop toplam compressed WebP sequence tercihen **≤ 6.25 MB**.
 
-### Preload policy
+Mevcut yaklaşık 2.0 MB mobile ve 4.5 MB desktop MP4 encode video cap içinde kalır. Frame sequence byte hedefi, seek/continuity güvenilirliğinde belirgin kazanç varsa küçük ek transferi değerlendirebilmek için karşılaştırma eşiğidir; gerçek production cap renderer seçimiyle birlikte netleşir.
 
-- video başlangıçta `preload="metadata"`,
-- near-section IntersectionObserver promotion mevcut `75%` rootMargin üst sınırını aşmaz; değişiklik gerekçelendirilir,
-- reduced-motion modunda scrub video mount edilmez,
-- video failure static fallback'e döner.
+### Preload / prefetch policy
 
-Production browser acceptance en az bir mobile ve bir desktop profile'da network waterfall ile asset seçimini ve promotion zamanını doğrular.
+- video kontrol kolu başlangıçta `preload="metadata"`; near-section promotion `preload="auto"` hint'i verebilir fakat explicit `video.load()` ile media element resetlenmez,
+- frame-sequence kolu near-section'a kadar frame fetch başlatmaz; fetch concurrency bounded, decoded cache bounded ve eviction kaynakları kapatır,
+- reduced-motion modunda scrub renderer media fetch'i yapılmaz,
+- renderer failure static fallback'e döner.
 
-### Scrub media-loading optimizasyon merdiveni
+Production browser acceptance en az bir mobile ve bir desktop profile'da network waterfall ile asset seçimini ve promotion/prefetch zamanını doğrular.
 
-1. **Önce explicit `video.load()` resetini kaldır ve yeniden ölç.** `preload="metadata"` ile zaten başlamış yükü promotion anında `load()` ile yeniden başlatmak buffer/metadata state'ini sıfırlayabilir; mevcut hook'ta `video.preload = "auto"` sonrası explicit `video.load()` kullanılmaz. `preload` hint'i tek başına denenir ve throttled real-browser waterfall + scrub continuity ölçülür.
-2. Sorun devam ederse **Blob/ObjectURL prefetch** deney edilir: seçilmiş tek mobile/desktop MP4 `fetch` + `AbortController` ile indirilir, `Blob` URL video source olur, teardown'da `URL.revokeObjectURL` çağrılır. Reduced-motion modunda MP4 fetch edilmez; fetch/decode failure mevcut static fallback'e gider. Bu adım ancak ilk adımın ölçümü yetersizse uygulanır.
-3. Aynı candidate'ta Cloudflare static asset cevabının `Cache-Control`, `Accept-Ranges`, Range response ve edge-cache davranışı network receipt ile kaydedilir; çoklu seek'in origin'e gereksiz gitmediği doğrulanır.
-4. Blob deneyi fayda sağlıyor ama section'a geç kalıyorsa IntersectionObserver prefetch eşiği ölçümlü biçimde genişletilebilir. `75% → 150%` peşinen kural değildir; önce/sonra bytes, ready-time ve mobile profile sonucu yazılır. First-viewport transformation body 0 B bütçesi korunur.
-5. Blob yaklaşımıyla da kabul edilebilir scrub güvenilirliği sağlanamıyorsa image-sequence/canvas alternatifi değerlendirilir. Bu son çaredir; frame byte toplamı, request sayısı, decode memory ve iOS davranışı ayrıca bütçelenmeden uygulanmaz.
+### Renderer karar kapısı
 
-Blob-prefetch production zorunluluğu değildir. Amaç belirsiz network seek davranışını ölçülebilir/deterministik hale getirmektir; en küçük işe yarayan basamakta durulur.
+1. **Önce adil video baseline.** Explicit `video.load()` resetinin kaldırılmış haliyle gerçek Chrome'da scroll continuity, request/range davranışı, section-entry → usable frame süresi ve fallback gözlenir. Geometry body/font invalidation repair'i bu baseline'ın parçasıdır.
+2. **Production renderer seçilmeden önce gerçek telefon + hücresel ağ kabulü zorunludur.** Final/canonical media binary ve deployed Cloudflare delivery üzerinde en az bir gerçek iOS veya Android telefon hücresel bağlantıda denenir. Kullanıcı transformation bölümüne normal ve hızlı ileri/geri scroll ile girer; visible stall, parçalı yükleme, uzun metadata bekleme, yanlış kare/phase veya fallback gözlemi receipt'e yazılır. Bu test geçerse sırf teori uğruna Blob/ObjectURL mimarisi eklenmez.
+3. **WebP/canvas frame sequence eşit adaydır, son çare değildir.** PR #77 deneyinde aynı 121 frame / 5.041667 s timeline, mobile/desktop ayrı sequence, tek canvas, bounded fetch concurrency ve küçük decoded LRU cache kullanılır. `createImageBitmap` varsa kullanılır; eviction/dispose kaynakları kapatır. DOM'a 121 `<img>` dizilmez.
+4. Video ve frame renderer aynı 18/45/72/92% checkpoint'leri, reverse scrub ve aynı story phase sonucunu vermelidir. Karşılaştırma en az compressed byte, request count, near-section → first drawable süre, hızlı ileri/geri scrub stale/missing frame veya stall metriği ve decoded cache peak'i raporlar.
+5. **Blob/ObjectURL artık zorunlu ara basamak değildir.** Gerçek telefon/hücresel video baseline başarısızsa ve frame sequence belirgin şekilde kazanıyorsa doğrudan frame renderer seçilebilir. Frame sonucu da zayıfsa veya video yalnız network heuristiği nedeniyle kaybediyorsa Blob/ObjectURL ayrı ölçümlü deney olarak açılabilir.
+6. Production seçim kuralı: kullanıcı hissi/continuity eşitse daha basit ve daha az makine içeren renderer tercih edilir. Video gerçek telefonda sorunsuzsa ve frame sequence materyal avantaj göstermiyorsa çalışan video korunur. Frame sequence continuity/seeking reliability'de belirgin kazanır ve byte/memory maliyeti makulse canvas renderer production adayı olur.
+
+Amaç belirli bir teknolojiyi kazanmış ilan etmek değil, scroll-owned görsel davranışını gerçek cihazda deterministik ve ölçülebilir hale getirmektir.
 
 ## MKT-PROOF-06 — production claim gate
 
@@ -123,12 +133,13 @@ Cutover adayı için minimum kanıt:
 2. `/` marketing, `/app` workspace ve `/r/*` public route ayrımı,
 3. auth/recovery callback'in `/app` üzerinde tüketilmesi,
 4. marketing-specific eager bytes `/r/*` ve `/app/*` için 0 B,
-5. transformation full MP4 first viewport'ta eager indirilmez,
-6. mobile/desktop MP4 cap'leri geçmez,
-7. sectionTop layout-shift regression geçer,
+5. full transformation media first viewport'ta eager indirilmez,
+6. seçilen renderer'ın mobile/desktop transfer + memory bütçeleri raporlanır ve onaylı cap'i geçmez,
+7. sectionTop layout-shift real-browser regression geçer,
 8. 360/390 no-overflow + keyboard/reduced-motion akışı,
-9. CSS layer/token kararı uygulanmış veya açık cleanup receipt'i bırakılmıştır,
-10. production proof gate'leri gerçek accepted feature durumuyla eşleşir.
+9. final selected renderer gerçek telefon + hücresel ağda continuity kabulünü geçer,
+10. CSS layer/token kararı uygulanmış veya açık cleanup receipt'i bırakılmıştır,
+11. production proof gate'leri gerçek accepted feature durumuyla eşleşir.
 
 Bu sözleşme production route'u kendi başına açmaz. Shared-entry token ve current dependency queue Issue #65 tarafından yönetilir.
 
