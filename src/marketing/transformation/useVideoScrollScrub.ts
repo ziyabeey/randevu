@@ -62,6 +62,8 @@ export function useVideoScrollScrub(
     let sectionTop = 0;
     let scrollRange = 1;
     let preloadPromoted = video.preload === "auto";
+    let geometryFrame: number | null = null;
+    let disposed = false;
 
     const updateGeometry = () => {
       const rect = section.getBoundingClientRect();
@@ -137,6 +139,21 @@ export function useVideoScrollScrub(
       }
     };
 
+    const scheduleGeometry = () => {
+      if (geometryFrame !== null || disposed) {
+        return;
+      }
+
+      geometryFrame = window.requestAnimationFrame(() => {
+        geometryFrame = null;
+        if (disposed) {
+          return;
+        }
+        updateGeometry();
+        schedule();
+      });
+    };
+
     const onMetadata = () => {
       video.pause();
       setMetadataReady(true);
@@ -153,14 +170,17 @@ export function useVideoScrollScrub(
     }
 
     window.addEventListener("scroll", schedule, { passive: true });
-    window.addEventListener("resize", updateGeometry, { passive: true });
-    window.addEventListener("resize", schedule, { passive: true });
+    window.addEventListener("resize", scheduleGeometry, { passive: true });
 
-    const resizeObserver = new ResizeObserver(() => {
-      updateGeometry();
-      schedule();
-    });
+    const resizeObserver = new ResizeObserver(scheduleGeometry);
     resizeObserver.observe(section);
+    resizeObserver.observe(document.body);
+
+    void document.fonts?.ready.then(() => {
+      if (!disposed) {
+        scheduleGeometry();
+      }
+    }).catch(() => undefined);
 
     const intersectionObserver = new IntersectionObserver(
       ([entry]) => {
@@ -169,7 +189,6 @@ export function useVideoScrollScrub(
           if (!preloadPromoted) {
             preloadPromoted = true;
             video.preload = "auto";
-            video.load();
           }
           schedule();
         } else if (frameRef.current !== null) {
@@ -182,15 +201,18 @@ export function useVideoScrollScrub(
     intersectionObserver.observe(section);
 
     return () => {
+      disposed = true;
       video.removeEventListener("loadedmetadata", onMetadata);
       window.removeEventListener("scroll", schedule);
-      window.removeEventListener("resize", updateGeometry);
-      window.removeEventListener("resize", schedule);
+      window.removeEventListener("resize", scheduleGeometry);
       resizeObserver.disconnect();
       intersectionObserver.disconnect();
 
       if (frameRef.current !== null) {
         window.cancelAnimationFrame(frameRef.current);
+      }
+      if (geometryFrame !== null) {
+        window.cancelAnimationFrame(geometryFrame);
       }
     };
   }, [disabled, sectionRef, videoRef]);
