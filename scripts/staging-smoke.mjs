@@ -1,10 +1,4 @@
-const required = [
-  'STAGING_APP_ORIGIN',
-  'STAGING_OWNER_A_EMAIL',
-  'STAGING_OWNER_A_PASSWORD',
-  'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
-];
+const required = ['STAGING_APP_ORIGIN', 'STAGING_OWNER_A_EMAIL', 'STAGING_OWNER_A_PASSWORD'];
 for (const name of required) {
   if (!process.env[name]) throw new Error(`Missing required staging environment variable: ${name}`);
 }
@@ -167,14 +161,28 @@ function statusClass(status) {
 }
 
 async function directPasswordDiagnostic() {
+  const supabaseUrl = String(process.env.SUPABASE_URL ?? '').replace(/\/$/, '');
+  const supabaseAnonKey = String(process.env.SUPABASE_ANON_KEY ?? '');
+  const emptyClaims = accessClaimsDiagnostic('');
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return {
+      status: 0,
+      statusClass: 'config',
+      tokenResponse: false,
+      hasAccessToken: false,
+      hasUser: false,
+      accessClaims: emptyClaims,
+    };
+  }
+
   let status = 0;
   let data = null;
   try {
-    const response = await fetch(`${process.env.SUPABASE_URL.replace(/\/$/, '')}/auth/v1/token?grant_type=password`, {
+    const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
       method: 'POST',
       headers: {
-        apikey: process.env.SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
