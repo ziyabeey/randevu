@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 
+import { MARKETING_RELEASE_GATES } from "../releaseGates";
 import "./transformation-tuning.css";
 import { usePrefersReducedMotion, useVideoScrollScrub } from "./useVideoScrollScrub";
 
 const VIDEO_MP4 = "/marketing/transformation/randevu-transformation-master.mp4";
 const VIDEO_POSTER = "/marketing/transformation/randevu-transformation-poster.webp";
-const CUSTOMER_MEMORY_RELEASED = false; // F10-05 release gate.
 
 interface StoryProps {
   active: boolean;
@@ -17,7 +17,7 @@ function ReminderStory({ active }: StoryProps) {
       <p className="mkt-eyebrow">Kepenk.ai sunar</p>
       <h2>Unuttu mu? Biz hatırlatırız.</h2>
       <p className="mkt-story-copy">
-        {CUSTOMER_MEMORY_RELEASED
+        {MARKETING_RELEASE_GATES.customerMemory
           ? "Müşteri kimdi? Hatırlamak zorunda değilsin."
           : "Randevu yaklaşınca saatini sistem takip etsin."}
       </p>
@@ -28,7 +28,7 @@ function ReminderStory({ active }: StoryProps) {
           <strong>Randevunuz yarın 14:30&apos;da.</strong>
           <span>Saç kesimi</span>
         </div>
-        {CUSTOMER_MEMORY_RELEASED ? (
+        {MARKETING_RELEASE_GATES.customerMemory ? (
           <div className="mkt-proof-card mkt-proof-card--customer">
             <div>
               <span className="mkt-proof-kicker">Müşteri</span>
@@ -85,6 +85,8 @@ function SweepStory({ active }: StoryProps) {
 }
 
 function PricingStory({ active }: StoryProps) {
+  const pricingPublished = MARKETING_RELEASE_GATES.pricingPolicy;
+
   return (
     <div className="mkt-story mkt-story--pricing" aria-hidden={!active}>
       <p className="mkt-eyebrow">Karar vermesi de kolay</p>
@@ -94,8 +96,12 @@ function PricingStory({ active }: StoryProps) {
       <div className="mkt-pricing-card">
         <div>
           <span className="mkt-proof-kicker">Randevu</span>
-          <strong>Net fiyat, sürpriz yok.</strong>
-          <p>Fiyat ve paket yapısı yayın öncesi ticari kararla netleşecek.</p>
+          <strong>{pricingPublished ? "Onaylı fiyat burada yayınlanacak." : "Net fiyat, sürpriz yok."}</strong>
+          <p>
+            {pricingPublished
+              ? "Fiyat, dönem ve dahil kapsam onaylı ticari kaynaktan gösterilecek."
+              : "Fiyat ve paket yapısı yayın öncesi ticari kararla netleşecek."}
+          </p>
         </div>
         <a className="mkt-button mkt-button--lime" href="#kurulum">
           Birlikte kuralım
