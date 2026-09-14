@@ -6,6 +6,7 @@ Required production files:
 
 - `public/marketing/transformation/randevu-transformation-master.mp4`
 - `public/marketing/transformation/randevu-transformation-poster.webp`
+- `public/marketing/transformation/randevu-transformation-final.webp`
 - `public/marketing/hero/randevu-hero-model.webp`
 
 ## Source master
@@ -64,11 +65,24 @@ ffmpeg -ss 0.08 -i INPUT.mov \
 
 This keeps face, wardrobe, lighting and cobalt salon geometry continuous between the hero and the transformation section.
 
+## Reduced-motion final still
+
+The reduced-motion fallback uses a calm seated frame close to the end of the same master. The current frame is sampled at `4.75 s`, leaving negative space on the left for real DOM copy.
+
+```bash
+ffmpeg -ss 4.75 -i INPUT.mov \
+  -frames:v 1 \
+  -c:v libwebp \
+  -quality 82 \
+  public/marketing/transformation/randevu-transformation-final.webp
+```
+
 ## Expected SHA-256
 
 ```text
 b82e9fe486e9dd9706c8294a4cd3c07efe526034d6feb7b543930455ba96fdef  randevu-transformation-master.mp4
 39814c4ed94b1127de62e096cb2940c6138a27b365450a5e88af77d869e5bbb8  randevu-transformation-poster.webp
+40dd0196638aaa73fea2bdbd82f8a283bf3c24357b960557580fd5565dda0a70  randevu-transformation-final.webp
 cbcfb696ee7e9669052113f106ff988912bad315498f92101ee6288b0c90072a  randevu-hero-model.webp
 ```
 
