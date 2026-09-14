@@ -82,7 +82,24 @@ function FinalCta() {
         Birlikte kuralım
         <span aria-hidden="true">→</span>
       </button>
+
+      <div className="mkt-final-lockup" aria-label="Randevu kolay">
+        <span>randevu</span>
+        <small>kolay</small>
+      </div>
     </section>
+  );
+}
+
+function MarketingFooter() {
+  return (
+    <footer className="mkt-footer">
+      <div>
+        <strong>Kepenk.ai ürünü</strong>
+        <span>randevu.kepenk.ai</span>
+      </div>
+      <a href="#top">Yukarı dön <span aria-hidden="true">↑</span></a>
+    </footer>
   );
 }
 
@@ -99,6 +116,7 @@ export function MarketingHome() {
         <TrustSections />
         <FinalCta />
       </main>
+      <MarketingFooter />
     </div>
   );
 }
