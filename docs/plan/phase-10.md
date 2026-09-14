@@ -66,7 +66,10 @@ Okuma başlangıcı: `worker/index.ts`, `src/App.tsx`, `worker/app.ts`, `src/mai
 
 - **Bağımlılık:** F10-04, F10-05, F17-01.
 - **Sorumluluk:** QA + ürün sahibi. **Çakışma alanı:** Ortak hesap/kurulum senaryoları.
+- **Validation budget:** **FOCUSED.** Yeni şema tasarlamaz; hosted auth/PKCE/real-delivery ve ortak erişim zincirini kabul eder. R1/R2 yalnız bulunan risk alanına göre çağrılır; full staging zinciri her küçük değişiklikte tekrar koşturulmaz.
 - **İş ve çıktı:** İki işletmede owner/manager/staff test hesaplarıyla kurulum, davet, parola kurtarma, rol düşürme, çıkış ve işletme değiştirmeyi tamamla.
 - **Kabul:** Tarayıcı geri/ileri, açık ikinci sekme ve oturum süresi dolması doğru işletme/yetkiyi gösterir. Türkçe metinlerde faz/tenant/RPC gibi geliştirme terimleri yoktur. Yapılmamış hesap veya katalog işlemi çalışır görünmez.
 - **Devir:** Hesap rolleri ve anonimleştirilmiş kanıtlar; gerçek sırlar/test parolaları Git'e yazılmaz. G10 ancak açık kabul kusurları kapandığında geçer.
 - **v3 ek kabul:** S01’in gerçek public recovery/PKCE kanıtına bağlan; açık ikinci sekmede recovery sınırı ve Supabase geçici kesintisinde oturumun korunmasını ortak rollerle doğrula.
+- **Hazır olan:** F10-01..05'in accepted main davranışları, `worker/team.ts`, `worker/customers.ts`, `worker/onboarding.ts` ve mevcut team/customer security/concurrency kabul testleri bu kartın girdisidir; kart açılırken current main'de exact dosya/head yeniden doğrulanır.
+- **Tuzak / pahalı hosted zincir:** Gerçek Resend teslimatı ve PKCE içeren staging koşumu pahalıdır. Kör iterasyon yerine önce lokal/CI dar hata üretimi ve teşhis receipt'i alınır, sonra hosted zincir yalnız hosted davranışı doğrulamak için çalıştırılır. `staging-s07-acceptance` veya onun yerini alan runner hata sınıfını yutmamalı; bounded/redacted diagnostic ve exact-head rerun yolu F17-03 runner-hardening sözleşmesiyle uyumlu olmalıdır.
