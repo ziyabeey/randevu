@@ -40,3 +40,14 @@ export function getTransformationPhase(progress: number): TransformationPhase {
 
   return "pricing";
 }
+
+export function getTransformationPhaseProgress(
+  progress: number,
+  phase: TransformationPhase = getTransformationPhase(progress),
+): number {
+  const normalized = clamp01(progress);
+  const bounds = TRANSFORMATION_PHASES[phase];
+  const span = Math.max(0.0001, bounds.end - bounds.start);
+
+  return clamp01((normalized - bounds.start) / span);
+}
