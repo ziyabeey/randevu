@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const migration = readFileSync(new URL('../supabase/migrations/20260914110200_f10_customer_authority_repair.sql', import.meta.url), 'utf8');
+const sqlRegression = readFileSync(new URL('../supabase/tests/f10_customer_authority_repair.sql', import.meta.url), 'utf8');
 const page = readFileSync(new URL('../src/CustomersPage.tsx', import.meta.url), 'utf8');
 const customerCss = readFileSync(new URL('../src/customers.css', import.meta.url), 'utf8');
 const phaseCss = readFileSync(new URL('../src/phase4.css', import.meta.url), 'utf8');
@@ -21,6 +22,23 @@ await test('F10-05 CRM, operator and public writers share canonical customer res
   assert.match(migration, /create or replace function public\.create_business_customer[\s\S]*f10_resolve_or_create_customer/i);
   assert.match(migration, /create or replace function public\.create_appointment[\s\S]*f10_require_standard_session\(\)[\s\S]*f10_resolve_or_create_customer/i);
   assert.match(migration, /create or replace function public\.create_public_appointment[\s\S]*f10_resolve_or_create_customer/i);
+});
+
+await test('F10-05 canonical resolver fails closed on split or legacy duplicate contacts', () => {
+  const resolver = migration.match(/create or replace function public\.f10_resolve_or_create_customer\([\s\S]*?\n\$\$;/)?.[0] ?? '';
+  assert.ok(resolver, 'canonical resolver replacement missing');
+  assert.match(resolver, /select distinct c\.id/i);
+  assert.match(resolver, /array_agg\(m\.id order by m\.id\)/i);
+  assert.match(resolver, /v_match_count > 0[\s\S]*CUSTOMER_CONTACT_EXISTS/i);
+  assert.match(resolver, /v_match_count > 1[\s\S]*CUSTOMER_CONTACT_CONFLICT/i);
+  assert.match(resolver, /v_match_count = 1[\s\S]*return v_customer_ids\[1\]/i);
+  assert.doesNotMatch(resolver, /order by c\.updated_at desc, c\.id desc[\s\S]*limit 1/i);
+
+  assert.match(sqlRegression, /public split contact unexpectedly created an appointment/i);
+  assert.match(sqlRegression, /operator split contact unexpectedly created an appointment/i);
+  assert.match(sqlRegression, /legacy duplicate contact unexpectedly chose a winner/i);
+  assert.match(sqlRegression, /CUSTOMER_CONTACT_CONFLICT/i);
+  assert.match(sqlRegression, /split CRM contact unexpectedly created a customer[\s\S]*CUSTOMER_CONTACT_EXISTS/i);
 });
 
 await test('F10-05 operator booking no longer silently overwrites customer master', () => {
