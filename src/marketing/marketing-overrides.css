@@ -1,3 +1,10 @@
+.mkt-hero-trust {
+  margin: 16px 0 0;
+  color: #6e81a0;
+  font-size: 0.9rem;
+  font-weight: 760;
+}
+
 .mkt-ease-strip--phrases {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
@@ -43,6 +50,10 @@
 }
 
 @media (max-width: 520px) {
+  .mkt-hero-trust {
+    font-size: 0.82rem;
+  }
+
   .mkt-ease-strip--phrases {
     grid-template-columns: 1fr;
   }
