@@ -11,6 +11,7 @@ const hero = read('src/marketing/MarketingHero.tsx');
 const home = read('src/marketing/MarketingHome.tsx');
 const productStories = read('src/marketing/ProductStorySections.tsx');
 const mobileNavCss = read('src/marketing/mobile-nav.css');
+const marketingPolishCss = read('src/marketing/marketing-polish.css');
 const transformation = read('src/marketing/transformation/TransformationSection.tsx');
 const transformationTuning = read('src/marketing/transformation/transformation-tuning.css');
 const scrubHook = read('src/marketing/transformation/useVideoScrollScrub.ts');
@@ -45,9 +46,15 @@ test('MKT-01 keeps the approved homepage story spine and navigation contract', (
   assert.match(home, /<summary aria-label="Randevu menüsü">/);
   assert.match(home, /className="mkt-nav-login" href=\{WORKSPACE_HOME_PATH\}>Giriş yap/);
   assert.match(home, /href=\{WORKSPACE_HOME_PATH\} onClick=\{closeMobileMenu\}>Giriş yap/);
+  assert.match(home, /handleMobileSectionClick\(event, "#nasil-calisiyor"\)/);
+  assert.match(home, /window\.history\.pushState\(null, "", targetHash\)/);
+  assert.match(home, /focus\(\{ preventScroll: true \}\)/);
+  assert.match(home, /<main id="mkt-main" tabIndex=\{-1\}>/);
+  assert.match(home, /onClick=\{handleSkipToContent\}/);
   assert.match(mobileNavCss, /\.mkt-mobile-nav summary \{[\s\S]*?min-height:\s*44px/);
   assert.match(mobileNavCss, /\.mkt-mobile-nav-panel a \{[\s\S]*?min-height:\s*44px/);
   assert.match(mobileNavCss, /\.mkt-nav-actions \.mkt-nav-cta \{[\s\S]*?min-height:\s*44px/);
+  assert.match(marketingPolishCss, /\.mkt-skip-link:focus,[\s\S]*?\.mkt-skip-link:focus-visible/);
 });
 
 test('MKT-01 hero exposes its LCP media as a priority image', () => {
