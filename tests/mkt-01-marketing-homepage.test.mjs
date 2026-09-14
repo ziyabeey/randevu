@@ -15,6 +15,7 @@ const transformationTuning = read('src/marketing/transformation/transformation-t
 const scrubHook = read('src/marketing/transformation/useVideoScrollScrub.ts');
 const releaseGates = read('src/marketing/releaseGates.ts');
 const assets = read('src/marketing/assets.ts');
+const assetContract = read('src/marketing/asset-contract.ts');
 const previewEntry = read('src/marketing/preview-entry.tsx');
 const previewModes = read('src/marketing/previewModes.ts');
 const previewHtml = read('marketing-preview.html');
@@ -31,9 +32,7 @@ test('MKT-01 keeps the approved homepage story spine', () => {
     'Fiyatı da kolay olsun.',
     'Bugün ne olmuş? Tek yerde.',
     'Randevu kolay.<br />İşin sana kalsın.',
-  ]) {
-    assert.ok(marketingCopy.includes(copy), `Missing approved marketing copy: ${copy}`);
-  }
+  ]) assert.ok(marketingCopy.includes(copy), `Missing approved marketing copy: ${copy}`);
 
   assert.match(home, /href="#nasil-calisiyor"/);
   assert.match(productStories, /id="nasil-calisiyor"/);
@@ -61,9 +60,7 @@ test('MKT-01 publish gates stay explicit and fail closed where policy is not rea
     'onboardingAssistance: true',
     'dailyAppointmentSummary: true',
     'customerMemory: true',
-  ]) {
-    assert.ok(releaseGates.includes(gate), `Expected released gate: ${gate}`);
-  }
+  ]) assert.ok(releaseGates.includes(gate), `Expected released gate: ${gate}`);
 
   assert.match(releaseGates, /MARKETING_CONTACT_HREF:\s*string \| null = null/);
   assert.match(releaseGates, /pricingPolicy:\s*false/);
@@ -75,20 +72,13 @@ test('MKT-01 does not publish fake pricing, finance claims, or fabricated social
   assert.doesNotMatch(marketingCopy, /₺\s*\d/i);
   assert.doesNotMatch(marketingCopy, /\b\d{2,6}\s*TL\b/i);
   assert.doesNotMatch(marketingCopy, /\b(adisyon|tahsilat|stok|kasa|prim)\b/i);
-
   assert.match(productStories, /Gerçek işletme sonuçları geldikçe/);
   assert.match(transformation, /Fiyat ve paket yapısı yayın öncesi ticari kararla netleşecek/);
 });
 
 test('MKT-01 timeline follows the real Kling beats and keeps local progress bounded', () => {
-  const {
-    TRANSFORMATION_PHASES,
-    clamp01,
-    getTransformationPhase,
-    getTransformationPhaseProgress,
-  } = timeline;
+  const { TRANSFORMATION_PHASES, clamp01, getTransformationPhase, getTransformationPhaseProgress } = timeline;
   const epsilon = 1e-6;
-
   assert.equal(clamp01(-1), 0);
   assert.equal(clamp01(2), 1);
   assert.equal(getTransformationPhase(-1), 'reminder');
@@ -97,10 +87,8 @@ test('MKT-01 timeline follows the real Kling beats and keeps local progress boun
   assert.equal(getTransformationPhase(TRANSFORMATION_PHASES.friction.end), 'sweep');
   assert.equal(getTransformationPhase(TRANSFORMATION_PHASES.sweep.end), 'pricing');
   assert.equal(getTransformationPhase(2), 'pricing');
-
   assert.equal(getTransformationPhaseProgress(TRANSFORMATION_PHASES.sweep.start, 'sweep'), 0);
   assert.equal(getTransformationPhaseProgress(TRANSFORMATION_PHASES.sweep.end, 'sweep'), 1);
-
   const sweepMid = (TRANSFORMATION_PHASES.sweep.start + TRANSFORMATION_PHASES.sweep.end) / 2;
   assert.ok(Math.abs(getTransformationPhaseProgress(sweepMid, 'sweep') - 0.5) < epsilon);
 });
@@ -111,7 +99,6 @@ test('MKT-01 motion remains scroll-owned, bounded, and non-autoplay', () => {
   assert.match(scrubHook, /IntersectionObserver/);
   assert.match(scrubHook, /video\.preload = "auto"/);
   assert.doesNotMatch(scrubHook, /video\.play\s*\(/);
-
   assert.match(transformation, /muted/);
   assert.match(transformation, /playsInline/);
   assert.match(transformation, /preload="metadata"/);
@@ -122,27 +109,32 @@ test('MKT-01 motion remains scroll-owned, bounded, and non-autoplay', () => {
   assert.match(transformationTuning, /randevu-transformation-final\.webp/);
 });
 
-test('MKT-01 canonical asset manifest contains every required binary handoff', () => {
-  for (const asset of [
+test('MKT-01 canonical asset manifest and hash contract contain every required binary handoff', () => {
+  const requiredAssets = [
     'randevu-hero-model.webp',
     'randevu-transformation-master.mp4',
     'randevu-transformation-mobile.mp4',
     'randevu-transformation-poster.webp',
     'randevu-transformation-final.webp',
-  ]) {
-    assert.ok(assets.includes(asset), `Missing marketing asset contract: ${asset}`);
+  ];
+  for (const asset of requiredAssets) {
+    assert.ok(assets.includes(asset), `Missing marketing asset manifest entry: ${asset}`);
   }
 
+  assert.match(assetContract, /MARKETING_ASSETS\.transformationVideo/);
+  assert.match(assetContract, /MARKETING_ASSETS\.transformationMobileVideo/);
+  assert.match(assetContract, /f4984cc62143e744ee5bffd378a00eee0efdae909d6170d5a9210465b1873bc3/);
+  assert.match(assetContract, /MARKETING_ASSETS\.transformationPoster/);
+  assert.match(assetContract, /MARKETING_ASSETS\.transformationFinal/);
+  assert.match(assetContract, /MARKETING_ASSETS\.heroModel/);
   assert.match(previewEntry, /MARKETING_PREVIEW_ASSETS/);
   assert.match(transformation, /MARKETING_ASSETS/);
-  assert.match(hero, /MARKETING_ASSETS\.heroModel/);
 });
 
 test('MKT-01 standalone preview exposes diagnostic, clean, debug, and reduced-motion modes', () => {
   assert.match(previewHtml, /src\/marketing\/preview-entry\.tsx/);
   assert.match(previewEntry, /readMarketingPreviewMode/);
   assert.match(previewEntry, /asset eksik/);
-
   assert.match(previewModes, /params\.get\("reduced"\) === "1"/);
   assert.match(previewModes, /params\.get\("clean"\) === "1"/);
   assert.match(previewModes, /params\.get\("debug"\) === "1"/);
