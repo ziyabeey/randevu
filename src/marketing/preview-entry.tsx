@@ -13,6 +13,7 @@ const PREVIEW_ASSETS = [
 
 const previewParams = new URLSearchParams(window.location.search);
 const forcedReducedMotion = previewParams.get("reduced") === "1";
+const cleanPreview = previewParams.get("clean") === "1";
 
 if (forcedReducedMotion) {
   document.documentElement.dataset.mktReducedMotion = "true";
@@ -79,6 +80,6 @@ if (!root) {
 createRoot(root).render(
   <StrictMode>
     <MarketingHome />
-    <PreviewDiagnostics />
+    {cleanPreview ? null : <PreviewDiagnostics />}
   </StrictMode>,
 );
