@@ -1,4 +1,10 @@
-const required = ['STAGING_APP_ORIGIN', 'STAGING_OWNER_A_EMAIL', 'STAGING_OWNER_A_PASSWORD'];
+const required = [
+  'STAGING_APP_ORIGIN',
+  'STAGING_OWNER_A_EMAIL',
+  'STAGING_OWNER_A_PASSWORD',
+  'SUPABASE_URL',
+  'SUPABASE_ANON_KEY',
+];
 for (const name of required) {
   if (!process.env[name]) throw new Error(`Missing required staging environment variable: ${name}`);
 }
@@ -151,6 +157,61 @@ function accessClaimsDiagnostic(accessToken) {
   return diagnostic;
 }
 
+function statusClass(status) {
+  if (!Number.isInteger(status) || status <= 0) return 'transport';
+  if (status >= 500) return '5xx';
+  if (status >= 400) return '4xx';
+  if (status >= 300) return '3xx';
+  if (status >= 200) return '2xx';
+  return 'other';
+}
+
+async function directPasswordDiagnostic() {
+  let status = 0;
+  let data = null;
+  try {
+    const response = await fetch(`${process.env.SUPABASE_URL.replace(/\/$/, '')}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        apikey: process.env.SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: process.env.STAGING_OWNER_A_EMAIL,
+        password: process.env.STAGING_OWNER_A_PASSWORD,
+      }),
+      redirect: 'manual',
+    });
+    status = response.status;
+    const text = await response.text();
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+    }
+  } catch {
+    // A transport failure is represented as status 0 without echoing provider details.
+  }
+
+  const tokenResponse = typeof data === 'object' && data !== null && !Array.isArray(data);
+  const accessToken = tokenResponse && typeof data.access_token === 'string' ? data.access_token : '';
+  const user = tokenResponse && typeof data.user === 'object' && data.user !== null && !Array.isArray(data.user)
+    ? data.user
+    : null;
+  return {
+    status,
+    statusClass: statusClass(status),
+    tokenResponse,
+    hasAccessToken: Boolean(accessToken),
+    hasUser: Boolean(user?.id),
+    accessClaims: accessClaimsDiagnostic(accessToken),
+  };
+}
+
 function sessionDiagnostic(result) {
   const data = typeof result.data === 'object' && result.data !== null && !Array.isArray(result.data)
     ? result.data
@@ -185,6 +246,8 @@ const login = await request('/api/auth/login', {
   }),
 });
 if (!login.response.ok || login.data?.ok !== true) {
+  const directAuthDiagnostic = await directPasswordDiagnostic();
+  console.error(`STAGING_DIRECT_AUTH_DIAGNOSTIC ${JSON.stringify(directAuthDiagnostic)}`);
   throw new Error(`Staging app login failed with HTTP ${login.response.status}`);
 }
 if (!cookies.has('yzt_access') || !cookies.has('yzt_refresh')) {
