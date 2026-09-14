@@ -412,6 +412,9 @@ test('MKT-01 Chrome video control and frame renderer preserve scroll parity and 
 
     await isolatePage(page, frameStats, 'frame failure isolation');
     await page.send('Emulation.setEmulatedMedia', { features: [] });
+    await page.send('Network.enable');
+    await page.send('Network.setCacheDisabled', { cacheDisabled: true });
+    await page.send('Network.clearBrowserCache');
     frameStats.failFrames = true;
     await navigatePreview(page, `${framePreview}&run=failure`, { width: 1440, height: 900, mobile: false });
     await scrollSectionToProgress(page, 0.2);
@@ -429,6 +432,7 @@ test('MKT-01 Chrome video control and frame renderer preserve scroll parity and 
     assert.equal(fallback.video, false);
     assert.match(fallback.text, /Karışıklık gider, düzen kalır\./);
     frameStats.failFrames = false;
+    await page.send('Network.setCacheDisabled', { cacheDisabled: false });
   } finally {
     page?.close();
     if (chrome && chrome.exitCode === null) chrome.kill('SIGKILL');
