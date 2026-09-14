@@ -16,6 +16,7 @@ type OnboardingSnapshot = {
   business_hours: unknown[];
   staff_hours: unknown[];
 };
+type HourVersionRow = { starts_local: string; ends_local: string };
 
 type AvailabilitySlot = {
   staff_id: string;
@@ -62,11 +63,6 @@ function parseIntervals(value: unknown): IntervalInput[] | null {
   return result;
 }
 
-function parseExpectedIntervals(value: unknown): IntervalInput[] | null | undefined {
-  if (value === undefined || value === null) return null;
-  return parseIntervals(value) ?? undefined;
-}
-
 function validDateHorizon(date: string) {
   const target = Date.parse(`${date}T00:00:00Z`);
   const today = new Date();
@@ -83,16 +79,38 @@ function mutationError(message: string, fallbackCode: string, fallbackMessage: s
   if (message.includes('STALE_WRITE')) {
     return { code: 'STALE_WRITE', message: 'Çalışma ayarları başka bir oturumda değişti. Güncel bilgileri yükleyip tekrar deneyin.', status: 409 as const };
   }
+  if (message.includes('AVAILABILITY_BLOCKS_LIMIT_EXCEEDED')) {
+    return { code: 'AVAILABILITY_BLOCKS_LIMIT_EXCEEDED', message: 'Aktif izin ve kapanış sayısı güvenli sınıra ulaştı.', status: 409 as const };
+  }
   if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
     return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
   }
   if (message.includes('NOT_ALLOWED')) {
-    return { code: 'NOT_ALLOWED', message: 'Bu işlem için owner veya manager yetkisi gerekli.', status: 403 as const };
+    return { code: 'NOT_ALLOWED', message: 'Bu işlem için işletme sahibi veya yönetici yetkisi gerekli.', status: 403 as const };
   }
   if (message.includes('STAFF_NOT_FOUND') || message.includes('BUSINESS_NOT_FOUND')) {
     return { code: 'AVAILABILITY_TARGET_NOT_FOUND', message: 'İşletme veya personel bu çalışma alanında bulunamadı.', status: 404 as const };
   }
   return { code: fallbackCode, message: fallbackMessage, status: 400 as const };
+}
+
+function normalizedIntervals(rows: HourVersionRow[]) {
+  return rows.map((row) => ({
+    start: String(row.starts_local).slice(0, 5),
+    end: String(row.ends_local).slice(0, 5),
+  }));
+}
+
+async function readCurrentIntervals(
+  env: AuthEnv,
+  accessToken: string,
+  path: string,
+) {
+  const result = await supabaseRequest<HourVersionRow[]>(env, path, {}, accessToken);
+  if (!result.ok) return { error: 'READ_FAILED' as const };
+  const rows = result.data ?? [];
+  if (rows.length > 8) return { error: 'LIMIT_EXCEEDED' as const };
+  return { intervals: normalizedIntervals(rows) };
 }
 
 async function requireStandardMember(context: Parameters<typeof requireMember>[0]) {
@@ -113,7 +131,7 @@ async function requireManager(context: Parameters<typeof requireMember>[0]) {
   if ('error' in access) return access;
   if (!canManage(access.membership)) {
     return {
-      error: context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için owner veya manager yetkisi gerekli.' } }, 403),
+      error: context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için işletme sahibi veya yönetici yetkisi gerekli.' } }, 403),
     } as const;
   }
   return access;
@@ -174,9 +192,34 @@ availability.put('/business-hours/:weekday', async (context) => {
   const weekday = Number(context.req.param('weekday'));
   const body = await readJson(context);
   const intervals = parseIntervals(body?.intervals);
-  const expectedIntervals = parseExpectedIntervals(body?.expectedIntervals);
-  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6 || intervals === null || expectedIntervals === undefined) {
+  const hasExpected = body !== null
+    && typeof body === 'object'
+    && Object.prototype.hasOwnProperty.call(body, 'expectedIntervals');
+  let expectedIntervals = hasExpected ? parseIntervals(body?.expectedIntervals) : null;
+  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6 || intervals === null || (hasExpected && expectedIntervals === null)) {
     return context.json({ error: { code: 'INVALID_HOURS', message: 'Gün veya saat aralıkları geçerli değil.' } }, 400);
+  }
+
+  if (!hasExpected) {
+    const query = new URLSearchParams({
+      select: 'starts_local,ends_local',
+      business_id: `eq.${access.membership.business_id}`,
+      weekday: `eq.${weekday}`,
+      active: 'eq.true',
+      order: 'starts_local.asc,ends_local.asc',
+      limit: '9',
+    });
+    const current = await readCurrentIntervals(
+      context.env,
+      access.auth.accessToken,
+      `rest/v1/business_hours?${query}`,
+    );
+    if ('error' in current) {
+      const status = current.error === 'LIMIT_EXCEEDED' ? 409 : 502;
+      const code = current.error === 'LIMIT_EXCEEDED' ? 'AVAILABILITY_LIMIT_EXCEEDED' : 'AVAILABILITY_READ_FAILED';
+      return context.json({ error: { code, message: 'Çalışma saatlerinin güncel durumu doğrulanamadı.' } }, status);
+    }
+    expectedIntervals = current.intervals;
   }
 
   const result = await supabaseRequest<unknown[]>(context.env, 'rest/v1/rpc/replace_business_hours_guarded', {
@@ -203,9 +246,36 @@ availability.put('/staff/:staffId/hours/:weekday', async (context) => {
   const weekday = Number(context.req.param('weekday'));
   const body = await readJson(context);
   const intervals = parseIntervals(body?.intervals);
-  const expectedIntervals = parseExpectedIntervals(body?.expectedIntervals);
-  if (!isUuid(staffId) || !Number.isInteger(weekday) || weekday < 0 || weekday > 6 || intervals === null || expectedIntervals === undefined) {
+  const hasExpected = body !== null
+    && typeof body === 'object'
+    && Object.prototype.hasOwnProperty.call(body, 'expectedIntervals');
+  let expectedIntervals = hasExpected ? parseIntervals(body?.expectedIntervals) : null;
+  if (!isUuid(staffId) || !Number.isInteger(weekday) || weekday < 0 || weekday > 6
+      || intervals === null || (hasExpected && expectedIntervals === null)) {
     return context.json({ error: { code: 'INVALID_HOURS', message: 'Personel, gün veya saat aralıkları geçerli değil.' } }, 400);
+  }
+
+  if (!hasExpected) {
+    const query = new URLSearchParams({
+      select: 'starts_local,ends_local',
+      business_id: `eq.${access.membership.business_id}`,
+      staff_id: `eq.${staffId}`,
+      weekday: `eq.${weekday}`,
+      active: 'eq.true',
+      order: 'starts_local.asc,ends_local.asc',
+      limit: '9',
+    });
+    const current = await readCurrentIntervals(
+      context.env,
+      access.auth.accessToken,
+      `rest/v1/staff_hours?${query}`,
+    );
+    if ('error' in current) {
+      const status = current.error === 'LIMIT_EXCEEDED' ? 409 : 502;
+      const code = current.error === 'LIMIT_EXCEEDED' ? 'AVAILABILITY_LIMIT_EXCEEDED' : 'AVAILABILITY_READ_FAILED';
+      return context.json({ error: { code, message: 'Personel çalışma saatlerinin güncel durumu doğrulanamadı.' } }, status);
+    }
+    expectedIntervals = current.intervals;
   }
 
   const result = await supabaseRequest<unknown[]>(context.env, 'rest/v1/rpc/replace_staff_hours_guarded', {
