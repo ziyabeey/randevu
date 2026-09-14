@@ -4,7 +4,14 @@ export const MARKETING_DOCUMENT_META = {
   title: "Randevu kolay. | Kepenk.ai",
   description: "Kuaför, berber ve güzellik işletmeleri için kolay randevu yönetimi. Müşteri kendi alsın, takvimin karışmasın, kurulumu da birlikte yapalım.",
   canonical: "https://randevu.kepenk.ai/",
+  image: "https://randevu.kepenk.ai/marketing/hero/randevu-hero-model.webp",
+  imageAlt: "Randevu kolay",
+  imageWidth: "1928",
+  imageHeight: "1072",
   ogType: "website",
+  locale: "tr_TR",
+  siteName: "Kepenk.ai",
+  twitterCard: "summary_large_image",
 } as const;
 
 interface HeadMutation<T extends Element> {
@@ -95,6 +102,54 @@ export function useMarketingDocumentMeta(): void {
       upsertMeta('meta[property="og:type"]', {
         property: "og:type",
         content: MARKETING_DOCUMENT_META.ogType,
+      }),
+      upsertMeta('meta[property="og:url"]', {
+        property: "og:url",
+        content: MARKETING_DOCUMENT_META.canonical,
+      }),
+      upsertMeta('meta[property="og:locale"]', {
+        property: "og:locale",
+        content: MARKETING_DOCUMENT_META.locale,
+      }),
+      upsertMeta('meta[property="og:site_name"]', {
+        property: "og:site_name",
+        content: MARKETING_DOCUMENT_META.siteName,
+      }),
+      upsertMeta('meta[property="og:image"]', {
+        property: "og:image",
+        content: MARKETING_DOCUMENT_META.image,
+      }),
+      upsertMeta('meta[property="og:image:alt"]', {
+        property: "og:image:alt",
+        content: MARKETING_DOCUMENT_META.imageAlt,
+      }),
+      upsertMeta('meta[property="og:image:width"]', {
+        property: "og:image:width",
+        content: MARKETING_DOCUMENT_META.imageWidth,
+      }),
+      upsertMeta('meta[property="og:image:height"]', {
+        property: "og:image:height",
+        content: MARKETING_DOCUMENT_META.imageHeight,
+      }),
+      upsertMeta('meta[name="twitter:card"]', {
+        name: "twitter:card",
+        content: MARKETING_DOCUMENT_META.twitterCard,
+      }),
+      upsertMeta('meta[name="twitter:title"]', {
+        name: "twitter:title",
+        content: MARKETING_DOCUMENT_META.title,
+      }),
+      upsertMeta('meta[name="twitter:description"]', {
+        name: "twitter:description",
+        content: MARKETING_DOCUMENT_META.description,
+      }),
+      upsertMeta('meta[name="twitter:image"]', {
+        name: "twitter:image",
+        content: MARKETING_DOCUMENT_META.image,
+      }),
+      upsertMeta('meta[name="twitter:image:alt"]', {
+        name: "twitter:image:alt",
+        content: MARKETING_DOCUMENT_META.imageAlt,
       }),
       upsertCanonical(MARKETING_DOCUMENT_META.canonical),
     ];
