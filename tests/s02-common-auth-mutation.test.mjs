@@ -211,7 +211,7 @@ await test('S02 unknown unsafe API routes fail closed instead of inheriting an e
   assert.equal((await response.json()).error?.code, 'ORIGIN_FORBIDDEN');
 });
 
-const memberReads = ['/api/catalog', '/api/calendar', '/api/availability/setup', '/api/bookings', '/api/public/settings', '/api/team'];
+const memberReads = ['/api/catalog', '/api/calendar', '/api/availability/setup', '/api/bookings', '/api/customers', '/api/public/settings', '/api/team'];
 
 await test('S02 every member surface shares auth, refresh and membership failure semantics', async (t) => {
   const cases = [
@@ -304,6 +304,7 @@ const cookieMutations = [
   ['POST', '/api/services'], ['PATCH', '/api/services/:id'],
   ['POST', '/api/staff'], ['PATCH', '/api/staff/:id'], ['PUT', '/api/staff/:staffId/services/:serviceId'],
   ['POST', '/api/bookings'], ['POST', '/api/bookings/:id/reschedule'], ['POST', '/api/bookings/:id/status'],
+  ['POST', '/api/customers'], ['PATCH', '/api/customers/:id'],
   ['PUT', '/api/availability/business-hours/:weekday'], ['PUT', '/api/availability/staff/:staffId/hours/:weekday'],
   ['POST', '/api/availability/blocks'], ['DELETE', '/api/availability/blocks/:id'],
   ['PUT', '/api/public/settings'],

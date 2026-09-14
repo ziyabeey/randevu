@@ -4,6 +4,7 @@ import App from './App';
 import AvailabilityPage from './AvailabilityPage';
 import BookingPage from './BookingPage';
 import CalendarPage from './CalendarPage';
+import CustomersPage from './CustomersPage';
 import InvitePage from './InvitePage';
 import OnboardingPage from './OnboardingPage';
 import PublicBookingPage from './PublicBookingPage';
@@ -17,6 +18,7 @@ import './phase5.css';
 import './calendar.css';
 import './public-booking.css';
 import './customer-manage.css';
+import './customers.css';
 import './team.css';
 import './onboarding.css';
 
@@ -30,6 +32,7 @@ const path = window.location.pathname;
 const isAvailability = path === '/availability';
 const isBookings = path === '/bookings';
 const isCalendar = path === '/calendar';
+const isCustomers = path === '/customers';
 const isPublicSettings = path === '/public-booking';
 const isTeam = path === '/team';
 const isSetup = path === '/setup';
@@ -51,24 +54,27 @@ createRoot(root).render(
           ? <InvitePage />
           : isSetup
             ? <OnboardingPage />
-            : isCalendar
-              ? <CalendarPage />
-              : isAvailability
-                ? <AvailabilityPage />
-                : isBookings
-                  ? <BookingPage />
-                  : isPublicSettings
-                    ? <PublicBookingSettingsPage />
-                    : isTeam
-                      ? <TeamPage />
-                      : <App />}
+            : isCustomers
+              ? <CustomersPage />
+              : isCalendar
+                ? <CalendarPage />
+                : isAvailability
+                  ? <AvailabilityPage />
+                  : isBookings
+                    ? <BookingPage />
+                    : isPublicSettings
+                      ? <PublicBookingSettingsPage />
+                      : isTeam
+                        ? <TeamPage />
+                        : <App />}
     {!isPublicPage && !isManagementPage && !isInviteFlow && (
       <nav className="phase-nav" aria-label="Çalışma alanları">
         <a href="/calendar" aria-current={isCalendar ? 'page' : undefined}>Takvim</a>
         <a href="/bookings" aria-current={isBookings ? 'page' : undefined}>Randevular</a>
+        <a href="/customers" aria-current={isCustomers ? 'page' : undefined}>Müşteriler</a>
         <a href="/availability" aria-current={isAvailability ? 'page' : undefined}>Müsaitlik</a>
         <a href="/setup" aria-current={isSetup ? 'page' : undefined}>Kurulum</a>
-        <a href="/" aria-current={!isCalendar && !isAvailability && !isBookings && !isPublicSettings && !isTeam && !isSetup ? 'page' : undefined}>Hizmetler</a>
+        <a href="/" aria-current={!isCalendar && !isCustomers && !isAvailability && !isBookings && !isPublicSettings && !isTeam && !isSetup ? 'page' : undefined}>Hizmetler</a>
         <a href="/team" aria-current={isTeam ? 'page' : undefined}>Ekip</a>
         <a href="/public-booking" aria-current={isPublicSettings ? 'page' : undefined}>Public Sayfa</a>
       </nav>
