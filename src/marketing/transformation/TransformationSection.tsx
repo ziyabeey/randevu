@@ -143,7 +143,7 @@ export function TransformationSection() {
           className="mkt-transformation-video"
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           poster={VIDEO_POSTER}
           aria-hidden="true"
           tabIndex={-1}
