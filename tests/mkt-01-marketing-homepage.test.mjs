@@ -11,9 +11,12 @@ const hero = read('src/marketing/MarketingHero.tsx');
 const home = read('src/marketing/MarketingHome.tsx');
 const productStories = read('src/marketing/ProductStorySections.tsx');
 const transformation = read('src/marketing/transformation/TransformationSection.tsx');
+const transformationTuning = read('src/marketing/transformation/transformation-tuning.css');
 const scrubHook = read('src/marketing/transformation/useVideoScrollScrub.ts');
 const releaseGates = read('src/marketing/releaseGates.ts');
+const assets = read('src/marketing/assets.ts');
 const previewEntry = read('src/marketing/preview-entry.tsx');
+const previewModes = read('src/marketing/previewModes.ts');
 const previewHtml = read('marketing-preview.html');
 const marketingCopy = `${hero}\n${home}\n${productStories}\n${transformation}`;
 
@@ -77,14 +80,32 @@ test('MKT-01 motion remains scroll-owned, bounded, and non-autoplay', () => {
   assert.match(transformation, /muted/);
   assert.match(transformation, /playsInline/);
   assert.match(transformation, /preload="metadata"/);
-  assert.match(transformation, /randevu-transformation-final\.webp/);
+  assert.match(transformation, /MARKETING_ASSETS\.transformationVideo/);
+  assert.match(transformation, /MARKETING_ASSETS\.transformationPoster/);
+  assert.match(transformationTuning, /randevu-transformation-final\.webp/);
 });
 
-test('MKT-01 standalone preview exposes diagnostic, clean, and reduced-motion modes', () => {
+test('MKT-01 canonical asset manifest contains every required binary handoff', () => {
+  for (const asset of [
+    'randevu-hero-model.webp',
+    'randevu-transformation-master.mp4',
+    'randevu-transformation-poster.webp',
+    'randevu-transformation-final.webp',
+  ]) {
+    assert.ok(assets.includes(asset), `Missing marketing asset contract: ${asset}`);
+  }
+
+  assert.match(previewEntry, /MARKETING_PREVIEW_ASSETS/);
+  assert.match(transformation, /MARKETING_ASSETS/);
+  assert.match(hero, /MARKETING_ASSETS\.heroModel/);
+});
+
+test('MKT-01 standalone preview exposes diagnostic, clean, debug, and reduced-motion modes', () => {
   assert.match(previewHtml, /src\/marketing\/preview-entry\.tsx/);
-  assert.match(previewEntry, /get\("reduced"\) === "1"/);
-  assert.match(previewEntry, /get\("clean"\) === "1"/);
-  assert.match(previewEntry, /randevu-transformation-master\.mp4/);
-  assert.match(previewEntry, /randevu-transformation-final\.webp/);
+  assert.match(previewEntry, /readMarketingPreviewMode/);
   assert.match(previewEntry, /asset eksik/);
+
+  assert.match(previewModes, /params\.get\("reduced"\) === "1"/);
+  assert.match(previewModes, /params\.get\("clean"\) === "1"/);
+  assert.match(previewModes, /params\.get\("debug"\) === "1"/);
 });
