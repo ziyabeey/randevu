@@ -37,8 +37,9 @@ await test('F10-04 service editor preserves fixed-price minor units, duration an
   assert.match(panel, /Intl\.NumberFormat\('tr-TR'/);
 });
 
-await test('F10-04 failed create keeps user input and resets only after a successful mutation', () => {
-  assert.match(panel, /return true;[\s\S]*return false;/);
+await test('F10-04 create reset follows mutation success, not reload success', () => {
+  assert.match(panel, /await action\(\);[\s\S]*catch \(error\)[\s\S]*return false;/);
+  assert.match(panel, /await reload\(\);[\s\S]*Güncel görünüm yüklenemedi; sayfayı yenileyerek kontrol edin\.[\s\S]*return true;/);
   assert.equal((panel.match(/if \(saved\) form\.reset\(\);/g) ?? []).length, 2);
   assert.doesNotMatch(panel, /await mutate\([\s\S]{0,700}\);\s*form\.reset\(\);/);
 });
