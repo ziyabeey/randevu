@@ -64,6 +64,7 @@ Beceri adı listede görünse bile içeriği okunmadan “kullanıldı” sayıl
 ## Test ve geri bildirim döngüsü
 
 - Test, önemli davranışı kanıtlar: auth için yetkisiz/eskimiş oturum; DB için tenant ve RLS; migration için temiz kurulum ile upgrade; para için invariant, tekrar güvenliği ve audit; UI için kullanıcı eylemi ve görünen sonuç.
+- Auth/recovery sınırı kapatılırken yalnız raw table grant'larına bakmak yeterli değildir. Aynı korunan veriyi döndüren doğrudan `GRANT EXECUTE` verilmiş `SECURITY DEFINER` RPC/function yüzeyleri, view'lar ve diğer Data API yolları da capability envanterine dahil edilir. Bir tablo `SELECT` revoke'u, aynı PII'yi döndüren executable RPC açık kalıyorsa authority kapanışı sayılmaz; fail-closed standart-session sınırı yüzey bazında kanıtlanır.
 - Bu örnekler yalnız ilgili risk varsa zorunludur; reversible bir UI değişikliği için gereksiz DB/concurrency/staging töreni kurulmaz.
 - Uygulama ayrıntısını aynalayan veya yalnız mock'u doğrulayan test kabul kanıtı değildir.
 - Aynı hipotez 2–3 kez başarısız olursa yeni rastgele varyasyon deneme. Hipotezi, komutları, çıktıyı ve değişen dosyaları kaydet; koordinatör incelemesinden sonra devam et.
