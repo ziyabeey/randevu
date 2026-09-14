@@ -46,7 +46,7 @@ function PreviewDiagnostics() {
         return;
       }
 
-      const missingAssets = checks.filter((asset): asset is string => asset !== null);
+      const missingAssets: string[] = checks.flatMap((asset) => (asset === null ? [] : [asset]));
       setMissing(missingAssets);
       setStatus(missingAssets.length === 0 ? "ready" : "missing");
     };
