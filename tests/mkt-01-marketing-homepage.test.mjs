@@ -78,22 +78,25 @@ test('MKT-01 production document metadata is explicit while standalone preview s
   assert.match(previewHtml, /name="robots" content="noindex,nofollow"/);
 });
 
-test('MKT-01 publish gates stay explicit and fail closed where policy is not ready', () => {
+test('MKT-01 publish gates stay explicit and fail closed where policy or acceptance is not ready', () => {
   for (const gate of [
     'publicBooking: true',
     'calendarAvailability: true',
     'onboardingAssistance: true',
     'dailyAppointmentSummary: true',
-    'customerMemory: true',
   ]) assert.ok(releaseGates.includes(gate), `Expected released gate: ${gate}`);
 
   assert.match(releaseGates, /reminders:\s*false/);
+  assert.match(releaseGates, /customerMemory:\s*false/);
   assert.match(releaseGates, /MARKETING_CONTACT_HREF:\s*string \| null = null/);
   assert.match(releaseGates, /pricingPolicy:\s*false/);
   assert.match(releaseGates, /pilotProof:\s*false/);
   assert.match(releaseGates, /contactFlow:\s*MARKETING_CONTACT_HREF !== null/);
+  assert.match(transformation, /Müşteri detayları da sırada\./);
+  assert.match(transformation, /kabul süreci tamamlandığında burada gerçek ürün kanıtını göstereceğiz\./);
   assert.match(transformation, /Hatırlatma akışı hazırlanıyor\./);
   assert.match(transformation, /Yayına girdiğinde burada gerçek akışı göstereceğiz\./);
+  assert.match(transformation, /Müşteri detayları ve hatırlatma akışları hazır olduğunda burada gerçek ürün kanıtıyla gösterelim\./);
 });
 
 test('MKT-01 does not publish fake pricing, finance claims, or fabricated social proof', () => {
