@@ -25,6 +25,14 @@ await test('F10-05 list and history reads are abortable and generation-scoped', 
   assert.match(page, /generation !== historyGeneration\.current/);
 });
 
+await test('F10-05 customer selection does not recreate the mount loader or abort its own history read', () => {
+  assert.match(page, /const selectedIdRef = useRef<string \| null>\(null\)/);
+  assert.match(page, /selectedIdRef\.current = customerId/);
+  assert.match(page, /row\.customer_id === selectedIdRef\.current/);
+  assert.doesNotMatch(page, /\}, \[selectedId\]\);\n\n  const loadHistory/);
+  assert.match(page, /const loadPage = useCallback[\s\S]*?\}, \[loadCustomers\]\);/);
+});
+
 await test('F10-05 tenant switch clears scoped state and hard-navigates only after server selection', () => {
   const switchBody = page.match(/async function switchBusiness[\s\S]*?\n  }\n\n  async function createCustomer/)?.[0] ?? '';
   assert.match(switchBody, /cancelBusinessScopedReads\(\)/);
