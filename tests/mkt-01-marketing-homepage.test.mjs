@@ -44,6 +44,15 @@ test('MKT-01 keeps the approved homepage story spine', () => {
   assert.match(home, /<summary aria-label="Randevu menüsünü aç">/);
 });
 
+test('MKT-01 hero exposes its LCP media as a priority image', () => {
+  assert.match(hero, /<img/);
+  assert.match(hero, /src=\{MARKETING_ASSETS\.heroModel\}/);
+  assert.match(hero, /fetchPriority="high"/);
+  assert.match(hero, /decoding="async"/);
+  assert.match(hero, /width=\{1928\}/);
+  assert.match(hero, /height=\{1072\}/);
+});
+
 test('MKT-01 publish gates stay explicit and fail closed where policy is not ready', () => {
   for (const gate of [
     'publicBooking: true',
