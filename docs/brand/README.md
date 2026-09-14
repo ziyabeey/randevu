@@ -14,6 +14,7 @@ Randevu ürününün onaylı marka ve marketing sistemi bu klasörde tutulur.
 - [`randevu-lookdev-selection-criteria.md`](randevu-lookdev-selection-criteria.md) — görsel adayları için 100 puanlık seçim sistemi, frame eşikleri, e-kolay DNA testi, beauty/SaaS red flag'leri ve production kabul kapısı.
 - [`randevu-lookdev-master-decision.md`](randevu-lookdev-master-decision.md) — ürün sahibinin seçtiği Frame 01 ve Frame 05 master yönleri; model, saç, wardrobe, UI yoğunluğu ve continuity kararları.
 - [`randevu-motion-blueprint-frame06-07.md`](randevu-motion-blueprint-frame06-07.md) — saç parçalarının düşüşü, friction chip'leri, kamera takibi, tek sweep temizliği, lime trail ve pricing baseline morph için uygulama motion sözleşmesi.
+- [`randevu-3d-scrollytelling-implementation-blueprint.md`](randevu-3d-scrollytelling-implementation-blueprint.md) — React Three Fiber + GSAP + Blender hibrit üretim yaklaşımı, proxy spike, dosya mimarisi, scroll state machine ve standing→seated implementation planı.
 
 Ürün ekranlarının bağlayıcı işlev/akış sınırı ayrıca [`../plan/f12-01-visual-flow-contract.md`](../plan/f12-01-visual-flow-contract.md) içindedir.
 
