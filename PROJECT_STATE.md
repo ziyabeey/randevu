@@ -4,43 +4,50 @@
 
 ## Devam noktası
 
-**GS stabilization kapısı kapalıdır ve F10-02 tamamlanmıştır.** S01…S08 kendi kabul ölçütleriyle tamamlandı; F12-01 ürün/tasarım sözleşmesi ve F10-02 davet/üyelik/rol teslimi main'dedir. Güncel doğrulanmış main: `4d07cb07d6cf2e6815ec83edc0dad31ad855ccdd`; merge sonrası [main CI #616](https://github.com/ziyabeey1-ai/randevu/actions/runs/34825489625) başarılıdır.
+**GS stabilization kapısı kapalıdır; F10-02 ve F10-03 tamamlanmıştır.** S01…S08 kendi kabul ölçütleriyle tamamlandı; F12-01 ürün/tasarım sözleşmesi, F10-02 davet/üyelik/rol teslimi ve F10-03 işletme geçişi/onboarding akışı main'dedir. F10-03 feature merge commit'i `0be2a5bdd857fe95625ea56374aab6cb3fbdbd24`; merge sonrası [main CI #643](https://github.com/ziyabeey1-ai/randevu/actions/runs/34834526885) başarılıdır.
 
 Son kabul edilen ürün teslimleri:
 
 - **F12-01 tamamlandı.** Görsel yön ve akış sözleşmesi [PR #61](https://github.com/ziyabeey1-ai/randevu/pull/61) ile main'e girdi. SalonApp sabit alt menü sırası `Randevular / Adisyonlar / Yeni / Müşteriler / Diğer` olarak bağlayıcıdır; desktop-shell esnekliği yalnız Randevu Paneli içindir. Çalışan müşteri paneli teslimi değildir; sonraki F12 işleri kendi bağımlılıklarını bekler.
 - **F10-02 tamamlandı.** [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32) merge commit'i `4d07cb07d6cf2e6815ec83edc0dad31ad855ccdd`'dir. Implementation/staging kabul head'i `958bb27debe72f23c801ee7985ad8480fd1ed600`; [CI #613](https://github.com/ziyabeey1-ai/randevu/actions/runs/34823672970) ve [Staging deploy #30](https://github.com/ziyabeey1-ai/randevu/actions/runs/34824049900) başarılıdır. İki gerçek Auth hesabıyla invite binding/replay/revoke/expiry, tenant sınırı, rol ve mali izinler, StaffProfile↔Membership link, live deactivation ve last-owner race doğrulandı. Ajan A final bağımsız güvenlik + DB/access incelemesinde **ACCEPTABLE** verdi. Acceptance-marker head `92e232898ed81a050e95fee6fab6ea54c8072e47` için [CI #615](https://github.com/ziyabeey1-ai/randevu/actions/runs/34825241482) başarılıdır.
+- **F10-03 tamamlandı.** [PR #72](https://github.com/ziyabeey1-ai/randevu/pull/72) ile ikinci işletme oluşturma/seçme, `/setup` onboarding, owner-as-staff, stale tenant-state izolasyonu ve fail-closed public readiness main'e girdi. Repair code head `d8bf7296269ce048e21c39c08f1eb67963dcda94` için [CI #638](https://github.com/ziyabeey1-ai/randevu/actions/runs/34832424294), bağımsız review head `5e51681d4071088c6846aa8ed628b23058bae1b4` için [CI #640](https://github.com/ziyabeey1-ai/randevu/actions/runs/34832787839), acceptance-marker head `ab0413bc8c27e57758de95e707271887fba73a56` için [CI #642](https://github.com/ziyabeey1-ai/randevu/actions/runs/34834272453) ve merge sonrası main CI #643 başarılıdır. Ajan A final security + DB/access incelemesinde **ACCEPTABLE — blocker yok** verdi; DANIŞMA 2 final kabulü verdi.
 
 F10-02 staging teşhisinde hosted Auth/JWT, RLS ve object grant'ların doğru olduğu; `/api/session` hatasının PostgREST ilişki ambiguity'sinden kaynaklandığı kanıtlandı. Aktif session snapshot sorgusu doğrudan `memberships_business_id_fkey` ilişkisini seçer ve regresyon testi bunu kilitler. Auth/recovery authority, grant veya RLS sınırı gevşetilmedi.
+
+F10-03'te onboarding ilerlemesi ayrı wizard tablosu yerine gerçek hizmet/personel/eşleşme/mesai durumundan türetilir. Onboarding snapshot, S07 katalog sınırlarını kullanan bounded DB RPC üzerinden atomik okunur; 101 business-hours / 5001 staff-hours taşması partial success değildir. Aynı readiness otoritesi public business/services/staff/slots ve public appointment create zincirini fail-closed kapatır. Saved `enabled=true` tercihi readiness kaybında sessizce değiştirilmez; yapı düzelene kadar public erişim kapanır. Worker service-role veya yeni yetki modeli eklenmedi.
 
 GS'nin ayrıntılı kanıt zinciri ve kabul sınırları [GS devir kaydında](docs/handoffs/GS.md) sabittir. Tamamlanan işler yeni bir bulgu nedeniyle geriye dönük olarak genişletilmez; yeni iş gerçek ürün/operasyon sahibine taşınır.
 
 ## Aktif sıra
 
-1. **F10-03 — İşletme geçişi ve kurulum akışı:** F10-02 main'de tamamlandığı için başlangıç kapısı açıktır. Ajan C için makro paket ayrılmıştır. Güncel main'den claim/branch açılır; ikinci işletme, yetkili işletme seçimi, onboarding `işletme → hizmet → personel → çalışma saatleri → önizleme → yayın`, owner-as-staff, incomplete resume ve stale tenant-state izolasyonu teslim edilir.
-2. **F10-04 / F10-05 / F12-02:** F10-03 main'de `Tamamlandı` olana kadar feature branch/claim açılmaz. F10-03 kabulünden sonra C:F10-04, A:F10-05 ve B:F12-02 dependency-safe biçimde paralel açılabilir.
-3. Diğer ürün işleri yalnız TASKS/ROADMAP bağımlılıkları sağlandıkça açılır. Ortak SQL/router/CI alanlarında tek-yazıcı veya açık merge sırası korunur; bütün fazlar aynı anda başlatılmaz.
+1. **Üç paralel dependency-safe lane açıktır:**
+   - **Ajan C — F10-04: Hizmet, personel ve çalışma ayarları.** F10-03 main'de tamamlandığı için başlayabilir. Mevcut katalog/availability/F10-03 setup sözleşmesini genişletir; ikinci katalog veya mesai motoru kurmaz.
+   - **Ajan A — F10-05: İşletmenin müşteri kayıtları.** F10-03 main'de tamamlandığı için başlayabilir. Tenant-scoped müşteri arama/listeleme/oluşturma/düzenleme/iletişim + randevu geçmişi; duplicate ve pagination negatifleriyle teslim edilir.
+   - **Ajan B — F12-02: Salon profili ve public fotoğraflar.** F12-01 + F10-03 tamamlandığı için başlayabilir. Profil/public medya sözleşmesi, tenant auth, boyut/tip/count, unpublished/fallback ve orphan cleanup sınırlarıyla teslim edilir. Gerçek marka/fotoğraf varlığının eksikliği güvenli placeholder ile işlevsel uygulamayı engellemez; final gerçek-varlık kabulü ayrıca kaydedilir.
+2. **Sonraki bağımlılıklar:** F10-06, F10-04 + F10-05 tamamlanmasını bekler. F12-03, F10-04'ü bekler. F12-04, F12-02 + F12-03 + F11-02'yi bekler. Yeni görevler yalnız TASKS/ROADMAP bağımlılıkları sağlandıkça açılır.
+3. Ortak SQL/router/CI alanlarında tek-yazıcı veya açık merge sırası korunur. Paralel ajanlar yalnız kendi TASKS satırına dokunur; migration/router conflict görünürse koordinatör merge sırası belirler.
 
 ## Doğrulanmış teknik temel
 
 | Alan | Main'deki doğrulanmış durum | Sonraki ürün/operasyon işi |
 | --- | --- | --- |
 | React/Vite/TypeScript + Worker/Hono | Tek uygulama/backend korunuyor | Mimariyi gereksiz büyütme |
-| Auth + Business/Membership + RLS | F10-01 + S01/S02 + F10-02; recovery/PKCE, refresh, cookie mutation, invite/rol/mali izin, live deactivation ve last-owner sınırı gerçek staging'de doğrulandı | F10-03 işletme geçişi/onboarding |
-| Hizmet/personel/eşleştirme | Faz 3 temel tabloları ve mevcut katalog main'de; Membership ile StaffProfile ayrımı F10-02'de korunuyor | F10-03 owner-as-staff/onboarding; F10-04 yönetim; F12-03 kategori/fiyat |
-| Mesai/kapanış/timezone | Faz 4 mevcut | F10-03 publish readiness; F10-04 ayarlar; F11 çok-hizmet uyumu |
+| Auth + Business/Membership + RLS | F10-01 + S01/S02 + F10-02 + F10-03; recovery/PKCE, refresh, cookie mutation, invite/rol/mali izin, live deactivation, last-owner ve business-switch authority doğrulandı | F10-04 ayarlar, F10-05 müşteri kayıtları |
+| Hizmet/personel/eşleştirme | Faz 3 temel tabloları; Membership/StaffProfile ayrımı F10-02'de, owner-as-staff onboarding F10-03'te korunuyor | F10-04 tam yönetim; F12-03 kategori/fiyat |
+| Mesai/kapanış/timezone | Faz 4 + F10-03 structural publish readiness | F10-04 ayarlar; F11 çok-hizmet uyumu |
 | Booking/customer/audit/idempotency | Faz 5 + F09 + S07 v2 recovery; bounded list/read yolları | F10-05 müşteri kayıtları; F11 grup modeli; F13 güncellik/listeler |
-| Public booking/manage capability | Faz 6–7 + F09/S04/S07; F10-02 session embed FK ilişkisi explicit | F10-03 fail-closed publish readiness; F12 müşteri yüzeyi |
+| Public booking/manage capability | Faz 6–7 + F09/S04/S07; F10-03 readiness public business/services/staff/slots/create zincirini fail-closed kapatıyor | F12-02 profil/fotoğraf ve sonraki müşteri yüzeyi |
+| Onboarding / işletme geçişi | F10-03 main'de; bounded snapshot, incomplete resume, owner-as-staff, A/B switch stale-state izolasyonu ve publish readiness mevcut | F10-04 yönetim yüzeyleri; F12-02 profil |
 | Takvim | Gün/hafta temeli mevcut; S07 DB bütçesi/sessiz kırpma sınırı uygulandı | F13 yarış/güncellik, gün/hafta/liste UX |
 | Bildirim outbox | F09-03/05 + S03 + S07 retention/timeout | F16-02 hatırlatma/SMS/lifecycle |
-| Abuse/resource bounds | S04 kotaları + S07 runtime/read sınırları | Gerçek production/pilot gözlemi F17-03/05 |
-| Staging/deploy/CI | F17-01/02 + S05/S06; routine/rotation, required CI ve main ruleset doğrulandı; F10-02 staging #30 + main CI #616 yeşil | F17-03 yayın/rollback/backup gözlemi |
-| Future DB ACL | S08; `anon`/`authenticated` future object default grants hosted staging'de 0 | Yeni migration'larda explicit grant + RLS; exposed-schema takibi F17-03 |
-| Görsel yön | F12-01 main'de; üç ürün kolu ve bağlayıcı SalonApp alt menü sözleşmesi mevcut | F12-02+ uygulama |
+| Abuse/resource bounds | S04 kotaları + S07 runtime/read sınırları + F10-03 bounded onboarding | Gerçek production/pilot gözlemi F17-03/05 |
+| Staging/deploy/CI | F17-01/02 + S05/S06; routine/rotation, required CI ve main ruleset doğrulandı; F10-02 staging #30; F10-03 CI #638/#640/#642 + main CI #643 yeşil | F17-03 yayın/rollback/backup gözlemi |
+| Future DB ACL | S08; `anon`/`authenticated` future object default grants hosted staging'de 0; F10-03 yeni function/trigger yüzeyi explicit ACL ile kapalı | Yeni migration'larda explicit grant + RLS; exposed-schema takibi F17-03 |
+| Görsel yön | F12-01 main'de; üç ürün kolu ve bağlayıcı SalonApp alt menü sözleşmesi mevcut | F12-02 profil/public fotoğraf uygulaması |
 | SalonApp/adisyon/tahsilat | Henüz ürün uygulaması yok | F14 |
 | Ürün/stok/masraf/kasa | Henüz ürün uygulaması yok | F15 |
 | Paket/promosyon/prim/fotoğraf/yorum/dil | Planlandı | F16 |
-| Kontrollü pilot | Yapılmadı | F17-04/05; staging yeşili pilot kabulü değildir |
+| Kontrollü pilot | Yapılmadı | F17-04/05; staging/CI yeşili pilot kabulü değildir |
 
 Mevcut veri erişimi Supabase HTTP/RPC'dir. pg/Hyperdrive geçişi, yeni mikroservis veya ikinci booking/mali motor bu planın parçası değildir.
 
@@ -63,10 +70,11 @@ Mevcut veri erişimi Supabase HTTP/RPC'dir. pg/Hyperdrive geçişi, yeni mikrose
 | --- | --- |
 | F12-01 | [PR #61](https://github.com/ziyabeey1-ai/randevu/pull/61), [devir](docs/handoffs/F12-01.md), final ürün/tasarım kabulü |
 | F10-02 | [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32), [devir](docs/handoffs/F10-02.md), CI #613, staging #30, bağımsız Ajan A ACCEPTABLE, acceptance-marker CI #615, main CI #616 |
+| F10-03 | [PR #72](https://github.com/ziyabeey1-ai/randevu/pull/72), [devir](docs/handoffs/F10-03.md), repair CI #638, review CI #640, Ajan A ACCEPTABLE, acceptance-marker CI #642, main CI #643 |
 
 ## Adlandırılmış açık takipler
 
-Bunlar **GS'yi veya tamamlanmış F10-02'yi yeniden açmaz**.
+Bunlar **GS'yi veya tamamlanmış F10-02/F10-03 kartlarını yeniden açmaz**.
 
 ### F17-03 — yayın/operasyon hardening
 
@@ -99,4 +107,4 @@ S07 keyset kabulü, dışarıdan eşzamanlı sıralama-anahtarı mutasyonu olmay
 
 ## Sonraki somut adım
 
-**F10-03 — İşletme geçişi ve kurulum akışı** güncel main'den Ajan C tarafından claim edilip tam makro paket olarak yürütülür. F10-04, F10-05 ve F12-02 F10-03 main'de `Tamamlandı` olmadan başlamaz.
+F10-03 tamamlandığı için aynı kanonik main'den üç bağımsız lane açılır: **Ajan C → F10-04**, **Ajan A → F10-05**, **Ajan B → F12-02**. Her ajan atomik claim + kendi branch'i + yalnız kendi TASKS satırı ile çalışır; draft PR, exact-head CI, handoff ve bağımsız/koordinatör review kuralı korunur.
