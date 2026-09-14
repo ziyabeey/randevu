@@ -1,0 +1,32 @@
+.mkt-final-cta {
+  background: var(--mkt-cobalt-deep);
+  color: white;
+}
+
+.mkt-final-cta .mkt-eyebrow {
+  color: var(--mkt-lime);
+}
+
+.mkt-final-cta h2,
+.mkt-final-cta > p:not(.mkt-eyebrow) {
+  color: white;
+}
+
+.mkt-final-cta .mkt-button--dark {
+  background: var(--mkt-lime);
+  color: var(--mkt-cobalt-deep) !important;
+  box-shadow: 0 14px 34px rgba(198, 232, 0, 0.18);
+}
+
+.mkt-final-orb {
+  background: var(--mkt-cobalt);
+  opacity: 0.74;
+}
+
+.mkt-final-lockup {
+  color: white;
+}
+
+.mkt-final-lockup > small {
+  color: var(--mkt-cobalt-deep);
+}
