@@ -275,6 +275,38 @@
   }
 }
 
+@media (max-width: 680px) and (max-height: 720px) {
+  .mkt-story {
+    bottom: 48px;
+  }
+
+  .mkt-story h2 {
+    font-size: clamp(2.25rem, 10.5vw, 3.35rem);
+  }
+
+  .mkt-story-copy {
+    display: none;
+  }
+
+  .mkt-friction-chips {
+    margin-top: 14px;
+  }
+
+  .mkt-pricing-card {
+    margin-top: 16px;
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .mkt-pricing-card p {
+    display: none;
+  }
+
+  .mkt-scroll-cue {
+    display: none;
+  }
+}
+
 @media (max-width: 390px) {
   .mkt-nav {
     gap: 8px;
