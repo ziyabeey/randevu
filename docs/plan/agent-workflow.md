@@ -66,13 +66,12 @@ Beceri adı listede görünse bile içeriği okunmadan “kullanıldı” sayıl
 - Test, önemli davranışı kanıtlar: auth için yetkisiz/eskimiş oturum; DB için tenant ve RLS; migration için temiz kurulum ile upgrade; para için invariant, tekrar güvenliği ve audit; UI için kullanıcı eylemi ve görünen sonuç.
 - Bu örnekler yalnız ilgili risk varsa zorunludur; reversible bir UI değişikliği için gereksiz DB/concurrency/staging töreni kurulmaz.
 - Uygulama ayrıntısını aynalayan veya yalnız mock'u doğrulayan test kabul kanıtı değildir.
-- Bir gerçek-browser runner birden fazla kullanıcı davranışı/senaryosu doğruluyorsa stabil, insan-okunur senaryo adları raporlar. Helper biçimi serbesttir; failure yalnız satır/assert mesajıyla değil kırılan kabul senaryosunun adıyla teşhis edilebilir olmalıdır.
 - Aynı hipotez 2–3 kez başarısız olursa yeni rastgele varyasyon deneme. Hipotezi, komutları, çıktıyı ve değişen dosyaları kaydet; koordinatör incelemesinden sonra devam et.
 - Somut yeni risk, kod değişimi veya gerekli merge sonucu yoksa tam suite'i tekrarlama. Mevcut CI kapıları ancak S06 kapsamında ayrı, incelenmiş bir kod değişikliğiyle değişir.
 - Yalnız doküman PR'ında yerel linkler, görev bağımlılıkları, durum ifadeleri ve diff kontrol edilir. Repo politikası CI gerektiriyorsa mevcut kapı ayrıca çalıştırılır.
+- Bir carry-forward/boundary metni kısaltılırken **pozitif garanti, negatif sınır, exact risk alanı/kolonu ve exact hedef kart** kaybolamaz. Bunlardan biri düşüyorsa “concise” değişiklik kabul edilmez. Head'e bağlı repo gözlemi taşınıyorsa doğrulandığı head SHA'sı da metinde kalır ve kart açılırken current main'de yeniden doğrulanır.
+- Bir real-browser runner birden fazla davranış senaryosunu kapsıyorsa failure çıktısı insan-okunur stabil senaryo adı taşımalıdır; yalnız dosya/satır/assert mesajına dayanmak yeterli kabul kanıtı değildir.
 
 ## Devredilebilir kanıt
 
 Devir, yalnız bir önceki sohbeti bilen kişinin değil, yeni bir oturumun doğrudan devam edebileceği ayrıntıyı taşır. En az şu alanlar bulunur: görev; validation budget; base SHA; branch; head commit ve PR; değişen dosyalar; kontratlar; okunan beceri; test kanıtı; başarısız/atlanmış kontrol; engel; sonraki tek somut adım. Geçici talimat, sahiplik veya kritik karar yalnız sohbet içinde bırakılamaz.
-
-İleri faza taşınan bir teknik sınır `F13'te çözülür` gibi jenerik cümleye sıkıştırılmaz. Carry-forward en az **pozitif garanti**, **negatif sınır**, **exact risk yüzeyi** (kolon/route/akış), **exact hedef task** ve yanlış sahiplenme riski varsa **exclusion** bilgisini korur. Kısaltma bu bilgiden birini siliyorsa boundary metni kısaltılmaz.
