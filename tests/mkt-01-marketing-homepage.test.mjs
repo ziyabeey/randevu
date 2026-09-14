@@ -99,6 +99,18 @@ test('MKT-01 publish gates stay explicit and fail closed where policy or accepta
   assert.match(transformation, /Müşteri detayları ve hatırlatma akışları hazır olduğunda burada gerçek ürün kanıtıyla gösterelim\./);
 });
 
+test('MKT-01 prelaunch pricing and contact states are explicit instead of dead or misleading controls', () => {
+  assert.match(transformation, /Fiyatlandırma yakında/);
+  assert.match(transformation, /Paket yapısı netleştiğinde fiyatı burada açıkça göstereceğiz\./);
+  assert.match(transformation, /Fiyat politikası netleşiyor\./);
+  assert.doesNotMatch(transformation, /Ne alacağını, ne ödeyeceğini ilk bakışta gör\./);
+
+  assert.match(home, /data-contact-flow-ready=\{contactReady \? "true" : "false"\}/);
+  assert.match(home, /Birlikte kurulum yakında açılıyor\./);
+  assert.match(home, /İletişim kanalı yayın entegrasyonuyla birlikte aktif olacak\./);
+  assert.doesNotMatch(home, /<button[\s\S]*?disabled/);
+});
+
 test('MKT-01 does not publish fake pricing, finance claims, or fabricated social proof', () => {
   assert.doesNotMatch(marketingCopy, /₺\s*\d/i);
   assert.doesNotMatch(marketingCopy, /\b\d{2,6}\s*TL\b/i);
