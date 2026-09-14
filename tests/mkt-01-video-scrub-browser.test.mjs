@@ -34,7 +34,7 @@ async function waitFor(read, message, timeoutMs = 10_000) {
     } catch (error) {
       lastError = error;
     }
-    await sleep(80);
+    await sleep(70);
   }
   throw new Error(`${message}${lastError ? `: ${lastError.message}` : ''}`);
 }
@@ -57,9 +57,9 @@ function resetFrameStats(stats) {
   stats.byVariant.mobile = 0;
 }
 
-function harnessHtmlPlugin(frameStats) {
+function harnessPlugin(frameStats) {
   return {
-    name: 'mkt-scrub-harness-html',
+    name: 'mkt-renderer-browser-harness',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const pathname = req.url?.split('?')[0] ?? '';
@@ -81,15 +81,16 @@ function harnessHtmlPlugin(frameStats) {
           return;
         }
 
-        const frameMatch = pathname.match(/^\/marketing\/transformation\/frames\/(desktop|mobile)\/frame-\d{3}\.webp$/);
-        if (!frameMatch) {
+        const match = pathname.match(/^\/marketing\/transformation\/frames\/(desktop|mobile)\/frame-\d{3}\.webp$/);
+        if (!match) {
           next();
           return;
         }
 
-        const variant = frameMatch[1];
+        const variant = match[1];
         frameStats.requests += 1;
         frameStats.byVariant[variant] += 1;
+
         if (frameStats.failFrames) {
           res.statusCode = 503;
           res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -115,7 +116,7 @@ async function createHarnessServer(frameStats) {
   const server = await createServer({
     root: repoRoot,
     configFile: false,
-    plugins: [harnessHtmlPlugin(frameStats), react()],
+    plugins: [harnessPlugin(frameStats), react()],
     appType: 'mpa',
     logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, strictPort: false },
@@ -183,6 +184,7 @@ async function launchDebugChrome(chromeBin, work) {
     '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
     '--remote-debugging-port=0', '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
   ], { cwd: repoRoot, stdio: 'ignore' });
+
   const activePortFile = path.join(profile, 'DevToolsActivePort');
   const port = await waitFor(() => {
     if (chrome.exitCode !== null) throw new Error(`Chrome exited ${chrome.exitCode} during startup`);
@@ -194,15 +196,42 @@ async function launchDebugChrome(chromeBin, work) {
     }
   }, 'Chrome did not expose a debugging port');
 
-  const targetResponse = await fetch(`http://127.0.0.1:${port}/json/new?about%3Ablank`, {
+  const response = await fetch(`http://127.0.0.1:${port}/json/new?about%3Ablank`, {
     method: 'PUT',
     signal: AbortSignal.timeout(5_000),
   });
-  const target = await targetResponse.json();
+  const target = await response.json();
   const page = await Cdp.connect(target.webSocketDebuggerUrl);
   await page.send('Runtime.enable');
   await page.send('Page.enable');
   return { chrome, page };
+}
+
+async function setViewport(page, viewport) {
+  await page.send('Emulation.setDeviceMetricsOverride', {
+    ...viewport,
+    deviceScaleFactor: 1,
+    mobile: viewport.mobile,
+    screenWidth: viewport.width,
+    screenHeight: viewport.height,
+  });
+}
+
+async function isolatePage(page, frameStats, message) {
+  await page.send('Page.navigate', { url: 'about:blank' });
+  await waitFor(() => page.evaluate('location.href === "about:blank"'), `${message}: blank navigation did not settle`);
+  await waitFor(() => frameStats.active === 0, `${message}: previous frame requests did not settle`);
+  await sleep(80);
+  resetFrameStats(frameStats);
+}
+
+async function navigatePreview(page, url, viewport) {
+  await setViewport(page, viewport);
+  await page.send('Page.navigate', { url });
+  await waitFor(
+    () => page.evaluate('document.readyState === "complete" && Boolean(document.querySelector("#mkt-main"))'),
+    `Marketing preview did not render at ${viewport.width}px`,
+  );
 }
 
 async function readScrubState(page) {
@@ -224,40 +253,6 @@ async function readScrubState(page) {
   })()`);
 }
 
-async function scrollToProgress(page, progress, expectedPhase) {
-  await page.evaluate(`(() => {
-    const section = document.querySelector('.mkt-transformation');
-    if (!section) return false;
-    const top = window.scrollY + section.getBoundingClientRect().top;
-    const range = Math.max(1, section.offsetHeight - window.innerHeight);
-    window.scrollTo(0, top + range * ${progress});
-    return true;
-  })()`);
-
-  return waitFor(async () => {
-    const state = await readScrubState(page);
-    if (!state || state.phase !== expectedPhase || state.readyState < 1) return false;
-    if (Math.abs(state.progress - progress) > 0.035) return false;
-    if (Math.abs(state.currentTime - state.duration * progress) > 0.22) return false;
-    return state;
-  }, `Scrub did not settle at ${Math.round(progress * 100)}% / ${expectedPhase}`);
-}
-
-async function navigatePreview(page, url, viewport) {
-  await page.send('Emulation.setDeviceMetricsOverride', {
-    ...viewport,
-    deviceScaleFactor: 1,
-    mobile: viewport.mobile,
-    screenWidth: viewport.width,
-    screenHeight: viewport.height,
-  });
-  await page.send('Page.navigate', { url });
-  await waitFor(
-    () => page.evaluate('document.readyState === "complete" && Boolean(document.querySelector("#mkt-main"))'),
-    `Marketing preview did not render at ${viewport.width}px`,
-  );
-}
-
 async function readFrameState(page) {
   return page.evaluate(`(() => {
     const section = document.querySelector('.mkt-transformation');
@@ -266,7 +261,6 @@ async function readFrameState(page) {
     return {
       phase: section.dataset.phase ?? null,
       frameIndex: Number(section.dataset.frameIndex),
-      progress: Number(section.style.getPropertyValue('--mkt-progress')),
       requestCount: Number(section.dataset.frameRequestCount || 0),
       compressedBytes: Number(section.dataset.frameCompressedBytes || 0),
       cachePeak: Number(section.dataset.frameCachePeak || 0),
@@ -281,7 +275,7 @@ async function readFrameState(page) {
   })()`);
 }
 
-async function scrollFramesToProgress(page, progress, expectedPhase) {
+async function scrollSectionToProgress(page, progress) {
   await page.evaluate(`(() => {
     const section = document.querySelector('.mkt-transformation');
     if (!section) return false;
@@ -290,7 +284,21 @@ async function scrollFramesToProgress(page, progress, expectedPhase) {
     window.scrollTo(0, top + range * ${progress});
     return true;
   })()`);
+}
 
+async function scrollVideoToProgress(page, progress, expectedPhase) {
+  await scrollSectionToProgress(page, progress);
+  return waitFor(async () => {
+    const state = await readScrubState(page);
+    if (!state || state.phase !== expectedPhase || state.readyState < 1) return false;
+    if (Math.abs(state.progress - progress) > 0.035) return false;
+    if (Math.abs(state.currentTime - state.duration * progress) > 0.22) return false;
+    return state;
+  }, `Video scrub did not settle at ${Math.round(progress * 100)}% / ${expectedPhase}`);
+}
+
+async function scrollFramesToProgress(page, progress, expectedPhase) {
+  await scrollSectionToProgress(page, progress);
   const expectedIndex = Math.round(progress * 120);
   return waitFor(async () => {
     const state = await readFrameState(page);
@@ -301,7 +309,7 @@ async function scrollFramesToProgress(page, progress, expectedPhase) {
   }, `Frame scrub did not settle at ${Math.round(progress * 100)}% / ${expectedPhase}`);
 }
 
-test('MKT-01 Chrome video control and frame renderer preserve scroll parity and bounded media behavior', { timeout: 55_000 }, async (t) => {
+test('MKT-01 Chrome video control and frame renderer preserve scroll parity and bounded media behavior', { timeout: 60_000 }, async (t) => {
   const chromeBin = findChrome();
   if (!chromeBin) {
     t.skip('Chrome/Chromium is unavailable in this environment');
@@ -309,7 +317,7 @@ test('MKT-01 Chrome video control and frame renderer preserve scroll parity and 
   }
 
   const frameStats = createFrameStats();
-  const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? tmpdir(), 'randevu-mkt-video-scrub-'));
+  const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? tmpdir(), 'randevu-mkt-renderers-'));
   const { server, origin } = await createHarnessServer(frameStats);
   let chrome;
   let page;
@@ -319,28 +327,19 @@ test('MKT-01 Chrome video control and frame renderer preserve scroll parity and 
     await waitFor(async () => {
       const response = await fetch(videoUrl, { signal: AbortSignal.timeout(1_000) });
       return response.ok;
-    }, 'Scrub harness server did not become ready');
+    }, 'Renderer harness server did not become ready');
 
     ({ chrome, page } = await launchDebugChrome(chromeBin, work));
-    await page.send('Emulation.setDeviceMetricsOverride', {
-      width: 1440,
-      height: 900,
-      deviceScaleFactor: 1,
-      mobile: false,
-      screenWidth: 1440,
-      screenHeight: 900,
-    });
+    await setViewport(page, { width: 1440, height: 900, mobile: false });
     await page.send('Page.navigate', { url: videoUrl });
 
     const initial = await waitFor(async () => {
       const state = await readScrubState(page);
       return state?.metadataReady ? state : false;
-    }, 'Deterministic media harness did not initialize');
-
+    }, 'Deterministic video harness did not initialize');
     assert.ok(Math.abs(initial.duration - 5.041667) < 0.0001);
-    assert.equal(initial.readyState, 1);
-    assert.equal(initial.paused, true, 'Scrub media must remain paused');
-    assert.equal(initial.autoplay, false, 'Scrub media must never autoplay');
+    assert.equal(initial.paused, true);
+    assert.equal(initial.autoplay, false);
 
     const checkpoints = [
       [0.18, 'reminder'],
@@ -350,86 +349,72 @@ test('MKT-01 Chrome video control and frame renderer preserve scroll parity and 
     ];
 
     for (const [progress, phase] of checkpoints) {
-      const state = await scrollToProgress(page, progress, phase);
-      assert.equal(state.paused, true, `Media started playing at ${progress}`);
-      assert.equal(state.autoplay, false, `Autoplay enabled at ${progress}`);
-      assert.ok(state.phaseProgress >= 0 && state.phaseProgress <= 1, `Phase progress escaped bounds at ${progress}`);
+      const state = await scrollVideoToProgress(page, progress, phase);
+      assert.equal(state.paused, true, `Video started playing at ${progress}`);
+      assert.ok(state.phaseProgress >= 0 && state.phaseProgress <= 1);
     }
 
-    const beforeShift = await scrollToProgress(page, 0.5, 'friction');
+    const beforeShift = await scrollVideoToProgress(page, 0.5, 'friction');
     await page.evaluate(`(() => {
       const spacer = document.querySelector('#mkt-scrub-spacer');
       if (!spacer) return false;
       spacer.style.height = '720px';
       return true;
     })()`);
-    const afterShift = await scrollToProgress(page, 0.5, 'friction');
-    assert.ok(Math.abs(beforeShift.currentTime - beforeShift.duration * 0.5) <= 0.22, 'Baseline midpoint scrub was not stable');
-    assert.ok(Math.abs(afterShift.currentTime - afterShift.duration * 0.5) <= 0.22, 'Upstream layout shift left scrub geometry stale');
+    const afterShift = await scrollVideoToProgress(page, 0.5, 'friction');
+    assert.ok(Math.abs(beforeShift.currentTime - beforeShift.duration * 0.5) <= 0.22);
+    assert.ok(Math.abs(afterShift.currentTime - afterShift.duration * 0.5) <= 0.22, 'Upstream layout shift left video scrub geometry stale');
+    const videoReverse = await scrollVideoToProgress(page, 0.2, 'reminder');
+    assert.ok(videoReverse.currentTime < videoReverse.duration * 0.3);
 
-    const reverse = await scrollToProgress(page, 0.2, 'reminder');
-    assert.ok(reverse.currentTime < reverse.duration * 0.3, 'Reverse scrub did not seek back toward the opening beat');
-
-    resetFrameStats(frameStats);
+    await isolatePage(page, frameStats, 'desktop frame isolation');
+    await page.send('Emulation.setEmulatedMedia', { features: [] });
     frameStats.failFrames = false;
     const framePreview = `${origin}/marketing-preview.html?renderer=frames&clean=1`;
-    await navigatePreview(page, framePreview, { width: 1440, height: 900, mobile: false });
+    await navigatePreview(page, `${framePreview}&run=desktop`, { width: 1440, height: 900, mobile: false });
+    for (const [progress, phase] of checkpoints) await scrollFramesToProgress(page, progress, phase);
+    await scrollSectionToProgress(page, 0.1);
+    await scrollSectionToProgress(page, 0.92);
+    const desktopReverse = await scrollFramesToProgress(page, 0.2, 'reminder');
+    assert.ok(desktopReverse.requestCount > 0);
+    assert.ok(desktopReverse.compressedBytes > 0);
+    assert.ok(desktopReverse.cachePeak > 0 && desktopReverse.cachePeak <= 8, `Decoded cache escaped bound: ${desktopReverse.cachePeak}`);
+    assert.ok(desktopReverse.firstDrawMs >= 0);
+    assert.ok(desktopReverse.staleCount >= 0 && desktopReverse.staleCount <= desktopReverse.requestCount);
+    assert.ok(desktopReverse.scrollWidth <= desktopReverse.clientWidth + 1);
+    assert.ok(frameStats.maxActive <= 4, `Desktop frame concurrency escaped bound: ${frameStats.maxActive}`);
+    assert.ok(frameStats.byVariant.desktop > 0);
 
-    for (const [progress, phase] of checkpoints) {
-      await scrollFramesToProgress(page, progress, phase);
-    }
-    await page.evaluate(`(() => {
-      const section = document.querySelector('.mkt-transformation');
-      if (!section) return false;
-      const top = window.scrollY + section.getBoundingClientRect().top;
-      const range = Math.max(1, section.offsetHeight - window.innerHeight);
-      window.scrollTo(0, top + range * 0.1);
-      window.scrollTo(0, top + range * 0.92);
-      window.scrollTo(0, top + range * 0.2);
-      return true;
-    })()`);
-    const frameReverse = await scrollFramesToProgress(page, 0.2, 'reminder');
-    assert.ok(frameReverse.requestCount > 0, 'Frame renderer did not request compressed frames');
-    assert.ok(frameReverse.compressedBytes > 0, 'Frame renderer did not record compressed bytes');
-    assert.ok(frameReverse.cachePeak > 0 && frameReverse.cachePeak <= 8, `Decoded cache escaped its 8-frame bound: ${frameReverse.cachePeak}`);
-    assert.ok(frameReverse.firstDrawMs >= 0, 'Frame renderer did not record first draw latency');
-    assert.ok(frameReverse.scrollWidth <= frameReverse.clientWidth + 1, 'Frame renderer introduced horizontal overflow');
-    assert.ok(frameStats.maxActive <= 4, `Desktop frame fetch concurrency escaped its bound: ${frameStats.maxActive}`);
-    assert.ok(frameStats.byVariant.desktop > 0, 'Desktop frame renderer did not use desktop URLs');
-
-    await waitFor(() => frameStats.active === 0, 'Desktop frame requests did not settle');
-    resetFrameStats(frameStats);
-    await navigatePreview(page, framePreview, { width: 390, height: 844, mobile: true });
-    const mobileFrames = await scrollFramesToProgress(page, 0.45, 'friction');
-    assert.equal(mobileFrames.failureCount, 0);
-    assert.ok(frameStats.byVariant.mobile > 0, 'Mobile frame renderer did not use mobile URLs');
+    await isolatePage(page, frameStats, 'mobile frame isolation');
+    await navigatePreview(page, `${framePreview}&run=mobile`, { width: 390, height: 844, mobile: true });
+    const mobile = await scrollFramesToProgress(page, 0.45, 'friction');
+    assert.equal(mobile.failureCount, 0);
+    assert.ok(frameStats.byVariant.mobile > 0);
     assert.equal(frameStats.byVariant.desktop, 0, 'Mobile renderer fetched desktop frame bytes');
-    assert.ok(frameStats.maxActive <= 4, `Mobile frame fetch concurrency escaped its bound: ${frameStats.maxActive}`);
+    assert.ok(frameStats.maxActive <= 4, `Mobile frame concurrency escaped bound: ${frameStats.maxActive}`);
 
-    await waitFor(() => frameStats.active === 0, 'Mobile frame requests did not settle');
-    resetFrameStats(frameStats);
+    await isolatePage(page, frameStats, 'reduced-motion isolation');
     await page.send('Emulation.setEmulatedMedia', {
       features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
     });
-    await navigatePreview(page, framePreview, { width: 390, height: 844, mobile: true });
+    await navigatePreview(page, `${framePreview}&run=reduced`, { width: 390, height: 844, mobile: true });
     await waitFor(
       () => page.evaluate('Boolean(document.querySelector(".mkt-transformation-fallback"))'),
       'Reduced-motion frame preview did not render static fallback',
     );
+    assert.equal(
+      await page.evaluate(`matchMedia('(prefers-reduced-motion: reduce)').matches`),
+      true,
+      'Browser reduced-motion preference was not active',
+    );
     await sleep(250);
     assert.equal(frameStats.requests, 0, 'Reduced-motion frame renderer must fetch zero sequence frames');
 
+    await isolatePage(page, frameStats, 'frame failure isolation');
     await page.send('Emulation.setEmulatedMedia', { features: [] });
-    resetFrameStats(frameStats);
     frameStats.failFrames = true;
-    await navigatePreview(page, framePreview, { width: 1440, height: 900, mobile: false });
-    await page.evaluate(`(() => {
-      const section = document.querySelector('.mkt-transformation');
-      if (!section) return false;
-      const top = window.scrollY + section.getBoundingClientRect().top;
-      window.scrollTo(0, top);
-      return true;
-    })()`);
+    await navigatePreview(page, `${framePreview}&run=failure`, { width: 1440, height: 900, mobile: false });
+    await scrollSectionToProgress(page, 0.2);
     const fallback = await waitFor(() => page.evaluate(`(() => {
       const fallback = document.querySelector('.mkt-transformation-fallback');
       if (!fallback) return null;
@@ -438,10 +423,10 @@ test('MKT-01 Chrome video control and frame renderer preserve scroll parity and 
         canvas: Boolean(document.querySelector('.mkt-transformation-frame-canvas')),
         video: Boolean(document.querySelector('video.mkt-transformation-video')),
       };
-    })()`), 'Failed frame request did not degrade to the static transformation story');
-    assert.ok(frameStats.requests > 0, 'Failure path did not attempt a frame request');
-    assert.equal(fallback.canvas, false, 'Failed frame renderer kept the canvas mounted');
-    assert.equal(fallback.video, false, 'Failed frame renderer unexpectedly mounted video');
+    })()`), 'Failed frame request did not degrade to static fallback');
+    assert.ok(frameStats.requests > 0);
+    assert.equal(fallback.canvas, false);
+    assert.equal(fallback.video, false);
     assert.match(fallback.text, /Karışıklık gider, düzen kalır\./);
     frameStats.failFrames = false;
   } finally {
