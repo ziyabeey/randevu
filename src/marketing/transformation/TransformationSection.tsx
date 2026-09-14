@@ -2,7 +2,9 @@ import { useRef, useState } from "react";
 
 import { MARKETING_ASSETS } from "../assets";
 import { MARKETING_RELEASE_GATES } from "../releaseGates";
+import "./frame-sequence.css";
 import "./transformation-tuning.css";
+import { useFrameSequenceScrollScrub } from "./useFrameSequenceScrollScrub";
 import { usePrefersReducedMotion, useVideoScrollScrub } from "./useVideoScrollScrub";
 
 interface StoryProps {
@@ -107,28 +109,49 @@ function StaticTransformationFallback() {
   );
 }
 
+function isFrameRendererRequested(): boolean {
+  return typeof document !== "undefined" && document.documentElement.dataset.mktRenderer === "frames";
+}
+
 export function TransformationSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [videoFailed, setVideoFailed] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
-  const { phase, metadataReady } = useVideoScrollScrub(sectionRef, videoRef, reducedMotion || videoFailed);
+  const frameRenderer = isFrameRendererRequested();
+  const videoScrub = useVideoScrollScrub(sectionRef, videoRef, reducedMotion || videoFailed || frameRenderer);
+  const frameScrub = useFrameSequenceScrollScrub(sectionRef, canvasRef, reducedMotion || !frameRenderer);
+  const phase = frameRenderer ? frameScrub.phase : videoScrub.phase;
+  const mediaReady = frameRenderer ? frameScrub.frameReady : videoScrub.metadataReady;
+  const rendererFailed = frameRenderer ? frameScrub.failed : videoFailed;
   const showDebug = import.meta.env.DEV
     && typeof document !== "undefined"
     && document.documentElement.dataset.mktDebug === "true";
 
-  if (reducedMotion || videoFailed) return <StaticTransformationFallback />;
+  if (reducedMotion || rendererFailed) return <StaticTransformationFallback />;
 
   return (
-    <section ref={sectionRef} className="mkt-transformation" id="donusum" data-phase={phase} aria-label="Randevu kolay dönüşüm hikayesi">
+    <section
+      ref={sectionRef}
+      className="mkt-transformation"
+      id="donusum"
+      data-phase={phase}
+      data-renderer={frameRenderer ? "frames" : "video"}
+      aria-label="Randevu kolay dönüşüm hikayesi"
+    >
       <div className="mkt-transformation-stage">
-        <video ref={videoRef} className="mkt-transformation-video" muted playsInline preload="metadata" poster={MARKETING_ASSETS.transformationPoster} aria-hidden="true" tabIndex={-1} onError={() => setVideoFailed(true)}>
-          <source media="(max-width: 680px)" src={MARKETING_ASSETS.transformationMobileVideo} type="video/mp4" />
-          <source src={MARKETING_ASSETS.transformationVideo} type="video/mp4" />
-        </video>
+        {frameRenderer ? (
+          <canvas ref={canvasRef} className="mkt-transformation-frame-canvas" aria-hidden="true" />
+        ) : (
+          <video ref={videoRef} className="mkt-transformation-video" muted playsInline preload="metadata" poster={MARKETING_ASSETS.transformationPoster} aria-hidden="true" tabIndex={-1} onError={() => setVideoFailed(true)}>
+            <source media="(max-width: 680px)" src={MARKETING_ASSETS.transformationMobileVideo} type="video/mp4" />
+            <source src={MARKETING_ASSETS.transformationVideo} type="video/mp4" />
+          </video>
+        )}
         <div className="mkt-video-shade" aria-hidden="true" />
         <div className="mkt-story-layer"><ReminderStory active={phase === "reminder"} /><FrictionStory active={phase === "friction"} /><SweepStory active={phase === "sweep"} /><PricingStory active={phase === "pricing"} /></div>
-        <div className="mkt-scroll-cue" aria-hidden="true"><span>{metadataReady ? "Kaydır" : "Hazırlanıyor"}</span><i /></div>
+        <div className="mkt-scroll-cue" aria-hidden="true"><span>{mediaReady ? "Kaydır" : "Hazırlanıyor"}</span><i /></div>
         {showDebug ? <div className="mkt-progress-debug" aria-hidden="true"><span /></div> : null}
       </div>
     </section>
