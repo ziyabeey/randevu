@@ -7,32 +7,63 @@ export const MARKETING_DOCUMENT_META = {
   ogType: "website",
 } as const;
 
-function upsertMeta(selector: string, attributes: Record<string, string>): HTMLMetaElement {
-  const existing = document.head.querySelector<HTMLMetaElement>(selector);
-  const element = existing ?? document.createElement("meta");
+interface HeadMutation<T extends Element> {
+  element: T;
+  created: boolean;
+  previous: Record<string, string | null>;
+}
+
+function applyAttributes<T extends Element>(
+  element: T,
+  attributes: Record<string, string>,
+): Record<string, string | null> {
+  const previous: Record<string, string | null> = {};
 
   for (const [name, value] of Object.entries(attributes)) {
+    previous[name] = element.getAttribute(name);
     element.setAttribute(name, value);
   }
 
-  if (!existing) {
-    document.head.append(element);
-  }
-
-  return element;
+  return previous;
 }
 
-function upsertCanonical(href: string): HTMLLinkElement {
-  const existing = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-  const element = existing ?? document.createElement("link");
-  element.rel = "canonical";
-  element.href = href;
+function upsertMeta(selector: string, attributes: Record<string, string>): HeadMutation<HTMLMetaElement> {
+  const existing = document.head.querySelector<HTMLMetaElement>(selector);
+  const element = existing ?? document.createElement("meta");
+  const previous = applyAttributes(element, attributes);
 
   if (!existing) {
     document.head.append(element);
   }
 
-  return element;
+  return { element, created: !existing, previous };
+}
+
+function upsertCanonical(href: string): HeadMutation<HTMLLinkElement> {
+  const existing = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  const element = existing ?? document.createElement("link");
+  const previous = applyAttributes(element, { rel: "canonical", href });
+
+  if (!existing) {
+    document.head.append(element);
+  }
+
+  return { element, created: !existing, previous };
+}
+
+function restoreMutation({ element, created, previous }: HeadMutation<Element>): void {
+  if (created) {
+    element.remove();
+    return;
+  }
+
+  for (const [name, value] of Object.entries(previous)) {
+    if (value === null) {
+      element.removeAttribute(name);
+    } else {
+      element.setAttribute(name, value);
+    }
+  }
 }
 
 export function useMarketingDocumentMeta(): void {
@@ -48,32 +79,30 @@ export function useMarketingDocumentMeta(): void {
     document.title = MARKETING_DOCUMENT_META.title;
     document.documentElement.lang = "tr";
 
-    const description = upsertMeta('meta[name="description"]', {
-      name: "description",
-      content: MARKETING_DOCUMENT_META.description,
-    });
-    const ogTitle = upsertMeta('meta[property="og:title"]', {
-      property: "og:title",
-      content: MARKETING_DOCUMENT_META.title,
-    });
-    const ogDescription = upsertMeta('meta[property="og:description"]', {
-      property: "og:description",
-      content: MARKETING_DOCUMENT_META.description,
-    });
-    const ogType = upsertMeta('meta[property="og:type"]', {
-      property: "og:type",
-      content: MARKETING_DOCUMENT_META.ogType,
-    });
-    const canonical = upsertCanonical(MARKETING_DOCUMENT_META.canonical);
+    const mutations: HeadMutation<Element>[] = [
+      upsertMeta('meta[name="description"]', {
+        name: "description",
+        content: MARKETING_DOCUMENT_META.description,
+      }),
+      upsertMeta('meta[property="og:title"]', {
+        property: "og:title",
+        content: MARKETING_DOCUMENT_META.title,
+      }),
+      upsertMeta('meta[property="og:description"]', {
+        property: "og:description",
+        content: MARKETING_DOCUMENT_META.description,
+      }),
+      upsertMeta('meta[property="og:type"]', {
+        property: "og:type",
+        content: MARKETING_DOCUMENT_META.ogType,
+      }),
+      upsertCanonical(MARKETING_DOCUMENT_META.canonical),
+    ];
 
     return () => {
       document.title = previousTitle;
       document.documentElement.lang = previousLang;
-      description.remove();
-      ogTitle.remove();
-      ogDescription.remove();
-      ogType.remove();
-      canonical.remove();
+      mutations.forEach(restoreMutation);
     };
   }, []);
 }
