@@ -139,7 +139,7 @@ function ProofBeforeTestimonials() {
     MARKETING_RELEASE_GATES.onboardingAssistance
       ? { number: "03", title: "Birlikte kurulum", text: "İlk günü ayar menülerinde kaybetme." }
       : null,
-  ].filter((point): point is { number: string; title: string; text: string } => point !== null);
+  ].flatMap((point) => point === null ? [] : [point]);
 
   return (
     <section
