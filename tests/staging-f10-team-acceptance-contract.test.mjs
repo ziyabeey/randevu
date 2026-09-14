@@ -10,7 +10,14 @@ const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url),
 test('F10-02 real team acceptance command is wired through the staging coordinator', () => {
   assert.equal(pkg.scripts['staging:f10-team-acceptance'], 'node scripts/staging-f10-team-acceptance.mjs');
   assert.match(workflow, /run_f10_team_acceptance:/);
-  assert.match(workflow, /RUN_F10_TEAM_ACCEPTANCE: \$\{\{ inputs\.run_f10_team_acceptance \}\}/);
+  assert.match(
+    workflow,
+    /RUN_F10_TEAM_ACCEPTANCE: \$\{\{ inputs\.run_f10_team_acceptance \|\| inputs\.run_f10_auth_acceptance \}\}/,
+  );
+  assert.match(
+    workflow,
+    /Verify F10 team access contracts[\s\S]*if: \$\{\{ inputs\.run_f10_team_acceptance \|\| inputs\.run_f10_auth_acceptance \}\}/,
+  );
   assert.match(deploy, /f10team: env\.RUN_F10_TEAM_ACCEPTANCE === 'true'/);
   assert.match(deploy, /if \(gates\.f10team\) command\('npm', \['run', 'staging:f10-team-acceptance'\]\)/);
 });
