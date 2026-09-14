@@ -70,6 +70,7 @@ export function useFrameSequenceScrollScrub(
     let disposed = false;
     let geometryFrame: number | null = null;
     let targetIndex = 0;
+    let requestedIndex = -1;
     let drawnIndex = -1;
     let drawSerial = 0;
     let staleFrames = 0;
@@ -137,8 +138,9 @@ export function useFrameSequenceScrollScrub(
     };
 
     const drawIndex = (index: number) => {
-      if (disposed || sequenceFailed) return;
+      if (disposed || sequenceFailed || index === drawnIndex || index === requestedIndex) return;
       targetIndex = index;
+      requestedIndex = index;
       const serial = ++drawSerial;
 
       const cached = loader.getCached(index);
