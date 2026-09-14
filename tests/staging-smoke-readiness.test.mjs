@@ -73,3 +73,38 @@ test('failed hosted session snapshots only access-claim shape before the session
   assert.doesNotMatch(smoke, /JSON\.stringify\(payload\)/);
   assert.doesNotMatch(smoke, /STAGING_ACCESS_CLAIMS_DIAGNOSTIC[^\n]*(STAGING_OWNER_A_EMAIL|access_token|refresh_token)/);
 });
+
+test('login failure performs one bounded direct hosted auth diagnostic without leaking credentials or identity', () => {
+  assert.match(smoke, /async function directPasswordDiagnostic\(\)/);
+  assert.match(smoke, /auth\/v1\/token\?grant_type=password/);
+  assert.match(smoke, /STAGING_DIRECT_AUTH_DIAGNOSTIC/);
+
+  for (const field of [
+    'status',
+    'statusClass',
+    'tokenResponse',
+    'hasAccessToken',
+    'hasUser',
+    'accessClaims',
+  ]) {
+    assert.match(smoke, new RegExp(field));
+  }
+
+  const functionStart = smoke.indexOf('async function directPasswordDiagnostic()');
+  const functionEnd = smoke.indexOf('\n}\n\nfunction sessionDiagnostic', functionStart);
+  assert.ok(functionStart >= 0 && functionEnd > functionStart, 'direct diagnostic helper must stay bounded and inspectable');
+  const helper = smoke.slice(functionStart, functionEnd);
+  assert.equal((helper.match(/\bfetch\(/g) ?? []).length, 1, 'direct diagnostic must issue exactly one provider request');
+  assert.doesNotMatch(helper, /for\s*\(|while\s*\(|await sleep\(/, 'direct diagnostic must not retry');
+  assert.doesNotMatch(helper, /console\.(?:log|error)/, 'provider response must not be logged inside the diagnostic helper');
+
+  const loginFailure = /if \(!login\.response\.ok \|\| login\.data\?\.ok !== true\) \{([\s\S]*?)\n\}/.exec(smoke)?.[1] ?? '';
+  assert.match(loginFailure, /await directPasswordDiagnostic\(\)/);
+  assert.match(loginFailure, /STAGING_DIRECT_AUTH_DIAGNOSTIC/);
+
+  assert.doesNotMatch(
+    smoke,
+    /STAGING_DIRECT_AUTH_DIAGNOSTIC[^\n]*(?:STAGING_OWNER_A_EMAIL|STAGING_OWNER_A_PASSWORD|SUPABASE_ANON_KEY|access_token|refresh_token|payload\.sub|payload\.session_id|payload\.email)/,
+  );
+  assert.doesNotMatch(smoke, /JSON\.stringify\(data\)/);
+});
