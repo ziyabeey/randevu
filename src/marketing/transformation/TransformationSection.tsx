@@ -112,14 +112,14 @@ function PricingStory({ active }: StoryProps) {
 function StaticTransformationFallback() {
   return (
     <section className="mkt-transformation-fallback" id="donusum" aria-labelledby="mkt-fallback-title">
-      <div className="mkt-fallback-panel">
+      <div className="mkt-fallback-panel mkt-fallback-panel--motion-start">
         <p className="mkt-eyebrow">Kepenk.ai sunar</p>
         <h2 id="mkt-fallback-title">Karışıklık gider, düzen kalır.</h2>
         <p>
           Müşteri kendi alsın, sistem hatırlatsın, kurulumda da seni yalnız bırakmayalım.
         </p>
       </div>
-      <div className="mkt-fallback-panel mkt-fallback-panel--pricing">
+      <div className="mkt-fallback-panel mkt-fallback-panel--pricing mkt-fallback-panel--motion-final">
         <p className="mkt-eyebrow">Sonuç</p>
         <h2>Fiyatı da kolay olsun.</h2>
         <p>Randevu kolay. İşin sana kalsın.</p>
