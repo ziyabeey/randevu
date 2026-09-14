@@ -250,12 +250,23 @@ test('MKT-01 Chrome scrub maps real scroll to media time and story phases', { ti
       assert.ok(state.phaseProgress >= 0 && state.phaseProgress <= 1, `Phase progress escaped bounds at ${progress}`);
     }
 
+    const beforeShift = await scrollToProgress(page, 0.5, 'friction');
+    await page.evaluate(`(() => {
+      const spacer = document.querySelector('#mkt-scrub-spacer');
+      if (!spacer) return false;
+      spacer.style.height = '720px';
+      return true;
+    })()`);
+    const afterShift = await scrollToProgress(page, 0.5, 'friction');
+    assert.ok(Math.abs(beforeShift.currentTime - beforeShift.duration * 0.5) <= 0.22, 'Baseline midpoint scrub was not stable');
+    assert.ok(Math.abs(afterShift.currentTime - afterShift.duration * 0.5) <= 0.22, 'Upstream layout shift left scrub geometry stale');
+
     const reverse = await scrollToProgress(page, 0.2, 'reminder');
     assert.ok(reverse.currentTime < reverse.duration * 0.3, 'Reverse scrub did not seek back toward the opening beat');
   } finally {
     page?.close();
     if (chrome && chrome.exitCode === null) chrome.kill('SIGKILL');
     await server.close();
-    rmSync(work, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
