@@ -88,6 +88,12 @@ begin
   end if;
   if exists (
     select 1 from jsonb_array_elements(v_snapshot -> 'members') item
+    where item ? 'userId'
+  ) then
+    raise exception 'team snapshot leaked auth user id';
+  end if;
+  if exists (
+    select 1 from jsonb_array_elements(v_snapshot -> 'members') item
     where item ->> 'email' is null
   ) then
     raise exception 'owner snapshot unexpectedly redacted member email';
