@@ -154,6 +154,24 @@ async function pressKey(page, { key, code, keyCode, text }) {
 const pressEnter = (page) => pressKey(page, { key: 'Enter', code: 'Enter', keyCode: 13, text: '\r' });
 const pressSpace = (page) => pressKey(page, { key: ' ', code: 'Space', keyCode: 32, text: ' ' });
 
+async function launchDebugChrome(chromeBin, work) {
+  const profile = path.join(work, 'profile');
+  const chrome = spawn(chromeBin, [
+    '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+    '--remote-debugging-port=0', '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
+  ], { cwd: repoRoot, stdio: 'ignore' });
+  const activePortFile = path.join(profile, 'DevToolsActivePort');
+  const port = await waitFor(() => {
+    if (chrome.exitCode !== null) throw new Error(`Chrome exited ${chrome.exitCode} during startup`);
+    try {
+      const value = readFileSync(activePortFile, 'utf8').split(/\r?\n/)[0];
+      return /^\d+$/.test(value) ? value : false;
+    } catch { return false; }
+  }, 'Chrome did not expose a debugging port');
+  const page = await openDebugPage(`http://127.0.0.1:${port}`);
+  return { chrome, page };
+}
+
 test('MKT-01 standalone preview renders the approved reduced-motion homepage in real Chrome', { timeout: 30_000 }, async (t) => {
   const chromeBin = findChrome();
   if (!chromeBin) {
@@ -196,7 +214,6 @@ test('MKT-01 mobile preview has no horizontal overflow and supports keyboard nav
   }
 
   const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? tmpdir(), 'randevu-mkt-mobile-'));
-  const profile = path.join(work, 'profile');
   const { server, origin } = await createPreviewServer();
   let chrome;
   let page;
@@ -204,21 +221,7 @@ test('MKT-01 mobile preview has no horizontal overflow and supports keyboard nav
   try {
     const url = `${origin}/marketing-preview.html?clean=1`;
     await waitForServer(url);
-    chrome = spawn(chromeBin, [
-      '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
-      '--remote-debugging-port=0', '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
-    ], { cwd: repoRoot, stdio: 'ignore' });
-
-    const activePortFile = path.join(profile, 'DevToolsActivePort');
-    const port = await waitFor(() => {
-      if (chrome.exitCode !== null) throw new Error(`Chrome exited ${chrome.exitCode} during startup`);
-      try {
-        const value = readFileSync(activePortFile, 'utf8').split(/\r?\n/)[0];
-        return /^\d+$/.test(value) ? value : false;
-      } catch { return false; }
-    }, 'Chrome did not expose a debugging port');
-
-    page = await openDebugPage(`http://127.0.0.1:${port}`);
+    ({ chrome, page } = await launchDebugChrome(chromeBin, work));
     await page.send('Emulation.setEmulatedMedia', {
       features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
     });
@@ -308,6 +311,103 @@ test('MKT-01 mobile preview has no horizontal overflow and supports keyboard nav
         `Keyboard navigation did not close the mobile menu and restore focus at ${viewport.width}px`,
       );
     }
+  } finally {
+    page?.close();
+    if (chrome && chrome.exitCode === null) chrome.kill('SIGKILL');
+    await server.close();
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+test('MKT-01 desktop preview preserves nav, layout, reduced motion, and skip-link focus at 1440px', { timeout: 35_000 }, async (t) => {
+  const chromeBin = findChrome();
+  if (!chromeBin) {
+    t.skip('Chrome/Chromium is unavailable in this environment');
+    return;
+  }
+
+  const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? tmpdir(), 'randevu-mkt-desktop-'));
+  const { server, origin } = await createPreviewServer();
+  let chrome;
+  let page;
+
+  try {
+    const url = `${origin}/marketing-preview.html?clean=1`;
+    await waitForServer(url);
+    ({ chrome, page } = await launchDebugChrome(chromeBin, work));
+    await page.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+    });
+    await page.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 900,
+      deviceScaleFactor: 1,
+      mobile: false,
+      screenWidth: 1440,
+      screenHeight: 900,
+    });
+    await page.send('Page.navigate', { url });
+    await waitFor(
+      () => page.evaluate('document.readyState === "complete" && Boolean(document.querySelector("#mkt-main")) && Boolean(document.querySelector(".mkt-transformation-fallback"))'),
+      'Desktop marketing preview did not render',
+    );
+
+    const metrics = await page.evaluate(`(() => {
+      const root = document.documentElement;
+      const desktopLinks = document.querySelector('.mkt-nav-links');
+      const mobileNav = document.querySelector('.mkt-mobile-nav');
+      const login = document.querySelector('.mkt-nav-login');
+      const cta = document.querySelector('.mkt-nav-cta');
+      const skip = document.querySelector('.mkt-skip-link');
+      return {
+        innerWidth: window.innerWidth,
+        clientWidth: root.clientWidth,
+        scrollWidth: root.scrollWidth,
+        bodyScrollWidth: document.body.scrollWidth,
+        desktopLinksDisplay: desktopLinks ? getComputedStyle(desktopLinks).display : null,
+        mobileNavDisplay: mobileNav ? getComputedStyle(mobileNav).display : null,
+        loginDisplay: login ? getComputedStyle(login).display : null,
+        loginHref: login?.getAttribute('href') ?? null,
+        ctaHeight: cta ? cta.getBoundingClientRect().height : 0,
+        reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+        fallback: Boolean(document.querySelector('.mkt-transformation-fallback')),
+        video: Boolean(document.querySelector('video.mkt-transformation-video')),
+        skipBeforeTop: skip ? skip.getBoundingClientRect().top : null,
+      };
+    })()`);
+
+    assert.equal(metrics.innerWidth, 1440);
+    assert.ok(metrics.scrollWidth <= metrics.clientWidth + 1, `Desktop horizontal overflow: ${metrics.scrollWidth} > ${metrics.clientWidth}`);
+    assert.ok(metrics.bodyScrollWidth <= metrics.clientWidth + 1, `Desktop body overflow: ${metrics.bodyScrollWidth} > ${metrics.clientWidth}`);
+    assert.notEqual(metrics.desktopLinksDisplay, 'none', 'Desktop navigation links are hidden');
+    assert.equal(metrics.mobileNavDisplay, 'none', 'Mobile menu leaks into desktop layout');
+    assert.notEqual(metrics.loginDisplay, 'none', 'Desktop login link is hidden');
+    assert.equal(metrics.loginHref, '/app');
+    assert.ok(metrics.ctaHeight >= 44, `Desktop CTA target is ${metrics.ctaHeight}px`);
+    assert.equal(metrics.reduced, true);
+    assert.equal(metrics.fallback, true);
+    assert.equal(metrics.video, false);
+    assert.ok(metrics.skipBeforeTop < 0, `Skip link should begin offscreen, got top=${metrics.skipBeforeTop}`);
+
+    const focusedSkip = await page.evaluate(`(() => {
+      const skip = document.querySelector('.mkt-skip-link');
+      skip?.focus();
+      if (!skip) return null;
+      const rect = skip.getBoundingClientRect();
+      return {
+        focused: document.activeElement === skip,
+        top: rect.top,
+        bottom: rect.bottom,
+      };
+    })()`);
+    assert.equal(focusedSkip?.focused, true, 'Skip link could not receive keyboard focus');
+    assert.ok(focusedSkip.top >= 0 && focusedSkip.bottom <= 900, `Focused skip link is not visible: ${JSON.stringify(focusedSkip)}`);
+
+    await pressEnter(page);
+    await waitFor(
+      () => page.evaluate('location.hash === "#mkt-main"'),
+      'Skip link did not navigate to main content',
+    );
   } finally {
     page?.close();
     if (chrome && chrome.exitCode === null) chrome.kill('SIGKILL');
