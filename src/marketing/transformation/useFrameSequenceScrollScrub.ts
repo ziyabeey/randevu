@@ -4,6 +4,7 @@ import {
   TRANSFORMATION_FRAME_COUNT,
   TransformationFrameLoader,
   drawTransformationFrameCover,
+  getTransformationFrameFocusX,
   getTransformationFrameIndex,
   getTransformationFrameProgress,
   type TransformationFrameVariant,
@@ -99,6 +100,13 @@ export function useFrameSequenceScrollScrub(
     };
 
     const getProgress = () => clamp01((window.scrollY - sectionTop) / scrollRange);
+    const drawFrame = (index: number, frame: Parameters<typeof drawTransformationFrameCover>[1]) => (
+      drawTransformationFrameCover(
+        canvas,
+        frame,
+        getTransformationFrameFocusX(index, variant, window.innerWidth),
+      )
+    );
 
     const writePhase = (index: number) => {
       const normalized = getTransformationFrameProgress(index);
@@ -144,7 +152,7 @@ export function useFrameSequenceScrollScrub(
             return;
           }
 
-          if (!drawTransformationFrameCover(canvas, frame)) {
+          if (!drawFrame(index, frame)) {
             failSequence(new Error("Transformation frame canvas draw failed."));
             return;
           }
@@ -175,7 +183,7 @@ export function useFrameSequenceScrollScrub(
         updateGeometry();
         if (drawnIndex >= 0) {
           const cached = loader.getCached(drawnIndex);
-          if (cached) drawTransformationFrameCover(canvas, cached);
+          if (cached) drawFrame(drawnIndex, cached);
         }
         schedule();
       });
