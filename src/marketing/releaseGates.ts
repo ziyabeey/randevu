@@ -6,7 +6,7 @@ export const MARKETING_RELEASE_GATES = {
   reminders: true,
   onboardingAssistance: true,
   dailyAppointmentSummary: true,
-  customerMemory: false,
+  customerMemory: true,
   pricingPolicy: false,
   pilotProof: false,
   contactFlow: MARKETING_CONTACT_HREF !== null,
