@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import "./marketing.css";
 import "./marketing-sections.css";
@@ -14,6 +14,7 @@ import { TransformationSection } from "./transformation/TransformationSection";
 
 function MarketingNav() {
   const [compact, setCompact] = useState(false);
+  const mobileMenuRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
     let frame: number | null = null;
@@ -40,6 +41,10 @@ function MarketingNav() {
     };
   }, []);
 
+  const closeMobileMenu = () => {
+    mobileMenuRef.current?.removeAttribute("open");
+  };
+
   return (
     <header className={`mkt-nav-shell${compact ? " is-compact" : ""}`}>
       <nav className="mkt-nav" aria-label="Randevu ana navigasyon">
@@ -54,16 +59,16 @@ function MarketingNav() {
           <a href="#yardim">Yardım</a>
         </div>
 
-        <details className="mkt-mobile-nav">
+        <details className="mkt-mobile-nav" ref={mobileMenuRef}>
           <summary aria-label="Randevu menüsünü aç">
             <span>Menü</span>
             <i aria-hidden="true">+</i>
           </summary>
           <div className="mkt-mobile-nav-panel">
-            <a href="#nasil-calisiyor">Nasıl çalışır?</a>
-            <a href="#isletmen-icin">İşletmen için</a>
-            <a href="#donusum">Dönüşüm</a>
-            <a href="#yardim">Yardım</a>
+            <a href="#nasil-calisiyor" onClick={closeMobileMenu}>Nasıl çalışır?</a>
+            <a href="#isletmen-icin" onClick={closeMobileMenu}>İşletmen için</a>
+            <a href="#donusum" onClick={closeMobileMenu}>Dönüşüm</a>
+            <a href="#yardim" onClick={closeMobileMenu}>Yardım</a>
           </div>
         </details>
 
