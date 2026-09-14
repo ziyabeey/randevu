@@ -1,6 +1,5 @@
 import { createRoot } from 'react-dom/client';
 import AvailabilityPage from '../../src/AvailabilityPage';
-import { seedCsrfToken } from '../../src/api';
 
 type Control = {
   text(): string;
@@ -69,7 +68,6 @@ window.__f10settings = {
   },
 };
 
-seedCsrfToken('C'.repeat(43));
 const root = document.getElementById('root');
 if (!root) throw new Error('F10-04 browser harness root missing');
 createRoot(root).render(<AvailabilityPage />);

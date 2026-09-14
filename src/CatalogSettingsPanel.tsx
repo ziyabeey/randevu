@@ -71,9 +71,9 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
       return false;
     }
 
-    setNotice(success);
     try {
       await reload();
+      setNotice(success);
     } catch {
       setNotice(`${success} Güncel görünüm yüklenemedi; sayfayı yenileyerek kontrol edin.`);
     } finally {
