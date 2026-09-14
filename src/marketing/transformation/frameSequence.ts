@@ -1,4 +1,4 @@
-import { clamp01 } from "./timeline";
+import { clamp01, getTransformationPhase } from "./timeline";
 
 export const TRANSFORMATION_FRAME_COUNT = 121;
 export const TRANSFORMATION_FRAME_CACHE_SIZE = 8;
@@ -41,6 +41,27 @@ export function getTransformationFrameProgress(index: number): number {
 export function getTransformationFrameUrl(index: number, variant: TransformationFrameVariant): string {
   const safeIndex = Math.min(TRANSFORMATION_FRAME_COUNT - 1, Math.max(0, Math.round(index)));
   return `${TRANSFORMATION_FRAME_ROOTS[variant]}/frame-${String(safeIndex).padStart(3, "0")}.webp`;
+}
+
+export function getTransformationFrameFocusX(
+  index: number,
+  variant: TransformationFrameVariant,
+  viewportWidth: number,
+): number {
+  if (variant === "mobile") {
+    switch (getTransformationPhase(getTransformationFrameProgress(index))) {
+      case "reminder": return 0.70;
+      case "friction": return 0.63;
+      case "sweep": return 0.56;
+      case "pricing": return 0.67;
+    }
+  }
+
+  if (viewportWidth <= 980) {
+    return 0.62;
+  }
+
+  return 0.5;
 }
 
 async function decodeWithImageElement(blob: Blob): Promise<DecodedTransformationFrame> {
@@ -242,6 +263,7 @@ export class TransformationFrameLoader {
 export function drawTransformationFrameCover(
   canvas: HTMLCanvasElement,
   frame: DecodedTransformationFrame,
+  focusX = 0.5,
 ): boolean {
   const width = canvas.clientWidth || window.innerWidth;
   const height = canvas.clientHeight || window.innerHeight;
@@ -259,7 +281,8 @@ export function drawTransformationFrameCover(
   const scale = Math.max(renderWidth / frame.width, renderHeight / frame.height);
   const drawWidth = frame.width * scale;
   const drawHeight = frame.height * scale;
-  const x = (renderWidth - drawWidth) / 2;
+  const boundedFocusX = clamp01(focusX);
+  const x = (renderWidth - drawWidth) * boundedFocusX;
   const y = (renderHeight - drawHeight) / 2;
 
   context.clearRect(0, 0, renderWidth, renderHeight);
