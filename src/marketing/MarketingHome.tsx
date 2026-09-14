@@ -178,8 +178,14 @@ export function MarketingHome() {
         className={`mkt-skip-link${skipFocused ? " is-focused" : ""}`}
         href="#mkt-main"
         onClick={handleSkipToContent}
-        onFocus={() => setSkipFocused(true)}
-        onBlur={() => setSkipFocused(false)}
+        onFocus={(event) => {
+          event.currentTarget.classList.add("is-focused");
+          setSkipFocused(true);
+        }}
+        onBlur={(event) => {
+          event.currentTarget.classList.remove("is-focused");
+          setSkipFocused(false);
+        }}
       >
         İçeriğe geç
       </a>
