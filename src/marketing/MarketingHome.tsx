@@ -158,7 +158,24 @@ function MarketingFooter() {
 
 export function MarketingHome() {
   useMarketingDocumentMeta();
-  const [skipFocused, setSkipFocused] = useState(false);
+  const skipLinkRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    const link = skipLinkRef.current;
+    if (!link) {
+      return undefined;
+    }
+
+    const show = () => link.classList.add("is-focused");
+    const hide = () => link.classList.remove("is-focused");
+    link.addEventListener("focus", show);
+    link.addEventListener("blur", hide);
+
+    return () => {
+      link.removeEventListener("focus", show);
+      link.removeEventListener("blur", hide);
+    };
+  }, []);
 
   const handleSkipToContent = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -175,17 +192,10 @@ export function MarketingHome() {
   return (
     <div className="mkt-root" id="top">
       <a
-        className={`mkt-skip-link${skipFocused ? " is-focused" : ""}`}
+        ref={skipLinkRef}
+        className="mkt-skip-link"
         href="#mkt-main"
         onClick={handleSkipToContent}
-        onFocus={(event) => {
-          event.currentTarget.classList.add("is-focused");
-          setSkipFocused(true);
-        }}
-        onBlur={(event) => {
-          event.currentTarget.classList.remove("is-focused");
-          setSkipFocused(false);
-        }}
       >
         İçeriğe geç
       </a>
