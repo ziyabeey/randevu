@@ -4,6 +4,8 @@
 
 Okuma başlangıcı: `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx`, ilgili CSS/Worker dosyaları ve [üç müşteri referansı](../references/README.md). Yorumlar F16-04, kampanyalar F16-06 ile tamamlanır; G12 bu bağımlılıkları bitmiş saymaz.
 
+**Faz direktifi / kaynak head `5e789ad`:** `/r/:slug` müşteri yüzeyi mobil 4G ilk-yük maliyetine göre düşünülür. Public route operator/private bundle'ını taşımamalıdır. Bu head'deki repo-durumu ayrıntıları kart açılırken current main'de yeniden doğrulanır; aşağıdaki bütçeler başlangıç hedefidir, ölçümlü gerekçeyle değiştirilebilir.
+
 ## F12-01
 
 **Görsel yön ve akış sözleşmesi**
@@ -25,6 +27,8 @@ Okuma başlangıcı: `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx
 - **Kabul:** İşletme yalnız kendi profilini/görsellerini değiştirir; public API özel operasyon verisini döndürmez. Public yayın kapalıyken sayfa uygun yanıtı verir. Eksik/hatalı görsel yerleşimi bozmaz. Müşteriye ait özel hizmet fotoğrafı bu public alana otomatik konulmaz.
 - **Devir:** Alan ve depolama izinleri, kullanılabilir gerçek varlıklar ve erişim/boş durum testleri.
 - **v3 depolama:** K03 girdi/adet sınırlarını ve S08 erişim kapısını uygula. Public medya için boyutlandırma/çıktı formatı ve silme/orphan temizliği testlidir; özel görseli public bucket’a taşıma.
+- **Hazır olan:** Marketing asset sözleşmesindeki açık byte/hash/binary-handoff yaklaşımı medya bütçesi yazmak için örnektir; mekanizma aynen kopyalanmaz, prensip kullanılır.
+- **Tuzak / medya bütçesi:** Kabul öncesi hem **görsel başına** hem **ilk public sayfa toplamı** için sayısal byte/ölçü bütçesi yazılır. “5 MB upload kabul ediyoruz” tek başına delivery budget değildir; encode edilmiş public çıktı ve sayfa toplamı ayrı sınırdır.
 
 ## F12-03
 
@@ -36,6 +40,7 @@ Okuma başlangıcı: `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx
 - **Kabul:** Negatif fiyat, alt > üst ve uyumsuz para birimi reddedilir. Fiyat değişimi geçmişi değiştirmez. Tahmini aralık kesin tahsilat olarak sunulmaz; istemci toplamı sunucu için yetkili kaynak değildir. Seçili/pasif hizmet davranışı korunur.
 - **Devir:** Fiyat alanları, örnek sabit/aralık toplamları, geriye uyum testleri ve F14/F16 promosyon entegrasyon sözleşmesi.
 - **Bağlayıcı sözleşme:** [K02](architecture-contracts.md#k02). Bu veri işi F11-01’den **önce**, F12 görsel işlerinden bağımsızdır. Eski fixed fiyat kayıpsız alt=üst olarak eşlenir; mevcut tek hizmetli appointment snapshot’ı değişmez. Sabit/aralık ayrımı ve ortak yuvarlama test edilir; F10-04 formu/API’si dar biçimde genişletilir.
+- **Tuzak / claim gate:** Müşteri yüzeyi, backend fiyat aralığı/policy kabul edilmeden yeni fiyat davranışını varmış gibi göstermemelidir. MKT-01 `releaseGates` yaklaşımı desen olarak kullanılabilir: hazır olmayan capability UI/copy'de fail-closed kalır; ikinci genel-purpose feature flag sistemi kurulmaz.
 
 ## F12-04
 
@@ -47,6 +52,7 @@ Okuma başlangıcı: `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx
 - **Kabul:** İki hizmetin süre/personel/fiyatı tüm adımlarda tutarlıdır. Dolu saat seçilemez; son anda dolan saatte seçim korunup yeni uygunluk sunulur. Hızlı filtre/tarih geçişinde eski cevap ekrana dönmez. İşlem kişisel veriyi URL'ye taşımaz.
 - **Devir:** Gerçek API ile mobil akış görüntüleri, boş/çakışma/yavaş bağlantı testleri ve F12-05'in kullanacağı seçim durumu.
 - **v3 uygulama sınırı:** K01 grup kimliği, K02 tahmin ve K03 limitleri tek sunucu yanıtından tüketilir. Yeni feature fetch/auth/formatlama kopyası eklenmez; S02 ortak istemci kullanılır.
+- **Tuzak / stale request:** Tarih, personel, işletme veya filtre değişiminde eski cevabın yeni seçimi ezmemesi için kullanılan iptal/generation primitive'i F13-01 ile ortak kontrat olmalıdır. İki ayrı AbortController/stale-response altyapısı tasarlanmaz; S02 `src/api.ts` tek fetch/timeout/CSRF katmanı kalır.
 
 ## F12-05
 
@@ -57,3 +63,4 @@ Okuma başlangıcı: `src/PublicBookingPage.tsx`, `src/ManageAppointmentPage.tsx
 - **İş ve çıktı:** Çok hizmetli özet, ad/telefon, isteğe bağlı e-posta, not ve gerekli bilgilendirmeyi ekle. Randevu/mesaj durumlarını ayır; aynı güvenli yönetim akışında taşıma/iptal ve yenileme sonrası kurtarmayı göster. Henüz uygulanmamış kampanya/yorum denetimleri işlevli gösterilmez.
 - **Kabul:** 360/390 px'te hizmetten yönetim bağlantısına gerçek yolculuk tamamlanır; klavye/sabit alt eylem içerik örtmez. Ağ veya e-posta hatasında kayıt sonucu doğrudur; tekrar randevu oluşmaz. Klavye odağı, alan hata ilişkileri ve renk dışı durum işaretleri çalışır.
 - **Devir:** Mobil ve masaüstü kabul kaydı; F16 entegrasyon yerleri. G12 kapanırken referans matrisi yalnız tamamlanan işlevler için güncellenir.
+- **Public route performance acceptance:** Production candidate'ta `/r/:slug` için başlangıç hedefi **≤120 kB gzip initial JS**'dir ve public ilk yüklemede operator/private ekran implementasyon chunk'ları eager taşınmaz. Bütçe aşılırsa sayı sessizce büyütülmez; build manifest/network receipt ile gerekçe ve owner bırakılır. Route-level code splitting kararı F14/F17'ye ertelenmez.
