@@ -69,7 +69,7 @@ function PricingStory({ active }: StoryProps) {
       <p className="mkt-story-copy">Ne alacağını, ne ödeyeceğini ilk bakışta gör.</p>
       <div className="mkt-pricing-card" data-pricing-policy-ready={MARKETING_RELEASE_GATES.pricingPolicy ? "true" : "false"}>
         <div><span className="mkt-proof-kicker">Randevu</span><strong>Tek bakışta anlaşılır.</strong><p>Fiyat ve paket yapısı yayın öncesi ticari kararla netleşecek.</p></div>
-        <a className="mkt-button mkt-button--lime" href="#kurulum">Birlikte kuralım<span aria-hidden="true">→</span></a>
+        <a className="mkt-button mkt-button--lime" href="#kurulum" tabIndex={active ? 0 : -1}>Birlikte kuralım<span aria-hidden="true">→</span></a>
       </div>
     </div>
   );
