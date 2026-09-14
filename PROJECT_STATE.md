@@ -1,14 +1,12 @@
 # YZT Randevu — Doğrulanmış mevcut durum
 
-**Kontrol: 14 Eylül 2026.** Bu dosya yalnız main'de doğrulanmış durumu ve aktif entegrasyon sınırını tutar. Canlı görev/sahiplik `TASKS.md`, bağımlılıklar `ROADMAP.md`, koordinasyon/conflict/staging kararları Issue #65 içindedir.
+**Kontrol: 14 Eylül 2026.** Bu dosya yalnız main'de doğrulanmış runtime durumunu ve aktif entegrasyon sınırını tutar. Canlı görev/sahiplik `TASKS.md`, bağımlılıklar `ROADMAP.md`, koordinasyon/conflict/staging kararları Issue #65 içindedir.
 
-## Güncel main
+## Main referansı
 
-Doğrulanmış main: **`7056c5a560bb55de84a1618b62efca214e9dd8b8`**.
+Bu dosya **exact current main SHA'yı bilerek içine gömmez**; belgeyi main'e merge etmek SHA'yı yeniden değiştirip kendi kendini bayatlatır. Güncel exact SHA için repository `main` ref'i otoritedir.
 
-- PR #69 brand/motion docs bu commit ile main'e girdi.
-- Merge sonrası **CI #664 / run `34837710783` success**.
-- PR #69 runtime veya MVP task davranışı değiştirmedi; yalnız `docs/brand/**` ekledi.
+Son runtime-affecting ürün baseline'ı **F10-03 / PR #72**'dir; merge commit `0be2a5bdd857fe95625ea56374aab6cb3fbdbd24`, merge sonrası CI #643 başarılıdır. Sonraki PR #73, #69, #78 ve #68 main'i yalnız state/brand/research docs ile ilerletti; runtime davranışını değiştirmedi. Docs-only zincir PR #68 merge sonrası CI #686'ya kadar yeşildir.
 
 Önceki ana ürün kapanışları:
 
