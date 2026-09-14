@@ -14,6 +14,7 @@ Okuma başlangıcı: `src/CalendarPage.tsx`, `src/calendar.css`, `worker/calenda
 - **Kabul:** Başka operatör/public rezervasyon açık takvime süre sınırında yansır. Hızlı tarih/personel/işletme değişiminde eski cevap yeni seçimi ezmez. Gizli sekme gereksiz yoğun istek üretmez; yetki iptali eski kaydı erişilebilir bırakmaz.
 - **Devir:** Yenileme/önbellek davranışı, yarış testi ve ölçülen güncellenme süresi.
 - **v3 veri erişimi:** S02 auth/HTTP sözleşmesi ve K03 yenileme bütçesi kullanılır. Aynı filtreye tek aktif istek; başarısız yenilemede hızlanan retry döngüsü yoktur. Aktif business değişimi response/çekmece bağlamını geçersiz kılar.
+- **S07 carry-forward / mutable key:** Dışarıdan eşzamanlı sıralama-anahtarı mutasyonu yoksa `(timestamp,id)` keyset continuation sayfalar arasında skip/repeat üretmeden ilerler. Takvim/listede mutable risk `appointments.starts_at` kolonudur; sayfalar arasında `starts_at` değişirse continuation skip veya repeat üretebilir ve snapshot-consistency garantisi yoktur. `created_at` bu mutable-key riskinin parçası değildir. F13-01 gerçek eşzamanlı yazar + stale continuation yarışını sahiplenir ve kanıtlar. Bu özel yarış C4 rollback paketine geri taşınmaz; C4 bu dblink commit testinin sahibi değildir.
 
 ## F13-02
 
@@ -24,6 +25,7 @@ Okuma başlangıcı: `src/CalendarPage.tsx`, `src/calendar.css`, `worker/calenda
 - **İş ve çıktı:** Tarih/Bugün/personel filtreleri, personel sütunları/renkleri, saat ekseni/şimdi çizgisi ve saat sıralı listeyi referansa göre düzenle. Grup satırlarının ve çok personelin temsili anlaşılır olsun.
 - **Kabul:** Üç görünüm aynı aralık/filtrede aynı kayıtları gösterir; iptal görünürlüğü tutarlıdır. Durum yalnız renk değildir. Çok personel ve uzun müşteri/hizmet adı düzeni bozmaz; işletmenin saat dilimi gün sınırını belirler.
 - **Devir:** Gün/hafta/liste karşılaştırmalı görüntüler ve filtre/veri eşitliği kanıtı.
+- **S07 carry-forward / date-range:** Gün, hafta ve liste görünümünün tarih aralığı filtre sözleşmesi mutable-key yarışından ayrı bir bulgudur. F13-02 başlangıç/bitiş dahil-hariç sınırını, işletme timezone gün sınırını ve üç görünümün aynı range için aynı kayıt kümesini kullandığını açıkça tanımlar ve test eder. Bu madde `starts_at` continuation yarışının yerine geçmez; iki risk ayrı kapanır.
 
 ## F13-03
 
