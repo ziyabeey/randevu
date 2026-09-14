@@ -1,0 +1,124 @@
+.mkt-skip-link {
+  position: fixed;
+  z-index: 220;
+  top: 10px;
+  left: 12px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--mkt-lime);
+  color: var(--mkt-cobalt-deep) !important;
+  font-weight: 850;
+  transform: translateY(-160%);
+  transition: transform 160ms ease;
+}
+
+.mkt-skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+.mkt-nav-shell,
+.mkt-nav {
+  transition: top 220ms ease, min-height 220ms ease, padding 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
+}
+
+.mkt-nav-shell.is-compact {
+  top: 10px;
+}
+
+.mkt-nav-shell.is-compact .mkt-nav {
+  min-height: 56px;
+  padding-block: 6px;
+  background: rgba(248, 249, 250, 0.9);
+  box-shadow: 0 10px 30px rgba(21, 56, 109, 0.1);
+}
+
+.mkt-root :is(a, button, summary):focus-visible {
+  outline: 3px solid var(--mkt-lime);
+  outline-offset: 4px;
+}
+
+.mkt-root [id] {
+  scroll-margin-top: 104px;
+}
+
+.mkt-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+  transform: none !important;
+}
+
+.mkt-product-story,
+.mkt-calendar-stage,
+.mkt-today,
+.mkt-proof-before-pilot,
+.mkt-faq {
+  content-visibility: auto;
+  contain-intrinsic-size: 900px;
+}
+
+@keyframes mkt-hero-copy-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes mkt-hero-media-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes mkt-hero-demo-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.mkt-hero-copy {
+  animation: mkt-hero-copy-in 560ms cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+
+.mkt-hero-media {
+  animation: mkt-hero-media-in 720ms 80ms cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+
+.mkt-hero-demo {
+  animation: mkt-hero-demo-in 620ms 180ms cubic-bezier(0.2, 0.75, 0.2, 1) both;
+}
+
+@media (max-width: 680px) {
+  .mkt-nav-shell.is-compact {
+    top: 6px;
+  }
+
+  .mkt-root [id] {
+    scroll-margin-top: 80px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-skip-link,
+  .mkt-nav-shell,
+  .mkt-nav,
+  .mkt-hero-copy,
+  .mkt-hero-media,
+  .mkt-hero-demo {
+    animation: none !important;
+    transition: none !important;
+  }
+}
