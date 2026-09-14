@@ -6,6 +6,7 @@ import { MarketingHome } from "./MarketingHome";
 const PREVIEW_ASSETS = [
   "/marketing/hero/randevu-hero-model.webp",
   "/marketing/transformation/randevu-transformation-poster.webp",
+  "/marketing/transformation/randevu-transformation-final.webp",
   "/marketing/transformation/randevu-transformation-master.mp4",
 ] as const;
 
