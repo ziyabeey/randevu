@@ -58,7 +58,6 @@ begin
   select coalesce(jsonb_agg(
     jsonb_build_object(
       'id', m.id,
-      'userId', m.user_id,
       'displayName', p.display_name,
       'email', case
         when v_actor.role in ('owner', 'manager') then lower(btrim(u.email))
