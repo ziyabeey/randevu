@@ -65,15 +65,21 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
     setNotice('');
     try {
       await action();
-      setNotice(success);
-      await reload();
-      return true;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Değişiklik kaydedilemedi.');
+      setBusy(false);
       return false;
+    }
+
+    try {
+      await reload();
+      setNotice(success);
+    } catch {
+      setNotice(`${success} Güncel görünüm yüklenemedi; sayfayı yenileyerek kontrol edin.`);
     } finally {
       setBusy(false);
     }
+    return true;
   }
 
   async function createService(event: FormEvent<HTMLFormElement>) {
