@@ -127,7 +127,7 @@ export default function InvitePage() {
         <p className="eyebrow">DAVET BEKLİYOR</p>
         <h1>Önce parolanızı tamamlayın</h1>
         <p className="muted">Kurtarma oturumu ekip yetkisi kazanamaz. Yeni parolanızı belirledikten sonra bu davet aynı sekmede devam eder.</p>
-        <a className="primary-link" href="/">Parola ekranına dön</a>
+        <a className="primary-link" href="/account">Parola ekranına dön</a>
       </main>
     );
   }
