@@ -1,6 +1,12 @@
+import { MARKETING_RELEASE_GATES } from "./releaseGates";
+
 const bookingTimes = ["11:30", "14:30", "16:00"];
 
 function BookingDemo() {
+  if (!MARKETING_RELEASE_GATES.publicBooking) {
+    return null;
+  }
+
   return (
     <section className="mkt-product-story" id="nasil-calisiyor" aria-labelledby="mkt-booking-title">
       <div className="mkt-section-copy">
@@ -50,6 +56,10 @@ function BookingDemo() {
 }
 
 function CalendarStage() {
+  if (!MARKETING_RELEASE_GATES.calendarAvailability) {
+    return null;
+  }
+
   return (
     <section className="mkt-calendar-stage" id="isletmen-icin" aria-labelledby="mkt-calendar-title">
       <div className="mkt-calendar-copy">
@@ -85,6 +95,10 @@ function CalendarStage() {
 }
 
 function TodaySummary() {
+  if (!MARKETING_RELEASE_GATES.dailyAppointmentSummary) {
+    return null;
+  }
+
   return (
     <section className="mkt-today" aria-labelledby="mkt-today-title">
       <div className="mkt-section-copy">
@@ -115,17 +129,37 @@ function TodaySummary() {
 }
 
 function ProofBeforeTestimonials() {
+  const proofPoints = [
+    MARKETING_RELEASE_GATES.publicBooking
+      ? { number: "01", title: "Web'den randevu", text: "Müşteri linkten girer, uygun zamanı seçer." }
+      : null,
+    MARKETING_RELEASE_GATES.reminders
+      ? { number: "02", title: "Hatırlatma akışı", text: "Randevu yaklaşınca sistem zamanı takip eder." }
+      : null,
+    MARKETING_RELEASE_GATES.onboardingAssistance
+      ? { number: "03", title: "Birlikte kurulum", text: "İlk günü ayar menülerinde kaybetme." }
+      : null,
+  ].filter((point): point is { number: string; title: string; text: string } => point !== null);
+
   return (
-    <section className="mkt-proof-before-pilot" aria-labelledby="mkt-proof-title">
+    <section
+      className="mkt-proof-before-pilot"
+      aria-labelledby="mkt-proof-title"
+      data-pilot-proof-ready={MARKETING_RELEASE_GATES.pilotProof ? "true" : "false"}
+    >
       <div>
         <p className="mkt-eyebrow">Sözden önce ürün.</p>
         <h2 id="mkt-proof-title">Önce gösterelim. Sonra anlatalım.</h2>
         <p>Gerçek işletme sonuçları geldikçe onları açıkça paylaşacağız. Şimdilik çalışan akışı gösteriyoruz.</p>
       </div>
       <div className="mkt-proof-points" aria-label="Randevu ürün kanıtları">
-        <article><span>01</span><strong>Web'den randevu</strong><p>Müşteri linkten girer, uygun zamanı seçer.</p></article>
-        <article><span>02</span><strong>Hatırlatma akışı</strong><p>Randevu yaklaşınca sistem zamanı takip eder.</p></article>
-        <article><span>03</span><strong>Birlikte kurulum</strong><p>İlk günü ayar menülerinde kaybetme.</p></article>
+        {proofPoints.map((point) => (
+          <article key={point.number}>
+            <span>{point.number}</span>
+            <strong>{point.title}</strong>
+            <p>{point.text}</p>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -139,15 +173,19 @@ function FaqSection() {
         <h2 id="mkt-faq-title">Kısa cevaplar.</h2>
       </div>
       <div className="mkt-faq-list">
-        <details open>
-          <summary>Müşterim uygulama indirmek zorunda mı?</summary>
-          <p>Hayır. Web üzerinden randevu akışı kullanılabilir. Müşteri linkten girer, uygun zamanı seçer ve işlemini tamamlar.</p>
-        </details>
-        <details>
-          <summary>Kurarken yardım ediyor musunuz?</summary>
-          <p>Evet. İlk kurulumu birlikte yapma yaklaşımı Randevu'nun kolaylık vaadinin bir parçası.</p>
-        </details>
-        <details>
+        {MARKETING_RELEASE_GATES.publicBooking ? (
+          <details open>
+            <summary>Müşterim uygulama indirmek zorunda mı?</summary>
+            <p>Hayır. Web üzerinden randevu akışı kullanılabilir. Müşteri linkten girer, uygun zamanı seçer ve işlemini tamamlar.</p>
+          </details>
+        ) : null}
+        {MARKETING_RELEASE_GATES.onboardingAssistance ? (
+          <details>
+            <summary>Kurarken yardım ediyor musunuz?</summary>
+            <p>Evet. İlk kurulumu birlikte yapma yaklaşımı Randevu'nun kolaylık vaadinin bir parçası.</p>
+          </details>
+        ) : null}
+        <details data-pricing-policy-ready={MARKETING_RELEASE_GATES.pricingPolicy ? "true" : "false"}>
           <summary>Fiyat ne kadar?</summary>
           <p>Fiyat ve paket yapısı ticari karar kilitlendiğinde burada açıkça yayınlanacak. Pazarlama uğruna uydurma fiyat göstermiyoruz.</p>
         </details>
