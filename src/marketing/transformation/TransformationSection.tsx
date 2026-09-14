@@ -104,6 +104,7 @@ export function TransformationSection() {
     <section ref={sectionRef} className="mkt-transformation" id="donusum" data-phase={phase} aria-label="Randevu kolay dönüşüm hikayesi">
       <div className="mkt-transformation-stage">
         <video ref={videoRef} className="mkt-transformation-video" muted playsInline preload="metadata" poster={MARKETING_ASSETS.transformationPoster} aria-hidden="true" tabIndex={-1} onError={() => setVideoFailed(true)}>
+          <source media="(max-width: 680px)" src={MARKETING_ASSETS.transformationMobileVideo} type="video/mp4" />
           <source src={MARKETING_ASSETS.transformationVideo} type="video/mp4" />
         </video>
         <div className="mkt-video-shade" aria-hidden="true" />
