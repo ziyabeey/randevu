@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 
 import "./marketing.css";
 import "./marketing-sections.css";
@@ -43,13 +43,23 @@ function MarketingNav() {
     };
   }, []);
 
-  const closeMobileMenu = (restoreKeyboardFocus = false) => {
-    const menu = mobileMenuRef.current;
-    menu?.removeAttribute("open");
+  const closeMobileMenu = () => {
+    mobileMenuRef.current?.removeAttribute("open");
+  };
 
-    if (restoreKeyboardFocus) {
-      menu?.querySelector<HTMLElement>("summary")?.focus();
+  const handleMobileSectionClick = (event: MouseEvent<HTMLAnchorElement>, targetHash: string) => {
+    const keyboardActivation = event.detail === 0;
+    closeMobileMenu();
+
+    if (!keyboardActivation) {
+      return;
     }
+
+    event.preventDefault();
+    const target = document.querySelector<HTMLElement>(targetHash);
+    window.history.pushState(null, "", targetHash);
+    target?.scrollIntoView({ block: "start" });
+    mobileMenuRef.current?.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
   };
 
   return (
@@ -72,11 +82,11 @@ function MarketingNav() {
             <i aria-hidden="true">+</i>
           </summary>
           <div className="mkt-mobile-nav-panel">
-            <a href="#nasil-calisiyor" onClick={(event) => closeMobileMenu(event.detail === 0)}>Nasıl çalışır?</a>
-            <a href="#isletmen-icin" onClick={(event) => closeMobileMenu(event.detail === 0)}>İşletmen için</a>
-            <a href="#donusum" onClick={(event) => closeMobileMenu(event.detail === 0)}>Dönüşüm</a>
-            <a href="#yardim" onClick={(event) => closeMobileMenu(event.detail === 0)}>Yardım</a>
-            <a href={WORKSPACE_HOME_PATH} onClick={(event) => closeMobileMenu(event.detail === 0)}>Giriş yap</a>
+            <a href="#nasil-calisiyor" onClick={(event) => handleMobileSectionClick(event, "#nasil-calisiyor")}>Nasıl çalışır?</a>
+            <a href="#isletmen-icin" onClick={(event) => handleMobileSectionClick(event, "#isletmen-icin")}>İşletmen için</a>
+            <a href="#donusum" onClick={(event) => handleMobileSectionClick(event, "#donusum")}>Dönüşüm</a>
+            <a href="#yardim" onClick={(event) => handleMobileSectionClick(event, "#yardim")}>Yardım</a>
+            <a href={WORKSPACE_HOME_PATH} onClick={closeMobileMenu}>Giriş yap</a>
           </div>
         </details>
 
@@ -148,11 +158,23 @@ function MarketingFooter() {
 export function MarketingHome() {
   useMarketingDocumentMeta();
 
+  const handleSkipToContent = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const main = document.getElementById("mkt-main");
+    if (!main) {
+      return;
+    }
+
+    window.history.pushState(null, "", "#mkt-main");
+    main.scrollIntoView({ block: "start" });
+    main.focus({ preventScroll: true });
+  };
+
   return (
     <div className="mkt-root" id="top">
-      <a className="mkt-skip-link" href="#mkt-main">İçeriğe geç</a>
+      <a className="mkt-skip-link" href="#mkt-main" onClick={handleSkipToContent}>İçeriğe geç</a>
       <MarketingNav />
-      <main id="mkt-main">
+      <main id="mkt-main" tabIndex={-1}>
         <MarketingHero />
         <EaseStrip />
         <ProductStorySections />
