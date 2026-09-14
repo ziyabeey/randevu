@@ -83,11 +83,11 @@ function SweepStory({ active }: StoryProps) {
 function PricingStory({ active }: StoryProps) {
   return (
     <div className="mkt-story mkt-story--pricing" aria-hidden={!active}>
-      <p className="mkt-eyebrow">Karar vermesi de kolay</p>
+      <p className="mkt-eyebrow">Fiyatlandırma yakında</p>
       <h2>Fiyatı da kolay olsun.</h2>
-      <p className="mkt-story-copy">Ne alacağını, ne ödeyeceğini ilk bakışta gör.</p>
+      <p className="mkt-story-copy">Paket yapısı netleştiğinde fiyatı burada açıkça göstereceğiz.</p>
       <div className="mkt-pricing-card" data-pricing-policy-ready={MARKETING_RELEASE_GATES.pricingPolicy ? "true" : "false"}>
-        <div><span className="mkt-proof-kicker">Randevu</span><strong>Tek bakışta anlaşılır.</strong><p>Fiyat ve paket yapısı yayın öncesi ticari kararla netleşecek.</p></div>
+        <div><span className="mkt-proof-kicker">Yayın öncesi</span><strong>Fiyat politikası netleşiyor.</strong><p>Fiyat ve paket yapısı yayın öncesi ticari kararla netleşecek.</p></div>
         <a className="mkt-button mkt-button--lime" href="#kurulum" tabIndex={active ? 0 : -1}>Birlikte kuralım<span aria-hidden="true">→</span></a>
       </div>
     </div>
