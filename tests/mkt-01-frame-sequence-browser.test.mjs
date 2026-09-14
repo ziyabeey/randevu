@@ -327,6 +327,6 @@ test('MKT-01 frame renderer maps scroll directly to bounded cached frames in rea
     page?.close();
     if (chrome && chrome.exitCode === null) chrome.kill('SIGKILL');
     await server.close();
-    rmSync(work, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
