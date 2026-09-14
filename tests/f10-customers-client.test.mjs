@@ -5,7 +5,7 @@ import test from 'node:test';
 const page = readFileSync(new URL('../src/CustomersPage.tsx', import.meta.url), 'utf8');
 const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../worker/customers.ts', import.meta.url), 'utf8');
-const migration = readFileSync(new URL('../supabase/migrations/20260914110000_f10_customer_records.sql', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../supabase/migrations/20260914113000_f10_customer_records.sql', import.meta.url), 'utf8');
 
 await test('F10-05 customers are a dedicated workspace routed through the shared API client', () => {
   assert.match(main, /const isCustomers = path === '\/customers'/);
