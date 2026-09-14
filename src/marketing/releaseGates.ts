@@ -1,3 +1,5 @@
+export const MARKETING_CONTACT_HREF: string | null = null;
+
 export const MARKETING_RELEASE_GATES = {
   // Public web booking and recovery/integration acceptance are already complete.
   publicBooking: true,
@@ -23,6 +25,6 @@ export const MARKETING_RELEASE_GATES = {
   // Real pilot results/testimonials do not exist yet; never synthesize proof.
   pilotProof: false,
 
-  // Final lead/contact destination is not wired in the shared app entry yet.
-  contactFlow: false,
+  // Final lead/contact destination stays closed until a real route/channel is configured.
+  contactFlow: MARKETING_CONTACT_HREF !== null,
 } as const;
