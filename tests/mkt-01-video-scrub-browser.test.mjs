@@ -36,7 +36,31 @@ async function waitFor(read, message, timeoutMs = 10_000) {
   throw new Error(`${message}${lastError ? `: ${lastError.message}` : ''}`);
 }
 
-function mediaFixturePlugin() {
+function parseByteRange(rangeHeader, length) {
+  if (!rangeHeader || !rangeHeader.startsWith('bytes=')) return null;
+  const value = rangeHeader.slice('bytes='.length).trim();
+  if (value.includes(',')) return null;
+
+  const open = /^(\d+)-(\d*)$/.exec(value);
+  if (open) {
+    const start = Number(open[1]);
+    const requestedEnd = open[2] ? Number(open[2]) : length - 1;
+    const end = Math.min(length - 1, requestedEnd);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || start >= length || start > end) return null;
+    return { start, end };
+  }
+
+  const suffix = /^-(\d+)$/.exec(value);
+  if (suffix) {
+    const count = Math.min(length, Number(suffix[1]));
+    if (!Number.isFinite(count) || count <= 0) return null;
+    return { start: length - count, end: length - 1 };
+  }
+
+  return null;
+}
+
+function mediaFixturePlugin(requests) {
   const bytes = readFileSync(fixturePath);
   return {
     name: 'mkt-scrub-media-fixture',
@@ -50,25 +74,32 @@ function mediaFixturePlugin() {
           return;
         }
 
+        const rangeHeader = typeof req.headers.range === 'string' ? req.headers.range : null;
+        requests.push({ method: req.method ?? 'GET', pathname, range: rangeHeader });
         res.setHeader('Content-Type', 'video/mp4');
         res.setHeader('Accept-Ranges', 'bytes');
         res.setHeader('Cache-Control', 'no-store');
-        const range = req.headers.range;
-        const match = typeof range === 'string' ? /^bytes=(\d+)-(\d*)$/.exec(range) : null;
+        res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+        res.setHeader('Content-Disposition', 'inline');
 
-        if (match) {
-          const start = Number(match[1]);
-          const requestedEnd = match[2] ? Number(match[2]) : bytes.length - 1;
-          const end = Math.min(bytes.length - 1, requestedEnd);
-          if (!Number.isFinite(start) || start < 0 || start > end) {
+        if (req.method === 'HEAD') {
+          res.statusCode = 200;
+          res.setHeader('Content-Length', String(bytes.length));
+          res.end();
+          return;
+        }
+
+        if (rangeHeader) {
+          const parsed = parseByteRange(rangeHeader, bytes.length);
+          if (!parsed) {
             res.statusCode = 416;
             res.setHeader('Content-Range', `bytes */${bytes.length}`);
             res.end();
             return;
           }
-          const chunk = bytes.subarray(start, end + 1);
+          const chunk = bytes.subarray(parsed.start, parsed.end + 1);
           res.statusCode = 206;
-          res.setHeader('Content-Range', `bytes ${start}-${end}/${bytes.length}`);
+          res.setHeader('Content-Range', `bytes ${parsed.start}-${parsed.end}/${bytes.length}`);
           res.setHeader('Content-Length', String(chunk.length));
           res.end(chunk);
           return;
@@ -83,10 +114,11 @@ function mediaFixturePlugin() {
 }
 
 async function createPreviewServer() {
+  const mediaRequests = [];
   const server = await createServer({
     root: repoRoot,
     configFile: false,
-    plugins: [mediaFixturePlugin(), react()],
+    plugins: [mediaFixturePlugin(mediaRequests), react()],
     appType: 'mpa',
     logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, strictPort: false },
@@ -94,7 +126,7 @@ async function createPreviewServer() {
   await server.listen();
   const address = server.httpServer?.address();
   assert.ok(address && typeof address === 'object');
-  return { server, origin: `http://127.0.0.1:${address.port}` };
+  return { server, origin: `http://127.0.0.1:${address.port}`, mediaRequests };
 }
 
 class Cdp {
@@ -176,6 +208,33 @@ async function launchDebugChrome(chromeBin, work) {
   return { chrome, page };
 }
 
+async function readMediaDiagnostics(page) {
+  return page.evaluate(`(() => {
+    const video = document.querySelector('video.mkt-transformation-video');
+    const fallback = document.querySelector('.mkt-transformation-fallback');
+    if (!video) {
+      return {
+        videoPresent: false,
+        fallbackPresent: Boolean(fallback),
+        fallbackText: fallback?.textContent?.slice(0, 160) ?? null,
+      };
+    }
+    return {
+      videoPresent: true,
+      fallbackPresent: Boolean(fallback),
+      currentSrc: video.currentSrc,
+      duration: Number.isFinite(video.duration) ? video.duration : String(video.duration),
+      readyState: video.readyState,
+      networkState: video.networkState,
+      errorCode: video.error?.code ?? null,
+      errorMessage: video.error?.message ?? null,
+      canPlayMp4: video.canPlayType('video/mp4'),
+      canPlayH264: video.canPlayType('video/mp4; codecs="avc1.42E01E"'),
+      reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    };
+  })()`);
+}
+
 async function scrollToProgress(page, progress, expectedPhase) {
   await page.evaluate(`(() => {
     const section = document.querySelector('.mkt-transformation');
@@ -209,7 +268,7 @@ async function scrollToProgress(page, progress, expectedPhase) {
   }, `Scrub did not settle at ${Math.round(progress * 100)}% / ${expectedPhase}`);
 }
 
-test('MKT-01 normal-motion Chrome scrub maps scroll to real video time and story phases', { timeout: 40_000 }, async (t) => {
+test('MKT-01 normal-motion Chrome scrub maps scroll to real video time and story phases', { timeout: 45_000 }, async (t) => {
   const chromeBin = findChrome();
   if (!chromeBin) {
     t.skip('Chrome/Chromium is unavailable in this environment');
@@ -217,7 +276,7 @@ test('MKT-01 normal-motion Chrome scrub maps scroll to real video time and story
   }
 
   const work = mkdtempSync(path.join(process.env.RUNNER_TEMP ?? tmpdir(), 'randevu-mkt-video-scrub-'));
-  const { server, origin } = await createPreviewServer();
+  const { server, origin, mediaRequests } = await createPreviewServer();
   let chrome;
   let page;
 
@@ -229,6 +288,9 @@ test('MKT-01 normal-motion Chrome scrub maps scroll to real video time and story
     }, 'Marketing preview server did not become ready');
 
     ({ chrome, page } = await launchDebugChrome(chromeBin, work));
+    await page.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+    });
     await page.send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
       height: 900,
@@ -238,28 +300,46 @@ test('MKT-01 normal-motion Chrome scrub maps scroll to real video time and story
       screenHeight: 900,
     });
     await page.send('Page.navigate', { url });
+    await waitFor(
+      () => page.evaluate('document.readyState === "complete" && Boolean(document.querySelector("#mkt-main"))'),
+      'Marketing preview did not render',
+    );
 
-    const media = await waitFor(async () => {
-      const state = await page.evaluate(`(() => {
-        const video = document.querySelector('video.mkt-transformation-video');
-        if (!video) return null;
-        return {
-          duration: video.duration,
-          readyState: video.readyState,
-          paused: video.paused,
-          autoplay: video.autoplay,
-          fallback: Boolean(document.querySelector('.mkt-transformation-fallback')),
-          reduced: matchMedia('(prefers-reduced-motion: reduce)').matches,
-        };
-      })()`);
-      return state && state.readyState >= 1 && Number.isFinite(state.duration) ? state : false;
-    }, 'Chrome did not load scrub fixture metadata');
+    await page.evaluate(`(() => {
+      const section = document.querySelector('.mkt-transformation');
+      section?.scrollIntoView({ block: 'center' });
+      const video = document.querySelector('video.mkt-transformation-video');
+      video?.load();
+    })()`);
+
+    let media;
+    try {
+      media = await waitFor(async () => {
+        const state = await readMediaDiagnostics(page);
+        return state.videoPresent
+          && !state.fallbackPresent
+          && typeof state.duration === 'number'
+          && state.readyState >= 1
+          ? state
+          : false;
+      }, 'Chrome did not load scrub fixture metadata', 12_000);
+    } catch (error) {
+      const diagnostics = await readMediaDiagnostics(page);
+      throw new Error(`${error.message}; browser=${JSON.stringify(diagnostics)}; requests=${JSON.stringify(mediaRequests)}`);
+    }
 
     assert.equal(media.reduced, false, 'Positive scrub acceptance must run in normal-motion mode');
-    assert.equal(media.fallback, false, 'Fixture video unexpectedly fell back');
+    assert.equal(media.fallbackPresent, false, 'Fixture video unexpectedly fell back');
     assert.ok(Math.abs(media.duration - 5.041667) < 0.08, `Unexpected fixture duration ${media.duration}`);
-    assert.equal(media.paused, true, 'Scrub video must remain paused');
-    assert.equal(media.autoplay, false, 'Scrub video must never autoplay');
+    assert.notEqual(media.canPlayH264, '', 'Chrome runner reports no H.264 MP4 support');
+
+    const playback = await page.evaluate(`(() => {
+      const video = document.querySelector('video.mkt-transformation-video');
+      return video ? { paused: video.paused, autoplay: video.autoplay } : null;
+    })()`);
+    assert.equal(playback?.paused, true, 'Scrub video must remain paused');
+    assert.equal(playback?.autoplay, false, 'Scrub video must never autoplay');
+    assert.ok(mediaRequests.length > 0, 'Chrome loaded metadata without hitting the fixture server');
 
     const checkpoints = [
       [0.18, 'reminder'],
