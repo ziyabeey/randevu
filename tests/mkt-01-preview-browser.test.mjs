@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +34,40 @@ async function waitForServer(url, timeoutMs = 10_000) {
   throw new Error(`Marketing preview dev server did not become ready at ${url}`);
 }
 
+function runChrome(chromeBin, args, { cwd, timeoutMs = 15_000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(chromeBin, args, {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+
+    const settle = (callback) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      callback();
+    };
+
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      settle(() => reject(new Error(`Chrome preview acceptance timed out.${stderr ? `\n${stderr.slice(-4_000)}` : ''}`)));
+    }, timeoutMs);
+
+    child.once('error', (error) => settle(() => reject(error)));
+    child.once('close', (code, signal) => {
+      settle(() => resolve({ status: code, signal, stdout, stderr }));
+    });
+  });
+}
+
 test('MKT-01 standalone preview renders the approved reduced-motion homepage in real Chrome', { timeout: 30_000 }, async (t) => {
   const chromeBin = findChrome();
   if (!chromeBin) {
@@ -63,7 +97,7 @@ test('MKT-01 standalone preview renders the approved reduced-motion homepage in 
     const url = `${origin}/marketing-preview.html?reduced=1&clean=1`;
     await waitForServer(url);
 
-    const result = spawnSync(chromeBin, [
+    const result = await runChrome(chromeBin, [
       '--headless=new',
       '--no-sandbox',
       '--disable-gpu',
@@ -71,14 +105,9 @@ test('MKT-01 standalone preview renders the approved reduced-motion homepage in 
       '--virtual-time-budget=3500',
       '--dump-dom',
       url,
-    ], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      maxBuffer: 8 * 1024 * 1024,
-      timeout: 15_000,
-    });
+    ], { cwd: repoRoot, timeoutMs: 15_000 });
 
-    assert.equal(result.status, 0, result.stderr || 'Chrome preview acceptance failed');
+    assert.equal(result.status, 0, result.stderr || `Chrome exited via ${result.signal ?? 'unknown signal'}`);
     const html = result.stdout;
 
     for (const expected of [
