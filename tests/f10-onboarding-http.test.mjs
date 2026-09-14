@@ -14,6 +14,8 @@ const user = { id: 'b1000000-0000-4000-8000-000000000001', email: 'setup-owner@e
 const businessId = 'b2000000-0000-4000-8000-000000000001';
 const forgedBusinessId = 'b2000000-0000-4000-8000-000000000099';
 const membershipId = 'b3000000-0000-4000-8000-000000000001';
+const serviceId = 'b5000000-0000-4000-8000-000000000001';
+const staffId = 'b6000000-0000-4000-8000-000000000001';
 const csrfValue = 'C'.repeat(43);
 
 function membership(role = 'owner') {
@@ -66,22 +68,16 @@ function setCookieValues(response) {
     : [response.headers.get('set-cookie')].filter(Boolean);
 }
 
-function onboardingResponse(pathname) {
-  if (pathname === '/rest/v1/businesses') {
-    return json([{ id: businessId, name: 'Setup Studio', slug: 'setup-studio', timezone: 'Europe/Istanbul' }]);
-  }
-  if (pathname === '/rest/v1/services') {
-    return json([{ id: 'service-a', name: 'Kesim', active: true, duration_minutes: 30, price_minor: 10000, currency: 'TRY' }]);
-  }
-  if (pathname === '/rest/v1/staff_profiles') {
-    return json([{ id: 'staff-a', membership_id: membershipId, name: 'Owner', active: true }]);
-  }
-  if (pathname === '/rest/v1/staff_services') return json([{ staff_id: 'staff-a', service_id: 'service-a', active: true }]);
-  if (pathname === '/rest/v1/business_hours') return json([{ id: 'bh-a', weekday: 1, starts_local: '09:00:00', ends_local: '18:00:00', active: true }]);
-  if (pathname === '/rest/v1/staff_hours') return json([{ id: 'sh-a', staff_id: 'staff-a', weekday: 1, starts_local: '09:00:00', ends_local: '18:00:00', active: true }]);
-  if (pathname === '/rest/v1/public_booking_settings') return json([{ business_id: businessId, enabled: false, step_minutes: 15, min_notice_minutes: 60, horizon_days: 60 }]);
-  if (pathname === '/rest/v1/rpc/get_business_onboarding_readiness') {
-    return json([{
+function onboardingSnapshot() {
+  return [{
+    business: { id: businessId, name: 'Setup Studio', slug: 'setup-studio', timezone: 'Europe/Istanbul' },
+    services: [{ id: serviceId, name: 'Kesim', active: true, duration_minutes: 30, price_minor: 10000, currency: 'TRY' }],
+    staff: [{ id: staffId, membership_id: membershipId, name: 'Owner', active: true }],
+    assignments: [{ staff_id: staffId, service_id: serviceId, active: true }],
+    business_hours: [{ id: 'bh-a', weekday: 1, starts_local: '09:00:00', ends_local: '18:00:00', active: true }],
+    staff_hours: [{ id: 'sh-a', staff_id: staffId, weekday: 1, starts_local: '09:00:00', ends_local: '18:00:00', active: true }],
+    settings: { business_id: businessId, enabled: false, step_minutes: 15, min_notice_minutes: 60, horizon_days: 60 },
+    readiness: {
       business_id: businessId,
       has_active_service: true,
       has_active_staff: true,
@@ -91,30 +87,28 @@ function onboardingResponse(pathname) {
       has_overlapping_hours: true,
       publishable: true,
       missing_reasons: [],
-    }]);
-  }
-  throw new Error(`unexpected onboarding path: ${pathname}`);
+    },
+  }];
 }
 
-await test('F10-03 onboarding snapshot derives every business read from selected Membership authority', async () => {
+await test('F10-03 onboarding uses one bounded DB snapshot derived from selected Membership authority', async () => {
   const realFetch = globalThis.fetch;
-  const businessScopedQueries = [];
-  let readinessBody;
-  globalThis.fetch = async (input, init) => {
+  const calls = [];
+  let snapshotBody;
+  globalThis.fetch = async (input, init = {}) => {
     const url = new URL(String(input));
+    calls.push(url.pathname);
     if (url.pathname === '/auth/v1/user') return json(user);
     if (url.pathname === '/rest/v1/memberships') {
       assert.equal(url.searchParams.get('business_id'), `eq.${businessId}`);
       assert.equal(url.searchParams.get('user_id'), `eq.${user.id}`);
       return json([membership()]);
     }
-    if (url.pathname === '/rest/v1/rpc/get_business_onboarding_readiness') {
-      readinessBody = JSON.parse(init.body);
-    } else if (url.pathname.startsWith('/rest/v1/')) {
-      const queryBusiness = url.searchParams.get('business_id') ?? (url.pathname === '/rest/v1/businesses' ? url.searchParams.get('id') : null);
-      if (queryBusiness) businessScopedQueries.push(queryBusiness);
+    if (url.pathname === '/rest/v1/rpc/get_business_onboarding_snapshot') {
+      snapshotBody = JSON.parse(init.body);
+      return json(onboardingSnapshot());
     }
-    return onboardingResponse(url.pathname);
+    throw new Error(`onboarding unexpectedly used an unbounded raw list: ${url}`);
   };
   try {
     const response = await app.request('http://localhost/api/onboarding?businessId=b2000000-0000-4000-8000-000000000099', {
@@ -125,10 +119,29 @@ await test('F10-03 onboarding snapshot derives every business read from selected
     assert.equal(payload.membership.business_id, businessId);
     assert.equal(payload.business.id, businessId);
     assert.equal(payload.readiness.business_id, businessId);
-    assert.deepEqual(readinessBody, { p_business_id: businessId });
-    assert.ok(businessScopedQueries.length >= 7);
-    assert.ok(businessScopedQueries.every((value) => value === `eq.${businessId}`));
+    assert.deepEqual(snapshotBody, { p_business_id: businessId });
+    assert.deepEqual(calls, ['/auth/v1/user', '/rest/v1/memberships', '/rest/v1/rpc/get_business_onboarding_snapshot']);
     assert.doesNotMatch(JSON.stringify(payload), new RegExp(forgedBusinessId));
+  } finally { globalThis.fetch = realFetch; }
+});
+
+await test('F10-03 onboarding overflow is explicit 409 instead of a partial successful snapshot', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = new URL(String(input));
+    if (url.pathname === '/auth/v1/user') return json(user);
+    if (url.pathname === '/rest/v1/memberships') return json([membership()]);
+    if (url.pathname === '/rest/v1/rpc/get_business_onboarding_snapshot') {
+      return json({ message: 'ONBOARDING_BUSINESS_HOURS_LIMIT_EXCEEDED' }, 400);
+    }
+    throw new Error(`unexpected overflow path: ${url}`);
+  };
+  try {
+    const response = await app.request('http://localhost/api/onboarding', {
+      headers: { Cookie: cookieHeader() },
+    }, env);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error?.code, 'ONBOARDING_BUSINESS_HOURS_LIMIT_EXCEEDED');
   } finally { globalThis.fetch = realFetch; }
 });
 
@@ -153,12 +166,12 @@ await test('F10-03 recovery session cannot read onboarding setup', async () => {
 
 await test('F10-03 onboarding preserves transient upstream failure as 503 instead of tenant loss', async () => {
   const realFetch = globalThis.fetch;
-  globalThis.fetch = async (input, init) => {
+  globalThis.fetch = async (input) => {
     const url = new URL(String(input));
     if (url.pathname === '/auth/v1/user') return json(user);
     if (url.pathname === '/rest/v1/memberships') return json([membership()]);
-    if (url.pathname === '/rest/v1/services') return json({ message: 'temporary failure' }, 503);
-    return onboardingResponse(url.pathname, init);
+    if (url.pathname === '/rest/v1/rpc/get_business_onboarding_snapshot') return json({ message: 'temporary failure' }, 503);
+    throw new Error(`unexpected transient path: ${url}`);
   };
   try {
     const response = await app.request('http://localhost/api/onboarding', {
@@ -232,5 +245,35 @@ await test('F10-03 public settings mutation preserves DB recovery rejection as p
     }, env);
     assert.equal(response.status, 403);
     assert.equal((await response.json()).error?.code, 'PASSWORD_UPDATE_REQUIRED');
+  } finally { globalThis.fetch = realFetch; }
+});
+
+await test('F10-03 stale published business exposes no public business, staff or slot HTTP surface', async () => {
+  const realFetch = globalThis.fetch;
+  const actions = [];
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(String(input));
+    assert.equal(url.pathname, '/rest/v1/rpc/execute_public_operation');
+    const body = JSON.parse(init.body);
+    actions.push(body.p_action);
+    return json({ ok: false, error: { message: 'PUBLIC_BOOKING_NOT_FOUND' } });
+  };
+  try {
+    const root = await app.request('http://localhost/api/public/business/setup-studio', {}, env);
+    assert.equal(root.status, 404);
+    assert.equal((await root.json()).error?.code, 'PUBLIC_BOOKING_NOT_FOUND');
+
+    const staff = await app.request(`http://localhost/api/public/business/setup-studio/staff?serviceId=${serviceId}`, {}, env);
+    assert.equal(staff.status, 404);
+    assert.equal((await staff.json()).error?.code, 'PUBLIC_BOOKING_NOT_FOUND');
+
+    const slots = await app.request(`http://localhost/api/public/business/setup-studio/slots?serviceId=${serviceId}&date=2026-09-21&staffId=${staffId}`, {}, env);
+    assert.equal(slots.status, 404);
+    assert.equal((await slots.json()).error?.code, 'PUBLIC_BOOKING_NOT_FOUND');
+
+    assert.ok(actions.includes('business'));
+    assert.ok(actions.includes('services'));
+    assert.ok(actions.includes('staff'));
+    assert.ok(actions.includes('slots'));
   } finally { globalThis.fetch = realFetch; }
 });
