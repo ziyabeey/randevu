@@ -45,7 +45,7 @@
 | [F11-02](docs/plan/phase-11.md#f11-02) | Çok hizmetli müsaitlik ve atomik oluşturma | F11-01 | Planlandı | — | — |
 | [F11-03](docs/plan/phase-11.md#f11-03) | Grup yönetimi ve mevcut ekranlarla uyum | F11-02 | Planlandı | — | — |
 | [F11-04](docs/plan/phase-11.md#f11-04) | Çakışma, timezone ve yükseltme kabulü | F11-03, F17-02 | Planlandı | — | — |
-| [F12-01](docs/plan/phase-12.md#f12-01) | Görsel yön ve akış sözleşmesi | TEMEL | Planlandı | — | — |
+| [F12-01](docs/plan/phase-12.md#f12-01) | Görsel yön ve akış sözleşmesi | TEMEL | İncelemede | Ajan B / 2026-09-14 | `f12-01-visual-flow-contract` · base `364d006` · [PR #61](https://github.com/ziyabeey1-ai/randevu/pull/61) · [Sözleşme](docs/plan/f12-01-visual-flow-contract.md) · [Devir](docs/handoffs/F12-01.md) · GS kapanış main'ine rebased; exact-head CI bekleniyor; koordinatör son kontrolü açık |
 | [F12-02](docs/plan/phase-12.md#f12-02) | Salon profili ve public fotoğraflar | F12-01, F10-03 | Planlandı | — | — |
 | [F12-03](docs/plan/phase-12.md#f12-03) | Hizmet kategorileri ve fiyat aralığı | F10-04 | Planlandı | — | — |
 | [F12-04](docs/plan/phase-12.md#f12-04) | Çoklu hizmet, personel ve saat seçimi | F12-02, F12-03, F11-02 | Planlandı | — | — |
