@@ -64,11 +64,12 @@ export function useVideoScrollScrub(
     const getProgress = () => clamp01((window.scrollY - sectionTop) / scrollRange);
 
     const writePhase = (progress: number) => {
-      const nextPhase = getTransformationPhase(progress);
-      const phaseProgress = getTransformationPhaseProgress(progress, nextPhase);
+      const normalized = clamp01(progress);
+      const nextPhase = getTransformationPhase(normalized);
+      const phaseProgress = getTransformationPhaseProgress(normalized, nextPhase);
 
       section.dataset.phase = nextPhase;
-      section.style.setProperty("--mkt-progress", progress.toFixed(4));
+      section.style.setProperty("--mkt-progress", normalized.toFixed(4));
       section.style.setProperty("--mkt-phase-progress", phaseProgress.toFixed(4));
 
       if (nextPhase !== phaseRef.current) {
@@ -77,6 +78,12 @@ export function useVideoScrollScrub(
       }
     };
 
+    const getDuration = () => (
+      Number.isFinite(video.duration) && video.duration > 0
+        ? video.duration
+        : TRANSFORMATION_VIDEO_DURATION
+    );
+
     const tick = () => {
       frameRef.current = null;
 
@@ -84,31 +91,38 @@ export function useVideoScrollScrub(
         return;
       }
 
-      const duration = Number.isFinite(video.duration) && video.duration > 0
-        ? video.duration
-        : TRANSFORMATION_VIDEO_DURATION;
+      const duration = getDuration();
       const targetTime = Math.min(duration, Math.max(0, targetTimeRef.current));
       const delta = targetTime - video.currentTime;
+      const distance = Math.abs(delta);
 
-      if (Math.abs(delta) <= 1 / 120) {
-        if (Math.abs(delta) > 0.0001) {
-          video.currentTime = targetTime;
-        }
+      if (distance > 0.7) {
+        video.currentTime = targetTime;
+        writePhase(targetTime / duration);
         return;
       }
 
-      video.currentTime += delta * 0.24;
+      if (distance <= 1 / 120) {
+        if (distance > 0.0001) {
+          video.currentTime = targetTime;
+        }
+        writePhase(targetTime / duration);
+        return;
+      }
+
+      video.currentTime += delta * 0.28;
+      writePhase(video.currentTime / duration);
       frameRef.current = window.requestAnimationFrame(tick);
     };
 
     const schedule = () => {
-      const progress = getProgress();
-      writePhase(progress);
+      const scrollProgress = getProgress();
+      const duration = getDuration();
+      targetTimeRef.current = scrollProgress * duration;
 
-      const duration = Number.isFinite(video.duration) && video.duration > 0
-        ? video.duration
-        : TRANSFORMATION_VIDEO_DURATION;
-      targetTimeRef.current = progress * duration;
+      if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
+        writePhase(scrollProgress);
+      }
 
       if (visibleRef.current && frameRef.current === null) {
         frameRef.current = window.requestAnimationFrame(tick);
