@@ -1,0 +1,17 @@
+.mkt-skip-link {
+  top: -72px;
+  transform: none;
+  transition: top 160ms ease;
+}
+
+.mkt-skip-link:focus,
+.mkt-skip-link:focus-visible {
+  top: 10px;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-skip-link {
+    transition: none;
+  }
+}
