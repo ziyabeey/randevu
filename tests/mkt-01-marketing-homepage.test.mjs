@@ -16,6 +16,7 @@ const scrubHook = read('src/marketing/transformation/useVideoScrollScrub.ts');
 const releaseGates = read('src/marketing/releaseGates.ts');
 const assets = read('src/marketing/assets.ts');
 const assetContract = read('src/marketing/asset-contract.ts');
+const documentMeta = read('src/marketing/useMarketingDocumentMeta.ts');
 const previewEntry = read('src/marketing/preview-entry.tsx');
 const previewModes = read('src/marketing/previewModes.ts');
 const previewHtml = read('marketing-preview.html');
@@ -50,6 +51,17 @@ test('MKT-01 hero exposes its LCP media as a priority image', () => {
   assert.match(hero, /decoding="async"/);
   assert.match(hero, /width=\{1928\}/);
   assert.match(hero, /height=\{1072\}/);
+});
+
+test('MKT-01 production document metadata is explicit while standalone preview stays noindex', () => {
+  assert.match(home, /useMarketingDocumentMeta\(\)/);
+  assert.match(documentMeta, /Randevu kolay\. \| Kepenk\.ai/);
+  assert.match(documentMeta, /https:\/\/randevu\.kepenk\.ai\//);
+  assert.match(documentMeta, /og:title/);
+  assert.match(documentMeta, /og:description/);
+  assert.match(documentMeta, /og:type/);
+  assert.match(documentMeta, /endsWith\("\/marketing-preview\.html"\)/);
+  assert.match(previewHtml, /name="robots" content="noindex,nofollow"/);
 });
 
 test('MKT-01 publish gates stay explicit and fail closed where policy is not ready', () => {
