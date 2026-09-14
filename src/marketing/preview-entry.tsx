@@ -8,6 +8,7 @@ import { readMarketingPreviewMode } from "./previewModes";
 
 const previewMode = readMarketingPreviewMode(window.location.search);
 
+document.documentElement.dataset.mktRenderer = previewMode.renderer;
 if (previewMode.reducedMotion) document.documentElement.dataset.mktReducedMotion = "true";
 if (previewMode.debug) document.documentElement.dataset.mktDebug = "true";
 
@@ -47,6 +48,7 @@ function PreviewDiagnostics() {
   return (
     <aside className={`mkt-preview-diagnostics is-${status}`} aria-live="polite">
       <strong>Preview</strong>
+      <span>Renderer: {previewMode.renderer === "frames" ? "Frames A/B" : "Video"}</span>
       {previewMode.reducedMotion ? <span>Reduced motion</span> : null}
       {previewMode.debug ? <span>Debug</span> : null}
       {!previewMode.reducedMotion && status === "checking" ? <span>Assetler kontrol ediliyor…</span> : null}
