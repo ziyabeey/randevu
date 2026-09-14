@@ -2,13 +2,6 @@ export type TransformationPhase = "reminder" | "friction" | "sweep" | "pricing";
 
 export const TRANSFORMATION_VIDEO_DURATION = 5.041667;
 
-export const TRANSFORMATION_PHASES = {
-  reminder: { start: 0, end: 0.36 },
-  friction: { start: 0.36, end: 0.66 },
-  sweep: { start: 0.66, end: 0.82 },
-  pricing: { start: 0.82, end: 1 },
-} as const;
-
 export const TRANSFORMATION_VIDEO_TIMES = {
   standing: 0,
   cutStarts: 0.7,
@@ -17,6 +10,21 @@ export const TRANSFORMATION_VIDEO_TIMES = {
   sweepStarts: 3.35,
   seatedReveal: 4.15,
   end: TRANSFORMATION_VIDEO_DURATION,
+} as const;
+
+const toProgress = (time: number) => time / TRANSFORMATION_VIDEO_DURATION;
+
+export const TRANSFORMATION_PHASES = {
+  reminder: { start: 0, end: toProgress(TRANSFORMATION_VIDEO_TIMES.cameraDrops) },
+  friction: {
+    start: toProgress(TRANSFORMATION_VIDEO_TIMES.cameraDrops),
+    end: toProgress(TRANSFORMATION_VIDEO_TIMES.sweepStarts),
+  },
+  sweep: {
+    start: toProgress(TRANSFORMATION_VIDEO_TIMES.sweepStarts),
+    end: toProgress(TRANSFORMATION_VIDEO_TIMES.seatedReveal),
+  },
+  pricing: { start: toProgress(TRANSFORMATION_VIDEO_TIMES.seatedReveal), end: 1 },
 } as const;
 
 export function clamp01(value: number): number {
