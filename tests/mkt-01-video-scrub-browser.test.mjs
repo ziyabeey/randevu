@@ -203,8 +203,8 @@ async function scrollToProgress(page, progress, expectedPhase) {
       };
     })()`);
     if (!state || state.phase !== expectedPhase || state.readyState < 1) return false;
-    if (Math.abs(state.progress - ${progress}) > 0.035) return false;
-    if (Math.abs(state.currentTime - state.duration * ${progress}) > 0.22) return false;
+    if (Math.abs(state.progress - progress) > 0.035) return false;
+    if (Math.abs(state.currentTime - state.duration * progress) > 0.22) return false;
     return state;
   }, `Scrub did not settle at ${Math.round(progress * 100)}% / ${expectedPhase}`);
 }
