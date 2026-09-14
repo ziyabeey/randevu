@@ -5,6 +5,7 @@ import AvailabilityPage from './AvailabilityPage';
 import BookingPage from './BookingPage';
 import CalendarPage from './CalendarPage';
 import InvitePage from './InvitePage';
+import OnboardingPage from './OnboardingPage';
 import PublicBookingPage from './PublicBookingPage';
 import PublicBookingSettingsPage from './PublicBookingSettingsPage';
 import ManageAppointmentPage from './ManageAppointmentPage';
@@ -17,6 +18,7 @@ import './calendar.css';
 import './public-booking.css';
 import './customer-manage.css';
 import './team.css';
+import './onboarding.css';
 
 const root = document.getElementById('root');
 
@@ -30,6 +32,7 @@ const isBookings = path === '/bookings';
 const isCalendar = path === '/calendar';
 const isPublicSettings = path === '/public-booking';
 const isTeam = path === '/team';
+const isSetup = path === '/setup';
 const publicSlug = path.startsWith('/r/') ? decodeURIComponent(path.slice(3).split('/')[0] ?? '') : null;
 const isManagementPage = path === '/m' || path === '/m/';
 const managementToken = isManagementPage ? window.location.hash.replace(/^#/, '') : null;
@@ -46,23 +49,26 @@ createRoot(root).render(
         ? <PublicBookingPage slug={publicSlug} />
         : isInviteFlow
           ? <InvitePage />
-          : isCalendar
-            ? <CalendarPage />
-            : isAvailability
-              ? <AvailabilityPage />
-              : isBookings
-                ? <BookingPage />
-                : isPublicSettings
-                  ? <PublicBookingSettingsPage />
-                  : isTeam
-                    ? <TeamPage />
-                    : <App />}
+          : isSetup
+            ? <OnboardingPage />
+            : isCalendar
+              ? <CalendarPage />
+              : isAvailability
+                ? <AvailabilityPage />
+                : isBookings
+                  ? <BookingPage />
+                  : isPublicSettings
+                    ? <PublicBookingSettingsPage />
+                    : isTeam
+                      ? <TeamPage />
+                      : <App />}
     {!isPublicPage && !isManagementPage && !isInviteFlow && (
       <nav className="phase-nav" aria-label="Çalışma alanları">
         <a href="/calendar" aria-current={isCalendar ? 'page' : undefined}>Takvim</a>
         <a href="/bookings" aria-current={isBookings ? 'page' : undefined}>Randevular</a>
         <a href="/availability" aria-current={isAvailability ? 'page' : undefined}>Müsaitlik</a>
-        <a href="/" aria-current={!isCalendar && !isAvailability && !isBookings && !isPublicSettings && !isTeam ? 'page' : undefined}>Hizmetler</a>
+        <a href="/setup" aria-current={isSetup ? 'page' : undefined}>Kurulum</a>
+        <a href="/" aria-current={!isCalendar && !isAvailability && !isBookings && !isPublicSettings && !isTeam && !isSetup ? 'page' : undefined}>Hizmetler</a>
         <a href="/team" aria-current={isTeam ? 'page' : undefined}>Ekip</a>
         <a href="/public-booking" aria-current={isPublicSettings ? 'page' : undefined}>Public Sayfa</a>
       </nav>
