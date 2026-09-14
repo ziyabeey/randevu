@@ -1,14 +1,44 @@
+import { useEffect, useState } from "react";
+
 import "./marketing.css";
 import "./marketing-sections.css";
 import "./marketing-overrides.css";
+import "./marketing-polish.css";
 
 import { MarketingHero } from "./MarketingHero";
 import { ProductStorySections, TrustSections } from "./ProductStorySections";
 import { TransformationSection } from "./transformation/TransformationSection";
 
 function MarketingNav() {
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    let frame: number | null = null;
+
+    const sync = () => {
+      frame = null;
+      setCompact(window.scrollY > 72);
+    };
+
+    const onScroll = () => {
+      if (frame === null) {
+        frame = window.requestAnimationFrame(sync);
+      }
+    };
+
+    sync();
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
+  }, []);
+
   return (
-    <header className="mkt-nav-shell">
+    <header className={`mkt-nav-shell${compact ? " is-compact" : ""}`}>
       <nav className="mkt-nav" aria-label="Randevu ana navigasyon">
         <a className="mkt-brand" href="#top" aria-label="Randevu kolay ana sayfa">
           <span>randevu</span>
@@ -59,8 +89,9 @@ function FinalCta() {
 export function MarketingHome() {
   return (
     <div className="mkt-root" id="top">
+      <a className="mkt-skip-link" href="#mkt-main">İçeriğe geç</a>
       <MarketingNav />
-      <main>
+      <main id="mkt-main">
         <MarketingHero />
         <EaseStrip />
         <ProductStorySections />
