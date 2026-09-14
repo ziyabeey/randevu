@@ -4,6 +4,7 @@ import {
   TRANSFORMATION_VIDEO_DURATION,
   clamp01,
   getTransformationPhase,
+  getTransformationPhaseProgress,
   type TransformationPhase,
 } from "./timeline";
 
@@ -61,8 +62,11 @@ export function useVideoScrollScrub(
 
     const writePhase = (progress: number) => {
       const nextPhase = getTransformationPhase(progress);
+      const phaseProgress = getTransformationPhaseProgress(progress, nextPhase);
+
       section.dataset.phase = nextPhase;
       section.style.setProperty("--mkt-progress", progress.toFixed(4));
+      section.style.setProperty("--mkt-phase-progress", phaseProgress.toFixed(4));
 
       if (nextPhase !== phaseRef.current) {
         phaseRef.current = nextPhase;
