@@ -66,7 +66,7 @@ export function useFrameSequenceScrollScrub(
     const loader = new TransformationFrameLoader(variant);
     let sectionTop = 0;
     let scrollRange = 1;
-    let visible = false;
+    let observerNear = false;
     let disposed = false;
     let geometryFrame: number | null = null;
     let targetIndex = 0;
@@ -78,6 +78,7 @@ export function useFrameSequenceScrollScrub(
     let firstNearAt: number | null = null;
     let firstDrawMs: number | null = null;
     let sequenceFailed = false;
+    let checkpointPrefetchStarted = false;
 
     setFrameReady(false);
     setFailed(false);
@@ -101,6 +102,11 @@ export function useFrameSequenceScrollScrub(
     };
 
     const getProgress = () => clamp01((window.scrollY - sectionTop) / scrollRange);
+    const isSynchronouslyNearSection = () => {
+      const rect = section.getBoundingClientRect();
+      const margin = window.innerHeight * 0.75;
+      return rect.bottom >= -margin && rect.top <= window.innerHeight + margin;
+    };
     const drawFrame = (index: number, frame: Parameters<typeof drawTransformationFrameCover>[1]) => (
       drawTransformationFrameCover(
         canvas,
@@ -137,6 +143,17 @@ export function useFrameSequenceScrollScrub(
       loader.prefetch(getNeighborFrames(index), failSequence);
     };
 
+    const startCheckpointPrefetch = () => {
+      if (checkpointPrefetchStarted) return;
+      checkpointPrefetchStarted = true;
+      loader.prefetch([0, 30, 60, 90, TRANSFORMATION_FRAME_COUNT - 1], failSequence);
+    };
+
+    const markNear = () => {
+      if (firstNearAt === null) firstNearAt = performance.now();
+      startCheckpointPrefetch();
+    };
+
     const drawIndex = (index: number) => {
       if (disposed || sequenceFailed || index === drawnIndex || index === requestedIndex) return;
       targetIndex = index;
@@ -168,13 +185,20 @@ export function useFrameSequenceScrollScrub(
           updateMetrics();
           prefetchAround(index);
         })
-        .catch(failSequence);
+        .catch(failSequence)
+        .finally(() => {
+          if (requestedIndex === index) requestedIndex = -1;
+        });
     };
 
     const schedule = () => {
       const nextIndex = getTransformationFrameIndex(getProgress());
       targetIndex = nextIndex;
-      if (visible && nextIndex !== drawnIndex) drawIndex(nextIndex);
+      const near = observerNear || isSynchronouslyNearSection();
+      if (!near || sequenceFailed) return;
+
+      markNear();
+      if (nextIndex !== drawnIndex) drawIndex(nextIndex);
     };
 
     const scheduleGeometry = () => {
@@ -193,6 +217,7 @@ export function useFrameSequenceScrollScrub(
 
     updateGeometry();
     updateMetrics();
+    schedule();
 
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", scheduleGeometry, { passive: true });
@@ -207,13 +232,10 @@ export function useFrameSequenceScrollScrub(
 
     const intersectionObserver = new IntersectionObserver(
       ([entry]) => {
-        visible = entry?.isIntersecting ?? false;
-        if (!visible || sequenceFailed) return;
-
-        if (firstNearAt === null) firstNearAt = performance.now();
-        const nextIndex = getTransformationFrameIndex(getProgress());
-        drawIndex(nextIndex);
-        loader.prefetch([0, 30, 60, 90, TRANSFORMATION_FRAME_COUNT - 1], failSequence);
+        observerNear = entry?.isIntersecting ?? false;
+        if (!observerNear || sequenceFailed) return;
+        markNear();
+        schedule();
       },
       { rootMargin: "75% 0px 75% 0px" },
     );
