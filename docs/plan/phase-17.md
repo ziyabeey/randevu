@@ -4,7 +4,7 @@
 
 F17-01 ve F17-02 hazırlığı en başta yürütülebilir; son faza ertelenmez. Bu görevler bugün erişim/ortam hazır olduğu iddiası değildir. Kod uygulaması veya ortam kurulumu bu planlama teslimatında başlatılmaz.
 
-**Faz direktifi / kaynak head `5e789ad`:** Kapanış yalnız “kartlar tamamlandı” sayımı değildir; taşınmış sınırlar isimleriyle kapanır. İlk gerçek kullanıcı teması F17-05'e bırakılmaz: irreversible F11-01 öncesi saha görüşmesi ve F13-02 sonrası yarım günlük işletme gözlemi pilot öncesi öğrenme kapılarıdır.
+**Faz direktifi / kaynak head `5e789ad`:** Kapanış yalnız “kartlar tamamlandı” sayımı değildir; taşınmış sınırlar isimleriyle kapanır. İlk gerçek kullanıcı teması F17-05'e bırakılmaz: irreversible F11-01 öncesi saha görüşmesi ve F13-02 sonrası yarım günlük işletme gözlemi pilot öncesi öğrenme kapılarıdır. Head'e bağlı mevcut-runner ayrıntıları kart açılırken current main'de yeniden doğrulanır.
 
 ## F17-01
 
