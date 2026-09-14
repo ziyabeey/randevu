@@ -13,6 +13,7 @@ export function MarketingHero() {
         <p className="mkt-hero-lead">
           Müşteri kendi alsın. Takvimin karışmasın. Kurulumla da seni uğraştırmayalım.
         </p>
+        <p className="mkt-hero-trust">Kuaför, berber ve güzellik işletmeleri için.</p>
         <div className="mkt-hero-actions">
           <a className="mkt-button mkt-button--lime" href="#kurulum">
             Birlikte kuralım
@@ -29,7 +30,7 @@ export function MarketingHero() {
         <div className="mkt-demo-card">
           <div className="mkt-demo-topline">
             <span>Bugün</span>
-            <span className="mkt-live-dot">Canlı</span>
+            <span className="mkt-live-dot">Takvim</span>
           </div>
           <div className="mkt-demo-appointment">
             <div>
