@@ -27,7 +27,45 @@ type PublicSettings = {
   horizon_days: number;
 };
 
+type Business = { id: string; name: string; slug: string; timezone: string };
+type OnboardingSnapshot = {
+  business: Business;
+  services: unknown[];
+  staff: unknown[];
+  assignments: unknown[];
+  business_hours: unknown[];
+  staff_hours: unknown[];
+  settings: PublicSettings;
+  readiness: Readiness;
+};
+type SupabaseError = { message?: string };
+
 const onboarding = new Hono<{ Bindings: AuthEnv }>();
+
+function errorMessage(data: unknown) {
+  return typeof data === 'object' && data !== null
+    ? String((data as SupabaseError).message ?? '')
+    : '';
+}
+
+function limitError(message: string) {
+  if (message.includes('CATALOG_SERVICES_LIMIT_EXCEEDED')) {
+    return { code: 'CATALOG_SERVICES_LIMIT_EXCEEDED', message: 'Hizmet kataloğu güvenli snapshot sınırını aşıyor.' };
+  }
+  if (message.includes('CATALOG_STAFF_LIMIT_EXCEEDED')) {
+    return { code: 'CATALOG_STAFF_LIMIT_EXCEEDED', message: 'Personel kataloğu güvenli snapshot sınırını aşıyor.' };
+  }
+  if (message.includes('CATALOG_ASSIGNMENTS_LIMIT_EXCEEDED')) {
+    return { code: 'CATALOG_ASSIGNMENTS_LIMIT_EXCEEDED', message: 'Personel-hizmet eşleşmeleri güvenli snapshot sınırını aşıyor.' };
+  }
+  if (message.includes('ONBOARDING_BUSINESS_HOURS_LIMIT_EXCEEDED')) {
+    return { code: 'ONBOARDING_BUSINESS_HOURS_LIMIT_EXCEEDED', message: 'İşletme çalışma saatleri güvenli snapshot sınırını aşıyor.' };
+  }
+  if (message.includes('ONBOARDING_STAFF_HOURS_LIMIT_EXCEEDED')) {
+    return { code: 'ONBOARDING_STAFF_HOURS_LIMIT_EXCEEDED', message: 'Personel çalışma saatleri güvenli snapshot sınırını aşıyor.' };
+  }
+  return null;
+}
 
 onboarding.get('/', async (context) => {
   const access = await requireMember(context);
@@ -42,58 +80,17 @@ onboarding.get('/', async (context) => {
   }
 
   const businessId = access.membership.business_id;
-  const token = access.auth.accessToken;
-  const [business, services, staff, assignments, businessHours, staffHours, settings, readiness] = await Promise.all([
-    supabaseRequest<Array<{ id: string; name: string; slug: string; timezone: string }>>(
-      context.env,
-      `rest/v1/businesses?select=id,name,slug,timezone&id=eq.${businessId}&limit=1`,
-      {},
-      token,
-    ),
-    supabaseRequest<unknown[]>(
-      context.env,
-      `rest/v1/services?select=id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,price_minor,currency,active&business_id=eq.${businessId}&order=created_at.asc`,
-      {},
-      token,
-    ),
-    supabaseRequest<unknown[]>(
-      context.env,
-      `rest/v1/staff_profiles?select=id,membership_id,name,phone,active&business_id=eq.${businessId}&order=created_at.asc`,
-      {},
-      token,
-    ),
-    supabaseRequest<unknown[]>(
-      context.env,
-      `rest/v1/staff_services?select=staff_id,service_id,active&business_id=eq.${businessId}`,
-      {},
-      token,
-    ),
-    supabaseRequest<unknown[]>(
-      context.env,
-      `rest/v1/business_hours?select=id,weekday,starts_local,ends_local,active&business_id=eq.${businessId}&active=eq.true&order=weekday.asc,starts_local.asc`,
-      {},
-      token,
-    ),
-    supabaseRequest<unknown[]>(
-      context.env,
-      `rest/v1/staff_hours?select=id,staff_id,weekday,starts_local,ends_local,active&business_id=eq.${businessId}&active=eq.true&order=staff_id.asc,weekday.asc,starts_local.asc`,
-      {},
-      token,
-    ),
-    supabaseRequest<PublicSettings[]>(
-      context.env,
-      `rest/v1/public_booking_settings?select=business_id,enabled,step_minutes,min_notice_minutes,horizon_days&business_id=eq.${businessId}&limit=1`,
-      {},
-      token,
-    ),
-    supabaseRequest<Readiness[]>(context.env, 'rest/v1/rpc/get_business_onboarding_readiness', {
+  const result = await supabaseRequest<OnboardingSnapshot[]>(
+    context.env,
+    'rest/v1/rpc/get_business_onboarding_snapshot',
+    {
       method: 'POST',
       body: JSON.stringify({ p_business_id: businessId }),
-    }, token),
-  ]);
+    },
+    access.auth.accessToken,
+  );
 
-  const results = [business, services, staff, assignments, businessHours, staffHours, settings, readiness];
-  if (results.some((result) => upstreamUnavailable(result.status))) {
+  if (upstreamUnavailable(result.status)) {
     return context.json({
       error: {
         code: 'ONBOARDING_UNAVAILABLE',
@@ -102,12 +99,44 @@ onboarding.get('/', async (context) => {
     }, 503);
   }
 
-  const businessRow = business.ok ? first(business.data) : null;
-  const settingsRow = settings.ok ? first(settings.data) : null;
-  const readinessRow = readiness.ok ? first(readiness.data) : null;
-  if (!business.ok || !services.ok || !staff.ok || !assignments.ok
-      || !businessHours.ok || !staffHours.ok || !settings.ok || !readiness.ok
-      || !businessRow || !settingsRow || !readinessRow) {
+  if (!result.ok) {
+    const message = errorMessage(result.data);
+    const overflow = limitError(message);
+    if (overflow) return context.json({ error: overflow }, 409);
+    if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
+      return context.json({
+        error: {
+          code: 'PASSWORD_UPDATE_REQUIRED',
+          message: 'Devam etmeden önce yeni parolanızı belirleyin.',
+        },
+      }, 403);
+    }
+    if (message.includes('NOT_ALLOWED')) {
+      return context.json({
+        error: {
+          code: 'TENANT_FORBIDDEN',
+          message: 'Bu işletmeye erişiminiz yok.',
+        },
+      }, 403);
+    }
+    return context.json({
+      error: {
+        code: 'ONBOARDING_READ_FAILED',
+        message: 'Kurulum bilgileri okunamadı.',
+      },
+    }, 502);
+  }
+
+  const snapshot = first(result.data);
+  if (!snapshot
+      || !snapshot.business
+      || !snapshot.settings
+      || !snapshot.readiness
+      || !Array.isArray(snapshot.services)
+      || !Array.isArray(snapshot.staff)
+      || !Array.isArray(snapshot.assignments)
+      || !Array.isArray(snapshot.business_hours)
+      || !Array.isArray(snapshot.staff_hours)) {
     return context.json({
       error: {
         code: 'ONBOARDING_READ_FAILED',
@@ -118,14 +147,14 @@ onboarding.get('/', async (context) => {
 
   return context.json({
     membership: access.membership,
-    business: businessRow,
-    services: services.data ?? [],
-    staff: staff.data ?? [],
-    assignments: assignments.data ?? [],
-    businessHours: businessHours.data ?? [],
-    staffHours: staffHours.data ?? [],
-    settings: settingsRow,
-    readiness: readinessRow,
+    business: snapshot.business,
+    services: snapshot.services,
+    staff: snapshot.staff,
+    assignments: snapshot.assignments,
+    businessHours: snapshot.business_hours,
+    staffHours: snapshot.staff_hours,
+    settings: snapshot.settings,
+    readiness: snapshot.readiness,
   });
 });
 
