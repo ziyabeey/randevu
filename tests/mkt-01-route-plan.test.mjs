@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const srcRoot = resolve(repoRoot, 'src');
 const routePlan = await import('../src/marketing/routePlan.ts');
+const cutoverInventory = await import('../src/marketing/routeCutoverInventory.ts');
 const wranglerConfig = readFileSync(resolve(repoRoot, 'wrangler.jsonc'), 'utf8');
 
 const {
@@ -13,6 +15,23 @@ const {
   WORKSPACE_HOME_PATH,
   resolveMarketingRouteSurface,
 } = routePlan;
+
+const {
+  ROUTE_CUTOVER_STATUS,
+  WORKSPACE_ROOT_RETURN_FILES,
+} = cutoverInventory;
+
+function listTsxFiles(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const absolute = resolve(directory, entry.name);
+    if (entry.isDirectory()) return listTsxFiles(absolute);
+    return entry.isFile() && entry.name.endsWith('.tsx') ? [absolute] : [];
+  });
+}
+
+function repositoryPath(absolutePath) {
+  return relative(repoRoot, absolutePath).replaceAll('\\', '/');
+}
 
 test('MKT-01 production route plan preserves the pending invite flow at root', () => {
   assert.equal(MARKETING_HOME_PATH, '/');
@@ -46,6 +65,24 @@ test('MKT-01 production route plan moves the existing workspace root to /app wit
       `Marketing route plan must not claim ${path}`,
     );
   }
+});
+
+test('MKT-01 pre-cutover inventory exhaustively tracks current workspace href="/" returns', () => {
+  assert.equal(ROUTE_CUTOVER_STATUS, 'pre-cutover');
+
+  const actualRootReturnFiles = listTsxFiles(srcRoot)
+    .filter((absolutePath) => readFileSync(absolutePath, 'utf8').includes('href="/"'))
+    .map(repositoryPath)
+    .sort();
+  const expectedRootReturnFiles = [...WORKSPACE_ROOT_RETURN_FILES].sort();
+
+  assert.deepEqual(
+    actualRootReturnFiles,
+    expectedRootReturnFiles,
+    'Workspace root-return inventory drifted. Update the explicit cutover inventory before touching shared routes.',
+  );
+
+  assert.equal(expectedRootReturnFiles.length, 10, 'Current main cutover inventory should contain exactly ten known root-return surfaces');
 });
 
 test('MKT-01 /app deep links remain compatible with the deployment SPA fallback', () => {
