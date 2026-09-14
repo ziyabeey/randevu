@@ -1,6 +1,9 @@
+import "./hero-media.css";
+
 export function MarketingHero() {
   return (
     <section className="mkt-hero" aria-labelledby="mkt-hero-title">
+      <div className="mkt-hero-media" aria-hidden="true" />
       <div className="mkt-hero-shape mkt-hero-shape--one" aria-hidden="true" />
       <div className="mkt-hero-shape mkt-hero-shape--two" aria-hidden="true" />
 
