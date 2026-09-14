@@ -6,6 +6,11 @@ export const MARKETING_ASSET_CONTRACT = {
     required: true,
     sha256: "b82e9fe486e9dd9706c8294a4cd3c07efe526034d6feb7b543930455ba96fdef",
   },
+  [MARKETING_ASSETS.transformationMobileVideo]: {
+    kind: "video",
+    required: true,
+    sha256: "f4984cc62143e744ee5bffd378a00eee0efdae909d6170d5a9210465b1873bc3",
+  },
   [MARKETING_ASSETS.transformationPoster]: {
     kind: "image",
     required: true,
