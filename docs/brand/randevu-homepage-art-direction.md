@@ -2,7 +2,7 @@
 
 **Durum:** Onaylı marka yönü için uygulamaya hazır yaratıcı sözleşme  
 **Tarih:** 14 Eylül 2026  
-**Bağlı belgeler:** `randevu-branding.md`, `randevu-site-copy-card-system.md`, `randevu-homepage-copy.md`, `f12-01-visual-flow-contract.md`  
+**Bağlı belgeler:** `randevu-branding.md`, `randevu-site-copy-card-system.md`, `randevu-homepage-copy.md`, `randevu-transformation-scrollytelling-storyboard.md`, `f12-01-visual-flow-contract.md`  
 **Yaratıcı hedef:** Awwwards seviyesinde, ancak dönüşümü ve kullanım kolaylığını bozmayan bir marketing deneyimi.
 
 ---
@@ -48,17 +48,31 @@ F12 sözleşmesindeki sakin premium, açık hiyerarşi ve mobil öncelikli yapı
 ### Perde 1 — Tanışma / “Bu kolaymış”
 Hero + rezervasyon demosu + takvim.
 
-### Perde 2 — Rahatlama / “Bunu ben yapmak zorunda değilim”
-Hatırlatma + müşteri hafızası + concierge kurulum + `Uğraş? Az.`
+### Perde 2 — Dönüşüm / “Bunu ben yapmak zorunda değilim”
+Hatırlatma + müşteri hafızası + concierge kurulum + saç dönüşümü + `Uğraş? Az.`
 
 ### Perde 3 — Güven / “Buna para veririm”
-Gün özeti + gerçek pilot kanıtı + fiyat + FAQ + final CTA.
+Sweep temizliği + fiyat + gerçek pilot kanıtı + FAQ + final CTA.
 
 Her perdede tek bir büyük “wow” anı bulunur. Bir ekranda iki büyük motion fikri aynı anda yarışmaz.
 
 ---
 
-# 4. Section-by-section wireframe ve hareket koreografisi
+## 4. Dönüşüm metaforu
+
+Marketing scrollytelling'in omurgası artık yalnız UI morph değildir. Güzellik sektörüne ait fiziksel bir dönüşüm metaforu kullanılır:
+
+> **Karışıklık gider, düzen kalır.**
+
+Uzun saç, yoğunluk ve birikmiş uğraşı temsil eder. Scroll ilerledikçe saç kontrollü biçimde kısalır; her dönüşüm anında gerçek ürün davranışı açılır. Kesilen parçalarla birlikte `deftere bak`, `tek tek ara`, `kim boştu?`, `mesajı unutma` gibi gündelik sürtünmeler aşağı düşer. Lime bir sweep hareketi sahneyi temizler ve pricing alanını ortaya çıkarır.
+
+Bu sahnenin tam beat-by-beat sözleşmesi `randevu-transformation-scrollytelling-storyboard.md` içindedir.
+
+**Kural:** model moda filmi kahramanı değildir; dönüşümün insan yüzüdür. Asıl kahraman, azalan uğraştır.
+
+---
+
+# 5. Section-by-section wireframe ve hareket koreografisi
 
 ## 00 — Floating navigation
 
@@ -120,456 +134,174 @@ Aşağı kaydırırken UI rezervasyon kartı hero'dan kopmaz; bir sonraki bölü
 
 ---
 
-## 02 — Sticky product story / “Müşteri kendi alsın.”
+## 02 — Booking demo / “Müşteri kendi alsın.”
 
-**Desktop scroll alanı:** yaklaşık 220–260vh.  
-**Mobile:** normal dikey 4 adım, sticky zorunlu değil.
+Sticky product story. Copy bir tarafta, gerçek ürün demosu diğer tarafta kalır. Scroll ilerledikçe hizmet → çalışan → saat → onay akışı açılır. Bu bölüm sahte demo değil, gerçek ürün yapısının kontrollü görsel demonstrasyonudur.
 
-### Layout
-
-Sol tarafta 5 kolon sticky metin; sağda 7 kolon büyük telefon / browser frame.
-
-Metin sabit:
-
-`Müşteri kendi alsın.`
-
-Sağdaki ürün dört gerçek adım üzerinden değişir:
-1. hizmet seç,
-2. personel / fark etmez,
-3. saat seç,
-4. randevu tamamlandı.
-
-Her adımda ekran yeniden çizilmez; aynı UI içindeki seçimler ilerler.
-
-### Motion
-
-- seçilen hizmet satırı lime ile hafifçe dolar,
-- personel chip'i yer değiştirir,
-- saat hücresi 1.02 scale ile oturur,
-- final confirmation küçük konfeti yerine tek lime tik + kısa “hazır” animasyonu kullanır.
-
-**Amaç:** motion dekor değil, ürün demonstrasyonu.
+Saç dönüşümü burada henüz başlamaz; kullanıcı önce ürünün ne yaptığını net görür.
 
 ---
 
-## 03 — Kobalt stage / “Kim boş, kim dolu? Bakınca belli.”
+## 03 — Calendar stage / “Kim boş, kim dolu? Bakınca belli.”
 
-Tam genişlik kobalt bölüm.
-
-### Layout
-
-- Başlık oversized beyaz.
-- Gerçek takvim ekranı dev bir yatay panel olarak gelir.
-- Personel kolonları okunur.
-- Bir “uygun saat” lime ile belirginleşir.
-
-### Scroll choreography
-
-Takvim aşağıdan gelir, section merkezinde 0.8 viewport boyunca sticky kalır. Scroll ilerledikçe üç dolu kart farklı çalışan kolonlarına oturur; bir boş slot açık kalır.
-
-Yan metin:
-
-`Çakışma aramakla uğraşma.`
-
-İkinci büyük wow anı burada değil; bölüm güçlü ama kontrollüdür.
+Tam kobalt sahne. Büyük takvim UI'sı merkezde. Bir randevu kartı boş slota oturur. İkinci büyük ürün kanıtı burada verilir.
 
 ---
 
 ## 04 — Reminder playground / “Unuttu mu? Biz hatırlatırız.”
 
-**Zemin:** açık mavi `#D9ECFF`.
-
-### Kompozisyon
-
-Büyük beyaz alan içinde tek telefon veya mesaj paneli. Çevresinde 2–3 mesaj balonu.
-
-Balon örnekleri:
-- `Yarın 14.30'da görüşüyoruz.`
-- `Randevun hazır.`
-
-Bir balonun gönderim animation'ı 500–650 ms.
-
-**Yasak:** 8 tane uçuşan chat balonu, notification yağmuru, WhatsApp markasını işlev yayında değilse kullanmak.
+Açık mavi yüzey. Mesaj balonları kısa ve hafif motion ile çıkar. Ürün kapsamı dışında kanal adı yazılmaz.
 
 ---
 
-## 05 — Editorial portrait / “Müşteri kimdi? Hatırlamak zorunda değilsin.”
+## 05 — Customer memory / “Müşteri kimdi? Hatırlamak zorunda değilsin.”
 
-**Zemin:** kırık beyaz + pudra pembe editorial blok.
+Pudra/editorial sahne. İnsan yüzü tekrar güçlenir. Müşteri kartı, portreyle aynı kompozisyonda ürünün insan tarafını gösterir.
 
-### Layout
-
-Asimetrik magazine spread:
-- 7 kolon gerçek yüz / salon içi yakın plan,
-- 5 kolon müşteri kartı UI.
-
-Müşteri kartı portre üzerine değil, ayrı temiz yüzeyde kalır.
-
-Başlık iki satır:
-
-`Müşteri kimdi?`  
-`Hatırlamak zorunda değilsin.`
-
-İkinci satır daha küçük olabilir.
-
-### Motion
-
-Scroll'da müşteri kartındaki yalnız 3 veri sırasıyla görünür: son randevu, kısa not, yaklaşan randevu. Gizli sağlık/klinik verisi veya henüz olmayan alan gösterilmez.
+Bu bölüm sonunda model, dönüşüm storyboard'una bağlanır.
 
 ---
 
-## 06 — Concierge takeover / “Sen kurma. Biz hazırlayalım.”
+## 06 — Transformation stage / saç dönüşümü
 
-**Zemin:** lime `#C6E800`; tam genişlik.
+Bu bölüm 3D/2.5D scrollytelling'in ana sahnesidir.
 
-Bu bölüm markanın stratejik farklılaştırıcısıdır.
+- modelin saç formu 3–4 kontrollü scroll beat'inde dönüşür,
+- her kesim bir ürün avantajıyla eşleşir,
+- kesilen parçalar aşağı düşer,
+- gündelik sürtünme etiketleri onlarla birlikte kaybolur,
+- dönüşüm “önce kötü / sonra güzel” değil, “önce yoğun / sonra hafif ve net” olarak anlatılır.
 
-### Layout
+Ana copy varyantları:
 
-Sol yarı: büyük gerçek insan, doğrudan kameraya bakan sıcak ekip/salon yüzü.  
-Sağ yarı: dev başlık + üç büyük satır.
+`Her şey üst üste mi geliyor?`
 
-`Hizmetler ✓`  
-`Çalışanlar ✓`  
-`Çalışma saatleri ✓`
+`Karışıklık gider, düzen kalır.`
 
-CTA: `Birlikte kuralım`
-
-### Motion
-
-Checklist satırları scroll ile tek tek değil, kullanıcının bölüme girişinde hızlı 3 adımlı “hazırlandı” hissiyle gelir.
-
-Bu bölümde UI ekranı kullanmak zorunlu değildir. İnsan hizmetini satıyoruz.
+`Fazlalık gitsin. İşin kalsın.`
 
 ---
 
-## 07 — Kinetic interlude / “Uğraş? Az.”
+## 07 — Concierge takeover / “Sen kurma. Biz hazırlayalım.”
 
-Kısa, 60–75vh ara bölüm.
+Lime tam ekran takeover. Sweep hareketi dönüşüm sahnesinden devam eder ve saç parçalarını / uğraş etiketlerini temizler.
 
-### Art direction
+Bu sweep yalnız dekor değildir; marka vaadini fiziksel olarak gösterir: işi kullanıcıdan alır.
 
-Krem zemin üzerinde dev tipografi:
+Copy:
 
-`UĞRAŞ?`  
-`AZ.`
+`Sen uğraşma. Biz toparlayalım.`
 
-Etrafında küçük gündelik sürtünmeler:
-- `defter karıştırmak`,
-- `tek tek müsait misin diye sormak`,
-- `müşteriyi yeniden aramak`,
-- `hangi saatti diye bakmak`.
+Alt:
 
-Scroll ile bu küçük metinler ekran kenarına çekilir, merkezde yalnız `AZ.` kalır.
-
-Bu e-kolay dilinin en belirgin reklam anıdır; birebir eski kampanya kopyası değildir.
+`Kurulumu da birlikte halledelim. İlk gün panelle boğuşma.`
 
 ---
 
-## 08 — Dark operations / “Bugün ne olmuş? Tek yerde.”
+## 08 — Kinetic interlude / “UĞRAŞ? AZ.”
 
-**Zemin:** gece mavisi `#15386D`.
+Sweep sonrası çok kısa tipografik nefes. Dev `UĞRAŞ?` ve yanında/altında `AZ.`. Kobalt/lime ters kontrast kullanılabilir.
 
-### Layout
-
-- Büyük açık renk başlık,
-- gerçek dashboard / gün özeti kartları,
-- yalnız yayındaki metrikler.
-
-MVP ilgili fazlar tamamlanana kadar adisyon, stok, kasa, prim gibi veriler placeholder bile olarak gösterilmez.
-
-### Motion
-
-Kartlar bento şeklinde patlamaz. Tek ana panel vardır; ikincil bilgiler çevresine sakin biçimde açılır.
-
-Bu section klasik “SaaS bento grid” klişesinden özellikle kaçınır.
+Bu bölüm 1–1.5 viewport'tan uzun sürmez.
 
 ---
 
-## 09 — Real proof / gerçek salon
+## 09 — Pricing reveal / “Fiyatı da kolay olsun.”
 
-Gerçek pilot gelmeden section ürün demonstrasyonu olarak kalır.
+Sweep ile temizlenmiş sakin kırık beyaz sahne. Motion belirgin biçimde yavaşlar.
 
-Gerçek pilot sonrası:
-- tek güçlü salon portresi,
-- gerçek isim ve işletme,
-- maksimum 1 cümle yorum,
-- maksimum 1 doğrulanmış metrik.
+- tek fiyat stratejisi varsa tek güçlü kart,
+- birden fazla paket varsa minimum seçenek,
+- fiyat, KDV, dönem ve limitler açık,
+- karar anında dekoratif 3D kullanılmaz.
 
-Örnek yapı:
-
-`“Artık telefona randevu yazmıyorum.”`  
-`İsim · İşletme · Bahçeşehir`  
-`X günde Y gerçek randevu`
-
-Carousel yapılmaz. Bir güçlü hikâye beş zayıf testimonial'dan değerlidir.
-
----
-
-## 10 — Pricing / “Fiyatı da kolay olsun.”
-
-**Zemin:** kırık beyaz.
-
-Tek paket kesinleşirse tek büyük fiyat kartı kullanılır.
-
-### Görsel
-
-Kart 12 kolonun 8–10 kolonunu kaplar. Büyük fiyat solda; dahil olanlar sağda. Küçük yıldız dipnotları minimum.
-
-Başlık:
+Ana copy:
 
 `Fiyatı da kolay olsun.`
 
-Alt copy:
+Alt:
 
-`Ne ödeyeceğini baştan bil.`
-
-Paket / fiyat kesinleşmeden rakam yazılmaz.
+`Ne alacağını, ne ödeyeceğini ilk bakışta gör.`
 
 ---
 
-## 11 — FAQ / rahat cevaplar
+## 10 — Social proof
 
-Açık zemin, geniş boşluk. Accordion satırları 64–72 px.
-
-Sorular salon sahibinin diliyle:
-- `Kurulumu ben mi yapacağım?`
-- `Müşteriler uygulama indirmek zorunda mı?`
-- `Çalışanlarımı ayrı ayrı ekleyebilir miyim?`
-- `Randevu değişince ne oluyor?`
-- `Bir şeye takılırsam kime yazacağım?`
-
-Cevaplar 2–4 cümle. Hukuk metni tonuna dönmez.
+Gerçek pilot yoksa ürün demonstrasyonu kullanılır. Pilot sonrası gerçek salon yüzü, gerçek isim ve doğrulanmış tek metrik eklenir. Stock testimonial yasaktır.
 
 ---
 
-## 12 — Final CTA / “Randevu kolay. İşin sana kalsın.”
+## 11 — FAQ
 
-Üçüncü ve final wow anı.
+Sakin, net, yüksek okunabilirlik. Bu bölümde motion yalnız aç/kapa ve küçük durum geçişidir.
 
-### Kompozisyon
+---
 
-Kobalt organik form tüm ekranı kaplayacak şekilde büyür. `kolay` beyaz balonu merkezde CTA konteynerine dönüşür.
+## 12 — Final CTA / logo closure
 
-Metin:
+Beyaz `kolay` balonu büyür ve final CTA alanına dönüşür.
 
-`Randevu kolay.`  
-`İşin sana kalsın.`
+`Randevu kolay. İşin sana kalsın.`
 
 CTA: `Birlikte kuralım`
 
-Footer'a geçerken mavi form küçülüp gerçek logo lockup'ına dönüşür.
-
-Bu transition markanın imzası olur.
+Sayfa sonuna yaklaştıkça balon küçülür ve gerçek `randevu + kolay` logo lockup'ına oturur. Üçüncü büyük wow anı budur.
 
 ---
 
-# 5. Kart sistemi — Awwwards seviyesi varyasyon
+## 6. Üç büyük wow anı
 
-Kartların hepsi aynı radius, aynı shadow ve aynı grid hücresi değildir.
+1. **Hero UI → booking demo morph**
+2. **Saç dönüşümü → düşen uğraşlar → lime sweep temizliği**
+3. **Final `kolay` balonu → logo lockup**
 
-### Card family A — Proof card
-Gerçek ürün ekranı. Düz, yüksek okunurluk.
-
-### Card family B — Human editorial card
-Gerçek yüz / salon fotoğrafı. 4:5 veya 3:4.
-
-### Card family C — Conversation card
-Mesaj, soru-cevap, kısa mikrocopy.
-
-### Card family D — Sticker / note
-Kısa el yazısı aksan; ana bilgi taşımaz.
-
-### Card family E — Statement card
-Tek dev cümle: `Sen kurma.` / `Uğraş? Az.`
-
-**Kural:** aynı viewport'ta en fazla 3 farklı card family görünür.
+Bunların dışında kalan motion yardımcıdır.
 
 ---
 
-# 6. Grid ve spacing
+## 7. 3D / 2.5D karar kuralı
 
-### Desktop ≥ 1280
-- max content: 1440 px,
-- 12 kolon,
-- dış gutter 40–64 px,
-- kolon gap 20–28 px,
-- section dikey boşluk 120–200 px.
+Tam gerçek-zamanlı 3D yalnız şu koşullarda kullanılır:
 
-### Tablet 768–1279
-- 8 kolon,
-- gutter 28–40 px,
-- büyük sticky akışlar sadeleşir.
+- mobil performans bütçesi korunabiliyorsa,
+- reduced-motion alternatifi varsa,
+- model/saç asset üretimi kalitesiz görünmüyorsa,
+- interaktif sahne LCP/INP'yi bozmuyorsa.
 
-### Mobile ≤ 767
-- 4 kolon,
-- 16–20 px gutter,
-- horizontal scroll zorunlu tasarım kullanılmaz,
-- sticky demo normal step flow'a dönüşebilir,
-- display font `clamp(48px, 16vw, 76px)`.
+Aksi durumda pre-rendered sequence, video sprite, WebP/AVIF frame sequence veya CSS/DOM layered 2.5D çözüm tercih edilir. Kullanıcının fark ettiği şey teknoloji değil, dönüşüm olmalıdır.
 
 ---
 
-# 7. Tipografi
+## 8. Performans ve erişilebilirlik
 
-## Display
-Yumuşak, güçlü, Türkçe karakterlerde temiz bir grotesk / rounded sans.
+Hedefler:
 
-Hedef davranış:
-- 700–900 ağırlık,
-- tight tracking,
-- kısa başlık,
-- çok büyük boyut.
-
-## Body/UI
-Nunito Sans veya aynı karakterde okunaklı sans.
-
-## Handwritten accent
-Font ailesi olarak değil; kısa SVG/asset çizimleri veya çok sınırlı marka fontu. Paragraf olmaz.
-
-**Kural:** nostalji typography'nin okunabilirliğini yenemez.
+- LCP ≤ 2.5 s
+- CLS < 0.1
+- INP < 200 ms
+- hero first-load'da ağır model indirme yok
+- 3D asset lazy-load
+- `prefers-reduced-motion` ile static/crossfade fallback
+- keyboard ve screen reader için gerçek içerik DOM'da kalır
+- canvas içine kritik copy gömülmez
+- scroll hijack yapılmaz
 
 ---
 
-# 8. Fotoğraf art direction
+## 9. Yaratıcı kalite testi
 
-### Görsel his
+Her güçlü efekt için üç soru:
 
-2000'lerin iyimser reklam enerjisi, ancak düşük kaliteli nostalji filtresi değil.
+1. Bu hareket hangi kullanıcı yükünü azaltıyor?
+2. Copy olmadan hareketin anlamı ürünle ilişkili mi?
+3. Efekti kaldırınca dönüşüm hikâyesi hâlâ çalışıyor mu?
 
-- doğrudan kamera bakışı,
-- sıcak ifade,
-- hareket içinde çekim,
-- gerektiğinde hafif direct-flash,
-- geniş açılı ama deformasyonsuz portre,
-- mavi/lime set parçaları,
-- gerçek salon dokusu,
-- yüksek kontrastlı ama doğal ten.
+Cevaplar zayıfsa efekt çıkarılır.
 
-### Kaçınılacak
+İç yaratıcı manifesto:
 
-- steril stock salon çalışanı,
-- aşırı luxury / parfüm kampanyası pozu,
-- pembe neon beauty klişesi,
-- herkesin laptop tuttuğu SaaS stock fotoğrafı,
-- yapay testimonial yüzü.
+> **Biz saç kesmiyoruz; karmaşayı kesiyoruz.**
 
----
+Kullanıcıya dönük ana vaat değişmez:
 
-# 9. Motion grammar
-
-### Micro UI
-150–220 ms.
-
-### Marketing reveal
-420–700 ms.
-
-### Page transition / hero
-700–900 ms maksimum.
-
-### Easing
-Doğal ease-out; hafif spring kabul edilir. Bounce oyuncak hissi vermez.
-
-### Distance
-Reveal translate çoğunlukla 12–28 px. 100 px'den uçan metin yok.
-
-### Scroll
-Native scroll korunur. Scroll hijack yapılmaz.
-
-### Reduced motion
-`prefers-reduced-motion` ile tüm parallax, scale ve scroll koreografisi sade fade/state değişimine düşer.
-
----
-
-# 10. “Wow” bütçesi
-
-Tüm site boyunca yalnız üç ana wow anı:
-
-1. **Hero UI kartının rezervasyon demosuna morph olması.**
-2. **Sticky rezervasyon akışının gerçek seçimlerle ilerlemesi.**
-3. **Final CTA balonunun logoya dönüşmesi.**
-
-Diğer motion'lar destekleyicidir.
-
-Bu bütçe sitenin festival demo'suna dönüşmesini engeller.
-
----
-
-# 11. Performans ve kalite kapısı
-
-Awwwards görünümü performans bahanesi değildir.
-
-Hedef:
-- LCP ≤ 2.5 s,
-- CLS < 0.1,
-- INP < 200 ms,
-- hero'da mobil autoplay video yok,
-- AVIF/WebP responsive görsel,
-- üst ekranda maksimum 1 büyük fotoğraf + 1 ürün mockup,
-- font subset / preload kontrollü,
-- scroll listener yerine mümkün olduğunda IntersectionObserver / CSS,
-- animasyon yalnız `transform` + `opacity` ekseninde,
-- WebGL kullanılacaksa yalnız progressive enhancement ve lazy-init.
-
-İlk implementation ekstra motion kütüphanesi zorunlu kılmaz. Mevcut React/Vite tabanı üzerinde CSS + browser API ile başlanır; ancak karmaşık morph gereksinimi kanıtlanırsa küçük ve ölçümlü bir animation dependency ayrı teknik kararla eklenir.
-
----
-
-# 12. Erişilebilirlik
-
-- tüm CTA'lar klavye ile erişilebilir,
-- hover bilgisi focus ile de görünür,
-- hareket bilgiyi tek başına taşımaz,
-- renk + metin/ikon birlikte kullanılır,
-- kontrast WCAG AA altına düşmez,
-- sticky section içerikleri ekran okuyucuda mantıklı DOM sırasını korur,
-- `prefers-reduced-motion` zorunlu,
-- fotoğraflarda gerçek anlamlı alt text; dekoratif shape'lerde boş alt.
-
----
-
-# 13. Benchmark notu
-
-2025–2026 Awwwards beauty/wellness örneklerinde iki uç dikkat çekiyor: güçlü editorial art direction ve immersive/sensory sunum. Randevu bu kalite çıtasını takip eder ancak kendi farkını **Türkçe konuşma dili + gerçek ürün demonstrasyonu + kolaylık** üzerinden kurar.
-
-Referans ekseni:
-- Adcker — beauty/fashion/wellness odaklı 2026 SOTD,
-- Essentiality of Beauty — immersive beauty storytelling,
-- Venetian Nail Spa — calm/refined beauty experience.
-
-Bunlar kopya kaynakları değil, kalite benchmark'ıdır.
-
----
-
-# 14. Uygulama sırası
-
-## Slice 1 — Static art direction
-Hero + nav + section kompozisyonları, gerçek responsive grid, motion olmadan.
-
-## Slice 2 — Product demo
-Rezervasyon sticky story + takvim demonstrasyonu.
-
-## Slice 3 — Brand motion
-Hero morph + underline + final logo transition.
-
-## Slice 4 — Human layer
-Gerçek fotoğraf / pilot kanıtı / salon materyalleri.
-
-## Slice 5 — Performance + accessibility pass
-Reduced motion, image budget, keyboard, Lighthouse ve gerçek cihaz kontrolü.
-
-**Kural:** motion hiçbir zaman layout ve içerik kabulünden önce başlamaz.
-
----
-
-# 15. Kabul ölçütü
-
-Ana sayfa ancak şu beş soruya evet diyorsa tasarım başarılı sayılır:
-
-1. İlk 5 saniyede “ne işe yarıyor?” anlaşılıyor mu?
-2. Bir salon sahibi teknik terim bilmeden faydayı okuyabiliyor mu?
-3. Site ekran görüntüsü tek başına Randevu'ya ait görünüyor mu?
-4. Motion gerçekten ürünün kolaylığını gösteriyor mu?
-5. Mobil deneyim desktop'ın kırpılmış hali değil, kendi başına güçlü mü?
-
-Hedef yalnız ödül estetiği değil; **hatırlanabilir, satılabilir ve gerçekten kolay bir Randevu markasıdır.**
+> **Randevu kolay.**
