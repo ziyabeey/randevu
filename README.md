@@ -24,11 +24,11 @@ Aktif ürün lane'leri:
 
 - **F10-05 / Ajan A:** işletmenin müşteri kayıtları — PR #74 draft.
 - **F10-04 / Ajan C:** hizmet, personel ve çalışma ayarları — PR #75 draft.
-- **F12-02 / Ajan B:** salon profili ve public fotoğraflar — branch aktif, draft PR bekleniyor.
+- **F12-02 / Ajan B:** salon profili ve public fotoğraflar — PR #76 draft.
 
 Shared CI-plan sırası nedeniyle F10-05 entegrasyonu F10-04'ten önce kapanacaktır; bu ürün önceliği değil conflict önleme sırasıdır. Güncel koordinasyon [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) içindedir.
 
-**Marketing:** PR #69 ile brand/motion docs main'e girdi. **MKT-01 / Issue #70** aktif; ürün sahibi scroll-scrub video + gerçek DOM UI tabanlı hareketli ana sayfa üzerinde çalışıyor. Bu track 54 MVP ürün/teknik görev sayısına dahil değildir.
+**Marketing:** PR #69 ile brand/motion docs main'e girdi. **MKT-01 / Issue #70** aktif; ilk izole implementation slice'ı **PR #77** üzerinde ilerliyor. Bu track 54 MVP ürün/teknik görev sayısına dahil değildir.
 
 Canlı pilot henüz yapılmadı. Staging/CI başarısı production/pilot kabulü değildir.
 
@@ -73,7 +73,7 @@ npm run dev
 | `/r/:slug` | Müşteri rezervasyonu |
 | `/m#<token>` | Tek randevuyu güvenli bağlantıyla yönetme |
 
-`/customers` F10-05 PR #74 içindedir; main'e merge edilmeden çalışan main route'u sayılmaz. SalonApp/adisyon yolları F14 ile gelir.
+`/customers` F10-05 PR #74 içindedir; main'e merge edilmeden çalışan main route'u sayılmaz. Marketing homepage runtime'ı da PR #77 merge edilmeden main işlevi sayılmaz. SalonApp/adisyon yolları F14 ile gelir.
 
 ## Korunan teknik sınırlar
 
