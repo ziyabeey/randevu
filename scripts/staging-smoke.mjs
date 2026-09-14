@@ -7,6 +7,7 @@ const origin = process.env.STAGING_APP_ORIGIN.replace(/\/$/, '');
 const cookies = new Map();
 const HEALTH_ATTEMPTS = 8;
 const HEALTH_RETRY_DELAY_MS = 1500;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function absorbCookies(response) {
   const values = typeof response.headers.getSetCookie === 'function'
@@ -91,6 +92,65 @@ async function waitForHealth() {
   throw new Error(`Staging health check failed after ${HEALTH_ATTEMPTS} attempts${suffix}`);
 }
 
+function safeJwtMethod(value) {
+  if (typeof value === 'string') return value.trim().toLowerCase();
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return '';
+  return typeof value.method === 'string' ? value.method.trim().toLowerCase() : '';
+}
+
+function accessClaimsDiagnostic(accessToken) {
+  const diagnostic = {
+    tokenParts: 0,
+    payloadParsed: false,
+    hasSub: false,
+    subUuid: false,
+    hasSessionId: false,
+    sessionIdUuid: false,
+    amrPresent: false,
+    amrArray: false,
+    amrCount: null,
+    hasPasswordMethod: false,
+    hasRecoveryMethod: false,
+    hasTokenRefreshMethod: false,
+    aalClass: null,
+    audAuthenticated: false,
+    roleAuthenticated: false,
+  };
+
+  if (typeof accessToken !== 'string' || !accessToken) return diagnostic;
+  const parts = accessToken.split('.');
+  diagnostic.tokenParts = parts.length;
+  if (parts.length !== 3 || !parts[1]) return diagnostic;
+
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return diagnostic;
+    diagnostic.payloadParsed = true;
+    diagnostic.hasSub = typeof payload.sub === 'string';
+    diagnostic.subUuid = diagnostic.hasSub && UUID_PATTERN.test(payload.sub);
+    diagnostic.hasSessionId = typeof payload.session_id === 'string';
+    diagnostic.sessionIdUuid = diagnostic.hasSessionId && UUID_PATTERN.test(payload.session_id);
+    diagnostic.amrPresent = Object.prototype.hasOwnProperty.call(payload, 'amr');
+    diagnostic.amrArray = Array.isArray(payload.amr);
+    if (diagnostic.amrArray) {
+      const methods = payload.amr.map(safeJwtMethod).filter(Boolean);
+      diagnostic.amrCount = payload.amr.length;
+      diagnostic.hasPasswordMethod = methods.includes('password');
+      diagnostic.hasRecoveryMethod = methods.includes('recovery');
+      diagnostic.hasTokenRefreshMethod = methods.includes('token_refresh');
+    }
+    diagnostic.aalClass = payload.aal === 'aal1' || payload.aal === 'aal2'
+      ? payload.aal
+      : (payload.aal == null ? null : 'other');
+    diagnostic.audAuthenticated = payload.aud === 'authenticated'
+      || (Array.isArray(payload.aud) && payload.aud.includes('authenticated'));
+    diagnostic.roleAuthenticated = payload.role === 'authenticated';
+  } catch {
+    // The receipt intentionally records only parse classification, never token text.
+  }
+  return diagnostic;
+}
+
 function sessionDiagnostic(result) {
   const data = typeof result.data === 'object' && result.data !== null && !Array.isArray(result.data)
     ? result.data
@@ -131,8 +191,12 @@ if (!cookies.has('yzt_access') || !cookies.has('yzt_refresh')) {
   throw new Error('Staging app login did not issue the expected HttpOnly session cookies');
 }
 
+// Snapshot only the shape of verified-hosted JWT claims before /api/session can
+// clear an invalid session. Never log the bearer, subject, session id or email.
+const accessClaims = accessClaimsDiagnostic(cookies.get('yzt_access'));
 const session = await request('/api/session');
 if (!session.response.ok || !session.data?.user?.id) {
+  console.error(`STAGING_ACCESS_CLAIMS_DIAGNOSTIC ${JSON.stringify(accessClaims)}`);
   console.error(`STAGING_SESSION_DIAGNOSTIC ${JSON.stringify(sessionDiagnostic(session))}`);
   throw new Error(`Staging session lookup failed with HTTP ${session.response.status}`);
 }
