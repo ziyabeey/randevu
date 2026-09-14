@@ -346,20 +346,20 @@ try {
   await uiContains(page, 'A Only Service');
 
   await page.evaluate('document.querySelector("summary")?.click()');
-  assert.equal(await call(page, 'set', 'name', 'Salon B'), true);
+  assert.equal(await call(page, 'setIn', 'Oluştur', 'name', 'Salon B'), true);
   assert.equal(await call(page, 'submit', 'Oluştur'), true);
   await uiContains(page, 'Salon B');
   await uiOmits(page, 'A Only Service');
   assert.equal(state.selected, ids.b);
 
-  assert.equal(await call(page, 'set', 'name', 'B Only Service'), true);
-  assert.equal(await call(page, 'set', 'duration', '45'), true);
-  assert.equal(await call(page, 'set', 'price', '350'), true);
+  assert.equal(await call(page, 'setIn', 'İlk hizmeti ekle', 'name', 'B Only Service'), true);
+  assert.equal(await call(page, 'setIn', 'İlk hizmeti ekle', 'duration', '45'), true);
+  assert.equal(await call(page, 'setIn', 'İlk hizmeti ekle', 'price', '350'), true);
   assert.equal(await call(page, 'submit', 'İlk hizmeti ekle'), true);
   await uiContains(page, 'B Only Service');
 
-  assert.equal(await call(page, 'set', 'name', 'Browser Owner'), true);
-  assert.equal(await call(page, 'check', 'ownerAsStaff', true), true);
+  assert.equal(await call(page, 'setIn', 'Personeli ekle', 'name', 'Browser Owner'), true);
+  assert.equal(await call(page, 'checkIn', 'Personeli ekle', 'ownerAsStaff', true), true);
   assert.equal(await call(page, 'submit', 'Personeli ekle'), true);
   await uiContains(page, 'Personel eklendi.');
   assert.equal(state.businesses[ids.b].staff[0].membership_id, ids.mb);
