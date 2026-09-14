@@ -129,14 +129,14 @@ function rpcFailure<T>(context: TeamContext, result: SupabaseResult<T>, fallback
   if (message.includes('INVITATION_NOT_FOUND')) {
     return context.json({ error: { code: 'INVITATION_NOT_FOUND', message: 'Davet bulunamadı.' } }, 404);
   }
+  if (message.includes('ACTIVE_MEMBERSHIP_NOT_FOUND')) {
+    return context.json({ error: { code: 'ACTIVE_MEMBERSHIP_NOT_FOUND', message: 'Bağlanacak aktif üyelik bulunamadı.' } }, 404);
+  }
   if (message.includes('MEMBERSHIP_NOT_FOUND')) {
     return context.json({ error: { code: 'MEMBERSHIP_NOT_FOUND', message: 'Üyelik bulunamadı.' } }, 404);
   }
   if (message.includes('STAFF_NOT_FOUND')) {
     return context.json({ error: { code: 'STAFF_NOT_FOUND', message: 'Personel kaydı bulunamadı.' } }, 404);
-  }
-  if (message.includes('ACTIVE_MEMBERSHIP_NOT_FOUND')) {
-    return context.json({ error: { code: 'ACTIVE_MEMBERSHIP_NOT_FOUND', message: 'Bağlanacak aktif üyelik bulunamadı.' } }, 404);
   }
   if (message.includes('INVITATION_ALREADY_PENDING')) {
     return context.json({ error: { code: 'INVITATION_ALREADY_PENDING', message: 'Bu e-posta için bekleyen bir davet zaten var.' } }, 409);
