@@ -10,6 +10,12 @@ import {
 
 type Env = AuthEnv;
 type IntervalInput = { start: string; end: string };
+type RpcError = { message?: string };
+type OnboardingSnapshot = {
+  business: { id: string; timezone: string };
+  business_hours: unknown[];
+  staff_hours: unknown[];
+};
 
 type AvailabilitySlot = {
   staff_id: string;
@@ -17,6 +23,15 @@ type AvailabilitySlot = {
   starts_at: string;
   ends_at: string;
   timezone: string;
+};
+
+type AvailabilityBlock = {
+  id: string;
+  staff_id: string | null;
+  starts_at: string;
+  ends_at: string;
+  reason: string | null;
+  active: boolean;
 };
 
 const availability = new Hono<{ Bindings: Env }>();
@@ -47,6 +62,11 @@ function parseIntervals(value: unknown): IntervalInput[] | null {
   return result;
 }
 
+function parseExpectedIntervals(value: unknown): IntervalInput[] | null | undefined {
+  if (value === undefined || value === null) return null;
+  return parseIntervals(value) ?? undefined;
+}
+
 function validDateHorizon(date: string) {
   const target = Date.parse(`${date}T00:00:00Z`);
   const today = new Date();
@@ -55,88 +75,159 @@ function validDateHorizon(date: string) {
   return target >= todayUtc - day && target <= todayUtc + 366 * day;
 }
 
-availability.get('/setup', async (context) => {
-  const access = await requireMember(context);
-  if ('error' in access) return access.error;
-  const { auth, membership } = access;
-  const businessId = membership.business_id;
+function rpcMessage(data: unknown) {
+  return typeof data === 'object' && data !== null ? String((data as RpcError).message ?? '') : '';
+}
 
-  const [business, businessHours, staffHours, blocks] = await Promise.all([
-    supabaseRequest<Array<{ id: string; timezone: string }>>(context.env, `rest/v1/businesses?select=id,timezone&id=eq.${businessId}&limit=1`, {}, auth.accessToken),
-    supabaseRequest<unknown[]>(context.env, `rest/v1/business_hours?select=id,weekday,starts_local,ends_local,active&business_id=eq.${businessId}&active=eq.true&order=weekday.asc,starts_local.asc`, {}, auth.accessToken),
-    supabaseRequest<unknown[]>(context.env, `rest/v1/staff_hours?select=id,staff_id,weekday,starts_local,ends_local,active&business_id=eq.${businessId}&active=eq.true&order=weekday.asc,starts_local.asc`, {}, auth.accessToken),
-    supabaseRequest<unknown[]>(context.env, `rest/v1/availability_blocks?select=id,staff_id,starts_at,ends_at,reason,active&business_id=eq.${businessId}&active=eq.true&order=starts_at.asc`, {}, auth.accessToken),
+function mutationError(message: string, fallbackCode: string, fallbackMessage: string) {
+  if (message.includes('STALE_WRITE')) {
+    return { code: 'STALE_WRITE', message: 'Çalışma ayarları başka bir oturumda değişti. Güncel bilgileri yükleyip tekrar deneyin.', status: 409 as const };
+  }
+  if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
+    return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
+  }
+  if (message.includes('NOT_ALLOWED')) {
+    return { code: 'NOT_ALLOWED', message: 'Bu işlem için owner veya manager yetkisi gerekli.', status: 403 as const };
+  }
+  if (message.includes('STAFF_NOT_FOUND') || message.includes('BUSINESS_NOT_FOUND')) {
+    return { code: 'AVAILABILITY_TARGET_NOT_FOUND', message: 'İşletme veya personel bu çalışma alanında bulunamadı.', status: 404 as const };
+  }
+  return { code: fallbackCode, message: fallbackMessage, status: 400 as const };
+}
+
+async function requireStandardMember(context: Parameters<typeof requireMember>[0]) {
+  const access = await requireMember(context);
+  if ('error' in access) return access;
+  if (access.auth.passwordRecovery) {
+    return {
+      error: context.json({
+        error: { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.' },
+      }, 403),
+    } as const;
+  }
+  return access;
+}
+
+async function requireManager(context: Parameters<typeof requireMember>[0]) {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access;
+  if (!canManage(access.membership)) {
+    return {
+      error: context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işlem için owner veya manager yetkisi gerekli.' } }, 403),
+    } as const;
+  }
+  return access;
+}
+
+availability.get('/setup', async (context) => {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  const businessId = access.membership.business_id;
+
+  const [snapshotResult, blocksResult] = await Promise.all([
+    supabaseRequest<OnboardingSnapshot[]>(context.env, 'rest/v1/rpc/get_business_onboarding_snapshot', {
+      method: 'POST',
+      body: JSON.stringify({ p_business_id: businessId }),
+    }, access.auth.accessToken),
+    supabaseRequest<AvailabilityBlock[]>(
+      context.env,
+      `rest/v1/availability_blocks?select=id,staff_id,starts_at,ends_at,reason,active&business_id=eq.${businessId}&active=eq.true&order=starts_at.asc,id.asc&limit=101`,
+      {},
+      access.auth.accessToken,
+    ),
   ]);
 
-  if (!business.ok || !businessHours.ok || !staffHours.ok || !blocks.ok) {
+  if (!snapshotResult.ok) {
+    const message = rpcMessage(snapshotResult.data);
+    if (message.includes('ONBOARDING_BUSINESS_HOURS_LIMIT_EXCEEDED')
+        || message.includes('ONBOARDING_STAFF_HOURS_LIMIT_EXCEEDED')
+        || message.includes('CATALOG_')) {
+      return context.json({ error: { code: 'AVAILABILITY_LIMIT_EXCEEDED', message: 'Çalışma ayarları güvenli snapshot sınırını aşıyor.' } }, 409);
+    }
+    return context.json({ error: { code: 'AVAILABILITY_READ_FAILED', message: 'Müsaitlik ayarları okunamadı.' } }, 502);
+  }
+  if (!blocksResult.ok) {
+    return context.json({ error: { code: 'AVAILABILITY_READ_FAILED', message: 'Müsaitlik ayarları okunamadı.' } }, 502);
+  }
+  if ((blocksResult.data?.length ?? 0) > 100) {
+    return context.json({ error: { code: 'AVAILABILITY_BLOCKS_LIMIT_EXCEEDED', message: 'Aktif izin ve kapanış sayısı güvenli snapshot sınırını aşıyor.' } }, 409);
+  }
+
+  const snapshot = first(snapshotResult.data);
+  if (!snapshot || !snapshot.business || !Array.isArray(snapshot.business_hours) || !Array.isArray(snapshot.staff_hours)) {
     return context.json({ error: { code: 'AVAILABILITY_READ_FAILED', message: 'Müsaitlik ayarları okunamadı.' } }, 502);
   }
 
   return context.json({
-    membership,
-    timezone: first(business.data)?.timezone ?? 'Europe/Istanbul',
-    businessHours: businessHours.data ?? [],
-    staffHours: staffHours.data ?? [],
-    blocks: blocks.data ?? [],
+    membership: access.membership,
+    timezone: snapshot.business.timezone,
+    businessHours: snapshot.business_hours,
+    staffHours: snapshot.staff_hours,
+    blocks: blocksResult.data ?? [],
   });
 });
 
 availability.put('/business-hours/:weekday', async (context) => {
-  const access = await requireMember(context);
+  const access = await requireManager(context);
   if ('error' in access) return access.error;
-  if (!canManage(access.membership)) {
-    return context.json({ error: { code: 'NOT_ALLOWED', message: 'Çalışma saatlerini owner veya manager düzenleyebilir.' } }, 403);
-  }
 
   const weekday = Number(context.req.param('weekday'));
   const body = await readJson(context);
   const intervals = parseIntervals(body?.intervals);
-  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6 || intervals === null) {
+  const expectedIntervals = parseExpectedIntervals(body?.expectedIntervals);
+  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6 || intervals === null || expectedIntervals === undefined) {
     return context.json({ error: { code: 'INVALID_HOURS', message: 'Gün veya saat aralıkları geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<unknown[]>(context.env, 'rest/v1/rpc/replace_business_hours', {
+  const result = await supabaseRequest<unknown[]>(context.env, 'rest/v1/rpc/replace_business_hours_guarded', {
     method: 'POST',
-    body: JSON.stringify({ p_business_id: access.membership.business_id, p_weekday: weekday, p_intervals: intervals }),
+    body: JSON.stringify({
+      p_business_id: access.membership.business_id,
+      p_weekday: weekday,
+      p_intervals: intervals,
+      p_expected_intervals: expectedIntervals,
+    }),
   }, access.auth.accessToken);
-  if (!result.ok) return context.json({ error: { code: 'HOURS_UPDATE_FAILED', message: 'Çalışma saatleri kaydedilemedi. Aralıkların çakışmadığını kontrol edin.' } }, 400);
+  if (!result.ok) {
+    const error = mutationError(rpcMessage(result.data), 'HOURS_UPDATE_FAILED', 'Çalışma saatleri kaydedilemedi. Aralıkların çakışmadığını kontrol edin.');
+    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+  }
   return context.json({ hours: result.data ?? [] });
 });
 
 availability.put('/staff/:staffId/hours/:weekday', async (context) => {
-  const access = await requireMember(context);
+  const access = await requireManager(context);
   if ('error' in access) return access.error;
-  if (!canManage(access.membership)) {
-    return context.json({ error: { code: 'NOT_ALLOWED', message: 'Personel saatlerini owner veya manager düzenleyebilir.' } }, 403);
-  }
 
   const staffId = context.req.param('staffId');
   const weekday = Number(context.req.param('weekday'));
   const body = await readJson(context);
   const intervals = parseIntervals(body?.intervals);
-  if (!isUuid(staffId) || !Number.isInteger(weekday) || weekday < 0 || weekday > 6 || intervals === null) {
+  const expectedIntervals = parseExpectedIntervals(body?.expectedIntervals);
+  if (!isUuid(staffId) || !Number.isInteger(weekday) || weekday < 0 || weekday > 6 || intervals === null || expectedIntervals === undefined) {
     return context.json({ error: { code: 'INVALID_HOURS', message: 'Personel, gün veya saat aralıkları geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<unknown[]>(context.env, 'rest/v1/rpc/replace_staff_hours', {
+  const result = await supabaseRequest<unknown[]>(context.env, 'rest/v1/rpc/replace_staff_hours_guarded', {
     method: 'POST',
     body: JSON.stringify({
       p_business_id: access.membership.business_id,
       p_staff_id: staffId,
       p_weekday: weekday,
       p_intervals: intervals,
+      p_expected_intervals: expectedIntervals,
     }),
   }, access.auth.accessToken);
-  if (!result.ok) return context.json({ error: { code: 'STAFF_HOURS_UPDATE_FAILED', message: 'Personel çalışma saatleri kaydedilemedi.' } }, 400);
+  if (!result.ok) {
+    const error = mutationError(rpcMessage(result.data), 'STAFF_HOURS_UPDATE_FAILED', 'Personel çalışma saatleri kaydedilemedi.');
+    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+  }
   return context.json({ hours: result.data ?? [] });
 });
 
 availability.post('/blocks', async (context) => {
-  const access = await requireMember(context);
+  const access = await requireManager(context);
   if ('error' in access) return access.error;
-  if (!canManage(access.membership)) {
-    return context.json({ error: { code: 'NOT_ALLOWED', message: 'İzin ve kapanışları owner veya manager düzenleyebilir.' } }, 403);
-  }
 
   const body = await readJson(context);
   const date = body?.date;
@@ -149,7 +240,7 @@ availability.post('/blocks', async (context) => {
     return context.json({ error: { code: 'INVALID_BLOCK', message: 'İzin/kapanış bilgileri geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<unknown>(context.env, 'rest/v1/rpc/create_availability_block_local', {
+  const result = await supabaseRequest<unknown>(context.env, 'rest/v1/rpc/create_availability_block_local_guarded', {
     method: 'POST',
     body: JSON.stringify({
       p_business_id: access.membership.business_id,
@@ -160,30 +251,34 @@ availability.post('/blocks', async (context) => {
       p_reason: reason,
     }),
   }, access.auth.accessToken);
-  if (!result.ok) return context.json({ error: { code: 'BLOCK_CREATE_FAILED', message: 'İzin/kapanış kaydedilemedi.' } }, 400);
+  if (!result.ok) {
+    const error = mutationError(rpcMessage(result.data), 'BLOCK_CREATE_FAILED', 'İzin/kapanış kaydedilemedi.');
+    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+  }
   return context.json({ block: result.data }, 201);
 });
 
 availability.delete('/blocks/:id', async (context) => {
-  const access = await requireMember(context);
+  const access = await requireManager(context);
   if ('error' in access) return access.error;
-  if (!canManage(access.membership)) {
-    return context.json({ error: { code: 'NOT_ALLOWED', message: 'İzin ve kapanışları owner veya manager düzenleyebilir.' } }, 403);
-  }
 
   const blockId = context.req.param('id');
   if (!isUuid(blockId)) return context.json({ error: { code: 'INVALID_BLOCK', message: 'Kayıt kimliği geçerli değil.' } }, 400);
 
-  const result = await supabaseRequest<boolean>(context.env, 'rest/v1/rpc/delete_availability_block', {
+  const result = await supabaseRequest<boolean>(context.env, 'rest/v1/rpc/delete_availability_block_guarded', {
     method: 'POST',
     body: JSON.stringify({ p_business_id: access.membership.business_id, p_block_id: blockId }),
   }, access.auth.accessToken);
-  if (!result.ok || result.data !== true) return context.json({ error: { code: 'BLOCK_DELETE_FAILED', message: 'İzin/kapanış silinemedi.' } }, 404);
+  if (!result.ok) {
+    const error = mutationError(rpcMessage(result.data), 'BLOCK_DELETE_FAILED', 'İzin/kapanış silinemedi.');
+    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+  }
+  if (result.data !== true) return context.json({ error: { code: 'BLOCK_DELETE_FAILED', message: 'İzin/kapanış bulunamadı.' } }, 404);
   return context.json({ ok: true });
 });
 
 availability.get('/slots', async (context) => {
-  const access = await requireMember(context);
+  const access = await requireStandardMember(context);
   if ('error' in access) return access.error;
 
   const serviceId = context.req.query('serviceId');
