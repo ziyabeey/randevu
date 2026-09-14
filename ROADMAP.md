@@ -42,7 +42,7 @@ GS artık yeni feature kodunu engelleyen bir kapı değildir; aşağıdaki depen
 
 ## Şu anki dalga
 
-Aynı main tabanından üç dependency-safe ürün lane'i açıldı:
+Aynı temel üzerinden üç dependency-safe ürün lane'i açık:
 
 1. **F10-05 — müşteri kayıtları / Ajan A / PR #74**
    - tenant-scoped arama/liste/create/edit,
@@ -54,7 +54,7 @@ Aynı main tabanından üç dependency-safe ürün lane'i açıldı:
    - mesai/kapanış ayarları,
    - stale write ve archive davranışı,
    - F10-03 readiness sözleşmesini genişletme.
-3. **F12-02 — salon profili/public fotoğraflar / Ajan B**
+3. **F12-02 — salon profili/public fotoğraflar / Ajan B / PR #76**
    - profil + public medya,
    - upload type/size/count,
    - public/private ayrımı, orphan cleanup ve fallback.
@@ -77,7 +77,7 @@ Bu sıra ürün önceliği değil Git/CI conflict önleme sırasıdır.
 | [10 — Hesap ve işletme](docs/plan/phase-10.md) | F10-01…06 | F10-01/02/03 **tamam**; F10-04 + F10-05 aktif → F10-06 |
 | [12 — Fiyat veri desteği](docs/plan/phase-12.md#f12-03) | F12-03 | F10-04 sonrası; F11-01'den önce |
 | [11 — Çok hizmetli çekirdek](docs/plan/phase-11.md) | F11-01…04 | F12-03 → F11-01 → F11-02 → F11-03 → F11-04 |
-| [12 — Müşteri yüzeyi](docs/plan/phase-12.md) | F12-01…05 | F12-01 tamam; F12-02 aktif; F12-04 F12-02 + F12-03 + F11-02 bekler |
+| [12 — Müşteri yüzeyi](docs/plan/phase-12.md) | F12-01…05 | F12-01 tamam; F12-02 PR #76 aktif; F12-04 F12-02 + F12-03 + F11-02 bekler |
 | [13 — Randevu Paneli](docs/plan/phase-13.md) | F13-01…04 | F11/F10/F12 bağımlılıkları sonrası |
 | [14 — SalonApp ve mali çekirdek](docs/plan/phase-14.md) | F14-01…05 | F13/F11/F12 sonrasında mobil kabuk + adisyon/tahsilat |
 | [15 — Ürün ve kasa](docs/plan/phase-15.md) | F15-01…04 | F14 mali model sonrası stok, satış/iade, masraf ve rapor |
@@ -96,7 +96,7 @@ Bu sıra ürün önceliği değil Git/CI conflict önleme sırasıdır.
 
 ## Marketing / site track
 
-**MKT-01 / Issue #70** ürün sahibi kontrollü ayrı track'tir ve 54 MVP görevine eklenmez. PR #69 ile bağlayıcı brand/motion belgeleri main'e girdi.
+**MKT-01 / Issue #70** ürün sahibi kontrollü ayrı track'tir ve 54 MVP görevine eklenmez. PR #69 ile bağlayıcı brand/motion belgeleri main'e girdi. İlk izole implementation slice'ı **PR #77 / `mkt-01-scroll-motion-homepage`** üzerinde draft olarak ilerliyor.
 
 Güncel production yönü:
 
@@ -106,7 +106,7 @@ Güncel production yönü:
 - mobile + reduced-motion fallback,
 - tamamlanmamış özellik veya kilitlenmemiş fiyatı gerçekmiş gibi göstermeme.
 
-Kod uygulaması, aktif F10/F12 lane'lerinin ortak entry/router alanını ezmeyecek biçimde coordinator tarafından exact main + dosya sahipliğiyle açılır.
+PR #77 ilk slice'ta `src/marketing/**` ile izole kalır; `src/main.tsx` / `src/App.tsx` route entegrasyonu aktif F10 lane'lerinin ortak entry sahipliği kapanınca coordinator sırasıyla yapılır.
 
 ## Bitti sayılma kuralı
 
