@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { MarketingHome } from "./MarketingHome";
+import "./preview-reduced.css";
 
 const PREVIEW_ASSETS = [
   "/marketing/hero/randevu-hero-model.webp",
