@@ -43,8 +43,13 @@ function MarketingNav() {
     };
   }, []);
 
-  const closeMobileMenu = () => {
-    mobileMenuRef.current?.removeAttribute("open");
+  const closeMobileMenu = (restoreKeyboardFocus = false) => {
+    const menu = mobileMenuRef.current;
+    menu?.removeAttribute("open");
+
+    if (restoreKeyboardFocus) {
+      menu?.querySelector<HTMLElement>("summary")?.focus();
+    }
   };
 
   return (
@@ -67,11 +72,11 @@ function MarketingNav() {
             <i aria-hidden="true">+</i>
           </summary>
           <div className="mkt-mobile-nav-panel">
-            <a href="#nasil-calisiyor" onClick={closeMobileMenu}>Nasıl çalışır?</a>
-            <a href="#isletmen-icin" onClick={closeMobileMenu}>İşletmen için</a>
-            <a href="#donusum" onClick={closeMobileMenu}>Dönüşüm</a>
-            <a href="#yardim" onClick={closeMobileMenu}>Yardım</a>
-            <a href={WORKSPACE_HOME_PATH} onClick={closeMobileMenu}>Giriş yap</a>
+            <a href="#nasil-calisiyor" onClick={(event) => closeMobileMenu(event.detail === 0)}>Nasıl çalışır?</a>
+            <a href="#isletmen-icin" onClick={(event) => closeMobileMenu(event.detail === 0)}>İşletmen için</a>
+            <a href="#donusum" onClick={(event) => closeMobileMenu(event.detail === 0)}>Dönüşüm</a>
+            <a href="#yardim" onClick={(event) => closeMobileMenu(event.detail === 0)}>Yardım</a>
+            <a href={WORKSPACE_HOME_PATH} onClick={(event) => closeMobileMenu(event.detail === 0)}>Giriş yap</a>
           </div>
         </details>
 
