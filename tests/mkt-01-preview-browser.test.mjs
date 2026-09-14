@@ -302,8 +302,10 @@ test('MKT-01 mobile preview has no horizontal overflow and supports keyboard nav
 
       await pressEnter(page);
       await waitFor(
-        () => page.evaluate('location.hash === "#nasil-calisiyor" && document.querySelector(".mkt-mobile-nav")?.open === false'),
-        `Keyboard navigation did not close the mobile menu at ${viewport.width}px`,
+        () => page.evaluate(`location.hash === '#nasil-calisiyor'
+          && document.querySelector('.mkt-mobile-nav')?.open === false
+          && document.activeElement === document.querySelector('.mkt-mobile-nav summary')`),
+        `Keyboard navigation did not close the mobile menu and restore focus at ${viewport.width}px`,
       );
     }
   } finally {
