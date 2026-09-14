@@ -1,6 +1,8 @@
 import "./marketing.css";
+import "./marketing-sections.css";
 
 import { MarketingHero } from "./MarketingHero";
+import { ProductStorySections, TrustSections } from "./ProductStorySections";
 import { TransformationSection } from "./transformation/TransformationSection";
 
 function MarketingNav() {
@@ -12,8 +14,9 @@ function MarketingNav() {
           <small>kolay</small>
         </a>
         <div className="mkt-nav-links">
-          <a href="#nasil-calisiyor">Nasıl çalışıyor?</a>
-          <a href="#kurulum">Kurulum</a>
+          <a href="#nasil-calisiyor">Nasıl çalışır?</a>
+          <a href="#isletmen-icin">İşletmen için</a>
+          <a href="#yardim">Yardım</a>
         </div>
         <a className="mkt-nav-cta" href="#kurulum">Birlikte kuralım</a>
       </nav>
@@ -23,22 +26,11 @@ function MarketingNav() {
 
 function EaseStrip() {
   return (
-    <section className="mkt-ease-strip" aria-label="Randevu kolaylık özeti">
-      <article>
-        <span>01</span>
-        <strong>Müşteri kendi alsın.</strong>
-        <p>Uygun saati görsün, seçsin, bitsin.</p>
-      </article>
-      <article>
-        <span>02</span>
-        <strong>Bakınca belli.</strong>
-        <p>Takvim, çalışan ve randevu aynı yerde.</p>
-      </article>
-      <article>
-        <span>03</span>
-        <strong>Sen kurma.</strong>
-        <p>Kurulumda da seni uğraştırmayalım.</p>
-      </article>
+    <section className="mkt-ease-strip mkt-ease-strip--phrases" aria-label="Randevu kolaylık özeti">
+      <strong>Defter azalsın.</strong>
+      <strong>Telefon trafiği azalsın.</strong>
+      <strong>Takvim belli olsun.</strong>
+      <strong>İşin sana kalsın.</strong>
     </section>
   );
 }
@@ -70,7 +62,9 @@ export function MarketingHome() {
       <main>
         <MarketingHero />
         <EaseStrip />
+        <ProductStorySections />
         <TransformationSection />
+        <TrustSections />
         <FinalCta />
       </main>
     </div>
