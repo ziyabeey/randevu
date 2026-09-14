@@ -2,6 +2,7 @@ import { boundedRpc } from './public-rpc.ts';
 import { rateLimitFromRpcError } from './public-abuse.ts';
 import { Hono } from 'hono';
 import authRoutes from './auth-routes.ts';
+import catalogManagement from './catalog-management.ts';
 import {
   canManage,
   first,
@@ -30,6 +31,9 @@ app.use('*', async (context, next) => {
 });
 
 app.route('/api', authRoutes);
+// F10-04 preserves the existing public endpoint URLs but shadows the legacy raw
+// table mutations with standard-session guarded RPC-backed handlers.
+app.route('/api', catalogManagement);
 
 function slugify(value: string) {
   return value
@@ -174,6 +178,8 @@ app.get('/api/catalog', async (context) => {
   });
 });
 
+// Legacy handlers below remain as compatibility fallbacks for old source trees.
+// In the active app, catalogManagement is registered first and owns these paths.
 app.post('/api/services', async (context) => {
   const access = await requireStandardMember(context);
   if ('error' in access) return access.error;
