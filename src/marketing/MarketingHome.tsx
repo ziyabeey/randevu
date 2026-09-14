@@ -158,24 +158,21 @@ function MarketingFooter() {
 
 export function MarketingHome() {
   useMarketingDocumentMeta();
-  const skipLinkRef = useRef<HTMLAnchorElement>(null);
 
-  useEffect(() => {
-    const link = skipLinkRef.current;
-    if (!link) {
-      return undefined;
+  const bindSkipLink = (node: HTMLAnchorElement | null) => {
+    if (!node) {
+      return;
     }
 
-    const show = () => link.classList.add("is-focused");
-    const hide = () => link.classList.remove("is-focused");
-    link.addEventListener("focus", show);
-    link.addEventListener("blur", hide);
-
-    return () => {
-      link.removeEventListener("focus", show);
-      link.removeEventListener("blur", hide);
+    node.onfocus = () => {
+      node.classList.add("is-focused");
+      node.style.top = "10px";
     };
-  }, []);
+    node.onblur = () => {
+      node.classList.remove("is-focused");
+      node.style.removeProperty("top");
+    };
+  };
 
   const handleSkipToContent = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -192,7 +189,7 @@ export function MarketingHome() {
   return (
     <div className="mkt-root" id="top">
       <a
-        ref={skipLinkRef}
+        ref={bindSkipLink}
         className="mkt-skip-link"
         href="#mkt-main"
         onClick={handleSkipToContent}
