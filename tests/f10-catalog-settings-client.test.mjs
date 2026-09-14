@@ -1,0 +1,61 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+
+const page = readFileSync(new URL('../src/AvailabilityPage.tsx', import.meta.url), 'utf8');
+const panel = readFileSync(new URL('../src/CatalogSettingsPanel.tsx', import.meta.url), 'utf8');
+const migration = readFileSync(new URL('../supabase/migrations/20260914111500_f10_catalog_hours_management.sql', import.meta.url), 'utf8');
+const index = readFileSync(new URL('../worker/index.ts', import.meta.url), 'utf8');
+
+await test('F10-04 reuses existing /availability route and shadows legacy catalog mutations before raw handlers', () => {
+  assert.match(index, /import catalogManagement from '\.\/catalog-management\.ts'/);
+  assert.match(index, /app\.route\('\/api', catalogManagement\);[\s\S]*app\.post\('\/api\/services'/);
+  assert.doesNotMatch(page, /window\.location|history\.pushState/);
+});
+
+await test('F10-04 settings reads cancel stale tenant responses and verify returned business authority', () => {
+  assert.match(page, /requestController\.current\?\.abort\(\)/);
+  assert.match(page, /const generation = \+\+requestGeneration\.current/);
+  assert.match(page, /generation !== requestGeneration\.current/);
+  assert.match(page, /nextCatalog\.membership\.business_id !== nextSession\.activeBusinessId/);
+  assert.match(page, /nextSetup\.membership\.business_id !== nextSession\.activeBusinessId/);
+  assert.match(page, /signal: controller\.signal/);
+});
+
+await test('F10-04 service editor preserves fixed-price minor units, duration and both buffers', () => {
+  assert.match(panel, /Math\.round\(amount \* 100\)/);
+  assert.match(panel, /priceMinor/);
+  assert.match(panel, /durationMinutes/);
+  assert.match(panel, /bufferBeforeMinutes/);
+  assert.match(panel, /bufferAfterMinutes/);
+  assert.match(panel, /expectedUpdatedAt: service\.updated_at/);
+  assert.match(panel, /Intl\.NumberFormat\('tr-TR'/);
+});
+
+await test('F10-04 archive semantics are active=false and historical rows are described as preserved', () => {
+  assert.match(panel, /active \}\),\n    \}\), active \? 'Hizmet yeniden etkinleştirildi\.' : 'Hizmet arşivlendi\. Geçmiş randevular değişmedi\.'/);
+  assert.match(panel, /Personel arşivlendi\. Geçmiş randevular değişmedi\./);
+  assert.doesNotMatch(panel, /DELETE[^\n]*services|DELETE[^\n]*staff/i);
+  assert.match(migration, /active = v_active/);
+});
+
+await test('F10-04 weekly hours carry expected snapshots and explain effect on future availability', () => {
+  assert.match(page, /body: JSON\.stringify\(\{ intervals, expectedIntervals \}\)/);
+  assert.match(page, /Mevcut randevular değişmedi/);
+  assert.match(page, /yeni uygunlukları etkiler/);
+  assert.match(migration, /p_expected_intervals jsonb default null/);
+  assert.match(migration, /raise exception 'STALE_WRITE'/);
+});
+
+await test('F10-04 user surface does not expose internal phase or tenant terminology', () => {
+  assert.doesNotMatch(page, /FAZ\s*4|tenant|RPC/i);
+  assert.doesNotMatch(panel, /tenant|RPC|faz/i);
+  assert.match(page, /İŞLETME AYARLARI/);
+});
+
+await test('F10-04 client uses the shared API helper rather than a second fetch stack', () => {
+  assert.doesNotMatch(page, /fetch\(/);
+  assert.doesNotMatch(panel, /fetch\(/);
+  assert.match(page, /api<ManagedCatalog>\('\/api\/catalog'/);
+  assert.match(panel, /api\('\/api\/services'/);
+});
