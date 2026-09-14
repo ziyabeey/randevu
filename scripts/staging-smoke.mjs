@@ -220,6 +220,119 @@ async function directPasswordDiagnostic() {
   };
 }
 
+function jwtSubject(accessToken) {
+  if (typeof accessToken !== 'string' || !accessToken) return '';
+  const parts = accessToken.split('.');
+  if (parts.length !== 3 || !parts[1]) return '';
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    const subject = typeof payload?.sub === 'string' ? payload.sub : '';
+    return UUID_PATTERN.test(subject) ? subject : '';
+  } catch {
+    return '';
+  }
+}
+
+async function directSessionProviderDiagnostic(accessToken) {
+  const supabaseUrl = String(process.env.SUPABASE_URL ?? '').replace(/\/$/, '');
+  const supabaseAnonKey = String(process.env.SUPABASE_ANON_KEY ?? '');
+  const expectedOwnerId = String(process.env.STAGING_OWNER_A_ID ?? '');
+  const subject = jwtSubject(accessToken);
+  if (!supabaseUrl || !supabaseAnonKey || !subject) {
+    return {
+      configReady: Boolean(supabaseUrl && supabaseAnonKey),
+      jwtSubjectUuid: Boolean(subject),
+      jwtSubjectMatchesExpectedOwner: Boolean(subject && expectedOwnerId && subject === expectedOwnerId),
+      authUserStatus: 0,
+      authUserStatusClass: 'config',
+      authUserPresent: false,
+      authUserIdUuid: false,
+      authUserMatchesJwtSubject: false,
+      membershipsStatus: 0,
+      membershipsStatusClass: 'config',
+      membershipsArray: false,
+      membershipsCount: null,
+      embeddedBusinessesCount: null,
+    };
+  }
+
+  const headers = {
+    apikey: supabaseAnonKey,
+    Authorization: `Bearer ${accessToken}`,
+    Accept: 'application/json',
+  };
+
+  let authUserStatus = 0;
+  let authUserData = null;
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, { headers, redirect: 'manual' });
+    authUserStatus = response.status;
+    const text = await response.text();
+    if (text) {
+      try {
+        authUserData = JSON.parse(text);
+      } catch {
+        authUserData = null;
+      }
+    }
+  } catch {
+    // Transport failure remains status 0. Raw provider details are intentionally discarded.
+  }
+
+  const query = new URLSearchParams({
+    select: 'id,business_id,role,active,businesses(id,name,slug,timezone)',
+    user_id: `eq.${subject}`,
+    active: 'eq.true',
+    order: 'created_at.asc',
+  });
+  let membershipsStatus = 0;
+  let membershipsData = null;
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/memberships?${query}`, { headers, redirect: 'manual' });
+    membershipsStatus = response.status;
+    const text = await response.text();
+    if (text) {
+      try {
+        membershipsData = JSON.parse(text);
+      } catch {
+        membershipsData = null;
+      }
+    }
+  } catch {
+    // Transport failure remains status 0. Raw provider details are intentionally discarded.
+  }
+
+  const authUser = typeof authUserData === 'object' && authUserData !== null && !Array.isArray(authUserData)
+    ? authUserData
+    : null;
+  const authUserId = typeof authUser?.id === 'string' ? authUser.id : '';
+  const memberships = Array.isArray(membershipsData) ? membershipsData : null;
+  const embeddedBusinessesCount = memberships
+    ? memberships.filter((membership) => (
+      typeof membership?.businesses === 'object'
+      && membership.businesses !== null
+      && !Array.isArray(membership.businesses)
+      && typeof membership.businesses.id === 'string'
+    )).length
+    : null;
+
+  return {
+    configReady: true,
+    jwtSubjectUuid: true,
+    jwtSubjectMatchesExpectedOwner: Boolean(expectedOwnerId && subject === expectedOwnerId),
+    authUserStatus,
+    authUserStatusClass: statusClass(authUserStatus),
+    authUserPresent: Boolean(authUserId),
+    authUserIdUuid: UUID_PATTERN.test(authUserId),
+    authUserMatchesJwtSubject: Boolean(authUserId && authUserId === subject),
+    membershipsStatus,
+    membershipsStatusClass: statusClass(membershipsStatus),
+    membershipsArray: Boolean(memberships),
+    membershipsCount: memberships?.length ?? null,
+    embeddedBusinessesCount,
+  };
+}
+
 function sessionDiagnostic(result) {
   const data = typeof result.data === 'object' && result.data !== null && !Array.isArray(result.data)
     ? result.data
@@ -264,10 +377,13 @@ if (!cookies.has('yzt_access') || !cookies.has('yzt_refresh')) {
 
 // Snapshot only the shape of verified-hosted JWT claims before /api/session can
 // clear an invalid session. Never log the bearer, subject, session id or email.
-const accessClaims = accessClaimsDiagnostic(cookies.get('yzt_access'));
+const accessToken = cookies.get('yzt_access') ?? '';
+const accessClaims = accessClaimsDiagnostic(accessToken);
 const session = await request('/api/session');
 if (!session.response.ok || !session.data?.user?.id) {
+  const directSessionProvider = await directSessionProviderDiagnostic(accessToken);
   console.error(`STAGING_ACCESS_CLAIMS_DIAGNOSTIC ${JSON.stringify(accessClaims)}`);
+  console.error(`STAGING_SESSION_PROVIDER_DIAGNOSTIC ${JSON.stringify(directSessionProvider)}`);
   console.error(`STAGING_SESSION_DIAGNOSTIC ${JSON.stringify(sessionDiagnostic(session))}`);
   throw new Error(`Staging session lookup failed with HTTP ${session.response.status}`);
 }
