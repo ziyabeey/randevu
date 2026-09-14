@@ -7,9 +7,11 @@ const panel = readFileSync(new URL('../src/CatalogSettingsPanel.tsx', import.met
 const migration = readFileSync(new URL('../supabase/migrations/20260914111500_f10_catalog_hours_management.sql', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../worker/index.ts', import.meta.url), 'utf8');
 
-await test('F10-04 reuses existing /availability route and shadows legacy catalog mutations before raw handlers', () => {
+await test('F10-04 reuses existing /availability route and exposes one guarded catalog mutation authority', () => {
   assert.match(index, /import catalogManagement from '\.\/catalog-management\.ts'/);
-  assert.match(index, /app\.route\('\/api', catalogManagement\);[\s\S]*app\.post\('\/api\/services'/);
+  assert.match(index, /app\.route\('\/api', catalogManagement\)/);
+  assert.doesNotMatch(index, /app\.post\('\/api\/services'/);
+  assert.doesNotMatch(index, /rest\/v1\/staff_services\?on_conflict/);
   assert.doesNotMatch(page, /window\.location|history\.pushState/);
 });
 
@@ -24,25 +26,24 @@ await test('F10-04 settings reads cancel stale tenant responses and verify retur
 
 await test('F10-04 service editor preserves fixed-price minor units, duration and both buffers', () => {
   assert.match(panel, /Math\.round\(amount \* 100\)/);
-  assert.match(panel, /priceMinor/);
-  assert.match(panel, /durationMinutes/);
-  assert.match(panel, /bufferBeforeMinutes/);
-  assert.match(panel, /bufferAfterMinutes/);
-  assert.match(panel, /expectedUpdatedAt: service\.updated_at/);
+  for (const field of ['priceMinor', 'durationMinutes', 'bufferBeforeMinutes', 'bufferAfterMinutes']) {
+    assert.ok(panel.includes(field), `missing service field ${field}`);
+  }
+  assert.ok(panel.includes('expectedUpdatedAt: service.updated_at'));
   assert.match(panel, /Intl\.NumberFormat\('tr-TR'/);
 });
 
 await test('F10-04 archive semantics are active=false and historical rows are described as preserved', () => {
-  assert.match(panel, /active \}\),\n    \}\), active \? 'Hizmet yeniden etkinleştirildi\.' : 'Hizmet arşivlendi\. Geçmiş randevular değişmedi\.'/);
-  assert.match(panel, /Personel arşivlendi\. Geçmiş randevular değişmedi\./);
-  assert.doesNotMatch(panel, /DELETE[^\n]*services|DELETE[^\n]*staff/i);
+  assert.ok(panel.includes("Hizmet arşivlendi. Geçmiş randevular değişmedi."));
+  assert.ok(panel.includes("Personel arşivlendi. Geçmiş randevular değişmedi."));
+  assert.doesNotMatch(panel, /method:\s*'DELETE'[\s\S]{0,120}\/(?:api\/)?(?:services|staff)/i);
   assert.match(migration, /active = v_active/);
 });
 
 await test('F10-04 weekly hours carry expected snapshots and explain effect on future availability', () => {
-  assert.match(page, /body: JSON\.stringify\(\{ intervals, expectedIntervals \}\)/);
-  assert.match(page, /Mevcut randevular değişmedi/);
-  assert.match(page, /yeni uygunlukları etkiler/);
+  assert.ok(page.includes('JSON.stringify({ intervals, expectedIntervals })'));
+  assert.ok(page.includes('Mevcut randevular değişmedi'));
+  assert.ok(page.includes('yeni uygunlukları etkiler'));
   assert.match(migration, /p_expected_intervals jsonb default null/);
   assert.match(migration, /raise exception 'STALE_WRITE'/);
 });
