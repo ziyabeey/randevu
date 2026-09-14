@@ -44,7 +44,10 @@ begin
   end if;
 
   v_amr := v_claims -> 'amr';
-  if jsonb_typeof(v_amr) <> 'array' or jsonb_array_length(v_amr) = 0 then
+  if v_amr is null or jsonb_typeof(v_amr) <> 'array' then
+    raise exception 'AUTH_SESSION_CLASS_UNVERIFIED' using errcode = '42501';
+  end if;
+  if jsonb_array_length(v_amr) = 0 then
     raise exception 'AUTH_SESSION_CLASS_UNVERIFIED' using errcode = '42501';
   end if;
 
