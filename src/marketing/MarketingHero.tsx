@@ -10,6 +10,7 @@ export function MarketingHero() {
           alt=""
           width={1928}
           height={1072}
+          loading="eager"
           decoding="async"
           fetchPriority="high"
           draggable={false}
