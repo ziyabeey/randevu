@@ -67,8 +67,10 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
       await action();
       setNotice(success);
       await reload();
+      return true;
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Değişiklik kaydedilemedi.');
+      return false;
     } finally {
       setBusy(false);
     }
@@ -83,7 +85,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
       setNotice('Fiyat 0 ile 1.000.000 TL arasında ve en fazla iki ondalık basamaklı olmalı.');
       return;
     }
-    await mutate(() => api('/api/services', {
+    const saved = await mutate(() => api('/api/services', {
       method: 'POST',
       body: JSON.stringify({
         name: data.get('name'),
@@ -93,7 +95,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
         priceMinor,
       }),
     }), 'Hizmet eklendi.');
-    form.reset();
+    if (saved) form.reset();
   }
 
   async function updateService(event: FormEvent<HTMLFormElement>, service: ManagedService) {
@@ -128,11 +130,11 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    await mutate(() => api('/api/staff', {
+    const saved = await mutate(() => api('/api/staff', {
       method: 'POST',
       body: JSON.stringify({ name: data.get('name'), phone: data.get('phone') }),
     }), 'Personel eklendi.');
-    form.reset();
+    if (saved) form.reset();
   }
 
   async function updateStaff(event: FormEvent<HTMLFormElement>, person: ManagedStaff) {
