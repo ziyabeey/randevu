@@ -126,6 +126,8 @@ Güncel production yönü:
 - scroll hijack yok,
 - kilitlenmemiş fiyat veya tamamlanmamış ürün işlevi gerçekmiş gibi yayınlanmaz.
 
+MKT-01 production route cutover öncesi ayrı entegrasyon sözleşmesi `docs/plan/mkt-01-integration-contract.md` ile taşınır. Route değişimi yalnız marketing eklemek değil, bugünkü workspace root'unu `/app` altına taşıyan URL migration'dır; code-splitting, CSS/token sınırı ve media-load bütçesi bu cutover'dan önce karara bağlanır.
+
 ## Açık ama tamamlanmış kartları yeniden açmayan takipler
 
 ### F17-03 — operasyon / yayın hardening
@@ -133,10 +135,11 @@ Güncel production yönü:
 - S07 routine C4 skip receipt ve bounded DB-runner diagnostics.
 - S08 creator-role/exposed-schema kontrolü.
 - backup/restore/rollback ve production gözlemi.
+- auth/session hop count, calendar hot-path round trips ve public/marketing/private-workspace bundle split sayısal olarak ölçülür; ölçülmüş kullanıcı etkisi/budget ihlali yoksa sırf görünür oldukları için blocker sayılmaz.
 
 ### F13-01 / F13-02 — mutable-key pagination / güncellik
 
-S07 keyset pagination dış eşzamanlı sort-key mutasyonunda snapshot-consistency garantisi vermez. Gerçek yarış ve tarih aralığı semantiği F13'te kapanır.
+S07 keyset kabulü, dışarıdan eşzamanlı sıralama-anahtarı mutasyonu olmayan veri kümesinde `(timestamp,id)` ile sayfalar arasında skip/repeat olmadan ilerler. Mutable risk `appointments.starts_at` kolonudur: sayfalar arasında `starts_at` değişirse continuation skip/repeat üretebilir ve snapshot-consistency garantisi verilmez. `created_at` bu mutable-key riskinin parçası değildir. Gerçek eşzamanlı yazar/stale continuation yarışı **F13-01**'de, gün/hafta/liste date-range filter semantiği ayrı bir bulgu olarak **F13-02**'de kapanır. Bu özel yarış kanıtı C4 rollback paketine taşınmaz; C4 dblink commit testinin sahibi değildir.
 
 Bu takipler GS/F10-02/F10-03'ü geriye dönük yeniden açmaz.
 
