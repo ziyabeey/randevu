@@ -29,6 +29,8 @@ declare
   v_notes text := nullif(trim(coalesce(p_notes, '')), '');
   v_phone_normalized text := public.f10_normalize_customer_phone(coalesce(p_phone, ''));
   v_customer_id uuid;
+  v_customer_ids uuid[];
+  v_match_count integer := 0;
 begin
   if p_business_id is null then
     raise exception 'BUSINESS_NOT_FOUND';
@@ -48,24 +50,33 @@ begin
 
   perform pg_advisory_xact_lock(hashtextextended(p_business_id::text, 0));
 
-  select c.id into v_customer_id
-  from public.customers c
-  where c.business_id = p_business_id
-    and (
-      (v_phone_normalized is not null
-        and public.f10_normalize_customer_phone(c.phone) = v_phone_normalized)
-      or
-      (v_email is not null
-        and public.f10_normalize_customer_email(c.email) = v_email)
-    )
-  order by c.updated_at desc, c.id desc
-  limit 1;
+  select array_agg(m.id order by m.id)
+  into v_customer_ids
+  from (
+    select distinct c.id
+    from public.customers c
+    where c.business_id = p_business_id
+      and (
+        (v_phone_normalized is not null
+          and public.f10_normalize_customer_phone(c.phone) = v_phone_normalized)
+        or
+        (v_email is not null
+          and public.f10_normalize_customer_email(c.email) = v_email)
+      )
+  ) m;
 
-  if v_customer_id is not null then
-    if not coalesce(p_reuse_existing, false) then
-      raise exception 'CUSTOMER_CONTACT_EXISTS';
-    end if;
-    return v_customer_id;
+  v_match_count := coalesce(array_length(v_customer_ids, 1), 0);
+
+  if v_match_count > 0 and not coalesce(p_reuse_existing, false) then
+    raise exception 'CUSTOMER_CONTACT_EXISTS';
+  end if;
+
+  if v_match_count > 1 then
+    raise exception 'CUSTOMER_CONTACT_CONFLICT';
+  end if;
+
+  if v_match_count = 1 then
+    return v_customer_ids[1];
   end if;
 
   insert into public.customers(business_id, name, phone, email, notes, created_by)
