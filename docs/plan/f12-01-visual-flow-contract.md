@@ -368,7 +368,7 @@ F12-01 tasarım sözleşmesi ancak aşağıdaki maddeler birlikte sağlanırsa k
 - [x] K01-K03 ve üç kol ayrımı korunuyor.
 - [x] Planlanan API/route/ekranlar uygulanmış gibi gösterilmiyor.
 - [x] F16-08 için ortak metin/formatlama sınırı tanımlandı.
-- [ ] Ürün/tasarım bağımsız incelemesi tamamlandı.
+- [x] Ürün/tasarım bağımsız incelemesi tamamlandı.
 
 Bu belge tamamlandığında dahi çalışan müşteri paneli teslim edilmiş sayılmaz. F12-02, F12-03, F11, F12-04 ve F12-05 kendi bağımlılık ve kabul kanıtlarını ayrıca tamamlar.
 
