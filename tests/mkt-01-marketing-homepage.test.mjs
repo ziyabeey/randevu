@@ -75,16 +75,18 @@ test('MKT-01 publish gates stay explicit and fail closed where policy is not rea
   for (const gate of [
     'publicBooking: true',
     'calendarAvailability: true',
-    'reminders: true',
     'onboardingAssistance: true',
     'dailyAppointmentSummary: true',
     'customerMemory: true',
   ]) assert.ok(releaseGates.includes(gate), `Expected released gate: ${gate}`);
 
+  assert.match(releaseGates, /reminders:\s*false/);
   assert.match(releaseGates, /MARKETING_CONTACT_HREF:\s*string \| null = null/);
   assert.match(releaseGates, /pricingPolicy:\s*false/);
   assert.match(releaseGates, /pilotProof:\s*false/);
   assert.match(releaseGates, /contactFlow:\s*MARKETING_CONTACT_HREF !== null/);
+  assert.match(transformation, /Hatırlatma akışı hazırlanıyor\./);
+  assert.match(transformation, /Yayına girdiğinde burada gerçek akışı göstereceğiz\./);
 });
 
 test('MKT-01 does not publish fake pricing, finance claims, or fabricated social proof', () => {
