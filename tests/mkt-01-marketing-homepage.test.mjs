@@ -23,7 +23,7 @@ const previewHtml = read('marketing-preview.html');
 const marketingCopy = `${hero}\n${home}\n${productStories}\n${transformation}`;
 const timeline = await import('../src/marketing/transformation/timeline.ts');
 
-test('MKT-01 keeps the approved homepage story spine', () => {
+test('MKT-01 keeps the approved homepage story spine and navigation contract', () => {
   for (const copy of [
     'Randevu kolay.',
     'Müşteri kendi alsın.',
@@ -41,7 +41,9 @@ test('MKT-01 keeps the approved homepage story spine', () => {
   assert.match(productStories, /id="yardim"/);
   assert.match(home, /id="kurulum"/);
   assert.match(home, /<details className="mkt-mobile-nav"[^>]*>/);
-  assert.match(home, /<summary aria-label="Randevu menüsünü aç">/);
+  assert.match(home, /<summary aria-label="Randevu menüsü">/);
+  assert.match(home, /className="mkt-nav-login" href=\{WORKSPACE_HOME_PATH\}>Giriş yap/);
+  assert.match(home, /href=\{WORKSPACE_HOME_PATH\} onClick=\{closeMobileMenu\}>Giriş yap/);
 });
 
 test('MKT-01 hero exposes its LCP media as a priority image', () => {
@@ -106,7 +108,7 @@ test('MKT-01 timeline follows the real Kling beats and keeps local progress boun
   assert.ok(Math.abs(getTransformationPhaseProgress(sweepMid, 'sweep') - 0.5) < epsilon);
 });
 
-test('MKT-01 motion remains scroll-owned, bounded, and non-autoplay', () => {
+test('MKT-01 motion remains scroll-owned, bounded, non-autoplay, and hides inactive CTA from tab order', () => {
   assert.match(scrubHook, /video\.currentTime/);
   assert.match(scrubHook, /requestAnimationFrame/);
   assert.match(scrubHook, /IntersectionObserver/);
@@ -119,6 +121,7 @@ test('MKT-01 motion remains scroll-owned, bounded, and non-autoplay', () => {
   assert.match(transformation, /media="\(max-width: 680px\)"/);
   assert.match(transformation, /MARKETING_ASSETS\.transformationVideo/);
   assert.match(transformation, /MARKETING_ASSETS\.transformationPoster/);
+  assert.match(transformation, /tabIndex=\{active \? 0 : -1\}/);
   assert.match(transformationTuning, /randevu-transformation-final\.webp/);
 });
 
