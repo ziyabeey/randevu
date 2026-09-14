@@ -1,16 +1,20 @@
-import type { CSSProperties } from "react";
-
 import { MARKETING_ASSETS } from "./assets";
 import "./hero-media.css";
-
-const heroMediaStyle = {
-  "--mkt-hero-image": `url("${MARKETING_ASSETS.heroModel}")`,
-} as CSSProperties;
 
 export function MarketingHero() {
   return (
     <section className="mkt-hero" aria-labelledby="mkt-hero-title">
-      <div className="mkt-hero-media" style={heroMediaStyle} aria-hidden="true" />
+      <div className="mkt-hero-media" aria-hidden="true">
+        <img
+          src={MARKETING_ASSETS.heroModel}
+          alt=""
+          width={1928}
+          height={1072}
+          decoding="async"
+          fetchPriority="high"
+          draggable={false}
+        />
+      </div>
       <div className="mkt-hero-shape mkt-hero-shape--one" aria-hidden="true" />
       <div className="mkt-hero-shape mkt-hero-shape--two" aria-hidden="true" />
 
