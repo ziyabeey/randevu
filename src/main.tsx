@@ -7,12 +7,15 @@ import CalendarPage from './CalendarPage';
 import PublicBookingPage from './PublicBookingPage';
 import PublicBookingSettingsPage from './PublicBookingSettingsPage';
 import ManageAppointmentPage from './ManageAppointmentPage';
+import TeamPage from './TeamPage';
+import { captureTeamInviteFromLocation } from './teamInvite';
 import './styles.css';
 import './phase4.css';
 import './phase5.css';
 import './calendar.css';
 import './public-booking.css';
 import './customer-manage.css';
+import './team.css';
 
 const root = document.getElementById('root');
 
@@ -25,10 +28,13 @@ const isAvailability = path === '/availability';
 const isBookings = path === '/bookings';
 const isCalendar = path === '/calendar';
 const isPublicSettings = path === '/public-booking';
+const isTeam = path === '/team';
 const publicSlug = path.startsWith('/r/') ? decodeURIComponent(path.slice(3).split('/')[0] ?? '') : null;
 const isManagementPage = path === '/m' || path === '/m/';
 const managementToken = isManagementPage ? window.location.hash.replace(/^#/, '') : null;
 const isPublicPage = publicSlug !== null;
+
+if (!isManagementPage) captureTeamInviteFromLocation();
 
 createRoot(root).render(
   <StrictMode>
@@ -44,13 +50,16 @@ createRoot(root).render(
               ? <BookingPage />
               : isPublicSettings
                 ? <PublicBookingSettingsPage />
-                : <App />}
+                : isTeam
+                  ? <TeamPage />
+                  : <App />}
     {!isPublicPage && !isManagementPage && (
       <nav className="phase-nav" aria-label="Çalışma alanları">
         <a href="/calendar" aria-current={isCalendar ? 'page' : undefined}>Takvim</a>
         <a href="/bookings" aria-current={isBookings ? 'page' : undefined}>Randevular</a>
         <a href="/availability" aria-current={isAvailability ? 'page' : undefined}>Müsaitlik</a>
-        <a href="/" aria-current={!isCalendar && !isAvailability && !isBookings && !isPublicSettings ? 'page' : undefined}>Hizmet & Ekip</a>
+        <a href="/" aria-current={!isCalendar && !isAvailability && !isBookings && !isPublicSettings && !isTeam ? 'page' : undefined}>Hizmetler</a>
+        <a href="/team" aria-current={isTeam ? 'page' : undefined}>Ekip</a>
         <a href="/public-booking" aria-current={isPublicSettings ? 'page' : undefined}>Public Sayfa</a>
       </nav>
     )}
