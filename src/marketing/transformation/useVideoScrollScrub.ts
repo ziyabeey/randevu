@@ -53,6 +53,7 @@ export function useVideoScrollScrub(
 
     let sectionTop = 0;
     let scrollRange = 1;
+    let preloadPromoted = video.preload === "auto";
 
     const updateGeometry = () => {
       const rect = section.getBoundingClientRect();
@@ -143,13 +144,18 @@ export function useVideoScrollScrub(
       ([entry]) => {
         visibleRef.current = entry?.isIntersecting ?? false;
         if (visibleRef.current) {
+          if (!preloadPromoted) {
+            preloadPromoted = true;
+            video.preload = "auto";
+            video.load();
+          }
           schedule();
         } else if (frameRef.current !== null) {
           window.cancelAnimationFrame(frameRef.current);
           frameRef.current = null;
         }
       },
-      { rootMargin: "25% 0px 25% 0px" },
+      { rootMargin: "75% 0px 75% 0px" },
     );
     intersectionObserver.observe(section);
 
