@@ -67,6 +67,9 @@ begin
   select t.customer_id into v_first
   from dblink_get_result('f10_customer_a') as t(customer_id uuid);
   if v_first is null then raise exception 'first customer create returned no id'; end if;
+  -- dblink requires one additional empty result after every async query
+  -- before the same connection can accept another command.
+  perform * from dblink_get_result('f10_customer_a') as t(customer_id uuid);
 
   v_lock_available := pg_try_advisory_lock(v_lock_key);
   if v_lock_available then
@@ -111,6 +114,7 @@ begin
     if sqlerrm = 'concurrent duplicate customer unexpectedly succeeded' then raise; end if;
     if position('CUSTOMER_CONTACT_EXISTS' in sqlerrm) = 0 then raise; end if;
   end;
+  perform * from dblink_get_result('f10_customer_b', false) as t(customer_id uuid);
 
   begin perform dblink_exec('f10_customer_b', 'rollback'); exception when others then null; end;
 
