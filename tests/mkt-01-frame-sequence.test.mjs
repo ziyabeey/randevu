@@ -11,6 +11,7 @@ const hook = read('src/marketing/transformation/useFrameSequenceScrollScrub.ts')
 const section = read('src/marketing/transformation/TransformationSection.tsx');
 const previewModes = read('src/marketing/previewModes.ts');
 const previewEntry = read('src/marketing/preview-entry.tsx');
+const frameSequence = await import('../src/marketing/transformation/frameSequence.ts');
 
 test('MKT-01 frame sequence keeps the 121-frame timeline with bounded fetch and decoded cache', () => {
   assert.match(loader, /TRANSFORMATION_FRAME_COUNT = 121/);
@@ -37,6 +38,17 @@ test('MKT-01 frame sequence maps normalized scroll directly to frame index and f
   assert.match(hook, /frameCachePeak/);
   assert.match(hook, /frameStaleCount/);
   assert.match(hook, /frameFirstDrawMs/);
+});
+
+test('MKT-01 frame canvas preserves the same horizontal crop focus as the video control', () => {
+  const { getTransformationFrameFocusX, getTransformationFrameIndex } = frameSequence;
+  assert.equal(getTransformationFrameFocusX(getTransformationFrameIndex(0.18), 'mobile', 390), 0.70);
+  assert.equal(getTransformationFrameFocusX(getTransformationFrameIndex(0.45), 'mobile', 390), 0.63);
+  assert.equal(getTransformationFrameFocusX(getTransformationFrameIndex(0.72), 'mobile', 390), 0.56);
+  assert.equal(getTransformationFrameFocusX(getTransformationFrameIndex(0.92), 'mobile', 390), 0.67);
+  assert.equal(getTransformationFrameFocusX(getTransformationFrameIndex(0.45), 'desktop', 820), 0.62);
+  assert.equal(getTransformationFrameFocusX(getTransformationFrameIndex(0.45), 'desktop', 1440), 0.5);
+  assert.match(hook, /getTransformationFrameFocusX\(index, variant, window\.innerWidth\)/);
 });
 
 test('MKT-01 standalone preview exposes video versus frames without changing the production default', () => {
