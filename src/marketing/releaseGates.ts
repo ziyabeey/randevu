@@ -7,7 +7,8 @@ export const MARKETING_RELEASE_GATES = {
   reminders: false,
   onboardingAssistance: true,
   dailyAppointmentSummary: true,
-  customerMemory: true,
+  // F10-05 code is on main, but independent acceptance reopened. Do not publish customer-memory proof yet.
+  customerMemory: false,
   pricingPolicy: false,
   pilotProof: false,
   contactFlow: MARKETING_CONTACT_HREF !== null,
