@@ -7,6 +7,7 @@ import publicBooking from './public-booking.ts';
 import customerManage from './customer-manage.ts';
 import calendar from './calendar.ts';
 import snapshotReads from './snapshot-reads.ts';
+import team from './team.ts';
 import {
   mutationSecurityError,
   type AuthEnv,
@@ -86,5 +87,6 @@ app.route('/api/public', publicBookingRecovery);
 app.route('/api/public', publicBooking);
 app.route('/api/manage', customerManage);
 app.route('/api/calendar', calendar);
+app.route('/api/team', team);
 
 export default app;
