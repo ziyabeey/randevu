@@ -1,0 +1,12 @@
+.mkt-transformation {
+  --mkt-phase-progress: 0;
+}
+
+.mkt-story--sweep .mkt-sweep-line span {
+  width: 100%;
+  max-width: none;
+  transform: scaleX(var(--mkt-phase-progress));
+  transform-origin: left center;
+  transition: none;
+  will-change: transform;
+}
