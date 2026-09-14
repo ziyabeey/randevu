@@ -4,14 +4,12 @@ import { createRoot } from "react-dom/client";
 import { MARKETING_PREVIEW_ASSETS } from "./assets";
 import { MarketingHome } from "./MarketingHome";
 import "./preview-reduced.css";
+import { readMarketingPreviewMode } from "./previewModes";
 
-const previewParams = new URLSearchParams(window.location.search);
-const forcedReducedMotion = previewParams.get("reduced") === "1";
-const cleanPreview = previewParams.get("clean") === "1";
-const debugPreview = previewParams.get("debug") === "1";
+const previewMode = readMarketingPreviewMode(window.location.search);
 
-if (forcedReducedMotion) document.documentElement.dataset.mktReducedMotion = "true";
-if (debugPreview) document.documentElement.dataset.mktDebug = "true";
+if (previewMode.reducedMotion) document.documentElement.dataset.mktReducedMotion = "true";
+if (previewMode.debug) document.documentElement.dataset.mktDebug = "true";
 
 type PreviewAssetStatus = "checking" | "ready" | "missing";
 
@@ -49,11 +47,11 @@ function PreviewDiagnostics() {
   return (
     <aside className={`mkt-preview-diagnostics is-${status}`} aria-live="polite">
       <strong>Preview</strong>
-      {forcedReducedMotion ? <span>Reduced motion</span> : null}
-      {debugPreview ? <span>Debug</span> : null}
-      {!forcedReducedMotion && status === "checking" ? <span>Assetler kontrol ediliyor…</span> : null}
-      {!forcedReducedMotion && status === "ready" ? <span>Motion assetleri hazır ✓</span> : null}
-      {!forcedReducedMotion && status === "missing" ? <span>{missing.length} asset eksik. ZIP&apos;i repo köküne aç.</span> : null}
+      {previewMode.reducedMotion ? <span>Reduced motion</span> : null}
+      {previewMode.debug ? <span>Debug</span> : null}
+      {!previewMode.reducedMotion && status === "checking" ? <span>Assetler kontrol ediliyor…</span> : null}
+      {!previewMode.reducedMotion && status === "ready" ? <span>Motion assetleri hazır ✓</span> : null}
+      {!previewMode.reducedMotion && status === "missing" ? <span>{missing.length} asset eksik. ZIP&apos;i repo köküne aç.</span> : null}
     </aside>
   );
 }
@@ -64,6 +62,6 @@ if (!root) throw new Error("Marketing preview root not found.");
 createRoot(root).render(
   <StrictMode>
     <MarketingHome />
-    {cleanPreview ? null : <PreviewDiagnostics />}
+    {previewMode.clean ? null : <PreviewDiagnostics />}
   </StrictMode>,
 );
