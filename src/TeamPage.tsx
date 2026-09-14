@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { ApiRequestError, api } from './api';
+import { api } from './api';
 
 type Role = 'owner' | 'manager' | 'staff';
 type PermissionKey =
@@ -195,7 +195,7 @@ export default function TeamPage() {
                           'Üyelik rolü güncellendi.',
                         )}
                       >
-                        {isOwner && <option value="owner">İşletme sahibi</option>}
+                        <option value="owner" disabled={!isOwner}>İşletme sahibi</option>
                         <option value="manager">Yönetici</option>
                         <option value="staff">Çalışan</option>
                       </select>
