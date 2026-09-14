@@ -4,8 +4,9 @@ Runtime paths are intentionally stable so motion production can be replaced with
 
 Required production files:
 
-- `randevu-transformation-master.mp4`
-- `randevu-transformation-poster.webp`
+- `public/marketing/transformation/randevu-transformation-master.mp4`
+- `public/marketing/transformation/randevu-transformation-poster.webp`
+- `public/marketing/hero/randevu-hero-model.webp`
 
 ## Source master
 
@@ -48,11 +49,27 @@ ffmpeg -i INPUT.mov \
   public/marketing/transformation/randevu-transformation-master.mp4
 ```
 
-Expected SHA-256 for the current binary handoff:
+## Hero frame
+
+The hero uses the same woman and salon world as the scroll master. Current handoff is a clean early frame from the source MOV encoded to WebP:
+
+```bash
+ffmpeg -ss 0.08 -i INPUT.mov \
+  -frames:v 1 \
+  -vf "scale=1928:-1" \
+  -c:v libwebp \
+  -quality 86 \
+  public/marketing/hero/randevu-hero-model.webp
+```
+
+This keeps face, wardrobe, lighting and cobalt salon geometry continuous between the hero and the transformation section.
+
+## Expected SHA-256
 
 ```text
 b82e9fe486e9dd9706c8294a4cd3c07efe526034d6feb7b543930455ba96fdef  randevu-transformation-master.mp4
 39814c4ed94b1127de62e096cb2940c6138a27b365450a5e88af77d869e5bbb8  randevu-transformation-poster.webp
+cbcfb696ee7e9669052113f106ff988912bad315498f92101ee6288b0c90072a  randevu-hero-model.webp
 ```
 
 If production intentionally re-encodes the source, update the hashes and re-run browser scrub acceptance.
@@ -63,4 +80,4 @@ Optional later optimization:
 
 ## Runtime contract
 
-`src/marketing/transformation/TransformationSection.tsx` expects the canonical paths above. The video is muted, inline and scroll-scrubbed. Pricing, copy and product UI remain React/DOM overlays and must not be baked into the video.
+`src/marketing/transformation/TransformationSection.tsx` expects the canonical transformation paths above. `src/marketing/MarketingHero.tsx` expects the hero WebP path. Motion is muted, inline and scroll-scrubbed. Pricing, copy and product UI remain React/DOM overlays and must not be baked into the video.
