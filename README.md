@@ -2,35 +2,51 @@
 
 YZT Digital'ın salon ve yerel hizmet işletmeleri için geliştirdiği ortak randevu/operasyon ürünü.
 
-## Üç ürün kolu
+## Ürün yapısı
 
 | Kol | Amaç | Tasarım ilkesi |
 | --- | --- | --- |
-| Müşteri paneli | Salon/hizmet keşfi, rezervasyon ve randevu yönetimi | Aynı temel işlevler, daha estetik müşteri deneyimi |
-| Randevu paneli | Salonun gün/hafta/liste takvimi ve günlük planlama | Referanstaki iş disiplini ve işlem sırası; küçük iyileştirmeler |
-| SalonApp | Mobil randevu, adisyon, tahsilat ve salon işlemleri | Tanıdık menü/adisyon akışı; küçük görsel ve ergonomik farklar |
+| Müşteri Paneli | Salon/hizmet keşfi, rezervasyon ve randevu yönetimi | Özgün ve estetik müşteri deneyimi |
+| Randevu Paneli | Gün/hafta/liste takvimi ve işletme operasyonu | İş disiplini ve hızlı günlük kullanım |
+| SalonApp | Mobil randevu, adisyon, tahsilat ve salon işlemleri | Tanıdık mobil işlem akışı |
 
-Üç kol ortak işletme, üyelik, müşteri, hizmet, personel ve randevu verisini kullanır. SalonApp alt menü hedefi: **Randevular · Adisyonlar · Yeni · Müşteriler · Diğer**.
+Üç kol ortak işletme, üyelik, müşteri, hizmet, personel ve randevu verisini kullanır. SalonApp alt menü sözleşmesi: **Randevular · Adisyonlar · Yeni · Müşteriler · Diğer**.
 
-## Mevcut durum
+Marketing sitesi ürün uygulamasından ayrı bir track'tir. **MKT-01 / Issue #70** ürün sahibi tarafından onaylıdır; marka ve scroll-motion kaynağı `docs/brand/**` altındadır.
 
-Main'de Faz 1–8 temeli vardır: Auth/tenant, katalog, çalışma saatleri/müsaitlik, tek hizmetli randevu, müşteriye açık rezervasyon, güvenli bağlantıyla yönetim ve gün/hafta takvimi.
+## Güncel durum
 
-F09-01…05 güvenilir booking/bildirim, F10-01 hesap temeli ve F17-01/02 staging/CI main’dedir. [Eski PR #8](https://github.com/ziyabeey1-ai/randevu/pull/8) kapalı/superseded durumundadır. Plan v3’ün S01…S08 teknik düzeltmeleri henüz uygulanmadı. Çoklu hizmet, yeni müşteri tasarımı, SalonApp/adisyon/tahsilat ve ürün/stok/rapor genişlemeleri planlanmıştır; henüz uygulanmış değildir. Canlı pilot doğrulanmış sayılmaz.
+Main'de Faz 1–8 temeli, F09 güvenilir rezervasyon/bildirim işleri, F10-01/02/03 hesap-üyelik-kurulum zinciri, F12-01 görsel sözleşmesi, F17-01/02 staging/CI temeli ve S01–S08 stabilization kapanışı vardır.
 
-## Proje rehberi
+**GS kapalıdır.** Artık yeni özellikleri engelleyen bir stabilization önkoşulu değildir.
 
-- [PRODUCT_SPEC.md](PRODUCT_SPEC.md) — üç kol, işlev/tasarım kuralları ve kapsam.
-- [ROADMAP.md](ROADMAP.md) — korunan Faz 1–8 ve kabul ölçütlü Faz 9–17.
-- [TASKS.md](TASKS.md) — Korunan 46 MVP işi + 8 teknik düzeltme; toplam 54 görev, bağımlılıklar ve durum/sahip takibi.
-- [CONTRIBUTING.md](CONTRIBUTING.md) — Ziya ve diğer ajanlar için görev seçimi, branch/PR, ortak dosya ve devir rehberi; kopyalanabilir görev metni.
-- [MVP_ACCEPTANCE.md](MVP_ACCEPTANCE.md) — üç kolun birlikte doğrulanacağı 31 birleşik kabul/pilot senaryosu.
-- [PROJECT_STATE.md](PROJECT_STATE.md) — gerçek kod durumu, branch'ler, açık bulgular ve kanıtlar.
+Aktif ürün lane'leri:
+
+- **F10-05 / Ajan A:** işletmenin müşteri kayıtları — PR #74 draft.
+- **F10-04 / Ajan C:** hizmet, personel ve çalışma ayarları — PR #75 draft.
+- **F12-02 / Ajan B:** salon profili ve public fotoğraflar — branch aktif, draft PR bekleniyor.
+
+Shared CI-plan sırası nedeniyle F10-05 entegrasyonu F10-04'ten önce kapanacaktır; bu ürün önceliği değil conflict önleme sırasıdır. Güncel koordinasyon [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) içindedir.
+
+**Marketing:** PR #69 ile brand/motion docs main'e girdi. **MKT-01 / Issue #70** aktif; ürün sahibi scroll-scrub video + gerçek DOM UI tabanlı hareketli ana sayfa üzerinde çalışıyor. Bu track 54 MVP ürün/teknik görev sayısına dahil değildir.
+
+Canlı pilot henüz yapılmadı. Staging/CI başarısı production/pilot kabulü değildir.
+
+## Kanonik proje kaynakları
+
+- [PRODUCT_SPEC.md](PRODUCT_SPEC.md) — ürün sınırı ve üç kol.
+- [TASKS.md](TASKS.md) — 54 MVP ürün/teknik görevinin durum ve sahiplik kaynağı; ayrıca ayrı marketing track kaydı.
+- [PROJECT_STATE.md](PROJECT_STATE.md) — main'de gerçekten doğrulanmış durum.
+- [ROADMAP.md](ROADMAP.md) — bağımlılık ve faz sırası.
+- [MVP_ACCEPTANCE.md](MVP_ACCEPTANCE.md) — birleşik release/pilot kabul matrisi.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — branch/PR/sahiplik ve merge kuralları.
 - [DECISIONS.md](DECISIONS.md) — teknik kararlar ve veri sınırları.
-- [Görsel referanslar](docs/references/README.md) — ürün sahibinin sağladığı 11 ekranın eşleştirmesi.
-- [AGENTS.md](AGENTS.md) — geliştirme ve doğrulama protokolü.
+- [docs/plan/architecture-contracts.md](docs/plan/architecture-contracts.md) — K01/K02/K03 bağlayıcı mimari sözleşmeleri.
+- [docs/plan/agent-workflow.md](docs/plan/agent-workflow.md) — ajan çalışma ve devir protokolü.
+- [docs/brand/README.md](docs/brand/README.md) — Randevu marka, homepage ve motion sistemi.
+- [docs/references/README.md](docs/references/README.md) — ürün sahibinin referans ekran eşleştirmesi.
 
-Katkı vermek için mevcut durumu okuyup TASKS'tan tek görev seçin; ilgili faz dosyası başlama noktası, çıktı ve kabul ölçütlerini içerir. Staging/CI temeli tamamlanmıştır; yeni özelliklerden önce GS teknik düzeltme kabulü gerekir. Güncel durum TASKS’tadır; bu belgelerin yazılması yeni ekranların veya işlevlerin tamamlandığı anlamına gelmez.
+**Okuma sırası:** `PROJECT_STATE.md` → `TASKS.md` → ilgili faz kartı → açık PR/Issue #65.
 
 ## Yerel kurulum
 
@@ -40,27 +56,30 @@ npm ci
 npm run dev
 ```
 
-`.dev.vars` içindeki Supabase değerleri gerçek geliştirme ortamına göre ayarlanır. Kesin migration sırası `supabase/migrations/` içindedir; güncel kapsam [PROJECT_STATE.md](PROJECT_STATE.md) üzerinden okunur. Worker, Supabase Auth ve kullanıcının RLS yetkileriyle çalışır; service-role anahtarı kullanmaz.
+`.dev.vars` Supabase geliştirme değerleriyle doldurulur. Kesin migration sırası `supabase/migrations/` içindedir. Worker, Supabase Auth ve kullanıcının RLS yetkileriyle çalışır; service-role anahtarı uygulama runtime'ında kullanılmaz.
 
-## Mevcut ekranlar
+## Main'deki temel ekranlar
 
 | Yol | İşlev |
 | --- | --- |
-| `/calendar` | Gün/hafta takvimi, personel filtresi, durum işlemleri |
+| `/` | Giriş ve temel işletme alanı |
+| `/setup` | İşletme seçimi ve onboarding |
+| `/team` | Davet, üyelik ve rol yönetimi |
+| `/account` | Hesap/parola akışları |
+| `/calendar` | Gün/hafta takvimi |
 | `/bookings` | Randevu oluşturma ve taşıma |
 | `/availability` | Mesai, kapanış ve müsaitlik |
-| `/` | Giriş, işletme, hizmet ve ekip |
-| `/public-booking` | Public sayfa ayarları |
+| `/public-booking` | Public rezervasyon ayarları |
 | `/r/:slug` | Müşteri rezervasyonu |
-| `/m#<token>` | Tek randevuyu bağlantıyla yönetme |
+| `/m#<token>` | Tek randevuyu güvenli bağlantıyla yönetme |
 
-SalonApp/adisyon yolları ilgili uygulama fazında eklenecek; yukarıdaki tablo mevcut çalışan route'ları gösterir.
+`/customers` F10-05 PR #74 içindedir; main'e merge edilmeden çalışan main route'u sayılmaz. SalonApp/adisyon yolları F14 ile gelir.
 
-## Korunan teknik temel
+## Korunan teknik sınırlar
 
-İşletme sınırı aktif üyelik + RLS + composite FK'lerle uygulanır. Müsaitlik işletmenin IANA saat dilimini kullanır. Tamponlar dahil personel çakışması PostgreSQL exclusion constraint'iyle engellenir. Randevu işlemleri tekrar güvenlidir; snapshot ve değişiklik geçmişi korunur. Takvim ortak randevuların görünümüdür. Müşteri yönetim token'ı düz metin saklanmaz ve URL path/query'sine konulmaz.
+İşletme erişimi aktif Membership + RLS + tenant FK'leriyle uygulanır. Recovery oturumu normal tenant authority kazanamaz. Yeni DB nesneleri explicit grant/RLS ister. Liste ve snapshot okumaları K03/S07 bütçelerine uyar; sessiz kısmi sonuç kabul edilmez. Worker service-role ile yetki atlamaz.
 
-Yeni kapsamda adisyon/tahsilat durumu randevu durumundan ayrı tutulur. İlk mali işlev işletmede gerçekleşen tahsilatı kaydetmektir; çevrimiçi ödeme, tam muhasebe, e-fatura, bordro ve ERP ayrı kapsamdır.
+Randevu durumu ile mali/adisyon durumu ayrı tutulur. Çevrimiçi ödeme, tam muhasebe, e-fatura, bordro ve ERP MVP kapsamı dışındadır.
 
 ## Kontroller
 
@@ -70,8 +89,4 @@ npm run typecheck
 npm run build
 ```
 
-GitHub CI PostgreSQL 17 üzerinde main'deki tüm migration'ları ve SQL gerileme testlerini çalıştırır. Gerçek hesap, tarayıcı, mobil, bildirim ve üç kol arasındaki işlemler ayrıca ilgili fazın kabul ölçütleriyle doğrulanır.
-
-## Plan v3 ile devam
-
-Güncel görev için [PROJECT_STATE](PROJECT_STATE.md) → [ROADMAP](ROADMAP.md) → [TASKS](TASKS.md) sırasını kullanın. Önce [S01–S08 / GS](docs/plan/stabilization.md), sonra onaylı üç kollu MVP devam eder. [Ortak mimari sözleşmeler](docs/plan/architecture-contracts.md) ve [ajan/beceri protokolü](docs/plan/agent-workflow.md), insan ve GPT-5.6 Sol katkısının devir temelidir. Bu revizyon uygulama veya PDF teslimi değildir.
+GitHub CI PostgreSQL 17 üzerinde gerekli migration/SQL ve uygulama testlerini seçerek çalıştırır. Gerçek Auth, staging ve browser kabulü ilgili görev kartlarının kanıt kapılarıyla ayrıca yapılır.
