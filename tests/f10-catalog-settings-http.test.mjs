@@ -89,7 +89,27 @@ await test('F10-04 recovery and staff sessions cannot reach guarded mutation RPC
       method: 'PATCH', headers: mutationHeaders(), body: JSON.stringify({ active: false }),
     }, env);
     assert.equal(staff.status, 403);
-    assert.equal((await staff.json()).error?.code, 'NOT_ALLOWED');
+    const staffPayload = await staff.json();
+    assert.equal(staffPayload.error?.code, 'NOT_ALLOWED');
+    assert.doesNotMatch(staffPayload.error?.message ?? '', /\bowner\b|\bmanager\b/i);
+    assert.equal(reachedRpc, false);
+  } finally { globalThis.fetch = realFetch; }
+});
+
+await test('F10-04 existing service edit requires an optimistic version before RPC', async () => {
+  const realFetch = globalThis.fetch;
+  let reachedRpc = false;
+  globalThis.fetch = authFetch('owner', async () => {
+    reachedRpc = true;
+    return json({});
+  });
+  try {
+    const response = await app.request(`http://localhost/api/services/${serviceId}`, {
+      method: 'PATCH', headers: mutationHeaders(),
+      body: JSON.stringify({ priceMinor: 14000 }),
+    }, env);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error?.code, 'STALE_WRITE');
     assert.equal(reachedRpc, false);
   } finally { globalThis.fetch = realFetch; }
 });
@@ -133,6 +153,30 @@ await test('F10-04 assignment uses selected tenant and optimistic existing versi
     assert.equal(response.status, 200);
     assert.equal(body.p_business_id, businessId);
     assert.equal(body.p_active, false);
+  } finally { globalThis.fetch = realFetch; }
+});
+
+await test('F10-04 legacy assignment toggle captures the current server version before guarded RPC', async () => {
+  const realFetch = globalThis.fetch;
+  const expected = '2026-09-14T10:05:00Z';
+  let rpcBody;
+  globalThis.fetch = authFetch('owner', async (url, init) => {
+    if (url.pathname === '/rest/v1/staff_services') {
+      assert.equal(url.searchParams.get('business_id'), `eq.${businessId}`);
+      assert.equal(url.searchParams.get('staff_id'), `eq.${staffId}`);
+      assert.equal(url.searchParams.get('service_id'), `eq.${serviceId}`);
+      return json([{ updated_at: expected }]);
+    }
+    assert.equal(url.pathname, '/rest/v1/rpc/set_staff_service_guarded');
+    rpcBody = JSON.parse(init.body);
+    return json({ business_id: businessId, staff_id: staffId, service_id: serviceId, active: false });
+  });
+  try {
+    const response = await app.request(`http://localhost/api/staff/${staffId}/services/${serviceId}`, {
+      method: 'PUT', headers: mutationHeaders(), body: JSON.stringify({ active: false }),
+    }, env);
+    assert.equal(response.status, 200);
+    assert.equal(rpcBody.p_expected_updated_at, expected);
   } finally { globalThis.fetch = realFetch; }
 });
 
@@ -186,6 +230,30 @@ await test('F10-04 schedule mutation sends expected intervals to guarded RPC and
   } finally { globalThis.fetch = realFetch; }
 });
 
+await test('F10-04 legacy setup hours capture a current server snapshot before guarded RPC', async () => {
+  const realFetch = globalThis.fetch;
+  let rpcBody;
+  globalThis.fetch = authFetch('owner', async (url, init) => {
+    if (url.pathname === '/rest/v1/business_hours') {
+      assert.equal(url.searchParams.get('business_id'), `eq.${businessId}`);
+      assert.equal(url.searchParams.get('weekday'), 'eq.1');
+      assert.equal(url.searchParams.get('limit'), '9');
+      return json([{ starts_local: '09:00:00', ends_local: '17:00:00' }]);
+    }
+    assert.equal(url.pathname, '/rest/v1/rpc/replace_business_hours_guarded');
+    rpcBody = JSON.parse(init.body);
+    return json([]);
+  });
+  try {
+    const response = await app.request('http://localhost/api/availability/business-hours/1', {
+      method: 'PUT', headers: mutationHeaders(),
+      body: JSON.stringify({ intervals: [{ start: '10:00', end: '18:00' }] }),
+    }, env);
+    assert.equal(response.status, 200);
+    assert.deepEqual(rpcBody.p_expected_intervals, [{ start: '09:00', end: '17:00' }]);
+  } finally { globalThis.fetch = realFetch; }
+});
+
 await test('F10-04 availability block create uses guarded RPC and ignores client tenant fields', async () => {
   const realFetch = globalThis.fetch;
   let body;
@@ -202,5 +270,21 @@ await test('F10-04 availability block create uses guarded RPC and ignores client
     assert.equal(response.status, 201);
     assert.equal(body.p_business_id, businessId);
     assert.equal(body.p_staff_id, staffId);
+  } finally { globalThis.fetch = realFetch; }
+});
+
+await test('F10-04 availability block write cap maps to stable 409', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = authFetch('manager', async (url) => {
+    assert.equal(url.pathname, '/rest/v1/rpc/create_availability_block_local_guarded');
+    return json({ message: 'AVAILABILITY_BLOCKS_LIMIT_EXCEEDED' }, 400);
+  });
+  try {
+    const response = await app.request('http://localhost/api/availability/blocks', {
+      method: 'POST', headers: mutationHeaders(),
+      body: JSON.stringify({ date: '2026-09-20', start: '12:00', end: '13:00', staffId: null, reason: 'İzin' }),
+    }, env);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error?.code, 'AVAILABILITY_BLOCKS_LIMIT_EXCEEDED');
   } finally { globalThis.fetch = realFetch; }
 });
