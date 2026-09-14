@@ -5,6 +5,7 @@ import { usePrefersReducedMotion, useVideoScrollScrub } from "./useVideoScrollSc
 
 const VIDEO_MP4 = "/marketing/transformation/randevu-transformation-master.mp4";
 const VIDEO_POSTER = "/marketing/transformation/randevu-transformation-poster.webp";
+const CUSTOMER_MEMORY_RELEASED = false; // F10-05 release gate.
 
 interface StoryProps {
   active: boolean;
@@ -15,7 +16,11 @@ function ReminderStory({ active }: StoryProps) {
     <div className="mkt-story mkt-story--reminder" aria-hidden={!active}>
       <p className="mkt-eyebrow">Kepenk.ai sunar</p>
       <h2>Unuttu mu? Biz hatırlatırız.</h2>
-      <p className="mkt-story-copy">Müşteri kimdi? Hatırlamak zorunda değilsin.</p>
+      <p className="mkt-story-copy">
+        {CUSTOMER_MEMORY_RELEASED
+          ? "Müşteri kimdi? Hatırlamak zorunda değilsin."
+          : "Randevu yaklaşınca saatini sistem takip etsin."}
+      </p>
 
       <div className="mkt-proof-stack" aria-label="Randevu ürün kanıtları">
         <div className="mkt-proof-card mkt-proof-card--reminder">
@@ -23,26 +28,28 @@ function ReminderStory({ active }: StoryProps) {
           <strong>Randevunuz yarın 14:30&apos;da.</strong>
           <span>Saç kesimi</span>
         </div>
-        <div className="mkt-proof-card mkt-proof-card--customer">
-          <div>
-            <span className="mkt-proof-kicker">Müşteri</span>
-            <strong>Burcu Yılmaz</strong>
+        {CUSTOMER_MEMORY_RELEASED ? (
+          <div className="mkt-proof-card mkt-proof-card--customer">
+            <div>
+              <span className="mkt-proof-kicker">Müşteri</span>
+              <strong>Burcu Yılmaz</strong>
+            </div>
+            <dl>
+              <div>
+                <dt>Son ziyaret</dt>
+                <dd>12 Ekim</dd>
+              </div>
+              <div>
+                <dt>Hizmet</dt>
+                <dd>Saç kesimi</dd>
+              </div>
+              <div>
+                <dt>Not</dt>
+                <dd>Katlı kesim</dd>
+              </div>
+            </dl>
           </div>
-          <dl>
-            <div>
-              <dt>Son ziyaret</dt>
-              <dd>12 Ekim</dd>
-            </div>
-            <div>
-              <dt>Hizmet</dt>
-              <dd>Saç kesimi</dd>
-            </div>
-            <div>
-              <dt>Not</dt>
-              <dd>Katlı kesim</dd>
-            </div>
-          </dl>
-        </div>
+        ) : null}
       </div>
     </div>
   );
@@ -101,7 +108,7 @@ function PricingStory({ active }: StoryProps) {
 
 function StaticTransformationFallback() {
   return (
-    <section className="mkt-transformation-fallback" id="nasil-calisiyor" aria-labelledby="mkt-fallback-title">
+    <section className="mkt-transformation-fallback" id="donusum" aria-labelledby="mkt-fallback-title">
       <div className="mkt-fallback-panel">
         <p className="mkt-eyebrow">Kepenk.ai sunar</p>
         <h2 id="mkt-fallback-title">Karışıklık gider, düzen kalır.</h2>
@@ -133,7 +140,7 @@ export function TransformationSection() {
     <section
       ref={sectionRef}
       className="mkt-transformation"
-      id="nasil-calisiyor"
+      id="donusum"
       data-phase={phase}
       aria-label="Randevu kolay dönüşüm hikayesi"
     >
