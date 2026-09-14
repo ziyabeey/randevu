@@ -96,13 +96,17 @@ async function decodeWithImageElement(blob: Blob): Promise<DecodedTransformation
 
 async function decodeFrame(blob: Blob): Promise<DecodedTransformationFrame> {
   if (typeof createImageBitmap === "function") {
-    const bitmap = await createImageBitmap(blob);
-    return {
-      source: bitmap,
-      width: bitmap.width,
-      height: bitmap.height,
-      close: () => bitmap.close(),
-    };
+    try {
+      const bitmap = await createImageBitmap(blob);
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        close: () => bitmap.close(),
+      };
+    } catch {
+      return decodeWithImageElement(blob);
+    }
   }
 
   return decodeWithImageElement(blob);
