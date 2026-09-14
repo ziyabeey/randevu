@@ -7,6 +7,7 @@ const origin = process.env.STAGING_APP_ORIGIN.replace(/\/$/, '');
 const cookies = new Map();
 const HEALTH_ATTEMPTS = 8;
 const HEALTH_RETRY_DELAY_MS = 1500;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function absorbCookies(response) {
   const values = typeof response.headers.getSetCookie === 'function'
@@ -91,6 +92,269 @@ async function waitForHealth() {
   throw new Error(`Staging health check failed after ${HEALTH_ATTEMPTS} attempts${suffix}`);
 }
 
+function safeJwtMethod(value) {
+  if (typeof value === 'string') return value.trim().toLowerCase();
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return '';
+  return typeof value.method === 'string' ? value.method.trim().toLowerCase() : '';
+}
+
+function accessClaimsDiagnostic(accessToken) {
+  const diagnostic = {
+    tokenParts: 0,
+    payloadParsed: false,
+    hasSub: false,
+    subUuid: false,
+    hasSessionId: false,
+    sessionIdUuid: false,
+    amrPresent: false,
+    amrArray: false,
+    amrCount: null,
+    hasPasswordMethod: false,
+    hasRecoveryMethod: false,
+    hasTokenRefreshMethod: false,
+    aalClass: null,
+    audAuthenticated: false,
+    roleAuthenticated: false,
+  };
+
+  if (typeof accessToken !== 'string' || !accessToken) return diagnostic;
+  const parts = accessToken.split('.');
+  diagnostic.tokenParts = parts.length;
+  if (parts.length !== 3 || !parts[1]) return diagnostic;
+
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return diagnostic;
+    diagnostic.payloadParsed = true;
+    diagnostic.hasSub = typeof payload.sub === 'string';
+    diagnostic.subUuid = diagnostic.hasSub && UUID_PATTERN.test(payload.sub);
+    diagnostic.hasSessionId = typeof payload.session_id === 'string';
+    diagnostic.sessionIdUuid = diagnostic.hasSessionId && UUID_PATTERN.test(payload.session_id);
+    diagnostic.amrPresent = Object.prototype.hasOwnProperty.call(payload, 'amr');
+    diagnostic.amrArray = Array.isArray(payload.amr);
+    if (diagnostic.amrArray) {
+      const methods = payload.amr.map(safeJwtMethod).filter(Boolean);
+      diagnostic.amrCount = payload.amr.length;
+      diagnostic.hasPasswordMethod = methods.includes('password');
+      diagnostic.hasRecoveryMethod = methods.includes('recovery');
+      diagnostic.hasTokenRefreshMethod = methods.includes('token_refresh');
+    }
+    diagnostic.aalClass = payload.aal === 'aal1' || payload.aal === 'aal2'
+      ? payload.aal
+      : (payload.aal == null ? null : 'other');
+    diagnostic.audAuthenticated = payload.aud === 'authenticated'
+      || (Array.isArray(payload.aud) && payload.aud.includes('authenticated'));
+    diagnostic.roleAuthenticated = payload.role === 'authenticated';
+  } catch {
+    // The receipt intentionally records only parse classification, never token text.
+  }
+  return diagnostic;
+}
+
+function statusClass(status) {
+  if (!Number.isInteger(status) || status <= 0) return 'transport';
+  if (status >= 500) return '5xx';
+  if (status >= 400) return '4xx';
+  if (status >= 300) return '3xx';
+  if (status >= 200) return '2xx';
+  return 'other';
+}
+
+async function directPasswordDiagnostic() {
+  const supabaseUrl = String(process.env.SUPABASE_URL ?? '').replace(/\/$/, '');
+  const supabaseAnonKey = String(process.env.SUPABASE_ANON_KEY ?? '');
+  const emptyClaims = accessClaimsDiagnostic('');
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return {
+      status: 0,
+      statusClass: 'config',
+      tokenResponse: false,
+      hasAccessToken: false,
+      hasUser: false,
+      accessClaims: emptyClaims,
+    };
+  }
+
+  let status = 0;
+  let data = null;
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: process.env.STAGING_OWNER_A_EMAIL,
+        password: process.env.STAGING_OWNER_A_PASSWORD,
+      }),
+      redirect: 'manual',
+    });
+    status = response.status;
+    const text = await response.text();
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+    }
+  } catch {
+    // A transport failure is represented as status 0 without echoing provider details.
+  }
+
+  const tokenResponse = typeof data === 'object' && data !== null && !Array.isArray(data);
+  const accessToken = tokenResponse && typeof data.access_token === 'string' ? data.access_token : '';
+  const user = tokenResponse && typeof data.user === 'object' && data.user !== null && !Array.isArray(data.user)
+    ? data.user
+    : null;
+  return {
+    status,
+    statusClass: statusClass(status),
+    tokenResponse,
+    hasAccessToken: Boolean(accessToken),
+    hasUser: Boolean(user?.id),
+    accessClaims: accessClaimsDiagnostic(accessToken),
+  };
+}
+
+function jwtSubject(accessToken) {
+  if (typeof accessToken !== 'string' || !accessToken) return '';
+  const parts = accessToken.split('.');
+  if (parts.length !== 3 || !parts[1]) return '';
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    const subject = typeof payload?.sub === 'string' ? payload.sub : '';
+    return UUID_PATTERN.test(subject) ? subject : '';
+  } catch {
+    return '';
+  }
+}
+
+async function directSessionProviderDiagnostic(accessToken) {
+  const supabaseUrl = String(process.env.SUPABASE_URL ?? '').replace(/\/$/, '');
+  const supabaseAnonKey = String(process.env.SUPABASE_ANON_KEY ?? '');
+  const expectedOwnerId = String(process.env.STAGING_OWNER_A_ID ?? '');
+  const subject = jwtSubject(accessToken);
+  if (!supabaseUrl || !supabaseAnonKey || !subject) {
+    return {
+      configReady: Boolean(supabaseUrl && supabaseAnonKey),
+      jwtSubjectUuid: Boolean(subject),
+      jwtSubjectMatchesExpectedOwner: Boolean(subject && expectedOwnerId && subject === expectedOwnerId),
+      authUserStatus: 0,
+      authUserStatusClass: 'config',
+      authUserPresent: false,
+      authUserIdUuid: false,
+      authUserMatchesJwtSubject: false,
+      membershipsStatus: 0,
+      membershipsStatusClass: 'config',
+      membershipsArray: false,
+      membershipsCount: null,
+      embeddedBusinessesCount: null,
+    };
+  }
+
+  const headers = {
+    apikey: supabaseAnonKey,
+    Authorization: `Bearer ${accessToken}`,
+    Accept: 'application/json',
+  };
+
+  let authUserStatus = 0;
+  let authUserData = null;
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, { headers, redirect: 'manual' });
+    authUserStatus = response.status;
+    const text = await response.text();
+    if (text) {
+      try {
+        authUserData = JSON.parse(text);
+      } catch {
+        authUserData = null;
+      }
+    }
+  } catch {
+    // Transport failure remains status 0. Raw provider details are intentionally discarded.
+  }
+
+  const query = new URLSearchParams({
+    select: 'id,business_id,role,active,businesses(id,name,slug,timezone)',
+    user_id: `eq.${subject}`,
+    active: 'eq.true',
+    order: 'created_at.asc',
+  });
+  let membershipsStatus = 0;
+  let membershipsData = null;
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/memberships?${query}`, { headers, redirect: 'manual' });
+    membershipsStatus = response.status;
+    const text = await response.text();
+    if (text) {
+      try {
+        membershipsData = JSON.parse(text);
+      } catch {
+        membershipsData = null;
+      }
+    }
+  } catch {
+    // Transport failure remains status 0. Raw provider details are intentionally discarded.
+  }
+
+  const authUser = typeof authUserData === 'object' && authUserData !== null && !Array.isArray(authUserData)
+    ? authUserData
+    : null;
+  const authUserId = typeof authUser?.id === 'string' ? authUser.id : '';
+  const memberships = Array.isArray(membershipsData) ? membershipsData : null;
+  const embeddedBusinessesCount = memberships
+    ? memberships.filter((membership) => (
+      typeof membership?.businesses === 'object'
+      && membership.businesses !== null
+      && !Array.isArray(membership.businesses)
+      && typeof membership.businesses.id === 'string'
+    )).length
+    : null;
+
+  return {
+    configReady: true,
+    jwtSubjectUuid: true,
+    jwtSubjectMatchesExpectedOwner: Boolean(expectedOwnerId && subject === expectedOwnerId),
+    authUserStatus,
+    authUserStatusClass: statusClass(authUserStatus),
+    authUserPresent: Boolean(authUserId),
+    authUserIdUuid: UUID_PATTERN.test(authUserId),
+    authUserMatchesJwtSubject: Boolean(authUserId && authUserId === subject),
+    membershipsStatus,
+    membershipsStatusClass: statusClass(membershipsStatus),
+    membershipsArray: Boolean(memberships),
+    membershipsCount: memberships?.length ?? null,
+    embeddedBusinessesCount,
+  };
+}
+
+function sessionDiagnostic(result) {
+  const data = typeof result.data === 'object' && result.data !== null && !Array.isArray(result.data)
+    ? result.data
+    : {};
+  const user = typeof data.user === 'object' && data.user !== null && !Array.isArray(data.user)
+    ? data.user
+    : null;
+  const error = typeof data.error === 'object' && data.error !== null && !Array.isArray(data.error)
+    ? data.error
+    : null;
+  return {
+    status: result.response.status,
+    hasUser: Boolean(user?.id),
+    membershipsCount: Array.isArray(data.memberships) ? data.memberships.length : null,
+    hasActiveBusiness: Boolean(data.activeBusinessId),
+    passwordRecovery: data.passwordRecovery === true,
+    errorCode: typeof error?.code === 'string' ? error.code : null,
+    hasAccessCookie: cookies.has('yzt_access'),
+    hasRefreshCookie: cookies.has('yzt_refresh'),
+  };
+}
+
 await waitForHealth();
 const loginCsrf = await csrf();
 
@@ -103,14 +367,24 @@ const login = await request('/api/auth/login', {
   }),
 });
 if (!login.response.ok || login.data?.ok !== true) {
+  const directAuthDiagnostic = await directPasswordDiagnostic();
+  console.error(`STAGING_DIRECT_AUTH_DIAGNOSTIC ${JSON.stringify(directAuthDiagnostic)}`);
   throw new Error(`Staging app login failed with HTTP ${login.response.status}`);
 }
 if (!cookies.has('yzt_access') || !cookies.has('yzt_refresh')) {
   throw new Error('Staging app login did not issue the expected HttpOnly session cookies');
 }
 
+// Snapshot only the shape of verified-hosted JWT claims before /api/session can
+// clear an invalid session. Never log the bearer, subject, session id or email.
+const accessToken = cookies.get('yzt_access') ?? '';
+const accessClaims = accessClaimsDiagnostic(accessToken);
 const session = await request('/api/session');
 if (!session.response.ok || !session.data?.user?.id) {
+  const directSessionProvider = await directSessionProviderDiagnostic(accessToken);
+  console.error(`STAGING_ACCESS_CLAIMS_DIAGNOSTIC ${JSON.stringify(accessClaims)}`);
+  console.error(`STAGING_SESSION_PROVIDER_DIAGNOSTIC ${JSON.stringify(directSessionProvider)}`);
+  console.error(`STAGING_SESSION_DIAGNOSTIC ${JSON.stringify(sessionDiagnostic(session))}`);
   throw new Error(`Staging session lookup failed with HTTP ${session.response.status}`);
 }
 if (String(session.data.user.email ?? '').toLowerCase() !== process.env.STAGING_OWNER_A_EMAIL.toLowerCase()) {

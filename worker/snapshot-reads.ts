@@ -200,7 +200,7 @@ snapshotReads.get('/api/session', async (context) => {
     }
 
     const query = new URLSearchParams({
-      select: 'id,business_id,role,active,businesses(id,name,slug,timezone)',
+      select: 'id,business_id,role,active,businesses!memberships_business_id_fkey(id,name,slug,timezone)',
       user_id: `eq.${auth.user.id}`,
       active: 'eq.true',
       order: 'created_at.asc',

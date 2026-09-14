@@ -24,3 +24,131 @@ test('readiness retry is bounded and does not retry login/session/catalog assert
   assert.match(smoke, /Staging session lookup failed with HTTP/);
   assert.match(smoke, /Staging catalog failed with HTTP/);
 });
+
+test('session failure emits only a bounded classification receipt, never raw session identity or bearer values', () => {
+  assert.match(smoke, /STAGING_SESSION_DIAGNOSTIC/);
+  for (const field of [
+    'hasUser',
+    'membershipsCount',
+    'hasActiveBusiness',
+    'passwordRecovery',
+    'errorCode',
+    'hasAccessCookie',
+    'hasRefreshCookie',
+  ]) {
+    assert.match(smoke, new RegExp(field));
+  }
+  assert.doesNotMatch(smoke, /STAGING_SESSION_DIAGNOSTIC[^\n]*(email|fullName|access_token|refresh_token|STAGING_OWNER_A_EMAIL)/);
+  assert.doesNotMatch(smoke, /JSON\.stringify\(session\.data\)/);
+});
+
+test('failed hosted session snapshots only access-claim shape before the session call can clear cookies', () => {
+  assert.match(smoke, /function accessClaimsDiagnostic\(accessToken\)/);
+  assert.match(smoke, /STAGING_ACCESS_CLAIMS_DIAGNOSTIC/);
+  for (const field of [
+    'tokenParts',
+    'payloadParsed',
+    'hasSub',
+    'subUuid',
+    'hasSessionId',
+    'sessionIdUuid',
+    'amrPresent',
+    'amrArray',
+    'amrCount',
+    'hasPasswordMethod',
+    'hasRecoveryMethod',
+    'hasTokenRefreshMethod',
+    'aalClass',
+    'audAuthenticated',
+    'roleAuthenticated',
+  ]) {
+    assert.match(smoke, new RegExp(field));
+  }
+
+  const snapshotIndex = smoke.indexOf("const accessToken = cookies.get('yzt_access') ?? '';");
+  const sessionIndex = smoke.indexOf("const session = await request('/api/session');");
+  assert.ok(snapshotIndex >= 0 && sessionIndex > snapshotIndex, 'access token must be captured before /api/session can clear the cookie jar');
+
+  assert.doesNotMatch(smoke, /console\.(?:log|error)\([^\n]*(?:accessToken|cookies\.get\('yzt_access'\)|payload\.sub|payload\.session_id|payload\.email)/);
+  assert.doesNotMatch(smoke, /JSON\.stringify\(payload\)/);
+  assert.doesNotMatch(smoke, /STAGING_ACCESS_CLAIMS_DIAGNOSTIC[^\n]*(STAGING_OWNER_A_EMAIL|access_token|refresh_token)/);
+});
+
+test('login failure performs one bounded direct hosted auth diagnostic without leaking credentials or identity', () => {
+  assert.match(smoke, /async function directPasswordDiagnostic\(\)/);
+  assert.match(smoke, /auth\/v1\/token\?grant_type=password/);
+  assert.match(smoke, /STAGING_DIRECT_AUTH_DIAGNOSTIC/);
+
+  for (const field of [
+    'status',
+    'statusClass',
+    'tokenResponse',
+    'hasAccessToken',
+    'hasUser',
+    'accessClaims',
+  ]) {
+    assert.match(smoke, new RegExp(field));
+  }
+
+  const functionStart = smoke.indexOf('async function directPasswordDiagnostic()');
+  const functionEnd = smoke.indexOf('\n}\n\nfunction jwtSubject', functionStart);
+  assert.ok(functionStart >= 0 && functionEnd > functionStart, 'direct diagnostic helper must stay bounded and inspectable');
+  const helper = smoke.slice(functionStart, functionEnd);
+  assert.equal((helper.match(/\bfetch\(/g) ?? []).length, 1, 'direct diagnostic must issue exactly one provider request');
+  assert.doesNotMatch(helper, /for\s*\(|while\s*\(|await sleep\(/, 'direct diagnostic must not retry');
+  assert.doesNotMatch(helper, /console\.(?:log|error)/, 'provider response must not be logged inside the diagnostic helper');
+
+  const loginFailure = /if \(!login\.response\.ok \|\| login\.data\?\.ok !== true\) \{([\s\S]*?)\n\}/.exec(smoke)?.[1] ?? '';
+  assert.match(loginFailure, /await directPasswordDiagnostic\(\)/);
+  assert.match(loginFailure, /STAGING_DIRECT_AUTH_DIAGNOSTIC/);
+
+  assert.doesNotMatch(
+    smoke,
+    /STAGING_DIRECT_AUTH_DIAGNOSTIC[^\n]*(?:STAGING_OWNER_A_EMAIL|STAGING_OWNER_A_PASSWORD|SUPABASE_ANON_KEY|access_token|refresh_token|payload\.sub|payload\.session_id|payload\.email)/,
+  );
+  assert.doesNotMatch(smoke, /JSON\.stringify\(data\)/);
+});
+
+test('session failure performs exactly two bounded upstream probes and logs only classification', () => {
+  assert.match(smoke, /function jwtSubject\(accessToken\)/);
+  assert.match(smoke, /async function directSessionProviderDiagnostic\(accessToken\)/);
+  assert.match(smoke, /auth\/v1\/user/);
+  assert.match(smoke, /rest\/v1\/memberships/);
+  assert.match(smoke, /STAGING_SESSION_PROVIDER_DIAGNOSTIC/);
+
+  for (const field of [
+    'configReady',
+    'jwtSubjectUuid',
+    'jwtSubjectMatchesExpectedOwner',
+    'authUserStatus',
+    'authUserStatusClass',
+    'authUserPresent',
+    'authUserIdUuid',
+    'authUserMatchesJwtSubject',
+    'membershipsStatus',
+    'membershipsStatusClass',
+    'membershipsArray',
+    'membershipsCount',
+    'embeddedBusinessesCount',
+  ]) {
+    assert.match(smoke, new RegExp(field));
+  }
+
+  const functionStart = smoke.indexOf('async function directSessionProviderDiagnostic(accessToken)');
+  const functionEnd = smoke.indexOf('\n}\n\nfunction sessionDiagnostic', functionStart);
+  assert.ok(functionStart >= 0 && functionEnd > functionStart, 'session provider diagnostic must stay bounded and inspectable');
+  const helper = smoke.slice(functionStart, functionEnd);
+  assert.equal((helper.match(/\bfetch\(/g) ?? []).length, 2, 'session provider diagnostic must issue exactly auth-user and membership probes');
+  assert.doesNotMatch(helper, /for\s*\(|while\s*\(|await sleep\(/, 'session provider diagnostic must not retry');
+  assert.doesNotMatch(helper, /console\.(?:log|error)/, 'raw provider responses must not be logged inside the helper');
+
+  const sessionFailure = /if \(!session\.response\.ok \|\| !session\.data\?\.user\?\.id\) \{([\s\S]*?)\n\}/.exec(smoke)?.[1] ?? '';
+  assert.match(sessionFailure, /await directSessionProviderDiagnostic\(accessToken\)/);
+  assert.match(sessionFailure, /STAGING_SESSION_PROVIDER_DIAGNOSTIC/);
+
+  assert.doesNotMatch(
+    smoke,
+    /STAGING_SESSION_PROVIDER_DIAGNOSTIC[^\n]*(?:STAGING_OWNER_A_EMAIL|STAGING_OWNER_A_PASSWORD|SUPABASE_ANON_KEY|accessToken|access_token|refresh_token|payload\.sub|payload\.session_id|payload\.email)/,
+  );
+  assert.doesNotMatch(smoke, /JSON\.stringify\(authUserData\)|JSON\.stringify\(membershipsData\)/);
+});
