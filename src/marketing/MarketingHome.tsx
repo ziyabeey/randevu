@@ -7,6 +7,7 @@ import "./marketing-polish.css";
 
 import { MarketingHero } from "./MarketingHero";
 import { ProductStorySections, TrustSections } from "./ProductStorySections";
+import { MARKETING_CONTACT_HREF } from "./releaseGates";
 import { TransformationSection } from "./transformation/TransformationSection";
 
 function MarketingNav() {
@@ -73,15 +74,23 @@ function FinalCta() {
       <p className="mkt-eyebrow">Hazırsan</p>
       <h2 id="mkt-final-title">Randevu kolay.<br />İşin sana kalsın.</h2>
       <p>İşletmeni birlikte hazırlayalım, randevu tarafını sadeleştirelim.</p>
-      <button
-        className="mkt-button mkt-button--dark"
-        type="button"
-        disabled
-        title="İletişim akışı route entegrasyonuyla birlikte aktif olacak"
-      >
-        Birlikte kuralım
-        <span aria-hidden="true">→</span>
-      </button>
+
+      {MARKETING_CONTACT_HREF ? (
+        <a className="mkt-button mkt-button--dark" href={MARKETING_CONTACT_HREF}>
+          Birlikte kuralım
+          <span aria-hidden="true">→</span>
+        </a>
+      ) : (
+        <button
+          className="mkt-button mkt-button--dark"
+          type="button"
+          disabled
+          title="İletişim akışı yayın entegrasyonuyla birlikte aktif olacak"
+        >
+          Birlikte kuralım
+          <span aria-hidden="true">→</span>
+        </button>
+      )}
 
       <div className="mkt-final-lockup" aria-label="Randevu kolay">
         <span>randevu</span>
