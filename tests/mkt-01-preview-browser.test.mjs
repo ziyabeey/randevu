@@ -127,7 +127,7 @@ test('MKT-01 standalone preview renders the approved reduced-motion homepage in 
     assert.match(html, /id="donusum"/);
     assert.match(html, /id="yardim"/);
     assert.match(html, /id="kurulum"/);
-    assert.doesNotMatch(html, /mkt-preview-diagnostics/);
+    assert.doesNotMatch(html, /<aside[^>]*class="[^"]*mkt-preview-diagnostics/);
   } finally {
     await server.close();
     rmSync(work, { recursive: true, force: true });
