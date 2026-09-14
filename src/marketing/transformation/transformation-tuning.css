@@ -39,6 +39,25 @@
   will-change: transform, opacity;
 }
 
+.mkt-fallback-panel--motion-start {
+  background:
+    linear-gradient(90deg, rgba(217, 236, 255, 0.98) 0%, rgba(217, 236, 255, 0.95) 42%, rgba(217, 236, 255, 0.62) 61%, rgba(217, 236, 255, 0.08) 100%),
+    url("/marketing/transformation/randevu-transformation-poster.webp") 64% center / cover no-repeat;
+}
+
+.mkt-fallback-panel--motion-final {
+  background:
+    linear-gradient(90deg, rgba(198, 232, 0, 0.98) 0%, rgba(198, 232, 0, 0.94) 40%, rgba(248, 249, 250, 0.64) 61%, rgba(248, 249, 250, 0.04) 100%),
+    url("/marketing/transformation/randevu-transformation-final.webp") 58% center / cover no-repeat;
+}
+
+@media (max-width: 680px) {
+  .mkt-fallback-panel--motion-start,
+  .mkt-fallback-panel--motion-final {
+    background-position: 68% center;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mkt-story--friction .mkt-friction-chips span,
   .mkt-story--sweep .mkt-sweep-line span,
