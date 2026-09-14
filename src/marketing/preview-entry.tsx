@@ -1,15 +1,9 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
+import { MARKETING_PREVIEW_ASSETS } from "./assets";
 import { MarketingHome } from "./MarketingHome";
 import "./preview-reduced.css";
-
-const PREVIEW_ASSETS = [
-  "/marketing/hero/randevu-hero-model.webp",
-  "/marketing/transformation/randevu-transformation-poster.webp",
-  "/marketing/transformation/randevu-transformation-final.webp",
-  "/marketing/transformation/randevu-transformation-master.mp4",
-] as const;
 
 const previewParams = new URLSearchParams(window.location.search);
 const forcedReducedMotion = previewParams.get("reduced") === "1";
@@ -30,7 +24,7 @@ function PreviewDiagnostics() {
 
     const verifyAssets = async () => {
       const checks = await Promise.all(
-        PREVIEW_ASSETS.map(async (asset) => {
+        MARKETING_PREVIEW_ASSETS.map(async (asset) => {
           try {
             const response = await fetch(asset, { method: "HEAD", cache: "no-store" });
             const contentType = response.headers.get("content-type") ?? "";
@@ -42,9 +36,7 @@ function PreviewDiagnostics() {
         }),
       );
 
-      if (cancelled) {
-        return;
-      }
+      if (cancelled) return;
 
       const missingAssets: string[] = checks.flatMap((asset) => (asset === null ? [] : [asset]));
       setMissing(missingAssets);
@@ -52,10 +44,7 @@ function PreviewDiagnostics() {
     };
 
     void verifyAssets();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -64,18 +53,13 @@ function PreviewDiagnostics() {
       {forcedReducedMotion ? <span>Reduced motion</span> : null}
       {!forcedReducedMotion && status === "checking" ? <span>Assetler kontrol ediliyor…</span> : null}
       {!forcedReducedMotion && status === "ready" ? <span>Motion assetleri hazır ✓</span> : null}
-      {!forcedReducedMotion && status === "missing" ? (
-        <span>{missing.length} asset eksik. ZIP&apos;i repo köküne aç.</span>
-      ) : null}
+      {!forcedReducedMotion && status === "missing" ? <span>{missing.length} asset eksik. ZIP&apos;i repo köküne aç.</span> : null}
     </aside>
   );
 }
 
 const root = document.getElementById("root");
-
-if (!root) {
-  throw new Error("Marketing preview root not found.");
-}
+if (!root) throw new Error("Marketing preview root not found.");
 
 createRoot(root).render(
   <StrictMode>
