@@ -11,6 +11,7 @@ import { MarketingHero } from "./MarketingHero";
 import { ProductStorySections, TrustSections } from "./ProductStorySections";
 import { MARKETING_CONTACT_HREF } from "./releaseGates";
 import { TransformationSection } from "./transformation/TransformationSection";
+import { useMarketingDocumentMeta } from "./useMarketingDocumentMeta";
 
 function MarketingNav() {
   const [compact, setCompact] = useState(false);
@@ -135,6 +136,8 @@ function MarketingFooter() {
 }
 
 export function MarketingHome() {
+  useMarketingDocumentMeta();
+
   return (
     <div className="mkt-root" id="top">
       <a className="mkt-skip-link" href="#mkt-main">İçeriğe geç</a>
