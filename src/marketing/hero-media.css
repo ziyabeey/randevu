@@ -2,17 +2,35 @@
   position: absolute;
   z-index: -2;
   inset: 0;
-  background:
-    linear-gradient(90deg, rgba(248, 249, 250, 0.99) 0%, rgba(248, 249, 250, 0.96) 31%, rgba(248, 249, 250, 0.52) 47%, rgba(248, 249, 250, 0.08) 68%, rgba(248, 249, 250, 0) 78%),
-    var(--mkt-hero-image) center center / cover no-repeat;
+  overflow: hidden;
+  background: var(--mkt-cream);
 }
 
+.mkt-hero-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  user-select: none;
+}
+
+.mkt-hero-media::before,
 .mkt-hero-media::after {
   content: "";
   position: absolute;
+  z-index: 1;
   inset: 0;
-  background: linear-gradient(0deg, rgba(248, 249, 250, 0.22), transparent 34%);
   pointer-events: none;
+}
+
+.mkt-hero-media::before {
+  background: linear-gradient(90deg, rgba(248, 249, 250, 0.99) 0%, rgba(248, 249, 250, 0.96) 31%, rgba(248, 249, 250, 0.52) 47%, rgba(248, 249, 250, 0.08) 68%, rgba(248, 249, 250, 0) 78%);
+}
+
+.mkt-hero-media::after {
+  background: linear-gradient(0deg, rgba(248, 249, 250, 0.22), transparent 34%);
 }
 
 .mkt-hero:has(.mkt-hero-media) .mkt-hero-shape--one {
@@ -32,10 +50,12 @@
 }
 
 @media (max-width: 980px) {
-  .mkt-hero-media {
-    background:
-      linear-gradient(180deg, rgba(248, 249, 250, 0.98) 0%, rgba(248, 249, 250, 0.82) 31%, rgba(248, 249, 250, 0.2) 58%, transparent 76%),
-      var(--mkt-hero-image) 67% center / cover no-repeat;
+  .mkt-hero-media img {
+    object-position: 67% center;
+  }
+
+  .mkt-hero-media::before {
+    background: linear-gradient(180deg, rgba(248, 249, 250, 0.98) 0%, rgba(248, 249, 250, 0.82) 31%, rgba(248, 249, 250, 0.2) 58%, transparent 76%);
   }
 
   .mkt-hero:has(.mkt-hero-media) .mkt-hero-demo {
@@ -45,11 +65,14 @@
 }
 
 @media (max-width: 680px) {
-  .mkt-hero-media {
-    background:
-      linear-gradient(180deg, rgba(248, 249, 250, 0.99) 0%, rgba(248, 249, 250, 0.91) 34%, rgba(248, 249, 250, 0.28) 58%, transparent 76%),
-      var(--mkt-hero-image) 70% 54% / auto 72% no-repeat;
-    background-color: var(--mkt-cream);
+  .mkt-hero-media img {
+    top: 28%;
+    height: 72%;
+    object-position: 70% 54%;
+  }
+
+  .mkt-hero-media::before {
+    background: linear-gradient(180deg, rgba(248, 249, 250, 0.99) 0%, rgba(248, 249, 250, 0.91) 34%, rgba(248, 249, 250, 0.28) 58%, transparent 76%);
   }
 
   .mkt-hero:has(.mkt-hero-media) .mkt-hero-demo {
