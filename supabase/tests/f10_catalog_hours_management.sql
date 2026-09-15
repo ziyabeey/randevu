@@ -21,10 +21,10 @@ values
   ('b8200000-0000-4000-8000-000000000004', 'b8100000-0000-4000-8000-000000000002', 'b8000000-0000-4000-8000-000000000004', 'owner', true);
 
 insert into public.services(
-  id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,price_minor,currency,active
+  id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,price_minor,currency,active,updated_at
 ) values
-  ('b8300000-0000-4000-8000-000000000001','b8100000-0000-4000-8000-000000000001','A Service',30,5,10,12000,'TRY',true),
-  ('b8300000-0000-4000-8000-000000000002','b8100000-0000-4000-8000-000000000002','B Service',30,0,0,9000,'TRY',true);
+  ('b8300000-0000-4000-8000-000000000001','b8100000-0000-4000-8000-000000000001','A Service',30,5,10,12000,'TRY',true,now() - interval '1 second'),
+  ('b8300000-0000-4000-8000-000000000002','b8100000-0000-4000-8000-000000000002','B Service',30,0,0,9000,'TRY',true,now() - interval '1 second');
 
 insert into public.staff_profiles(id,business_id,name,phone,active)
 values
