@@ -8,6 +8,7 @@ viewportMeta.name = 'viewport';
 viewportMeta.content = 'width=device-width, initial-scale=1';
 document.head.append(viewportMeta);
 
+type Metrics = { width: number; scrollWidth: number; minTargetHeight: number; targetCount: number };
 type Control = {
   text(): string;
   clickButton(text: string): boolean;
@@ -19,7 +20,7 @@ type Control = {
   setInSection(title: string, name: string, value: string): boolean;
   submitInSection(title: string, buttonText: string): boolean;
   clickInSection(title: string, buttonText: string): boolean;
-  metrics(): { width: number; scrollWidth: number; minTargetHeight: number; targetCount: number };
+  metrics(): Promise<Metrics>;
 };
 
 declare global {
@@ -114,7 +115,12 @@ window.__f10settingsReview = {
     button.click();
     return true;
   },
-  metrics: () => {
+  metrics: async () => {
+    const deviceWidth = screen.width;
+    if (deviceWidth > 0 && deviceWidth <= 500 && window.innerWidth !== deviceWidth) {
+      viewportMeta.content = `width=${deviceWidth}, initial-scale=1`;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    }
     const targets = [...document.querySelectorAll<HTMLElement>(
       '.availability-page button:not([disabled]), .availability-page input:not([type="checkbox"]):not([disabled]), .availability-page select:not([disabled]), .availability-page a.primary-link, .settings-matrix .chip',
     )].filter((element) => {
