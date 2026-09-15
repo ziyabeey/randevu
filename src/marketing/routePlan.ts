@@ -1,23 +1,46 @@
-export type MarketingRouteSurface = "invite" | "marketing" | "workspace" | "other";
+import {
+  MARKETING_ORIGIN,
+  PRIVATE_OPERATOR_APP_ORIGIN,
+  PUBLIC_TENANT_ORIGIN_PATTERN,
+  getOperatorAppHref,
+  getPublicTenantOrigin,
+} from "./domainContract.ts";
+
+export type MarketingRouteSurface = "marketing" | "private-app" | "other";
 
 export const MARKETING_HOME_PATH = "/";
-export const WORKSPACE_HOME_PATH = "/app";
+export const PRIVATE_APP_HOME_PATH = "/";
+
+/**
+ * Compatibility export for the isolated marketing UI. In production this is
+ * an absolute private-app URL; localhost and standalone preview keep `/app`
+ * so the pre-cutover browser harness stays self-contained.
+ */
+export const WORKSPACE_HOME_PATH = getOperatorAppHref();
+
+export {
+  MARKETING_ORIGIN,
+  PRIVATE_OPERATOR_APP_ORIGIN,
+  PUBLIC_TENANT_ORIGIN_PATTERN,
+  getOperatorAppHref,
+  getPublicTenantOrigin,
+};
 
 export interface MarketingRouteInput {
+  origin: string;
   path: string;
-  hasPendingTeamInvite: boolean;
 }
 
 export function resolveMarketingRouteSurface({
+  origin,
   path,
-  hasPendingTeamInvite,
 }: MarketingRouteInput): MarketingRouteSurface {
-  if (path === MARKETING_HOME_PATH) {
-    return hasPendingTeamInvite ? "invite" : "marketing";
+  if (origin === MARKETING_ORIGIN && path === MARKETING_HOME_PATH) {
+    return "marketing";
   }
 
-  if (path === WORKSPACE_HOME_PATH || path === `${WORKSPACE_HOME_PATH}/`) {
-    return "workspace";
+  if (origin === PRIVATE_OPERATOR_APP_ORIGIN) {
+    return "private-app";
   }
 
   return "other";
