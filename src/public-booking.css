@@ -50,6 +50,17 @@
   gap: 1rem;
 }
 
+.public-admin-grid > *,
+.public-admin-card,
+.public-settings-form,
+.public-media-upload,
+.public-link-box,
+.public-link-box code,
+.public-toggle-row > span {
+  min-width: 0;
+}
+.public-media-upload input[type="file"] { max-width: 100%; }
+
 .public-booking-card,
 .public-admin-card,
 .public-admin-hero {
@@ -197,8 +208,36 @@
 
 .public-link-box { display: flex; align-items: center; gap: .6rem; padding: .65rem; margin-top: 1rem; border: 1px solid #e0e5ef; border-radius: .75rem; background: #f8faff; }
 .public-link-box code { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .8rem; }
-.public-link-box button { border: 0; border-radius: .55rem; padding: .55rem .7rem; background: #e8edfb; color: #3159d9; font: inherit; font-size: .78rem; font-weight: 750; cursor: pointer; }
-.public-preview-link { display: inline-block; margin-top: .9rem; color: #3159d9; font-weight: 700; text-decoration: none; }
+.public-link-box button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  border-radius: .55rem;
+  padding: .55rem .7rem;
+  background: #e8edfb;
+  color: #3159d9;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.public-preview-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  margin-top: .9rem;
+  padding-block: .55rem;
+  color: #3159d9;
+  font-weight: 700;
+  text-decoration: none;
+}
+.public-preview-link:focus-visible,
+.public-link-box button:focus-visible {
+  outline: 3px solid #9eb5ff;
+  outline-offset: 2px;
+}
 
 .public-toggle-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .9rem; border: 1px solid #e0e5ef; border-radius: .8rem; }
 .public-toggle-row span { display: grid; gap: .2rem; }

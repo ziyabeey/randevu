@@ -308,6 +308,8 @@ const cookieMutations = [
   ['PUT', '/api/availability/business-hours/:weekday'], ['PUT', '/api/availability/staff/:staffId/hours/:weekday'],
   ['POST', '/api/availability/blocks'], ['DELETE', '/api/availability/blocks/:id'],
   ['PUT', '/api/public/settings'],
+  ['PUT', '/api/public/profile'], ['POST', '/api/public/profile/media'],
+  ['POST', '/api/public/profile/media/cleanup'], ['DELETE', '/api/public/profile/media/:mediaId'],
   ['POST', '/api/team/invitations'], ['POST', '/api/team/invitations/accept'], ['POST', '/api/team/invitations/:id/revoke'],
   ['PATCH', '/api/team/members/:id'], ['PUT', '/api/team/staff/:staffId/membership'],
   ['PUT', '/api/team/members/:id/financial-permissions/:permission'],
