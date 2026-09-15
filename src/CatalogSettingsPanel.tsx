@@ -1,5 +1,5 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react';
-import { api } from './api';
+import { ApiRequestError, api } from './api';
 import './catalog-settings.css';
 
 type Role = 'owner' | 'manager' | 'staff';
@@ -40,7 +40,7 @@ type Props = {
   busy: boolean;
   setBusy: Dispatch<SetStateAction<boolean>>;
   setNotice: Dispatch<SetStateAction<string>>;
-  reload: () => Promise<void>;
+  reload: () => Promise<boolean>;
 };
 
 function parseTry(value: FormDataEntryValue | null) {
@@ -66,19 +66,21 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
     try {
       await action();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Değişiklik kaydedilemedi.');
+      if (error instanceof ApiRequestError && error.status === 409 && error.code === 'STALE_WRITE') {
+        const refreshed = await reload();
+        if (refreshed) {
+          setNotice('Bu kayıt başka bir oturumda değişti. Güncel bilgiler yeniden yüklendi; yaptığınız değişiklik uygulanmadı.');
+        }
+      } else {
+        setNotice(error instanceof Error ? error.message : 'Değişiklik kaydedilemedi.');
+      }
       setBusy(false);
       return false;
     }
 
-    try {
-      await reload();
-      setNotice(success);
-    } catch {
-      setNotice(`${success} Güncel görünüm yüklenemedi; sayfayı yenileyerek kontrol edin.`);
-    } finally {
-      setBusy(false);
-    }
+    const refreshed = await reload();
+    if (refreshed) setNotice(success);
+    setBusy(false);
     return true;
   }
 
@@ -183,7 +185,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
         </div>
         <div className="catalog-stack">
           {catalog.services.map((service) => (
-            <article className={`catalog-editor ${service.active ? '' : 'archived'}`} key={service.id}>
+            <article className={`catalog-editor ${service.active ? '' : 'archived'}`} key={`${service.id}:${service.updated_at}`}>
               <div className="catalog-editor-head">
                 <div><strong>{service.name}</strong><span>{service.duration_minutes} dk · {formatTry(service.price_minor)}</span></div>
                 <span className="status-pill">{service.active ? 'Aktif' : 'Arşivde'}</span>
@@ -227,7 +229,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
         </div>
         <div className="catalog-stack">
           {catalog.staff.map((person) => (
-            <article className={`catalog-editor ${person.active ? '' : 'archived'}`} key={person.id}>
+            <article className={`catalog-editor ${person.active ? '' : 'archived'}`} key={`${person.id}:${person.updated_at}`}>
               <div className="catalog-editor-head">
                 <div><strong>{person.name}</strong><span>{person.phone || 'Telefon eklenmedi'}{person.membership_id ? ' · hesaba bağlı' : ''}</span></div>
                 <span className="status-pill">{person.active ? 'Aktif' : 'Arşivde'}</span>
