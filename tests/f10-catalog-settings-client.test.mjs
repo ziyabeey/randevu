@@ -34,7 +34,8 @@ await test('F10-04 fixed-price compatibility preserves minor units, duration and
   for (const field of ['priceMinMinor', 'priceMaxMinor', 'durationMinutes', 'bufferBeforeMinutes', 'bufferAfterMinutes']) {
     assert.ok(panel.includes(field), `missing service field ${field}`);
   }
-  assert.match(panel, /priceType:\s*priceType/);
+  assert.match(panel, /const price = readPriceForm\(data\)/);
+  assert.match(panel, /\.\.\.price/);
   assert.ok(catalogWorker.includes('const hasLegacyPrice = body.priceMinor !== undefined'));
   assert.ok(catalogWorker.includes("rest/v1/rpc/create_service_guarded"));
   assert.ok(panel.includes('expectedUpdatedAt: service.updated_at'));
