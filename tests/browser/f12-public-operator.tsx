@@ -21,7 +21,7 @@ declare global {
       remount: () => void;
       setProfileName: (value: string) => void;
       submitProfile: () => void;
-      setPhoto: () => void;
+      setPhoto: () => Promise<void>;
       submitUpload: () => void;
       click: (label: string) => void;
       metrics: () => OperatorMetrics;
@@ -62,12 +62,20 @@ function clickByLabel(label: string) {
   target.click();
 }
 
-function setPhoto() {
+async function setPhoto() {
   const input = document.querySelector<HTMLInputElement>('input[name="photo"]');
   if (!input) throw new Error('F12 operator photo input missing');
-  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlK0l8AAAAASUVORK5CYII=';
-  const bytes = Uint8Array.from(atob(png), (value) => value.charCodeAt(0));
-  const file = new File([bytes], 'salon.png', { type: 'image/png' });
+  const canvas = document.createElement('canvas');
+  canvas.width = 8;
+  canvas.height = 8;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('F12 operator fixture canvas unavailable');
+  context.fillStyle = '#3159d9';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => result ? resolve(result) : reject(new Error('F12 operator fixture PNG encode failed')), 'image/png');
+  });
+  const file = new File([blob], 'salon.png', { type: 'image/png' });
   const transfer = new DataTransfer();
   transfer.items.add(file);
   input.files = transfer.files;
