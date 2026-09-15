@@ -213,20 +213,31 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','c1300000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 do $$
-declare v_old timestamptz; v public.services; v_snapshot integer;
+declare v_old timestamptz; v public.services;
 begin
   select updated_at into strict v_old from public.services where id='c1330000-0000-4000-8000-000000000001';
   select * into v from public.update_service_guarded(
     'c1310000-0000-4000-8000-000000000001','c1330000-0000-4000-8000-000000000001',v_old,
     '{"priceType":"range","priceMinMinor":11000,"priceMaxMinor":16000,"currency":"TRY"}'::jsonb
   );
-  select price_minor_snapshot into strict v_snapshot from public.appointments where id='c1380000-0000-4000-8000-000000000001';
-  if v.price_type <> 'range' or v.price_policy_version <> 2 or v_snapshot <> 10000 then
-    raise exception 'catalog price edit rewrote or invalidated history';
+  if v.price_type <> 'range' or v.price_policy_version <> 2 then
+    raise exception 'catalog price edit did not persist range contract';
   end if;
 end
 $$;
 reset role;
+
+do $$
+declare v_snapshot integer;
+begin
+  select price_minor_snapshot into strict v_snapshot
+  from public.appointments
+  where id='c1380000-0000-4000-8000-000000000001';
+  if v_snapshot <> 10000 then
+    raise exception 'catalog price edit rewrote history';
+  end if;
+end
+$$;
 
 insert into public.staff_services(business_id,staff_id,service_id,active)
 select
