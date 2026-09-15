@@ -79,7 +79,13 @@ window.__f10settingsReview = {
   },
   setInArticle: async (label, name, value) => {
     const editor = await articleWhenReady(label);
-    return setValue(editor?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(name)}"]`) ?? null, value);
+    if (!editor) return false;
+    if (name === 'price') {
+      const min = editor.querySelector<HTMLInputElement>('[name="priceMin"]');
+      const max = editor.querySelector<HTMLInputElement>('[name="priceMax"]');
+      return setValue(min, value) && setValue(max, value);
+    }
+    return setValue(editor.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(name)}"]`) ?? null, value);
   },
   submitInArticle: (label) => {
     const form = article(label)?.querySelector<HTMLFormElement>('form');
@@ -88,7 +94,10 @@ window.__f10settingsReview = {
     form.requestSubmit(button);
     return true;
   },
-  valueInArticle: (label, name) => article(label)?.querySelector<HTMLInputElement>(`[name="${CSS.escape(name)}"]`)?.value ?? null,
+  valueInArticle: (label, name) => {
+    const actualName = name === 'price' ? 'priceMin' : name;
+    return article(label)?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(actualName)}"]`)?.value ?? null;
+  },
   toggleAssignment: (person, service) => {
     const checkbox = assignment(person, service);
     if (!checkbox || checkbox.disabled) return false;
