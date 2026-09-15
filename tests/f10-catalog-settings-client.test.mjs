@@ -29,11 +29,14 @@ await test('F10-04 settings reads cancel stale tenant responses and verify retur
   assert.match(page, /signal: controller\.signal/);
 });
 
-await test('F10-04 service editor preserves fixed-price minor units, duration and both buffers', () => {
+await test('F10-04 fixed-price compatibility preserves minor units, duration and both buffers after F12 extension', () => {
   assert.match(panel, /Math\.round\(amount \* 100\)/);
-  for (const field of ['priceMinor', 'durationMinutes', 'bufferBeforeMinutes', 'bufferAfterMinutes']) {
+  for (const field of ['priceMinMinor', 'priceMaxMinor', 'durationMinutes', 'bufferBeforeMinutes', 'bufferAfterMinutes']) {
     assert.ok(panel.includes(field), `missing service field ${field}`);
   }
+  assert.match(panel, /priceType:\s*priceType/);
+  assert.ok(catalogWorker.includes('const hasLegacyPrice = body.priceMinor !== undefined'));
+  assert.ok(catalogWorker.includes("rest/v1/rpc/create_service_guarded"));
   assert.ok(panel.includes('expectedUpdatedAt: service.updated_at'));
   assert.match(panel, /Intl\.NumberFormat\('tr-TR'/);
 });
