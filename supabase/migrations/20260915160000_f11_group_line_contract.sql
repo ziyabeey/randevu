@@ -317,6 +317,31 @@ begin
     raise exception 'INVALID_APPOINTMENT_LINE';
   end if;
 
+  -- Historical line snapshots are immutable evidence. UPDATEs must validate the
+  -- existing group binding but must never compare frozen price evidence with the
+  -- current catalog. The AFTER legacy-group sync advances status/version after
+  -- the row mutation, so the header is expected to still carry OLD.status here.
+  if tg_op = 'UPDATE' then
+    select * into v_group
+    from public.appointment_groups g
+    where g.id = new.group_id;
+
+    if v_group.id is null
+       or v_group.business_id <> new.business_id
+       or v_group.customer_id <> new.customer_id
+       or v_group.status <> old.status
+       or v_group.source <> new.source then
+      raise exception 'BOOKING_GROUP_CONTRACT_MISMATCH';
+    end if;
+
+    if v_group.legacy_appointment_id is not null
+       and (v_group.legacy_appointment_id <> new.id or new.line_ordinal <> 1) then
+      raise exception 'BOOKING_GROUP_LEGACY_ANCHOR_CONFLICT';
+    end if;
+
+    return new;
+  end if;
+
   if new.group_id is null then
     new.group_id := new.id;
     new.line_ordinal := 1;
