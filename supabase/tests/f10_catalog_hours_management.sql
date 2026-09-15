@@ -172,10 +172,11 @@ declare
   v_new public.services;
 begin
   select updated_at into v_old from public.services where id='b8300000-0000-4000-8000-000000000001';
-  select public.update_service_guarded(
+  select * into v_new
+  from public.update_service_guarded(
     'b8100000-0000-4000-8000-000000000001','b8300000-0000-4000-8000-000000000001',v_old,
     '{"durationMinutes":40,"bufferBeforeMinutes":7,"bufferAfterMinutes":12,"priceMinor":13500}'::jsonb
-  ) into v_new;
+  );
   if v_new.duration_minutes <> 40 or v_new.buffer_before_minutes <> 7
      or v_new.buffer_after_minutes <> 12 or v_new.price_minor <> 13500 then
     raise exception 'service edit did not persist validated fields';
