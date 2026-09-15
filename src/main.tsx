@@ -7,7 +7,7 @@ import CalendarPage from './CalendarPage';
 import CustomersPage from './CustomersPage';
 import InvitePage from './InvitePage';
 import OnboardingPage from './OnboardingPage';
-import PublicBookingPage from './PublicBookingPage';
+import PublicSalonPage from './PublicSalonPage';
 import PublicBookingSettingsPage from './PublicBookingSettingsPage';
 import ManageAppointmentPage from './ManageAppointmentPage';
 import TeamPage from './TeamPage';
@@ -17,6 +17,7 @@ import './phase4.css';
 import './phase5.css';
 import './calendar.css';
 import './public-booking.css';
+import './public-profile.css';
 import './customer-manage.css';
 import './customers.css';
 import './team.css';
@@ -49,7 +50,7 @@ createRoot(root).render(
     {isManagementPage
       ? <ManageAppointmentPage token={managementToken ?? ''} />
       : isPublicPage && publicSlug
-        ? <PublicBookingPage slug={publicSlug} />
+        ? <PublicSalonPage slug={publicSlug} />
         : isInviteFlow
           ? <InvitePage />
           : isSetup
