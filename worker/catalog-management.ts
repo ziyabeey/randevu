@@ -22,7 +22,7 @@ function validCategory(value: unknown) {
   return typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 80;
 }
 
-function integerIn(value: unknown, min: number, max: number) {
+function integerIn(value: unknown, min: number, max: number): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 }
 
@@ -240,14 +240,18 @@ catalogManagement.patch('/services/:id', async (context) => {
       if (!validCurrency(body.currency)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Para birimi üç harfli kod olmalı.' } }, 400);
       patch.currency = String(body.currency).trim().toUpperCase();
     }
-    if (body.priceMinMinor !== undefined && body.priceMaxMinor !== undefined && body.priceMinMinor > body.priceMaxMinor) {
-      return context.json({ error: { code: 'INVALID_SERVICE', message: 'Alt fiyat üst fiyattan büyük olamaz.' } }, 400);
-    }
-    if (body.priceType === 'fixed'
-        && body.priceMinMinor !== undefined
-        && body.priceMaxMinor !== undefined
-        && body.priceMinMinor !== body.priceMaxMinor) {
-      return context.json({ error: { code: 'INVALID_SERVICE', message: 'Sabit fiyatta alt ve üst tutar aynı olmalı.' } }, 400);
+    const patchMin = body.priceMinMinor;
+    const patchMax = body.priceMaxMinor;
+    if (patchMin !== undefined && patchMax !== undefined) {
+      if (!integerIn(patchMin, 0, 100000000) || !integerIn(patchMax, 0, 100000000)) {
+        return context.json({ error: { code: 'INVALID_SERVICE', message: 'Fiyat aralığı geçerli değil.' } }, 400);
+      }
+      if (patchMin > patchMax) {
+        return context.json({ error: { code: 'INVALID_SERVICE', message: 'Alt fiyat üst fiyattan büyük olamaz.' } }, 400);
+      }
+      if (body.priceType === 'fixed' && patchMin !== patchMax) {
+        return context.json({ error: { code: 'INVALID_SERVICE', message: 'Sabit fiyatta alt ve üst tutar aynı olmalı.' } }, 400);
+      }
     }
   }
   if (body.active !== undefined) {
