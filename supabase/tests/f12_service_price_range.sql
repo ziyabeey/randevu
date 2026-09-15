@@ -20,7 +20,6 @@ values
   ('c1320000-0000-4000-8000-000000000003','c1310000-0000-4000-8000-000000000001','c1300000-0000-4000-8000-000000000003','staff',true),
   ('c1320000-0000-4000-8000-000000000004','c1310000-0000-4000-8000-000000000002','c1300000-0000-4000-8000-000000000004','owner',true);
 
--- Legacy privileged insert remains fixed and is normalized by the F12 trigger.
 insert into public.services(
   id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,
   price_minor,currency,active,updated_at
@@ -65,7 +64,6 @@ insert into public.appointments(
   'History Customer','5551203030',null,'Legacy A','A Staff',30,0,0,10000,'TRY','c1300000-0000-4000-8000-000000000001'
 );
 
--- New Data API surface is authenticated-only; internal estimate and trigger helpers stay private.
 do $$
 begin
   if not has_function_privilege(
@@ -88,7 +86,6 @@ begin
 end
 $$;
 
--- Recovery and staff sessions cannot use the new canonical mutation surface.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','c1300000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"recovery"}]}',true);
@@ -127,20 +124,25 @@ end
 $$;
 reset role;
 
--- Manager creates a canonical range service. Legacy compatibility mirror is lower bound only.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','c1300000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
-select (public.create_service_priced_guarded(
-  'c1310000-0000-4000-8000-000000000001','Renk Paketi',60,5,10,
-  'Renk',20,'range',12000,18000,'TRY'
-)).id as range_service_id \gset
+do $$
+begin
+  perform public.create_service_priced_guarded(
+    'c1310000-0000-4000-8000-000000000001','Renk Paketi',60,5,10,
+    'Renk',20,'range',12000,18000,'TRY'
+  );
+end
+$$;
 reset role;
 
 do $$
 declare v public.services;
 begin
-  select * into strict v from public.services where id=:'range_service_id'::uuid;
+  select * into strict v
+  from public.services
+  where business_id='c1310000-0000-4000-8000-000000000001' and name='Renk Paketi';
   if v.category <> 'Renk' or v.sort_order <> 20 or v.price_type <> 'range'
      or v.price_min_minor <> 12000 or v.price_max_minor <> 18000
      or v.price_minor <> 12000 or v.price_policy_version <> 1 or v.currency <> 'TRY' then
@@ -149,7 +151,6 @@ begin
 end
 $$;
 
--- Negative, inverted, malformed currency and fixed-with-range inputs fail closed.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','c1300000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
@@ -187,16 +188,17 @@ end
 $$;
 reset role;
 
--- Price updates increment policy version, category/order are returned in deterministic catalog order.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','c1300000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 do $$
-declare v_old timestamptz; v public.services;
+declare v_old timestamptz; v public.services; v_id uuid;
 begin
-  select updated_at into strict v_old from public.services where id=:'range_service_id'::uuid;
+  select id, updated_at into strict v_id, v_old
+  from public.services
+  where business_id='c1310000-0000-4000-8000-000000000001' and name='Renk Paketi';
   select * into v from public.update_service_guarded(
-    'c1310000-0000-4000-8000-000000000001', :'range_service_id'::uuid, v_old,
+    'c1310000-0000-4000-8000-000000000001', v_id, v_old,
     '{"category":"Renk","sortOrder":20,"priceType":"range","priceMinMinor":13000,"priceMaxMinor":19000,"currency":"TRY"}'::jsonb
   );
   if v.price_min_minor <> 13000 or v.price_max_minor <> 19000
@@ -207,7 +209,6 @@ end
 $$;
 reset role;
 
--- Changing a catalog price never rewrites an already-frozen appointment snapshot.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','c1300000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
@@ -227,14 +228,21 @@ end
 $$;
 reset role;
 
--- Add staff eligibility for the new range row and verify legacy public projection hides it.
 insert into public.staff_services(business_id,staff_id,service_id,active)
-values ('c1310000-0000-4000-8000-000000000001','c1340000-0000-4000-8000-000000000001',:'range_service_id'::uuid,true);
+select
+  'c1310000-0000-4000-8000-000000000001'::uuid,
+  'c1340000-0000-4000-8000-000000000001'::uuid,
+  s.id,
+  true
+from public.services s
+where s.business_id='c1310000-0000-4000-8000-000000000001' and s.name='Renk Paketi';
 
 do $$
-declare v_range_count integer; v_fixed_count integer;
+declare v_range_id uuid; v_range_count integer; v_fixed_count integer;
 begin
-  select count(*) filter (where service_id=:'range_service_id'::uuid),
+  select id into strict v_range_id from public.services
+  where business_id='c1310000-0000-4000-8000-000000000001' and name='Renk Paketi';
+  select count(*) filter (where service_id=v_range_id),
          count(*) filter (where service_id='c1330000-0000-4000-8000-000000000002')
     into v_range_count, v_fixed_count
   from public.get_public_booking_services('f12-price-a');
@@ -244,9 +252,11 @@ begin
 end
 $$;
 
--- Legacy appointment schema has one definitive price snapshot, so range inserts are blocked.
 do $$
+declare v_range_id uuid;
 begin
+  select id into strict v_range_id from public.services
+  where business_id='c1310000-0000-4000-8000-000000000001' and name='Renk Paketi';
   begin
     insert into public.appointments(
       business_id,customer_id,service_id,staff_id,status,
@@ -256,7 +266,7 @@ begin
       price_minor_snapshot,currency_snapshot,created_by
     ) values (
       'c1310000-0000-4000-8000-000000000001','c1370000-0000-4000-8000-000000000001',
-      :'range_service_id'::uuid,'c1340000-0000-4000-8000-000000000001','scheduled',
+      v_range_id,'c1340000-0000-4000-8000-000000000001','scheduled',
       '2026-11-09T10:00:00+03','2026-11-09T11:00:00+03','2026-11-09T09:55:00+03','2026-11-09T11:10:00+03','Europe/Istanbul',
       'History Customer','5551203030','Renk Paketi','A Staff',60,5,10,13000,'TRY','c1300000-0000-4000-8000-000000000001'
     );
@@ -268,14 +278,15 @@ begin
 end
 $$;
 
--- Server estimate sums lower/upper bounds in input order and carries policy versions.
 do $$
-declare v record;
+declare v record; v_range_id uuid;
 begin
+  select id into strict v_range_id from public.services
+  where business_id='c1310000-0000-4000-8000-000000000001' and name='Renk Paketi';
   select * into strict v
   from public.f12_price_estimate_internal(
     'c1310000-0000-4000-8000-000000000001',
-    array[:'range_service_id'::uuid,'c1330000-0000-4000-8000-000000000002'::uuid]
+    array[v_range_id,'c1330000-0000-4000-8000-000000000002'::uuid]
   );
   if v.currency <> 'TRY' or v.lower_minor <> 18000 or v.upper_minor <> 24000
      or jsonb_array_length(v.lines) <> 2
@@ -285,22 +296,28 @@ begin
 end
 $$;
 
--- Mixed currencies are valid catalog data but can never produce one financial total.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','c1300000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
-select (public.create_service_priced_guarded(
-  'c1310000-0000-4000-8000-000000000001','Euro Fixed',30,0,0,
-  'Genel',40,'fixed',4000,4000,'EUR'
-)).id as euro_service_id \gset
+do $$
+begin
+  perform public.create_service_priced_guarded(
+    'c1310000-0000-4000-8000-000000000001','Euro Fixed',30,0,0,
+    'Genel',40,'fixed',4000,4000,'EUR'
+  );
+end
+$$;
 reset role;
 
 do $$
+declare v_euro_id uuid;
 begin
+  select id into strict v_euro_id from public.services
+  where business_id='c1310000-0000-4000-8000-000000000001' and name='Euro Fixed';
   begin
     perform * from public.f12_price_estimate_internal(
       'c1310000-0000-4000-8000-000000000001',
-      array['c1330000-0000-4000-8000-000000000002'::uuid, :'euro_service_id'::uuid]
+      array['c1330000-0000-4000-8000-000000000002'::uuid, v_euro_id]
     );
     raise exception 'mixed currency estimate unexpectedly succeeded';
   exception when others then
@@ -321,17 +338,18 @@ begin
 end
 $$;
 
--- Bounded snapshot exposes canonical fields and stable category/order sort.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','c1300000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 do $$
-declare v record; v_range jsonb;
+declare v record; v_range jsonb; v_range_id uuid;
 begin
+  select id into strict v_range_id from public.services
+  where business_id='c1310000-0000-4000-8000-000000000001' and name='Renk Paketi';
   select * into strict v from public.get_catalog_snapshot('c1310000-0000-4000-8000-000000000001');
   select item into v_range
   from jsonb_array_elements(v.services) item
-  where item->>'id'=:'range_service_id';
+  where item->>'id'=v_range_id::text;
   if v_range is null
      or not (v_range ? 'category')
      or not (v_range ? 'sort_order')
