@@ -29,12 +29,14 @@
   opacity: .58;
 }
 
-.customers-notice {
+.customers-notice,
+.customers-error {
   margin-bottom: 16px;
   padding: 12px 14px;
   border: 1px solid currentColor;
   border-radius: 12px;
 }
+.customers-error { color: #9b2c2c; background: #fff7f7; }
 
 .customers-card {
   border: 1px solid rgba(31, 41, 55, .14);
@@ -68,6 +70,7 @@
 .customers-form textarea,
 .customers-search input {
   width: 100%;
+  min-height: 44px;
   box-sizing: border-box;
   border: 1px solid rgba(31, 41, 55, .2);
   border-radius: 10px;
@@ -82,13 +85,27 @@
   font: inherit;
 }
 .customers-shell button {
+  min-height: 44px;
+  box-sizing: border-box;
   border: 1px solid rgba(31, 41, 55, .18);
   border-radius: 10px;
   padding: 9px 12px;
   background: #f9fafb;
   cursor: pointer;
 }
+.customers-shell a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
 .customers-shell button:disabled { cursor: not-allowed; opacity: .55; }
+.customers-shell button:focus-visible,
+.customers-shell a:focus-visible,
+.customers-shell input:focus-visible,
+.customers-shell textarea:focus-visible {
+  outline: 3px solid #3158d6;
+  outline-offset: 2px;
+}
 .customers-form > button,
 .customers-search button,
 .customers-more { font-weight: 800; }
@@ -103,6 +120,7 @@
   background: #fff;
 }
 .customers-list li button.selected { outline: 2px solid currentColor; }
+.customers-list li button.selected:focus-visible { outline: 3px solid #3158d6; }
 .customers-list li span { color: #6b7280; font-size: .86rem; }
 .customers-more { width: 100%; margin-top: 12px; }
 
