@@ -93,14 +93,14 @@ async function requireManager(context: Parameters<typeof requireMember>[0]) {
 catalogManagement.post('/services', async (context) => {
   const access = await requireManager(context);
   if ('error' in access) return access.error;
-  const body = await readJson(context);
-  const before = body?.bufferBeforeMinutes ?? 0;
-  const after = body?.bufferAfterMinutes ?? 0;
-  if (!validName(body?.name)
-      || !integerIn(body?.durationMinutes, 5, 720)
+  const body = (await readJson(context)) ?? {};
+  const before = body.bufferBeforeMinutes ?? 0;
+  const after = body.bufferAfterMinutes ?? 0;
+  if (!validName(body.name)
+      || !integerIn(body.durationMinutes, 5, 720)
       || !integerIn(before, 0, 240)
       || !integerIn(after, 0, 240)
-      || !integerIn(body?.priceMinor, 0, 100000000)) {
+      || !integerIn(body.priceMinor, 0, 100000000)) {
     return context.json({ error: { code: 'INVALID_SERVICE', message: 'Hizmet adı, süre, tampon veya fiyat geçerli değil.' } }, 400);
   }
 
@@ -125,35 +125,35 @@ catalogManagement.post('/services', async (context) => {
 catalogManagement.patch('/services/:id', async (context) => {
   const access = await requireManager(context);
   if ('error' in access) return access.error;
-  const body = await readJson(context);
-  if (!validExpected(body?.expectedUpdatedAt)) {
+  const body = (await readJson(context)) ?? {};
+  if (!validExpected(body.expectedUpdatedAt)) {
     return context.json({
       error: { code: 'STALE_WRITE', message: 'Hizmeti değiştirmeden önce güncel bilgileri yeniden yükleyin.' },
     }, 409);
   }
 
   const patch: Record<string, unknown> = {};
-  if (body?.name !== undefined) {
+  if (body.name !== undefined) {
     if (!validName(body.name)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Hizmet adı geçerli değil.' } }, 400);
     patch.name = String(body.name).trim();
   }
-  if (body?.durationMinutes !== undefined) {
+  if (body.durationMinutes !== undefined) {
     if (!integerIn(body.durationMinutes, 5, 720)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Süre 5–720 dakika olmalı.' } }, 400);
     patch.durationMinutes = body.durationMinutes;
   }
-  if (body?.bufferBeforeMinutes !== undefined) {
+  if (body.bufferBeforeMinutes !== undefined) {
     if (!integerIn(body.bufferBeforeMinutes, 0, 240)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Tampon süre 0–240 dakika olmalı.' } }, 400);
     patch.bufferBeforeMinutes = body.bufferBeforeMinutes;
   }
-  if (body?.bufferAfterMinutes !== undefined) {
+  if (body.bufferAfterMinutes !== undefined) {
     if (!integerIn(body.bufferAfterMinutes, 0, 240)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Tampon süre 0–240 dakika olmalı.' } }, 400);
     patch.bufferAfterMinutes = body.bufferAfterMinutes;
   }
-  if (body?.priceMinor !== undefined) {
+  if (body.priceMinor !== undefined) {
     if (!integerIn(body.priceMinor, 0, 100000000)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Fiyat geçerli değil.' } }, 400);
     patch.priceMinor = body.priceMinor;
   }
-  if (body?.active !== undefined) {
+  if (body.active !== undefined) {
     if (typeof body.active !== 'boolean') return context.json({ error: { code: 'INVALID_SERVICE', message: 'Hizmet durumu geçerli değil.' } }, 400);
     patch.active = body.active;
   }
@@ -178,9 +178,9 @@ catalogManagement.patch('/services/:id', async (context) => {
 catalogManagement.post('/staff', async (context) => {
   const access = await requireManager(context);
   if ('error' in access) return access.error;
-  const body = await readJson(context);
-  const phone = typeof body?.phone === 'string' && body.phone.trim() ? body.phone.trim() : null;
-  if (!validName(body?.name) || (phone && phone.length > 40)) {
+  const body = (await readJson(context)) ?? {};
+  const phone = typeof body.phone === 'string' && body.phone.trim() ? body.phone.trim() : null;
+  if (!validName(body.name) || (phone && phone.length > 40)) {
     return context.json({ error: { code: 'INVALID_STAFF', message: 'Personel adı veya telefon bilgisi geçerli değil.' } }, 400);
   }
   const result = await supabaseRequest<RpcRow | RpcRow[]>(context.env, 'rest/v1/rpc/create_staff_guarded', {
@@ -201,24 +201,24 @@ catalogManagement.post('/staff', async (context) => {
 catalogManagement.patch('/staff/:id', async (context) => {
   const access = await requireManager(context);
   if ('error' in access) return access.error;
-  const body = await readJson(context);
-  if (!validExpected(body?.expectedUpdatedAt)) {
+  const body = (await readJson(context)) ?? {};
+  if (!validExpected(body.expectedUpdatedAt)) {
     return context.json({
       error: { code: 'STALE_WRITE', message: 'Personeli değiştirmeden önce güncel bilgileri yeniden yükleyin.' },
     }, 409);
   }
   const patch: Record<string, unknown> = {};
-  if (body?.name !== undefined) {
+  if (body.name !== undefined) {
     if (!validName(body.name)) return context.json({ error: { code: 'INVALID_STAFF', message: 'Personel adı geçerli değil.' } }, 400);
     patch.name = String(body.name).trim();
   }
-  if (body?.phone !== undefined) {
+  if (body.phone !== undefined) {
     if (body.phone !== null && typeof body.phone !== 'string') return context.json({ error: { code: 'INVALID_STAFF', message: 'Telefon bilgisi geçerli değil.' } }, 400);
     const phone = typeof body.phone === 'string' && body.phone.trim() ? body.phone.trim() : null;
     if (phone && phone.length > 40) return context.json({ error: { code: 'INVALID_STAFF', message: 'Telefon alanı çok uzun.' } }, 400);
     patch.phone = phone;
   }
-  if (body?.active !== undefined) {
+  if (body.active !== undefined) {
     if (typeof body.active !== 'boolean') return context.json({ error: { code: 'INVALID_STAFF', message: 'Personel durumu geçerli değil.' } }, 400);
     patch.active = body.active;
   }
@@ -243,12 +243,12 @@ catalogManagement.patch('/staff/:id', async (context) => {
 catalogManagement.put('/staff/:staffId/services/:serviceId', async (context) => {
   const access = await requireManager(context);
   if ('error' in access) return access.error;
-  const body = await readJson(context);
-  if (typeof body?.active !== 'boolean' || !validOptionalExpected(body?.expectedUpdatedAt)) {
+  const body = (await readJson(context)) ?? {};
+  if (typeof body.active !== 'boolean' || !validOptionalExpected(body.expectedUpdatedAt)) {
     return context.json({ error: { code: 'INVALID_ASSIGNMENT', message: 'Hizmet yetkinliği bilgisi geçerli değil.' } }, 400);
   }
 
-  let expectedUpdatedAt = body?.expectedUpdatedAt ?? null;
+  let expectedUpdatedAt = body.expectedUpdatedAt ?? null;
   if (expectedUpdatedAt === null) {
     const query = new URLSearchParams({
       select: 'updated_at',
