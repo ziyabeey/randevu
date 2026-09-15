@@ -6,8 +6,8 @@ type Control = {
   setInArticle(label: string, name: string, value: string): boolean;
   submitInArticle(label: string): boolean;
   clickInArticle(label: string, text: string): boolean;
-  setInForm(buttonText: string, name: string, value: string): boolean;
-  submit(buttonText: string): boolean;
+  setInForm(buttonText: string, name: string, value: string): Promise<boolean>;
+  submit(buttonText: string): Promise<boolean>;
 };
 
 declare global {
@@ -33,6 +33,16 @@ function formForButton(buttonText: string) {
   return { button, form: button?.closest('form') ?? null };
 }
 
+async function waitForForm(buttonText: string, timeoutMs = 3_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const result = formForButton(buttonText);
+    if (result.button && result.form) return result;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return { button: undefined, form: null };
+}
+
 window.__f10settings = {
   text: () => document.body.innerText,
   setInArticle: (label, name, value) => setValue(
@@ -53,15 +63,15 @@ window.__f10settings = {
     button.click();
     return true;
   },
-  setInForm: (buttonText, name, value) => {
-    const { form } = formForButton(buttonText);
+  setInForm: async (buttonText, name, value) => {
+    const { form } = await waitForForm(buttonText);
     return setValue(
       form?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(name)}"]`) ?? null,
       value,
     );
   },
-  submit: (buttonText) => {
-    const { button, form } = formForButton(buttonText);
+  submit: async (buttonText) => {
+    const { button, form } = await waitForForm(buttonText);
     if (!button || !form) return false;
     form.requestSubmit(button);
     return true;
