@@ -8,17 +8,22 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const srcRoot = resolve(repoRoot, 'src');
 const routePlan = await import('../src/marketing/routePlan.ts');
 const cutoverInventory = await import('../src/marketing/routeCutoverInventory.ts');
-const wranglerConfig = readFileSync(resolve(repoRoot, 'wrangler.jsonc'), 'utf8');
 
 const {
   MARKETING_HOME_PATH,
+  MARKETING_ORIGIN,
+  PRIVATE_APP_HOME_PATH,
+  PRIVATE_OPERATOR_APP_ORIGIN,
+  PUBLIC_TENANT_ORIGIN_PATTERN,
   WORKSPACE_HOME_PATH,
+  getOperatorAppHref,
+  getPublicTenantOrigin,
   resolveMarketingRouteSurface,
 } = routePlan;
 
 const {
+  PRIVATE_APP_ROOT_RETURN_FILES,
   ROUTE_CUTOVER_STATUS,
-  WORKSPACE_ROOT_RETURN_FILES,
 } = cutoverInventory;
 
 function listTsxFiles(directory) {
@@ -33,59 +38,70 @@ function repositoryPath(absolutePath) {
   return relative(repoRoot, absolutePath).replaceAll('\\', '/');
 }
 
-test('MKT-01 production route plan preserves the pending invite flow at root', () => {
+test('MKT-DOMAIN-01 fixes one public marketing origin and one private operator origin', () => {
+  assert.equal(MARKETING_ORIGIN, 'https://randevukolay.net');
+  assert.equal(PRIVATE_OPERATOR_APP_ORIGIN, 'https://randevu.kepenk.ai');
+  assert.equal(PUBLIC_TENANT_ORIGIN_PATTERN, 'https://{business-slug}.randevukolay.net');
   assert.equal(MARKETING_HOME_PATH, '/');
-  assert.equal(WORKSPACE_HOME_PATH, '/app');
+  assert.equal(PRIVATE_APP_HOME_PATH, '/');
 
+  // Node has no browser location, so the production-safe value must be canonical.
+  assert.equal(WORKSPACE_HOME_PATH, 'https://randevu.kepenk.ai/');
   assert.equal(
-    resolveMarketingRouteSurface({ path: '/', hasPendingTeamInvite: true }),
-    'invite',
+    getOperatorAppHref({ hostname: 'randevukolay.net', pathname: '/' }),
+    'https://randevu.kepenk.ai/',
+  );
+  assert.equal(
+    getOperatorAppHref({ hostname: 'localhost', pathname: '/' }),
+    '/app',
+  );
+  assert.equal(
+    getOperatorAppHref({ hostname: 'preview.invalid', pathname: '/marketing-preview.html' }),
+    '/app',
   );
 
+  assert.equal(getPublicTenantOrigin('demo-salon'), 'https://demo-salon.randevukolay.net');
+  assert.throws(() => getPublicTenantOrigin('bad.slug'), /valid lowercase DNS label/);
+  assert.notEqual(PRIVATE_OPERATOR_APP_ORIGIN, 'https://app.randevukolay.net');
+});
+
+test('MKT-DOMAIN-01 route contract does not treat marketing /app as the private workspace', () => {
   assert.equal(
-    resolveMarketingRouteSurface({ path: '/', hasPendingTeamInvite: false }),
+    resolveMarketingRouteSurface({ origin: MARKETING_ORIGIN, path: '/' }),
     'marketing',
   );
-});
-
-test('MKT-01 production route plan moves the existing workspace root to /app without stealing product routes', () => {
   assert.equal(
-    resolveMarketingRouteSurface({ path: '/app', hasPendingTeamInvite: false }),
-    'workspace',
+    resolveMarketingRouteSurface({ origin: MARKETING_ORIGIN, path: '/app' }),
+    'other',
   );
   assert.equal(
-    resolveMarketingRouteSurface({ path: '/app/', hasPendingTeamInvite: false }),
-    'workspace',
+    resolveMarketingRouteSurface({ origin: PRIVATE_OPERATOR_APP_ORIGIN, path: '/' }),
+    'private-app',
   );
-
-  for (const path of ['/calendar', '/bookings', '/customers', '/availability', '/team', '/public-booking', '/r/demo']) {
-    assert.equal(
-      resolveMarketingRouteSurface({ path, hasPendingTeamInvite: false }),
-      'other',
-      `Marketing route plan must not claim ${path}`,
-    );
-  }
+  assert.equal(
+    resolveMarketingRouteSurface({ origin: PRIVATE_OPERATOR_APP_ORIGIN, path: '/calendar' }),
+    'private-app',
+  );
+  assert.equal(
+    resolveMarketingRouteSurface({ origin: 'https://demo-salon.randevukolay.net', path: '/' }),
+    'other',
+  );
 });
 
-test('MKT-01 pre-cutover inventory exhaustively tracks current workspace href="/" returns', () => {
-  assert.equal(ROUTE_CUTOVER_STATUS, 'pre-cutover');
+test('MKT-DOMAIN-01 preserves existing private-app root returns instead of rewriting them to /app', () => {
+  assert.equal(ROUTE_CUTOVER_STATUS, 'domain-separated-pre-cutover');
 
   const actualRootReturnFiles = listTsxFiles(srcRoot)
     .filter((absolutePath) => readFileSync(absolutePath, 'utf8').includes('href="/"'))
     .map(repositoryPath)
     .sort();
-  const expectedRootReturnFiles = [...WORKSPACE_ROOT_RETURN_FILES].sort();
+  const expectedRootReturnFiles = [...PRIVATE_APP_ROOT_RETURN_FILES].sort();
 
   assert.deepEqual(
     actualRootReturnFiles,
     expectedRootReturnFiles,
-    'Workspace root-return inventory drifted. Update the explicit cutover inventory before touching shared routes.',
+    'Private-app root-return inventory drifted. Domain separation must not silently rewrite shared routes.',
   );
 
-  assert.equal(expectedRootReturnFiles.length, 10, 'Current main cutover inventory should contain exactly ten known root-return surfaces');
-});
-
-test('MKT-01 /app deep links remain compatible with the deployment SPA fallback', () => {
-  assert.match(wranglerConfig, /"not_found_handling"\s*:\s*"single-page-application"/);
-  assert.match(wranglerConfig, /"run_worker_first"\s*:\s*\["\/api",\s*"\/api\/\*"\]/);
+  assert.equal(expectedRootReturnFiles.length, 10, 'Current main inventory should contain exactly ten known private-app root-return surfaces');
 });
