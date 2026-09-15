@@ -6,7 +6,7 @@ import '../../src/phase4.css';
 type Control = {
   text(): string;
   clickButton(text: string): boolean;
-  setInArticle(label: string, name: string, value: string): boolean;
+  setInArticle(label: string, name: string, value: string): Promise<boolean>;
   submitInArticle(label: string): boolean;
   valueInArticle(label: string, name: string): string | null;
   toggleAssignment(person: string, service: string): boolean;
@@ -32,6 +32,16 @@ function setValue(element: HTMLInputElement | HTMLSelectElement | null, value: s
 function article(label: string) {
   return [...document.querySelectorAll<HTMLElement>('.catalog-editor')]
     .find((item) => item.innerText.includes(label)) ?? null;
+}
+
+async function articleWhenReady(label: string, timeoutMs = 3_000) {
+  const deadline = performance.now() + timeoutMs;
+  while (performance.now() < deadline) {
+    const candidate = article(label);
+    if (candidate) return candidate;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+  return null;
 }
 
 function section(title: string) {
@@ -60,10 +70,10 @@ window.__f10settingsReview = {
     button.click();
     return true;
   },
-  setInArticle: (label, name, value) => setValue(
-    article(label)?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(name)}"]`) ?? null,
-    value,
-  ),
+  setInArticle: async (label, name, value) => {
+    const editor = await articleWhenReady(label);
+    return setValue(editor?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(name)}"]`) ?? null, value);
+  },
   submitInArticle: (label) => {
     const form = article(label)?.querySelector<HTMLFormElement>('form');
     const button = form?.querySelector<HTMLButtonElement>('button[type="submit"],button:not([type])');
