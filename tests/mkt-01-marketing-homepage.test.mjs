@@ -20,6 +20,7 @@ const releaseGates = read('src/marketing/releaseGates.ts');
 const assets = read('src/marketing/assets.ts');
 const assetContract = read('src/marketing/asset-contract.ts');
 const documentMeta = read('src/marketing/useMarketingDocumentMeta.ts');
+const domainContract = read('src/marketing/domainContract.ts');
 const previewEntry = read('src/marketing/preview-entry.tsx');
 const previewModes = read('src/marketing/previewModes.ts');
 const previewHtml = read('marketing-preview.html');
@@ -77,6 +78,21 @@ test('MKT-01 keeps the approved homepage story spine and navigation contract', (
   assert.match(marketingPolishCss, /\.mkt-skip-link:focus,[\s\S]*?\.mkt-skip-link:focus-visible/);
 });
 
+test('MKT-DOMAIN-01 keeps Randevu Kolay outward while separating public and private origins', () => {
+  assert.match(domainContract, /MARKETING_ORIGIN = "https:\/\/randevukolay\.net"/);
+  assert.match(domainContract, /PRIVATE_OPERATOR_APP_ORIGIN = "https:\/\/randevu\.kepenk\.ai"/);
+  assert.match(domainContract, /PUBLIC_TENANT_ORIGIN_PATTERN = "https:\/\/\{business-slug\}\.randevukolay\.net"/);
+  assert.match(domainContract, /LOCAL_PREVIEW_OPERATOR_PATH = "\/app"/);
+  assert.doesNotMatch(domainContract, /app\.randevukolay\.net/);
+
+  assert.match(hero, />Randevu Kolay<\/p>/);
+  assert.match(home, /<strong>Randevu Kolay<\/strong>/);
+  assert.match(home, /<span>randevukolay\.net<\/span>/);
+  assert.match(transformation, />Randevu Kolay<\/p>/);
+  assert.doesNotMatch(marketingCopy, /Kepenk\.ai sunar/);
+  assert.doesNotMatch(home, /Kepenk\.ai ürünü/);
+});
+
 test('MKT-01 brand text color pairs keep WCAG AA contrast', () => {
   const pairs = [
     [cssHexToken('mkt-cobalt-deep'), '#ffffff', 7],
@@ -101,11 +117,12 @@ test('MKT-01 hero exposes its LCP media as a priority image', () => {
   assert.match(hero, /height=\{1072\}/);
 });
 
-test('MKT-01 production document metadata is explicit while standalone preview stays noindex', () => {
+test('MKT-DOMAIN-01 production metadata uses the public marketing origin while preview stays noindex', () => {
   assert.match(home, /useMarketingDocumentMeta\(\)/);
-  assert.match(documentMeta, /Randevu kolay\. \| Kepenk\.ai/);
-  assert.match(documentMeta, /https:\/\/randevu\.kepenk\.ai\//);
+  assert.match(documentMeta, /Randevu kolay\. \| Randevu Kolay/);
+  assert.match(documentMeta, /MARKETING_ORIGIN/);
   assert.match(documentMeta, /randevu-hero-model\.webp/);
+  assert.match(documentMeta, /siteName: "Randevu Kolay"/);
   assert.match(documentMeta, /tr_TR/);
   assert.match(documentMeta, /og:title/);
   assert.match(documentMeta, /og:description/);
