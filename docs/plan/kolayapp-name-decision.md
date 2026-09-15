@@ -2,7 +2,9 @@
 
 **Karar tarihi:** 15 Eylül 2026
 
-Randevu/Kepenk.ai ürün ailesinde daha önce **SalonApp** olarak anılan mobil işletme yüzeyinin kanonik ürün adı artık **KolayApp**'tir.
+Randevu Kolay ürününde daha önce **SalonApp** olarak anılan mobil işletme yüzeyinin kanonik ürün adı artık **KolayApp**'tir.
+
+Domain/marka sınırı için bağlayıcı kaynak: [Randevu Kolay domain, marka ve origin sözleşmesi](randevu-kolay-domain-contract.md).
 
 ## Kapsam
 
@@ -11,6 +13,8 @@ Randevu/Kepenk.ai ürün ailesinde daha önce **SalonApp** olarak anılan mobil 
 - Mevcut plan/README/PRODUCT_SPEC/TASKS/PROJECT_STATE içindeki yaşayan `SalonApp` referansları ilk uygun docs/state sync'te `KolayApp` olarak topluca güncellenir.
 - Bu isim değişikliği route, API, database schema, auth/session modeli veya alt menü sırasını tek başına değiştirmez.
 - Sabit mobil alt menü sırası korunur: `Randevular / Adisyonlar / Yeni / Müşteriler / Diğer`.
+- KolayApp private işletme uygulamasının mobil kabuğudur; ayrı customer-facing marka/domain/backend değildir.
+- Canonical private origin `randevu.kepenk.ai`'dir; customer-facing Randevu Kolay evreni `randevukolay.net` altında kalır.
 
 ## Implementation sınırı
 
