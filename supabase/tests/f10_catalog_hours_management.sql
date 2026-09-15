@@ -198,13 +198,13 @@ $$;
 do $$
 begin
   perform * from public.replace_business_hours_guarded(
-    'b8100000-0000-4000-8000-000000000001',1,
+    'b8100000-0000-4000-8000-000000000001',1::smallint,
     '[{"start":"10:00","end":"18:00"}]'::jsonb,
     '[{"start":"09:00","end":"17:00"}]'::jsonb
   );
   begin
     perform * from public.replace_business_hours_guarded(
-      'b8100000-0000-4000-8000-000000000001',1,
+      'b8100000-0000-4000-8000-000000000001',1::smallint,
       '[{"start":"11:00","end":"19:00"}]'::jsonb,
       '[{"start":"09:00","end":"17:00"}]'::jsonb
     );
