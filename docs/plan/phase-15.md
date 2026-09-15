@@ -4,6 +4,8 @@
 
 Başlangıç F14 adisyon/tahsilat sözleşmesidir. Ürün/stok/rapor modülleri henüz yoktur; burada belirtilenler yapılacak işlerdir. Tam muhasebe, e-fatura ve ERP kapsamı eklenmez.
 
+**Faz direktifi / kaynak head `5e789ad`:** Stok hareketi de para hareketi gibi bir defterdir. Geçmiş stok/mali hareket UPDATE/DELETE ile düzeltilmez; düzeltme append-only hareket/reversal üretir. F15-02/04 mali bütünlük nedeniyle STRICT, F15-01/03 risk yüzeyine göre FOCUSED yürütülür.
+
 ## F15-01
 
 **Ürün kataloğu ve stok hareketleri**
@@ -13,6 +15,7 @@ Başlangıç F14 adisyon/tahsilat sözleşmesidir. Ürün/stok/rapor modülleri 
 - **İş ve çıktı:** Ürün adı/kodu, birim, satış fiyatı ve aktiflik; başlangıç stoğu, giriş ve gerekçeli düzeltme hareketleri ekle. İlk kapsam adet bazlı stoktur; lot/seri/depo transferi yoktur. Eksi stok varsayılan olarak engellenir; değişiklik ayrı açık karardır.
 - **Kabul:** Negatif/geçersiz miktar ve başka tenant ürünü reddedilir. Stok yalnız hareketlerden izlenebilir şekilde değişir; eşzamanlı değişiklik kaybolmaz. Arşivleme geçmiş satış/snapshot'ı bozmaz; staff izinsiz stok/fiyat değiştiremez.
 - **Devir:** Stok/ürün izinleri, miktar politikası, API örnekleri ve stok hareketi testleri.
+- **Tuzak / inventory ledger:** Stok miktarını geçmiş movement satırını güncelleyerek “düzeltme” yoktur. Giriş, satış çıkışı, iade geri girişi, sayım farkı ve reversal ayrı immutable hareketlerdir; aktör/gerekçe gerektiği yerde kaydedilir. Current stock bu hareketlerden güvenilir biçimde projekte edilebilir olmalıdır.
 
 ## F15-02
 
@@ -23,6 +26,7 @@ Başlangıç F14 adisyon/tahsilat sözleşmesidir. Ürün/stok/rapor modülleri 
 - **İş ve çıktı:** Ürünü hizmetle aynı adisyona veya Yeni ürün satışı yolundan bağımsız satışa ekle. Stok düşme anını kesinleştir; taslak adisyonda sessizce stok düşürme. Satış/iptal/iade ve stok hareketini aynı işlem/idempotency sınırına bağla.
 - **Kabul:** Son bir ürünü eşzamanlı satan iki işlem stoğu eksiye düşüremez. Aynı satış tekrarında çift stok/tahsilat oluşmaz. İade tutarı ile stoğa fiziksel geri dönüş ayrı açık alanlardır; bozuk ürün otomatik satılabilir stoğa eklenmez. Kapalı satış geçmişi korunur.
 - **Devir:** Satış yaşam döngüsü, stok anı ve düzeltme/iade senaryoları; ürün satış ekranı kanıtı.
+- **Tuzak / atomic reversal:** İade veya satış iptali adisyon/mali hareket ile stok hareketini **aynı transaction ve idempotency sınırında** tersine çevirir. Para reversal'ı başarılı olup stok reversal'ı başarısız veya tersi kabul edilemez. Fiziksel ürünün tekrar satılabilir stoğa dönmesi ayrı ve explicit policy'dir; mali iade bunu otomatik varsaymaz.
 
 ## F15-03
 
@@ -33,6 +37,7 @@ Başlangıç F14 adisyon/tahsilat sözleşmesidir. Ürün/stok/rapor modülleri 
 - **İş ve çıktı:** Kategori/açıklama/tutar/tarih/ödeme yöntemiyle masraf ekle; yetkili düzeltme/iptali izlenebilir kaydet. Yeni masraf ve Diğer → masraflar yollarını bağla; ortak para birimi/yetki kurallarını kullan.
 - **Kabul:** Mükerrer istek ikinci masraf oluşturmaz. Aktör/işletme/zaman korunur; staff varsayılan olarak mali yazım yapamaz. Başka işletme kaydı okunamaz; gider silinerek geçmiş kasa sessizce değişmez.
 - **Devir:** Masraf sorgu/hareket sözleşmesi ve raporun kullanacağı tarih/ödeme yöntemi alanları.
+- **Tuzak:** Masraf düzeltmesi de mali ledger kuralına tabidir. “Edit” kullanıcı deneyimi gerekiyorsa backend eski mali gerçeği silmek yerine reversal + yeni kayıt veya açıkça tanımlanmış append-only correction üretir.
 
 ## F15-04
 
@@ -44,3 +49,4 @@ Başlangıç F14 adisyon/tahsilat sözleşmesidir. Ürün/stok/rapor modülleri 
 - **Kabul:** Örnek 1.000 TL tahsilat − 100 TL iade − 150 TL masraf = 750 TL net hareket; nakit ve kart kırılımı kaynak kayıtlarla eşleşir. Tahsil edilmemiş 300 TL bakiye para girişine eklenmez. Gece/DST gün sınırı, tarih filtresi, yetki ve iki tenant sınırı geçer.
 - **Devir:** Hesap tanımları, mutabakat veri seti ve G15 kanıtı. Gün sonu özeti mali kayıtları geriye dönük kilitleyen ayrı muhasebe motoru sayılmaz.
 - **v3 sıra:** Rapor/mutabakat PWA veya üç kol kabulünü beklemez; F14-03 mali sözleşmesi yeterlidir. G14/G15 birleşik kabulü F17’de ayrıca aranır. K02/K03 kaynak hareketi, tarih, sayfalama ve maliyet sınırları kullanılır.
+- **Hazır olan / gün sınırı:** F13-02'nin tanımladığı işletme-timezone gün sınırı canonical tanımdır. F15-04 server timezone veya yeni “mali gün” formülü türetmez; aynı boundary'yi tüketir ve DST/gece senaryolarıyla kanıtlar.

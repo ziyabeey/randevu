@@ -64,11 +64,14 @@ Beceri adı listede görünse bile içeriği okunmadan “kullanıldı” sayıl
 ## Test ve geri bildirim döngüsü
 
 - Test, önemli davranışı kanıtlar: auth için yetkisiz/eskimiş oturum; DB için tenant ve RLS; migration için temiz kurulum ile upgrade; para için invariant, tekrar güvenliği ve audit; UI için kullanıcı eylemi ve görünen sonuç.
+- Auth/recovery sınırı kapatılırken yalnız raw table grant'larına bakmak yeterli değildir. Aynı korunan veriyi döndüren doğrudan `GRANT EXECUTE` verilmiş `SECURITY DEFINER` RPC/function yüzeyleri, view'lar ve diğer Data API yolları da capability envanterine dahil edilir. Bir tablo `SELECT` revoke'u, aynı PII'yi döndüren executable RPC açık kalıyorsa authority kapanışı sayılmaz; fail-closed standart-session sınırı yüzey bazında kanıtlanır.
 - Bu örnekler yalnız ilgili risk varsa zorunludur; reversible bir UI değişikliği için gereksiz DB/concurrency/staging töreni kurulmaz.
 - Uygulama ayrıntısını aynalayan veya yalnız mock'u doğrulayan test kabul kanıtı değildir.
 - Aynı hipotez 2–3 kez başarısız olursa yeni rastgele varyasyon deneme. Hipotezi, komutları, çıktıyı ve değişen dosyaları kaydet; koordinatör incelemesinden sonra devam et.
 - Somut yeni risk, kod değişimi veya gerekli merge sonucu yoksa tam suite'i tekrarlama. Mevcut CI kapıları ancak S06 kapsamında ayrı, incelenmiş bir kod değişikliğiyle değişir.
 - Yalnız doküman PR'ında yerel linkler, görev bağımlılıkları, durum ifadeleri ve diff kontrol edilir. Repo politikası CI gerektiriyorsa mevcut kapı ayrıca çalıştırılır.
+- Bir carry-forward/boundary metni kısaltılırken **pozitif garanti, negatif sınır, exact risk alanı/kolonu ve exact hedef kart** kaybolamaz. Bunlardan biri düşüyorsa “concise” değişiklik kabul edilmez. Head'e bağlı repo gözlemi taşınıyorsa doğrulandığı head SHA'sı da metinde kalır ve kart açılırken current main'de yeniden doğrulanır.
+- Bir real-browser runner birden fazla davranış senaryosunu kapsıyorsa failure çıktısı insan-okunur stabil senaryo adı taşımalıdır; yalnız dosya/satır/assert mesajına dayanmak yeterli kabul kanıtı değildir.
 
 ## Devredilebilir kanıt
 

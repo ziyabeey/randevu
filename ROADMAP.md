@@ -1,6 +1,6 @@
 # YZT Randevu — MVP yol haritası
 
-**Plan v3 · güncel durum 14 Eylül 2026.** Ürün üç kolu ve F09–F17 görev kimlikleri korunur. Canlı durum `TASKS.md`, doğrulanmış main `PROJECT_STATE.md`, detay kabul ölçütleri ilgili faz dosyalarındadır.
+**Plan v3 · güncel durum 15 Eylül 2026.** Ürün üç kolu ve F09–F17 görev kimlikleri korunur. Canlı durum `TASKS.md`, doğrulanmış main `PROJECT_STATE.md`, detay kabul ölçütleri ilgili faz dosyalarındadır.
 
 ## Kaynak sırası
 
@@ -33,51 +33,48 @@ Tek repo/backend ve ortak veriler korunur. İlk mobil teslim responsive/PWA'dır
 - Faz 1–8 React/Worker, Auth/tenant, katalog, müsaitlik, tek hizmetli booking, public/manage ve takvim temeli main'de.
 - **G09 / F09-01…05** tamamlandı.
 - **GS / S01…S08** tamamlandı ve kapalı. Recovery, ortak auth guard, notification consistency, quota/resource budget, deploy consistency, CI gate ve future-object ACL kabul edildi.
-- **F10-01, F10-02, F10-03** tamamlandı. Oturum/parola, davet/üyelik/rol, ikinci işletme + onboarding + fail-closed publish readiness main'de.
+- **F10-01, F10-02, F10-03, F10-05** tamamlandı. Oturum/parola, davet/üyelik/rol, ikinci işletme + onboarding + fail-closed publish readiness ve customer authority/CRM main'de.
 - **F12-01** görsel yön/akış sözleşmesi tamamlandı.
 - **F17-01/02** staging ve CI temeli tamamlandı.
-- **PR #69 brand/motion docs** main'e girdi; ayrı **MKT-01** marketing track'i aktif.
+- **PR #69 brand/motion docs** main'e girdi; ayrı **MKT-01** marketing track'i aktif ama production renderer/cutover kararı bekliyor.
 
 GS artık yeni feature kodunu engelleyen bir kapı değildir; aşağıdaki dependency'ler geçerlidir.
 
 ## Şu anki dalga
 
-Aynı temel üzerinden üç dependency-safe ürün lane'i açık:
+F10-05 kabul+merge sonrası shared writer kuyruğu sadeleşti:
 
-1. **F10-05 — müşteri kayıtları / Ajan A / PR #74**
-   - tenant-scoped arama/liste/create/edit,
-   - duplicate iletişim ve concurrency,
-   - randevu geçmişi snapshot korunumu,
-   - K03 pagination ve stale-response koruması.
+1. **F12-02 — salon profili/public fotoğraflar / Ajan B / PR #76**
+   - profil + public medya,
+   - upload type/size/count,
+   - public/private ayrımı,
+   - interrupted `pending/deleting` media için bounded grace + race-safe reclaim + idempotent Storage cleanup,
+   - F12-01 responsive/a11y sözleşmesi.
 2. **F10-04 — hizmet/personel/çalışma ayarları / Ajan C / PR #75**
    - guarded service/staff/assignment yönetimi,
    - mesai/kapanış ayarları,
    - stale write ve archive davranışı,
    - F10-03 readiness sözleşmesini genişletme.
-3. **F12-02 — salon profili/public fotoğraflar / Ajan B / PR #76**
-   - profil + public medya,
-   - upload type/size/count,
-   - public/private ayrımı, orphan cleanup ve fallback.
+
+MKT-01 ayrı ve izole lane'dir; current video + WebP/canvas experiment green olsa da production renderer gerçek Kling binary/perf + real-phone/cellular kanıtını bekler. Shared `/`→marketing ve `/app`→workspace cutover, entry writer sırası açılmadan yapılmaz.
 
 ### Shared-file entegrasyon sırası
 
-F10-04 ve F10-05 `scripts/ci-postgres-plan.json` ortak alanını kullanıyor. Çakışma önlemek için:
+1. F12-02 / PR #76 latest main'e taşınır ve lifecycle blocker'ı kapatılır.
+2. F10-04 / PR #75 #76 merge sonrası latest main'e taşınır; `scripts/ci-postgres-plan.json` ve shared entry alanında yalnız kendi eklerini uygular.
+3. MKT-01 production route/entry + gerçek binary kabulü shared entry sırası açıldığında yapılır.
 
-1. F10-05 / PR #74 CI-plan yazıcısı olarak önce kapanır.
-2. F10-04 branch'i yeni main'e taşınır ve kendi plan adımını ekler.
-3. F12-02 bağımsız ilerler; ortak router/migration alanına girerse Issue #65'te sıra verilir.
-
-Bu sıra ürün önceliği değil Git/CI conflict önleme sırasıdır.
+Bu sıra ürün önceliği değil Git/CI conflict önleme sırasıdır. Canlı override ve writer token otoritesi Issue #65'tir.
 
 ## Fazlar ve bağımlılık sırası
 
 | Faz | Görevler | Güncel kapanış / sonraki kapı |
 | --- | --- | --- |
 | [9 — Güvenilir rezervasyon/bildirim](docs/plan/phase-09.md) | F09-01…05 | **Tamamlandı**; kalan operasyon takipleri F17-03'te |
-| [10 — Hesap ve işletme](docs/plan/phase-10.md) | F10-01…06 | F10-01/02/03 **tamam**; F10-04 + F10-05 aktif → F10-06 |
+| [10 — Hesap ve işletme](docs/plan/phase-10.md) | F10-01…06 | F10-01/02/03/05 **tamam**; F10-04 → F10-06 |
 | [12 — Fiyat veri desteği](docs/plan/phase-12.md#f12-03) | F12-03 | F10-04 sonrası; F11-01'den önce |
 | [11 — Çok hizmetli çekirdek](docs/plan/phase-11.md) | F11-01…04 | F12-03 → F11-01 → F11-02 → F11-03 → F11-04 |
-| [12 — Müşteri yüzeyi](docs/plan/phase-12.md) | F12-01…05 | F12-01 tamam; F12-02 PR #76 aktif; F12-04 F12-02 + F12-03 + F11-02 bekler |
+| [12 — Müşteri yüzeyi](docs/plan/phase-12.md) | F12-01…05 | F12-01 tamam; F12-02 PR #76 sıradaki implementation lane'i; F12-04 F12-02 + F12-03 + F11-02 bekler |
 | [13 — Randevu Paneli](docs/plan/phase-13.md) | F13-01…04 | F11/F10/F12 bağımlılıkları sonrası |
 | [14 — SalonApp ve mali çekirdek](docs/plan/phase-14.md) | F14-01…05 | F13/F11/F12 sonrasında mobil kabuk + adisyon/tahsilat |
 | [15 — Ürün ve kasa](docs/plan/phase-15.md) | F15-01…04 | F14 mali model sonrası stok, satış/iade, masraf ve rapor |
@@ -89,27 +86,31 @@ Bu sıra ürün önceliği değil Git/CI conflict önleme sırasıdır.
 ## Paralellik kuralları
 
 - Aynı router/entry, ortak SQL fonksiyonu, lockfile veya CI planına iki eşzamanlı yazıcı verilmez.
-- Paralel ajan yalnız kendi `TASKS.md` satırını değiştirir.
-- Migration/security/mali değişiklikler bağımsız review ister.
+- Paralel ajan yalnız kendi `TASKS.md` satırını değiştirir; coordinator state-sync istisnası accepted/merged gerçeği ana tabloya taşır.
+- Validation budget varsayılan LIGHT'tır; R1/R2/staging yalnız somut auth/DB/browser/hosted riskine göre açılır, otomatik çift-gate yoktur.
 - Main kaydığında branch güncellenir; eski branch state'i main yerine kaynak sayılmaz.
+- Head'e bağlı teknik tüyo doğrulandığı SHA'yı taşır ve hedef kart açılırken current main'de yeniden ölçülür.
 - 2–3 başarısız yaklaşımda aynı deneme tekrar edilmez; varsayım ve kanıt yeniden incelenir.
 
 ## Marketing / site track
 
-**MKT-01 / Issue #70** ürün sahibi kontrollü ayrı track'tir ve 54 MVP görevine eklenmez. PR #69 ile bağlayıcı brand/motion belgeleri main'e girdi. İlk izole implementation slice'ı **PR #77 / `mkt-01-scroll-motion-homepage`** üzerinde draft olarak ilerliyor.
+**MKT-01 / Issue #70** ürün sahibi kontrollü ayrı track'tir ve 54 MVP görevine eklenmez. PR #69 ile bağlayıcı brand/motion belgeleri main'e girdi. İzole implementation **PR #77 / `mkt-01-scroll-motion-homepage`** üzerinde draft/park durumundadır.
 
 Güncel production yönü:
 
 - sticky/pinned scrollytelling,
-- deterministik scroll-scrub video,
 - gerçek React/HTML/CSS overlay,
-- mobile + reduced-motion fallback,
-- tamamlanmamış özellik veya kilitlenmemiş fiyatı gerçekmiş gibi göstermeme.
+- repaired deterministic video scrub kontrol renderer'ı,
+- ayrı WebP kareleri + tek canvas eşit renderer adayı,
+- bounded fetch/decode cache,
+- mobile + reduced-motion fail-closed davranışı,
+- tamamlanmamış özellik veya kilitlenmemiş fiyatı gerçekmiş gibi göstermeme,
+- renderer seçimini synthetic CI değil gerçek binary byte/perf + gerçek telefon/hücresel davranışla verme.
 
-PR #77 ilk slice'ta `src/marketing/**` ile izole kalır; `src/main.tsx` / `src/App.tsx` route entegrasyonu aktif F10 lane'lerinin ortak entry sahipliği kapanınca coordinator sırasıyla yapılır.
+PR #77 izole `src/marketing/**` lane'inde kalır; `src/main.tsx` / `src/App.tsx` route entegrasyonu #76/shared entry işi kapanınca coordinator sırasıyla yapılır.
 
 ## Bitti sayılma kuralı
 
-Bir görev yalnız davranış kanıtı + gerekli bağımsız review + kabul edilen exact-head CI + main merge birlikte sağlandığında `Tamamlandı` olur. Staging/CI yeşili tek başına pilot kabulü değildir.
+Bir görev yalnız davranış kanıtı + riskin gerektirdiği bağımsız review + kabul edilen exact-head CI + main merge birlikte sağlandığında `Tamamlandı` olur. Staging/CI yeşili tek başına pilot kabulü değildir.
 
 F17-04 birleşik teknik/ürün kabulünü, F17-05 gerçek 1–3 işletmeli kontrollü pilotu kapatır. Açık güvenlik/veri/para kusuru MVP tesliminde kalamaz.

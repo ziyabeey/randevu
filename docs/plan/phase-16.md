@@ -4,6 +4,8 @@
 
 Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; görev kartı gerekirse kapsamı değiştirmeden alt işlere bölünür. Menü başlığı veya statik ekran, işlev kabulü değildir.
 
+**Faz direktifi / kaynak head `5e789ad`:** Çoğu F16 işi LIGHT/FOCUSED yürür; fiyat/para etkisi olan F16-05/06 ve bunların mali entegrasyonu daha yüksek kanıt ister. Var olmayan capability marketing veya ürün UI'ında canlıymış gibi gösterilmez; accepted feature production claim gate'iyle birlikte açılır.
+
 ## F16-01
 
 **Tekrarlayan randevu serisi · 16A**
@@ -25,6 +27,8 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **Kabul:** İptal edilen/taşınan randevunun eski saat mesajı gönderilmez. Kuyruk tekrarında aynı olay için kontrolsüz çift mesaj oluşmaz. Kanal yokluğu/sağlayıcı kesintisi randevuyu bozmaz; gerçek test alıcısında teslim doğrulanır. Mesaj içeriği başka tenant veya gereksiz özel bilgi taşımaz.
 - **Devir:** Olay/kanal matrisi, şablonlar, yeniden deneme sınırları, gerçek teslim kanıtları ve maliyet/limit ayarlarının nereden yönetildiği.
 - **v3 sıra ve sınır:** Seri özelliğini beklemez; tek/çok hizmetli normal grup olaylarına bağlanır. Aynı notification motoru ve S03 provider anahtarı/sabit içerik modeli kullanılır. Seri hazır olduğunda yalnız olay üreticisi entegre edilir; G16 ortak kabulü ikisini test eder. SMS sağlayıcı/ücret/limit ve güvenli test alıcısı uygulama öncesi somutlaştırılır.
+- **Hazır olan / dispatcher:** Faz 9 outbox lease/retry/max-attempt ve provider receipt modeli tek bildirim dispatcher'ıdır. SMS bunun üzerinde yeni kanal/adapter'dır; ikinci kuyruk/cron/retry motoru kurulmaz.
+- **Production claim kapanışı:** F16-02 accepted+main olduktan sonra MKT-01 `MARKETING_RELEASE_GATES.reminders` aynı teslimin kabul checklist'inde `true`'ya çevrilir ve “Yakında” proof/copy'si gerçek accepted davranışla hizalanır. Feature henüz kabul edilmediyse gate fail-closed kalır.
 
 ## F16-03
 
@@ -58,6 +62,7 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **Kabul:** İki eşzamanlı kullanım son hakkı iki kez tüketmez; süresi dolan/başka işletmeye ait paket reddedilir. İptal/iade/kullanım geri alma hak ve mali kayıtları tutarlı etkiler. Paket satışı ve hizmet kullanımı kasa/primde yanlışlıkla iki gelir olarak sayılmaz.
 - **Devir:** Hak/mali olay sözleşmesi, örnek hesaplar ve paket bakiye gerileme testleri.
 - **v3 mali sözleşme:** K02 kaynak satış/hak/para ayrımı kullanılır. Kullanım, iptal ve paket iadesi politikası Ziya’nın örnek hesabıyla başlarken netleştirilir; tüketilmiş hak ve iade tutarı ilişkisi deneysel rastgele karar değildir.
+- **Tuzak / snapshot:** Paket kullanımı geçmiş appointment/service fiyat snapshot'ını yeniden yazmaz. Paketin mali etkisi ayrı hak/mali ledger hareketidir; randevu anındaki fiyat/süre/personel snapshot'ı tarihsel gerçek olarak kalır.
 
 ## F16-06
 
@@ -69,6 +74,7 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **Kabul:** İstemci fiyatı/indirim oranı kabul edilmez; kod koşulları kayıt anında yeniden doğrulanır. Aynı son kullanım hakkı eşzamanlı iki işlemde tüketilmez. İndirim toplamı negatife düşürmez; tarih/iptal ve fiyat aralığı belirsizliği doğru gösterilir.
 - **Devir:** Koşul/hesap sözleşmesi, yetki/limit testleri ve müşteri özetinden adisyona tutarlı örnek.
 - **v3 mali sözleşme:** K02 fiyat/politika snapshot’ı ve yuvarlama kullanılır. Başlarken paketle birlikte kullanım, kampanya limitinin rezervasyon anında ayrılması/kullanılması ve iptal sonrası serbest bırakılması örnekli karara bağlanır; kullanım kotası bu kararla transaction’da korunur.
+- **Tuzak / tarihsel fiyat:** Promosyon/paket uygulaması yeni policy/ledger kaydıdır; eski appointment price snapshot alanlarını geçmişe dönük değiştirmez. Final charge/discount kaynağı adisyon/mali event zincirinde izlenebilir kalır.
 
 ## F16-07
 
@@ -90,6 +96,7 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **İş ve çıktı:** Üyelik/plan bilgisi, yetkili işletmeler arasında geçiş, parola değiştirme ve çıkışı ortak akışlara bağla. Varsayılan Türkçeyi koru; dil tercihi sunulacak ikinci dilde gerçekten uygulanır, başlangıç hedefi İngilizcedir. Pilot plan aktivasyonu manuel olabilir; hesap/işletme plan bilgisini gerçek veriden göster.
 - **Kabul:** Şube seçimi yeni bir üst tenant hiyerarşisi varsaymaz. Dil seçimi tüm üç koldaki ilgili metin/tarih/sayıları etkiler; eksik çeviri teknik anahtar göstermez. Plan/erişim durumu API'de uygulanır; bakım/sona erme davranışı geçmiş müşteri randevusu yönetimini belirsiz bırakmaz. Otomatik abonelik çekimi yapılmış sayılmaz.
 - **Devir:** Menü/route eşleştirmesi, desteklenen diller, plan durumları ve referanstaki kalan açıkların listesi.
+- **Boş eylem audit'i:** F16-08 genel “temizlik” diye kapanmaz. Üç ürün kolunda görünür CTA/menu/tab/button listesi çıkarılır ve her biri `çalışıyor | açıkça disabled/upcoming | kaldırıldı` olarak sınıflanır. PRODUCT_SPEC'in “var olmayan özellik tamamlanabilir işlem gibi sunulmaz” kuralı bu listeyle kanıtlanır; boş buton, sahte route veya sonsuz spinner açık bırakılmaz.
 
 G16 için sekiz görevin kabulü ve referans matrisi birlikte kapanır. Adisyon/rapor formunun görsellerde görünmeyen ayrıntıları YZT tasarımı olarak belgelenir; rakibin bilinmeyen davranışı hakkında iddia kurulmaz.
 - **v3 bakım sınırı:** F10/F12/F13’te kurulan ortak metin/tarih/tutar sınırını kullan; tüm ekranları yeni framework’le yeniden yazma. Plan/erişim modeli gelecekteki PDF abonelik/AI kredi sistemini bu MVP’ye taşımaz.
