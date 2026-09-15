@@ -43,11 +43,18 @@ async function waitForForm(buttonText: string, timeoutMs = 3_000) {
   return { button: undefined, form: null };
 }
 
+function articleFormState(label: string) {
+  const form = article(label)?.querySelector<HTMLFormElement>('form') ?? null;
+  const button = form?.querySelector<HTMLButtonElement>('button[type="submit"],button:not([type])') ?? null;
+  return { form, button };
+}
+
 async function waitForArticleField(label: string, name: string, timeoutMs = 3_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const field = article(label)?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(name)}"]`) ?? null;
-    if (field) return field;
+    const { form, button } = articleFormState(label);
+    const field = form?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(name)}"]`) ?? null;
+    if (field && button && !button.disabled) return field;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
   return null;
@@ -56,8 +63,7 @@ async function waitForArticleField(label: string, name: string, timeoutMs = 3_00
 async function waitForArticleSubmit(label: string, timeoutMs = 3_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const form = article(label)?.querySelector<HTMLFormElement>('form') ?? null;
-    const button = form?.querySelector<HTMLButtonElement>('button[type="submit"],button:not([type])') ?? null;
+    const { form, button } = articleFormState(label);
     if (form && button && !button.disabled) return { form, button };
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
