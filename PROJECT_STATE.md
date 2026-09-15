@@ -1,12 +1,12 @@
 # YZT Randevu — Doğrulanmış mevcut durum
 
-**Kontrol: 14 Eylül 2026.** Bu dosya yalnız main'de doğrulanmış runtime durumunu ve aktif entegrasyon sınırını tutar. Canlı görev/sahiplik `TASKS.md`, bağımlılıklar `ROADMAP.md`, koordinasyon/conflict/staging kararları Issue #65 içindedir.
+**Kontrol: 15 Eylül 2026.** Bu dosya yalnız main'de doğrulanmış runtime durumunu ve aktif entegrasyon sınırını tutar. Canlı görev/sahiplik `TASKS.md`, bağımlılıklar `ROADMAP.md`, koordinasyon/conflict/staging kararları Issue #65 içindedir.
 
 ## Main referansı
 
 Bu dosya **exact current main SHA'yı bilerek içine gömmez**; belgeyi main'e merge etmek SHA'yı yeniden değiştirip kendi kendini bayatlatır. Güncel exact SHA için repository `main` ref'i otoritedir.
 
-Son runtime-affecting ürün baseline'ı **F10-03 / PR #72**'dir; merge commit `0be2a5bdd857fe95625ea56374aab6cb3fbdbd24`, merge sonrası CI #643 başarılıdır. Sonraki PR #73, #69, #78 ve #68 main'i yalnız state/brand/research docs ile ilerletti; runtime davranışını değiştirmedi. Docs-only zincir PR #68 merge sonrası CI #686'ya kadar yeşildir.
+Son runtime-affecting ürün baseline'ı **F10-05 forward repair / PR #87**'dir. Kabul adayı `08be2296bea585f30b9ea4db537ac070edbe7230`, merge commit `56ef3be734369e329a30406ea8a66a5eb9ef5993`; exact-head CI #938 ve merge sonrası main CI #948 başarılıdır. R1 security/DB/access ve R2 browser/integration bağımsız kapıları ACCEPTABLE sonuçlanmıştır; hosted-only residual olmadığı için bu repair için ayrıca staging açılmamıştır.
 
 Önceki ana ürün kapanışları:
 
@@ -14,7 +14,8 @@ Son runtime-affecting ürün baseline'ı **F10-03 / PR #72**'dir; merge commit `
 - **G09 / F09-01…05:** tamamlandı.
 - **F10-01:** ortak oturum/parola akışları tamamlandı.
 - **F10-02:** davet/üyelik/rol, mali izinler, deactivation/last-owner sınırı tamamlandı; staging #30 + bağımsız security/DB review geçti.
-- **F10-03:** ikinci işletme, `/setup` onboarding, owner-as-staff, bounded onboarding snapshot, tenant switch stale-state izolasyonu ve fail-closed public readiness tamamlandı; PR #72 merge + Ajan A final review geçti.
+- **F10-03:** ikinci işletme, `/setup` onboarding, owner-as-staff, bounded onboarding snapshot, tenant switch stale-state izolasyonu ve fail-closed public readiness tamamlandı; PR #72 merge + bağımsız review geçti.
+- **F10-05:** işletme müşteri kayıtları + customer authority forward repair tamamlandı. Recovery direct customer-bearing read RPC'lerinden fail-closed edilir; canonical customer çözümü phone/email ambiguity'de arbitrary winner seçmez; booking CRM master'ı sessizce değiştirmez; `/customers` A↔B stale izolasyonu, 360/390, exclusive states, keyboard ve optimistic-conflict recovery gerçek Chrome ile doğrulandı.
 - **F12-01:** görsel yön/akış sözleşmesi tamamlandı.
 - **F17-01/02:** staging ve CI temeli tamamlandı.
 
@@ -24,19 +25,19 @@ Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekra
 
 | Alan | Doğrulanmış durum | Sonraki iş |
 | --- | --- | --- |
-| Auth / Membership / tenant | F10-01 + S01/S02 + F10-02/03; recovery normal tenant authority kazanamaz; business switch Membership ile doğrulanır | F10-04 / F10-05 |
+| Auth / Membership / tenant | F10-01 + S01/S02 + F10-02/03/05; recovery normal tenant authority kazanamaz ve customer-bearing direct RPC'lerde standard-session guard vardır; business switch Membership ile doğrulanır | F10-04 / F10-06 |
 | Hizmet / personel / eşleşme | Faz 3 temeli + F10-03 owner-as-staff; StaffProfile ile Membership ayrı kimlikler | F10-04, sonra F12-03 |
 | Mesai / availability | Faz 4 + F10-03 structural publish readiness | F10-04, F11 |
-| Booking / customer snapshot / audit | Faz 5 + F09 + S07; geçmiş snapshot ve idempotency sınırları korunur | F10-05, F11, F13 |
+| Booking / müşteri / snapshot / audit | Faz 5 + F09 + S07 + F10-05; geçmiş appointment snapshotları korunur, canonical customer çözümü tenant-scoped ve ambiguity fail-closed'dur, booking mevcut CRM master'ı sessizce değiştirmez | F11, F13 |
 | Public booking | Faz 6–7 + F09/S04/S07; F10-03 readiness business/services/staff/slots/create yüzeylerini fail-closed kapatır | F12-02+ |
 | Onboarding / business switch | F10-03 main'de; gerçek domain state'inden resume, bounded snapshot, A/B stale-state izolasyonu | F10-04 / F12-02 |
 | Takvim | Gün/hafta temeli mevcut | F13 |
 | Bildirim / outbox | F09-03/05 + S03 + S07 | F16-02 |
-| Kaynak limitleri | S04 quota + S07 runtime/read budgets + F10-03 bounded onboarding | F11/F13/F17-03 takipleri |
+| Kaynak limitleri | S04 quota + S07 runtime/read budgets + F10-03 bounded onboarding + F10-05 bounded customer/history reads | F11/F13/F17-03 takipleri |
 | CI / staging | F17-01/02 + S05/S06; required CI gate ve staging rollback/rotation temeli | F17-03 |
 | Future DB ACL | S08; yeni nesnelerde explicit grant/RLS disiplini | Her yeni migration + F17-03 |
 | Görsel ürün sözleşmesi | F12-01 main'de | F12-02+ |
-| Marketing brand/motion | PR #69 ile `docs/brand/**` main'de; scroll-scrub video + gerçek DOM UI production yönü onaylı | MKT-01 / PR #77 |
+| Marketing brand/motion | PR #69 ile `docs/brand/**` main'de; PR #77 izole video + WebP/canvas A/B implementation'ı green experiment head'e ulaştı, production renderer henüz seçilmedi | MKT-01 / PR #77 |
 | SalonApp / adisyon / tahsilat | Henüz ürün uygulaması yok | F14 |
 | Ürün / stok / masraf / kasa | Henüz ürün uygulaması yok | F15 |
 | Paket / promosyon / prim / yorum / dil | Planlandı | F16 |
@@ -44,20 +45,7 @@ Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekra
 
 ## Aktif branch / PR'lar — henüz main değildir
 
-Aşağıdaki işler aktif olsa da bu dosyanın doğrulanmış-main tablosuna dahil değildir:
-
-### PR #74 — F10-05 / Ajan A
-
-`f10-05-business-customers`
-
-- tenant-scoped müşteri arama/listesi,
-- K03 pagination,
-- create/edit + duplicate/concurrency sınırı,
-- appointment snapshot geçmişi,
-- `/customers` UI ve stale tenant-response koruması,
-- auth/ACL negatifleri.
-
-Draft PR'dır. Exact-head CI + bağımsız review + coordinator kabulü olmadan main sayılmaz.
+Aşağıdaki işler aktif veya park durumda olsa da doğrulanmış-main tablosuna dahil değildir:
 
 ### PR #75 — F10-04 / Ajan C
 
@@ -69,7 +57,7 @@ Draft PR'dır. Exact-head CI + bağımsız review + coordinator kabulü olmadan 
 - F10-03 readiness ile uyum,
 - `/availability` yönetim yüzeyi.
 
-Draft PR'dır. `worker/app.ts` ve `src/main.tsx` F10-05 lane'ine bırakılmıştır.
+Draft/stale branch'tir. Shared writer sırası #76 sonrasıdır; claim açıldığında latest main'e taşınır ve kabul head'i yeniden üretilir.
 
 ### PR #76 — F12-02 / Ajan B
 
@@ -83,48 +71,48 @@ Draft PR'dır. `worker/app.ts` ve `src/main.tsx` F10-05 lane'ine bırakılmışt
 - orphan cleanup ve fallback,
 - F12-01 responsive/a11y sözleşmesi.
 
-Draft PR'dır. Gerçek marka/fotoğraf varlıklarının eksikliği işlevsel kodu engellemez; final gerçek-varlık kabulü ayrıca kaydedilir.
+F10-05 repair artık main'de olduğundan shared writer sırası #76'ya açılır. Branch latest main'e tek seferde taşınırken customer authority ve ortak CI/router değişiklikleri korunur. Açık lifecycle blocker: interrupted `pending/deleting` medya için bounded grace + race-safe reclaim + idempotent Storage cleanup. Final FOCUSED kabulde R1 ve dar R2 gerçek risk nedeniyle kullanılır; staging yalnız hosted Storage davranışı lokalde kanıtlanamıyorsa açılır.
 
-### PR #77 — MKT-01 / ChatGPT-Sol
+### PR #77 — MKT-01 / FRONTEND 2
 
 `mkt-01-scroll-motion-homepage`
 
-İlk izole marketing slice'ı:
+İzole marketing lane'i:
 
-- `src/marketing/**` floating nav + `Randevu kolay.` hero shell,
-- sticky transformation stage,
-- native scroll progress → deterministic video scrub,
-- Frame 05–08 DOM story overlay'leri,
-- mobile crop,
-- reduced-motion / video-failure fallback,
-- production motion asset path contract.
+- `src/marketing/**` homepage ve DOM story katmanları,
+- repaired deterministic video scrub control,
+- 121-frame WebP/canvas A/B renderer,
+- bounded fetch concurrency + decoded LRU cache,
+- mobile/desktop renderer ayrımı,
+- reduced-motion ve media-failure static fallback.
 
-PR #77 bilinçli olarak `src/main.tsx`, `src/App.tsx`, `TASKS.md`, worker/DB/migration alanlarına dokunmaz. Route/entry entegrasyonu shared-file sırası açılınca yapılır. Draft PR'dır; gerçek motion binary + browser smoke tamamlanmadan main sayılmaz.
+Current isolated experiment green'dir; fakat gerçek Kling frame binary toplam byte/perf benchmark'ı ve deployed real-phone/cellular kabulü yapılmadan production renderer seçilmez. Shared `/` marketing + `/app` workspace cutover #76/shared-entry sırası açılana kadar kapalıdır.
 
 ## Aktif entegrasyon sırası
 
-F10-04 ve F10-05 `scripts/ci-postgres-plan.json` ortak alanına ihtiyaç duyuyor.
+Bu sıra ürün önceliğinden çok shared-file conflict ve dependency güvenliği içindir:
 
-1. **F10-05 / PR #74** CI-plan tek-yazıcısı olarak önce entegre edilir.
-2. #74 kabul+merge sonrası **F10-04 / PR #75** yeni main'e taşınır ve yalnız kendi CI-plan adımı eklenir.
-3. F12-02 bağımsız ilerler; ortak migration/router/CI alanına girerse Issue #65'te sıra belirlenir.
-4. MKT-01 / PR #77 `src/marketing/**` içinde izole kalır; ortak `src/main.tsx` / `src/App.tsx` route bağlantısı aktif entry yazıcısı kapandıktan sonra coordinator sırasıyla yapılır.
+1. **F12-02 / PR #76** latest main'e taşınır; interrupted-media lifecycle blocker'ı kapatılır ve exact-head CI + risk-uygun bağımsız kabul alınır.
+2. **F10-04 / PR #75** #76 merge sonrası latest main'e taşınır; shared CI/router alanında yalnız kendi eklerini uygular.
+3. **MKT-01 / PR #77** izole lane'de park kalır; production route/entry + gerçek binary/deployed media kabulü shared entry sırası açıldığında yapılır.
 
-Bu sıra ürün önceliği değil conflict önleme sırasıdır.
+Canlı queue için Issue #65 otoritedir; eski PR gövdeleri veya eski head gözlemleri görev sırası oluşturmaz.
 
 ## Marketing / site track
 
-**MKT-01 / Issue #70 aktif ve ürün sahibi onaylıdır.** 54 MVP ürün/teknik görevinin dışında ayrı bir marketing track'idir. Bağlayıcı tasarım kaynağı `docs/brand/**` ve PR #69'dur; ilk implementation slice'ı PR #77'dir.
+**MKT-01 / Issue #70 ürün sahibi onaylıdır.** 54 MVP ürün/teknik görevinin dışında ayrı marketing track'idir. Bağlayıcı tasarım kaynağı `docs/brand/**` ve PR #69'dur; implementation PR #77'dir.
 
 Güncel production yönü:
 
-- sticky/pinned stage,
-- deterministik scroll-scrub video,
+- sticky/pinned transformation stage,
 - gerçek React/HTML/CSS overlay'leri,
-- dört story state,
-- mobile ve `prefers-reduced-motion` fallback,
+- repaired video scrub bir kontrol renderer'ı olarak korunur,
+- ayrı WebP kareleri + tek canvas renderer eşit production adayıdır,
+- WebP yolu tüm kareleri decode edip RAM'de tutmaz; bounded decoded cache kullanır,
+- mobile ve `prefers-reduced-motion` davranışı fail-closed'dur,
 - scroll hijack yok,
-- kilitlenmemiş fiyat veya tamamlanmamış ürün işlevi gerçekmiş gibi yayınlanmaz.
+- kilitlenmemiş fiyat veya tamamlanmamış ürün işlevi gerçekmiş gibi yayınlanmaz,
+- production renderer kararı synthetic CI ile değil gerçek binary byte/perf + gerçek telefon/hücresel davranışla verilir.
 
 ## Açık ama tamamlanmış kartları yeniden açmayan takipler
 
@@ -133,17 +121,19 @@ Güncel production yönü:
 - S07 routine C4 skip receipt ve bounded DB-runner diagnostics.
 - S08 creator-role/exposed-schema kontrolü.
 - backup/restore/rollback ve production gözlemi.
-- auth/session hop count, calendar hot-path round trips ve public/marketing/private workspace bundle ayrımı sayısal ölçülür; ölçülmeden sırf var oldukları için blocker yapılmaz.
+- auth/session provider + membership/business hop count, calendar hot-path round-trip sayısı / p50 / p95 / waterfall ve public/marketing/private workspace bundle ayrımı sayısal ölçülür; ölçülmeden sırf var oldukları için blocker yapılmaz.
 
 ### F13-01 / F13-02 — mutable-key pagination / güncellik
 
 S07 keyset pagination, dışarıdan eşzamanlı sıralama-anahtarı mutasyonu **yokken** `(timestamp,id)` ile skip/repeat üretmeden ilerler. Mutable risk `appointments.starts_at` alanıdır; sayfalar arasında `starts_at` değişirse continuation skip/repeat üretebilir ve snapshot-consistency garantisi verilmez. `created_at` bu mutable-key riskinin parçası değildir. Gerçek eşzamanlı yazar/stale-continuation testi **F13-01**'de; gün/hafta/liste için tarih aralığı dahil-hariç + işletme timezone filtre sözleşmesi **F13-02**'de kapanır. Bu dblink commit yarışı C4 rollback paketinin işi değildir.
 
-Bu takipler GS/F10-02/F10-03'ü geriye dönük yeniden açmaz.
+F13-02 date-range API'si mevcut `list_appointments_page(uuid,integer,timestamptz,uuid)` imzasını genişletecekse PostgreSQL function identity değişimi önceden planlanır: forward migration eski exact signature'ı explicit kapatır/drop eder, yeni signature'ı create eder, narrow GRANT/caller ve clean+upgrade kanıtı aynı değişimde taşınır. `CREATE OR REPLACE` ile parametre listesi sessizce değişiyormuş gibi davranılmaz.
+
+Bu takipler GS/F10-02/F10-03/F10-05'i geriye dönük yeniden açmaz.
 
 ## Faz direktifleri
 
-Head'e bağlı repo gözlemleri ilgili `docs/plan/phase-*.md` kartına `Hazır olan` / `Tuzak` olarak taşınır ve doğrulandığı head SHA'sını taşır. Kart açılırken current main'de yeniden doğrulanmadan “mevcut durum” sayılmaz. PR #88, `5e789ad` dış inceleme direktiflerini F10-06 ve F11–F17 kartlarına bu biçimde taşır; sıra önerilerini current dependency graph ile çelişiyorsa otorite kabul etmez.
+Head'e bağlı repo gözlemleri ilgili `docs/plan/phase-*.md` kartına `Hazır olan` / `Tuzak` olarak taşınır ve doğrulandığı head SHA'sını taşır. Kart açılırken current main'de yeniden doğrulanmadan “mevcut durum” sayılmaz. Carry-forward kısaltması pozitif garanti, negatif sınır, exact risk alanı ve exact hedef kartı silemez.
 
 ## Ortam ve korunacak sınırlar
 
@@ -154,6 +144,7 @@ Head'e bağlı repo gözlemleri ilgili `docs/plan/phase-*.md` kartına `Hazır o
 - Staging/CI yeşili production/pilot kabulü değildir.
 - S07 retention müşteri/randevu ana kaydını otomatik silmez.
 - Yeni DB nesnesi explicit grant ve table/view için RLS/policy ister.
+- Auth/recovery kapanışı yalnız raw table grant denetimi değildir; korunan veriyi döndüren directly executable `SECURITY DEFINER` RPC/function/view/Data API yüzeyleri de capability envanterine girer.
 
 ## Ürün sınırı
 
