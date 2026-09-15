@@ -65,3 +65,5 @@ echo "Browser smoke passed with $CHROME_BIN at $BASE_URL/."
 
 CHROME_BIN="$CHROME_BIN" node scripts/browser-booking-recovery.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f10-onboarding.mjs
+CHROME_BIN="$CHROME_BIN" node scripts/browser-f10-customers.mjs
+CHROME_BIN="$CHROME_BIN" node scripts/browser-f10-customers-conflict.mjs

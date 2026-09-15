@@ -45,6 +45,7 @@ type CustomerAppointment = {
 type PageInfo = { limit: number; hasMore: boolean; nextCursor: string | null };
 type CustomerListResponse = { membership: Membership; customers: Customer[]; page: PageInfo };
 type HistoryResponse = { appointments: CustomerAppointment[]; page: PageInfo };
+type LoadState = 'idle' | 'loading' | 'success' | 'error';
 
 function message(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -74,6 +75,10 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [listState, setListState] = useState<LoadState>('idle');
+  const [listError, setListError] = useState('');
+  const [historyState, setHistoryState] = useState<LoadState>('idle');
+  const [historyError, setHistoryError] = useState('');
   const listController = useRef<AbortController | null>(null);
   const historyController = useRef<AbortController | null>(null);
   const pageController = useRef<AbortController | null>(null);
@@ -114,22 +119,37 @@ export default function CustomersPage() {
     const params = new URLSearchParams({ limit: '25' });
     if (query.trim()) params.set('search', query.trim());
     if (cursor) params.set('cursor', cursor);
+    if (!append) {
+      setListState('loading');
+      setListError('');
+    }
     try {
       const result = await api<CustomerListResponse>(`/api/customers?${params}`, { signal: controller.signal });
       if (controller.signal.aborted || generation !== listGeneration.current || tenant !== tenantGeneration.current) return;
       setCustomers((current) => append ? [...current, ...result.customers] : result.customers);
       setCustomerPage(result.page);
       if (!append) {
+        setListState('success');
         const stillSelected = result.customers.some((row) => row.customer_id === selectedIdRef.current);
         if (!stillSelected) {
           setSelectedCustomerId(null);
           setHistory([]);
           setHistoryPage(null);
+          setHistoryState('idle');
+          setHistoryError('');
         }
       }
     } catch (error) {
       if (controller.signal.aborted || generation !== listGeneration.current || tenant !== tenantGeneration.current) return;
-      setNotice(message(error, 'Müşteriler yüklenemedi.'));
+      const text = message(error, 'Müşteriler yüklenemedi.');
+      if (append) {
+        setNotice(text);
+      } else {
+        setCustomers([]);
+        setCustomerPage(null);
+        setListError(text);
+        setListState('error');
+      }
     }
   }, [setSelectedCustomerId]);
 
@@ -141,14 +161,27 @@ export default function CustomersPage() {
     const tenant = tenantGeneration.current;
     const params = new URLSearchParams({ limit: '25' });
     if (cursor) params.set('cursor', cursor);
+    if (!append) {
+      setHistoryState('loading');
+      setHistoryError('');
+    }
     try {
       const result = await api<HistoryResponse>(`/api/customers/${customerId}/history?${params}`, { signal: controller.signal });
       if (controller.signal.aborted || generation !== historyGeneration.current || tenant !== tenantGeneration.current) return;
       setHistory((current) => append ? [...current, ...result.appointments] : result.appointments);
       setHistoryPage(result.page);
+      if (!append) setHistoryState('success');
     } catch (error) {
       if (controller.signal.aborted || generation !== historyGeneration.current || tenant !== tenantGeneration.current) return;
-      setNotice(message(error, 'Randevu geçmişi yüklenemedi.'));
+      const text = message(error, 'Randevu geçmişi yüklenemedi.');
+      if (append) {
+        setNotice(text);
+      } else {
+        setHistory([]);
+        setHistoryPage(null);
+        setHistoryError(text);
+        setHistoryState('error');
+      }
     }
   }, []);
 
@@ -186,6 +219,8 @@ export default function CustomersPage() {
     setSelectedCustomerId(null);
     setHistory([]);
     setHistoryPage(null);
+    setHistoryState('idle');
+    setHistoryError('');
     await loadCustomers(search, null, false);
   }
 
@@ -196,9 +231,13 @@ export default function CustomersPage() {
     cancelBusinessScopedReads();
     setCustomers([]);
     setCustomerPage(null);
+    setListState('idle');
+    setListError('');
     setSelectedCustomerId(null);
     setHistory([]);
     setHistoryPage(null);
+    setHistoryState('idle');
+    setHistoryError('');
     try {
       await api('/api/businesses/select', {
         method: 'POST',
@@ -274,6 +313,8 @@ export default function CustomersPage() {
     setSelectedCustomerId(customerId);
     setHistory([]);
     setHistoryPage(null);
+    setHistoryState('loading');
+    setHistoryError('');
     setNotice('');
     void loadHistory(customerId);
   }
@@ -319,13 +360,17 @@ export default function CustomersPage() {
         <section className="customers-card"><h2>İşletme seçimi gerekli</h2><p>Müşteri kayıtlarını açmak için önce yetkili olduğunuz bir işletmeyi seçin.</p></section>
       ) : (
         <div className="customers-layout">
-          <section className="customers-card customers-list-panel">
+          <section className="customers-card customers-list-panel" aria-busy={listState === 'loading'}>
             <div className="customers-section-head"><div><p className="customers-eyebrow">KAYITLAR</p><h2>Müşteriler</h2></div><span>{customers.length} gösteriliyor</span></div>
             <form className="customers-search" onSubmit={submitSearch}>
-              <input value={search} maxLength={120} onChange={(event) => setSearch(event.target.value)} placeholder="Ad, telefon veya e-posta ara" />
-              <button disabled={busy}>Ara</button>
+              <input aria-label="Müşteri ara" value={search} maxLength={120} onChange={(event) => setSearch(event.target.value)} placeholder="Ad, telefon veya e-posta ara" />
+              <button disabled={busy || listState === 'loading'}>Ara</button>
             </form>
-            {customers.length ? (
+            {listState === 'loading' ? (
+              <p className="customers-muted" role="status">Müşteriler yükleniyor…</p>
+            ) : listState === 'error' ? (
+              <p className="customers-error" role="alert">{listError}</p>
+            ) : customers.length ? (
               <ul className="customers-list">
                 {customers.map((customer) => (
                   <li key={customer.customer_id}>
@@ -336,8 +381,10 @@ export default function CustomersPage() {
                   </li>
                 ))}
               </ul>
-            ) : <p className="customers-muted">Bu aramada müşteri bulunamadı.</p>}
-            {customerPage?.hasMore && customerPage.nextCursor && (
+            ) : listState === 'success' ? (
+              <p className="customers-muted">Bu aramada müşteri bulunamadı.</p>
+            ) : null}
+            {listState === 'success' && customerPage?.hasMore && customerPage.nextCursor && (
               <button className="customers-more" type="button" disabled={busy} onClick={() => void loadCustomers(search, customerPage.nextCursor, true)}>Daha fazla göster</button>
             )}
           </section>
@@ -354,17 +401,25 @@ export default function CustomersPage() {
                   <button disabled={busy}>Bilgileri güncelle</button>
                 </form>
                 <div className="customers-history-head"><h3>Randevu geçmişi</h3><span>Geçmiş bilgiler randevu anındaki snapshotlardan gelir.</span></div>
-                {history.length ? (
-                  <ol className="customers-history">
-                    {history.map((appointment) => (
-                      <li key={appointment.appointment_id}>
-                        <div><strong>{appointment.service_name_snapshot}</strong><span>{localDateTime(appointment.starts_at)} · {appointment.staff_name_snapshot}</span></div>
-                        <div className="customers-history-meta"><span>{appointment.customer_name_snapshot}</span><span>{tryAmount(appointment.price_minor_snapshot, appointment.currency_snapshot)}</span><span>{appointment.status}</span></div>
-                      </li>
-                    ))}
-                  </ol>
-                ) : <p className="customers-muted">Bu müşterinin randevu geçmişi yok.</p>}
-                {historyPage?.hasMore && historyPage.nextCursor && (
+                <div aria-busy={historyState === 'loading'}>
+                  {historyState === 'loading' ? (
+                    <p className="customers-muted" role="status">Randevu geçmişi yükleniyor…</p>
+                  ) : historyState === 'error' ? (
+                    <p className="customers-error" role="alert">{historyError}</p>
+                  ) : history.length ? (
+                    <ol className="customers-history">
+                      {history.map((appointment) => (
+                        <li key={appointment.appointment_id}>
+                          <div><strong>{appointment.service_name_snapshot}</strong><span>{localDateTime(appointment.starts_at)} · {appointment.staff_name_snapshot}</span></div>
+                          <div className="customers-history-meta"><span>{appointment.customer_name_snapshot}</span><span>{tryAmount(appointment.price_minor_snapshot, appointment.currency_snapshot)}</span><span>{appointment.status}</span></div>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : historyState === 'success' ? (
+                    <p className="customers-muted">Bu müşterinin randevu geçmişi yok.</p>
+                  ) : null}
+                </div>
+                {historyState === 'success' && historyPage?.hasMore && historyPage.nextCursor && (
                   <button className="customers-more" type="button" disabled={busy} onClick={() => void loadHistory(selected.customer_id, historyPage.nextCursor, true)}>Daha eski randevuları göster</button>
                 )}
               </>
