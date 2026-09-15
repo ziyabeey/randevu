@@ -38,7 +38,8 @@ async function articleWhenReady(label: string, timeoutMs = 3_000) {
   const deadline = performance.now() + timeoutMs;
   while (performance.now() < deadline) {
     const candidate = article(label);
-    if (candidate) return candidate;
+    const submit = candidate?.querySelector<HTMLButtonElement>('button[type="submit"],button:not([type])');
+    if (candidate && submit && !submit.disabled) return candidate;
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
   }
   return null;
