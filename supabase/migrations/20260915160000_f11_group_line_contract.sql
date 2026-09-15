@@ -180,6 +180,13 @@ alter table public.appointment_events
   alter column group_id set not null,
   alter column group_version set not null;
 
+-- The legacy schema uses appointment_id as this table's primary key. PostgreSQL
+-- cannot relax that column while it still participates in the primary key, so
+-- move the arbiter first; the historical constraint name is restored below on
+-- group_id for old ON CONFLICT ... ON CONSTRAINT callers.
+alter table public.appointment_management_capabilities
+  drop constraint if exists appointment_management_capabilities_pkey;
+
 alter table public.appointment_management_capabilities
   alter column appointment_id drop not null,
   alter column group_id set not null;
