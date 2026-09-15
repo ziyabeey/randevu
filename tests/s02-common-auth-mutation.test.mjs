@@ -388,17 +388,19 @@ await test('S02 legitimate cookie mutation works with exact Origin and matching 
     calls.push(path);
     if (path === '/auth/v1/user') return json(user);
     if (path === '/rest/v1/memberships') return json([membership]);
-    assert.equal(path, '/rest/v1/rpc/replace_business_hours');
-    assert.equal(JSON.parse(init.body).p_business_id, businessId);
+    assert.equal(path, '/rest/v1/rpc/replace_business_hours_guarded');
+    const body = JSON.parse(init.body);
+    assert.equal(body.p_business_id, businessId);
+    assert.deepEqual(body.p_expected_intervals, []);
     return json([]);
   };
   try {
     const response = await app.request('http://localhost/api/availability/business-hours/1', {
       method: 'PUT', headers: { Origin: 'http://localhost', Cookie: cookieHeader(`yzt_csrf=${csrfValue}`), 'X-YZT-CSRF': csrfValue, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intervals: [{ start: '09:00', end: '17:00' }] }),
+      body: JSON.stringify({ intervals: [{ start: '09:00', end: '17:00' }], expectedIntervals: [] }),
     }, env);
     assert.equal(response.status, 200);
-    assert.deepEqual(calls, ['/auth/v1/user', '/rest/v1/memberships', '/rest/v1/rpc/replace_business_hours']);
+    assert.deepEqual(calls, ['/auth/v1/user', '/rest/v1/memberships', '/rest/v1/rpc/replace_business_hours_guarded']);
   } finally { globalThis.fetch = realFetch; }
 });
 
