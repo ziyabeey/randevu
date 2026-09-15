@@ -1,6 +1,6 @@
 # YZT Randevu — Görev takip tablosu
 
-**Plan v3 · güncel ana tablo 15 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 21 `Tamamlandı`, 33 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
+**Plan v3 · güncel ana tablo 15 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 22 `Tamamlandı`, 32 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
 
 **GS stabilization kapısı kapalıdır.** S01…S08 kabul edildi; GS artık yeni özellikleri engelleyen bir önkoşul değildir. [GS kapanış devri](docs/handoffs/GS.md) tarihsel kanıt kaynağıdır.
 
@@ -40,7 +40,7 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | [F10-01](docs/plan/phase-10.md#f10-01) | Ortak oturum ve parola akışları | F09-05 | Tamamlandı | ChatGPT / 2026-09-12T08:56Z | `f10-01-auth-session-password` · [PR #31](https://github.com/ziyabeey1-ai/randevu/pull/31) · [Devir](docs/handoffs/F10-01.md) · CI `34684288886` · staging `34684481828` success: Origin/CSRF, refresh rotation, güncel üyelik, hosted signup/recovery ve parola rotation · Sonraki inceleme açıkları S01/S02 |
 | [F10-02](docs/plan/phase-10.md#f10-02) | Davet, üyelik ve rol yönetimi | F10-01, GS | Tamamlandı | ChatGPT + koordinatör kabul / 2026-09-14 | [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32) · `f10-02-invites-memberships-roles` · [Devir](docs/handoffs/F10-02.md) · kabul head `958bb27` · [CI #613](https://github.com/ziyabeey1-ai/randevu/actions/runs/34823672970) · [staging #30](https://github.com/ziyabeey1-ai/randevu/actions/runs/34824049900) success: smoke + hosted auth + iki gerçek hesaplı invite/role/permission/deactivation/last-owner kabulü · Ajan A final güvenlik/DB review **ACCEPTABLE** |
 | [F10-03](docs/plan/phase-10.md#f10-03) | İşletme geçişi ve kurulum akışı | F10-02 | Tamamlandı | Ajan C + koordinatör kabul / 2026-09-14 | `f10-03-business-switch-onboarding` · base `702083b` · [PR #72](https://github.com/ziyabeey1-ai/randevu/pull/72) · [Devir](docs/handoffs/F10-03.md) · repair head `d8bf729` · review head `5e51681` · [CI #640](https://github.com/ziyabeey1-ai/randevu/actions/runs/34832787839) success: bounded onboarding snapshot + stale public business/services/staff/slots/create fail-closed + iki işletmeli Chrome akışı · Ajan A final security/DB/access review **ACCEPTABLE** · DANIŞMA 2 final kabulü |
-| [F10-04](docs/plan/phase-10.md#f10-04) | Hizmet, personel ve çalışma ayarları | F10-03 | İncelemede | Ajan C / 2026-09-15 | `f10-04-catalog-hours-management` · [PR #75](https://github.com/ziyabeey1-ai/randevu/pull/75) draft · [Devir](docs/handoffs/F10-04.md) · repair/final-review binding head `c85b73c9` · [CI #1025](https://github.com/ziyabeey1-ai/randevu/actions/runs/34976415439) success: R1 read-session guard + R2 authoritative reload/mobile regression blocker'ları kapalı · docs-only final marker exact-head full CI + fresh R1/R2 bekleniyor |
+| [F10-04](docs/plan/phase-10.md#f10-04) | Hizmet, personel ve çalışma ayarları | F10-03 | Tamamlandı | Ajan C + R1/R2 + koordinatör kabul / 2026-09-15 | `f10-04-catalog-hours-management` · [PR #75](https://github.com/ziyabeey1-ai/randevu/pull/75) · [Devir](docs/handoffs/F10-04.md) · semantic repair head `c85b73c9` · final review head `52db2016` · [CI #1027](https://github.com/ziyabeey1-ai/randevu/actions/runs/34979201990) success · R1 `5682089365` **ACCEPTABLE** · R2 `5682157130` **ACCEPTABLE** · main `3c413fa` · [main CI #1028](https://github.com/ziyabeey1-ai/randevu/actions/runs/34984004989) success · hosted-only residual olmadığı için staging açılmadı |
 | [F10-05](docs/plan/phase-10.md#f10-05) | İşletmenin müşteri kayıtları | F10-03 | Tamamlandı | Ajan A + R1/R2 + koordinatör kabul / 2026-09-15 | `f10-05-customer-authority-repair` · [PR #87](https://github.com/ziyabeey1-ai/randevu/pull/87) · [Repair devir](docs/handoffs/F10-05-repair.md) · semantic head `0f503e6` · final test head `08be229` · [CI #938](https://github.com/ziyabeey1-ai/randevu/actions/runs/34878556411) success · R1 `5667991719` **ACCEPTABLE** · R2 `5673736447` **ACCEPTABLE** · main `56ef3be` · [main CI #948](https://github.com/ziyabeey1-ai/randevu/actions/runs/34921413177) success |
 | [F10-06](docs/plan/phase-10.md#f10-06) | Gerçek hesaplarla ortak yönetim kabulü | F10-04, F10-05, F17-01 | Planlandı | — | — |
 | [F11-01](docs/plan/phase-11.md#f11-01) | Grup/satır sözleşmesi ve ileri migration | F10-02, F12-03 | Planlandı | — | — |
@@ -91,9 +91,9 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | --- | --- | --- |
 | GS | S01…S08 | **Kapalı** — S01…S08 tamamlandı; [GS kapanış devri](docs/handoffs/GS.md) |
 | G09 | F09-01…F09-05 | **Kapalı** — PR #30 / staging `34681540142`; stabilization takipleri GS içinde kapatıldı |
-| G10 | F10-01…F10-06 | Açık — F10-01/02/03/05 tamamlandı; F10-04 sırada, F10-06 F10-04'ü bekler |
+| G10 | F10-01…F10-06 | Açık — F10-01/02/03/04/05 tamamlandı; yalnız F10-06 kaldı |
 | G11 | F11-01…F11-04 | Açık — F12-03 fiyat veri desteği önce gerekir |
-| G12 | F12-01…F12-05 | Açık — F12-01/02 tamamlandı; F12-03 F10-04'ü bekler |
+| G12 | F12-01…F12-05 | Açık — F12-01/02 tamamlandı; F12-03 artık dependency-safe açıldı |
 | G13 | F13-01…F13-04 | Açık |
 | G14 | F14-01…F14-05 | Açık |
 | G15 | F15-01…F15-04 | Açık |
