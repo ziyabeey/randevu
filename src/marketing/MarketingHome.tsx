@@ -154,8 +154,8 @@ function MarketingFooter() {
   return (
     <footer className="mkt-footer">
       <div>
-        <strong>Kepenk.ai ürünü</strong>
-        <span>randevu.kepenk.ai</span>
+        <strong>Randevu Kolay</strong>
+        <span>randevukolay.net</span>
       </div>
       <a href="#top">Yukarı dön <span aria-hidden="true">↑</span></a>
     </footer>
