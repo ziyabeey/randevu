@@ -20,7 +20,8 @@ export function isKolayAppTab(value: unknown): value is KolayAppTab {
 export function adjacentKolayAppTab(current: KolayAppTab, direction: -1 | 1): KolayAppTab {
   const index = KOLAY_APP_TABS.findIndex((tab) => tab.id === current);
   const nextIndex = (index + direction + KOLAY_APP_TABS.length) % KOLAY_APP_TABS.length;
-  return KOLAY_APP_TABS[nextIndex].id;
+  const next = KOLAY_APP_TABS[nextIndex];
+  return next?.id ?? current;
 }
 
 export function kolayAppTabLabel(tabId: KolayAppTab): string {

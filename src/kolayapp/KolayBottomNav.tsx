@@ -63,7 +63,8 @@ export default function KolayBottomNav({ activeTab, onTabChange }: Props) {
     }
     if (event.key === 'End') {
       event.preventDefault();
-      moveFocus(KOLAY_APP_TABS[KOLAY_APP_TABS.length - 1].id);
+      const lastTab = KOLAY_APP_TABS.at(-1);
+      if (lastTab) moveFocus(lastTab.id);
     }
   }
 
