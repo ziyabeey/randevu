@@ -17,7 +17,7 @@ function ReminderStory({ active }: StoryProps) {
 
   return (
     <div className="mkt-story mkt-story--reminder" aria-hidden={!active}>
-      <p className="mkt-eyebrow">{reminderReleased || customerMemoryReleased ? "Kepenk.ai sunar" : "Yakında"}</p>
+      <p className="mkt-eyebrow">{reminderReleased || customerMemoryReleased ? "Randevu Kolay" : "Yakında"}</p>
       <h2>
         {reminderReleased
           ? "Unuttu mu? Biz hatırlatırız."
@@ -100,7 +100,7 @@ function StaticTransformationFallback() {
   return (
     <section className="mkt-transformation-fallback" id="donusum" aria-labelledby="mkt-fallback-title">
       <div className="mkt-fallback-panel mkt-fallback-panel--motion-start">
-        <p className="mkt-eyebrow">Kepenk.ai sunar</p><h2 id="mkt-fallback-title">Karışıklık gider, düzen kalır.</h2><p>Müşteri kendi alsın. Müşteri detayları ve hatırlatma akışları hazır olduğunda burada gerçek ürün kanıtıyla gösterelim. Kurulumda da seni yalnız bırakmayalım.</p>
+        <p className="mkt-eyebrow">Randevu Kolay</p><h2 id="mkt-fallback-title">Karışıklık gider, düzen kalır.</h2><p>Müşteri kendi alsın. Müşteri detayları ve hatırlatma akışları hazır olduğunda burada gerçek ürün kanıtıyla gösterelim. Kurulumda da seni yalnız bırakmayalım.</p>
       </div>
       <div className="mkt-fallback-panel mkt-fallback-panel--pricing mkt-fallback-panel--motion-final">
         <p className="mkt-eyebrow">Sonuç</p><h2>Fiyatı da kolay olsun.</h2><p>Randevu kolay. İşin sana kalsın.</p>
