@@ -17,6 +17,7 @@ const ids = {
   membership: 'd3000000-0000-4000-8000-000000000001', service: 'd4000000-0000-4000-8000-000000000001',
   staff: 'd5000000-0000-4000-8000-000000000001', assignment: '2026-09-14T10:00:00.000Z',
 };
+const csrfToken = 'C'.repeat(43);
 const state = {
   service: { id: ids.service, name: 'Kesim', duration_minutes: 30, buffer_before_minutes: 0, buffer_after_minutes: 0, price_minor: 10000, currency: 'TRY', active: true, updated_at: '2026-09-14T10:00:00.000Z' },
   staff: { id: ids.staff, membership_id: null, name: 'Ada', phone: '5550000000', active: true, updated_at: '2026-09-14T10:00:00.000Z' },
@@ -66,7 +67,11 @@ const server = createServer(async (request, response) => {
     const body = request.method === 'GET' || request.method === 'HEAD' ? {} : await bodyOf(request);
     state.requests.push({ method: request.method, path: url.pathname, body });
     if (request.method === 'GET' && url.pathname === '/api/session') return sendJson(response, 200, {
-      user: { id: ids.user, email: 'owner@example.test', fullName: 'Owner' }, memberships: [], activeBusinessId: ids.business,
+      user: { id: ids.user, email: 'owner@example.test', fullName: 'Owner' },
+      memberships: [],
+      activeBusinessId: ids.business,
+      passwordRecovery: false,
+      csrfToken,
     });
     if (request.method === 'GET' && url.pathname === '/api/catalog') return sendJson(response, 200, catalog());
     if (request.method === 'GET' && url.pathname === '/api/availability/setup') return sendJson(response, 200, setup());
