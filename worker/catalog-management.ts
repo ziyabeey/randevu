@@ -113,6 +113,7 @@ catalogManagement.post('/services', async (context) => {
     || body.priceMinMinor !== undefined
     || body.priceMaxMinor !== undefined
     || body.currency !== undefined;
+  const legacyOnly = hasLegacyPrice && body.category === undefined && body.sortOrder === undefined;
 
   if (hasLegacyPrice && hasCanonicalPrice) {
     return context.json({ error: { code: 'INVALID_SERVICE', message: 'Eski ve yeni fiyat alanları aynı istekte birlikte kullanılamaz.' } }, 400);
@@ -140,22 +141,34 @@ catalogManagement.post('/services', async (context) => {
     return context.json({ error: { code: 'INVALID_SERVICE', message: 'Hizmet adı, kategori, sıralama, süre, tampon veya fiyat geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<RpcRow | RpcRow[]>(context.env, 'rest/v1/rpc/create_service_priced_guarded', {
-    method: 'POST',
-    body: JSON.stringify({
-      p_business_id: access.membership.business_id,
-      p_name: String(body.name).trim(),
-      p_duration_minutes: body.durationMinutes,
-      p_buffer_before_minutes: before,
-      p_buffer_after_minutes: after,
-      p_category: String(category).trim(),
-      p_sort_order: sortOrder,
-      p_price_type: priceType,
-      p_price_min_minor: priceMinMinor,
-      p_price_max_minor: priceMaxMinor,
-      p_currency: String(currency).trim().toUpperCase(),
-    }),
-  }, access.auth.accessToken);
+  const result = legacyOnly
+    ? await supabaseRequest<RpcRow | RpcRow[]>(context.env, 'rest/v1/rpc/create_service_guarded', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_business_id: access.membership.business_id,
+          p_name: String(body.name).trim(),
+          p_duration_minutes: body.durationMinutes,
+          p_buffer_before_minutes: before,
+          p_buffer_after_minutes: after,
+          p_price_minor: priceMinMinor,
+        }),
+      }, access.auth.accessToken)
+    : await supabaseRequest<RpcRow | RpcRow[]>(context.env, 'rest/v1/rpc/create_service_priced_guarded', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_business_id: access.membership.business_id,
+          p_name: String(body.name).trim(),
+          p_duration_minutes: body.durationMinutes,
+          p_buffer_before_minutes: before,
+          p_buffer_after_minutes: after,
+          p_category: String(category).trim(),
+          p_sort_order: sortOrder,
+          p_price_type: priceType,
+          p_price_min_minor: priceMinMinor,
+          p_price_max_minor: priceMaxMinor,
+          p_currency: String(currency).trim().toUpperCase(),
+        }),
+      }, access.auth.accessToken);
   if (!result.ok) {
     const error = mutationError(rpcMessage(result.data), 'SERVICE_CREATE_FAILED', 'Hizmet kaydedilemedi.');
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
