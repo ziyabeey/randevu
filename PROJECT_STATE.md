@@ -6,7 +6,7 @@
 
 Bu dosya **exact current main SHA'yı bilerek içine gömmez**; belgeyi main'e merge etmek SHA'yı yeniden değiştirip kendi kendini bayatlatır. Güncel exact SHA için repository `main` ref'i otoritedir.
 
-Son runtime-affecting ürün baseline'ı **F10-04 hizmet, personel ve çalışma ayarları / PR #75**'tir. Final review head `52db2016b8d94abf1a0a7fc8b6e1164c122aa586`, merge commit `3c413fa242cb836fc1f69fe5a8bb606209a3501d`; exact-head CI #1027 ve merge sonrası main CI #1028 başarılıdır. R1 security/DB/access ve R2 browser/integration bağımsız kapıları aynı exact head üzerinde **ACCEPTABLE** sonuçlanmıştır; hosted-only residual bulunmadığı için ayrıca staging açılmamıştır. Bundan önce F12-02 salon profili/public medya, PR #89 KolayApp + Randevu Kolay domain/origin sözleşmesi ve PR #91 production route'a bağlı olmayan izole KolayApp shell tabanı main'e alınmıştır.
+Son runtime-affecting ürün baseline'ı **F12-03 hizmet kategorileri ve fiyat aralığı / PR #103**'tür. Semantic uygulama head'i `b0bb330ccc0534007e5cb4901c806eda6df54be2`, final review marker'ı `cd4599b2f6903ef9dc70211d3d8743b433a04bb0`, merge commit `d0a9ec96a206ed8473c84d18352b4991388706e7`; semantic CI #1039, marker CI #1041 ve merge sonrası main CI #1042 başarılıdır. R1 security/DB/access ve R2 browser/integration bağımsız kapıları aynı exact marker head üzerinde **ACCEPTABLE** sonuçlanmıştır; hosted-only residual bulunmadığı için ayrıca staging açılmamıştır. F12-03, F10-04 katalog motorunu kategori/sıra ve fixed/range fiyat + policy-version sözleşmesiyle additive genişletir; legacy fixed backcompat ve tarihsel appointment fiyat snapshotları korunur, range hizmetler F11/F12-04 öncesi eski tek-fiyatlı booking yoluna fail-closed kalır.
 
 Önceki ana ürün kapanışları:
 
@@ -19,6 +19,7 @@ Son runtime-affecting ürün baseline'ı **F10-04 hizmet, personel ve çalışma
 - **F10-05:** işletme müşteri kayıtları + customer authority forward repair tamamlandı. Recovery direct customer-bearing read RPC'lerinden fail-closed edilir; canonical customer çözümü phone/email ambiguity'de arbitrary winner seçmez; booking CRM master'ı sessizce değiştirmez; `/customers` A↔B stale izolasyonu, 360/390, exclusive states, keyboard ve optimistic-conflict recovery gerçek Chrome ile doğrulandı.
 - **F12-01:** görsel yön/akış sözleşmesi tamamlandı.
 - **F12-02:** salon public profili, private Storage medya yaşam döngüsü, bounded reclaim/cleanup, operator retry-state ve 360/390 + keyboard/focus public/private kabulü tamamlandı.
+- **F12-03:** hizmet kategori/sıra ile fixed/range lower/upper/currency/policy-version sözleşmesi tamamlandı. Legacy fixed kayıtlar kayıpsız taşınır, tarihsel appointment fiyat snapshotları yeniden yazılmaz, server-side estimate mixed-currency/cross-tenant/inactive seçimlerde fail-closed'dur; range hizmetler eski public/operator tek-fiyatlı booking yüzeyine kesin fiyat gibi sızmaz.
 - **F17-01/02:** staging ve CI temeli tamamlandı.
 
 Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekrar kopyalanmaz.
@@ -28,17 +29,17 @@ Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekra
 | Alan | Doğrulanmış durum | Sonraki iş |
 | --- | --- | --- |
 | Auth / Membership / tenant | F10-01 + S01/S02 + F10-02/03/04/05; recovery normal tenant authority kazanamaz; customer ve catalog read yüzeylerinde standard-session guard vardır; business switch Membership ile doğrulanır | F10-06 |
-| Hizmet / personel / eşleşme | F10-04 main'de: guarded service/staff CRUD, archive/reactivate, staff↔service assignment ve optimistic concurrency; StaffProfile ile Membership ayrı kimlikler | F12-03 |
+| Hizmet / personel / eşleşme | F10-04 + F12-03 main'de: guarded service/staff CRUD, archive/reactivate, staff↔service assignment, optimistic concurrency, kategori/sıra ve fixed/range integer minor-unit fiyat + policy-version sözleşmesi; StaffProfile ile Membership ayrı kimlikler | F11 |
 | Mesai / availability | Faz 4 + F10-03 structural publish readiness + F10-04 business/staff hours ve availability block yönetimi; stale writes authoritative reload ile reconcile edilir | F11 |
-| Booking / müşteri / snapshot / audit | Faz 5 + F09 + S07 + F10-05; geçmiş appointment snapshotları korunur, canonical customer çözümü tenant-scoped ve ambiguity fail-closed'dur, booking mevcut CRM master'ı sessizce değiştirmez | F11, F13 |
-| Public booking | Faz 6–7 + F09/S04/S07 + F10-03 + F12-02; readiness fail-closed kalır, salon public profil/media yalnız yayınlanabilir tenantta görünür, pending/deleting/cleanup/private object public yüzeye sızmaz | F12-03/04/05 |
+| Booking / müşteri / snapshot / audit | Faz 5 + F09 + S07 + F10-05 + F12-03; geçmiş appointment snapshotları korunur, canonical customer çözümü tenant-scoped ve ambiguity fail-closed'dur, booking mevcut CRM master'ı sessizce değiştirmez; range fiyat eski tek-price appointment modeline `SERVICE_PRICE_NOT_FINAL` ile fail-closed kalır | F11, F13 |
+| Public booking | Faz 6–7 + F09/S04/S07 + F10-03 + F12-02/03; readiness fail-closed kalır, salon public profil/media yalnız yayınlanabilir tenantta görünür, pending/deleting/cleanup/private object public yüzeye sızmaz; legacy public service projection yalnız fixed fiyatı yayınlar, range lower bound kesin fiyat gibi gösterilmez | F12-04/05 |
 | Onboarding / business switch | F10-03 main'de; gerçek domain state'inden resume, bounded snapshot, A/B stale-state izolasyonu; F10-04 ayar yüzeyi aynı domain state'i tüketir | F10-06 |
 | Takvim | Gün/hafta temeli mevcut | F13 |
 | Bildirim / outbox | F09-03/05 + S03 + S07 | F16-02 |
-| Kaynak limitleri | S04 quota + S07 runtime/read budgets + F10-03 bounded onboarding + F10-04 catalog/schedule/block caps + F10-05 bounded customer/history reads + F12-02 5 MiB/20 media ve bounded cleanup | F11/F13/F17-03 takipleri |
+| Kaynak limitleri | S04 quota + S07 runtime/read budgets + F10-03 bounded onboarding + F10-04 catalog/schedule/block caps + F10-05 bounded customer/history reads + F12-02 5 MiB/20 media ve bounded cleanup + F12-03 en fazla 10 hizmetlik internal estimate | F11/F13/F17-03 takipleri |
 | CI / staging | F17-01/02 + S05/S06; required CI gate ve staging rollback/rotation temeli | F17-03 |
 | Future DB ACL | S08; yeni nesnelerde explicit grant/RLS disiplini | Her yeni migration + F17-03 |
-| Görsel ürün sözleşmesi | F12-01 akış/görsel sözleşmesi + F12-02 responsive salon profil/media yüzeyi main'de | F12-03+ |
+| Görsel ürün sözleşmesi | F12-01 akış/görsel sözleşmesi + F12-02 responsive salon profil/media yüzeyi + F12-03 responsive katalog/fiyat kontrolleri main'de | F12-04+ |
 | Domain / marka | PR #89 main'de: outward Randevu Kolay; marketing `randevukolay.net`; public tenant `{slug}.randevukolay.net`; tek private app origin `randevu.kepenk.ai`; private cookie host-only | DOMAIN-01 #92 + living-doc #95 + mail #96 |
 | Marketing brand/motion | PR #69 `docs/brand/**` main'de; PR #77 izole video + WebP/canvas A/B implementation'ı green experiment head'e ulaştı; production renderer henüz seçilmedi | MKT-01 / PR #77 |
 | KolayApp / adisyon / tahsilat | PR #91 izole, reusable KolayApp shell main'de; canonical 5-tab shell mevcut fakat production route/session/business entegrasyonu F14-01 değildir. Adisyon/tahsilat henüz yok | F14 |
@@ -70,10 +71,9 @@ Current isolated experiment green'dir. Gerçek Kling frame binary toplam byte/pe
 
 Bu sıra ürün önceliğinden çok shared-file conflict ve dependency güvenliği içindir:
 
-1. **F12-03 / Ajan C** artık dependency-safe sıradaki ürün writer lane'idir. F10-04 main kabulündeki katalog/RPC/migration/CAS yüzeyi üzerinden kategori/sıra ve fixed/range fiyat sözleşmesini ileri migration ile ekler; K02 bağlayıcıdır.
-2. **F11-01 / Ajan D** F12-03 tamamlanıp main'e girdikten sonra açılır; grup/satır modeli F12-03 fiyat snapshot sözleşmesini tüketir, yeniden tasarlamaz.
-3. **MKT-01 / PR #77** izole lane'de paralel kalabilir; production route/entry + gerçek binary/deployed media kabulü shared writer sırası ve domain cutover kapıları açıldığında yapılır.
-4. **BRAND-DOC-SYNC / #95** runtime'a dokunmadan living-doc isim/domain cleanup'ı olarak paralel yürüyebilir; tarihsel kanıtlar değiştirilmez.
+1. **F11-01 / Ajan D** dependency-safe sıradaki ürün writer lane'idir. Claim öncesi exact current main ile F12-03 handoff/schema ve F10-05 repair yüzeyi yeniden okunur; additive grup başlığı + mevcut `appointments` line-store yönü izlenir ve F12-03 fiyat snapshot sözleşmesi tüketilir, yeniden tasarlanmaz.
+2. **MKT-01 / PR #77** izole lane'de paralel kalabilir; production route/entry + gerçek binary/deployed media kabulü shared writer sırası ve domain cutover kapıları açıldığında yapılır.
+3. **BRAND-DOC-SYNC / #95** runtime'a dokunmadan living-doc isim/domain cleanup'ı olarak paralel yürüyebilir; tarihsel kanıtlar değiştirilmez.
 
 Canlı queue için Issue #65 otoritedir; eski PR gövdeleri veya eski head gözlemleri görev sırası oluşturmaz.
 
@@ -110,7 +110,7 @@ S07 keyset pagination, dışarıdan eşzamanlı sıralama-anahtarı mutasyonu **
 
 F13-02 date-range API'si mevcut `list_appointments_page(uuid,integer,timestamptz,uuid)` imzasını genişletecekse PostgreSQL function identity değişimi önceden planlanır: forward migration eski exact signature'ı explicit kapatır/drop eder, yeni signature'ı create eder, narrow GRANT/caller ve clean+upgrade kanıtı aynı değişimde taşınır. `CREATE OR REPLACE` ile parametre listesi sessizce değişiyormuş gibi davranılmaz.
 
-Bu takipler GS/F10-02/F10-03/F10-04/F10-05/F12-02'yi geriye dönük yeniden açmaz.
+Bu takipler GS/F10-02/F10-03/F10-04/F10-05/F12-02/F12-03'ü geriye dönük yeniden açmaz.
 
 ## Faz direktifleri
 
