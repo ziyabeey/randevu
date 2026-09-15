@@ -7,6 +7,7 @@ const panel = readFileSync(new URL('../src/CatalogSettingsPanel.tsx', import.met
 const migration = readFileSync(new URL('../supabase/migrations/20260914111500_f10_catalog_hours_management.sql', import.meta.url), 'utf8');
 const staleMigration = readFileSync(new URL('../supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql', import.meta.url), 'utf8');
 const snapshotMigration = readFileSync(new URL('../supabase/migrations/20260914111800_f10_catalog_snapshot_session_guard.sql', import.meta.url), 'utf8');
+const readSessionMigration = readFileSync(new URL('../supabase/migrations/20260914111900_f10_catalog_read_session_guard.sql', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../worker/index.ts', import.meta.url), 'utf8');
 const catalogWorker = readFileSync(new URL('../worker/catalog-management.ts', import.meta.url), 'utf8');
 const availabilityWorker = readFileSync(new URL('../worker/availability.ts', import.meta.url), 'utf8');
@@ -37,11 +38,23 @@ await test('F10-04 service editor preserves fixed-price minor units, duration an
   assert.match(panel, /Intl\.NumberFormat\('tr-TR'/);
 });
 
-await test('F10-04 create reset follows mutation success, not reload success', () => {
-  assert.match(panel, /await action\(\);[\s\S]*catch \(error\)[\s\S]*return false;/);
-  assert.match(panel, /await reload\(\);[\s\S]*Güncel görünüm yüklenemedi; sayfayı yenileyerek kontrol edin\.[\s\S]*return true;/);
+await test('F10-04 mutation success is distinct from authoritative refresh success', () => {
+  assert.match(panel, /await action\(\);[\s\S]*const refreshed = await reload\(\);[\s\S]*if \(refreshed\) setNotice\(success\)/);
+  assert.doesNotMatch(panel, /Güncel görünüm yüklenemedi; sayfayı yenileyerek kontrol edin/);
   assert.equal((panel.match(/if \(saved\) form\.reset\(\);/g) ?? []).length, 2);
-  assert.doesNotMatch(panel, /await mutate\([\s\S]{0,700}\);\s*form\.reset\(\);/);
+  assert.match(page, /const \[loadState, setLoadState\] = useState<LoadState>\('loading'\)/);
+  assert.match(page, /loadState === 'error'/);
+  assert.match(page, /Tekrar yükle/);
+  assert.match(page, /loadState === 'no-workspace'/);
+});
+
+await test('F10-04 stale writes reload authoritative state without retrying the mutation', () => {
+  assert.match(panel, /error instanceof ApiRequestError && error\.status === 409 && error\.code === 'STALE_WRITE'/);
+  assert.match(panel, /const refreshed = await reload\(\)/);
+  assert.match(panel, /Güncel bilgiler yeniden yüklendi; yaptığınız değişiklik uygulanmadı/);
+  assert.match(panel, /key=\{`\$\{service\.id\}:\$\{service\.updated_at\}`\}/);
+  assert.match(panel, /key=\{`\$\{person\.id\}:\$\{person\.updated_at\}`\}/);
+  assert.match(page, /error instanceof ApiRequestError && error\.status === 409 && error\.code === 'STALE_WRITE'/);
 });
 
 await test('F10-04 archive semantics are active=false and historical rows are described as preserved', () => {
@@ -70,6 +83,17 @@ await test('F10-04 bounded catalog snapshot rejects recovery sessions at the DB 
   assert.match(snapshotMigration, /perform public\.f10_require_standard_session\(\)/);
   assert.match(snapshotMigration, /revoke all on function public\.get_catalog_snapshot\(uuid\)/);
   assert.match(snapshotMigration, /grant execute on function public\.get_catalog_snapshot\(uuid\)[\s\S]*to authenticated/);
+});
+
+await test('F10-04 raw catalog/hour reads require both Membership and standard session', () => {
+  assert.match(readSessionMigration, /create or replace function public\.f10_has_standard_session\(\)/);
+  assert.match(readSessionMigration, /perform public\.f10_require_standard_session\(\)/);
+  for (const policy of [
+    'services_select_member', 'staff_select_member', 'staff_services_select_member',
+    'business_hours_select_member', 'staff_hours_select_member', 'availability_blocks_select_member',
+  ]) assert.ok(readSessionMigration.includes(`create policy ${policy}`), `missing guarded policy ${policy}`);
+  assert.equal((readSessionMigration.match(/public\.f10_has_standard_session\(\)/g) ?? []).length >= 7, true);
+  assert.match(readSessionMigration, /revoke all on function public\.f10_has_standard_session\(\) from public, anon, authenticated/);
 });
 
 await test('F10-04 legacy setup compatibility captures server-side hour versions instead of blind null writes', () => {
