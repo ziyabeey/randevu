@@ -62,7 +62,7 @@ declare
 begin
   begin
     perform * from public.replace_business_hours_guarded(
-      'b9100000-0000-4000-8000-000000000001',1,v_nine,null
+      'b9100000-0000-4000-8000-000000000001',1::smallint,v_nine,null
     );
     raise exception 'business-hours direct RPC accepted 9 intervals';
   exception when others then
@@ -71,7 +71,7 @@ begin
   end;
   begin
     perform * from public.replace_staff_hours_guarded(
-      'b9100000-0000-4000-8000-000000000001','b9300000-0000-4000-8000-000000000001',1,v_nine,null
+      'b9100000-0000-4000-8000-000000000001','b9300000-0000-4000-8000-000000000001',1::smallint,v_nine,null
     );
     raise exception 'staff-hours direct RPC accepted 9 intervals';
   exception when others then
@@ -127,7 +127,7 @@ begin
 
   begin
     perform * from public.replace_business_hours_guarded(
-      'b9100000-0000-4000-8000-000000000001',2,
+      'b9100000-0000-4000-8000-000000000001',2::smallint,
       '[{"start":"10:00","end":"18:00"}]'::jsonb,null
     );
     raise exception 'business-hours update accepted missing snapshot';
@@ -139,7 +139,7 @@ begin
   begin
     perform * from public.replace_staff_hours_guarded(
       'b9100000-0000-4000-8000-000000000001',
-      'b9300000-0000-4000-8000-000000000001',2,
+      'b9300000-0000-4000-8000-000000000001',2::smallint,
       '[{"start":"10:00","end":"18:00"}]'::jsonb,null
     );
     raise exception 'staff-hours update accepted missing snapshot';
@@ -151,7 +151,7 @@ begin
   -- An empty day has no stale state to protect, so first-time setup can keep the
   -- legacy null expected snapshot and remains compatible with F10-03.
   perform * from public.replace_business_hours_guarded(
-    'b9100000-0000-4000-8000-000000000001',3,
+    'b9100000-0000-4000-8000-000000000001',3::smallint,
     '[{"start":"09:00","end":"17:00"}]'::jsonb,null
   );
   if not exists (
