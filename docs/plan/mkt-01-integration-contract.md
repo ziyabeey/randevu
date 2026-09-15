@@ -1,13 +1,15 @@
 # MKT-01 — production integration contract
 
-Bu sözleşme MKT-01'in izole `src/marketing/**` uygulamasını production root'a bağlamadan önce kapanması gereken entegrasyon kararlarını tutar. Marketing track'i 54 MVP ürün/teknik görevinin dışındadır. Route/entry implementation shared-writer token açılmadan başlamaz.
+Bu sözleşme MKT-01'in izole `src/marketing/**` uygulamasını production marketing origin'ine bağlamadan önce kapanması gereken entegrasyon kararlarını tutar. Marketing track'i 54 MVP ürün/teknik görevinin dışındadır. Host/root/entry implementation shared-writer token açılmadan başlamaz.
+
+Canonical domain/origin authority `docs/plan/randevu-kolay-domain-contract.md` belgesidir. Bu belge o sözleşmeyi değiştirmez; MKT-01'in uygulama ve kabul ayrıntılarını ona göre daraltır.
 
 ## Validation budget
 
 - İzole motion/layout/copy düzeltmeleri: **LIGHT**.
-- Production route cutover, bundle ayrımı ve gerçek public/workspace entegrasyonu: **FOCUSED**.
-- Auth authority, DB/access veya capability semantiği değişmiyorsa R1 gerekmez; cutover acceptance'ın ilgili bağımsız gate'i R2 browser/integration'dır.
-- Staging varsayılan değildir. Yalnız deployed Cloudflare route veya gerçek media seeking/preload davranışı lokalde makul biçimde kanıtlanamıyorsa açılır.
+- Production host/root cutover, bundle ayrımı ve gerçek marketing/public/private entegrasyonu: **FOCUSED**.
+- DOMAIN-01 host→tenant/origin/cookie authority'yi değiştirdiği için final cutover'da **R1 security/DB/access review + R2 browser/integration review zorunludur**. Yalnız `src/marketing/**` içindeki izole görsel/motion düzeltmeleri auth/authority sınırına dokunmuyorsa ayrıca R1 istemez.
+- Staging varsayılan değildir. Yalnız deployed Cloudflare host/route veya gerçek media seeking/preload davranışı lokalde makul biçimde kanıtlanamıyorsa açılır.
 
 ## MKT-BUG-01 — scroll geometry layout-shift invalidation
 
@@ -19,44 +21,53 @@ Bu sözleşme MKT-01'in izole `src/marketing/**` uygulamasını production root'
 - Web font yerleşmesi için `document.fonts?.ready` tamamlandığında `updateGeometry()` + schedule çağrılır. API yoksa fail-safe no-op.
 - Listener/observer cleanup effect teardown'da tamamdır; yeni sürekli polling veya scroll hijack eklenmez.
 - Real-browser regression üst içerik yüksekliğini section'ın kendi boyutunu değiştirmeden kaydırır ve aynı scroll position için geometry'nin yeniden hesaplandığını kanıtlar.
-- Bu bug production route cutover'dan önce kapanır. İzole PR #77 içinde düzeltilebilir; shared entry gerektirmez.
+- Bu bug production host/root cutover'dan önce kapanır. İzole PR #77 içinde düzeltilebilir; shared entry gerektirmez.
 
 ### Test sınırı
 
 Davranış zaten gerçek Chrome harness'iyle kanıtlanıyorsa implementation değişken adlarını/kaynak satır biçimini regex'le kilitleyen ikinci bir test yazılmaz. `geometryFrame`, `scheduleGeometry` gibi identifier'ların adı sözleşme değildir. Kaynak-metni testi yalnız bilinen tehlikeli API'nin geri gelmesini dar biçimde engelliyorsa meşrudur; örneğin normal promotion yolunda explicit `video.load()` veya autoplay `video.play()` çağrısının bulunmaması. Geometry invalidation, cleanup ve scroll sonucu gerçek browser davranışıyla kabul edilir.
 
-## MKT-ARCH-02 — root cutover bir URL migration'dır
+## MKT-ARCH-02 — production cutover host-aware bir origin migration'dır
 
-Marketing'i `/` adresine koymak yalnız yeni bir sayfa eklemek değildir. Bugünkü operator workspace root'u `/` adresinden `/app` altına taşınır. E'nin router/common-shell contract'ı (Issue #65 `5666148046`) route authority'dir.
+Marketing'i production'a almak private operator workspace'i `/app` altına taşımak değildir. Canonical #89 domain sözleşmesine göre üç ayrı authority yüzeyi vardır:
+
+- `https://randevukolay.net/` → `MarketingHome`,
+- `https://randevu.kepenk.ai/` → mevcut private workspace + invite/session/auth davranışı,
+- `https://{business-slug}.randevukolay.net/` → canonical public salon/booking yüzeyi.
+
+Mevcut `/r/:slug` public linkleri compatibility-first korunur. `app.randevukolay.net` diye ikinci private app origin'i veya production `/app` workspace hedefi oluşturulmaz.
 
 İlk cutover aynı atomik değişimde şunları korur:
 
-- pending team invite + `/` → `InvitePage`,
-- normal `/` → `MarketingHome`,
-- `/app` ve `/app/*` → private workspace,
-- `/r/:slug` public booking ve `/m` capability yüzeyleri marketing/workspace shell'e alınmaz,
-- mevcut operator root-return linkleri `/app` olur,
-- auth/recovery callback UI destination `/app?auth=...` ile uyumlanır,
-- legacy operator URL'ler compatibility penceresinde çalışır,
-- bilinmeyen yollar explicit NotFound davranışına ilerler.
+- private origin'de pending team invite + `/` precedence mevcut InvitePage davranışını korur,
+- private origin'de normal `/` mevcut authenticated workspace olur,
+- marketing origin `/` yalnız marketing yüzeyidir ve private Membership/session mutation authority kazanmaz,
+- wildcard public host hostname'den tenant çözer; path veya client business ID başka tenant seçemez,
+- `/r/:slug` compatibility route'u canonical public host migration penceresinde çalışır,
+- `/m` capability ve recovery/customer management yüzeyleri kendi mevcut güvenlik sözleşmesini korur,
+- private root-return linkleri canonical private origin `https://randevu.kepenk.ai/` hedefine döner,
+- auth/recovery callback UI destination canonical private origin içinde kalır,
+- marketing/public hostlar private auth cookie veya parent-domain cookie paylaşmaz,
+- bilinmeyen host/path kombinasyonları fail-closed veya explicit NotFound davranışına ilerler.
 
-Production cutover #76/shared-entry writer kapanmadan uygulanmaz.
+Production cutover #75 shared-writer işi ve #92 DOMAIN-01 host/origin paketi kapanmadan uygulanmaz.
 
-## MKT-ARCH-03 — code splitting route entegrasyonundan önce
+## MKT-ARCH-03 — code splitting host/route entegrasyonundan önce
 
-Current `src/main.tsx` pathname seçimi tek uygulama entry/bundle modelidir. Marketing aynı eager graph'a eklenirse scrub hook, marketing CSS ve media orchestration kodu `/r/:slug` müşterisine veya private workspace'e gereksiz taşınabilir. Bu nedenle code-splitting kararı route bağlantısından **önce** verilir.
+Current `src/main.tsx` pathname seçimi tek uygulama entry/bundle modelidir. Marketing aynı eager graph'a eklenirse scrub hook, marketing CSS ve media orchestration kodu public salon müşterisine veya private workspace'e gereksiz taşınabilir. Bu nedenle code-splitting kararı host/root bağlantısından **önce** verilir.
 
 ### Minimum chunk sözleşmesi
 
-Production candidate'ta route-level lazy boundary veya eşdeğer Vite dynamic-import ayrımı bulunur:
+Production candidate'ta host-aware bootstrap + route-level lazy boundary veya eşdeğer Vite dynamic-import ayrımı bulunur:
 
-- normal `/` marketing chunk'ını yükleyebilir,
-- `/r/*` initial load için marketing'e özgü JS/CSS/transformation-media eager transferi **0 B** olmalıdır,
-- `/app/*` initial load için marketing'e özgü JS/CSS/transformation-media eager transferi **0 B** olmalıdır,
-- marketing `/` initial load private workspace implementation chunk'ını yalnız route gerektiriyorsa yükler; private operator ekranlarının tamamı marketing entry'ye eager bağlanmaz,
-- bundle analyzer/build manifest veya network acceptance hangi route'un hangi chunk'ları çektiğini sayısal receipt olarak bırakır.
+- `randevukolay.net/` marketing chunk'ını yükleyebilir,
+- canonical public salon hostunda initial load için marketing'e özgü JS/CSS/transformation-media eager transferi **0 B** olmalıdır,
+- `randevu.kepenk.ai` private app initial load için marketing'e özgü JS/CSS/transformation-media eager transferi **0 B** olmalıdır,
+- marketing initial load private workspace implementation chunk'ını yalnız gerçekten gerekli bir ayrı navigation sonrası yükleyebilir; private operator ekranlarının tamamı marketing entry'ye eager bağlanmaz,
+- `/r/:slug` compatibility yüzeyi canonical public yüzeyle aynı marketing-isolation hedefini korur,
+- bundle analyzer/build manifest veya network acceptance hangi host/route'un hangi chunk'ları çektiğini sayısal receipt olarak bırakır.
 
-Shared route cutover, bu ayrımın tasarımı ve test yolu belli olmadan `src/main.tsx` içine MarketingHome import ederek yapılmaz.
+Shared host/root cutover, bu ayrımın tasarımı ve test yolu belli olmadan `src/main.tsx` içine MarketingHome import ederek yapılmaz.
 
 ## MKT-CSS-04 — token ve layer sınırı
 
@@ -83,11 +94,11 @@ Production cutover öncesi CSS import sırası açık ve deterministik hale geti
 
 Bütçe mevcut asset handoff'una göre sayısallaştırılır; asset büyümesi sessiz kabul edilmez.
 
-### Route isolation budgets
+### Route/host isolation budgets
 
-- `/r/*` initial load'da marketing-specific JS/CSS/transformation-media eager transfer: **0 B**.
-- `/app/*` initial load'da marketing-specific JS/CSS/transformation-media eager transfer: **0 B**.
-- Marketing `/` ilk viewport'ta transformation section prefetch/promotion eşiğine girmeden transfer edilen full transformation media body byte'ı: **0 B**. Video `preload="metadata"` için küçük metadata/range isteği ayrıca raporlanabilir; frame renderer seçilirse aynı ilke frame fetch'leri için geçerlidir.
+- canonical public salon hostunda ve `/r/*` compatibility load'unda marketing-specific JS/CSS/transformation-media eager transfer: **0 B**.
+- `randevu.kepenk.ai` private app initial load'da marketing-specific JS/CSS/transformation-media eager transfer: **0 B**.
+- Marketing `randevukolay.net/` ilk viewport'ta transformation section prefetch/promotion eşiğine girmeden transfer edilen full transformation media body byte'ı: **0 B**. Video `preload="metadata"` için küçük metadata/range isteği ayrıca raporlanabilir; frame renderer seçilirse aynı ilke frame fetch'leri için geçerlidir.
 
 ### Transformation asset caps / comparison targets
 
@@ -129,19 +140,22 @@ F10-05 kodu main'de bulunsa bile acceptance/repair açıkken `customerMemory` pr
 
 Cutover adayı için minimum kanıt:
 
-1. pending invite root precedence,
-2. `/` marketing, `/app` workspace ve `/r/*` public route ayrımı,
-3. auth/recovery callback'in `/app` üzerinde tüketilmesi,
-4. marketing-specific eager bytes `/r/*` ve `/app/*` için 0 B,
-5. full transformation media first viewport'ta eager indirilmez,
-6. seçilen renderer'ın mobile/desktop transfer + memory bütçeleri raporlanır ve onaylı cap'i geçmez,
-7. sectionTop layout-shift real-browser regression geçer,
-8. 360/390 no-overflow + keyboard/reduced-motion akışı,
-9. final selected renderer gerçek telefon + hücresel ağda continuity kabulünü geçer,
-10. CSS layer/token kararı uygulanmış veya açık cleanup receipt'i bırakılmıştır,
-11. production proof gate'leri gerçek accepted feature durumuyla eşleşir.
+1. `randevukolay.net/` marketing ve `randevu.kepenk.ai/` private workspace ayrımı,
+2. private origin'de pending invite root precedence ve mevcut auth/session davranışı,
+3. `{slug}.randevukolay.net` host-derived tenant authority + `/r/:slug` compatibility-first davranışı,
+4. marketing/public hostlardan private Membership/session mutation authority'ye fail-closed erişim,
+5. auth/recovery callback'in canonical private origin'de tüketilmesi,
+6. marketing-specific eager bytes canonical public salon, `/r/*` compatibility ve private app load'larında 0 B,
+7. full transformation media first viewport'ta eager indirilmez,
+8. seçilen renderer'ın mobile/desktop transfer + memory bütçeleri raporlanır ve onaylı cap'i geçmez,
+9. sectionTop layout-shift real-browser regression geçer,
+10. 360/390 no-overflow + keyboard/reduced-motion akışı,
+11. final selected renderer gerçek telefon + hücresel ağda continuity kabulünü geçer,
+12. CSS layer/token kararı uygulanmış veya açık cleanup receipt'i bırakılmıştır,
+13. production proof gate'leri gerçek accepted feature durumuyla eşleşir,
+14. R1 host/tenant/cookie authority ve R2 real-host browser integration review'u exact candidate üzerinde geçer.
 
-Bu sözleşme production route'u kendi başına açmaz. Shared-entry token ve current dependency queue Issue #65 tarafından yönetilir.
+Bu sözleşme production host/root'u kendi başına açmaz. Shared-entry token ve current dependency queue Issue #65 tarafından yönetilir; DOMAIN-01 implementation authority Issue #92'dir.
 
 ## Fazlar arası bağlantı
 
