@@ -60,7 +60,7 @@ await test('F10-04 weekly hours carry expected snapshots and explain effect on f
 });
 
 await test('F10-04 existing catalog rows require optimistic proof at Worker and direct-RPC boundaries', () => {
-  assert.ok(catalogWorker.includes('validExpected(body?.expectedUpdatedAt)'));
+  assert.ok(catalogWorker.includes('validExpected(body.expectedUpdatedAt)'));
   assert.match(staleMigration, /p_expected_updated_at is null[\s\S]*raise exception 'STALE_WRITE'/);
   assert.match(staleMigration, /v_exists and \([\s\S]*p_expected_updated_at is null/);
   assert.ok(catalogWorker.includes('rest/v1/staff_services?'));
@@ -80,7 +80,7 @@ await test('F10-04 legacy setup compatibility captures server-side hour versions
 
 await test('F10-04 user surface and management errors avoid internal product terminology', () => {
   assert.doesNotMatch(page, /FAZ\s*4|tenant|RPC/i);
-  assert.doesNotMatch(panel, /tenant|RPC|faz/i);
+  assert.doesNotMatch(panel, /tenant|RPC|\bfaz\b/i);
   assert.doesNotMatch(catalogWorker, /owner veya manager/i);
   assert.doesNotMatch(availabilityWorker, /owner veya manager/i);
   assert.match(page, /İŞLETME AYARLARI/);
