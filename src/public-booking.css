@@ -50,6 +50,17 @@
   gap: 1rem;
 }
 
+.public-admin-grid > *,
+.public-admin-card,
+.public-settings-form,
+.public-media-upload,
+.public-link-box,
+.public-link-box code,
+.public-toggle-row > span {
+  min-width: 0;
+}
+.public-media-upload input[type="file"] { max-width: 100%; }
+
 .public-booking-card,
 .public-admin-card,
 .public-admin-hero {
