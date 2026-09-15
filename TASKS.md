@@ -1,6 +1,6 @@
 # YZT Randevu — Görev takip tablosu
 
-**Plan v3 · güncel ana tablo 15 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 22 `Tamamlandı`, 32 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
+**Plan v3 · güncel ana tablo 15 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 23 `Tamamlandı`, 31 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
 
 **GS stabilization kapısı kapalıdır.** S01…S08 kabul edildi; GS artık yeni özellikleri engelleyen bir önkoşul değildir. [GS kapanış devri](docs/handoffs/GS.md) tarihsel kanıt kaynağıdır.
 
@@ -49,7 +49,7 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | [F11-04](docs/plan/phase-11.md#f11-04) | Çakışma, timezone ve yükseltme kabulü | F11-03, F17-02 | Planlandı | — | — |
 | [F12-01](docs/plan/phase-12.md#f12-01) | Görsel yön ve akış sözleşmesi | TEMEL | Tamamlandı | Ajan B / 2026-09-14 | `f12-01-visual-flow-contract` · base `364d006` · [PR #61](https://github.com/ziyabeey1-ai/randevu/pull/61) · [Sözleşme](docs/plan/f12-01-visual-flow-contract.md) · [Devir](docs/handoffs/F12-01.md) · koordinatör final ürün/tasarım kabulü verildi |
 | [F12-02](docs/plan/phase-12.md#f12-02) | Salon profili ve public fotoğraflar | F12-01, F10-03 | Tamamlandı | Ajan B + R1/R2 + koordinatör kabul / 2026-09-15 | `f12-02-salon-profile-public-media` · [PR #76](https://github.com/ziyabeey1-ai/randevu/pull/76) · [Devir](docs/handoffs/F12-02.md) · exact head `a889b077` · [CI #967](https://github.com/ziyabeey1-ai/randevu/actions/runs/34936411282) success · R1 `5676070062` **ACCEPTABLE** · R2 final **ACCEPTABLE** · main `eb4d741` · [main CI #984](https://github.com/ziyabeey1-ai/randevu/actions/runs/34943929715) success · hosted-only residual bulunmadığı için staging açılmadı |
-| [F12-03](docs/plan/phase-12.md#f12-03) | Hizmet kategorileri ve fiyat aralığı | F10-04 | İncelemede | Ajan C / 2026-09-15T16:21Z | `f12-03-service-price-range` · [PR #103](https://github.com/ziyabeey1-ai/randevu/pull/103) · [Devir](docs/handoffs/F12-03.md) · semantic head `b0bb330c` · [CI #1039](https://github.com/ziyabeey1-ai/randevu/actions/runs/34994167963) success · R1/R2 exact marker review bekliyor |
+| [F12-03](docs/plan/phase-12.md#f12-03) | Hizmet kategorileri ve fiyat aralığı | F10-04 | Tamamlandı | Ajan C + R1/R2 + koordinatör kabul / 2026-09-15 | `f12-03-service-price-range` · [PR #103](https://github.com/ziyabeey1-ai/randevu/pull/103) · [Devir](docs/handoffs/F12-03.md) · semantic head `b0bb330c` · [CI #1039](https://github.com/ziyabeey1-ai/randevu/actions/runs/34994167963) success · final review head `cd4599b2` · [marker CI #1041](https://github.com/ziyabeey1-ai/randevu/actions/runs/34994931971) success · R1 `5684303886` **ACCEPTABLE** · R2 `5684769289` **ACCEPTABLE** · main `d0a9ec9` · [main CI #1042](https://github.com/ziyabeey1-ai/randevu/actions/runs/35000917517) success · hosted-only residual olmadığı için staging açılmadı |
 | [F12-04](docs/plan/phase-12.md#f12-04) | Çoklu hizmet, personel ve saat seçimi | F12-02, F12-03, F11-02 | Planlandı | — | — |
 | [F12-05](docs/plan/phase-12.md#f12-05) | Özet, sonuç ve müşteri yönetimi | F12-04, F09-02, F11-03 | Planlandı | — | — |
 | [F13-01](docs/plan/phase-13.md#f13-01) | Takvim güncelliği ve istek yarışı | F11-03 | Planlandı | — | — |
@@ -92,8 +92,8 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | GS | S01…S08 | **Kapalı** — S01…S08 tamamlandı; [GS kapanış devri](docs/handoffs/GS.md) |
 | G09 | F09-01…F09-05 | **Kapalı** — PR #30 / staging `34681540142`; stabilization takipleri GS içinde kapatıldı |
 | G10 | F10-01…F10-06 | Açık — F10-01/02/03/04/05 tamamlandı; yalnız F10-06 kaldı |
-| G11 | F11-01…F11-04 | Açık — F12-03 fiyat veri desteği önce gerekir |
-| G12 | F12-01…F12-05 | Açık — F12-01/02 tamamlandı; F12-03 artık dependency-safe açıldı |
+| G11 | F11-01…F11-04 | Açık — F12-03 tamamlandı; F11-01 sıradaki aktif zincirdir |
+| G12 | F12-01…F12-05 | Açık — F12-01/02/03 tamamlandı; F12-04 F11-02'yi bekliyor |
 | G13 | F13-01…F13-04 | Açık |
 | G14 | F14-01…F14-05 | Açık |
 | G15 | F15-01…F15-04 | Açık |
