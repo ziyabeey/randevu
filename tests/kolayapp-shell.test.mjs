@@ -80,7 +80,7 @@ await test('KOLAY-SPIKE-01 renders the real shell without pretending unavailable
     assert.match(markup, /KolayApp mobil çalışma alanı/);
     assert.match(markup, /Randevu verisi bağlı değil/);
     assert.match(markup, /API bağlı değil/);
-    assert.doesNotMatch(markup, /₺|TL|ödendi|tahsil edildi/i);
+    assert.doesNotMatch(markup, /₺|\bTL\b|ödendi|tahsil edildi/i);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
