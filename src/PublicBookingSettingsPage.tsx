@@ -38,6 +38,7 @@ type SettingsPayload = {
   settings: PublicSettings;
 };
 type ProfilePayload = { membership: SettingsPayload['membership']; profile: PublicProfile };
+type LoadResult = { ok: true } | { ok: false; message: string };
 
 function profileBody(profile: PublicProfile, coverMediaId = profile.cover_media_id) {
   return {
@@ -66,7 +67,7 @@ export default function PublicBookingSettingsPage() {
   const [notice, setNotice] = useState('');
   const [uploadAlt, setUploadAlt] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<LoadResult> => {
     setLoading(true);
     try {
       const [settingsResult, profileResult] = await Promise.all([
@@ -80,10 +81,13 @@ export default function PublicBookingSettingsPage() {
       setMinNoticeMinutes(settingsResult.settings.min_notice_minutes);
       setHorizonDays(settingsResult.settings.horizon_days);
       setNotice('');
+      return { ok: true };
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Online randevu ayarları yüklenemedi.');
+      const message = error instanceof Error ? error.message : 'Online randevu ayarları yüklenemedi.';
+      setNotice(message);
       setData(null);
       setProfile(null);
+      return { ok: false, message };
     } finally {
       setLoading(false);
     }
@@ -152,8 +156,12 @@ export default function PublicBookingSettingsPage() {
       });
       setUploadAlt('');
       form.reset();
-      await load();
-      setNotice('Fotoğraf eklendi.');
+      const refreshed = await load();
+      if (refreshed.ok) {
+        setNotice('Fotoğraf eklendi.');
+      } else {
+        setNotice('Yükleme sunucuda tamamlandı, ancak güncel salon durumu yeniden yüklenemedi. Tekrar yükleyin.');
+      }
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Fotoğraf yüklenemedi.');
     } finally { setBusy(false); }
@@ -176,8 +184,12 @@ export default function PublicBookingSettingsPage() {
     setBusy(true);
     try {
       await api(`/api/public/profile/media/${encodeURIComponent(mediaId)}`, { method: 'DELETE' });
-      await load();
-      setNotice('Fotoğraf silindi.');
+      const refreshed = await load();
+      if (refreshed.ok) {
+        setNotice('Fotoğraf silindi.');
+      } else {
+        setNotice('Silme işlemi sunucuda tamamlandı, ancak güncel salon durumu yeniden yüklenemedi. Tekrar yükleyin.');
+      }
     } catch (error) { setNotice(error instanceof Error ? error.message : 'Fotoğraf silinemedi.'); }
     finally { setBusy(false); }
   }
@@ -188,7 +200,7 @@ export default function PublicBookingSettingsPage() {
   }
 
   if (loading) return <main className="public-settings-page"><section className="public-admin-card"><p>Online randevu ayarları hazırlanıyor…</p></section></main>;
-  if (!data || !profile) return <main className="public-settings-page"><section className="public-admin-card"><h1>Çalışma alanı açılamadı.</h1><p className="muted">Aktif işletmeyi seçip tekrar deneyin.</p>{notice && <p className="public-inline-notice">{notice}</p>}</section></main>;
+  if (!data || !profile) return <main className="public-settings-page"><section className="public-admin-card"><h1>Çalışma alanı açılamadı.</h1><p className="muted">Aktif işletmeyi seçip tekrar deneyin.</p>{notice && <p className="public-inline-notice" role="status">{notice}</p>}<button type="button" className="public-primary" onClick={() => void load()}>Tekrar yükle</button></section></main>;
 
   return <main className="public-settings-page">
     <header className="public-admin-hero"><div><p className="eyebrow">ONLINE RANDEVU</p><h1>Salon profiliniz ve randevu bağlantınız</h1><p className="muted">{data.business.name} · {data.business.timezone}</p></div><span className={`public-state ${enabled ? 'is-on' : 'is-off'}`}>{enabled ? 'Aktif' : 'Kapalı'}</span></header>
