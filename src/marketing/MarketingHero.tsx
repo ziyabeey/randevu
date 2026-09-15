@@ -20,7 +20,7 @@ export function MarketingHero() {
       <div className="mkt-hero-shape mkt-hero-shape--two" aria-hidden="true" />
 
       <div className="mkt-hero-copy">
-        <p className="mkt-eyebrow">Kepenk.ai sunar</p>
+        <p className="mkt-eyebrow">Randevu Kolay</p>
         <h1 id="mkt-hero-title">Randevu kolay.</h1>
         <p className="mkt-hero-lead">Müşteri kendi alsın. Takvimin karışmasın. Kurulumla da seni uğraştırmayalım.</p>
         <p className="mkt-hero-trust">Kuaför, berber ve güzellik işletmeleri için.</p>
