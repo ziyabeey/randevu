@@ -1,0 +1,29 @@
+.catalog-settings-card { min-width: 0; }
+.catalog-settings-card.span-settings { grid-column: 1 / -1; }
+.catalog-stack { display: grid; gap: 12px; }
+.catalog-editor { border: 1px solid var(--border, #d9dde5); border-radius: 14px; padding: 14px; background: var(--surface, #fff); }
+.catalog-editor.archived { opacity: .72; }
+.catalog-editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.catalog-editor-head div { display: grid; gap: 4px; }
+.catalog-editor-head span { color: var(--muted, #667085); font-size: .9rem; }
+.status-pill { border: 1px solid currentColor; border-radius: 999px; padding: 3px 8px; white-space: nowrap; font-size: .75rem !important; }
+.catalog-edit-form { display: grid; grid-template-columns: minmax(160px, 2fr) repeat(4, minmax(92px, 1fr)); gap: 10px; align-items: end; }
+.catalog-edit-form.staff-edit { grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) auto; }
+.catalog-edit-form label { display: grid; gap: 5px; font-size: .78rem; color: var(--muted, #667085); }
+.catalog-edit-form input, .catalog-create-form input { width: 100%; box-sizing: border-box; }
+.catalog-actions { display: flex; gap: 8px; grid-column: 1 / -1; }
+.catalog-create-form { display: grid; grid-template-columns: minmax(160px, 2fr) repeat(4, minmax(92px, 1fr)) auto; gap: 10px; align-items: end; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border, #d9dde5); }
+.catalog-create-form h3 { grid-column: 1 / -1; margin: 0; }
+.catalog-create-form.compact-create { grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) auto; }
+.settings-matrix { display: grid; gap: 12px; }
+.settings-matrix-row { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 14px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--border, #d9dde5); }
+.settings-matrix-row:last-child { border-bottom: 0; }
+@media (max-width: 900px) {
+  .catalog-edit-form, .catalog-edit-form.staff-edit, .catalog-create-form, .catalog-create-form.compact-create { grid-template-columns: 1fr 1fr; }
+  .catalog-actions, .catalog-create-form h3 { grid-column: 1 / -1; }
+  .settings-matrix-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .catalog-edit-form, .catalog-edit-form.staff-edit, .catalog-create-form, .catalog-create-form.compact-create { grid-template-columns: 1fr; }
+  .catalog-actions { flex-wrap: wrap; }
+}
