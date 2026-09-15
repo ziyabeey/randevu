@@ -1,6 +1,6 @@
 # YZT Randevu — Görev takip tablosu
 
-**Plan v3 · güncel ana tablo 14 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 19 `Tamamlandı`, 35 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
+**Plan v3 · güncel ana tablo 15 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 20 `Tamamlandı`, 34 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
 
 **GS stabilization kapısı kapalıdır.** S01…S08 kabul edildi; GS artık yeni özellikleri engelleyen bir önkoşul değildir. [GS kapanış devri](docs/handoffs/GS.md) tarihsel kanıt kaynağıdır.
 
@@ -41,7 +41,7 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | [F10-02](docs/plan/phase-10.md#f10-02) | Davet, üyelik ve rol yönetimi | F10-01, GS | Tamamlandı | ChatGPT + koordinatör kabul / 2026-09-14 | [PR #32](https://github.com/ziyabeey1-ai/randevu/pull/32) · `f10-02-invites-memberships-roles` · [Devir](docs/handoffs/F10-02.md) · kabul head `958bb27` · [CI #613](https://github.com/ziyabeey1-ai/randevu/actions/runs/34823672970) · [staging #30](https://github.com/ziyabeey1-ai/randevu/actions/runs/34824049900) success: smoke + hosted auth + iki gerçek hesaplı invite/role/permission/deactivation/last-owner kabulü · Ajan A final güvenlik/DB review **ACCEPTABLE** |
 | [F10-03](docs/plan/phase-10.md#f10-03) | İşletme geçişi ve kurulum akışı | F10-02 | Tamamlandı | Ajan C + koordinatör kabul / 2026-09-14 | `f10-03-business-switch-onboarding` · base `702083b` · [PR #72](https://github.com/ziyabeey1-ai/randevu/pull/72) · [Devir](docs/handoffs/F10-03.md) · repair head `d8bf729` · review head `5e51681` · [CI #640](https://github.com/ziyabeey1-ai/randevu/actions/runs/34832787839) success: bounded onboarding snapshot + stale public business/services/staff/slots/create fail-closed + iki işletmeli Chrome akışı · Ajan A final security/DB/access review **ACCEPTABLE** · DANIŞMA 2 final kabulü |
 | [F10-04](docs/plan/phase-10.md#f10-04) | Hizmet, personel ve çalışma ayarları | F10-03 | Planlandı | — | — |
-| [F10-05](docs/plan/phase-10.md#f10-05) | İşletmenin müşteri kayıtları | F10-03 | İncelemede | Ajan A / 2026-09-14 | `f10-05-business-customers` · base/current-main `9272214` · [PR #74](https://github.com/ziyabeey1-ai/randevu/pull/74) · implementation head `42d5d8c` · [CI #692](https://github.com/ziyabeey1-ai/randevu/actions/runs/34843857139) success · bağımsız security + DB/access review bekliyor |
+| [F10-05](docs/plan/phase-10.md#f10-05) | İşletmenin müşteri kayıtları | F10-03 | Tamamlandı | Ajan A + R1/R2 + koordinatör kabul / 2026-09-15 | `f10-05-customer-authority-repair` · [PR #87](https://github.com/ziyabeey1-ai/randevu/pull/87) · [Repair devir](docs/handoffs/F10-05-repair.md) · semantic head `0f503e6` · final test head `08be229` · [CI #938](https://github.com/ziyabeey1-ai/randevu/actions/runs/34878556411) success · R1 `5667991719` **ACCEPTABLE** · R2 `5673736447` **ACCEPTABLE** · main `56ef3be` · [main CI #948](https://github.com/ziyabeey1-ai/randevu/actions/runs/34921413177) success |
 | [F10-06](docs/plan/phase-10.md#f10-06) | Gerçek hesaplarla ortak yönetim kabulü | F10-04, F10-05, F17-01 | Planlandı | — | — |
 | [F11-01](docs/plan/phase-11.md#f11-01) | Grup/satır sözleşmesi ve ileri migration | F10-02, F12-03 | Planlandı | — | — |
 | [F11-02](docs/plan/phase-11.md#f11-02) | Çok hizmetli müsaitlik ve atomik oluşturma | F11-01 | Planlandı | — | — |
@@ -83,7 +83,7 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 
 | Kimlik | İş | Durum | Sahip | Kanıt / sonraki kapı |
 | --- | --- | --- | --- | --- |
-| [MKT-01](https://github.com/ziyabeey1-ai/randevu/issues/70) | Randevu marketing homepage — scroll-motion implementation | Çalışılıyor | Ziya / ürün sahibi + ChatGPT/Sol kod | [PR #69](https://github.com/ziyabeey1-ai/randevu/pull/69) brand/motion docs main'de; [PR #77](https://github.com/ziyabeey1-ai/randevu/pull/77) ilk izole implementation slice'ı draft. Route/entry entegrasyonu shared-file sırasını bekler. |
+| [MKT-01](https://github.com/ziyabeey1-ai/randevu/issues/70) | Randevu marketing homepage — scroll-motion implementation | Çalışılıyor | Ziya / ürün sahibi + FRONTEND 2 | [PR #69](https://github.com/ziyabeey1-ai/randevu/pull/69) brand/motion docs main'de; [PR #77](https://github.com/ziyabeey1-ai/randevu/pull/77) isolated video + WebP/canvas A/B experiment head `96efa44` / CI #947 green. Production renderer gerçek Kling binary/perf + real-phone/cellular ve shared route cutover kapısını bekler. |
 
 ## Kabul kapıları
 
@@ -91,9 +91,9 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | --- | --- | --- |
 | GS | S01…S08 | **Kapalı** — S01…S08 tamamlandı; [GS kapanış devri](docs/handoffs/GS.md) |
 | G09 | F09-01…F09-05 | **Kapalı** — PR #30 / staging `34681540142`; stabilization takipleri GS içinde kapatıldı |
-| G10 | F10-01…F10-06 | Açık — F10-01/02/03 tamamlandı; F10-04 ve F10-05 dependency gate'i açık ve aktif branch/PR'larda; F10-06 ikisini bekler |
+| G10 | F10-01…F10-06 | Açık — F10-01/02/03/05 tamamlandı; F10-04 sırada, F10-06 F10-04'ü bekler |
 | G11 | F11-01…F11-04 | Açık — F12-03 fiyat veri desteği önce gerekir |
-| G12 | F12-01…F12-05 | Açık — F12-01 tamamlandı; F12-02 PR #76 aktif; F12-03 F10-04'ü bekler |
+| G12 | F12-01…F12-05 | Açık — F12-01 tamamlandı; F12-02 PR #76 sıradaki implementation lane'i; F12-03 F10-04'ü bekler |
 | G13 | F13-01…F13-04 | Açık |
 | G14 | F14-01…F14-05 | Açık |
 | G15 | F15-01…F15-04 | Açık |
