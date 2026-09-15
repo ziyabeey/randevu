@@ -1,0 +1,146 @@
+.public-salon-page {
+  min-height: 100vh;
+  min-height: 100svh;
+  background: #f5f7fb;
+  color: #182238;
+  padding: 1rem 1rem 4rem;
+}
+.public-salon-hero,
+.public-salon-gallery,
+.public-salon-info,
+.public-salon-notice {
+  width: min(100%, 68rem);
+  margin-inline: auto;
+}
+.public-salon-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, .85fr);
+  gap: clamp(1.2rem, 4vw, 3rem);
+  align-items: center;
+  padding: clamp(1rem, 3vw, 2rem) 0 clamp(1.5rem, 5vw, 3.5rem);
+}
+.public-salon-cover {
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border-radius: 1.25rem;
+  background: #e9edf4;
+  border: 1px solid #dfe5ef;
+}
+.public-salon-cover-image,
+.public-salon-gallery-image,
+.public-salon-cover-placeholder,
+.public-salon-photo-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.public-salon-cover-placeholder,
+.public-salon-photo-fallback {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: .55rem;
+  min-height: 10rem;
+  background: linear-gradient(145deg, #edf1f6, #f9fafc);
+  color: #667188;
+  text-align: center;
+}
+.public-salon-cover-placeholder strong,
+.public-salon-photo-fallback strong {
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #dfe5ef;
+  color: #26344f;
+  font-size: 1.3rem;
+  letter-spacing: .04em;
+}
+.public-salon-hero-copy h1 {
+  margin: .35rem 0 .8rem;
+  font-size: clamp(2rem, 5vw, 3.7rem);
+  line-height: 1.03;
+  letter-spacing: -.045em;
+}
+.public-salon-lead { max-width: 34rem; color: #5f6b82; line-height: 1.6; font-size: 1rem; }
+.public-salon-section-nav { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.25rem; }
+.public-salon-section-nav a,
+.public-salon-contact {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: .65rem .9rem;
+  border: 1px solid #d7deea;
+  border-radius: 999px;
+  background: #fff;
+  color: #263b72;
+  font-weight: 700;
+  text-decoration: none;
+}
+.public-salon-section-nav a:focus-visible,
+.public-salon-contact:focus-visible,
+.public-settings-page select:focus-visible,
+.public-settings-page textarea:focus-visible,
+.public-settings-page input:focus-visible,
+.public-settings-page button:focus-visible {
+  outline: 3px solid #9eb5ff;
+  outline-offset: 2px;
+}
+.public-salon-gallery,
+.public-salon-info { padding: clamp(1.2rem, 3vw, 2.2rem); margin-bottom: 1rem; background: #fff; border: 1px solid #dfe5ef; border-radius: 1.15rem; }
+.public-salon-section-head h2,
+.public-salon-info h2 { margin: .25rem 0 1rem; font-size: clamp(1.35rem, 3vw, 1.7rem); }
+.public-salon-gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.public-salon-gallery-grid > * { aspect-ratio: 4 / 3; border-radius: .9rem; overflow: hidden; border: 1px solid #e0e5ed; }
+.public-salon-info { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(15rem, .65fr); gap: 2rem; }
+.public-salon-info p { line-height: 1.6; }
+.public-salon-info address { margin-top: 1rem; color: #5f6b82; font-style: normal; line-height: 1.55; }
+.public-salon-contacts { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.public-salon-hours h3 { margin-top: 0; font-size: 1rem; }
+.public-salon-hours dl { margin: 0; display: grid; gap: .45rem; }
+.public-salon-hours dl > div { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: .45rem; border-bottom: 1px solid #edf0f5; }
+.public-salon-hours dt { color: #647087; }
+.public-salon-hours dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 700; }
+.public-salon-notice { box-sizing: border-box; padding: .9rem 1rem; margin-bottom: 1rem; border: 1px solid #d8e1f5; border-radius: .8rem; background: #eef3ff; color: #31509c; }
+.public-salon-booking .public-booking-header { display: none; }
+.public-salon-booking .public-booking-shell { min-height: auto; padding-top: 0; background: transparent; }
+.public-salon-inactive { display: grid; place-items: start center; }
+.public-salon-state-card { width: min(100%, 34rem); margin-top: 8vh; padding: 1.5rem; background: #fff; border: 1px solid #dfe5ef; border-radius: 1.15rem; text-align: center; }
+.public-salon-hero-loading { min-height: 24rem; }
+.public-salon-photo-skeleton,
+.public-salon-copy-skeleton span { background: #e8edf4; border-radius: 1rem; }
+.public-salon-photo-skeleton { aspect-ratio: 16 / 10; }
+.public-salon-copy-skeleton { display: grid; gap: .75rem; }
+.public-salon-copy-skeleton span { display: block; height: 1rem; }
+.public-salon-copy-skeleton span:nth-child(1) { width: 40%; height: .75rem; }
+.public-salon-copy-skeleton span:nth-child(2) { width: 82%; height: 3rem; }
+.public-salon-copy-skeleton span:nth-child(3) { width: 70%; }
+.public-profile-form textarea { width: 100%; box-sizing: border-box; min-height: 7rem; padding: .7rem .78rem; border: 1px solid #cdd6e7; border-radius: .7rem; font: inherit; resize: vertical; }
+.public-media-admin-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: 1rem; }
+.public-media-admin-item { overflow: hidden; border: 1px solid #dfe5ef; border-radius: .85rem; background: #f8faff; }
+.public-media-admin-item img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #edf0f5; }
+.public-media-admin-actions { display: grid; gap: .45rem; padding: .65rem; }
+.public-media-admin-actions button { min-height: 44px; border: 1px solid #d7deea; border-radius: .65rem; background: #fff; color: #30405f; font: inherit; font-weight: 700; }
+.public-media-admin-actions button.is-cover { border-color: #3159d9; background: #eef3ff; color: #254bbd; }
+.public-media-upload { display: grid; gap: .65rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #edf0f5; }
+.public-media-upload input[type="file"] { padding: .55rem; }
+
+@media (max-width: 760px) {
+  .public-salon-page { padding-inline: 1rem; }
+  .public-salon-hero,
+  .public-salon-info { grid-template-columns: 1fr; }
+  .public-salon-hero { gap: 1.2rem; }
+  .public-salon-gallery-grid,
+  .public-media-admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 390px) {
+  .public-salon-page { padding-inline: 1rem; }
+  .public-salon-hero-copy h1 { font-size: 2rem; }
+  .public-salon-gallery,
+  .public-salon-info { padding: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-salon-page *, .public-salon-page *::before, .public-salon-page *::after { transition: none !important; animation: none !important; }
+}
