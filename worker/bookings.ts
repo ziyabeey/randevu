@@ -79,6 +79,7 @@ function rpcMessage(data: unknown, fallback: string) {
   if (message.includes('IDEMPOTENCY_CONFLICT')) return { code: 'IDEMPOTENCY_CONFLICT', message: 'Bu işlem anahtarı farklı bir istek için zaten kullanılmış.', status: 409 as const };
   if (message.includes('APPOINTMENT_CONFLICT')) return { code: 'APPOINTMENT_CONFLICT', message: 'Bu saat az önce başka bir randevu tarafından alındı.', status: 409 as const };
   if (message.includes('SLOT_UNAVAILABLE')) return { code: 'SLOT_UNAVAILABLE', message: 'Seçilen saat artık müsait değil.', status: 409 as const };
+  if (message.includes('SERVICE_PRICE_NOT_FINAL')) return { code: 'SERVICE_PRICE_NOT_FINAL', message: 'Fiyat aralıklı hizmetler bu tek hizmetli randevu akışında henüz oluşturulamıyor.', status: 409 as const };
   if (message.includes('APPOINTMENT_NOT_FOUND')) return { code: 'APPOINTMENT_NOT_FOUND', message: 'Randevu bulunamadı.', status: 404 as const };
   if (message.includes('APPOINTMENT_NOT_RESCHEDULABLE') || message.includes('INVALID_STATUS_TRANSITION')) return { code: 'INVALID_TRANSITION', message: 'Randevunun mevcut durumunda bu işlem yapılamaz.', status: 409 as const };
   if (message.includes('NOT_ALLOWED')) return { code: 'NOT_ALLOWED', message: 'Bu işletme için işlem yetkiniz yok.', status: 403 as const };

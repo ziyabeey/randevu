@@ -18,8 +18,20 @@ function validName(value: unknown) {
   return typeof value === 'string' && value.trim().length >= 2 && value.trim().length <= 120;
 }
 
-function integerIn(value: unknown, min: number, max: number) {
+function validCategory(value: unknown) {
+  return typeof value === 'string' && value.trim().length >= 1 && value.trim().length <= 80;
+}
+
+function integerIn(value: unknown, min: number, max: number): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
+}
+
+function validCurrency(value: unknown) {
+  return typeof value === 'string' && /^[A-Za-z]{3}$/.test(value.trim());
+}
+
+function validPriceType(value: unknown): value is 'fixed' | 'range' {
+  return value === 'fixed' || value === 'range';
 }
 
 function validExpected(value: unknown) {
@@ -96,25 +108,67 @@ catalogManagement.post('/services', async (context) => {
   const body = (await readJson(context)) ?? {};
   const before = body.bufferBeforeMinutes ?? 0;
   const after = body.bufferAfterMinutes ?? 0;
+  const hasLegacyPrice = body.priceMinor !== undefined;
+  const hasCanonicalPrice = body.priceType !== undefined
+    || body.priceMinMinor !== undefined
+    || body.priceMaxMinor !== undefined
+    || body.currency !== undefined;
+  const legacyOnly = hasLegacyPrice && body.category === undefined && body.sortOrder === undefined;
+
+  if (hasLegacyPrice && hasCanonicalPrice) {
+    return context.json({ error: { code: 'INVALID_SERVICE', message: 'Eski ve yeni fiyat alanları aynı istekte birlikte kullanılamaz.' } }, 400);
+  }
+
+  const priceType = hasLegacyPrice ? 'fixed' : body.priceType;
+  const priceMinMinor = hasLegacyPrice ? body.priceMinor : body.priceMinMinor;
+  const priceMaxMinor = hasLegacyPrice ? body.priceMinor : body.priceMaxMinor;
+  const currency = hasLegacyPrice ? 'TRY' : (body.currency ?? 'TRY');
+  const category = body.category ?? 'Genel';
+  const sortOrder = body.sortOrder ?? null;
+
   if (!validName(body.name)
       || !integerIn(body.durationMinutes, 5, 720)
       || !integerIn(before, 0, 240)
       || !integerIn(after, 0, 240)
-      || !integerIn(body.priceMinor, 0, 100000000)) {
-    return context.json({ error: { code: 'INVALID_SERVICE', message: 'Hizmet adı, süre, tampon veya fiyat geçerli değil.' } }, 400);
+      || !validCategory(category)
+      || (sortOrder !== null && !integerIn(sortOrder, 0, 1000000))
+      || !validPriceType(priceType)
+      || !integerIn(priceMinMinor, 0, 100000000)
+      || !integerIn(priceMaxMinor, 0, 100000000)
+      || priceMinMinor > priceMaxMinor
+      || (priceType === 'fixed' && priceMinMinor !== priceMaxMinor)
+      || !validCurrency(currency)) {
+    return context.json({ error: { code: 'INVALID_SERVICE', message: 'Hizmet adı, kategori, sıralama, süre, tampon veya fiyat geçerli değil.' } }, 400);
   }
 
-  const result = await supabaseRequest<RpcRow | RpcRow[]>(context.env, 'rest/v1/rpc/create_service_guarded', {
-    method: 'POST',
-    body: JSON.stringify({
-      p_business_id: access.membership.business_id,
-      p_name: String(body.name).trim(),
-      p_duration_minutes: body.durationMinutes,
-      p_buffer_before_minutes: before,
-      p_buffer_after_minutes: after,
-      p_price_minor: body.priceMinor,
-    }),
-  }, access.auth.accessToken);
+  const result = legacyOnly
+    ? await supabaseRequest<RpcRow | RpcRow[]>(context.env, 'rest/v1/rpc/create_service_guarded', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_business_id: access.membership.business_id,
+          p_name: String(body.name).trim(),
+          p_duration_minutes: body.durationMinutes,
+          p_buffer_before_minutes: before,
+          p_buffer_after_minutes: after,
+          p_price_minor: priceMinMinor,
+        }),
+      }, access.auth.accessToken)
+    : await supabaseRequest<RpcRow | RpcRow[]>(context.env, 'rest/v1/rpc/create_service_priced_guarded', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_business_id: access.membership.business_id,
+          p_name: String(body.name).trim(),
+          p_duration_minutes: body.durationMinutes,
+          p_buffer_before_minutes: before,
+          p_buffer_after_minutes: after,
+          p_category: String(category).trim(),
+          p_sort_order: sortOrder,
+          p_price_type: priceType,
+          p_price_min_minor: priceMinMinor,
+          p_price_max_minor: priceMaxMinor,
+          p_currency: String(currency).trim().toUpperCase(),
+        }),
+      }, access.auth.accessToken);
   if (!result.ok) {
     const error = mutationError(rpcMessage(result.data), 'SERVICE_CREATE_FAILED', 'Hizmet kaydedilemedi.');
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
@@ -130,6 +184,15 @@ catalogManagement.patch('/services/:id', async (context) => {
     return context.json({
       error: { code: 'STALE_WRITE', message: 'Hizmeti değiştirmeden önce güncel bilgileri yeniden yükleyin.' },
     }, 409);
+  }
+
+  const hasLegacyPrice = body.priceMinor !== undefined;
+  const hasCanonicalPrice = body.priceType !== undefined
+    || body.priceMinMinor !== undefined
+    || body.priceMaxMinor !== undefined
+    || body.currency !== undefined;
+  if (hasLegacyPrice && hasCanonicalPrice) {
+    return context.json({ error: { code: 'INVALID_SERVICE', message: 'Eski ve yeni fiyat alanları aynı istekte birlikte kullanılamaz.' } }, 400);
   }
 
   const patch: Record<string, unknown> = {};
@@ -149,9 +212,47 @@ catalogManagement.patch('/services/:id', async (context) => {
     if (!integerIn(body.bufferAfterMinutes, 0, 240)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Tampon süre 0–240 dakika olmalı.' } }, 400);
     patch.bufferAfterMinutes = body.bufferAfterMinutes;
   }
-  if (body.priceMinor !== undefined) {
+  if (body.category !== undefined) {
+    if (!validCategory(body.category)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Kategori 1–80 karakter olmalı.' } }, 400);
+    patch.category = String(body.category).trim();
+  }
+  if (body.sortOrder !== undefined) {
+    if (!integerIn(body.sortOrder, 0, 1000000)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Sıralama değeri geçerli değil.' } }, 400);
+    patch.sortOrder = body.sortOrder;
+  }
+  if (hasLegacyPrice) {
     if (!integerIn(body.priceMinor, 0, 100000000)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Fiyat geçerli değil.' } }, 400);
     patch.priceMinor = body.priceMinor;
+  } else {
+    if (body.priceType !== undefined) {
+      if (!validPriceType(body.priceType)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Fiyat tipi geçerli değil.' } }, 400);
+      patch.priceType = body.priceType;
+    }
+    if (body.priceMinMinor !== undefined) {
+      if (!integerIn(body.priceMinMinor, 0, 100000000)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Alt fiyat geçerli değil.' } }, 400);
+      patch.priceMinMinor = body.priceMinMinor;
+    }
+    if (body.priceMaxMinor !== undefined) {
+      if (!integerIn(body.priceMaxMinor, 0, 100000000)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Üst fiyat geçerli değil.' } }, 400);
+      patch.priceMaxMinor = body.priceMaxMinor;
+    }
+    if (body.currency !== undefined) {
+      if (!validCurrency(body.currency)) return context.json({ error: { code: 'INVALID_SERVICE', message: 'Para birimi üç harfli kod olmalı.' } }, 400);
+      patch.currency = String(body.currency).trim().toUpperCase();
+    }
+    const patchMin = body.priceMinMinor;
+    const patchMax = body.priceMaxMinor;
+    if (patchMin !== undefined && patchMax !== undefined) {
+      if (!integerIn(patchMin, 0, 100000000) || !integerIn(patchMax, 0, 100000000)) {
+        return context.json({ error: { code: 'INVALID_SERVICE', message: 'Fiyat aralığı geçerli değil.' } }, 400);
+      }
+      if (patchMin > patchMax) {
+        return context.json({ error: { code: 'INVALID_SERVICE', message: 'Alt fiyat üst fiyattan büyük olamaz.' } }, 400);
+      }
+      if (body.priceType === 'fixed' && patchMin !== patchMax) {
+        return context.json({ error: { code: 'INVALID_SERVICE', message: 'Sabit fiyatta alt ve üst tutar aynı olmalı.' } }, 400);
+      }
+    }
   }
   if (body.active !== undefined) {
     if (typeof body.active !== 'boolean') return context.json({ error: { code: 'INVALID_SERVICE', message: 'Hizmet durumu geçerli değil.' } }, 400);

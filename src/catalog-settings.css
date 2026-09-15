@@ -10,7 +10,7 @@
 .catalog-edit-form { display: grid; grid-template-columns: minmax(160px, 2fr) repeat(4, minmax(92px, 1fr)); gap: 10px; align-items: end; }
 .catalog-edit-form.staff-edit { grid-template-columns: minmax(180px, 2fr) minmax(150px, 1fr) auto; }
 .catalog-edit-form label { display: grid; gap: 5px; font-size: .78rem; color: var(--muted, #667085); }
-.catalog-edit-form input, .catalog-create-form input { width: 100%; min-height: 44px; box-sizing: border-box; }
+.catalog-edit-form input, .catalog-edit-form select, .catalog-create-form input, .catalog-create-form select { width: 100%; min-height: 44px; box-sizing: border-box; }
 .catalog-actions { display: flex; gap: 8px; grid-column: 1 / -1; }
 .catalog-create-form { display: grid; grid-template-columns: minmax(160px, 2fr) repeat(4, minmax(92px, 1fr)) auto; gap: 10px; align-items: end; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border, #d9dde5); }
 .catalog-create-form h3 { grid-column: 1 / -1; margin: 0; }

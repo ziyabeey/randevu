@@ -19,7 +19,12 @@ const ids = {
 };
 const csrfToken = 'C'.repeat(43);
 const state = {
-  service: { id: ids.service, name: 'Kesim', duration_minutes: 30, buffer_before_minutes: 0, buffer_after_minutes: 0, price_minor: 10000, currency: 'TRY', active: true, updated_at: '2026-09-14T10:00:00.000Z' },
+  service: {
+    id: ids.service, name: 'Kesim', duration_minutes: 30, buffer_before_minutes: 0, buffer_after_minutes: 0,
+    category: 'Genel', sort_order: 0, price_minor: 10000, price_type: 'fixed', price_min_minor: 10000,
+    price_max_minor: 10000, price_policy_version: 1, currency: 'TRY', active: true,
+    updated_at: '2026-09-14T10:00:00.000Z',
+  },
   staff: { id: ids.staff, membership_id: null, name: 'Ada', phone: '5550000000', active: true, updated_at: '2026-09-14T10:00:00.000Z' },
   assignment: { staff_id: ids.staff, service_id: ids.service, active: true, updated_at: ids.assignment },
   businessHours: [{ id: 'bh-1', weekday: 1, starts_local: '09:00:00', ends_local: '17:00:00', active: true }],
@@ -61,7 +66,7 @@ const server = createServer(async (request, response) => {
     }
     if (url.pathname === '/harness') {
       response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      response.end('<!doctype html><html><body><div id="root"></div><script type="module" src="/test.js"></script></body></html>');
+      response.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/test.js"></script></body></html>');
       return;
     }
     const body = request.method === 'GET' || request.method === 'HEAD' ? {} : await bodyOf(request);
@@ -81,13 +86,28 @@ const server = createServer(async (request, response) => {
         return sendJson(response, 409, { error: { code: 'STALE_WRITE', message: 'Bu kayıt başka bir oturumda değişti. Güncel bilgileri yükleyip tekrar deneyin.' } });
       }
       assert.equal(body.expectedUpdatedAt, state.service.updated_at);
+      const nextType = body.priceType ?? (body.priceMinor !== undefined ? 'fixed' : state.service.price_type);
+      const nextMin = body.priceMinMinor ?? body.priceMinor ?? state.service.price_min_minor;
+      const nextMax = body.priceMaxMinor ?? body.priceMinor ?? state.service.price_max_minor;
+      const nextCurrency = body.currency ?? state.service.currency;
+      const priceChanged = nextType !== state.service.price_type
+        || nextMin !== state.service.price_min_minor
+        || nextMax !== state.service.price_max_minor
+        || nextCurrency !== state.service.currency;
       state.service = {
         ...state.service,
         name: body.name ?? state.service.name,
         duration_minutes: body.durationMinutes ?? state.service.duration_minutes,
         buffer_before_minutes: body.bufferBeforeMinutes ?? state.service.buffer_before_minutes,
         buffer_after_minutes: body.bufferAfterMinutes ?? state.service.buffer_after_minutes,
-        price_minor: body.priceMinor ?? state.service.price_minor,
+        category: body.category ?? state.service.category,
+        sort_order: body.sortOrder ?? state.service.sort_order,
+        price_type: nextType,
+        price_min_minor: nextMin,
+        price_max_minor: nextMax,
+        price_minor: nextMin,
+        currency: nextCurrency,
+        price_policy_version: state.service.price_policy_version + (priceChanged ? 1 : 0),
         active: body.active ?? state.service.active,
         updated_at: new Date(Date.parse(state.service.updated_at) + 1000).toISOString(),
       };
@@ -254,13 +274,15 @@ try {
   assert.equal(await call(page, 'setInArticle', 'Kesim', 'duration', '45'), true);
   assert.equal(await call(page, 'setInArticle', 'Kesim', 'bufferBefore', '5'), true);
   assert.equal(await call(page, 'setInArticle', 'Kesim', 'bufferAfter', '10'), true);
-  assert.equal(await call(page, 'setInArticle', 'Kesim', 'price', '125.50'), true);
+  assert.equal(await call(page, 'setInArticle', 'Kesim', 'priceMin', '125.50'), true);
+  assert.equal(await call(page, 'setInArticle', 'Kesim', 'priceMax', '125.50'), true);
   assert.equal(await call(page, 'submitInArticle', 'Kesim'), true);
   await waitFor(() => state.service.duration_minutes === 45 && state.service.price_minor === 12550, 'service edit not persisted');
   await uiContains(page, '45 dk');
 
   state.staleNextService = true;
-  assert.equal(await call(page, 'setInArticle', 'Kesim', 'price', '130.00'), true);
+  assert.equal(await call(page, 'setInArticle', 'Kesim', 'priceMin', '130.00'), true);
+  assert.equal(await call(page, 'setInArticle', 'Kesim', 'priceMax', '130.00'), true);
   assert.equal(await call(page, 'submitInArticle', 'Kesim'), true);
   await uiContains(page, 'başka bir oturumda değişti');
   assert.equal(state.service.price_minor, 12550);
@@ -272,6 +294,21 @@ try {
   assert.equal(await call(page, 'clickInArticle', 'Kesim', 'Etkinleştir'), true);
   await waitFor(() => state.service.active === true, 'service re-enable not persisted');
 
+  assert.equal(await call(page, 'setInArticle', 'Kesim', 'priceType', 'range'), true);
+  assert.equal(await call(page, 'setInArticle', 'Kesim', 'priceMin', '150.00'), true);
+  assert.equal(await call(page, 'setInArticle', 'Kesim', 'priceMax', '220.00'), true);
+  assert.equal(await call(page, 'setInArticle', 'Kesim', 'category', 'Bakım'), true);
+  assert.equal(await call(page, 'setInArticle', 'Kesim', 'sortOrder', '20'), true);
+  assert.equal(await call(page, 'submitInArticle', 'Kesim'), true);
+  await waitFor(
+    () => state.service.price_type === 'range'
+      && state.service.price_min_minor === 15000
+      && state.service.price_max_minor === 22000,
+    'range price edit not persisted',
+  );
+  await uiContains(page, 'Fiyat aralığı');
+  await uiContains(page, 'Bakım');
+
   assert.equal(await call(page, 'setInForm', 'Aralık ekle', 'start', '18:00'), true);
   assert.equal(await call(page, 'setInForm', 'Aralık ekle', 'end', '20:00'), true);
   assert.equal(await call(page, 'submit', 'Aralık ekle'), true);
@@ -279,8 +316,12 @@ try {
   await uiContains(page, 'mevcut randevuları taşımaz');
 
   assert.ok(state.requests.some((item) => item.path === `/api/services/${ids.service}` && item.body.expectedUpdatedAt));
+  assert.ok(state.requests.some((item) => item.path === `/api/services/${ids.service}`
+    && item.body.priceType === 'range'
+    && item.body.priceMinMinor === 15000
+    && item.body.priceMaxMinor === 22000));
   assert.ok(state.requests.some((item) => item.path === '/api/availability/business-hours/1' && Array.isArray(item.body.expectedIntervals)));
-  console.log('F10-04 Chrome settings acceptance passed.');
+  console.log('F10-04/F12-03 Chrome catalog pricing acceptance passed.');
 } finally {
   page?.close();
   chrome?.kill('SIGKILL');
