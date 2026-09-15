@@ -194,15 +194,9 @@ begin
 end
 $$;
 
--- Schedule stale-write protection and appointment invariants.
+-- Schedule stale-write protection runs through browser authority; the fixture invariant is checked as the test owner.
 do $$
-declare
-  v_before_start timestamptz;
-  v_before_status text;
 begin
-  select starts_at,status into v_before_start,v_before_status
-  from public.appointments where id='b8800000-0000-4000-8000-000000000001';
-
   perform * from public.replace_business_hours_guarded(
     'b8100000-0000-4000-8000-000000000001',1,
     '[{"start":"10:00","end":"18:00"}]'::jsonb,
@@ -219,11 +213,17 @@ begin
     if sqlerrm = 'stale business-hours write unexpectedly won' then raise; end if;
     if position('STALE_WRITE' in sqlerrm) = 0 then raise; end if;
   end;
+end
+$$;
+reset role;
 
-  if exists (
+do $$
+begin
+  if not exists (
     select 1 from public.appointments a
     where a.id='b8800000-0000-4000-8000-000000000001'
-      and (a.starts_at is distinct from v_before_start or a.status is distinct from v_before_status)
+      and a.starts_at='2026-10-05T10:00:00+03'::timestamptz
+      and a.status='confirmed'
   ) then
     raise exception 'hours change silently moved or cancelled existing appointment';
   end if;
@@ -231,6 +231,9 @@ end
 $$;
 
 -- Archiving never rewrites historical snapshots; inactive resources disappear from fresh slot selection.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','b8000000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 do $$
 declare
   v_service_version timestamptz;
@@ -248,18 +251,6 @@ begin
     '{"active":false,"name":"Archived Staff"}'::jsonb
   );
 
-  if not exists (
-    select 1 from public.appointments a
-    where a.id='b8800000-0000-4000-8000-000000000001'
-      and a.service_name_snapshot='A Service'
-      and a.staff_name_snapshot='A Staff'
-      and a.duration_minutes_snapshot=30
-      and a.price_minor_snapshot=12000
-      and a.status='confirmed'
-  ) then
-    raise exception 'archive rewrote historical appointment snapshot';
-  end if;
-
   select count(*) into v_slots
   from public.compute_availability_slots(
     'b8100000-0000-4000-8000-000000000001','b8300000-0000-4000-8000-000000000001',
@@ -269,6 +260,23 @@ begin
 end
 $$;
 reset role;
+
+do $$
+begin
+  if not exists (
+    select 1 from public.appointments a
+    where a.id='b8800000-0000-4000-8000-000000000001'
+      and a.starts_at='2026-10-05T10:00:00+03'::timestamptz
+      and a.service_name_snapshot='A Service'
+      and a.staff_name_snapshot='A Staff'
+      and a.duration_minutes_snapshot=30
+      and a.price_minor_snapshot=12000
+      and a.status='confirmed'
+  ) then
+    raise exception 'archive rewrote historical appointment snapshot';
+  end if;
+end
+$$;
 
 -- Catalog snapshots expose additive versions for UI compare-and-swap edits.
 set local role authenticated;
