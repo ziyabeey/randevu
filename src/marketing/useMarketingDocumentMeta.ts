@@ -1,16 +1,18 @@
 import { useEffect } from "react";
 
+import { MARKETING_ORIGIN } from "./domainContract";
+
 export const MARKETING_DOCUMENT_META = {
-  title: "Randevu kolay. | Kepenk.ai",
-  description: "Kuaför, berber ve güzellik işletmeleri için kolay randevu yönetimi. Müşteri kendi alsın, takvimin karışmasın, kurulumu da birlikte yapalım.",
-  canonical: "https://randevu.kepenk.ai/",
-  image: "https://randevu.kepenk.ai/marketing/hero/randevu-hero-model.webp",
-  imageAlt: "Randevu kolay",
+  title: "Randevu kolay. | Randevu Kolay",
+  description: "Randevu Kolay, kuaför, berber ve güzellik işletmeleri için kolay randevu yönetimi. Müşteri kendi alsın, takvimin karışmasın, kurulumu da birlikte yapalım.",
+  canonical: `${MARKETING_ORIGIN}/`,
+  image: `${MARKETING_ORIGIN}/marketing/hero/randevu-hero-model.webp`,
+  imageAlt: "Randevu Kolay",
   imageWidth: "1928",
   imageHeight: "1072",
   ogType: "website",
   locale: "tr_TR",
-  siteName: "Kepenk.ai",
+  siteName: "Randevu Kolay",
   twitterCard: "summary_large_image",
 } as const;
 
