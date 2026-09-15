@@ -3,6 +3,11 @@ import AvailabilityPage from '../../src/AvailabilityPage';
 import '../../src/styles.css';
 import '../../src/phase4.css';
 
+const viewportMeta = document.createElement('meta');
+viewportMeta.name = 'viewport';
+viewportMeta.content = 'width=device-width, initial-scale=1';
+document.head.append(viewportMeta);
+
 type Control = {
   text(): string;
   clickButton(text: string): boolean;
