@@ -3,8 +3,8 @@ import AvailabilityPage from '../../src/AvailabilityPage';
 
 type Control = {
   text(): string;
-  setInArticle(label: string, name: string, value: string): boolean;
-  submitInArticle(label: string): boolean;
+  setInArticle(label: string, name: string, value: string): Promise<boolean>;
+  submitInArticle(label: string): Promise<boolean>;
   clickInArticle(label: string, text: string): boolean;
   setInForm(buttonText: string, name: string, value: string): Promise<boolean>;
   submit(buttonText: string): Promise<boolean>;
@@ -43,16 +43,33 @@ async function waitForForm(buttonText: string, timeoutMs = 3_000) {
   return { button: undefined, form: null };
 }
 
+async function waitForArticleField(label: string, name: string, timeoutMs = 3_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const field = article(label)?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(name)}"]`) ?? null;
+    if (field) return field;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return null;
+}
+
+async function waitForArticleSubmit(label: string, timeoutMs = 3_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const form = article(label)?.querySelector<HTMLFormElement>('form') ?? null;
+    const button = form?.querySelector<HTMLButtonElement>('button[type="submit"],button:not([type])') ?? null;
+    if (form && button && !button.disabled) return { form, button };
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return { form: null, button: null };
+}
+
 window.__f10settings = {
   text: () => document.body.innerText,
-  setInArticle: (label, name, value) => setValue(
-    article(label)?.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${CSS.escape(name)}"]`) ?? null,
-    value,
-  ),
-  submitInArticle: (label) => {
-    const form = article(label)?.querySelector<HTMLFormElement>('form');
-    const button = form?.querySelector<HTMLButtonElement>('button[type="submit"],button:not([type])');
-    if (!form || !button || button.disabled) return false;
+  setInArticle: async (label, name, value) => setValue(await waitForArticleField(label, name), value),
+  submitInArticle: async (label) => {
+    const { form, button } = await waitForArticleSubmit(label);
+    if (!form || !button) return false;
     form.requestSubmit(button);
     return true;
   },
