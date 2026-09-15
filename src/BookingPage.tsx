@@ -10,6 +10,8 @@ type Session = {
 type Service = {
   id: string; name: string; duration_minutes: number; buffer_before_minutes: number;
   buffer_after_minutes: number; price_minor: number; currency: string; active: boolean;
+  price_type?: 'fixed' | 'range'; price_min_minor?: number; price_max_minor?: number;
+  price_policy_version?: number; category?: string; sort_order?: number;
 };
 type Staff = { id: string; name: string; active: boolean };
 type Assignment = { staff_id: string; service_id: string; active: boolean };
@@ -66,6 +68,10 @@ function money(value: number, currency: string) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(value / 100);
 }
 
+function legacyCreateBookable(service: Service) {
+  return service.active && (service.price_type === undefined || service.price_type === 'fixed');
+}
+
 const statusText: Record<AppointmentStatus, string> = {
   scheduled: 'Planlandı', confirmed: 'Onaylandı', completed: 'Tamamlandı', no_show: 'Gelmedi', cancelled: 'İptal',
 };
@@ -117,7 +123,11 @@ export default function BookingPage() {
       setTimezone(nextSetup.timezone);
       setAppointments(nextBookings.appointments);
       setBookingsNextCursor(nextBookings.page.nextCursor);
-      setServiceId((current) => current || nextCatalog.services.find((item) => item.active)?.id || '');
+      setServiceId((current) => {
+        const bookable = nextCatalog.services.filter(legacyCreateBookable);
+        if (current && bookable.some((item) => item.id === current)) return current;
+        return bookable[0]?.id ?? '';
+      });
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Randevu ekranı yüklenemedi.');
     } finally { setLoading(false); }
@@ -125,7 +135,8 @@ export default function BookingPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const activeServices = useMemo(() => catalog?.services.filter((item) => item.active) ?? [], [catalog]);
+  const activeServices = useMemo(() => catalog?.services.filter(legacyCreateBookable) ?? [], [catalog]);
+  const hasRangeServices = useMemo(() => catalog?.services.some((item) => item.active && item.price_type === 'range') ?? false, [catalog]);
   const activeStaff = useMemo(() => catalog?.staff.filter((item) => item.active) ?? [], [catalog]);
   const eligibleStaff = useMemo(() => {
     if (!catalog || !serviceId) return [];
@@ -280,11 +291,11 @@ export default function BookingPage() {
             {activeServices.map((service) => <option key={service.id} value={service.id}>{service.name} · {service.duration_minutes} dk · {money(service.price_minor, service.currency)}</option>)}
           </select></label>
           <label>Personel<select value={staffId} onChange={(event) => { setStaffId(event.target.value); setSlots([]); setSelectedSlot(null); }}>
-            <option value="any">Fark etmez</option>{eligibleStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
-          </select></label>
+            <option value="any">Fark etmez</option>{eligibleStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
           <label>Tarih<input type="date" value={date} onChange={(event) => { setDate(event.target.value); setSlots([]); setSelectedSlot(null); }} /></label>
           <label className="wide-field">Not<textarea value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={1000} placeholder="İsteğe bağlı not" /></label>
         </div>
+        {hasRangeServices && <p className="muted">Fiyat aralıklı hizmetler katalogdan yönetilebilir; yeni randevu akışına çoklu hizmet fiyat snapshot desteğiyle eklenecek.</p>}
         <div className="booking-actions"><button className="secondary-button" disabled={busy || !serviceId} onClick={() => void previewSlots()}>Boş saatleri getir</button></div>
 
         <div className="slot-cloud">
