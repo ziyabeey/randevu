@@ -13,6 +13,7 @@ const user = { id: 'e1000000-0000-4000-8000-000000000001', email: 'owner@example
 const businessId = 'e2000000-0000-4000-8000-000000000001';
 const membershipId = 'e3000000-0000-4000-8000-000000000001';
 const serviceId = 'e4000000-0000-4000-8000-000000000001';
+const staffId = 'e5000000-0000-4000-8000-000000000001';
 const csrf = 'F'.repeat(43);
 
 function json(data, status = 200) {
@@ -174,5 +175,28 @@ await test('F12-03 canonical range edit forwards optimistic proof and exact pric
       category: 'Bakım', sortOrder: 30, priceType: 'range',
       priceMinMinor: 15000, priceMaxMinor: 22000, currency: 'EUR',
     });
+  } finally { globalThis.fetch = realFetch; }
+});
+
+await test('F12-03 legacy operator booking maps range service rejection to deterministic 409', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = authFetch('owner', async (url) => {
+    assert.equal(url.pathname, '/rest/v1/rpc/create_appointment');
+    return json({ message: 'SERVICE_PRICE_NOT_FINAL' }, 400);
+  });
+  try {
+    const response = await app.request('http://localhost/api/bookings', {
+      method: 'POST',
+      headers: { ...mutationHeaders(), 'Idempotency-Key': 'f12-range-booking-0001' },
+      body: JSON.stringify({
+        customerName: 'Range Customer',
+        customerPhone: '5550000000',
+        serviceId,
+        staffId,
+        startsAt: '2026-10-20T10:00:00+03:00',
+      }),
+    }, env);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error?.code, 'SERVICE_PRICE_NOT_FINAL');
   } finally { globalThis.fetch = realFetch; }
 });
