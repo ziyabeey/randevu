@@ -10,13 +10,13 @@ export type ManagedService = {
   duration_minutes: number;
   buffer_before_minutes: number;
   buffer_after_minutes: number;
-  category: string;
-  sort_order: number;
+  category?: string;
+  sort_order?: number;
   price_minor: number;
-  price_type: PriceType;
-  price_min_minor: number;
-  price_max_minor: number;
-  price_policy_version: number;
+  price_type?: PriceType;
+  price_min_minor?: number;
+  price_max_minor?: number;
+  price_policy_version?: number;
   currency: string;
   active: boolean;
   updated_at: string;
@@ -50,6 +50,30 @@ type Props = {
   reload: () => Promise<boolean>;
 };
 
+function categoryOf(service: ManagedService) {
+  return service.category?.trim() || 'Genel';
+}
+
+function sortOrderOf(service: ManagedService) {
+  return Number.isInteger(service.sort_order) ? Number(service.sort_order) : 0;
+}
+
+function priceTypeOf(service: ManagedService): PriceType {
+  return service.price_type === 'range' ? 'range' : 'fixed';
+}
+
+function priceMinOf(service: ManagedService) {
+  return Number.isInteger(service.price_min_minor) ? Number(service.price_min_minor) : service.price_minor;
+}
+
+function priceMaxOf(service: ManagedService) {
+  return Number.isInteger(service.price_max_minor) ? Number(service.price_max_minor) : service.price_minor;
+}
+
+function pricePolicyVersionOf(service: ManagedService) {
+  return Number.isInteger(service.price_policy_version) ? Number(service.price_policy_version) : 1;
+}
+
 function parseMoney(value: FormDataEntryValue | null) {
   const normalized = String(value ?? '').trim().replace(',', '.');
   if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
@@ -80,10 +104,10 @@ function formatMoney(minor: number, currency: string) {
 }
 
 function formatServicePrice(service: ManagedService) {
-  if (service.price_type === 'range') {
-    return `${formatMoney(service.price_min_minor, service.currency)} – ${formatMoney(service.price_max_minor, service.currency)}`;
+  if (priceTypeOf(service) === 'range') {
+    return `${formatMoney(priceMinOf(service), service.currency)} – ${formatMoney(priceMaxOf(service), service.currency)}`;
   }
-  return formatMoney(service.price_min_minor, service.currency);
+  return formatMoney(priceMinOf(service), service.currency);
 }
 
 export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice, reload }: Props) {
@@ -92,7 +116,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
   const activeStaff = catalog.staff.filter((item) => item.active);
   const nextSortOrder = Math.min(
     1_000_000,
-    catalog.services.reduce((max, service) => Math.max(max, service.sort_order), -10) + 10,
+    catalog.services.reduce((max, service) => Math.max(max, sortOrderOf(service)), -10) + 10,
   );
 
   async function mutate(action: () => Promise<unknown>, success: string) {
@@ -228,27 +252,27 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
               <div className="catalog-editor-head">
                 <div>
                   <strong>{service.name}</strong>
-                  <span>{service.category} · sıra {service.sort_order} · {service.duration_minutes} dk · {formatServicePrice(service)}</span>
-                  <small>{service.price_type === 'range' ? 'Fiyat aralığı' : 'Sabit fiyat'} · politika v{service.price_policy_version}</small>
+                  <span>{categoryOf(service)} · sıra {sortOrderOf(service)} · {service.duration_minutes} dk · {formatServicePrice(service)}</span>
+                  <small>{priceTypeOf(service) === 'range' ? 'Fiyat aralığı' : 'Sabit fiyat'} · politika v{pricePolicyVersionOf(service)}</small>
                 </div>
                 <span className="status-pill">{service.active ? 'Aktif' : 'Arşivde'}</span>
               </div>
               {canManage && (
                 <form className="catalog-edit-form" onSubmit={(event) => void updateService(event, service)}>
                   <label>Hizmet adı<input name="name" defaultValue={service.name} minLength={2} maxLength={120} required /></label>
-                  <label>Kategori<input name="category" defaultValue={service.category} minLength={1} maxLength={80} required /></label>
-                  <label>Sıra<input name="sortOrder" type="number" min={0} max={1000000} defaultValue={service.sort_order} required /></label>
+                  <label>Kategori<input name="category" defaultValue={categoryOf(service)} minLength={1} maxLength={80} required /></label>
+                  <label>Sıra<input name="sortOrder" type="number" min={0} max={1000000} defaultValue={sortOrderOf(service)} required /></label>
                   <label>Süre (dk)<input name="duration" type="number" min={5} max={720} defaultValue={service.duration_minutes} required /></label>
                   <label>Ön tampon (dk)<input name="bufferBefore" type="number" min={0} max={240} defaultValue={service.buffer_before_minutes} required /></label>
                   <label>Son tampon (dk)<input name="bufferAfter" type="number" min={0} max={240} defaultValue={service.buffer_after_minutes} required /></label>
                   <label>Fiyat tipi
-                    <select name="priceType" defaultValue={service.price_type}>
+                    <select name="priceType" defaultValue={priceTypeOf(service)}>
                       <option value="fixed">Sabit</option>
                       <option value="range">Aralık</option>
                     </select>
                   </label>
-                  <label>Alt / sabit fiyat<input name="priceMin" inputMode="decimal" defaultValue={(service.price_min_minor / 100).toFixed(2)} required /></label>
-                  <label>Üst fiyat<input name="priceMax" inputMode="decimal" defaultValue={(service.price_max_minor / 100).toFixed(2)} required /></label>
+                  <label>Alt / sabit fiyat<input name="priceMin" inputMode="decimal" defaultValue={(priceMinOf(service) / 100).toFixed(2)} required /></label>
+                  <label>Üst fiyat<input name="priceMax" inputMode="decimal" defaultValue={(priceMaxOf(service) / 100).toFixed(2)} required /></label>
                   <label>Para birimi<input name="currency" defaultValue={service.currency} minLength={3} maxLength={3} pattern="[A-Za-z]{3}" required /></label>
                   <div className="catalog-actions">
                     <button className="primary-button" disabled={busy}>Kaydet</button>
