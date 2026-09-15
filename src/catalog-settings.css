@@ -18,6 +18,8 @@
 .settings-matrix { display: grid; gap: 12px; }
 .settings-matrix-row { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; gap: 14px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--border, #d9dde5); }
 .settings-matrix-row:last-child { border-bottom: 0; }
+.settings-matrix .chip { min-height: 44px; box-sizing: border-box; cursor: pointer; }
+.settings-matrix .chip:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 900px) {
   .catalog-edit-form, .catalog-edit-form.staff-edit, .catalog-create-form, .catalog-create-form.compact-create { grid-template-columns: 1fr 1fr; }
   .catalog-actions, .catalog-create-form h3 { grid-column: 1 / -1; }
