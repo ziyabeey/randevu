@@ -70,3 +70,4 @@ CHROME_BIN="$CHROME_BIN" node scripts/browser-f10-customers-conflict.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f12-public-profile.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f12-public-operator.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f10-catalog-settings.mjs
+CHROME_BIN="$CHROME_BIN" node scripts/browser-f10-catalog-settings-review.mjs
