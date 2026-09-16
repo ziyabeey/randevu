@@ -500,5 +500,9 @@ begin
 end
 $$;
 
-raise notice 'F11-01 group/line clean contract accepted';
+do $$
+begin
+  raise notice 'F11-01 group/line clean contract accepted';
+end
+$$;
 rollback;
