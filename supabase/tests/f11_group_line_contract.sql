@@ -213,8 +213,10 @@ begin
 end
 $$;
 
--- Explicit canonical range snapshots are valid in the F11 line model. Two lines
--- may touch at [start,end) but overlapping customer service intervals are blocked.
+-- Explicit canonical range snapshots are valid in the F11 line model, but the
+-- F12 compatibility mirror is estimate-only and may never become a definitive
+-- legacy appointment amount. Two lines may touch at [start,end) while overlapping
+-- customer service intervals remain blocked.
 insert into public.appointment_groups(
   id,business_id,customer_id,status,source,version,created_by
 ) values (
@@ -222,6 +224,34 @@ insert into public.appointment_groups(
   'd1150000-0000-4000-8000-000000000001','scheduled','operator',1,
   'd1100000-0000-4000-8000-000000000001'
 );
+
+-- Writing a range lower estimate into the legacy definitive field must fail.
+do $$
+begin
+  begin
+    insert into public.appointments(
+      id,business_id,group_id,line_ordinal,customer_id,service_id,staff_id,status,
+      starts_at,ends_at,occupied_starts_at,occupied_ends_at,timezone,
+      customer_name_snapshot,customer_phone_snapshot,customer_email_snapshot,
+      service_name_snapshot,staff_name_snapshot,duration_minutes_snapshot,
+      buffer_before_minutes_snapshot,buffer_after_minutes_snapshot,
+      price_minor_snapshot,price_type_snapshot,price_min_minor_snapshot,price_max_minor_snapshot,
+      price_policy_version_snapshot,currency_snapshot,created_by,source
+    ) values (
+      'd1170000-0000-4000-8000-000000000006','d1110000-0000-4000-8000-000000000001',
+      'd1160000-0000-4000-8000-000000000001',1,
+      'd1150000-0000-4000-8000-000000000001','d1130000-0000-4000-8000-000000000002','d1140000-0000-4000-8000-000000000001','scheduled',
+      '2026-12-01T12:00:00+03','2026-12-01T12:30:00+03','2026-12-01T12:00:00+03','2026-12-01T12:30:00+03','Europe/Istanbul',
+      'Range Customer','05550000111','range@example.invalid','F11 Range','F11 Staff A',30,0,0,
+      12000,'range',12000,18000,1,'TRY','d1100000-0000-4000-8000-000000000001','operator'
+    );
+    raise exception 'range lower bound unexpectedly became definitive price';
+  exception when others then
+    if sqlerrm='range lower bound unexpectedly became definitive price' then raise; end if;
+    if position('SERVICE_PRICE_SNAPSHOT_MISMATCH' in sqlerrm)=0 then raise; end if;
+  end;
+end
+$$;
 
 insert into public.appointments(
   id,business_id,group_id,line_ordinal,customer_id,service_id,staff_id,status,
@@ -237,7 +267,7 @@ insert into public.appointments(
   'd1150000-0000-4000-8000-000000000001','d1130000-0000-4000-8000-000000000002','d1140000-0000-4000-8000-000000000001','scheduled',
   '2026-12-01T12:00:00+03','2026-12-01T12:30:00+03','2026-12-01T12:00:00+03','2026-12-01T12:30:00+03','Europe/Istanbul',
   'Range Customer','05550000111','range@example.invalid','F11 Range','F11 Staff A',30,0,0,
-  12000,'range',12000,18000,1,'TRY','d1100000-0000-4000-8000-000000000001','operator'
+  null,'range',12000,18000,1,'TRY','d1100000-0000-4000-8000-000000000001','operator'
 );
 
 do $$
@@ -289,6 +319,9 @@ begin
   );
   if jsonb_array_length(v_lines) <> 2
      or (v_lines->0->>'priceType') <> 'range'
+     or (v_lines->0->>'priceMinMinor')::integer <> 12000
+     or (v_lines->0->>'priceMaxMinor')::integer <> 18000
+     or (v_lines->0->>'legacyPriceMinor') is not null
      or (v_lines->1->>'ordinal')::integer <> 2 then
     raise exception 'multi-line contract projection mismatch';
   end if;
@@ -357,7 +390,11 @@ begin
   where idempotency_key='f11-fixed-create-0001';
   select group_id into strict v_group from public.appointments where id=v_id;
   insert into public.appointment_management_capabilities(appointment_id,business_id,token_hash)
-  values(v_id,'d1110000-0000-4000-8000-000000000001',repeat('a',64));
+  values(
+    v_id,
+    'd1110000-0000-4000-8000-000000000001',
+    encode(extensions.digest('f11:capability:'||v_id::text,'sha256'),'hex')
+  );
   if (select group_id from public.appointment_management_capabilities where appointment_id=v_id) <> v_group then
     raise exception 'capability did not bridge to group';
   end if;
