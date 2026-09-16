@@ -214,17 +214,13 @@ end
 $$;
 
 -- Same-staff and different-staff sequential plans are both valid when their
--- staff occupancy fits. The authenticated date wrapper remains standard-session
--- only and returns server fingerprints rather than client-authored totals.
-set local role authenticated;
-select set_config('request.jwt.claim.sub','e2100000-0000-4000-8000-000000000001',true);
-select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+-- staff occupancy fits. Exercise the private builder only as the migration/test
+-- owner so the API-role ACL remains intentionally closed.
 do $$
 declare
   v_day date:=date_trunc('week',current_date)::date+7;
   v_same jsonb;
   v_diff jsonb;
-  v_page jsonb;
 begin
   v_same := public.f11_build_group_plan_internal(
     'e2110000-0000-4000-8000-000000000001',
@@ -244,7 +240,19 @@ begin
   );
   if v_same is null or v_diff is null then raise exception 'valid same/different staff plan missing'; end if;
   if v_diff->>'fingerprint' !~ '^[0-9a-f]{64}$' then raise exception 'plan fingerprint missing'; end if;
+end
+$$;
 
+-- The authenticated date wrapper remains standard-session only and returns
+-- server fingerprints rather than client-authored totals.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','e2100000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $$
+declare
+  v_day date:=date_trunc('week',current_date)::date+7;
+  v_page jsonb;
+begin
   v_page := public.compute_booking_group_plans(
     'e2110000-0000-4000-8000-000000000001',
     jsonb_build_array(
