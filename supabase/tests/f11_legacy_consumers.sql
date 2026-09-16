@@ -34,19 +34,23 @@ values (
   'd1330000-0000-4000-8000-000000000001',true
 ) on conflict(business_id,staff_id,service_id) do update set active=true;
 
-do $$
-declare v_day date:=date_trunc('week',current_date)::date+7; v_dow smallint:=extract(dow from v_day)::smallint;
-begin
-  perform public.replace_business_hours(
-    'd1310000-0000-4000-8000-000000000001',v_dow,
-    '[{"start":"09:00","end":"18:00"}]'::jsonb
-  );
-  perform public.replace_staff_hours(
-    'd1310000-0000-4000-8000-000000000001','d1340000-0000-4000-8000-000000000001',v_dow,
-    '[{"start":"09:00","end":"18:00"}]'::jsonb
-  );
-end
-$$;
+-- Schedule rows are fixture setup. F10-04/S08 deliberately revoked the old
+-- replace_*_hours RPCs from browser roles, so this test must not resurrect that
+-- retired mutation surface merely to prepare availability.
+insert into public.business_hours(id,business_id,weekday,starts_local,ends_local,active)
+values (
+  'd1350000-0000-4000-8000-000000000001','d1310000-0000-4000-8000-000000000001',
+  extract(dow from date_trunc('week',current_date)::date+7)::smallint,time '09:00',time '18:00',true
+) on conflict(id) do update
+set weekday=excluded.weekday,starts_local=excluded.starts_local,ends_local=excluded.ends_local,active=true;
+
+insert into public.staff_hours(id,business_id,staff_id,weekday,starts_local,ends_local,active)
+values (
+  'd1360000-0000-4000-8000-000000000001','d1310000-0000-4000-8000-000000000001',
+  'd1340000-0000-4000-8000-000000000001',
+  extract(dow from date_trunc('week',current_date)::date+7)::smallint,time '09:00',time '18:00',true
+) on conflict(id) do update
+set weekday=excluded.weekday,starts_local=excluded.starts_local,ends_local=excluded.ends_local,active=true;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','d1300000-0000-4000-8000-000000000001',true);
