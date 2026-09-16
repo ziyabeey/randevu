@@ -502,6 +502,32 @@ $$;
 revoke all on function public.f11_normalize_group_intent_internal(uuid,jsonb)
   from public, anon, authenticated;
 
+-- PostgreSQL forbids referencing the recursive CTE row from a subquery inside
+-- the recursive term. Keep the exact intra-plan same-staff overlap predicate in
+-- a private immutable helper so the recursive term has one direct walk reference.
+create or replace function public.f11_plan_lines_staff_overlap_internal(
+  p_lines jsonb,
+  p_staff_id uuid,
+  p_occupied_start timestamptz,
+  p_occupied_end timestamptz
+)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select exists (
+    select 1
+    from pg_catalog.jsonb_array_elements(coalesce(p_lines, '[]'::jsonb)) prior
+    where (prior->>'staffId')::uuid = p_staff_id
+      and (prior->>'occupiedStartsAt')::timestamptz < p_occupied_end
+      and (prior->>'occupiedEndsAt')::timestamptz > p_occupied_start
+  );
+$$;
+
+revoke all on function public.f11_plan_lines_staff_overlap_internal(jsonb,uuid,timestamptz,timestamptz)
+  from public, anon, authenticated;
+
 -- Build one deterministic concrete assignment for an exact absolute start.
 -- Customer time is sequential. Staff time may end before customer processing time
 -- only when the frozen service policy is RELEASE. A bounded recursive search, not
@@ -679,12 +705,11 @@ begin
           and a.occupied_starts_at < t.staff_occupied_end
           and a.occupied_ends_at > t.staff_occupied_start
       )
-      and not exists (
-        select 1
-        from jsonb_array_elements(w.lines) prior
-        where (prior->>'staffId')::uuid = sp.id
-          and (prior->>'occupiedStartsAt')::timestamptz < t.staff_occupied_end
-          and (prior->>'occupiedEndsAt')::timestamptz > t.staff_occupied_start
+      and not public.f11_plan_lines_staff_overlap_internal(
+        w.lines,
+        sp.id,
+        t.staff_occupied_start,
+        t.staff_occupied_end
       )
   )
   select w.lines
