@@ -4,6 +4,34 @@ begin;
 -- re-priced against today's catalog during status/reschedule updates. INSERT owns
 -- snapshot capture; UPDATE only validates the immutable group identity and then
 -- lets the dedicated immutability trigger protect frozen snapshot columns.
+--
+-- F12-03 also requires a hard semantic split between a range estimate and the
+-- legacy definitive single-price snapshot. Fixed lines keep price_minor_snapshot;
+-- range lines carry only the canonical min/max estimate and leave the legacy
+-- definitive amount null until a later financial authority establishes one.
+alter table public.appointments
+  alter column price_minor_snapshot drop not null;
+
+alter table public.appointments
+  drop constraint if exists appointments_price_range_snapshot_check,
+  add constraint appointments_price_range_snapshot_check
+    check (
+      price_min_minor_snapshot between 0 and 100000000
+      and price_max_minor_snapshot between 0 and 100000000
+      and price_min_minor_snapshot <= price_max_minor_snapshot
+      and (
+        (
+          price_type_snapshot = 'fixed'
+          and price_min_minor_snapshot = price_max_minor_snapshot
+          and price_minor_snapshot = price_min_minor_snapshot
+        )
+        or (
+          price_type_snapshot = 'range'
+          and price_minor_snapshot is null
+        )
+      )
+    );
+
 create or replace function public.f11_prepare_appointment_line()
 returns trigger
 language plpgsql
@@ -75,6 +103,9 @@ begin
     if v_service.price_type <> 'fixed' then
       raise exception 'SERVICE_PRICE_NOT_FINAL';
     end if;
+    if new.price_minor_snapshot is null then
+      raise exception 'SERVICE_PRICE_SNAPSHOT_MISMATCH';
+    end if;
     new.price_type_snapshot := 'fixed';
     new.price_min_minor_snapshot := new.price_minor_snapshot;
     new.price_max_minor_snapshot := new.price_minor_snapshot;
@@ -89,7 +120,18 @@ begin
        or new.price_max_minor_snapshot <> v_service.price_max_minor
        or new.currency_snapshot <> v_service.currency
        or new.price_policy_version_snapshot <> v_service.price_policy_version
-       or new.price_minor_snapshot <> new.price_min_minor_snapshot then
+       or (
+         new.price_type_snapshot = 'fixed'
+         and (
+           new.price_min_minor_snapshot <> new.price_max_minor_snapshot
+           or new.price_minor_snapshot is null
+           or new.price_minor_snapshot <> new.price_min_minor_snapshot
+         )
+       )
+       or (
+         new.price_type_snapshot = 'range'
+         and new.price_minor_snapshot is not null
+       ) then
       raise exception 'SERVICE_PRICE_SNAPSHOT_MISMATCH';
     end if;
   end if;
