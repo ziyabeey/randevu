@@ -282,6 +282,8 @@ export function drawTransformationFrameCover(
 
   const context = canvas.getContext("2d", { alpha: false });
   if (!context) return false;
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
 
   const scale = Math.max(renderWidth / frame.width, renderHeight / frame.height);
   const drawWidth = frame.width * scale;

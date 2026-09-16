@@ -49,7 +49,7 @@
 .mkt-fallback-panel--motion-final {
   background:
     linear-gradient(90deg, rgba(198, 232, 0, 0.98) 0%, rgba(198, 232, 0, 0.94) 40%, rgba(198, 232, 0, 0.7) 61%, rgba(198, 232, 0, 0.12) 100%),
-    url("/marketing/transformation/randevu-transformation-final.webp") 58% center / cover no-repeat var(--mkt-lime);
+    url("/marketing/transformation/randevu-transformation-final.webp") right center / cover no-repeat var(--mkt-lime);
 }
 
 @media (max-width: 680px) {

@@ -10,18 +10,18 @@ The MP4 scrub is kept only as an explicit A/B arm (`/marketing-preview.html?rend
 
 Required production files:
 
-- `public/marketing/transformation/frames/desktop/frame-000.webp … frame-120.webp` (1600×890, quality 0.82)
+- `public/marketing/transformation/frames/desktop/frame-000.webp … frame-120.webp` (1928×1072 native, quality 0.80 — Retina-sharp)
 - `public/marketing/transformation/frames/mobile/frame-000.webp … frame-120.webp` (960×534, quality 0.80, selected at `max-width: 680px`)
 - `public/marketing/transformation/randevu-transformation-poster.webp` (frame at 0 s, 1928×1072)
-- `public/marketing/transformation/randevu-transformation-final.webp` (frame at 4.75 s, reduced-motion / fallback still)
+- `public/marketing/transformation/randevu-transformation-final.webp` (product-owner supplied seated-model pricing scene, 2026-09-17; crops out the mockup text; fades in after the last frame and serves the reduced-motion / fallback panel)
 - `public/marketing/hero/randevu-hero-model.webp` (frame at 0.08 s, hero photo)
 
 Current handoff (extracted 2026-09-17 from the clean MOV source):
 
 | sequence | frames | size | MKT-PERF-05 comparison target |
 | --- | --- | --- | --- |
-| desktop | 121 | 4.87 MB (avg 40 KB) | ≤ 6.25 MB |
-| mobile | 121 | 2.42 MB (avg 20 KB) | ≤ 2.75 MB |
+| desktop | 121 | 5.67 MB (avg 48 KB) | ≤ 6.25 MB |
+| mobile | 121 | 2.31 MB (avg 20 KB) | ≤ 2.75 MB |
 
 ## Source master
 
@@ -69,9 +69,9 @@ ffmpeg -i public/marketing/transformation/randevu-transformation-master.mp4 -an 
 ## Expected SHA-256
 
 ```text
-15e48377185dea9aeb98e0bc537108877f445bfcdee69cc2f7c3bdcb3f7e7dd8  randevu-transformation-poster.webp
-de93cf2c66d715738c91cdec8a19f77aec92c1819a9061e9c6dd202a59f14faa  randevu-transformation-final.webp
-5ac084fef0f5d21f40ecc5d8a5fca87c4a0b179f7555e8be77ece6bf9fd8781e  randevu-hero-model.webp
+ed85b1dec55fa68bf6336c7715aa884bbadc422e97ab23e0c67a4d1472527210  randevu-transformation-poster.webp
+2b69508fb7f14c6022328494d0d8c1e63859bd954067e7af7d7c6b55b32098d2  randevu-transformation-final.webp
+f1da7dd3c8a6bd0dc34948d364432cc03dc69bccde3944e1acc60ff5a0201a3d  randevu-hero-model.webp
 b82e9fe486e9dd9706c8294a4cd3c07efe526034d6feb7b543930455ba96fdef  randevu-transformation-master.mp4
 f4984cc62143e744ee5bffd378a00eee0efdae909d6170d5a9210465b1873bc3  randevu-transformation-mobile.mp4
 ```

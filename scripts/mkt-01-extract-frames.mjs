@@ -29,13 +29,13 @@ const OUT = path.resolve(args.out ?? path.join(repoRoot, 'public/marketing'));
 export const FRAME_COUNT = 121;
 export const FRAME_FPS = 24;
 export const FRAME_VARIANTS = [
-  { name: 'desktop', width: 1600, quality: 0.82 },
+  { name: 'desktop', width: 1928, quality: 0.8 },
   { name: 'mobile', width: 960, quality: 0.8 },
 ];
 export const STILLS = [
-  { name: 'hero/randevu-hero-model.webp', time: 0.08, width: 1928, quality: 0.86 },
-  { name: 'transformation/randevu-transformation-poster.webp', time: 0, width: 1928, quality: 0.84 },
-  { name: 'transformation/randevu-transformation-final.webp', time: 4.75, width: 1928, quality: 0.82 },
+  { name: 'hero/randevu-hero-model.webp', time: 0.08, width: 1928, quality: 0.88 },
+  { name: 'transformation/randevu-transformation-poster.webp', time: 0, width: 1928, quality: 0.86 },
+  // randevu-transformation-final.webp is the product-owner supplied seated-model scene, not a master frame.
 ];
 
 function findChrome() {

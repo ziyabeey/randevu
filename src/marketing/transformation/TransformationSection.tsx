@@ -153,6 +153,8 @@ export function TransformationSection() {
             <source src={MARKETING_ASSETS.transformationVideo} type="video/mp4" />
           </video>
         )}
+        {/* Product-owner final scene (2026-09-17): after the last frame the seated model + pricing composition fades in. */}
+        <img className="mkt-final-scene" src={MARKETING_ASSETS.transformationFinal} alt="" aria-hidden="true" decoding="async" loading="lazy" draggable={false} />
         <div className="mkt-video-shade" aria-hidden="true" />
         <div className="mkt-story-layer"><ReminderStory active={phase === "reminder"} /><FrictionStory active={phase === "friction"} /><SweepStory active={phase === "sweep"} /><PricingStory active={phase === "pricing"} /></div>
         <div className="mkt-scroll-cue" aria-hidden="true"><span>{mediaReady ? "Kaydır" : "Hazırlanıyor"}</span><i /></div>
