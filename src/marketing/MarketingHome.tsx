@@ -93,7 +93,7 @@ function MarketingNav() {
 
         <div className="mkt-nav-actions">
           <a className="mkt-nav-login" href={WORKSPACE_HOME_PATH}>Giriş yap</a>
-          <a className="mkt-nav-cta" href="#kurulum">Birlikte kuralım</a>
+          <a className="mkt-nav-cta" href="#kurulum">Kolay başlayalım</a>
         </div>
       </nav>
     </header>

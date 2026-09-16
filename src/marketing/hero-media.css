@@ -33,9 +33,9 @@
   background: linear-gradient(0deg, rgba(248, 249, 250, 0.22), transparent 34%);
 }
 
+/* The master frame already carries the cobalt organic form behind the model; do not double it. */
 .mkt-hero:has(.mkt-hero-media) .mkt-hero-shape--one {
-  opacity: 0.12;
-  mix-blend-mode: multiply;
+  display: none;
 }
 
 .mkt-hero:has(.mkt-hero-media) .mkt-hero-shape--two {
@@ -65,17 +65,18 @@
 }
 
 @media (max-width: 680px) {
+  /* Mobile crop: the face sits below the CTAs, the demo card overlaps the shoulders. */
   .mkt-hero-media img {
-    top: 28%;
-    height: 72%;
-    object-position: 70% 54%;
+    top: 41%;
+    height: 59%;
+    object-position: 60% 12%;
   }
 
   .mkt-hero-media::before {
-    background: linear-gradient(180deg, rgba(248, 249, 250, 0.99) 0%, rgba(248, 249, 250, 0.91) 34%, rgba(248, 249, 250, 0.28) 58%, transparent 76%);
+    background: linear-gradient(180deg, rgba(248, 249, 250, 0.99) 0%, rgba(248, 249, 250, 0.98) 44%, rgba(248, 249, 250, 0.55) 54%, rgba(248, 249, 250, 0.08) 66%, transparent 80%);
   }
 
   .mkt-hero:has(.mkt-hero-media) .mkt-hero-demo {
-    margin-top: 240px;
+    margin-top: 250px;
   }
 }
