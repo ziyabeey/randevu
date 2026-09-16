@@ -467,9 +467,13 @@
   line-height: 0.94;
 }
 
+/* "Az." as a lime highlight with cobalt text: lime glyphs on the pale stage failed contrast. */
 .mkt-story h2 span {
-  color: var(--mkt-lime);
-  text-shadow: 0 2px 0 rgba(21, 56, 109, 0.08);
+  padding: 0 0.12em;
+  border-radius: 0.16em;
+  background: var(--mkt-lime);
+  color: var(--mkt-cobalt-deep);
+  box-decoration-break: clone;
 }
 
 .mkt-story-copy {
@@ -639,6 +643,11 @@
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
+}
+
+.mkt-transformation[data-phase="pricing"] .mkt-scroll-cue {
+  opacity: 0;
+  transition: opacity 240ms ease;
 }
 
 .mkt-scroll-cue i {

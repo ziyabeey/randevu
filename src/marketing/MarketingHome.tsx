@@ -141,6 +141,7 @@ function FinalCta() {
           <span>İletişim kanalı yayın entegrasyonuyla birlikte aktif olacak.</span>
         </div>
       )}
+      <a className="mkt-text-link mkt-final-secondary" href="#nasil-calisiyor">Ürünü gör<span aria-hidden="true">↑</span></a>
 
       <div className="mkt-final-lockup" aria-label="Randevu kolay">
         <span>randevu</span>

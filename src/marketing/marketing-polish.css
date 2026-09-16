@@ -212,7 +212,8 @@
   .mkt-final-lockup {
     animation: mkt-lockup-close linear both;
     animation-timeline: view();
-    animation-range: entry 20% cover 72%;
+    /* Fully opaque as soon as the lockup is entirely in view; it must never sit half-faded. */
+    animation-range: entry 0% entry 100%;
   }
 }
 
