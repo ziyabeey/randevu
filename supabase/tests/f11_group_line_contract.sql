@@ -93,7 +93,6 @@ do $$
 declare
   v_day date:=date_trunc('week',current_date)::date+7;
   v public.appointments;
-  v_group public.appointment_groups;
   v_contract record;
 begin
   select * into v
@@ -110,15 +109,12 @@ begin
      or v.price_policy_version_snapshot <> 1 then
     raise exception 'legacy create did not map to deterministic one-line group';
   end if;
-  select * into strict v_group from public.appointment_groups where id=v.id;
-  if v_group.legacy_appointment_id <> v.id or v_group.version <> 1
-     or v_group.status <> 'scheduled' or v_group.customer_id <> v.customer_id then
+  perform pg_catalog.set_config('f11.test_appointment_id',v.id::text,false);
+  select * into strict v_contract from public.get_booking_group_contract(v.business_id,v.id);
+  if v_contract.legacy_appointment_id <> v.id or v_contract.version <> 1
+     or v_contract.status <> 'scheduled' or v_contract.customer_id <> v.customer_id then
     raise exception 'legacy group header mismatch';
   end if;
-  if (select group_id from public.booking_commands where business_id=v.business_id and idempotency_key='f11-fixed-create-0001') <> v.id then
-    raise exception 'booking command did not bridge to group';
-  end if;
-  select * into strict v_contract from public.get_booking_group_contract(v.business_id,v.id);
   if jsonb_array_length(v_contract.lines) <> 1
      or (v_contract.lines->0->>'lineId')::uuid <> v.id
      or (v_contract.lines->0->>'ordinal')::integer <> 1 then
@@ -127,6 +123,15 @@ begin
 end
 $$;
 reset role;
+
+do $$
+declare v_id uuid:=current_setting('f11.test_appointment_id')::uuid;
+begin
+  if (select group_id from public.booking_commands where business_id='d1110000-0000-4000-8000-000000000001' and idempotency_key='f11-fixed-create-0001') <> v_id then
+    raise exception 'booking command did not bridge to group';
+  end if;
+end
+$$;
 
 -- Old range create remains fail-closed. Supplying no canonical F11 line snapshot
 -- cannot turn a range lower bound into a definitive legacy appointment price.
@@ -161,11 +166,11 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','d1100000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 do $$
-declare v_id uuid; v_group public.appointment_groups; v public.appointments;
+declare
+  v_id uuid:=current_setting('f11.test_appointment_id')::uuid;
+  v public.appointments;
+  v_contract record;
 begin
-  select appointment_id into strict v_id from public.booking_commands
-  where business_id='d1110000-0000-4000-8000-000000000001'
-    and idempotency_key='f11-fixed-create-0001';
   select * into v from public.set_appointment_status(
     'd1110000-0000-4000-8000-000000000001',v_id,
     'f11-fixed-confirm-01','confirmed',null
@@ -174,10 +179,17 @@ begin
      or v.price_max_minor_snapshot <> 10000 or v.price_policy_version_snapshot <> 1 then
     raise exception 'status update rewrote historical price snapshot';
   end if;
-  select * into strict v_group from public.appointment_groups where id=v_id;
-  if v_group.status <> 'confirmed' or v_group.version <> 2 then
+  select * into strict v_contract from public.get_booking_group_contract(v.business_id,v_id);
+  if v_contract.status <> 'confirmed' or v_contract.version <> 2 then
     raise exception 'legacy status did not synchronize group version/status';
   end if;
+end
+$$;
+reset role;
+
+do $$
+declare v_id uuid:=current_setting('f11.test_appointment_id')::uuid;
+begin
   if not exists (
     select 1 from public.appointment_events e
     where e.group_id=v_id and e.group_version=2 and e.event_type='confirmed'
@@ -187,14 +199,10 @@ begin
   end if;
 end
 $$;
-reset role;
 
 do $$
-declare v_id uuid;
+declare v_id uuid:=current_setting('f11.test_appointment_id')::uuid;
 begin
-  select appointment_id into strict v_id from public.booking_commands
-  where business_id='d1110000-0000-4000-8000-000000000001'
-    and idempotency_key='f11-fixed-create-0001';
   begin
     update public.appointments set price_minor_snapshot=9999 where id=v_id;
     raise exception 'frozen price snapshot unexpectedly mutated';
@@ -410,9 +418,8 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','d1100000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"recovery"}]}',true);
 do $$
-declare v_group uuid;
+declare v_group uuid:=current_setting('f11.test_appointment_id')::uuid;
 begin
-  select appointment_id into strict v_group from public.booking_commands where idempotency_key='f11-fixed-create-0001';
   begin
     perform * from public.get_booking_group_contract('d1110000-0000-4000-8000-000000000001',v_group);
     raise exception 'recovery unexpectedly read group contract';
@@ -428,9 +435,8 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','d1100000-0000-4000-8000-000000000002',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 do $$
-declare v_group uuid;
+declare v_group uuid:=current_setting('f11.test_appointment_id')::uuid;
 begin
-  select appointment_id into strict v_group from public.booking_commands where idempotency_key='f11-fixed-create-0001';
   begin
     perform * from public.get_booking_group_contract('d1110000-0000-4000-8000-000000000001',v_group);
     raise exception 'inactive member unexpectedly read group contract';
