@@ -384,12 +384,21 @@ begin
     if v_service.price_type <> 'fixed' then
       raise exception 'SERVICE_PRICE_NOT_FINAL';
     end if;
-    if new.price_minor_snapshot is null then
+    -- Legacy operator/public creates carry the scalar amount/currency from an
+    -- earlier service read. Fence that legacy tuple against this authoritative
+    -- service state before stamping F11 metadata so a concurrent catalog edit
+    -- cannot freeze old money with a newer policy version.
+    if new.price_minor_snapshot is null
+       or new.price_minor_snapshot <> v_service.price_minor
+       or new.currency_snapshot is null
+       or new.currency_snapshot <> v_service.currency
+       or v_service.price_min_minor <> v_service.price_minor
+       or v_service.price_max_minor <> v_service.price_minor then
       raise exception 'SERVICE_PRICE_SNAPSHOT_MISMATCH';
     end if;
     new.price_type_snapshot := 'fixed';
-    new.price_min_minor_snapshot := new.price_minor_snapshot;
-    new.price_max_minor_snapshot := new.price_minor_snapshot;
+    new.price_min_minor_snapshot := v_service.price_min_minor;
+    new.price_max_minor_snapshot := v_service.price_max_minor;
     new.price_policy_version_snapshot := v_service.price_policy_version;
   else
     if new.price_type_snapshot is null
