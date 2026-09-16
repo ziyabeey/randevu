@@ -1,27 +1,37 @@
+import { useState } from "react";
+
 import { MARKETING_ASSETS } from "./assets";
 import "./hero-media.css";
 
 export function MarketingHero() {
+  // When the hero photo is unavailable (binary handoff pending or a CDN miss)
+  // the section falls back to the brand composition: full-strength cobalt
+  // organic form + lime H1 stroke, and no space is reserved for the photo.
+  const [mediaFailed, setMediaFailed] = useState(false);
+
   return (
-    <section className="mkt-hero" aria-labelledby="mkt-hero-title">
-      <div className="mkt-hero-media" aria-hidden="true">
-        <img
-          src={MARKETING_ASSETS.heroModel}
-          alt=""
-          width={1928}
-          height={1072}
-          loading="eager"
-          decoding="async"
-          fetchPriority="high"
-          draggable={false}
-        />
-      </div>
+    <section className="mkt-hero" aria-labelledby="mkt-hero-title" data-hero-media={mediaFailed ? "missing" : "photo"}>
+      {mediaFailed ? null : (
+        <div className="mkt-hero-media" aria-hidden="true">
+          <img
+            src={MARKETING_ASSETS.heroModel}
+            alt=""
+            width={1928}
+            height={1072}
+            loading="eager"
+            decoding="async"
+            fetchPriority="high"
+            draggable={false}
+            onError={() => setMediaFailed(true)}
+          />
+        </div>
+      )}
       <div className="mkt-hero-shape mkt-hero-shape--one" aria-hidden="true" />
       <div className="mkt-hero-shape mkt-hero-shape--two" aria-hidden="true" />
 
       <div className="mkt-hero-copy">
         <p className="mkt-eyebrow">Randevu Kolay</p>
-        <h1 id="mkt-hero-title">Randevu kolay.</h1>
+        <h1 id="mkt-hero-title">Randevu <span className="mkt-hero-kolay">kolay.</span></h1>
         <p className="mkt-hero-lead">Müşteri kendi alsın. Takvimin karışmasın. Kurulumla da seni uğraştırmayalım.</p>
         <p className="mkt-hero-trust">Kuaför, berber ve güzellik işletmeleri için.</p>
         <div className="mkt-hero-actions">
