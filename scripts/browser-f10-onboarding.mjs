@@ -375,7 +375,10 @@ try {
   assert.equal(await call(page, 'click', 'Rezervasyon sayfasını yayınla'), true);
   await uiContains(page, 'Rezervasyon sayfanız yayında.');
   assert.equal(state.businesses[ids.b].enabled, true);
-  assert.ok((await call(page, 'links')).includes('/r/salon-b'));
+  await waitFor(
+    async () => (await call(page, 'links')).includes('/r/salon-b'),
+    'Published salon link did not appear',
+  );
 
   assert.equal(await call(page, 'click', 'Salon A'), true);
   await uiContains(page, 'A Only Service');
