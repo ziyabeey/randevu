@@ -455,12 +455,13 @@ declare
 begin
   v_plan := public.f11_build_group_plan_internal(
     'e2110000-0000-4000-8000-000000000001',
-    (v_day+time '14:00') at time zone 'Europe/Istanbul',
+    (v_day+time '14:30') at time zone 'Europe/Istanbul',
     jsonb_build_array(jsonb_build_object(
       'serviceId','e2130000-0000-4000-8000-000000000005',
       'staffId','e2140000-0000-4000-8000-000000000002'
     ))
   );
+  if v_plan is null then raise exception 'stale-plan fixture missing before catalog edit'; end if;
   perform set_config('f11_02.stale_fingerprint',v_plan->>'fingerprint',false);
 end
 $$;
@@ -482,7 +483,7 @@ begin
         'serviceId','e2130000-0000-4000-8000-000000000005',
         'staffId','e2140000-0000-4000-8000-000000000002'
       )),
-      (v_day+time '14:00') at time zone 'Europe/Istanbul',
+      (v_day+time '14:30') at time zone 'Europe/Istanbul',
       current_setting('f11_02.stale_fingerprint'),
       '05553334444','stale-plan@example.invalid',null
     );
@@ -524,6 +525,7 @@ begin
       'staffId','e2140000-0000-4000-8000-000000000002'
     ))
   );
+  if v_plan is null then raise exception 'lost-slot fixture missing before competing write'; end if;
   perform set_config('f11_02.lost_fingerprint',v_plan->>'fingerprint',false);
 end
 $$;
