@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import coreApp from './index.ts';
 import availability from './availability.ts';
+import bookingGroups from './booking-groups.ts';
 import bookings from './bookings.ts';
 import publicBookingRecovery from './public-booking-recovery.ts';
 import publicBooking from './public-booking.ts';
@@ -85,6 +86,7 @@ app.get('/api/deployment-health', (context) => deploymentHealth(context.req.raw,
 app.route('/', snapshotReads);
 app.route('/', coreApp);
 app.route('/api/availability', availability);
+app.route('/api/bookings', bookingGroups);
 app.route('/api/bookings', bookings);
 app.route('/api/customers', customers);
 app.route('/api/public', publicBookingRecovery);
