@@ -1,10 +1,12 @@
 # YZT Randevu — Görev takip tablosu
 
-**Plan v3 · güncel ana tablo 15 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 23 `Tamamlandı`, 31 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
+**Plan v3 · güncel ana tablo 16 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 24 `Tamamlandı`, 30 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
 
 **GS stabilization kapısı kapalıdır.** S01…S08 kabul edildi; GS artık yeni özellikleri engelleyen bir önkoşul değildir. [GS kapanış devri](docs/handoffs/GS.md) tarihsel kanıt kaynağıdır.
 
 Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP görev sayısına dahil değildir.
+
+Kepenk Core platform çalışması ayrı track'tir: **KC-00…KC-07**, 54 MVP görev sayısını değiştirmez ve Randevu ürün görevlerinin yerine geçmez.
 
 ## Kullanım ve bağımlılıklar
 
@@ -43,7 +45,7 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | [F10-04](docs/plan/phase-10.md#f10-04) | Hizmet, personel ve çalışma ayarları | F10-03 | Tamamlandı | Ajan C + R1/R2 + koordinatör kabul / 2026-09-15 | `f10-04-catalog-hours-management` · [PR #75](https://github.com/ziyabeey1-ai/randevu/pull/75) · [Devir](docs/handoffs/F10-04.md) · semantic repair head `c85b73c9` · final review head `52db2016` · [CI #1027](https://github.com/ziyabeey1-ai/randevu/actions/runs/34979201990) success · R1 `5682089365` **ACCEPTABLE** · R2 `5682157130` **ACCEPTABLE** · main `3c413fa` · [main CI #1028](https://github.com/ziyabeey1-ai/randevu/actions/runs/34984004989) success · hosted-only residual olmadığı için staging açılmadı |
 | [F10-05](docs/plan/phase-10.md#f10-05) | İşletmenin müşteri kayıtları | F10-03 | Tamamlandı | Ajan A + R1/R2 + koordinatör kabul / 2026-09-15 | `f10-05-customer-authority-repair` · [PR #87](https://github.com/ziyabeey1-ai/randevu/pull/87) · [Repair devir](docs/handoffs/F10-05-repair.md) · semantic head `0f503e6` · final test head `08be229` · [CI #938](https://github.com/ziyabeey1-ai/randevu/actions/runs/34878556411) success · R1 `5667991719` **ACCEPTABLE** · R2 `5673736447` **ACCEPTABLE** · main `56ef3be` · [main CI #948](https://github.com/ziyabeey1-ai/randevu/actions/runs/34921413177) success |
 | [F10-06](docs/plan/phase-10.md#f10-06) | Gerçek hesaplarla ortak yönetim kabulü | F10-04, F10-05, F17-01 | Planlandı | — | — |
-| [F11-01](docs/plan/phase-11.md#f11-01) | Grup/satır sözleşmesi ve ileri migration | F10-02, F12-03 | İncelemede | Ajan D / 2026-09-16 | `f11-01-group-line-contract` · base `f1fd008` · [PR #105](https://github.com/ziyabeey1-ai/randevu/pull/105) · semantic head `23262c85` · [CI #1066](https://github.com/ziyabeey1-ai/randevu/actions/runs/35057999480) success · STRICT clean/upgrade + legacy consumer zinciri yeşil · R1/R2 review + Phase-11 saha receipt'i bekleniyor |
+| [F11-01](docs/plan/phase-11.md#f11-01) | Grup/satır sözleşmesi ve ileri migration | F10-02, F12-03 | Tamamlandı | Ajan D + R1/R2 + koordinatör kabul / 2026-09-16 | `f11-01-group-line-contract` · [PR #105](https://github.com/ziyabeey1-ai/randevu/pull/105) · [Devir](docs/handoffs/F11-01.md) · saha receipt [`5693460041`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5693460041) · semantic `40a476ec` · [CI #1075](https://github.com/ziyabeey1-ai/randevu/actions/runs/35070566754) success · latest-main descendant `d9960e6c` · [CI #1078](https://github.com/ziyabeey1-ai/randevu/actions/runs/35087659257) success · R1 [`5694499571`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5694499571) **ACCEPTABLE** · R2 [`5694834956`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5694834956) **ACCEPTABLE** · main `83d61f4` · [main CI #1079](https://github.com/ziyabeey1-ai/randevu/actions/runs/35087924580) success · hosted-only residual olmadığı için staging açılmadı |
 | [F11-02](docs/plan/phase-11.md#f11-02) | Çok hizmetli müsaitlik ve atomik oluşturma | F11-01 | Planlandı | — | — |
 | [F11-03](docs/plan/phase-11.md#f11-03) | Grup yönetimi ve mevcut ekranlarla uyum | F11-02 | Planlandı | — | — |
 | [F11-04](docs/plan/phase-11.md#f11-04) | Çakışma, timezone ve yükseltme kabulü | F11-03, F17-02 | Planlandı | — | — |
@@ -85,6 +87,21 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | --- | --- | --- | --- | --- |
 | [MKT-01](https://github.com/ziyabeey1-ai/randevu/issues/70) | Randevu marketing homepage — scroll-motion implementation | Çalışılıyor | Ziya / ürün sahibi + FRONTEND 2 | [PR #69](https://github.com/ziyabeey1-ai/randevu/pull/69) brand/motion docs main'de; [PR #77](https://github.com/ziyabeey1-ai/randevu/pull/77) isolated video + WebP/canvas A/B experiment head `96efa44` / CI #947 green. Production renderer gerçek Kling binary/perf + real-phone/cellular ve shared route cutover kapısını bekler. |
 
+## Kepenk Core / KC platform track — 54 MVP görevinin dışında
+
+Bağlayıcı topology [K04](docs/plan/k04-platform-core-contract.md), paket/bağımlılık ayrıntıları [KC geçiş planı](docs/plan/kepenk-core-migration-plan.md) içindedir. Bu satırlar Randevu F09–F17 görev sayısına dahil değildir.
+
+| Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Kanıt / engel |
+| --- | --- | --- | --- | --- | --- |
+| [KC-00](docs/plan/kepenk-core-migration-plan.md) | Sözleşme ve hosted numeric envanter | K04 | Çalışılıyor | DANIŞMA 3 + Kepenk ajanı / 2026-09-16 | K04 [PR #106](https://github.com/ziyabeey1-ai/randevu/pull/106) main'de · Kepenk adoption [PR #8](https://github.com/ziyabeey1-ai/istanbul-sales-agent-dashboard/pull/8) + static inventory [PR #9](https://github.com/ziyabeey1-ai/istanbul-sales-agent-dashboard/pull/9) · hosted numeric read-only receipt [Issue #10](https://github.com/ziyabeey1-ai/istanbul-sales-agent-dashboard/issues/10) bekleniyor |
+| [KC-01](docs/plan/kepenk-core-migration-plan.md) | Core şema v1 ve RPC yüzeyi | KC-00 | Engelli | — | KC-00 hosted numeric receipt kabul edilmeden writer token **CLOSED**; migration/CI yazımı yok |
+| [KC-02](docs/plan/kepenk-core-migration-plan.md) | Kepenk kimlik adaptörü ve BFF oturumu | KC-01, KC-00 envanteri | Planlandı | — | KC-01 RPC yüzeyi ve KC-00 taşıma modu bekleniyor |
+| [KC-03](docs/plan/kepenk-core-migration-plan.md) | Esnaf → business backfill, alias ve shadow parity | KC-01, KC-02 | Planlandı | — | Kullanıcı `user_id` eşlemesi ve Core komutları bekleniyor |
+| [KC-04](docs/plan/kepenk-core-migration-plan.md) | Billing komut yolu | KC-01, KC-03 | Planlandı | — | En az bir gerçek Core business + verified billing event yolu bekleniyor |
+| [KC-05](docs/plan/kepenk-core-migration-plan.md) | Core → Firestore projection ve canary cutover | KC-03, KC-04 | Planlandı | — | KC-03 parity sıfır + KC-04 en az bir gerçek abonelik olayı bekleniyor |
+| [KC-06](docs/plan/kepenk-core-migration-plan.md) | `auth.kepenk.ai` broker | KC-05 | Planlandı | — | İkinci uygulamada gerçek kullanıcı ihtiyacı doğmadan açılmaz |
+| [KC-07](docs/plan/kepenk-core-migration-plan.md) | Platform admin read RPC ve audit | KC-05 | Planlandı | — | Salt-okunur auditli admin sınırı; impersonation ayrı karar/R1 ister |
+
 ## Kabul kapıları
 
 | Kapı | Kapsam | Durum / kanıt |
@@ -92,7 +109,7 @@ Marketing/site çalışması ayrı track'tir: **MKT-01 / Issue #70**, 54 MVP gö
 | GS | S01…S08 | **Kapalı** — S01…S08 tamamlandı; [GS kapanış devri](docs/handoffs/GS.md) |
 | G09 | F09-01…F09-05 | **Kapalı** — PR #30 / staging `34681540142`; stabilization takipleri GS içinde kapatıldı |
 | G10 | F10-01…F10-06 | Açık — F10-01/02/03/04/05 tamamlandı; yalnız F10-06 kaldı |
-| G11 | F11-01…F11-04 | Açık — F12-03 tamamlandı; F11-01 sıradaki aktif zincirdir |
+| G11 | F11-01…F11-04 | Açık — F11-01 tamamlandı; F11-02 sıradaki aktif zincirdir |
 | G12 | F12-01…F12-05 | Açık — F12-01/02/03 tamamlandı; F12-04 F11-02'yi bekliyor |
 | G13 | F13-01…F13-04 | Açık |
 | G14 | F14-01…F14-05 | Açık |
