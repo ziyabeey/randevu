@@ -2,13 +2,26 @@
 
 Runtime paths are intentionally stable so motion production can be replaced without changing React code.
 
+## Production renderer: WebP scroll sequence (product-owner decision, 2026-09-17)
+
+The transformation stage ships as an Apple-style frame sequence: normalized scroll progress maps
+directly to one of 121 WebP frames drawn on a single canvas (`src/marketing/transformation/frameSequence.ts`).
+The MP4 scrub is kept only as an explicit A/B arm (`/marketing-preview.html?renderer=video`).
+
 Required production files:
 
-- `public/marketing/transformation/randevu-transformation-master.mp4`
-- `public/marketing/transformation/randevu-transformation-mobile.mp4`
-- `public/marketing/transformation/randevu-transformation-poster.webp`
-- `public/marketing/transformation/randevu-transformation-final.webp`
-- `public/marketing/hero/randevu-hero-model.webp`
+- `public/marketing/transformation/frames/desktop/frame-000.webp … frame-120.webp` (1600×890, quality 0.82)
+- `public/marketing/transformation/frames/mobile/frame-000.webp … frame-120.webp` (960×534, quality 0.80, selected at `max-width: 680px`)
+- `public/marketing/transformation/randevu-transformation-poster.webp` (frame at 0 s, 1928×1072)
+- `public/marketing/transformation/randevu-transformation-final.webp` (frame at 4.75 s, reduced-motion / fallback still)
+- `public/marketing/hero/randevu-hero-model.webp` (frame at 0.08 s, hero photo)
+
+Current handoff (extracted 2026-09-17 from the clean MOV source):
+
+| sequence | frames | size | MKT-PERF-05 comparison target |
+| --- | --- | --- | --- |
+| desktop | 121 | 4.87 MB (avg 40 KB) | ≤ 6.25 MB |
+| mobile | 121 | 2.42 MB (avg 20 KB) | ≤ 2.75 MB |
 
 ## Source master
 
@@ -17,124 +30,64 @@ The product-owner supplied Kling MOV is the visual source of truth:
 - codec: H.264
 - dimensions: `1928×1072`
 - frame rate: `24 fps`
-- duration: `5.041667 s`
+- duration: `5.041667 s` (121 frames)
 - no visible generator watermark in the clean source
 - audio is not required by the marketing experience
+- clean source SHA-256: `a1fa4a2e40130a8093775926b1ee055c6b3bab39bd3692c003fdfb61ad881f39` (`kling_20260914_VIDEO_Use_the_up_4492_0.mov`, not committed)
 
-## Scrub-friendly desktop web encode
+## Regenerating the sequence (no ffmpeg needed)
 
-The desktop runtime MP4 is intentionally optimized for scroll seeking rather than minimum byte size:
-
-- H.264 High profile
-- GOP / keyframe interval: `6` frames (`0.25 s` at 24 fps)
-- B-frames disabled
-- audio stripped
-- `+faststart`
-- approximate size: `4.5 MB`
-
-Reference command:
+Chrome decodes the source and exports each frame as WebP through a canvas; frame `i` is sampled at
+`(i + 0.5) / 24` s so no sample lands on a frame boundary. Same timeline as `timeline.ts`.
 
 ```bash
-ffmpeg -i INPUT.mov \
-  -an \
-  -c:v libx264 \
-  -preset slow \
-  -crf 20 \
-  -profile:v high \
-  -level 4.1 \
-  -g 6 \
-  -keyint_min 6 \
-  -sc_threshold 0 \
-  -bf 0 \
-  -pix_fmt yuv420p \
-  -movflags +faststart \
+node scripts/mkt-01-extract-frames.mjs --src /path/to/kling_20260914_VIDEO_Use_the_up_4492_0.mov
+node scripts/verify-marketing-assets.mjs
+```
+
+The verifier checks the three stills by SHA-256, both sequences for 121 valid WebP frames and the
+byte caps above, and only checks an MP4 when one is present.
+
+## Video A/B arm (optional until a scrub-friendly encode is delivered)
+
+The MP4 arm is not required by the production renderer. When an encode is produced it must be
+scroll-seek friendly (needs ffmpeg; the clean source is 8.9 MB with audio and above the 5.0 MB cap):
+
+- H.264 High profile, GOP / keyframe interval `6` frames (`0.25 s` at 24 fps), B-frames disabled,
+  audio stripped, `+faststart`, approximate size `4.5 MB` (desktop) and `2.0 MB` at `1280×712` (mobile,
+  selected by `<source media="(max-width: 680px)">`).
+
+```bash
+ffmpeg -i INPUT.mov -an -c:v libx264 -preset slow -crf 20 -profile:v high -level 4.1 \
+  -g 6 -keyint_min 6 -sc_threshold 0 -bf 0 -pix_fmt yuv420p -movflags +faststart \
   public/marketing/transformation/randevu-transformation-master.mp4
-```
-
-## Mobile scrub encode
-
-Small screens use a lighter source with the same duration, frame rate and GOP structure so scroll timing remains identical while network cost drops substantially.
-
-Current mobile handoff:
-
-- dimensions: `1280×712`
-- frame rate: `24 fps`
-- frames: `121`
-- duration: `5.041667 s`
-- approximate size: `2.0 MB`
-- selected by `<source media="(max-width: 680px)">`
-
-Reference command from the scrub-friendly desktop encode:
-
-```bash
-ffmpeg -i public/marketing/transformation/randevu-transformation-master.mp4 \
-  -an \
-  -vf "scale=1280:-2" \
-  -c:v libx264 \
-  -preset slow \
-  -crf 21 \
-  -profile:v high \
-  -level 4.1 \
-  -g 6 \
-  -keyint_min 6 \
-  -sc_threshold 0 \
-  -bf 0 \
-  -pix_fmt yuv420p \
-  -movflags +faststart \
-  public/marketing/transformation/randevu-transformation-mobile.mp4
-```
-
-## Hero frame
-
-The hero uses the same woman and salon world as the scroll master. Current handoff is a clean early frame from the source MOV encoded to WebP:
-
-```bash
-ffmpeg -ss 0.08 -i INPUT.mov \
-  -frames:v 1 \
-  -vf "scale=1928:-1" \
-  -c:v libwebp \
-  -quality 86 \
-  public/marketing/hero/randevu-hero-model.webp
-```
-
-This keeps face, wardrobe, lighting and cobalt salon geometry continuous between the hero and the transformation section.
-
-## Reduced-motion final still
-
-The reduced-motion fallback uses a calm seated frame close to the end of the same master. The current frame is sampled at `4.75 s`, leaving negative space on the left for real DOM copy.
-
-```bash
-ffmpeg -ss 4.75 -i INPUT.mov \
-  -frames:v 1 \
-  -c:v libwebp \
-  -quality 82 \
-  public/marketing/transformation/randevu-transformation-final.webp
+ffmpeg -i public/marketing/transformation/randevu-transformation-master.mp4 -an -vf "scale=1280:-2" \
+  -c:v libx264 -preset slow -crf 21 -profile:v high -level 4.1 -g 6 -keyint_min 6 -sc_threshold 0 -bf 0 \
+  -pix_fmt yuv420p -movflags +faststart public/marketing/transformation/randevu-transformation-mobile.mp4
 ```
 
 ## Expected SHA-256
 
 ```text
+15e48377185dea9aeb98e0bc537108877f445bfcdee69cc2f7c3bdcb3f7e7dd8  randevu-transformation-poster.webp
+de93cf2c66d715738c91cdec8a19f77aec92c1819a9061e9c6dd202a59f14faa  randevu-transformation-final.webp
+5ac084fef0f5d21f40ecc5d8a5fca87c4a0b179f7555e8be77ece6bf9fd8781e  randevu-hero-model.webp
 b82e9fe486e9dd9706c8294a4cd3c07efe526034d6feb7b543930455ba96fdef  randevu-transformation-master.mp4
 f4984cc62143e744ee5bffd378a00eee0efdae909d6170d5a9210465b1873bc3  randevu-transformation-mobile.mp4
-39814c4ed94b1127de62e096cb2940c6138a27b365450a5e88af77d869e5bbb8  randevu-transformation-poster.webp
-40dd0196638aaa73fea2bdbd82f8a283bf3c24357b960557580fd5565dda0a70  randevu-transformation-final.webp
-cbcfb696ee7e9669052113f106ff988912bad315498f92101ee6288b0c90072a  randevu-hero-model.webp
 ```
 
-After copying or unzipping the binary handoff into the repository root, verify every required file before browser QA:
-
-```bash
-node scripts/verify-marketing-assets.mjs
-```
-
-The verifier fails closed on a missing file or SHA-256 mismatch. If production intentionally re-encodes a source, update the hash contract deliberately and re-run browser scrub acceptance.
-
-Optional later optimization:
-
-- `randevu-transformation-master.webm` — equivalent WebM encode only after browser QA.
+The MP4 hashes are the earlier scrub-friendly encode handoff; they only apply if those files are added.
+If production intentionally re-extracts or re-encodes, update the hashes deliberately and re-run the
+browser scrub acceptance.
 
 ## Runtime contract
 
-`src/marketing/transformation/TransformationSection.tsx` expects the canonical transformation paths above. `src/marketing/MarketingHero.tsx` expects the hero WebP path. Motion is muted, inline and scroll-scrubbed. Pricing, copy and product UI remain React/DOM overlays and must not be baked into the video.
+`src/marketing/transformation/TransformationSection.tsx` resolves the renderer through
+`rendererPolicy.ts` (production: frames; explicit `?renderer=video` selects the MP4 arm) and expects
+the canonical paths above. `src/marketing/MarketingHero.tsx` expects the hero WebP path. Motion is
+scroll-scrubbed only; pricing, copy and product UI remain React/DOM overlays and must not be baked
+into the frames.
 
-`marketing-preview.html` is a development-only Vite entry used before the production root cutover. It is intentionally `noindex,nofollow`; production metadata and canonical behavior live in `src/marketing/useMarketingDocumentMeta.ts` and become relevant when `/` is handed to `MarketingHome`.
+`marketing-preview.html` is a development-only Vite entry used before the production root cutover.
+It is intentionally `noindex,nofollow`; production metadata and canonical behavior live in
+`src/marketing/useMarketingDocumentMeta.ts` and become relevant when `/` is handed to `MarketingHome`.

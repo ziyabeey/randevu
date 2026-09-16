@@ -6,4 +6,13 @@ export const MARKETING_ASSETS = {
   transformationFinal: "/marketing/transformation/randevu-transformation-final.webp",
 } as const;
 
-export const MARKETING_PREVIEW_ASSETS = Object.values(MARKETING_ASSETS);
+/** Production renderer is the WebP sequence; the MP4 arm is optional, so the preview probe checks stills + sequence edges. */
+export const MARKETING_PREVIEW_ASSETS = [
+  MARKETING_ASSETS.heroModel,
+  MARKETING_ASSETS.transformationPoster,
+  MARKETING_ASSETS.transformationFinal,
+  "/marketing/transformation/frames/desktop/frame-000.webp",
+  "/marketing/transformation/frames/desktop/frame-120.webp",
+  "/marketing/transformation/frames/mobile/frame-000.webp",
+  "/marketing/transformation/frames/mobile/frame-120.webp",
+] as const;
