@@ -60,7 +60,6 @@ do $$
 declare
   v_day date:=date_trunc('week',current_date)::date+7;
   v public.appointments;
-  v_token text:=repeat('M',43);
   v_list_id uuid;
   v_calendar_id uuid;
   v_history_id uuid;
@@ -102,20 +101,42 @@ begin
     'd1310000-0000-4000-8000-000000000001',v.id,26,null,null
   );
   if v_event_count<>1 then raise exception 'legacy audit consumer expected one create event, got %',v_event_count; end if;
-
-  insert into public.appointment_management_capabilities(
-    appointment_id,business_id,token_hash
-  ) values (
-    v.id,'d1310000-0000-4000-8000-000000000001',public.management_token_hash(v_token)
-  );
-
-  if (select group_id from public.appointment_management_capabilities where appointment_id=v.id)<>v.group_id then
-    raise exception 'legacy management capability did not bridge group root';
-  end if;
 end
 $$;
 
 reset role;
+
+-- Capability rows and the hash helper are intentionally not browser-granted.
+-- Provision this legacy compatibility fixture as the privileged test owner, then
+-- exercise the old bearer-token resolver below. This keeps the S08/F17 ACL
+-- boundary intact while still proving the F11 appointment -> group bridge.
+do $$
+declare
+  v_id uuid;
+  v_group uuid;
+  v_token text:=repeat('M',43);
+begin
+  select appointment_id into strict v_id
+  from public.booking_commands
+  where business_id='d1310000-0000-4000-8000-000000000001'
+    and idempotency_key='f11-legacy-consumer-create-001';
+
+  select group_id into strict v_group
+  from public.appointments
+  where business_id='d1310000-0000-4000-8000-000000000001'
+    and id=v_id;
+
+  insert into public.appointment_management_capabilities(
+    appointment_id,business_id,token_hash
+  ) values (
+    v_id,'d1310000-0000-4000-8000-000000000001',public.management_token_hash(v_token)
+  );
+
+  if (select group_id from public.appointment_management_capabilities where appointment_id=v_id)<>v_group then
+    raise exception 'legacy management capability did not bridge group root';
+  end if;
+end
+$$;
 
 -- The old capability resolver still returns the historical single-appointment
 -- DTO for a legacy one-line group and therefore old /m#token links remain valid.
