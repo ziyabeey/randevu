@@ -39,16 +39,17 @@
   will-change: transform, opacity;
 }
 
+/* Bottom layer is a solid brand color so a missing still never leaves a half-empty panel. */
 .mkt-fallback-panel--motion-start {
   background:
     linear-gradient(90deg, rgba(217, 236, 255, 0.98) 0%, rgba(217, 236, 255, 0.95) 42%, rgba(217, 236, 255, 0.62) 61%, rgba(217, 236, 255, 0.08) 100%),
-    url("/marketing/transformation/randevu-transformation-poster.webp") 64% center / cover no-repeat;
+    url("/marketing/transformation/randevu-transformation-poster.webp") 64% center / cover no-repeat var(--mkt-powder);
 }
 
 .mkt-fallback-panel--motion-final {
   background:
-    linear-gradient(90deg, rgba(198, 232, 0, 0.98) 0%, rgba(198, 232, 0, 0.94) 40%, rgba(248, 249, 250, 0.64) 61%, rgba(248, 249, 250, 0.04) 100%),
-    url("/marketing/transformation/randevu-transformation-final.webp") 58% center / cover no-repeat;
+    linear-gradient(90deg, rgba(198, 232, 0, 0.98) 0%, rgba(198, 232, 0, 0.94) 40%, rgba(198, 232, 0, 0.7) 61%, rgba(198, 232, 0, 0.12) 100%),
+    url("/marketing/transformation/randevu-transformation-final.webp") 58% center / cover no-repeat var(--mkt-lime);
 }
 
 @media (max-width: 680px) {
