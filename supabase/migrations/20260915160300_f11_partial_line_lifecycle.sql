@@ -4,6 +4,13 @@ begin;
 -- A reservation group may contain independently changing service lines, so line
 -- lifecycle status cannot be part of the line->group identity key. Tenant,
 -- customer and source remain fail-closed at both trigger and FK boundaries.
+--
+-- Keep a narrow five-column UNIQUE compatibility index so rerunning the original
+-- 160000 migration can temporarily recreate its old FK before this repair is
+-- rerun. Final authority below still uses the four-column status-free FK.
+create unique index if not exists appointment_groups_status_contract_compat_idx
+  on public.appointment_groups(business_id, id, customer_id, status, source);
+
 alter table public.appointments
   drop constraint if exists appointments_group_contract_fk;
 
