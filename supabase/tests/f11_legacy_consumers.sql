@@ -173,10 +173,13 @@ select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 do $$
 declare v_group uuid; v_contract record;
 begin
-  select appointment_id into strict v_group
-  from public.booking_commands
-  where business_id='d1310000-0000-4000-8000-000000000001'
-    and idempotency_key='f11-legacy-consumer-create-001';
+  select p.id into strict v_group
+  from public.list_appointments_page(
+    'd1310000-0000-4000-8000-000000000001',26,null,null
+  ) p
+  where p.customer_email_snapshot='legacy-consumer@example.invalid'
+    and p.service_id='d1330000-0000-4000-8000-000000000001'
+    and p.staff_id='d1340000-0000-4000-8000-000000000001';
 
   select * into strict v_contract
   from public.get_booking_group_contract('d1310000-0000-4000-8000-000000000001',v_group);
