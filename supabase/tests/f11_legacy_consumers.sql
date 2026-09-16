@@ -165,5 +165,9 @@ end
 $$;
 reset role;
 
-raise notice 'F11-01 legacy booking consumers accepted';
+do $$
+begin
+  raise notice 'F11-01 legacy booking consumers accepted';
+end
+$$;
 rollback;
