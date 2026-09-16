@@ -185,7 +185,11 @@ begin
     and has_function_privilege('authenticated', 'public.has_entitlement(uuid,text)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.has_entitlement(uuid,text)', 'EXECUTE')
     and has_function_privilege('authenticated', 'public.get_business_platform_snapshot(uuid)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.get_business_platform_snapshot(uuid)', 'EXECUTE'),
+    and not has_function_privilege('anon', 'public.get_business_platform_snapshot(uuid)', 'EXECUTE')
+    and has_function_privilege('anon', 'public.core_resolve_tenant_aliases(text,text,text,text[])', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.core_resolve_tenant_aliases(text,text,text,text[])', 'EXECUTE')
+    and has_function_privilege('anon', 'public.core_resolve_identity_aliases(text,text,text,text[])', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.core_resolve_identity_aliases(text,text,text,text[])', 'EXECUTE'),
     'RPC grant matrix differs from the KC-01 contract');
 end $$;
 
@@ -427,6 +431,51 @@ select pg_temp.kc01_assert(
   and current_setting('request.jwt.claims', true)::jsonb ->> 'sub' = 'c0100000-0000-4000-8000-000000000004',
   'jwt settings were not restored after ProvisionBusiness');
 
+-- Alias resolution RPCs (KC-03 backfill/parity): bounded, secret gated, anon role.
+create function pg_temp.kc01_resolve(p_kind text, p_provider text, p_ids text[],
+  p_secret text default 'kc01-principal-secret-aaaaaaaaaaaaaaaaaaaaaaaa')
+returns jsonb language plpgsql as $$
+declare v jsonb;
+begin
+  execute 'set local role anon';
+  if p_kind = 'tenant' then
+    v := public.core_resolve_tenant_aliases('kepenk-web', p_secret, p_provider, p_ids);
+  else
+    v := public.core_resolve_identity_aliases('kepenk-web', p_secret, p_provider, p_ids);
+  end if;
+  execute 'reset role';
+  return v;
+exception when others then
+  execute 'reset role';
+  raise;
+end $$;
+
+do $$
+declare v jsonb;
+begin
+  v := pg_temp.kc01_resolve('tenant', 'legacy-kepenk-firestore', array['esnaf-001', 'esnaf-100', 'esnaf-none']);
+  perform pg_temp.kc01_assert((v->>'ok')::boolean and jsonb_array_length(v->'data'->'aliases') = 2, 'tenant alias resolution differs: ' || v::text);
+  perform pg_temp.kc01_assert(
+    (v->'data'->'aliases'->0->>'external_id') = 'esnaf-001'
+    and (v->'data'->'aliases'->0->>'business_id')::uuid = 'c0110000-0000-4000-8000-000000000001'
+    and (v->'data'->'aliases'->1->>'slug') = 'kc01-kepenk-berber',
+    'tenant alias rows differ: ' || v::text);
+
+  v := pg_temp.kc01_resolve('identity', 'firebase', array['firebase-uid-a', 'firebase-uid-none']);
+  perform pg_temp.kc01_assert(
+    (v->>'ok')::boolean and jsonb_array_length(v->'data'->'aliases') = 1
+    and (v->'data'->'aliases'->0->>'user_id')::uuid = 'c0100000-0000-4000-8000-000000000001',
+    'identity alias resolution differs: ' || v::text);
+
+  v := pg_temp.kc01_resolve('tenant', 'legacy-kepenk-firestore', array['esnaf-001'], 'kc01-wrong-secret-cccccccccccccccccccccccccccc');
+  perform pg_temp.kc01_assert(pg_temp.kc01_err(v) = 'CORE_PRINCIPAL_UNAUTHORIZED', 'alias resolution served with a wrong secret');
+
+  v := pg_temp.kc01_resolve('tenant', 'legacy-kepenk-firestore', (select array_agg('id-' || g::text) from generate_series(1, 101) g));
+  perform pg_temp.kc01_assert(pg_temp.kc01_err(v) = 'INVALID_PLATFORM_PAYLOAD', 'oversized alias batch accepted');
+  v := pg_temp.kc01_resolve('tenant', 'legacy-kepenk-firestore', array[]::text[]);
+  perform pg_temp.kc01_assert(pg_temp.kc01_err(v) = 'INVALID_PLATFORM_PAYLOAD', 'empty alias batch accepted');
+end $$;
+
 -- Principal quota (S04 counter keyed by principal): the 101st creation in the window is limited.
 do $$
 declare
@@ -524,7 +573,23 @@ begin
     (select count(*) from core.subscription_events where business_id = v_a and event_type = 'subscription_changed') = 4,
     'subscription event count differs');
 
-  -- Plan downgrade: keys absent from the new plan are revoked.
+  -- The subscription event carries the derived entitlement changes for projection.
+  perform pg_temp.kc01_assert(
+    (select jsonb_array_length(se.payload->'entitlements') = 3
+     from core.subscription_events se
+     where se.business_id = v_a and se.idempotency_key = 'kc01-key-sub-0001' and se.event_type = 'subscription_changed'),
+    'subscription_changed payload lacks derived entitlements');
+  perform pg_temp.kc01_assert(
+    (select jsonb_typeof(se.payload->'entitlements') = 'null'
+     from core.subscription_events se
+     where se.business_id = v_a and se.idempotency_key = 'kc01-key-sub-0008'),
+    'past_due event must not carry entitlement changes');
+
+  -- An ad-hoc grant is not plan-managed and must survive a plan change.
+  v2 := pg_temp.kc01_cmd('kc01-key-sub-adhoc', 'GrantEntitlement', jsonb_build_object('business_id', v_a, 'entitlement_key', 'kc01_adhoc'));
+  perform pg_temp.kc01_assert((v2->>'ok')::boolean, 'ad-hoc grant failed: ' || v2::text);
+
+  -- Plan downgrade: plan-managed keys absent from the new plan are revoked.
   insert into core.plan_entitlements (plan_key, entitlement_key, granted, limit_value, policy_version)
   values ('kc01_lite', 'booking', true, null, 7);
   v2 := pg_temp.kc01_cmd('kc01-key-sub-0009', 'ChangeSubscription', v_payload || '{"plan_key":"kc01_lite"}'::jsonb);
@@ -532,6 +597,12 @@ begin
   perform pg_temp.kc01_assert(pg_temp.kc01_has(v_owner_a, v_a, 'booking'), 'downgrade lost the retained key');
   perform pg_temp.kc01_assert(not pg_temp.kc01_has(v_owner_a, v_a, 'ai_booking_assistant'), 'downgrade kept a revoked key');
   perform pg_temp.kc01_assert(not pg_temp.kc01_has(v_owner_a, v_a, 'messaging_credits'), 'downgrade kept a revoked key (messaging)');
+  perform pg_temp.kc01_assert(pg_temp.kc01_has(v_owner_a, v_a, 'kc01_adhoc'), 'downgrade revoked an ad-hoc grant');
+  perform pg_temp.kc01_assert(
+    (select jsonb_array_length(se.payload->'entitlements') = 3
+     from core.subscription_events se
+     where se.business_id = v_a and se.idempotency_key = 'kc01-key-sub-0009'),
+    'downgrade event must list one grant and two revocations');
 end $$;
 
 -- Recovery sessions cannot read entitlements or the snapshot.

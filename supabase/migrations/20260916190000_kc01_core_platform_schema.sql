@@ -614,14 +614,56 @@ begin
 end
 $$;
 
--- Derives entitlements for a business from a plan policy after a subscription
--- event. Keys absent from the new plan are revoked so downgrades fail closed.
-create function core.apply_plan_entitlements(
+-- Read-only derivation of the entitlement changes a plan transition implies:
+-- every key of the target plan (granted when the subscription grants), plus a
+-- revocation of every currently granted key that was itself plan-derived and
+-- is absent from the target plan. Ad-hoc grants (entitlement_granted events)
+-- survive plan changes. The list is stored on the subscription event so the
+-- KC-05 projection can replay it without a read RPC.
+create function core.plan_entitlement_changes(
   p_business_id uuid,
   p_plan_key text,
   p_grant boolean,
-  p_event_id bigint,
   p_valid_until timestamptz
+)
+returns jsonb
+language sql
+stable
+set search_path = ''
+as $$
+  select coalesce(jsonb_agg(x.change order by x.change->>'entitlement_key'), '[]'::jsonb)
+  from (
+    select jsonb_build_object(
+      'entitlement_key', pe.entitlement_key,
+      'granted', (p_grant and pe.granted),
+      'limit_value', pe.limit_value,
+      'valid_until', p_valid_until
+    ) as change
+    from core.plan_entitlements pe
+    where pe.plan_key = p_plan_key
+    union all
+    select jsonb_build_object(
+      'entitlement_key', e.entitlement_key,
+      'granted', false,
+      'limit_value', e.limit_value,
+      'valid_until', e.valid_until
+    )
+    from core.entitlements e
+    join core.subscription_events se on se.id = e.source_event_id
+    where e.business_id = p_business_id
+      and e.granted
+      and se.event_type = 'subscription_changed'
+      and not exists (
+        select 1 from core.plan_entitlements pe
+        where pe.plan_key = p_plan_key and pe.entitlement_key = e.entitlement_key
+      )
+  ) x
+$$;
+
+create function core.apply_entitlement_changes(
+  p_business_id uuid,
+  p_changes jsonb,
+  p_event_id bigint
 )
 returns integer
 language plpgsql
@@ -632,9 +674,15 @@ declare
   v_rows integer := 0;
 begin
   insert into core.entitlements (business_id, entitlement_key, granted, limit_value, source_event_id, valid_until, updated_at)
-  select p_business_id, pe.entitlement_key, (p_grant and pe.granted), pe.limit_value, p_event_id, p_valid_until, now()
-  from core.plan_entitlements pe
-  where pe.plan_key = p_plan_key
+  select
+    p_business_id,
+    x->>'entitlement_key',
+    (x->>'granted')::boolean,
+    (x->>'limit_value')::bigint,
+    p_event_id,
+    (x->>'valid_until')::timestamptz,
+    now()
+  from jsonb_array_elements(p_changes) x
   on conflict (business_id, entitlement_key) do update
     set granted = excluded.granted,
         limit_value = excluded.limit_value,
@@ -642,15 +690,6 @@ begin
         valid_until = excluded.valid_until,
         updated_at = now();
   get diagnostics v_rows = row_count;
-
-  update core.entitlements e
-  set granted = false, source_event_id = p_event_id, updated_at = now()
-  where e.business_id = p_business_id
-    and e.granted
-    and not exists (
-      select 1 from core.plan_entitlements pe
-      where pe.plan_key = p_plan_key and pe.entitlement_key = e.entitlement_key
-    );
   return v_rows;
 end
 $$;
@@ -676,6 +715,7 @@ declare
   v_subscription core.subscriptions;
   v_exists boolean;
   v_grant boolean;
+  v_changes jsonb;
 begin
   if not exists (select 1 from public.businesses b where b.id = v_business_id) then
     raise exception 'BUSINESS_NOT_FOUND';
@@ -698,11 +738,25 @@ begin
     raise exception 'INVALID_SUBSCRIPTION_PERIOD';
   end if;
 
+  -- trial/active grant the plan; cancelled revokes it; past_due keeps the
+  -- current grants unchanged (grace) but is recorded as an event.
+  if v_status in ('trial', 'active') then
+    v_grant := true;
+  elsif v_status = 'cancelled' then
+    v_grant := false;
+  else
+    v_grant := null;
+  end if;
+
   -- K04 §17 lock order: business advisory lock -> subscriptions row -> event -> entitlements.
   perform core.lock_business(v_business_id);
   select * into v_subscription
   from core.subscriptions s where s.business_id = v_business_id for update;
   v_exists := found;
+
+  if v_grant is not null then
+    v_changes := core.plan_entitlement_changes(v_business_id, v_plan_key, v_grant, v_period_end);
+  end if;
 
   insert into core.subscription_events (
     business_id, event_type, plan_key, payload, principal_id, idempotency_key, policy_version
@@ -714,7 +768,8 @@ begin
       'status', v_status,
       'current_period_start', v_period_start,
       'current_period_end', v_period_end,
-      'source', coalesce(p_payload->'source', 'null'::jsonb)
+      'source', coalesce(p_payload->'source', 'null'::jsonb),
+      'entitlements', coalesce(v_changes, 'null'::jsonb)
     ),
     p_principal_id,
     p_idempotency_key,
@@ -738,17 +793,8 @@ begin
     returning * into v_subscription;
   end if;
 
-  -- trial/active grant the plan; cancelled revokes it; past_due keeps the
-  -- current grants unchanged (grace) but is recorded as an event.
-  if v_status in ('trial', 'active') then
-    v_grant := true;
-  elsif v_status = 'cancelled' then
-    v_grant := false;
-  else
-    v_grant := null;
-  end if;
-  if v_grant is not null then
-    perform core.apply_plan_entitlements(v_business_id, v_plan_key, v_grant, v_event_id, v_period_end);
+  if v_changes is not null then
+    perform core.apply_entitlement_changes(v_business_id, v_changes, v_event_id);
   end if;
 
   return jsonb_build_object(
@@ -1076,5 +1122,90 @@ $$;
 
 revoke all on function public.core_read_change_feed(text, text, bigint, integer) from public;
 grant execute on function public.core_read_change_feed(text, text, bigint, integer) to anon;
+
+-- Bounded, secret-gated alias lookups for the KC-03 backfill and parity jobs.
+create function public.core_resolve_tenant_aliases(
+  p_principal_name text,
+  p_principal_secret text,
+  p_provider text,
+  p_external_ids text[]
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_principal_id uuid;
+  v_aliases jsonb;
+begin
+  v_principal_id := core.authorize_service_principal(p_principal_name, p_principal_secret);
+  if v_principal_id is null then
+    return public.core_platform_error('CORE_PRINCIPAL_UNAUTHORIZED');
+  end if;
+  if p_provider is null or btrim(p_provider) = ''
+     or p_external_ids is null
+     or cardinality(p_external_ids) < 1 or cardinality(p_external_ids) > 100 then
+    return public.core_platform_error('INVALID_PLATFORM_PAYLOAD');
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'external_id', a.external_id,
+    'business_id', a.business_id,
+    'slug', b.slug
+  ) order by a.external_id), '[]'::jsonb) into v_aliases
+  from core.tenant_aliases a
+  join public.businesses b on b.id = a.business_id
+  where a.provider = lower(btrim(p_provider))
+    and a.external_id = any (p_external_ids);
+
+  return jsonb_build_object('ok', true, 'data', jsonb_build_object('aliases', v_aliases));
+end
+$$;
+
+revoke all on function public.core_resolve_tenant_aliases(text, text, text, text[]) from public;
+grant execute on function public.core_resolve_tenant_aliases(text, text, text, text[]) to anon;
+
+create function public.core_resolve_identity_aliases(
+  p_principal_name text,
+  p_principal_secret text,
+  p_provider text,
+  p_external_subjects text[]
+)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_principal_id uuid;
+  v_aliases jsonb;
+begin
+  v_principal_id := core.authorize_service_principal(p_principal_name, p_principal_secret);
+  if v_principal_id is null then
+    return public.core_platform_error('CORE_PRINCIPAL_UNAUTHORIZED');
+  end if;
+  if p_provider is null or btrim(p_provider) = ''
+     or p_external_subjects is null
+     or cardinality(p_external_subjects) < 1 or cardinality(p_external_subjects) > 100 then
+    return public.core_platform_error('INVALID_PLATFORM_PAYLOAD');
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'external_subject', a.external_subject,
+    'user_id', a.user_id
+  ) order by a.external_subject), '[]'::jsonb) into v_aliases
+  from core.identity_aliases a
+  where a.provider = lower(btrim(p_provider))
+    and a.external_subject = any (p_external_subjects);
+
+  return jsonb_build_object('ok', true, 'data', jsonb_build_object('aliases', v_aliases));
+end
+$$;
+
+revoke all on function public.core_resolve_identity_aliases(text, text, text, text[]) from public;
+grant execute on function public.core_resolve_identity_aliases(text, text, text, text[]) to anon;
 
 commit;
