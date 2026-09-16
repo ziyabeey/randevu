@@ -59,3 +59,21 @@ test('MKT-01 standalone preview exposes video versus frames without changing the
   assert.match(section, /reducedMotion \|\| !frameRenderer/);
   assert.doesNotMatch(section, /<img[^>]+frame-/);
 });
+
+test('MKT-01 production renderer is the WebP sequence; explicit overrides win; contract caps the sequences', async () => {
+  const policy = await import('../src/marketing/transformation/rendererPolicy.ts');
+  assert.equal(policy.TRANSFORMATION_PRODUCTION_RENDERER, 'frames');
+  assert.equal(policy.resolveTransformationRenderer(undefined), 'frames');
+  assert.equal(policy.resolveTransformationRenderer(null), 'frames');
+  assert.equal(policy.resolveTransformationRenderer('nonsense'), 'frames');
+  assert.equal(policy.resolveTransformationRenderer('video'), 'video');
+  assert.equal(policy.resolveTransformationRenderer('frames'), 'frames');
+  assert.match(section, /resolveTransformationRenderer\(requested\) === "frames"/);
+  assert.match(previewEntry, /if \(previewMode\.rendererExplicit\) document\.documentElement\.dataset\.mktRenderer = previewMode\.renderer/);
+  assert.match(previewModes, /rendererExplicit: params\.get\("renderer"\) === "frames" \|\| params\.get\("renderer"\) === "video"/);
+  const contract = await import('../src/marketing/asset-contract.ts');
+  assert.equal(contract.MARKETING_FRAME_SEQUENCE_CONTRACT.count, 121);
+  assert.equal(contract.MARKETING_FRAME_SEQUENCE_CONTRACT.desktop.maxTotalBytes, 6_553_600);
+  assert.equal(contract.MARKETING_FRAME_SEQUENCE_CONTRACT.mobile.maxTotalBytes, 2_883_584);
+  assert.equal(contract.MARKETING_ASSET_CONTRACT['/marketing/transformation/randevu-transformation-master.mp4'].required, false);
+});

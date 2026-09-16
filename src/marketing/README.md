@@ -30,7 +30,7 @@ Preview helpers:
 - `?debug=1` shows the scroll-scrub progress rail in development.
 - `?reduced=1` forces the reduced-motion fallback.
 - `?reduced=1&clean=1` combines a clean static acceptance view.
-- `?renderer=frames` selects the isolated frame-sequence experiment; video remains the production control/default until real Kling byte/performance acceptance chooses otherwise.
+- `?renderer=video` selects the MP4 scrub A/B arm; `?renderer=frames` forces the sequence. Without the parameter the production policy applies: the WebP scroll sequence (`transformation/rendererPolicy.ts`, product-owner decision 2026-09-17).
 
 The standalone preview is `noindex,nofollow`. Production title, description, Open Graph metadata and canonical behavior are owned by `useMarketingDocumentMeta.ts` and target `randevukolay.net`.
 
@@ -56,7 +56,7 @@ After unzipping the asset handoff into the repository root, run:
 node scripts/verify-marketing-assets.mjs
 ```
 
-The video-vs-frame decision still requires the real Kling source/canonical bytes. Synthetic CI frames prove behavior, cache, concurrency and fallback only; they do not select a production performance winner.
+The real sequences are extracted from the clean Kling MOV with `node scripts/mkt-01-extract-frames.mjs --src <source>` (Chrome decode + canvas WebP, no ffmpeg). Synthetic CI frames still prove behavior, cache, concurrency and fallback; the committed sequences carry the real bytes (desktop 4.87 MB, mobile 2.42 MB, both under the MKT-PERF-05 comparison targets).
 
 ## Shared-entry boundary
 

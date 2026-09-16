@@ -144,7 +144,8 @@ test('MKT-01 video request failure degrades to a usable static transformation st
   let page;
 
   try {
-    const url = `${origin}/marketing-preview.html?clean=1`;
+    // The video arm is an explicit A/B override now that the WebP sequence is the production renderer.
+    const url = `${origin}/marketing-preview.html?renderer=video&clean=1`;
     await waitFor(async () => {
       const response = await fetch(url, { signal: AbortSignal.timeout(1_000) });
       return response.ok;

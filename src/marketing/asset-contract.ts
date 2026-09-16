@@ -1,4 +1,4 @@
-import { MARKETING_ASSETS } from "./assets";
+import { MARKETING_ASSETS } from "./assets.ts";
 
 /**
  * Production renderer is the WebP scroll sequence (rendererPolicy.ts). The MP4

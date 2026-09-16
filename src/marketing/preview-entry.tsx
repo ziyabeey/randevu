@@ -5,10 +5,13 @@ import { MARKETING_PREVIEW_ASSETS } from "./assets";
 import { MarketingHome } from "./MarketingHome";
 import "./preview-reduced.css";
 import { readMarketingPreviewMode } from "./previewModes";
+import { TRANSFORMATION_PRODUCTION_RENDERER } from "./transformation/rendererPolicy";
 
 const previewMode = readMarketingPreviewMode(window.location.search);
+const effectiveRenderer = previewMode.rendererExplicit ? previewMode.renderer : TRANSFORMATION_PRODUCTION_RENDERER;
 
-document.documentElement.dataset.mktRenderer = previewMode.renderer;
+// Only an explicit ?renderer= override is written; otherwise the production policy decides.
+if (previewMode.rendererExplicit) document.documentElement.dataset.mktRenderer = previewMode.renderer;
 if (previewMode.reducedMotion) document.documentElement.dataset.mktReducedMotion = "true";
 if (previewMode.debug) document.documentElement.dataset.mktDebug = "true";
 
@@ -48,7 +51,7 @@ function PreviewDiagnostics() {
   return (
     <aside className={`mkt-preview-diagnostics is-${status}`} aria-live="polite">
       <strong>Preview</strong>
-      <span>Renderer: {previewMode.renderer === "frames" ? "Frames A/B" : "Video"}</span>
+      <span>Renderer: {effectiveRenderer === "frames" ? (previewMode.rendererExplicit ? "Frames" : "Frames (production)") : "Video (A/B)"}</span>
       {previewMode.reducedMotion ? <span>Reduced motion</span> : null}
       {previewMode.debug ? <span>Debug</span> : null}
       {!previewMode.reducedMotion && status === "checking" ? <span>Assetler kontrol ediliyor…</span> : null}

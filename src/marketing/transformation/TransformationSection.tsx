@@ -4,6 +4,7 @@ import { MARKETING_ASSETS } from "../assets";
 import { MARKETING_RELEASE_GATES } from "../releaseGates";
 import "./frame-sequence.css";
 import "./transformation-tuning.css";
+import { resolveTransformationRenderer } from "./rendererPolicy";
 import { useFrameSequenceScrollScrub } from "./useFrameSequenceScrollScrub";
 import { usePrefersReducedMotion, useVideoScrollScrub } from "./useVideoScrollScrub";
 
@@ -110,7 +111,9 @@ function StaticTransformationFallback() {
 }
 
 function isFrameRendererRequested(): boolean {
-  return typeof document !== "undefined" && document.documentElement.dataset.mktRenderer === "frames";
+  // Explicit `data-mkt-renderer="video" | "frames"` (preview override) wins; otherwise production policy.
+  const requested = typeof document !== "undefined" ? document.documentElement.dataset.mktRenderer : undefined;
+  return resolveTransformationRenderer(requested) === "frames";
 }
 
 export function TransformationSection() {
