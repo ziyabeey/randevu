@@ -46,19 +46,23 @@ values (
 ) on conflict(business_id,staff_id,service_id) do update set active=true;
 
 -- Public booking readiness is structural, not dependent on a specific empty slot.
-do $$
-declare v_day date:=date_trunc('week',current_date)::date+7; v_dow smallint:=extract(dow from v_day)::smallint;
-begin
-  perform public.replace_business_hours(
-    'd1210000-0000-4000-8000-000000000001',v_dow,
-    '[{"start":"09:00","end":"18:00"}]'::jsonb
-  );
-  perform public.replace_staff_hours(
-    'd1210000-0000-4000-8000-000000000001','d1240000-0000-4000-8000-000000000001',v_dow,
-    '[{"start":"09:00","end":"18:00"}]'::jsonb
-  );
-end
-$$;
+-- These are fixture-owned schedule rows. The old replace_*_hours RPCs are
+-- intentionally revoked from browser roles after F10-04/S08 and are not part of
+-- the legacy evidence this upgrade test is preserving.
+insert into public.business_hours(id,business_id,weekday,starts_local,ends_local,active)
+values (
+  'd1250000-0000-4000-8000-000000000001','d1210000-0000-4000-8000-000000000001',
+  extract(dow from date_trunc('week',current_date)::date+7)::smallint,time '09:00',time '18:00',true
+) on conflict(id) do update
+set weekday=excluded.weekday,starts_local=excluded.starts_local,ends_local=excluded.ends_local,active=true;
+
+insert into public.staff_hours(id,business_id,staff_id,weekday,starts_local,ends_local,active)
+values (
+  'd1260000-0000-4000-8000-000000000001','d1210000-0000-4000-8000-000000000001',
+  'd1240000-0000-4000-8000-000000000001',
+  extract(dow from date_trunc('week',current_date)::date+7)::smallint,time '09:00',time '18:00',true
+) on conflict(id) do update
+set weekday=excluded.weekday,starts_local=excluded.starts_local,ends_local=excluded.ends_local,active=true;
 
 insert into public.public_booking_settings(business_id,enabled,step_minutes,min_notice_minutes,horizon_days)
 values ('d1210000-0000-4000-8000-000000000001',true,15,0,30)
