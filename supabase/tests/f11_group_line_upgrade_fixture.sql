@@ -178,16 +178,35 @@ where c.business_id='d1210000-0000-4000-8000-000000000001';
 insert into public.f11_upgrade_expected(entity,row_key,payload)
 select 'capability',c.appointment_id::text,to_jsonb(c)
 from public.appointment_management_capabilities c
-join public.appointments a on a.id=c.appointment_id
-where a.business_id='d1210000-0000-4000-8000-000000000001';
+where c.business_id='d1210000-0000-4000-8000-000000000001';
 
 insert into public.f11_upgrade_expected(entity,row_key,payload)
-select 'recovery',r.id::text,to_jsonb(r)
+select 'recovery',r.recovery_id::text,to_jsonb(r)
 from public.public_booking_recoveries r
 where r.business_id='d1210000-0000-4000-8000-000000000001';
 
 insert into public.f11_upgrade_expected(entity,row_key,payload)
-select 'notification',n.id::text,to_jsonb(n)
-from public.appointment_notification_jobs n
-join public.appointments a on a.id=n.appointment_id
-where a.business_id='d1210000-0000-4000-8000-000000000001';
+select 'job',j.id::text,to_jsonb(j)
+from public.appointment_notification_jobs j
+where j.business_id='d1210000-0000-4000-8000-000000000001';
+
+insert into public.f11_upgrade_expected(entity,row_key,payload)
+select 'counts','all',jsonb_build_object(
+  'appointments',(select count(*) from public.appointments where business_id='d1210000-0000-4000-8000-000000000001'),
+  'events',(select count(*) from public.appointment_events where business_id='d1210000-0000-4000-8000-000000000001'),
+  'commands',(select count(*) from public.booking_commands where business_id='d1210000-0000-4000-8000-000000000001'),
+  'capabilities',(select count(*) from public.appointment_management_capabilities where business_id='d1210000-0000-4000-8000-000000000001'),
+  'recoveries',(select count(*) from public.public_booking_recoveries where business_id='d1210000-0000-4000-8000-000000000001'),
+  'jobs',(select count(*) from public.appointment_notification_jobs where business_id='d1210000-0000-4000-8000-000000000001')
+);
+
+-- Fixture itself proves all five requested outbox states exist before F11.
+do $$
+begin
+  if (select count(distinct state) from public.appointment_notification_jobs
+      where business_id='d1210000-0000-4000-8000-000000000001'
+        and state in ('pending','leased','retry_wait','sent','failed_terminal')) <> 5 then
+    raise exception 'F11 upgrade fixture missing durable outbox lifecycle states';
+  end if;
+end
+$$;
