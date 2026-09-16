@@ -46,9 +46,9 @@ on conflict(business_id,staff_id,service_id) do update set active=true;
 insert into public.business_hours(business_id,weekday,starts_local,ends_local,active)
 select 'd1110000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,'09:00','18:00',true;
 insert into public.staff_hours(business_id,staff_id,weekday,starts_local,ends_local,active)
-select 'd1110000-0000-4000-8000-000000000001'::uuid,'d1140000-0000-4000-8000-000000000001'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,'09:00','18:00',true
+select 'd1110000-0000-4000-8000-000000000001'::uuid,'d1140000-0000-4000-8000-000000000001'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true
 union all
-select 'd1110000-0000-4000-8000-000000000001'::uuid,'d1140000-0000-4000-8000-000000000002'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,'09:00','18:00',true;
+select 'd1110000-0000-4000-8000-000000000001'::uuid,'d1140000-0000-4000-8000-000000000002'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
 
 insert into public.customers(id,business_id,name,phone,email,created_by)
 values
