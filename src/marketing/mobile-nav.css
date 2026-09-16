@@ -76,11 +76,11 @@
     padding: 8px;
     display: grid;
     gap: 3px;
-    border: 1px solid rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(21, 56, 109, 0.1);
     border-radius: 20px;
-    background: rgba(248, 249, 250, 0.97);
-    box-shadow: 0 22px 54px rgba(21, 56, 109, 0.16);
-    backdrop-filter: blur(18px);
+    /* Opaque: the hero H1 must not ghost through the open menu. */
+    background: #ffffff;
+    box-shadow: 0 22px 54px rgba(21, 56, 109, 0.22);
   }
 
   .mkt-mobile-nav-panel a {
