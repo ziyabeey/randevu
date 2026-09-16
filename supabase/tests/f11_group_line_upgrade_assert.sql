@@ -225,4 +225,8 @@ begin
 end
 $$;
 
-raise notice 'F11-01 upgrade preservation assertion accepted';
+do $$
+begin
+  raise notice 'F11-01 upgrade preservation assertion accepted';
+end
+$$;
