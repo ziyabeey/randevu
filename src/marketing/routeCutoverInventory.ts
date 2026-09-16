@@ -14,7 +14,6 @@ export const PRIVATE_APP_ROOT_RETURN_FILES = [
   "src/CustomersPage.tsx",
   "src/InvitePage.tsx",
   "src/OnboardingPage.tsx",
-  "src/PublicBookingSettingsPage.tsx",
   "src/TeamPage.tsx",
   "src/main.tsx",
 ] as const;
