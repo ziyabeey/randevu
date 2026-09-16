@@ -325,8 +325,8 @@
 }
 
 .mkt-proof-points article {
-  min-height: 250px;
-  padding: 28px;
+  min-height: 196px;
+  padding: 26px 28px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;

@@ -54,7 +54,8 @@
 .mkt-proof-before-pilot,
 .mkt-faq {
   content-visibility: auto;
-  contain-intrinsic-size: 900px;
+  /* Remember the last rendered size so revisiting a section does not shift the scroll position. */
+  contain-intrinsic-size: auto 900px;
 }
 
 @keyframes mkt-hero-copy-in {

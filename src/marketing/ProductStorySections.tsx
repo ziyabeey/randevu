@@ -129,17 +129,20 @@ function TodaySummary() {
 }
 
 function ProofBeforeTestimonials() {
+  // Numbering follows the released list, so a closed gate never leaves a visible gap (01, 03).
   const proofPoints = [
     MARKETING_RELEASE_GATES.publicBooking
-      ? { number: "01", title: "Web'den randevu", text: "Müşteri linkten girer, uygun zamanı seçer." }
+      ? { title: "Web'den randevu", text: "Müşteri linkten girer, uygun zamanı seçer." }
       : null,
     MARKETING_RELEASE_GATES.reminders
-      ? { number: "02", title: "Hatırlatma akışı", text: "Randevu yaklaşınca sistem zamanı takip eder." }
+      ? { title: "Hatırlatma akışı", text: "Randevu yaklaşınca sistem zamanı takip eder." }
       : null,
     MARKETING_RELEASE_GATES.onboardingAssistance
-      ? { number: "03", title: "Birlikte kurulum", text: "İlk günü ayar menülerinde kaybetme." }
+      ? { title: "Birlikte kurulum", text: "İlk günü ayar menülerinde kaybetme." }
       : null,
-  ].flatMap((point) => point === null ? [] : [point]);
+  ]
+    .flatMap((point) => point === null ? [] : [point])
+    .map((point, index) => ({ ...point, number: String(index + 1).padStart(2, "0") }));
 
   return (
     <section
