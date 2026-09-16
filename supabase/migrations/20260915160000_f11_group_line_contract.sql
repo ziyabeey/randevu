@@ -168,6 +168,7 @@ where j.group_id is null
   and a.id = j.appointment_id;
 
 alter table public.appointments
+  alter column price_minor_snapshot drop not null,
   alter column group_id set not null,
   alter column line_ordinal set not null,
   alter column price_type_snapshot set not null,
@@ -208,8 +209,17 @@ alter table public.appointments
       price_min_minor_snapshot between 0 and 100000000
       and price_max_minor_snapshot between 0 and 100000000
       and price_min_minor_snapshot <= price_max_minor_snapshot
-      and (price_type_snapshot <> 'fixed' or price_min_minor_snapshot = price_max_minor_snapshot)
-      and price_minor_snapshot = price_min_minor_snapshot
+      and (
+        (
+          price_type_snapshot = 'fixed'
+          and price_min_minor_snapshot = price_max_minor_snapshot
+          and price_minor_snapshot = price_min_minor_snapshot
+        )
+        or (
+          price_type_snapshot = 'range'
+          and price_minor_snapshot is null
+        )
+      )
     ),
   drop constraint if exists appointments_price_policy_version_snapshot_check,
   add constraint appointments_price_policy_version_snapshot_check
@@ -301,8 +311,8 @@ alter table public.appointment_notification_jobs
 
 -- Legacy appointment inserts still omit group/line/F12 range snapshot columns.
 -- The trigger creates a one-line group and fills fixed snapshot metadata. Future
--- group-aware inserts may supply the canonical F12 snapshot explicitly, including
--- range estimates, without weakening the old range->legacy fail-closed rule.
+-- group-aware inserts may supply canonical range estimates with no definitive
+-- legacy scalar amount, preserving F12's estimate != charge boundary.
 create or replace function public.f11_prepare_appointment_line()
 returns trigger
 language plpgsql
@@ -317,32 +327,10 @@ begin
     raise exception 'INVALID_APPOINTMENT_LINE';
   end if;
 
-  -- Historical line snapshots are immutable evidence. UPDATEs must validate the
-  -- existing group binding but must never compare frozen price evidence with the
-  -- current catalog. The AFTER legacy-group sync advances status/version after
-  -- the row mutation, so the header is expected to still carry OLD.status here.
-  if tg_op = 'UPDATE' then
-    select * into v_group
-    from public.appointment_groups g
-    where g.id = new.group_id;
-
-    if v_group.id is null
-       or v_group.business_id <> new.business_id
-       or v_group.customer_id <> new.customer_id
-       or v_group.status <> old.status
-       or v_group.source <> new.source then
-      raise exception 'BOOKING_GROUP_CONTRACT_MISMATCH';
-    end if;
-
-    if v_group.legacy_appointment_id is not null
-       and (v_group.legacy_appointment_id <> new.id or new.line_ordinal <> 1) then
-      raise exception 'BOOKING_GROUP_LEGACY_ANCHOR_CONFLICT';
-    end if;
-
-    return new;
-  end if;
-
   if new.group_id is null then
+    if tg_op = 'UPDATE' then
+      raise exception 'BOOKING_GROUP_REQUIRED';
+    end if;
     new.group_id := new.id;
     new.line_ordinal := 1;
 
@@ -365,14 +353,18 @@ begin
   if v_group.id is null
      or v_group.business_id <> new.business_id
      or v_group.customer_id <> new.customer_id
-     or v_group.status <> new.status
-     or v_group.source <> new.source then
+     or v_group.source <> new.source
+     or (tg_op = 'INSERT' and v_group.status <> new.status) then
     raise exception 'BOOKING_GROUP_CONTRACT_MISMATCH';
   end if;
 
   if v_group.legacy_appointment_id is not null
      and (v_group.legacy_appointment_id <> new.id or new.line_ordinal <> 1) then
     raise exception 'BOOKING_GROUP_LEGACY_ANCHOR_CONFLICT';
+  end if;
+
+  if tg_op = 'UPDATE' then
+    return new;
   end if;
 
   select * into v_service
@@ -392,6 +384,9 @@ begin
     if v_service.price_type <> 'fixed' then
       raise exception 'SERVICE_PRICE_NOT_FINAL';
     end if;
+    if new.price_minor_snapshot is null then
+      raise exception 'SERVICE_PRICE_SNAPSHOT_MISMATCH';
+    end if;
     new.price_type_snapshot := 'fixed';
     new.price_min_minor_snapshot := new.price_minor_snapshot;
     new.price_max_minor_snapshot := new.price_minor_snapshot;
@@ -406,7 +401,18 @@ begin
        or new.price_max_minor_snapshot <> v_service.price_max_minor
        or new.currency_snapshot <> v_service.currency
        or new.price_policy_version_snapshot <> v_service.price_policy_version
-       or new.price_minor_snapshot <> new.price_min_minor_snapshot then
+       or (
+         new.price_type_snapshot = 'fixed'
+         and (
+           new.price_min_minor_snapshot <> new.price_max_minor_snapshot
+           or new.price_minor_snapshot is null
+           or new.price_minor_snapshot <> new.price_min_minor_snapshot
+         )
+       )
+       or (
+         new.price_type_snapshot = 'range'
+         and new.price_minor_snapshot is not null
+       ) then
       raise exception 'SERVICE_PRICE_SNAPSHOT_MISMATCH';
     end if;
   end if;
