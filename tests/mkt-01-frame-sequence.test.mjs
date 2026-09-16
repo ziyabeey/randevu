@@ -77,3 +77,23 @@ test('MKT-01 production renderer is the WebP sequence; explicit overrides win; c
   assert.equal(contract.MARKETING_FRAME_SEQUENCE_CONTRACT.mobile.maxTotalBytes, 2_883_584);
   assert.equal(contract.MARKETING_ASSET_CONTRACT['/marketing/transformation/randevu-transformation-master.mp4'].required, false);
 });
+
+test('MKT-01 scroll pacing maps scroll to video time monotonically and lands on the Kling beats', async () => {
+  const timeline = await import('../src/marketing/transformation/timeline.ts');
+  const ease = timeline.easeTransformationScroll;
+  assert.equal(ease(0), 0);
+  assert.equal(ease(1), 1);
+  assert.equal(ease(-1), 0);
+  assert.equal(ease(2), 1);
+  let previous = 0;
+  for (let step = 0; step <= 200; step++) {
+    const value = ease(step / 200);
+    assert.ok(value >= previous, `easing must be monotonic at ${step / 200}`);
+    previous = value;
+  }
+  assert.ok(Math.abs(ease(0.42) - 1.8 / timeline.TRANSFORMATION_VIDEO_DURATION) < 1e-6, 'cut ends at the camera drop beat');
+  assert.ok(Math.abs(ease(0.8) - 4.15 / timeline.TRANSFORMATION_VIDEO_DURATION) < 1e-6, 'seated reveal keeps the last fifth of the scroll');
+  assert.equal(timeline.getTransformationPhase(ease(0.9)), 'pricing');
+  assert.match(hook, /easeTransformationScroll\(clamp01\(\(window\.scrollY - sectionTop\) \/ scrollRange\)\)/);
+  assert.match(loader, /imageSmoothingQuality = "high"/);
+});

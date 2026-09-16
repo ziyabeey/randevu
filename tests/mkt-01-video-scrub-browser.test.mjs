@@ -286,20 +286,25 @@ async function scrollSectionToProgress(page, progress) {
   })()`);
 }
 
+// Scroll pacing: both renderers map scroll through the same easing (timeline.ts), so parity is
+// checked against the eased progress, not the raw scroll fraction.
+const { easeTransformationScroll } = await import('../src/marketing/transformation/timeline.ts');
+
 async function scrollVideoToProgress(page, progress, expectedPhase) {
   await scrollSectionToProgress(page, progress);
+  const eased = easeTransformationScroll(progress);
   return waitFor(async () => {
     const state = await readScrubState(page);
     if (!state || state.phase !== expectedPhase || state.readyState < 1) return false;
-    if (Math.abs(state.progress - progress) > 0.035) return false;
-    if (Math.abs(state.currentTime - state.duration * progress) > 0.22) return false;
+    if (Math.abs(state.progress - eased) > 0.035) return false;
+    if (Math.abs(state.currentTime - state.duration * eased) > 0.22) return false;
     return state;
   }, `Video scrub did not settle at ${Math.round(progress * 100)}% / ${expectedPhase}`);
 }
 
 async function scrollFramesToProgress(page, progress, expectedPhase) {
   await scrollSectionToProgress(page, progress);
-  const expectedIndex = Math.round(progress * 120);
+  const expectedIndex = Math.round(easeTransformationScroll(progress) * 120);
   return waitFor(async () => {
     const state = await readFrameState(page);
     if (!state || state.failureCount !== 0 || state.phase !== expectedPhase) return false;

@@ -11,6 +11,7 @@ import {
 } from "./frameSequence";
 import {
   clamp01,
+  easeTransformationScroll,
   getTransformationPhase,
   getTransformationPhaseProgress,
   type TransformationPhase,
@@ -101,7 +102,7 @@ export function useFrameSequenceScrollScrub(
       scrollRange = Math.max(1, section.offsetHeight - window.innerHeight);
     };
 
-    const getProgress = () => clamp01((window.scrollY - sectionTop) / scrollRange);
+    const getProgress = () => easeTransformationScroll(clamp01((window.scrollY - sectionTop) / scrollRange));
     const isSynchronouslyNearSection = () => {
       const rect = section.getBoundingClientRect();
       const margin = window.innerHeight * 0.75;

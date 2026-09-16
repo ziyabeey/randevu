@@ -47,7 +47,7 @@
   gap: 26px;
   border: 1px solid rgba(255, 255, 255, 0.62);
   border-radius: 999px;
-  background: rgba(248, 249, 250, 0.82);
+  background: rgba(248, 249, 250, 0.9);
   box-shadow: 0 14px 42px rgba(21, 56, 109, 0.12);
   backdrop-filter: blur(18px);
   pointer-events: auto;
@@ -58,7 +58,7 @@
   align-items: center;
   gap: 5px;
   font-weight: 850;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.03em;
   color: var(--mkt-cobalt-deep);
 }
 
@@ -162,8 +162,8 @@
   color: var(--mkt-cobalt);
   font-size: clamp(4.9rem, 9.5vw, 9.7rem);
   font-weight: 900;
-  letter-spacing: -0.08em;
-  line-height: 0.82;
+  letter-spacing: -0.045em;
+  line-height: 0.9;
 }
 
 /* Product-owner reference (2026-09-17): "Randevu" cobalt, "kolay." lime; display size carries the contrast. */
@@ -504,8 +504,8 @@
 .mkt-transformation {
   --mkt-progress: 0;
   position: relative;
-  height: 360svh;
-  background: #f4efe8;
+  height: 420svh;
+  background: var(--mkt-cream);
 }
 
 .mkt-transformation-stage {
@@ -513,8 +513,31 @@
   top: 0;
   height: 100svh;
   overflow: hidden;
-  background: #efe9df;
+  background: var(--mkt-cream);
   isolation: isolate;
+}
+
+/* Seated-model pricing scene: revealed by the pricing phase progress after the last frame. */
+.mkt-final-scene {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  object-fit: cover;
+  object-position: right center;
+  opacity: 0;
+  transform: translate3d(2%, 0, 0) scale(1.02);
+  transition: opacity 160ms linear, transform 160ms linear;
+  pointer-events: none;
+  user-select: none;
+}
+
+.mkt-transformation[data-phase="pricing"] .mkt-final-scene {
+  opacity: clamp(0, calc(var(--mkt-phase-progress) * 1.8), 1);
+  transform: translate3d(calc((1 - clamp(0, calc(var(--mkt-phase-progress) * 1.8), 1)) * 2%), 0, 0) scale(calc(1.02 - clamp(0, calc(var(--mkt-phase-progress) * 1.8), 1) * 0.02));
 }
 
 .mkt-transformation-video {
@@ -529,11 +552,14 @@
 
 .mkt-video-shade {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   inset: 0;
+  /* Left copy shade + soft cream edges so the stage never cuts hard against the neighbours. */
   background:
     linear-gradient(90deg, rgba(248, 249, 250, 0.97) 0%, rgba(248, 249, 250, 0.82) 23%, rgba(248, 249, 250, 0.18) 49%, transparent 68%),
-    linear-gradient(0deg, rgba(10, 27, 52, 0.18), transparent 35%);
+    linear-gradient(180deg, rgba(248, 249, 250, 0.9) 0%, transparent 12%),
+    linear-gradient(0deg, rgba(248, 249, 250, 0.9) 0%, transparent 10%),
+    linear-gradient(0deg, rgba(10, 27, 52, 0.14), transparent 35%);
   pointer-events: none;
 }
 
@@ -573,8 +599,8 @@
   color: var(--mkt-cobalt-deep);
   font-size: clamp(3rem, 5.4vw, 6.2rem);
   font-weight: 900;
-  letter-spacing: -0.07em;
-  line-height: 0.94;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
 }
 
 /* "Az." as a lime highlight with cobalt text: lime glyphs on the pale stage failed contrast. */
@@ -1030,7 +1056,12 @@
   }
 
   .mkt-transformation {
-    height: 300svh;
+    height: 340svh;
+  }
+
+  .mkt-final-scene {
+    object-position: 62% center;
+    width: 100%;
   }
 
   .mkt-transformation-video {
@@ -1103,6 +1134,11 @@
     width: 100%;
   }
 
+  .mkt-pricing-pills li {
+    color: white;
+    text-shadow: 0 1px 12px rgba(8, 24, 46, 0.5);
+  }
+
   .mkt-scroll-cue {
     right: 18px;
     bottom: 18px;
@@ -1145,5 +1181,57 @@
     transition-duration: 0.001ms !important;
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+/* Scroll-driven reveals (progressive enhancement): sections rise in as they enter; off under reduced motion. */
+@keyframes mkt-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .mkt-section-copy,
+  .mkt-calendar-copy,
+  .mkt-booking-proof,
+  .mkt-calendar-board,
+  .mkt-today-list,
+  .mkt-proof-before-pilot > div:first-child,
+  .mkt-proof-points article,
+  .mkt-faq-intro,
+  .mkt-faq-list,
+  .mkt-final-cta > h2,
+  .mkt-final-cta > p {
+    animation: mkt-rise 1ms linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 55%;
+  }
+
+  .mkt-proof-points article:nth-child(2) {
+    animation-range: entry 8% entry 63%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-section-copy,
+  .mkt-calendar-copy,
+  .mkt-booking-proof,
+  .mkt-calendar-board,
+  .mkt-today-list,
+  .mkt-proof-before-pilot > div:first-child,
+  .mkt-proof-points article,
+  .mkt-faq-intro,
+  .mkt-faq-list,
+  .mkt-final-cta > h2,
+  .mkt-final-cta > p,
+  .mkt-final-scene {
+    animation: none !important;
+    transition: none !important;
   }
 }

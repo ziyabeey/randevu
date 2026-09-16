@@ -1,12 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 
-import {
-  TRANSFORMATION_VIDEO_DURATION,
-  clamp01,
-  getTransformationPhase,
-  getTransformationPhaseProgress,
-  type TransformationPhase,
-} from "./timeline";
+import { TRANSFORMATION_VIDEO_DURATION, easeTransformationScroll, clamp01, getTransformationPhase, getTransformationPhaseProgress, type TransformationPhase } from "./timeline";
 
 interface VideoScrollScrubResult {
   phase: TransformationPhase;
@@ -71,7 +65,7 @@ export function useVideoScrollScrub(
       scrollRange = Math.max(1, section.offsetHeight - window.innerHeight);
     };
 
-    const getProgress = () => clamp01((window.scrollY - sectionTop) / scrollRange);
+    const getProgress = () => easeTransformationScroll(clamp01((window.scrollY - sectionTop) / scrollRange));
 
     const writePhase = (progress: number) => {
       const normalized = clamp01(progress);

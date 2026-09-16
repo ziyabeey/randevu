@@ -1,5 +1,5 @@
 .mkt-final-cta {
-  background: var(--mkt-cobalt-deep);
+  background: var(--mkt-cobalt);
   color: white;
 }
 
@@ -47,8 +47,8 @@
 }
 
 .mkt-final-orb {
-  background: var(--mkt-cobalt);
-  opacity: 0.74;
+  background: var(--mkt-cobalt-deep);
+  opacity: 0.55;
 }
 
 .mkt-final-lockup {
