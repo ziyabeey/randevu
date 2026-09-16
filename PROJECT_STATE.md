@@ -1,12 +1,12 @@
 # YZT Randevu — Doğrulanmış mevcut durum
 
-**Kontrol: 15 Eylül 2026.** Bu dosya yalnız main'de doğrulanmış runtime durumunu ve aktif entegrasyon sınırını tutar. Canlı görev/sahiplik `TASKS.md`, bağımlılıklar `ROADMAP.md`, koordinasyon/conflict/staging kararları Issue #65 içindedir.
+**Kontrol: 16 Eylül 2026.** Bu dosya yalnız main'de doğrulanmış runtime durumunu ve aktif entegrasyon sınırını tutar. Canlı görev/sahiplik `TASKS.md`, bağımlılıklar `ROADMAP.md`, koordinasyon/conflict/staging kararları Issue #65 içindedir.
 
 ## Main referansı
 
 Bu dosya **exact current main SHA'yı bilerek içine gömmez**; belgeyi main'e merge etmek SHA'yı yeniden değiştirip kendi kendini bayatlatır. Güncel exact SHA için repository `main` ref'i otoritedir.
 
-Son runtime-affecting ürün baseline'ı **F12-03 hizmet kategorileri ve fiyat aralığı / PR #103**'tür. Semantic uygulama head'i `b0bb330ccc0534007e5cb4901c806eda6df54be2`, final review marker'ı `cd4599b2f6903ef9dc70211d3d8743b433a04bb0`, merge commit `d0a9ec96a206ed8473c84d18352b4991388706e7`; semantic CI #1039, marker CI #1041 ve merge sonrası main CI #1042 başarılıdır. R1 security/DB/access ve R2 browser/integration bağımsız kapıları aynı exact marker head üzerinde **ACCEPTABLE** sonuçlanmıştır; hosted-only residual bulunmadığı için ayrıca staging açılmamıştır. F12-03, F10-04 katalog motorunu kategori/sıra ve fixed/range fiyat + policy-version sözleşmesiyle additive genişletir; legacy fixed backcompat ve tarihsel appointment fiyat snapshotları korunur, range hizmetler F11/F12-04 öncesi eski tek-fiyatlı booking yoluna fail-closed kalır.
+Son runtime-affecting ürün baseline'ı **F11-01 grup/satır sözleşmesi ve ileri migration / PR #105**'tir. Final semantic head `40a476ec4bdf070d17d5595f76980fb4852457db`, latest-main docs-only descendant `d9960e6c487f86f49d90b0ed07db240dc6775682`, merge/main commit `83d61f4115dafb887b89eba66d1157311927139f`; semantic STRICT CI #1075, fresh-base CI #1078 ve merge sonrası main CI #1079 başarılıdır. R1 security/DB/access ve R2 browser/integration bağımsız kapıları final semantic head üzerinde **ACCEPTABLE** sonuçlanmış, Phase-11 gerçek saha receipt'i `5693460041` kabul edilmiştir; hosted-only residual bulunmadığı için ayrıca staging açılmamıştır. F11-01 mevcut `appointments` tablosunu fiziksel service-line store olarak korur ve additive `appointment_groups` başlığı ekler; legacy appointment kimliği/recovery/outbox kanıtı korunur. Fixed/range line snapshotları integer minor-unit min/max + currency + policy version taşır, range estimate definitive charge sayılmaz. Legacy fixed create concurrent katalog değişiminde eski para ile yeni policy version'ı karıştıramaz; authoritative service state uyuşmazlığı `SERVICE_PRICE_SNAPSHOT_MISMATCH` ile fail-closed olur. Gerçek saha receipt'iyle doğrulanan kısmi hizmet iptalinde non-legacy group lifecycle mixed line durumunu `partial` olarak temsil eder, sibling line status/time bağımsız kalır ve tenant/customer/source bütünlüğü korunur.
 
 Önceki ana ürün kapanışları:
 
@@ -20,6 +20,7 @@ Son runtime-affecting ürün baseline'ı **F12-03 hizmet kategorileri ve fiyat a
 - **F12-01:** görsel yön/akış sözleşmesi tamamlandı.
 - **F12-02:** salon public profili, private Storage medya yaşam döngüsü, bounded reclaim/cleanup, operator retry-state ve 360/390 + keyboard/focus public/private kabulü tamamlandı.
 - **F12-03:** hizmet kategori/sıra ile fixed/range lower/upper/currency/policy-version sözleşmesi tamamlandı. Legacy fixed kayıtlar kayıpsız taşınır, tarihsel appointment fiyat snapshotları yeniden yazılmaz, server-side estimate mixed-currency/cross-tenant/inactive seçimlerde fail-closed'dur; range hizmetler eski public/operator tek-fiyatlı booking yüzeyine kesin fiyat gibi sızmaz.
+- **F11-01:** additive group header + mevcut appointment line store, fixed/range frozen line snapshotları, fixed-price concurrency fence, mixed lifecycle `partial`, legacy identity/recovery/outbox preservation ve gerçek saha receipt'i tamamlandı; PR #105 merge + R1/R2 bağımsız review geçti.
 - **F17-01/02:** staging ve CI temeli tamamlandı.
 
 Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekrar kopyalanmaz.
@@ -29,14 +30,14 @@ Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekra
 | Alan | Doğrulanmış durum | Sonraki iş |
 | --- | --- | --- |
 | Auth / Membership / tenant | F10-01 + S01/S02 + F10-02/03/04/05; recovery normal tenant authority kazanamaz; customer ve catalog read yüzeylerinde standard-session guard vardır; business switch Membership ile doğrulanır | F10-06 |
-| Hizmet / personel / eşleşme | F10-04 + F12-03 main'de: guarded service/staff CRUD, archive/reactivate, staff↔service assignment, optimistic concurrency, kategori/sıra ve fixed/range integer minor-unit fiyat + policy-version sözleşmesi; StaffProfile ile Membership ayrı kimlikler | F11 |
-| Mesai / availability | Faz 4 + F10-03 structural publish readiness + F10-04 business/staff hours ve availability block yönetimi; stale writes authoritative reload ile reconcile edilir | F11 |
-| Booking / müşteri / snapshot / audit | Faz 5 + F09 + S07 + F10-05 + F12-03; geçmiş appointment snapshotları korunur, canonical customer çözümü tenant-scoped ve ambiguity fail-closed'dur, booking mevcut CRM master'ı sessizce değiştirmez; range fiyat eski tek-price appointment modeline `SERVICE_PRICE_NOT_FINAL` ile fail-closed kalır | F11, F13 |
+| Hizmet / personel / eşleşme | F10-04 + F12-03 main'de: guarded service/staff CRUD, archive/reactivate, staff↔service assignment, optimistic concurrency, kategori/sıra ve fixed/range integer minor-unit fiyat + policy-version sözleşmesi; StaffProfile ile Membership ayrı kimlikler | F11-02 |
+| Mesai / availability | Faz 4 + F10-03 structural publish readiness + F10-04 business/staff hours ve availability block yönetimi; stale writes authoritative reload ile reconcile edilir. Phase-11 saha receipt'i bekleme sırasında personel kapasitesinin salon/service policy'ye göre serbest kalabildiğini veya kalmadığını doğruladı | F11-02 |
+| Booking / müşteri / snapshot / audit | Faz 5 + F09 + S07 + F10-05 + F12-03 + F11-01; `appointment_groups` additive header, `appointments` fiziksel service-line store'dur. Legacy tek-line kimliği korunur; line fixed/range min/max/currency/policy snapshotı freeze edilir; mixed non-legacy lifecycle `partial` olabilir; canonical customer çözümü tenant-scoped ve ambiguity fail-closed'dur | F11-02, F13 |
 | Public booking | Faz 6–7 + F09/S04/S07 + F10-03 + F12-02/03; readiness fail-closed kalır, salon public profil/media yalnız yayınlanabilir tenantta görünür, pending/deleting/cleanup/private object public yüzeye sızmaz; legacy public service projection yalnız fixed fiyatı yayınlar, range lower bound kesin fiyat gibi gösterilmez | F12-04/05 |
 | Onboarding / business switch | F10-03 main'de; gerçek domain state'inden resume, bounded snapshot, A/B stale-state izolasyonu; F10-04 ayar yüzeyi aynı domain state'i tüketir | F10-06 |
 | Takvim | Gün/hafta temeli mevcut | F13 |
-| Bildirim / outbox | F09-03/05 + S03 + S07 | F16-02 |
-| Kaynak limitleri | S04 quota + S07 runtime/read budgets + F10-03 bounded onboarding + F10-04 catalog/schedule/block caps + F10-05 bounded customer/history reads + F12-02 5 MiB/20 media ve bounded cleanup + F12-03 en fazla 10 hizmetlik internal estimate | F11/F13/F17-03 takipleri |
+| Bildirim / outbox | F09-03/05 + S03 + S07; F11-01 group bridge legacy provider/retry evidence'ını korur | F16-02 |
+| Kaynak limitleri | S04 quota + S07 runtime/read budgets + F10-03 bounded onboarding + F10-04 catalog/schedule/block caps + F10-05 bounded customer/history reads + F12-02 5 MiB/20 media + bounded cleanup + F12-03 en fazla 10 hizmetlik internal estimate + F11-01 max 10 group line | F11-02/F13/F17-03 takipleri |
 | CI / staging | F17-01/02 + S05/S06; required CI gate ve staging rollback/rotation temeli | F17-03 |
 | Future DB ACL | S08; yeni nesnelerde explicit grant/RLS disiplini | Her yeni migration + F17-03 |
 | Görsel ürün sözleşmesi | F12-01 akış/görsel sözleşmesi + F12-02 responsive salon profil/media yüzeyi + F12-03 responsive katalog/fiyat kontrolleri main'de | F12-04+ |
@@ -46,6 +47,12 @@ Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekra
 | Ürün / stok / masraf / kasa | Henüz ürün uygulaması yok | F15 |
 | Paket / promosyon / prim / yorum / dil | Planlandı | F16 |
 | Kontrollü pilot | Yapılmadı | F17-04/05 |
+
+## Randevu ürün track'i ve Kepenk Core platform track'i
+
+**Randevu ürün track'i:** runtime ürün baseline'ı F11-01'dir. Bu docs-only state-sync main'e girdikten sonra aktif ürün writer **Ajan D / F11-02** olur. F11-02 atomic multi-service availability/create işidir; F11-03 ve F11-04 kendi dependency kapıları açılana kadar kapalı kalır.
+
+**Kepenk Core platform track'i:** K04 ve KC planı docs-only [PR #106](https://github.com/ziyabeey1-ai/randevu/pull/106) ile main'dedir ve Randevu F09–F17 54 MVP görev sayısını değiştirmez. KC-00 hosted numeric read-only inventory receipt'i **OPEN / Çalışılıyor**; Kepenk Issue #10 bunu toplar. KC-01 Core schema/RPC writer token'ı KC-00 receipt kabul edilene kadar **CLOSED / Engelli**. KC-02…KC-07 planlıdır. K04/KC, mevcut Randevu `profiles/businesses/memberships`, booking authority veya Firestore projection sınırlarını ikinci bir otorite yaratacak şekilde değiştirmez.
 
 ## Aktif branch / PR'lar — henüz main değildir
 
@@ -71,7 +78,7 @@ Current isolated experiment green'dir. Gerçek Kling frame binary toplam byte/pe
 
 Bu sıra ürün önceliğinden çok shared-file conflict ve dependency güvenliği içindir:
 
-1. **F11-01 / Ajan D** dependency-safe sıradaki ürün writer lane'idir. Claim öncesi exact current main ile F12-03 handoff/schema ve F10-05 repair yüzeyi yeniden okunur; additive grup başlığı + mevcut `appointments` line-store yönü izlenir ve F12-03 fiyat snapshot sözleşmesi tüketilir, yeniden tasarlanmaz.
+1. **F11-02 / Ajan D** state-sync merge sonrasında sıradaki ürün writer lane'idir. Initial model ordered sequential service plan + farklı staff'tır; stable multi-staff lock ordering ve DB exclusion/buffer final guard kalır. Phase-11 saha receipt'i nedeniyle passive-wait personel kapasite release'i salon/service policy'ye bağlıdır ve booking estimate definitive charge değildir.
 2. **MKT-01 / PR #77** izole lane'de paralel kalabilir; production route/entry + gerçek binary/deployed media kabulü shared writer sırası ve domain cutover kapıları açıldığında yapılır.
 3. **BRAND-DOC-SYNC / #95** runtime'a dokunmadan living-doc isim/domain cleanup'ı olarak paralel yürüyebilir; tarihsel kanıtlar değiştirilmez.
 
@@ -110,7 +117,7 @@ S07 keyset pagination, dışarıdan eşzamanlı sıralama-anahtarı mutasyonu **
 
 F13-02 date-range API'si mevcut `list_appointments_page(uuid,integer,timestamptz,uuid)` imzasını genişletecekse PostgreSQL function identity değişimi önceden planlanır: forward migration eski exact signature'ı explicit kapatır/drop eder, yeni signature'ı create eder, narrow GRANT/caller ve clean+upgrade kanıtı aynı değişimde taşınır. `CREATE OR REPLACE` ile parametre listesi sessizce değişiyormuş gibi davranılmaz.
 
-Bu takipler GS/F10-02/F10-03/F10-04/F10-05/F12-02/F12-03'ü geriye dönük yeniden açmaz.
+Bu takipler GS/F10-02/F10-03/F10-04/F10-05/F12-02/F12-03/F11-01'i geriye dönük yeniden açmaz.
 
 ## Faz direktifleri
 
