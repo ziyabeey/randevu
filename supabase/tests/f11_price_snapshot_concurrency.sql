@@ -1,9 +1,10 @@
 create extension if not exists dblink;
 
 -- Dedicated F11-01 race fixture. Each create reads service v1, then blocks in the
--- canonical customer resolver on the tenant advisory lock. The main session
--- commits a price/currency edit before releasing that lock. A coherent F11
--- snapshot must therefore fail cleanly instead of mixing v1 money with v2 policy.
+-- canonical customer resolver on the tenant advisory lock. A separate catalog
+-- session commits a price/currency edit before releasing that lock. A coherent
+-- F11 snapshot must therefore fail cleanly instead of mixing v1 money with v2
+-- policy metadata.
 delete from public.businesses
 where id = 'd1310000-0000-4000-8000-000000000001';
 
@@ -94,11 +95,21 @@ declare
   v_operator_start timestamptz;
   v_public_start timestamptz;
   v_lock_key bigint := hashtextextended(v_business_id::text,0);
+  v_lock_held boolean := false;
   v_waited boolean;
   v_sql text;
 begin
   v_operator_start := (v_day+time '10:00') at time zone 'Europe/Istanbul';
   v_public_start := (v_day+time '12:00') at time zone 'Europe/Istanbul';
+
+  -- Catalog edits must commit independently of this DO block. Otherwise the
+  -- creator cannot observe the new service policy after leaving the lock wait.
+  perform dblink_connect(
+    'f11_price_catalog',
+    'host=127.0.0.1 port=5432 dbname='||current_database()
+      ||' user=postgres password=postgres application_name=f11_price_catalog'
+  );
+  perform dblink_exec('f11_price_catalog','set statement_timeout=8000');
 
   -- Operator legacy fixed create reads v1=10000/TRY, then waits on the canonical
   -- customer resolver. While blocked, commit v2=12000/USD. The F11 insert fence
@@ -121,6 +132,7 @@ begin
   );
 
   perform pg_advisory_lock(v_lock_key);
+  v_lock_held := true;
   v_sql := format($q$
     select id,price_minor_snapshot,currency_snapshot,price_policy_version_snapshot
     from public.create_appointment(
@@ -156,10 +168,14 @@ begin
     raise exception 'operator create did not reach the post-service customer lock';
   end if;
 
-  update public.services
-  set price_minor=12000,currency='USD'
-  where id=v_service_id;
+  perform dblink_exec(
+    'f11_price_catalog',
+    $q$update public.services
+       set price_minor=12000,currency='USD'
+       where id='d1330000-0000-4000-8000-000000000001'$q$
+  );
   perform pg_advisory_unlock(v_lock_key);
+  v_lock_held := false;
 
   begin
     perform *
@@ -186,9 +202,12 @@ begin
 
   -- Establish a distinct coherent baseline for the public authority-class race.
   -- The F12 trigger bumps policy version for this normal catalog mutation.
-  update public.services
-  set price_minor=20000,currency='TRY'
-  where id=v_service_id;
+  perform dblink_exec(
+    'f11_price_catalog',
+    $q$update public.services
+       set price_minor=20000,currency='TRY'
+       where id='d1330000-0000-4000-8000-000000000001'$q$
+  );
 
   perform dblink_connect(
     'f11_price_public',
@@ -199,6 +218,7 @@ begin
   perform dblink_exec('f11_price_public','begin');
 
   perform pg_advisory_lock(v_lock_key);
+  v_lock_held := true;
   v_sql := format($q$
     select appointment_id,status,starts_at,ends_at,timezone,service_name,staff_name,price_minor,currency
     from public.create_public_appointment(
@@ -234,10 +254,14 @@ begin
     raise exception 'public create did not reach the post-service customer lock';
   end if;
 
-  update public.services
-  set price_minor=23000,currency='EUR'
-  where id=v_service_id;
+  perform dblink_exec(
+    'f11_price_catalog',
+    $q$update public.services
+       set price_minor=23000,currency='EUR'
+       where id='d1330000-0000-4000-8000-000000000001'$q$
+  );
   perform pg_advisory_unlock(v_lock_key);
+  v_lock_held := false;
 
   begin
     perform *
@@ -259,6 +283,7 @@ begin
     );
   perform dblink_exec('f11_price_public','rollback');
   perform dblink_disconnect('f11_price_public');
+  perform dblink_disconnect('f11_price_catalog');
 
   if exists (
     select 1 from public.appointments
@@ -283,11 +308,14 @@ begin
 
   raise notice 'F11-01 operator/public fixed-price concurrency fence accepted';
 exception when others then
-  perform pg_advisory_unlock(v_lock_key);
+  if v_lock_held then
+    perform pg_advisory_unlock(v_lock_key);
+  end if;
   begin perform dblink_exec('f11_price_operator','rollback'); exception when others then null; end;
   begin perform dblink_exec('f11_price_public','rollback'); exception when others then null; end;
   begin perform dblink_disconnect('f11_price_operator'); exception when others then null; end;
   begin perform dblink_disconnect('f11_price_public'); exception when others then null; end;
+  begin perform dblink_disconnect('f11_price_catalog'); exception when others then null; end;
   raise;
 end
 $$;
