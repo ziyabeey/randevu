@@ -112,6 +112,43 @@ function pageInfo() {
   return { limit: 25, hasMore: false, nextCursor: null };
 }
 
+function legacyHistoryBooking(row) {
+  return {
+    groupId: row.appointment_id,
+    status: row.status,
+    source: 'operator',
+    version: 1,
+    customerId: '',
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    timezone: row.timezone,
+    currency: row.currency_snapshot,
+    estimateMinMinor: row.price_minor_snapshot,
+    estimateMaxMinor: row.price_minor_snapshot,
+    lines: [{
+      appointmentId: row.appointment_id,
+      lineOrdinal: 1,
+      serviceName: row.service_name_snapshot,
+      staffName: row.staff_name_snapshot,
+      status: row.status,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      priceType: 'fixed',
+      priceMinMinor: row.price_minor_snapshot,
+      priceMaxMinor: row.price_minor_snapshot,
+      priceMinor: row.price_minor_snapshot,
+      currency: row.currency_snapshot,
+    }],
+    legacyAppointmentId: row.appointment_id,
+    managementMode: 'legacy_single',
+    lineCount: 1,
+    customerName: row.customer_name_snapshot,
+    customerPhone: row.customer_phone_snapshot,
+    customerEmail: row.customer_email_snapshot,
+    notes: row.notes,
+  };
+}
+
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? '/', 'http://localhost');
@@ -142,6 +179,16 @@ const server = createServer(async (request, response) => {
     if (request.method === 'GET' && url.pathname === '/api/customers') {
       const business = state.businesses[state.selected];
       return sendJson(response, 200, { membership: membership(business), customers: business.customers, page: pageInfo() });
+    }
+
+    const groupHistoryMatch = url.pathname.match(/^\/api\/customers\/([^/]+)\/group-history$/);
+    if (request.method === 'GET' && groupHistoryMatch) {
+      const business = state.businesses[state.selected];
+      if (!business.customers.some((item) => item.customer_id === groupHistoryMatch[1])) {
+        return sendJson(response, 404, { error: { code: 'CUSTOMER_NOT_FOUND', message: 'Müşteri bulunamadı.' } });
+      }
+      const rows = business.histories[groupHistoryMatch[1]] ?? [];
+      return sendJson(response, 200, { bookings: rows.map(legacyHistoryBooking), page: pageInfo() });
     }
 
     const historyMatch = url.pathname.match(/^\/api\/customers\/([^/]+)\/history$/);
@@ -359,7 +406,7 @@ try {
   assert.equal(state.businesses[ids.businessB].histories[ids.customerB][0].customer_name_snapshot, 'B History Marker');
 
   const customerReads = state.requests.filter((item) => item.method === 'GET' && item.path === '/api/customers');
-  const historyReads = state.requests.filter((item) => item.method === 'GET' && item.path === `/api/customers/${ids.customerB}/history`);
+  const historyReads = state.requests.filter((item) => item.method === 'GET' && item.path === `/api/customers/${ids.customerB}/group-history`);
   const patches = state.requests.filter((item) => item.method === 'PATCH' && item.path === `/api/customers/${ids.customerB}`);
   assert.ok(customerReads.length >= 2, `conflict recovery did not reload authoritative list: ${customerReads.length}`);
   assert.ok(historyReads.length >= 1, 'conflict browser flow did not load snapshot history');
