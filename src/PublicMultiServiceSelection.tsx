@@ -79,10 +79,9 @@ function formatTime(value: string, timezone: string) {
 }
 
 function serviceRange(service: PublicService) {
-  const type = service.priceType ?? service.price_type ?? 'fixed';
   const min = service.priceMinMinor ?? service.price_min_minor ?? service.price_minor;
   const max = service.priceMaxMinor ?? service.price_max_minor ?? service.price_minor;
-  return { type, min, max };
+  return { min, max };
 }
 
 function servicePriceLabel(service: PublicService) {
@@ -118,8 +117,8 @@ function validGroupSlot(value: unknown): value is PublicGroupSlot {
       || Date.parse(slot.endsAt) <= Date.parse(slot.startsAt)
       || typeof slot.timezone !== 'string' || !slot.timezone
       || typeof slot.currency !== 'string' || !/^[A-Z]{3}$/.test(slot.currency)
-      || !Number.isInteger(slot.estimateMinMinor) || Number(slot.estimateMinMinor) < 0
-      || !Number.isInteger(slot.estimateMaxMinor) || Number(slot.estimateMaxMinor) < Number(slot.estimateMinMinor)
+      || typeof slot.estimateMinMinor !== 'number' || !Number.isInteger(slot.estimateMinMinor) || slot.estimateMinMinor < 0
+      || typeof slot.estimateMaxMinor !== 'number' || !Number.isInteger(slot.estimateMaxMinor) || slot.estimateMaxMinor < slot.estimateMinMinor
       || !Array.isArray(slot.lines) || slot.lines.length < 1 || slot.lines.length > MAX_LINES) return false;
   return slot.lines.every((line, index) => {
     if (!line || typeof line !== 'object') return false;
@@ -131,9 +130,20 @@ function validGroupSlot(value: unknown): value is PublicGroupSlot {
       && typeof item.staffName === 'string' && Boolean(item.staffName)
       && typeof item.startsAt === 'string' && Number.isFinite(Date.parse(item.startsAt))
       && typeof item.endsAt === 'string' && Number.isFinite(Date.parse(item.endsAt))
+      && Date.parse(item.endsAt) > Date.parse(item.startsAt)
       && (item.priceType === 'fixed' || item.priceType === 'range')
-      && Number.isInteger(item.priceMinMinor) && Number(item.priceMinMinor) >= 0
-      && Number.isInteger(item.priceMaxMinor) && Number(item.priceMaxMinor) >= Number(item.priceMinMinor);
+      && typeof item.priceMinMinor === 'number' && Number.isInteger(item.priceMinMinor) && item.priceMinMinor >= 0
+      && typeof item.priceMaxMinor === 'number' && Number.isInteger(item.priceMaxMinor) && item.priceMaxMinor >= item.priceMinMinor;
+  });
+}
+
+function matchesRequestedLines(slot: PublicGroupSlot, expected: PublicMultiServiceLineSelection[]) {
+  if (slot.lines.length !== expected.length) return false;
+  return expected.every((line, index) => {
+    const planned = slot.lines[index];
+    return Boolean(planned)
+      && planned!.serviceId === line.serviceId
+      && (line.staffId === null || planned!.staffId === line.staffId);
   });
 }
 
@@ -164,6 +174,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     setStaffChoice({});
     setSlots([]);
     setSelectedSlot(null);
+    setBusy(false);
     onSelectionChange?.(null);
     void (async () => {
       try {
@@ -203,6 +214,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     slotGeneration.current += 1;
     slotController.current?.abort();
     slotController.current = null;
+    setBusy(false);
     setSlots([]);
     setSelectedSlot(null);
     onSelectionChange?.(null);
@@ -226,8 +238,12 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     setSelectedIds((current) => {
       const target = index + delta;
       if (target < 0 || target >= current.length) return current;
+      const currentId = current[index];
+      const targetId = current[target];
+      if (!currentId || !targetId) return current;
       const next = [...current];
-      [next[index], next[target]] = [next[target], next[index]];
+      next[index] = targetId;
+      next[target] = currentId;
       return next;
     });
   }
@@ -280,7 +296,9 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
       });
       if (generation !== slotGeneration.current) return;
       const next = result.slots.filter(validGroupSlot);
-      if (next.length !== result.slots.length) throw new Error('Uygunluk yanıtı doğrulanamadı.');
+      if (next.length !== result.slots.length || next.some((slot) => !matchesRequestedLines(slot, lines))) {
+        throw new Error('Uygunluk yanıtı doğrulanamadı.');
+      }
       setSlots(next);
       setNotice(next.length ? `${next.length} birlikte uygun başlangıç bulundu.` : 'Bu seçim için uygun ortak saat bulunamadı.');
     } catch (error) {
@@ -315,7 +333,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
 
   return <section className="public-booking-card public-multi-service" aria-labelledby="public-multi-service-title">
     <span className="public-step">A</span>
-    <div className="public-multi-heading"><div><h2 id="public-multi-service-title">Birden fazla hizmet planla</h2><p className="public-muted">Hizmetleri sırayla seçin. Personeli her hizmet için ayrı belirleyebilirsiniz.</p></div><strong>{selectedIds.length}/{MAX_LINES}</strong></div>
+    <div className="public-multi-heading"><div><h2 id="public-multi-service-title">Birden fazla hizmet planla</h2><p className="public-muted">Hizmetleri sırayla seçin. Personeli her hizmet için ayrı belirleyebilirsiniz. Tek hizmetli randevu oluşturma akışı aşağıda kullanılmaya devam eder.</p></div><strong>{selectedIds.length}/{MAX_LINES}</strong></div>
     {notice && <div className="public-inline-notice" role="status">{notice}</div>}
 
     <div className="public-service-catalog">
@@ -353,7 +371,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     {selectedSlot && <div className="public-group-summary" role="status">
       <div><span>Seçili plan</span><strong>{formatTime(selectedSlot.startsAt, selectedSlot.timezone)} · {slotPriceLabel(selectedSlot)}</strong></div>
       <ol>{selectedSlot.lines.map((line) => <li key={`${line.lineOrdinal}-${line.serviceId}`}><span><strong>{line.serviceName}</strong><small>{line.staffName} · {formatTime(line.startsAt, selectedSlot.timezone)}–{formatTime(line.endsAt, selectedSlot.timezone)}</small></span><span>{line.priceMinMinor === line.priceMaxMinor ? formatMoney(line.priceMinMinor, selectedSlot.currency) : `${formatMoney(line.priceMinMinor, selectedSlot.currency)} – ${formatMoney(line.priceMaxMinor, selectedSlot.currency)}`}</span></li>)}</ol>
-      <p className="public-muted">Bu tutar sunucunun rezervasyon tahminidir. Kesin tahsilat tutarı değildir. İletişim ve oluşturma adımı F12-05 akışında bu seçimi devralır.</p>
+      <p className="public-muted">Bu tutar sunucunun rezervasyon tahminidir. Kesin tahsilat tutarı değildir.</p>
     </div>}
   </section>;
 }
