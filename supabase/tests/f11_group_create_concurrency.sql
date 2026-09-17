@@ -67,7 +67,9 @@ begin
       'host=127.0.0.1 port=5432 dbname='||current_database()
         ||' user=postgres password=postgres application_name='||v_conn
     );
-    perform dblink_exec(v_conn,'set statement_timeout=8000');
+    -- Both writers are deliberately parked on the tenant lock while the race is
+    -- armed, so their budget must cover that wait plus the winner's commit.
+    perform dblink_exec(v_conn,'set statement_timeout=30000');
     perform dblink_exec(v_conn,'begin');
     perform dblink_exec(v_conn,'set local role authenticated');
     perform dblink_exec(v_conn,'set local "request.jwt.claim.sub" = '''||v_owner::text||'''');
@@ -98,13 +100,13 @@ begin
 
   -- Both must actually be waiting before the lock is released; otherwise the
   -- test would prove nothing about interleaving.
-  for i in 1..250 loop
+  for i in 1..300 loop
     select count(*)::integer into v_blocked
     from pg_stat_activity
     where application_name in ('f1102_race_a','f1102_race_b')
       and wait_event_type = 'Lock';
     exit when v_blocked = 2;
-    perform pg_sleep(0.02);
+    perform pg_sleep(0.01);
   end loop;
   if v_blocked <> 2 then
     raise exception 'race writers did not both block on the tenant lock (blocked=%)', v_blocked;
