@@ -185,7 +185,9 @@ begin
 
   -- Match accepted F10-04 authority namespaces. The group-management/command
   -- locks are already held by the calling F11 RPCs; these locks bind mutable
-  -- schedule/catalog authority to the final durable state.
+  -- schedule/catalog authority to the final durable state. Acquire every F10-04
+  -- advisory family before row locks so guarded writes that later take FK key
+  -- shares cannot form a row-lock/advisory-lock inversion with this trigger.
   for v_weekday in
     select distinct extract(dow from (a.starts_at at time zone v_timezone)::date)::smallint
     from public.appointments a
@@ -204,6 +206,20 @@ begin
   perform pg_advisory_xact_lock(hashtextextended(
     'f10-04:assignments:'||new.business_id::text,0
   ));
+
+  for v_staff_day in
+    select distinct
+      a.staff_id,
+      extract(dow from (a.starts_at at time zone v_timezone)::date)::smallint as weekday
+    from public.appointments a
+    where a.business_id=new.business_id and a.group_id=new.group_id
+      and a.status in ('scheduled','confirmed')
+    order by a.staff_id,weekday
+  loop
+    perform pg_advisory_xact_lock(hashtextextended(
+      'f10-04:staff-hours:'||new.business_id::text||':'||v_staff_day.staff_id::text||':'||v_staff_day.weekday::text,0
+    ));
+  end loop;
 
   -- Stable row order prevents service/staff/assignment lock inversions between
   -- two multi-line groups. Existing reschedule/create paths already use the same
@@ -229,20 +245,6 @@ begin
     )
   order by sp.id
   for update;
-
-  for v_staff_day in
-    select distinct
-      a.staff_id,
-      extract(dow from (a.starts_at at time zone v_timezone)::date)::smallint as weekday
-    from public.appointments a
-    where a.business_id=new.business_id and a.group_id=new.group_id
-      and a.status in ('scheduled','confirmed')
-    order by a.staff_id,weekday
-  loop
-    perform pg_advisory_xact_lock(hashtextextended(
-      'f10-04:staff-hours:'||new.business_id::text||':'||v_staff_day.staff_id::text||':'||v_staff_day.weekday::text,0
-    ));
-  end loop;
 
   perform 1
   from public.staff_services ss
