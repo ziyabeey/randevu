@@ -92,6 +92,7 @@ export type NotificationDispatchSummary = {
 const AAD_PREFIX = 'public-booking-recovery:v1|';
 const PROVIDER_TIMEOUT_MS = 10_000;
 const PROVIDER_ENDPOINT = 'https://api.resend.com/emails';
+const MAX_GROUP_AMOUNT_MINOR = 1_000_000_000;
 const BACKOFF_SECONDS = [60, 300, 900, 3_600, 14_400, 43_200, 86_400] as const;
 
 function bytesToText(bytes: Uint8Array) {
@@ -283,10 +284,13 @@ function renderTemplateV1(row: ClaimRow, sender: string, manageUrl: string) {
 function validGroupSummary(value: GroupSummary | null): value is GroupSummary {
   return !!value
     && typeof value.groupId === 'string'
-    && Number.isInteger(value.lineCount) && value.lineCount >= 2 && value.lineCount <= 10
+    && Number.isInteger(value.lineCount) && value.lineCount >= 1 && value.lineCount <= 10
     && typeof value.currency === 'string' && /^[A-Z]{3}$/.test(value.currency)
-    && Number.isInteger(value.estimateMinMinor) && value.estimateMinMinor >= 0
-    && Number.isInteger(value.estimateMaxMinor) && value.estimateMaxMinor >= value.estimateMinMinor
+    && Number.isInteger(value.estimateMinMinor)
+    && value.estimateMinMinor >= 0 && value.estimateMinMinor <= MAX_GROUP_AMOUNT_MINOR
+    && Number.isInteger(value.estimateMaxMinor)
+    && value.estimateMaxMinor >= value.estimateMinMinor
+    && value.estimateMaxMinor <= MAX_GROUP_AMOUNT_MINOR
     && Array.isArray(value.lines) && value.lines.length === value.lineCount
     && value.lines.every((line, index) =>
       line && line.lineOrdinal === index + 1
@@ -298,10 +302,12 @@ function validGroupSummary(value: GroupSummary | null): value is GroupSummary {
       && Number.isInteger(line.priceMinMinor)
       && Number.isInteger(line.priceMaxMinor)
       && line.priceMinMinor >= 0
-      && line.priceMaxMinor >= line.priceMinMinor);
+      && line.priceMaxMinor >= line.priceMinMinor
+      && line.priceMaxMinor <= MAX_GROUP_AMOUNT_MINOR);
 }
 
 function renderTemplateV2(row: ClaimRow, summary: GroupSummary, sender: string, manageUrl: string) {
+  const appointmentLabel = summary.lineCount === 1 ? 'randevunuz' : 'çoklu hizmet randevunuz';
   const range = summary.estimateMinMinor === summary.estimateMaxMinor
     ? formatMoney(summary.estimateMinMinor, summary.currency)
     : `${formatMoney(summary.estimateMinMinor, summary.currency)} – ${formatMoney(summary.estimateMaxMinor, summary.currency)}`;
@@ -315,7 +321,7 @@ function renderTemplateV2(row: ClaimRow, summary: GroupSummary, sender: string, 
   const text = [
     `Merhaba ${row.customer_name_snapshot},`,
     '',
-    `${row.business_name_snapshot} çoklu hizmet randevunuz oluşturuldu.`,
+    `${row.business_name_snapshot} ${appointmentLabel} oluşturuldu.`,
     ...lineText,
     '',
     `Tahmini ücret: ${range}`,
@@ -340,7 +346,7 @@ function renderTemplateV2(row: ClaimRow, summary: GroupSummary, sender: string, 
 <div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid #e4e4e7;border-radius:16px;padding:28px">
 <p style="margin:0 0 8px;font-size:12px;letter-spacing:.08em;color:#71717a">RANDEVU ONAYI</p>
 <h1 style="font-size:24px;margin:0 0 20px">${escapeHtml(row.business_name_snapshot)}</h1>
-<p>Merhaba ${escapeHtml(row.customer_name_snapshot)}, çoklu hizmet randevunuz oluşturuldu.</p>
+<p>Merhaba ${escapeHtml(row.customer_name_snapshot)}, ${appointmentLabel} oluşturuldu.</p>
 <table style="width:100%;border-collapse:collapse;margin:20px 0">${rows}</table>
 <p><strong>Tahmini ücret:</strong> ${escapeHtml(range)}</p>
 <p style="margin:24px 0"><a href="${escapeHtml(manageUrl)}" style="display:inline-block;background:#18181b;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">Randevumu yönet</a></p>
