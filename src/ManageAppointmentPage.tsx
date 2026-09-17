@@ -161,10 +161,13 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
   const canReschedule = group ? group.canRescheduleGroup : Boolean(appointment?.can_reschedule);
   const canCancel = group ? group.canCancelGroup : Boolean(appointment?.can_cancel);
 
-  async function loadSlots() {
+  // A refresh that follows a failed mutation must not talk over the reason it
+  // failed: the conflict notice is what tells the customer to look at the new
+  // times before choosing again.
+  async function loadSlots({ preserveNotice = false }: { preserveNotice?: boolean } = {}) {
     if (!date || !canReschedule) return;
     setBusy(true);
-    setNotice('');
+    if (!preserveNotice) setNotice('');
     setSelectedSlot(null);
     try {
       if (group) {
@@ -175,7 +178,9 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         });
         setGroupSlots(result.slots);
         setSlots([]);
-        setNotice(result.slots.length ? `${result.slots.length} uygun grup saati bulundu.` : 'Bu gün için grubun tamamına uygun saat bulunamadı.');
+        if (!preserveNotice) {
+          setNotice(result.slots.length ? `${result.slots.length} uygun grup saati bulundu.` : 'Bu gün için grubun tamamına uygun saat bulunamadı.');
+        }
       } else {
         const result = await api<{ slots: ManagedSlot[] }>('/api/manage/slots', {
           method: 'POST',
@@ -184,7 +189,9 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         });
         setSlots(result.slots);
         setGroupSlots([]);
-        setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : 'Bu gün için uygun saat bulunamadı.');
+        if (!preserveNotice) {
+          setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : 'Bu gün için uygun saat bulunamadı.');
+        }
       }
     } catch (error) {
       setSlots([]);
@@ -233,7 +240,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         if (coded.code === 'BOOKING_GROUP_VERSION_CONFLICT') {
           try { await loadAppointment(); } catch { /* retain the conflict notice */ }
         }
-        void loadSlots();
+        void loadSlots({ preserveNotice: true });
       }
     } finally {
       setBusy(false);
