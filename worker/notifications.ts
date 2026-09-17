@@ -42,6 +42,24 @@ type ClaimRow = {
   key_version: number;
 };
 
+type GroupSummary = {
+  groupId: string;
+  lineCount: number;
+  currency: string;
+  estimateMinMinor: number;
+  estimateMaxMinor: number;
+  lines: Array<{
+    lineOrdinal: number;
+    serviceName: string;
+    staffName: string;
+    startsAt: string;
+    endsAt: string;
+    priceType: 'fixed' | 'range';
+    priceMinMinor: number;
+    priceMaxMinor: number;
+  }>;
+};
+
 type PreparedProviderRequest = {
   sender: string;
   origin: string;
@@ -79,28 +97,23 @@ const BACKOFF_SECONDS = [60, 300, 900, 3_600, 14_400, 43_200, 86_400] as const;
 function bytesToText(bytes: Uint8Array) {
   return new TextDecoder().decode(bytes);
 }
-
 function bytesToHex(bytes: Uint8Array) {
   return [...bytes].map((value) => value.toString(16).padStart(2, '0')).join('');
 }
-
 function base64UrlToBytes(value: string) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
   const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
   const binary = atob(padded);
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
-
 function validSecret(value: string | undefined) {
   const secret = value?.trim() ?? '';
   return secret.length >= 43 && secret.length <= 256 ? secret : null;
 }
-
 function validSender(value: string | null | undefined) {
   const sender = value?.trim() ?? '';
   return sender.length >= 3 && sender.length <= 320 ? sender : null;
 }
-
 function validOrigin(value: string | null | undefined) {
   const raw = value?.trim();
   if (!raw) return null;
@@ -166,17 +179,12 @@ async function rpc<T>(
   try {
     const { response, bodyText: text } = await fetchTextWithTimeout(
       `${env.SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/${fn}`,
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      },
+      { method: 'POST', headers, body: JSON.stringify(body) },
       fetchImpl,
     );
     let data: T | null = null;
     if (text) {
-      try { data = JSON.parse(text) as T; }
-      catch { data = null; }
+      try { data = JSON.parse(text) as T; } catch { data = null; }
     }
     return { ok: response.ok, data, status: response.status };
   } catch {
@@ -192,7 +200,6 @@ function escapeHtml(value: string) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
-
 function formatDateTime(value: string, timezone: string) {
   return new Intl.DateTimeFormat('tr-TR', {
     timeZone: timezone,
@@ -200,18 +207,15 @@ function formatDateTime(value: string, timezone: string) {
     timeStyle: 'short',
   }).format(new Date(value));
 }
-
 function formatMoney(minor: number, currency: string) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
 }
-
 function retryDelay(attemptCount: number, providerDelay?: number) {
   const index = Math.max(0, Math.min(BACKOFF_SECONDS.length - 1, attemptCount - 1));
   const normal = BACKOFF_SECONDS[index] ?? 60;
   if (!providerDelay || !Number.isFinite(providerDelay)) return normal;
   return Math.max(normal, Math.min(Math.floor(providerDelay), 86_400));
 }
-
 function retryAfterSeconds(response: Response) {
   const raw = response.headers.get('Retry-After');
   if (!raw) return undefined;
@@ -276,13 +280,89 @@ function renderTemplateV1(row: ClaimRow, sender: string, manageUrl: string) {
   });
 }
 
-async function fingerprintProviderRequest(row: ClaimRow, body: string) {
-  const canonical = [
-    'POST',
-    PROVIDER_ENDPOINT,
-    row.provider_idempotency_key,
-    body,
+function validGroupSummary(value: GroupSummary | null): value is GroupSummary {
+  return !!value
+    && typeof value.groupId === 'string'
+    && Number.isInteger(value.lineCount) && value.lineCount >= 2 && value.lineCount <= 10
+    && typeof value.currency === 'string' && /^[A-Z]{3}$/.test(value.currency)
+    && Number.isInteger(value.estimateMinMinor) && value.estimateMinMinor >= 0
+    && Number.isInteger(value.estimateMaxMinor) && value.estimateMaxMinor >= value.estimateMinMinor
+    && Array.isArray(value.lines) && value.lines.length === value.lineCount
+    && value.lines.every((line, index) =>
+      line && line.lineOrdinal === index + 1
+      && typeof line.serviceName === 'string'
+      && typeof line.staffName === 'string'
+      && typeof line.startsAt === 'string'
+      && typeof line.endsAt === 'string'
+      && (line.priceType === 'fixed' || line.priceType === 'range')
+      && Number.isInteger(line.priceMinMinor)
+      && Number.isInteger(line.priceMaxMinor)
+      && line.priceMinMinor >= 0
+      && line.priceMaxMinor >= line.priceMinMinor);
+}
+
+function renderTemplateV2(row: ClaimRow, summary: GroupSummary, sender: string, manageUrl: string) {
+  const range = summary.estimateMinMinor === summary.estimateMaxMinor
+    ? formatMoney(summary.estimateMinMinor, summary.currency)
+    : `${formatMoney(summary.estimateMinMinor, summary.currency)} – ${formatMoney(summary.estimateMaxMinor, summary.currency)}`;
+  const lineText = summary.lines.map((line) => {
+    const when = formatDateTime(line.startsAt, row.timezone_snapshot);
+    const price = line.priceMinMinor === line.priceMaxMinor
+      ? formatMoney(line.priceMinMinor, summary.currency)
+      : `${formatMoney(line.priceMinMinor, summary.currency)} – ${formatMoney(line.priceMaxMinor, summary.currency)}`;
+    return `${line.lineOrdinal}. ${line.serviceName} · ${line.staffName} · ${when} · ${price}`;
+  });
+  const text = [
+    `Merhaba ${row.customer_name_snapshot},`,
+    '',
+    `${row.business_name_snapshot} çoklu hizmet randevunuz oluşturuldu.`,
+    ...lineText,
+    '',
+    `Tahmini ücret: ${range}`,
+    '',
+    'Randevunuzu görüntülemek, taşımak veya iptal etmek için:',
+    manageUrl,
+    '',
+    'Bu bağlantı randevunuzu yönetme yetkisi verir. Başkalarıyla paylaşmayın.',
   ].join('\n');
+
+  const rows = summary.lines.map((line) => {
+    const price = line.priceMinMinor === line.priceMaxMinor
+      ? formatMoney(line.priceMinMinor, summary.currency)
+      : `${formatMoney(line.priceMinMinor, summary.currency)} – ${formatMoney(line.priceMaxMinor, summary.currency)}`;
+    return `<tr><td style="padding:8px 0">${line.lineOrdinal}. ${escapeHtml(line.serviceName)}</td>`
+      + `<td style="padding:8px 0">${escapeHtml(line.staffName)}</td>`
+      + `<td style="padding:8px 0;text-align:right">${escapeHtml(formatDateTime(line.startsAt, row.timezone_snapshot))}</td>`
+      + `<td style="padding:8px 0;text-align:right">${escapeHtml(price)}</td></tr>`;
+  }).join('');
+  const html = `<!doctype html>
+<html lang="tr"><body style="font-family:Arial,sans-serif;background:#f7f7f8;color:#18181b;margin:0;padding:32px 16px">
+<div style="max-width:680px;margin:0 auto;background:#fff;border:1px solid #e4e4e7;border-radius:16px;padding:28px">
+<p style="margin:0 0 8px;font-size:12px;letter-spacing:.08em;color:#71717a">RANDEVU ONAYI</p>
+<h1 style="font-size:24px;margin:0 0 20px">${escapeHtml(row.business_name_snapshot)}</h1>
+<p>Merhaba ${escapeHtml(row.customer_name_snapshot)}, çoklu hizmet randevunuz oluşturuldu.</p>
+<table style="width:100%;border-collapse:collapse;margin:20px 0">${rows}</table>
+<p><strong>Tahmini ücret:</strong> ${escapeHtml(range)}</p>
+<p style="margin:24px 0"><a href="${escapeHtml(manageUrl)}" style="display:inline-block;background:#18181b;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">Randevumu yönet</a></p>
+<p style="font-size:13px;color:#71717a">Bu bağlantı randevuyu görüntüleme, taşıma ve iptal etme yetkisi verir. Başkalarıyla paylaşmayın.</p>
+</div></body></html>`;
+
+  return JSON.stringify({
+    from: sender,
+    to: [row.recipient],
+    subject: `${row.business_name_snapshot} randevu onayı`,
+    text,
+    html,
+    tags: [
+      { name: 'category', value: 'booking_confirmation' },
+      { name: 'appointment', value: row.appointment_id },
+      { name: 'notification_event', value: row.event_id },
+    ],
+  });
+}
+
+async function fingerprintProviderRequest(row: ClaimRow, body: string) {
+  const canonical = ['POST', PROVIDER_ENDPOINT, row.provider_idempotency_key, body].join('\n');
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
   return bytesToHex(new Uint8Array(digest));
 }
@@ -291,15 +371,23 @@ async function prepareProviderRequest(
   env: NotificationEnv,
   row: ClaimRow,
   managementToken: string,
+  groupSummary: GroupSummary | null,
 ): Promise<PreparedProviderRequest | null> {
   const runtimeSender = validSender(env.NOTIFICATION_FROM_EMAIL);
   const runtimeOrigin = validOrigin(env.PUBLIC_APP_ORIGIN);
   const sender = row.sender_snapshot === null ? runtimeSender : validSender(row.sender_snapshot);
   const origin = row.origin_snapshot === null ? runtimeOrigin : validOrigin(row.origin_snapshot);
-  if (!sender || !origin || row.template_version !== 1) return null;
+  if (!sender || !origin) return null;
 
   const manageUrl = `${origin}/m#${encodeURIComponent(managementToken)}`;
-  const body = renderTemplateV1(row, sender, manageUrl);
+  let body: string;
+  if (row.template_version === 1) {
+    body = renderTemplateV1(row, sender, manageUrl);
+  } else if (row.template_version === 2 && validGroupSummary(groupSummary)) {
+    body = renderTemplateV2(row, groupSummary, sender, manageUrl);
+  } else {
+    return null;
+  }
   const fingerprint = await fingerprintProviderRequest(row, body);
   if (row.request_fingerprint && row.request_fingerprint !== fingerprint) return null;
   return { sender, origin, body, fingerprint };
@@ -422,14 +510,8 @@ export async function dispatchNotificationBatch(
     const managementToken = await decryptManagementToken(env, row);
     if (!managementToken) {
       const released = await release(
-        env,
-        dispatchSecret,
-        row,
-        'management_decrypt_failed',
-        true,
-        false,
-        retryDelay(row.attempt_count),
-        fetchImpl,
+        env, dispatchSecret, row, 'management_decrypt_failed',
+        true, false, retryDelay(row.attempt_count), fetchImpl,
       );
       if (!released.ok) summary.leaseErrors += 1;
       else if (released.data === 'failed_terminal') summary.failedTerminal += 1;
@@ -437,17 +519,30 @@ export async function dispatchNotificationBatch(
       return;
     }
 
-    const prepared = await prepareProviderRequest(env, row, managementToken);
+    let groupSummary: GroupSummary | null = null;
+    if (row.template_version === 2) {
+      const snapshot = await rpc<GroupSummary>(env, 'get_notification_group_snapshot', {
+        p_dispatch_secret: dispatchSecret,
+        p_job_id: row.job_id,
+      }, fetchImpl);
+      if (!snapshot.ok || !validGroupSummary(snapshot.data)) {
+        const released = await release(
+          env, dispatchSecret, row, 'notification_group_snapshot_unavailable',
+          true, false, retryDelay(row.attempt_count), fetchImpl,
+        );
+        if (!released.ok) summary.leaseErrors += 1;
+        else if (released.data === 'failed_terminal') summary.failedTerminal += 1;
+        else summary.retrying += 1;
+        return;
+      }
+      groupSummary = snapshot.data;
+    }
+
+    const prepared = await prepareProviderRequest(env, row, managementToken, groupSummary);
     if (!prepared) {
       const released = await release(
-        env,
-        dispatchSecret,
-        row,
-        'notification_request_mismatch',
-        false,
-        false,
-        1,
-        fetchImpl,
+        env, dispatchSecret, row, 'notification_request_mismatch',
+        false, false, 1, fetchImpl,
       );
       if (!released.ok) summary.leaseErrors += 1;
       else summary.failedTerminal += 1;
@@ -466,8 +561,6 @@ export async function dispatchNotificationBatch(
     const deadline = Date.parse(locked.data?.send_before ?? '');
     const serverTime = Date.parse(locked.data?.server_time ?? '');
     const receiptToken = locked.data?.receipt_token;
-    // Do not start on a stale RPC reply. The elapsed-time check also covers a
-    // Worker clock behind PostgreSQL; subtracting the full RPC time is conservative.
     if (!locked.ok || !Number.isFinite(deadline) || !Number.isFinite(serverTime)
         || deadline <= Date.now() || deadline - serverTime <= performance.now() - lockStarted
         || typeof receiptToken !== 'string'
@@ -491,14 +584,9 @@ export async function dispatchNotificationBatch(
     }
 
     const released = await release(
-      env,
-      dispatchSecret,
-      row,
-      provider.errorClass,
-      provider.retryable,
-      provider.definitelyRejected,
-      retryDelay(row.attempt_count, provider.retryAfterSeconds),
-      fetchImpl,
+      env, dispatchSecret, row,
+      provider.errorClass, provider.retryable, provider.definitelyRejected,
+      retryDelay(row.attempt_count, provider.retryAfterSeconds), fetchImpl,
     );
     if (!released.ok) summary.leaseErrors += 1;
     else if (released.data === 'failed_terminal') summary.failedTerminal += 1;
