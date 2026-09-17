@@ -1,4 +1,5 @@
 .public-multi-service-shell {
+  box-sizing: border-box;
   width: min(100%, 68rem);
   min-height: 0;
   margin-inline: auto;
@@ -13,6 +14,10 @@
 
 .public-multi-service h2 {
   margin-bottom: .35rem;
+}
+
+.public-multi-service .public-inline-notice {
+  margin-top: 1rem;
 }
 
 .public-multi-heading {
