@@ -4,6 +4,7 @@ import availability from './availability.ts';
 import bookings from './bookings.ts';
 import f11Groups from './f11-group-http.ts';
 import f11GroupManagement from './f11-group-management-http.ts';
+import f11GroupConsumerReads from './f11-group-consumer-reads.ts';
 import publicBookingRecovery from './public-booking-recovery.ts';
 import publicBooking from './public-booking.ts';
 import publicProfile from './public-profile.ts';
@@ -83,6 +84,10 @@ app.use('/api/*', async (context, next) => {
 });
 
 app.get('/api/deployment-health', (context) => deploymentHealth(context.req.raw, context.env));
+// F11-03 exact live calendar/history reads are registered before the older
+// snapshot handlers. Their response envelopes remain stable while appointment
+// rows gain group identity/version metadata.
+app.route('/api', f11GroupConsumerReads);
 // C2b exact read routes preserve existing response shapes while probing max+1.
 // They are registered before the legacy handlers so overflow can never become a
 // partial successful snapshot. Mutations continue through their existing routers.
