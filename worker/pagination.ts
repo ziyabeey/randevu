@@ -1,4 +1,4 @@
-export type PageKind = 'bookings' | 'events' | 'customers' | 'customer_history';
+export type PageKind = 'bookings' | 'booking_groups' | 'events' | 'customers' | 'customer_history' | 'customer_group_history';
 
 export type PageCursor = {
   at: string;

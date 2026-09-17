@@ -142,6 +142,43 @@ function findCustomer(customerId) {
   return null;
 }
 
+function legacyHistoryBooking(row) {
+  return {
+    groupId: row.appointment_id,
+    status: row.status,
+    source: 'operator',
+    version: 1,
+    customerId: '',
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    timezone: row.timezone,
+    currency: row.currency_snapshot,
+    estimateMinMinor: row.price_minor_snapshot,
+    estimateMaxMinor: row.price_minor_snapshot,
+    lines: [{
+      appointmentId: row.appointment_id,
+      lineOrdinal: 1,
+      serviceName: row.service_name_snapshot,
+      staffName: row.staff_name_snapshot,
+      status: row.status,
+      startsAt: row.starts_at,
+      endsAt: row.ends_at,
+      priceType: 'fixed',
+      priceMinMinor: row.price_minor_snapshot,
+      priceMaxMinor: row.price_minor_snapshot,
+      priceMinor: row.price_minor_snapshot,
+      currency: row.currency_snapshot,
+    }],
+    legacyAppointmentId: row.appointment_id,
+    managementMode: 'legacy_single',
+    lineCount: 1,
+    customerName: row.customer_name_snapshot,
+    customerPhone: row.customer_phone_snapshot,
+    customerEmail: row.customer_email_snapshot,
+    notes: row.notes,
+  };
+}
+
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? '/', 'http://localhost');
@@ -195,6 +232,21 @@ const server = createServer(async (request, response) => {
         : capturedBusiness.customers.filter((customer) => !query || [customer.name, customer.phone ?? '', customer.email ?? ''].some((value) => value.toLocaleLowerCase('tr-TR').includes(query)));
       if (state.listMode === 'emptyOnce') state.listMode = 'normal';
       return sendJson(response, 200, { membership: membership(capturedBusiness), customers: rows, page: pageInfo() });
+    }
+
+    const groupHistoryMatch = url.pathname.match(/^\/api\/customers\/([^/]+)\/group-history$/);
+    if (request.method === 'GET' && groupHistoryMatch) {
+      const captured = findCustomer(groupHistoryMatch[1]);
+      const delay = state.delayHistoryOnceMs;
+      state.delayHistoryOnceMs = 0;
+      if (delay) await sleep(delay);
+      if (state.historyMode === 'errorOnce') {
+        state.historyMode = 'normal';
+        return sendJson(response, 503, { error: { code: 'UPSTREAM_UNAVAILABLE', message: 'Randevu geçmişi test hatası.' } });
+      }
+      if (!captured || captured.business.id !== state.selected) return sendJson(response, 404, { error: { code: 'CUSTOMER_NOT_FOUND', message: 'Müşteri bulunamadı.' } });
+      const rows = captured.business.histories[groupHistoryMatch[1]] ?? [];
+      return sendJson(response, 200, { bookings: rows.map(legacyHistoryBooking), page: pageInfo() });
     }
 
     const historyMatch = url.pathname.match(/^\/api\/customers\/([^/]+)\/history$/);
