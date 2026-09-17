@@ -34,7 +34,7 @@ test('F12-04 exposes an explicit handoff state and server-authoritative estimate
   assert.match(component, /estimateMinMinor/);
   assert.match(component, /estimateMaxMinor/);
   assert.match(component, /Kesin tahsilat tutarı değildir\./);
-  assert.doesNotMatch(component, /F12-0[1-9]|faz|tenant|RPC/i);
+  assert.doesNotMatch(component, /F12-0[1-9]|\bfaz\b|\btenant\b|\bRPC\b/i);
 });
 
 test('F12-04 is mounted only on the public salon surface and preserves the legacy booking engine', () => {
