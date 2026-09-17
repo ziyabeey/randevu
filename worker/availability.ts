@@ -35,6 +35,14 @@ type AvailabilityBlock = {
   active: boolean;
 };
 
+type GroupSlot = {
+  starts_at: string;
+  ends_at: string;
+  timezone: string;
+  total_duration_minutes: number;
+  lines: unknown;
+};
+
 const availability = new Hono<{ Bindings: Env }>();
 
 function isTime(value: unknown): value is string {
@@ -49,6 +57,30 @@ function isDate(value: unknown): value is string {
 
 function isUuid(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+// F11-02: a reservation is an ordered list of services. Staff is optional per
+// line; when it is omitted the server picks the real assignment while it
+// commits the plan. The line ceiling mirrors the K03 group budget.
+const GROUP_LINE_LIMIT = 10;
+
+type GroupLineInput = { serviceId: string; staffId: string | null };
+
+function parseGroupLines(value: unknown): GroupLineInput[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > GROUP_LINE_LIMIT) return null;
+  const lines: GroupLineInput[] = [];
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) return null;
+    const candidate = item as Record<string, unknown>;
+    if (!isUuid(candidate.serviceId)) return null;
+    const staffRaw = candidate.staffId;
+    const staffId = staffRaw === null || staffRaw === undefined || staffRaw === '' || staffRaw === 'any'
+      ? null
+      : staffRaw;
+    if (staffId !== null && !isUuid(staffId)) return null;
+    lines.push({ serviceId: candidate.serviceId, staffId });
+  }
+  return lines;
 }
 
 function parseIntervals(value: unknown): IntervalInput[] | null {
@@ -372,6 +404,48 @@ availability.get('/slots', async (context) => {
     }),
   }, access.auth.accessToken);
   if (!result.ok) return context.json({ error: { code: 'SLOT_COMPUTE_FAILED', message: 'Uygun saatler hesaplanamadı.' } }, 400);
+  return context.json({ slots: result.data ?? [] });
+});
+
+// One engine plans the whole reservation, so the duration and staff shown with
+// a group slot are the ones the create path will commit.
+availability.post('/group-slots', async (context) => {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+
+  const body = await readJson(context);
+  const date = body?.date;
+  const step = Number(body?.step ?? 15);
+  const lines = parseGroupLines(body?.lines);
+
+  if (!isDate(date) || !validDateHorizon(date) || lines === null
+      || !Number.isInteger(step) || step < 5 || step > 120) {
+    return context.json({ error: { code: 'INVALID_SLOT_QUERY', message: 'Tarih, hizmet listesi veya slot adımı geçerli değil.' } }, 400);
+  }
+
+  const result = await supabaseRequest<GroupSlot[]>(context.env, 'rest/v1/rpc/compute_group_availability_slots', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_business_id: access.membership.business_id,
+      p_date: date,
+      p_lines: lines.map((line) => ({ serviceId: line.serviceId, staffId: line.staffId })),
+      p_step_minutes: step,
+    }),
+  }, access.auth.accessToken);
+
+  if (!result.ok) {
+    const message = rpcMessage(result.data);
+    if (message.includes('GROUP_LINE_LIMIT_EXCEEDED')) {
+      return context.json({ error: { code: 'GROUP_LINE_LIMIT_EXCEEDED', message: `Bir randevuda en fazla ${GROUP_LINE_LIMIT} hizmet seçilebilir.` } }, 409);
+    }
+    if (message.includes('GROUP_SLOT_BUDGET_EXCEEDED')) {
+      return context.json({ error: { code: 'GROUP_SLOT_BUDGET_EXCEEDED', message: 'Bu arama çok geniş. Daha büyük bir saat aralığı seçin.' } }, 409);
+    }
+    if (message.includes('SERVICE_NOT_FOUND')) {
+      return context.json({ error: { code: 'SERVICE_NOT_FOUND', message: 'Seçilen hizmetlerden biri bu işletmede bulunamadı.' } }, 404);
+    }
+    return context.json({ error: { code: 'SLOT_COMPUTE_FAILED', message: 'Uygun saatler hesaplanamadı.' } }, 400);
+  }
   return context.json({ slots: result.data ?? [] });
 });
 

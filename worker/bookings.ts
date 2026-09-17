@@ -63,6 +63,30 @@ function isDate(value: unknown): value is string {
 function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value));
 }
+// F11-02: a reservation is an ordered list of services. Staff is optional per
+// line; when it is omitted the server picks the real assignment while it
+// commits the plan. The line ceiling mirrors the K03 group budget.
+const GROUP_LINE_LIMIT = 10;
+
+type GroupLineInput = { serviceId: string; staffId: string | null };
+
+function parseGroupLines(value: unknown): GroupLineInput[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > GROUP_LINE_LIMIT) return null;
+  const lines: GroupLineInput[] = [];
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) return null;
+    const candidate = item as Record<string, unknown>;
+    if (!isUuid(candidate.serviceId)) return null;
+    const staffRaw = candidate.staffId;
+    const staffId = staffRaw === null || staffRaw === undefined || staffRaw === '' || staffRaw === 'any'
+      ? null
+      : staffRaw;
+    if (staffId !== null && !isUuid(staffId)) return null;
+    lines.push({ serviceId: candidate.serviceId, staffId });
+  }
+  return lines;
+}
+
 function cleanOptional(value: unknown, max: number) {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value !== 'string') return undefined;
@@ -83,6 +107,9 @@ function rpcMessage(data: unknown, fallback: string) {
   if (message.includes('APPOINTMENT_NOT_FOUND')) return { code: 'APPOINTMENT_NOT_FOUND', message: 'Randevu bulunamadı.', status: 404 as const };
   if (message.includes('APPOINTMENT_NOT_RESCHEDULABLE') || message.includes('INVALID_STATUS_TRANSITION')) return { code: 'INVALID_TRANSITION', message: 'Randevunun mevcut durumunda bu işlem yapılamaz.', status: 409 as const };
   if (message.includes('NOT_ALLOWED')) return { code: 'NOT_ALLOWED', message: 'Bu işletme için işlem yetkiniz yok.', status: 403 as const };
+  if (message.includes('GROUP_SLOT_UNAVAILABLE')) return { code: 'GROUP_SLOT_UNAVAILABLE', message: 'Seçilen hizmetler bu saatte birlikte planlanamıyor.', status: 409 as const };
+  if (message.includes('GROUP_LINE_LIMIT_EXCEEDED')) return { code: 'GROUP_LINE_LIMIT_EXCEEDED', message: `Bir randevuda en fazla ${GROUP_LINE_LIMIT} hizmet seçilebilir.`, status: 409 as const };
+  if (message.includes('SERVICE_NOT_FOUND')) return { code: 'SERVICE_NOT_FOUND', message: 'Seçilen hizmetlerden biri bu işletmede bulunamadı.', status: 404 as const };
   return { code: 'BOOKING_FAILED', message: fallback, status: 400 as const };
 }
 
@@ -167,6 +194,47 @@ bookings.post('/', async (context) => {
   }
   const appointment = Array.isArray(result.data) ? first(result.data) : result.data;
   return context.json({ appointment }, 201);
+});
+
+// Multi-service reservation. One command, one request hash: either every line
+// is created or none is.
+bookings.post('/groups', async (context) => {
+  const access = await requireMember(context);
+  if ('error' in access) return access.error;
+  const key = idempotencyKey(context);
+  const body = await readJson(context);
+  const customerName = typeof body?.customerName === 'string' ? body.customerName.trim() : '';
+  const customerPhone = cleanOptional(body?.customerPhone, 40);
+  const customerEmail = cleanOptional(body?.customerEmail, 254);
+  const notes = cleanOptional(body?.notes, 1000);
+  const lines = parseGroupLines(body?.lines);
+
+  if (!key) return context.json({ error: { code: 'IDEMPOTENCY_REQUIRED', message: 'İşlem anahtarı eksik.' } }, 400);
+  if (customerName.length < 2 || customerName.length > 120 || customerPhone === undefined
+      || customerEmail === undefined || notes === undefined || lines === null
+      || !isTimestamp(body?.startsAt) || (customerEmail !== null && !customerEmail.includes('@'))) {
+    return context.json({ error: { code: 'INVALID_BOOKING', message: 'Müşteri, hizmet listesi veya saat bilgileri geçerli değil.' } }, 400);
+  }
+
+  const result = await supabaseRequest<Record<string, unknown>>(context.env, 'rest/v1/rpc/create_appointment_group', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_business_id: access.membership.business_id,
+      p_idempotency_key: key,
+      p_customer_name: customerName,
+      p_lines: lines.map((line) => ({ serviceId: line.serviceId, staffId: line.staffId })),
+      p_starts_at: body.startsAt,
+      p_customer_phone: customerPhone,
+      p_customer_email: customerEmail,
+      p_notes: notes,
+    }),
+  }, access.auth.accessToken);
+
+  if (!result.ok) {
+    const error = rpcMessage(result.data, 'Randevu oluşturulamadı.');
+    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+  }
+  return context.json({ group: result.data }, 201);
 });
 
 bookings.get('/:id/reschedule-slots', async (context) => {
