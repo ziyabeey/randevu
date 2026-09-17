@@ -6,50 +6,50 @@ create extension if not exists dblink;
 -- tenant advisory lock, so the race is deterministic. Exactly one reservation
 -- may survive and the loser must fail with a meaningful conflict, never with a
 -- half group.
-delete from public.businesses where id = 'd1410000-0000-4000-8000-000000000001';
+delete from public.businesses where id = 'd1710000-0000-4000-8000-000000000001';
 
 insert into auth.users(id,email,raw_user_meta_data)
-values ('d1400000-0000-4000-8000-000000000001','f1102-race-owner@example.invalid','{}'::jsonb)
+values ('d1700000-0000-4000-8000-000000000001','f1102-race-owner@example.invalid','{}'::jsonb)
 on conflict(id) do nothing;
 
 insert into public.businesses(id,name,slug,timezone,created_by)
-values ('d1410000-0000-4000-8000-000000000001','F11-02 Race','f1102-race','Europe/Istanbul','d1400000-0000-4000-8000-000000000001');
+values ('d1710000-0000-4000-8000-000000000001','F11-02 Race','f1102-race','Europe/Istanbul','d1700000-0000-4000-8000-000000000001');
 
 insert into public.memberships(id,business_id,user_id,role,active)
-values ('d1420000-0000-4000-8000-000000000001','d1410000-0000-4000-8000-000000000001','d1400000-0000-4000-8000-000000000001','owner',true)
+values ('d1720000-0000-4000-8000-000000000001','d1710000-0000-4000-8000-000000000001','d1700000-0000-4000-8000-000000000001','owner',true)
 on conflict(business_id,user_id) do update set role=excluded.role,active=excluded.active;
 
 insert into public.services(
   id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,
   category,sort_order,price_minor,price_type,price_min_minor,price_max_minor,currency,active
 ) values
-  ('d1430000-0000-4000-8000-000000000001','d1410000-0000-4000-8000-000000000001','Race Boya',45,10,10,'Renk',10,null,'range',20000,30000,'TRY',true),
-  ('d1430000-0000-4000-8000-000000000002','d1410000-0000-4000-8000-000000000001','Race Kesim',30,0,0,'Genel',20,15000,'fixed',15000,15000,'TRY',true);
+  ('d1730000-0000-4000-8000-000000000001','d1710000-0000-4000-8000-000000000001','Race Boya',45,10,10,'Renk',10,null,'range',20000,30000,'TRY',true),
+  ('d1730000-0000-4000-8000-000000000002','d1710000-0000-4000-8000-000000000001','Race Kesim',30,0,0,'Genel',20,15000,'fixed',15000,15000,'TRY',true);
 
 -- One eligible stylist only: the two reservations cannot both be placed.
 insert into public.staff_profiles(id,business_id,name,active)
-values ('d1440000-0000-4000-8000-000000000001','d1410000-0000-4000-8000-000000000001','Race Staff',true);
+values ('d1740000-0000-4000-8000-000000000001','d1710000-0000-4000-8000-000000000001','Race Staff',true);
 
 insert into public.staff_services(business_id,staff_id,service_id,active)
 values
-  ('d1410000-0000-4000-8000-000000000001','d1440000-0000-4000-8000-000000000001','d1430000-0000-4000-8000-000000000001',true),
-  ('d1410000-0000-4000-8000-000000000001','d1440000-0000-4000-8000-000000000001','d1430000-0000-4000-8000-000000000002',true);
+  ('d1710000-0000-4000-8000-000000000001','d1740000-0000-4000-8000-000000000001','d1730000-0000-4000-8000-000000000001',true),
+  ('d1710000-0000-4000-8000-000000000001','d1740000-0000-4000-8000-000000000001','d1730000-0000-4000-8000-000000000002',true);
 
 insert into public.business_hours(business_id,weekday,starts_local,ends_local,active)
-select 'd1410000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
+select 'd1710000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
 
 insert into public.staff_hours(business_id,staff_id,weekday,starts_local,ends_local,active)
-select 'd1410000-0000-4000-8000-000000000001'::uuid,'d1440000-0000-4000-8000-000000000001'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
+select 'd1710000-0000-4000-8000-000000000001'::uuid,'d1740000-0000-4000-8000-000000000001'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
 
 do $$
 declare
-  v_business uuid := 'd1410000-0000-4000-8000-000000000001';
-  v_owner uuid := 'd1400000-0000-4000-8000-000000000001';
+  v_business uuid := 'd1710000-0000-4000-8000-000000000001';
+  v_owner uuid := 'd1700000-0000-4000-8000-000000000001';
   v_day date := date_trunc('week',current_date)::date+7;
   v_start timestamptz;
   v_lock_key bigint := hashtextextended(v_business::text, 0);
   v_lock_held boolean := false;
-  v_lines jsonb := '[{"serviceId":"d1430000-0000-4000-8000-000000000001"},{"serviceId":"d1430000-0000-4000-8000-000000000002"}]'::jsonb;
+  v_lines jsonb := '[{"serviceId":"d1730000-0000-4000-8000-000000000001"},{"serviceId":"d1730000-0000-4000-8000-000000000002"}]'::jsonb;
   v_sql text;
   v_blocked integer;
   v_ok integer := 0;
@@ -153,4 +153,4 @@ exception when others then
 end
 $$;
 
-delete from public.businesses where id = 'd1410000-0000-4000-8000-000000000001';
+delete from public.businesses where id = 'd1710000-0000-4000-8000-000000000001';

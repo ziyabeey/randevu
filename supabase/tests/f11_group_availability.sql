@@ -5,15 +5,15 @@ begin;
 -- staff change, the documented budgets and the ACL surface.
 
 insert into auth.users(id,email,raw_user_meta_data)
-values ('d1200000-0000-4000-8000-000000000001','f1102-owner@example.invalid','{}'::jsonb)
+values ('d1600000-0000-4000-8000-000000000001','f1102-owner@example.invalid','{}'::jsonb)
 on conflict(id) do nothing;
 
 insert into public.businesses(id,name,slug,timezone,created_by)
-values ('d1210000-0000-4000-8000-000000000001','F11-02 Salon','f1102-salon','Europe/Istanbul','d1200000-0000-4000-8000-000000000001')
-on conflict(id) do nothing;
+values ('d1610000-0000-4000-8000-000000000001','F11-02 Salon','f1102-salon','Europe/Istanbul','d1600000-0000-4000-8000-000000000001')
+;
 
 insert into public.memberships(id,business_id,user_id,role,active)
-values ('d1220000-0000-4000-8000-000000000001','d1210000-0000-4000-8000-000000000001','d1200000-0000-4000-8000-000000000001','owner',true)
+values ('d1620000-0000-4000-8000-000000000001','d1610000-0000-4000-8000-000000000001','d1600000-0000-4000-8000-000000000001','owner',true)
 on conflict(business_id,user_id) do update set role=excluded.role,active=excluded.active;
 
 -- Colour carries buffers on both sides; cut is buffer free. Blow-dry is only
@@ -22,34 +22,33 @@ insert into public.services(
   id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,
   category,sort_order,price_minor,price_type,price_min_minor,price_max_minor,currency,active
 ) values
-  ('d1230000-0000-4000-8000-000000000001','d1210000-0000-4000-8000-000000000001','Boya',60,10,15,'Renk',10,null,'range',20000,35000,'TRY',true),
-  ('d1230000-0000-4000-8000-000000000002','d1210000-0000-4000-8000-000000000001','Kesim',30,0,0,'Genel',20,15000,'fixed',15000,15000,'TRY',true),
-  ('d1230000-0000-4000-8000-000000000003','d1210000-0000-4000-8000-000000000001','Fön',20,0,0,'Genel',30,8000,'fixed',8000,8000,'TRY',true),
-  ('d1230000-0000-4000-8000-000000000004','d1210000-0000-4000-8000-000000000001','Kaş',5,0,0,'Genel',40,5000,'fixed',5000,5000,'TRY',true)
+  ('d1630000-0000-4000-8000-000000000001','d1610000-0000-4000-8000-000000000001','Boya',60,10,15,'Renk',10,null,'range',20000,35000,'TRY',true),
+  ('d1630000-0000-4000-8000-000000000002','d1610000-0000-4000-8000-000000000001','Kesim',30,0,0,'Genel',20,15000,'fixed',15000,15000,'TRY',true),
+  ('d1630000-0000-4000-8000-000000000003','d1610000-0000-4000-8000-000000000001','Fön',20,0,0,'Genel',30,8000,'fixed',8000,8000,'TRY',true),
+  ('d1630000-0000-4000-8000-000000000004','d1610000-0000-4000-8000-000000000001','Kaş',5,0,0,'Genel',40,5000,'fixed',5000,5000,'TRY',true)
 on conflict(id) do nothing;
 
 insert into public.staff_profiles(id,business_id,name,active)
 values
-  ('d1240000-0000-4000-8000-000000000001','d1210000-0000-4000-8000-000000000001','Ayla',true),
-  ('d1240000-0000-4000-8000-000000000002','d1210000-0000-4000-8000-000000000001','Berk',true)
-on conflict(id) do nothing;
+  ('d1640000-0000-4000-8000-000000000001','d1610000-0000-4000-8000-000000000001','Ayla',true),
+  ('d1640000-0000-4000-8000-000000000002','d1610000-0000-4000-8000-000000000001','Berk',true);
 
 insert into public.staff_services(business_id,staff_id,service_id,active)
 values
-  ('d1210000-0000-4000-8000-000000000001','d1240000-0000-4000-8000-000000000001','d1230000-0000-4000-8000-000000000001',true),
-  ('d1210000-0000-4000-8000-000000000001','d1240000-0000-4000-8000-000000000001','d1230000-0000-4000-8000-000000000002',true),
-  ('d1210000-0000-4000-8000-000000000001','d1240000-0000-4000-8000-000000000002','d1230000-0000-4000-8000-000000000002',true),
-  ('d1210000-0000-4000-8000-000000000001','d1240000-0000-4000-8000-000000000002','d1230000-0000-4000-8000-000000000003',true),
-  ('d1210000-0000-4000-8000-000000000001','d1240000-0000-4000-8000-000000000001','d1230000-0000-4000-8000-000000000004',true)
+  ('d1610000-0000-4000-8000-000000000001','d1640000-0000-4000-8000-000000000001','d1630000-0000-4000-8000-000000000001',true),
+  ('d1610000-0000-4000-8000-000000000001','d1640000-0000-4000-8000-000000000001','d1630000-0000-4000-8000-000000000002',true),
+  ('d1610000-0000-4000-8000-000000000001','d1640000-0000-4000-8000-000000000002','d1630000-0000-4000-8000-000000000002',true),
+  ('d1610000-0000-4000-8000-000000000001','d1640000-0000-4000-8000-000000000002','d1630000-0000-4000-8000-000000000003',true),
+  ('d1610000-0000-4000-8000-000000000001','d1640000-0000-4000-8000-000000000001','d1630000-0000-4000-8000-000000000004',true)
 on conflict(business_id,staff_id,service_id) do update set active=true;
 
 insert into public.business_hours(business_id,weekday,starts_local,ends_local,active)
-select 'd1210000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
+select 'd1610000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
 
 insert into public.staff_hours(business_id,staff_id,weekday,starts_local,ends_local,active)
-select 'd1210000-0000-4000-8000-000000000001'::uuid,'d1240000-0000-4000-8000-000000000001'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true
+select 'd1610000-0000-4000-8000-000000000001'::uuid,'d1640000-0000-4000-8000-000000000001'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true
 union all
-select 'd1210000-0000-4000-8000-000000000001'::uuid,'d1240000-0000-4000-8000-000000000002'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
+select 'd1610000-0000-4000-8000-000000000001'::uuid,'d1640000-0000-4000-8000-000000000002'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
 
 -- ACL: the engine internals stay closed, only the two operator RPCs are open.
 do $$
@@ -85,8 +84,8 @@ declare
   v_l2 jsonb;
 begin
   v_plan := public.f11_plan_group_at(
-    'd1210000-0000-4000-8000-000000000001',
-    '[{"serviceId":"d1230000-0000-4000-8000-000000000001"},{"serviceId":"d1230000-0000-4000-8000-000000000002"}]'::jsonb,
+    'd1610000-0000-4000-8000-000000000001',
+    '[{"serviceId":"d1630000-0000-4000-8000-000000000001"},{"serviceId":"d1630000-0000-4000-8000-000000000002"}]'::jsonb,
     (v_day+time '10:00') at time zone 'Europe/Istanbul'
   );
   if v_plan is null then raise exception 'F11-02 continuity plan missing'; end if;
@@ -94,8 +93,8 @@ begin
   v_l1 := v_plan->'lines'->0;
   v_l2 := v_plan->'lines'->1;
 
-  if v_l1->>'staffId' <> 'd1240000-0000-4000-8000-000000000001'
-     or v_l2->>'staffId' <> 'd1240000-0000-4000-8000-000000000001' then
+  if v_l1->>'staffId' <> 'd1640000-0000-4000-8000-000000000001'
+     or v_l2->>'staffId' <> 'd1640000-0000-4000-8000-000000000001' then
     raise exception 'F11-02 expected one staff to serve the whole run';
   end if;
   -- Services are consecutive: the cut starts exactly when the colour ends.
@@ -127,13 +126,13 @@ declare
   v_plan jsonb;
 begin
   v_plan := public.f11_plan_group_at(
-    'd1210000-0000-4000-8000-000000000001',
-    '[{"serviceId":"d1230000-0000-4000-8000-000000000001"},{"serviceId":"d1230000-0000-4000-8000-000000000003"}]'::jsonb,
+    'd1610000-0000-4000-8000-000000000001',
+    '[{"serviceId":"d1630000-0000-4000-8000-000000000001"},{"serviceId":"d1630000-0000-4000-8000-000000000003"}]'::jsonb,
     (v_day+time '10:00') at time zone 'Europe/Istanbul'
   );
   if v_plan is null then raise exception 'F11-02 mixed-staff plan missing'; end if;
-  if v_plan->'lines'->0->>'staffId' <> 'd1240000-0000-4000-8000-000000000001'
-     or v_plan->'lines'->1->>'staffId' <> 'd1240000-0000-4000-8000-000000000002' then
+  if v_plan->'lines'->0->>'staffId' <> 'd1640000-0000-4000-8000-000000000001'
+     or v_plan->'lines'->1->>'staffId' <> 'd1640000-0000-4000-8000-000000000002' then
     raise exception 'F11-02 forced staff change not planned';
   end if;
   if (v_plan->'lines'->0->>'occupiedEndsAt')::timestamptz
@@ -145,7 +144,7 @@ end
 $$;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','d1200000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.sub','d1600000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 
 -- Slot search: every returned slot is a real plan and the advertised total is
@@ -158,16 +157,16 @@ declare
 begin
   select count(*)::integer into v_rows
   from public.compute_group_availability_slots(
-    'd1210000-0000-4000-8000-000000000001', v_day,
-    '[{"serviceId":"d1230000-0000-4000-8000-000000000001"},{"serviceId":"d1230000-0000-4000-8000-000000000002"}]'::jsonb,
+    'd1610000-0000-4000-8000-000000000001', v_day,
+    '[{"serviceId":"d1630000-0000-4000-8000-000000000001"},{"serviceId":"d1630000-0000-4000-8000-000000000002"}]'::jsonb,
     30
   );
   if v_rows = 0 then raise exception 'F11-02 expected group slots on an empty day'; end if;
 
   select count(*)::integer into v_bad
   from public.compute_group_availability_slots(
-    'd1210000-0000-4000-8000-000000000001', v_day,
-    '[{"serviceId":"d1230000-0000-4000-8000-000000000001"},{"serviceId":"d1230000-0000-4000-8000-000000000002"}]'::jsonb,
+    'd1610000-0000-4000-8000-000000000001', v_day,
+    '[{"serviceId":"d1630000-0000-4000-8000-000000000001"},{"serviceId":"d1630000-0000-4000-8000-000000000002"}]'::jsonb,
     30
   ) s
   where s.total_duration_minutes <> 90
@@ -186,11 +185,11 @@ declare
   v_raised boolean := false;
 begin
   for i in 1..11 loop
-    v_lines := v_lines || jsonb_build_array(jsonb_build_object('serviceId','d1230000-0000-4000-8000-000000000002'));
+    v_lines := v_lines || jsonb_build_array(jsonb_build_object('serviceId','d1630000-0000-4000-8000-000000000002'));
   end loop;
   begin
     perform public.compute_group_availability_slots(
-      'd1210000-0000-4000-8000-000000000001', v_day, v_lines, 30);
+      'd1610000-0000-4000-8000-000000000001', v_day, v_lines, 30);
   exception when others then
     if sqlerrm not like '%GROUP_LINE_LIMIT_EXCEEDED%' then raise; end if;
     v_raised := true;
@@ -206,11 +205,11 @@ $$;
 reset role;
 update public.business_hours
 set starts_local = time '07:00', ends_local = time '23:00'
-where business_id = 'd1210000-0000-4000-8000-000000000001'
+where business_id = 'd1610000-0000-4000-8000-000000000001'
   and weekday = extract(dow from (date_trunc('week',current_date)::date+7))::smallint;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub','d1200000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claim.sub','d1600000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 
 do $$
@@ -220,11 +219,11 @@ declare
   v_raised boolean := false;
 begin
   for i in 1..10 loop
-    v_lines := v_lines || jsonb_build_array(jsonb_build_object('serviceId','d1230000-0000-4000-8000-000000000004'));
+    v_lines := v_lines || jsonb_build_array(jsonb_build_object('serviceId','d1630000-0000-4000-8000-000000000004'));
   end loop;
   begin
     perform public.compute_group_availability_slots(
-      'd1210000-0000-4000-8000-000000000001', v_day, v_lines, 5);
+      'd1610000-0000-4000-8000-000000000001', v_day, v_lines, 5);
   exception when others then
     if sqlerrm not like '%GROUP_SLOT_BUDGET_EXCEEDED%' then raise; end if;
     v_raised := true;
