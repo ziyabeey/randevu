@@ -26,7 +26,7 @@ insert into public.services(
   ('d1730000-0000-4000-8000-000000000001','d1710000-0000-4000-8000-000000000001','Race Boya',45,10,10,'Renk',10,null,'range',20000,30000,'TRY',true),
   ('d1730000-0000-4000-8000-000000000002','d1710000-0000-4000-8000-000000000001','Race Kesim',30,0,0,'Genel',20,15000,'fixed',15000,15000,'TRY',true);
 
--- One eligible stylist only: competing reservations cannot both be placed.
+-- One eligible stylist only: the two reservations cannot both be placed.
 insert into public.staff_profiles(id,business_id,name,active)
 values ('d1740000-0000-4000-8000-000000000001','d1710000-0000-4000-8000-000000000001','Race Staff',true);
 
@@ -97,6 +97,8 @@ begin
         'host=127.0.0.1 port=5432 dbname='||current_database()
           ||' user=postgres password=postgres application_name='||v_conn
       );
+      -- Both writers are deliberately parked on the tenant lock while the race
+      -- is armed, so their budget must cover that wait plus the winner's commit.
       perform dblink_exec(v_conn,'set statement_timeout=30000');
       perform dblink_exec(v_conn,'begin');
       perform dblink_exec(v_conn,'set local role authenticated');
@@ -127,6 +129,8 @@ begin
       raise exception 'could not start preferred race writer %', v_first_conn;
     end if;
 
+    -- Prove the preferred writer entered the lock queue first. This makes both
+    -- A-first and B-first completion orders deterministic across the two passes.
     v_first_waited := false;
     for i in 1..300 loop
       perform pg_stat_clear_snapshot();
@@ -150,6 +154,8 @@ begin
       raise exception 'could not start second race writer %', v_second_conn;
     end if;
 
+    -- Both must actually be waiting before the lock is released; otherwise the
+    -- test would prove nothing about interleaving.
     v_blocked := 0;
     for i in 1..300 loop
       perform pg_stat_clear_snapshot();
@@ -167,6 +173,10 @@ begin
     perform pg_advisory_unlock(v_lock_key);
     v_lock_held := false;
 
+    -- Collect whichever writer finishes first and end that remote transaction
+    -- before waiting on the other. A successful winner otherwise retains the
+    -- exclusion lock needed by the loser, making a fixed A-then-B collection
+    -- order deadlock when B wins.
     for i in 1..2 loop
       v_conn := null;
       for j in 1..3000 loop
@@ -196,6 +206,8 @@ begin
         v_current_error := sqlerrm;
       end;
 
+      -- libpq can accept COMMIT/ROLLBACK only after the trailing empty result is
+      -- consumed. Drain it for both success and remote-error paths.
       perform * from dblink_get_result(v_conn, false) as t(result jsonb);
       get diagnostics v_drain_rows = row_count;
       if v_drain_rows <> 0 then
@@ -263,6 +275,8 @@ begin
         v_scenario, v_rows;
     end if;
 
+    -- The key-scoped checks prove the intended command survived. Whole-fixture
+    -- totals also reject orphan groups or lines with no booking-command link.
     select count(*)::integer into v_groups
     from public.appointment_groups g
     where g.business_id = v_business;
@@ -291,9 +305,11 @@ end
 $$;
 
 -- F11-04 bounded high fan-out acceptance. The genuine two-session block above
--- remains the lock-order proof; this layer drives 100 distinct keys through the
--- same staff/interval without turning PostgreSQL max_connections into the test.
--- Twenty requests are truly in-flight per wave, five waves total.
+-- remains the lock-order proof. Wave 1 proves real 20-way contention; waves 2-5
+-- keep a maximum of 20 concurrent clients while bringing the total to 100
+-- distinct idempotency keys. After wave 1 fills the slot, later waves may fail
+-- before the tenant lock, which is valid fail-closed behavior and is not treated
+-- as a lock-proof failure.
 do $$
 declare
   v_business uuid := 'd1710000-0000-4000-8000-000000000001';
@@ -318,8 +334,6 @@ declare
   v_orphans integer;
   v_winner_group uuid;
 begin
-  -- Open a bounded reusable pool. Session-level role/claims survive each
-  -- autocommit statement, so every wave exercises the real authenticated RPC.
   for i in 1..20 loop
     v_conn := 'f1104_fanout_'||lpad(i::text,2,'0');
     perform dblink_connect(
@@ -334,8 +348,10 @@ begin
   end loop;
 
   for v_wave in 1..5 loop
-    perform pg_advisory_lock(v_lock_key);
-    v_lock_held := true;
+    if v_wave = 1 then
+      perform pg_advisory_lock(v_lock_key);
+      v_lock_held := true;
+    end if;
 
     for i in 1..20 loop
       v_index := (v_wave-1)*20+i;
@@ -357,27 +373,24 @@ begin
       end if;
     end loop;
 
-    -- Every request in the wave must have reached the canonical tenant lock
-    -- before release; otherwise this would be sequential load, not contention.
-    v_blocked := 0;
-    for attempt in 1..1000 loop
-      perform pg_stat_clear_snapshot();
-      select count(*)::integer into v_blocked
-      from pg_stat_activity
-      where application_name like 'f1104_fanout_%'
-        and wait_event_type='Lock';
-      exit when v_blocked=20;
-      perform pg_sleep(0.01);
-    end loop;
-    if v_blocked<>20 then
-      raise exception 'F11-04 fanout wave % parked %/20 requests',v_wave,v_blocked;
+    if v_wave = 1 then
+      v_blocked := 0;
+      for attempt in 1..1000 loop
+        perform pg_stat_clear_snapshot();
+        select count(*)::integer into v_blocked
+        from pg_stat_activity
+        where application_name like 'f1104_fanout_%'
+          and wait_event_type='Lock';
+        exit when v_blocked=20;
+        perform pg_sleep(0.01);
+      end loop;
+      if v_blocked<>20 then
+        raise exception 'F11-04 first fanout wave parked %/20 requests',v_blocked;
+      end if;
+      perform pg_advisory_unlock(v_lock_key);
+      v_lock_held := false;
     end if;
 
-    perform pg_advisory_unlock(v_lock_key);
-    v_lock_held := false;
-
-    -- Autocommit is deliberate here: the first successful statement releases
-    -- its row/exclusion locks before the rest of the wave finishes.
     for attempt in 1..6000 loop
       v_busy := 0;
       for i in 1..20 loop
@@ -483,7 +496,7 @@ begin
     raise exception 'F11-04 fanout changed fixture cardinality beyond one two-line winner';
   end if;
 
-  raise notice 'F11-04 bounded fanout accepted: requests=100 concurrency=20 waves=5 winners=1 conflicts=99 commands=1 groups=1 lines=2 orphan_evidence=0';
+  raise notice 'F11-04 bounded fanout accepted: requests=100 concurrency=20 first_wave_contention=20 winners=1 conflicts=99 commands=1 groups=1 lines=2 orphan_evidence=0';
 exception when others then
   if v_lock_held then perform pg_advisory_unlock(v_lock_key); end if;
   for i in 1..20 loop
