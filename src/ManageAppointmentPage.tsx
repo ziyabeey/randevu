@@ -24,6 +24,47 @@ type ManagedSlot = {
   ends_at: string;
   timezone: string;
 };
+type GroupLine = {
+  appointmentId: string;
+  lineOrdinal: number;
+  serviceName: string;
+  staffName: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  priceType: 'fixed' | 'range';
+  priceMinMinor: number;
+  priceMaxMinor: number;
+  priceMinor: number | null;
+  currency: string;
+};
+type ManagedGroup = {
+  groupId: string;
+  status: string;
+  version: number;
+  startsAt: string;
+  endsAt: string;
+  timezone: string;
+  currency: string;
+  estimateMinMinor: number;
+  estimateMaxMinor: number;
+  lineCount: number;
+  canRescheduleGroup: boolean;
+  canCancelGroup: boolean;
+  lines: GroupLine[];
+};
+type GroupManagedSlot = {
+  starts_at: string;
+  ends_at: string;
+  timezone: string;
+  total_duration_minutes: number;
+  lines: Array<Record<string, unknown>>;
+};
+type SlotChoice =
+  | { mode: 'legacy'; slot: ManagedSlot }
+  | { mode: 'group'; slot: GroupManagedSlot };
+
+type ViewResponse = { appointment: ManagedAppointment; group?: ManagedGroup };
 
 function formatDateTime(value: string, timezone: string) {
   return new Intl.DateTimeFormat('tr-TR', {
@@ -45,6 +86,10 @@ function money(minor: number, currency: string) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
 }
 
+function moneyRange(min: number, max: number, currency: string) {
+  return min === max ? money(min, currency) : `${money(min, currency)} – ${money(max, currency)}`;
+}
+
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
     scheduled: 'Planlandı',
@@ -52,15 +97,18 @@ function statusLabel(status: string) {
     completed: 'Tamamlandı',
     no_show: 'Gelmedi',
     cancelled: 'İptal edildi',
+    partial: 'Kısmen değişti',
   };
   return labels[status] ?? status;
 }
 
 export default function ManageAppointmentPage({ token }: { token: string }) {
   const [appointment, setAppointment] = useState<ManagedAppointment | null>(null);
+  const [group, setGroup] = useState<ManagedGroup | null>(null);
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<ManagedSlot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<ManagedSlot | null>(null);
+  const [groupSlots, setGroupSlots] = useState<GroupManagedSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<SlotChoice | null>(null);
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -69,14 +117,15 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
   const cancelCommand = useRef<{ fingerprint: string; key: string } | null>(null);
 
   async function loadAppointment() {
-    const result = await api<{ appointment: ManagedAppointment }>('/api/manage/view', {
+    const result = await api<ViewResponse>('/api/manage/view', {
       method: 'POST',
       csrf: 'skip',
       body: JSON.stringify({ token }),
     });
     setAppointment(result.appointment);
+    setGroup(result.group ?? null);
     setDate((current) => current || result.appointment.local_date);
-    return result.appointment;
+    return result;
   }
 
   useEffect(() => {
@@ -90,13 +139,14 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         return;
       }
       try {
-        const result = await api<{ appointment: ManagedAppointment }>('/api/manage/view', {
+        const result = await api<ViewResponse>('/api/manage/view', {
           method: 'POST',
           csrf: 'skip',
           body: JSON.stringify({ token }),
         });
         if (cancelled) return;
         setAppointment(result.appointment);
+        setGroup(result.group ?? null);
         setDate(result.appointment.local_date);
       } catch (error) {
         if (!cancelled) setNotice(error instanceof Error ? error.message : 'Randevu bilgisi yüklenemedi.');
@@ -108,21 +158,37 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     return () => { cancelled = true; };
   }, [token]);
 
+  const canReschedule = group ? group.canRescheduleGroup : Boolean(appointment?.can_reschedule);
+  const canCancel = group ? group.canCancelGroup : Boolean(appointment?.can_cancel);
+
   async function loadSlots() {
-    if (!date || !appointment?.can_reschedule) return;
+    if (!date || !canReschedule) return;
     setBusy(true);
     setNotice('');
     setSelectedSlot(null);
     try {
-      const result = await api<{ slots: ManagedSlot[] }>('/api/manage/slots', {
-        method: 'POST',
-        csrf: 'skip',
-        body: JSON.stringify({ token, date, staffId: 'any' }),
-      });
-      setSlots(result.slots);
-      setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : 'Bu gün için uygun saat bulunamadı.');
+      if (group) {
+        const result = await api<{ slots: GroupManagedSlot[] }>('/api/manage/slots', {
+          method: 'POST',
+          csrf: 'skip',
+          body: JSON.stringify({ token, date, group: true }),
+        });
+        setGroupSlots(result.slots);
+        setSlots([]);
+        setNotice(result.slots.length ? `${result.slots.length} uygun grup saati bulundu.` : 'Bu gün için grubun tamamına uygun saat bulunamadı.');
+      } else {
+        const result = await api<{ slots: ManagedSlot[] }>('/api/manage/slots', {
+          method: 'POST',
+          csrf: 'skip',
+          body: JSON.stringify({ token, date, staffId: 'any' }),
+        });
+        setSlots(result.slots);
+        setGroupSlots([]);
+        setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : 'Bu gün için uygun saat bulunamadı.');
+      }
     } catch (error) {
       setSlots([]);
+      setGroupSlots([]);
       setNotice(error instanceof Error ? error.message : 'Uygun saatler yüklenemedi.');
     } finally {
       setBusy(false);
@@ -131,7 +197,11 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
 
   async function reschedule() {
     if (!selectedSlot) return;
-    const fingerprint = `${selectedSlot.staff_id}:${selectedSlot.starts_at}`;
+    const startsAt = selectedSlot.slot.starts_at;
+    const legacyStaffId = selectedSlot.mode === 'legacy' ? selectedSlot.slot.staff_id : null;
+    const fingerprint = group
+      ? `${group.version}:${startsAt}`
+      : `${legacyStaffId}:${startsAt}`;
     if (!rescheduleCommand.current || rescheduleCommand.current.fingerprint !== fingerprint) {
       rescheduleCommand.current = { fingerprint, key: `manage-res-${crypto.randomUUID()}` };
     }
@@ -143,18 +213,26 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         method: 'POST',
         csrf: 'skip',
         headers: { 'Idempotency-Key': rescheduleCommand.current.key },
-        body: JSON.stringify({ token, staffId: selectedSlot.staff_id, startsAt: selectedSlot.starts_at }),
+        body: JSON.stringify(group
+          ? { token, expectedVersion: group.version, startsAt }
+          : { token, staffId: legacyStaffId, startsAt }),
       });
       rescheduleCommand.current = null;
       setSlots([]);
+      setGroupSlots([]);
       setSelectedSlot(null);
       const next = await loadAppointment();
-      setNotice(`Randevu ${formatDateTime(next.starts_at, next.timezone)} tarihine taşındı.`);
+      const nextStart = next.group?.startsAt ?? next.appointment.starts_at;
+      const nextTimezone = next.group?.timezone ?? next.appointment.timezone;
+      setNotice(`Randevu ${formatDateTime(nextStart, nextTimezone)} tarihine taşındı.`);
     } catch (error) {
       const coded = error as Error & { code?: string };
       setNotice(coded.message);
-      if (coded.code === 'SLOT_UNAVAILABLE') {
+      if (coded.code === 'SLOT_UNAVAILABLE' || coded.code === 'BOOKING_GROUP_VERSION_CONFLICT') {
         setSelectedSlot(null);
+        if (coded.code === 'BOOKING_GROUP_VERSION_CONFLICT') {
+          try { await loadAppointment(); } catch { /* retain the conflict notice */ }
+        }
         void loadSlots();
       }
     } finally {
@@ -163,13 +241,16 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
   }
 
   async function cancelAppointment() {
-    if (!appointment?.can_cancel) return;
+    if (!canCancel || !appointment) return;
     const cleanReason = reason.trim();
-    const fingerprint = cleanReason || 'no-reason';
+    const fingerprint = group ? `${group.version}:${cleanReason || 'no-reason'}` : (cleanReason || 'no-reason');
     if (!cancelCommand.current || cancelCommand.current.fingerprint !== fingerprint) {
       cancelCommand.current = { fingerprint, key: `manage-cancel-${crypto.randomUUID()}` };
     }
-    if (!window.confirm('Bu randevuyu iptal etmek istediğinize emin misiniz?')) return;
+    const prompt = group
+      ? 'Bu rezervasyondaki aktif hizmetlerin tamamını iptal etmek istediğinize emin misiniz?'
+      : 'Bu randevuyu iptal etmek istediğinize emin misiniz?';
+    if (!window.confirm(prompt)) return;
 
     setBusy(true);
     setNotice('');
@@ -178,15 +259,22 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         method: 'POST',
         csrf: 'skip',
         headers: { 'Idempotency-Key': cancelCommand.current.key },
-        body: JSON.stringify({ token, reason: cleanReason || null }),
+        body: JSON.stringify(group
+          ? { token, expectedVersion: group.version, reason: cleanReason || null }
+          : { token, reason: cleanReason || null }),
       });
       cancelCommand.current = null;
       setSlots([]);
+      setGroupSlots([]);
       setSelectedSlot(null);
       await loadAppointment();
-      setNotice('Randevu iptal edildi. Ayrılan saat yeniden müsait hale geldi.');
+      setNotice(group ? 'Rezervasyondaki aktif hizmetler iptal edildi.' : 'Randevu iptal edildi. Ayrılan saat yeniden müsait hale geldi.');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Randevu iptal edilemedi.');
+      const coded = error as Error & { code?: string };
+      setNotice(coded.message || 'Randevu iptal edilemedi.');
+      if (coded.code === 'BOOKING_GROUP_VERSION_CONFLICT') {
+        try { await loadAppointment(); } catch { /* retain the conflict notice */ }
+      }
     } finally {
       setBusy(false);
     }
@@ -208,42 +296,80 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     );
   }
 
+  const displayStatus = group?.status ?? appointment.status;
+  const displayTimezone = group?.timezone ?? appointment.timezone;
+  const slotCount = group ? groupSlots.length : slots.length;
+
   return (
     <main className="manage-shell">
       <header className="manage-header">
         <p className="public-kicker">RANDEVUMU YÖNET</p>
         <h1>{appointment.business_name}</h1>
-        <span className={`manage-status status-${appointment.status}`}>{statusLabel(appointment.status)}</span>
+        <span className={`manage-status status-${displayStatus}`}>{statusLabel(displayStatus)}</span>
       </header>
 
       {notice && <div className="public-booking-notice" role="status">{notice}</div>}
 
       <div className="manage-grid">
         <section className="manage-card manage-summary">
-          <h2>Randevu bilgileri</h2>
-          <dl className="public-confirmation-list">
-            <div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div>
-            <div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div>
-            <div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div>
-            <div><dt>Ücret</dt><dd>{money(appointment.price_minor, appointment.currency)}</dd></div>
-          </dl>
+          <h2>{group ? 'Rezervasyon bilgileri' : 'Randevu bilgileri'}</h2>
+          {group ? (
+            <>
+              <dl className="public-confirmation-list">
+                <div><dt>Başlangıç</dt><dd>{formatDateTime(group.startsAt, group.timezone)}</dd></div>
+                <div><dt>Hizmet sayısı</dt><dd>{group.lineCount}</dd></div>
+                <div><dt>Tahmini toplam</dt><dd>{moneyRange(group.estimateMinMinor, group.estimateMaxMinor, group.currency)}</dd></div>
+              </dl>
+              <div className="manage-group-lines" aria-label="Rezervasyon hizmetleri">
+                {group.lines.map((line) => (
+                  <article className="manage-group-line" key={line.appointmentId}>
+                    <div>
+                      <strong>{line.lineOrdinal}. {line.serviceName}</strong>
+                      <span>{line.staffName} · {formatTime(line.startsAt, group.timezone)}–{formatTime(line.endsAt, group.timezone)}</span>
+                    </div>
+                    <div>
+                      <span>{moneyRange(line.priceMinMinor, line.priceMaxMinor, line.currency)}</span>
+                      <small>{statusLabel(line.status)}</small>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </>
+          ) : (
+            <dl className="public-confirmation-list">
+              <div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div>
+              <div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div>
+              <div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div>
+              <div><dt>Ücret</dt><dd>{money(appointment.price_minor, appointment.currency)}</dd></div>
+            </dl>
+          )}
           <p className="manage-security-note">Bu sayfanın bağlantısı randevunuzu değiştirme yetkisi verir. Bağlantıyı yalnız güvendiğiniz kişilerle paylaşın.</p>
         </section>
 
         <section className="manage-card">
-          <h2>Başka saate taşı</h2>
-          {appointment.can_reschedule ? (
+          <h2>{group ? 'Rezervasyonu başka saate taşı' : 'Başka saate taşı'}</h2>
+          {canReschedule ? (
             <>
               <div className="manage-date-row">
-                <input type="date" value={date} min={appointment.local_date} max={appointment.max_date} onChange={(event) => { setDate(event.target.value); setSlots([]); setSelectedSlot(null); }} />
+                <input type="date" value={date} min={appointment.local_date} max={appointment.max_date} onChange={(event) => { setDate(event.target.value); setSlots([]); setGroupSlots([]); setSelectedSlot(null); }} />
                 <button className="public-primary" type="button" disabled={busy} onClick={() => void loadSlots()}>{busy ? 'Bakılıyor…' : 'Saatleri göster'}</button>
               </div>
-              {slots.length > 0 && (
+              {slotCount > 0 && (
                 <div className="public-slot-grid manage-slots">
-                  {slots.map((slot) => {
-                    const selected = selectedSlot?.staff_id === slot.staff_id && selectedSlot.starts_at === slot.starts_at;
+                  {group ? groupSlots.map((slot) => {
+                    const selected = selectedSlot?.mode === 'group' && selectedSlot.slot.starts_at === slot.starts_at;
                     return (
-                      <button className={`public-slot ${selected ? 'is-selected' : ''}`} type="button" key={`${slot.staff_id}-${slot.starts_at}`} onClick={() => setSelectedSlot(slot)}>
+                      <button className={`public-slot ${selected ? 'is-selected' : ''}`} type="button" key={slot.starts_at} onClick={() => setSelectedSlot({ mode: 'group', slot })}>
+                        <strong>{formatTime(slot.starts_at, slot.timezone)}</strong>
+                        <span>{slot.total_duration_minutes} dk · {slot.lines.length} hizmet</span>
+                      </button>
+                    );
+                  }) : slots.map((slot) => {
+                    const selected = selectedSlot?.mode === 'legacy'
+                      && selectedSlot.slot.staff_id === slot.staff_id
+                      && selectedSlot.slot.starts_at === slot.starts_at;
+                    return (
+                      <button className={`public-slot ${selected ? 'is-selected' : ''}`} type="button" key={`${slot.staff_id}-${slot.starts_at}`} onClick={() => setSelectedSlot({ mode: 'legacy', slot })}>
                         <strong>{formatTime(slot.starts_at, slot.timezone)}</strong>
                         <span>{slot.staff_name}</span>
                       </button>
@@ -253,24 +379,24 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
               )}
               {selectedSlot && <button className="public-primary manage-confirm" type="button" disabled={busy} onClick={() => void reschedule()}>Seçilen saate taşı</button>}
             </>
-          ) : <p className="public-muted">Bu randevu artık taşınamaz.</p>}
+          ) : <p className="public-muted">Bu {group ? 'rezervasyon' : 'randevu'} artık taşınamaz.</p>}
         </section>
 
         <section className="manage-card manage-danger">
-          <h2>Randevuyu iptal et</h2>
-          {appointment.can_cancel ? (
+          <h2>{group ? 'Rezervasyonu iptal et' : 'Randevuyu iptal et'}</h2>
+          {canCancel ? (
             <>
               <label>
                 <span>İptal nedeni <small>(isteğe bağlı)</small></span>
                 <textarea value={reason} maxLength={240} rows={3} onChange={(event) => setReason(event.target.value)} />
               </label>
-              <button className="manage-cancel-button" type="button" disabled={busy} onClick={() => void cancelAppointment()}>Randevuyu iptal et</button>
+              <button className="manage-cancel-button" type="button" disabled={busy} onClick={() => void cancelAppointment()}>{group ? 'Aktif hizmetlerin tamamını iptal et' : 'Randevuyu iptal et'}</button>
             </>
-          ) : <p className="public-muted">Bu randevu artık iptal edilemez.</p>}
+          ) : <p className="public-muted">Bu {group ? 'rezervasyon' : 'randevu'} artık iptal edilemez.</p>}
         </section>
       </div>
 
-      <footer className="public-booking-footer">Saatler {appointment.timezone} saat dilimine göre gösterilir.</footer>
+      <footer className="public-booking-footer">Saatler {displayTimezone} saat dilimine göre gösterilir.</footer>
     </main>
   );
 }
