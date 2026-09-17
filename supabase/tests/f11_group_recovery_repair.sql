@@ -82,10 +82,12 @@ insert into public.public_booking_settings(
 on conflict(business_id) do update
 set enabled=true,step_minutes=15,min_notice_minutes=0,horizon_days=30;
 
+-- Retained S04 concurrency fixtures leave deliberately tiny quotas behind.
+-- Restore the normal bounded defaults inside this rollback-only fixture so
+-- recovery/resolve assertions exercise domain behavior through the real gate.
+delete from public.public_booking_abuse_config where config_key='default';
 insert into public.public_booking_abuse_config(config_key,gate_secret_hash)
-values ('default',encode(extensions.digest(repeat('g',43),'sha256'),'hex'))
-on conflict(config_key) do update
-set gate_secret_hash=excluded.gate_secret_hash,updated_at=now();
+values ('default',encode(extensions.digest(repeat('g',43),'sha256'),'hex'));
 
 insert into public.notification_dispatch_config(config_key,secret_hash)
 values ('default',encode(extensions.digest(repeat('n',43),'sha256'),'hex'))

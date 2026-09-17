@@ -538,8 +538,11 @@ select pg_temp.f11b_assert(not exists(
     ])
 ), 'rejected operator request retained a command, including a success command');
 
--- Exercise the real anonymous gateway with namespaced gate/actor/network hashes.
+-- Restore normal bounded defaults inside this rolled-back fixture: the retained
+-- S04 concurrency fixture commits deliberately tiny abuse limits. Independent
+-- domain cases use distinct actors; exact retries keep their original actor.
 delete from public.public_booking_rate_counters;
+delete from public.public_booking_abuse_config where config_key='default';
 insert into public.public_booking_abuse_config(
   config_key,gate_secret_hash
 ) values (
@@ -576,7 +579,7 @@ do $$
 declare
   v_day date:=date_trunc('week',current_date)::date+7;
   v_result jsonb;
-  v_actor text:=encode(extensions.digest('f11-final-binding:actor','sha256'),'hex');
+  v_actor text:=encode(extensions.digest('f11-final-binding:actor:hold','sha256'),'hex');
   v_network text:=encode(extensions.digest('f11-final-binding:network','sha256'),'hex');
 begin
   v_result:=public.execute_public_operation('group_book',jsonb_build_object(
@@ -595,6 +598,7 @@ begin
     'gated HOLD ignored a staff closure: '||v_result::text
   );
 
+  v_actor:=encode(extensions.digest('f11-final-binding:actor:release','sha256'),'hex');
   v_result:=public.execute_public_operation('group_book',jsonb_build_object(
     'p_slug','f11-final-binding','p_idempotency_key',current_setting('f11b.public_release_key'),
     'p_customer_name','Public Release Customer',
@@ -615,6 +619,7 @@ begin
   );
   perform set_config('f11b.public_release_payload',(v_result#>'{data,0,group_payload}')::text,false);
 
+  v_actor:=encode(extensions.digest('f11-final-binding:actor:late','sha256'),'hex');
   v_result:=public.execute_public_operation('group_book',jsonb_build_object(
     'p_slug','f11-final-binding','p_idempotency_key',current_setting('f11b.public_late_key'),
     'p_customer_name','Public Late Customer',
@@ -631,6 +636,7 @@ begin
     'gated RELEASE accepted a customer end after close: '||v_result::text
   );
 
+  v_actor:=encode(extensions.digest('f11-final-binding:actor:invalid','sha256'),'hex');
   v_result:=public.execute_public_operation('group_book',jsonb_build_object(
     'p_slug','f11-final-binding','p_idempotency_key',current_setting('f11b.public_invalid_key'),
     'p_customer_name','Public Invalid Customer',
@@ -647,6 +653,7 @@ begin
     'gated inactive service did not fail closed: '||v_result::text
   );
 
+  v_actor:=encode(extensions.digest('f11-final-binding:actor:mixed','sha256'),'hex');
   v_result:=public.execute_public_operation('group_book',jsonb_build_object(
     'p_slug','f11-final-binding','p_idempotency_key',current_setting('f11b.public_mixed_key'),
     'p_customer_name','Public Mixed Customer',
@@ -718,7 +725,7 @@ do $$
 declare
   v_day date:=date_trunc('week',current_date)::date+7;
   v_result jsonb;
-  v_actor text:=encode(extensions.digest('f11-final-binding:actor','sha256'),'hex');
+  v_actor text:=encode(extensions.digest('f11-final-binding:actor:release','sha256'),'hex');
   v_network text:=encode(extensions.digest('f11-final-binding:network','sha256'),'hex');
 begin
   v_result:=public.execute_public_operation('group_book',jsonb_build_object(
