@@ -11,6 +11,7 @@ type Control = {
   bookingButtons(customer: string): string[];
   calendarReservationCount(): string;
   calendarEventCount(): number;
+  selectCalendarStaff(name: string): boolean;
   clickCalendarEvent(text: string): boolean;
   calendarDrawerLines(): string[];
   setCalendarReason(value: string): boolean;
@@ -50,6 +51,16 @@ window.__f1103c = {
     .map((button) => button.innerText.trim()),
   calendarReservationCount: () => document.querySelector<HTMLElement>('.calendar-stats > div:first-child strong')?.innerText ?? '',
   calendarEventCount: () => document.querySelectorAll('.calendar-event, .calendar-week-event').length,
+  selectCalendarStaff: (name) => {
+    const select = document.querySelector<HTMLSelectElement>('.calendar-filter select');
+    if (!select) return false;
+    const option = [...select.options].find((candidate) => candidate.text.includes(name));
+    if (!option) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+    setter?.call(select, option.value);
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  },
   clickCalendarEvent: (text) => {
     const event = [...document.querySelectorAll<HTMLButtonElement>('.calendar-event, .calendar-week-event')]
       .find((candidate) => candidate.innerText.includes(text));
