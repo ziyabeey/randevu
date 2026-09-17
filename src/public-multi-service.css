@@ -1,0 +1,325 @@
+.public-multi-service-shell {
+  width: min(100%, 68rem);
+  min-height: 0;
+  margin-inline: auto;
+  padding-bottom: 1rem;
+  background: transparent;
+}
+
+.public-multi-service {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.public-multi-service h2 {
+  margin-bottom: .35rem;
+}
+
+.public-multi-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.public-multi-heading > strong {
+  flex: 0 0 auto;
+  min-width: 3.2rem;
+  padding: .45rem .65rem;
+  border-radius: 999px;
+  background: #edf2ff;
+  color: #3159d9;
+  text-align: center;
+}
+
+.public-service-catalog,
+.public-selected-lines,
+.public-group-summary {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.1rem;
+}
+
+.public-service-category {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.public-service-category legend {
+  width: 100%;
+  margin-bottom: .55rem;
+  color: #4c5870;
+  font-size: .82rem;
+  font-weight: 800;
+}
+
+.public-service-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+}
+
+.public-service-choice,
+.public-group-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  min-height: 4rem;
+  padding: .72rem .8rem;
+  border: 1px solid #d9e0ee;
+  border-radius: .78rem;
+  background: #f8faff;
+  color: #182238;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.public-service-choice > span:first-child,
+.public-group-slot > span:first-child,
+.public-line-order > div,
+.public-group-summary li > span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: .16rem;
+}
+
+.public-service-choice small,
+.public-selected-line small,
+.public-group-slot small,
+.public-group-summary small {
+  color: #6b768c;
+  font-size: .76rem;
+}
+
+.public-service-price {
+  flex: 0 0 auto;
+  color: #3159d9;
+  font-size: .82rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.public-service-choice.is-selected,
+.public-group-slot.is-selected,
+.public-date-shortcuts button.is-selected {
+  border-color: #3159d9;
+  background: #eef3ff;
+  box-shadow: 0 0 0 2px rgba(49, 89, 217, .12);
+}
+
+.public-service-choice:focus-visible,
+.public-group-slot:focus-visible,
+.public-line-actions button:focus-visible,
+.public-date-shortcuts button:focus-visible,
+.public-selected-line select:focus-visible,
+.public-multi-date-row input:focus-visible {
+  outline: 3px solid #9eb5ff;
+  outline-offset: 2px;
+}
+
+.public-selected-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, .75fr) auto;
+  align-items: center;
+  gap: .8rem;
+  padding: .75rem;
+  border: 1px solid #e0e5ef;
+  border-radius: .82rem;
+  background: #fff;
+}
+
+.public-line-order {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  min-width: 0;
+}
+
+.public-line-order > span {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  background: #edf2ff;
+  color: #3159d9;
+  font-size: .76rem;
+  font-weight: 850;
+}
+
+.public-selected-line select,
+.public-multi-date-row input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: .65rem .7rem;
+  border: 1px solid #cdd6e7;
+  border-radius: .7rem;
+  background: #fff;
+  color: #182238;
+  font: inherit;
+}
+
+.public-line-actions {
+  display: flex;
+  gap: .35rem;
+}
+
+.public-line-actions button,
+.public-date-shortcuts button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid #d9e0ee;
+  border-radius: .65rem;
+  background: #f8faff;
+  color: #3159d9;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.public-line-actions button:last-child {
+  padding-inline: .7rem;
+}
+
+.public-line-actions button:disabled {
+  opacity: .42;
+  cursor: default;
+}
+
+.public-multi-date-row {
+  display: grid;
+  grid-template-columns: auto minmax(10rem, .65fr) minmax(13rem, 1fr);
+  align-items: end;
+  gap: .7rem;
+  margin-top: 1rem;
+}
+
+.public-multi-date-row > label {
+  display: grid;
+  gap: .35rem;
+  color: #4c5870;
+  font-size: .82rem;
+  font-weight: 650;
+}
+
+.public-date-shortcuts {
+  display: flex;
+  gap: .4rem;
+}
+
+.public-date-shortcuts button {
+  padding-inline: .75rem;
+}
+
+.public-group-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+  margin-top: 1rem;
+}
+
+.public-group-slot > span:last-child {
+  flex: 0 0 auto;
+  color: #3159d9;
+  font-size: .8rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.public-group-summary {
+  padding: 1rem;
+  border-radius: .85rem;
+  background: #f4f7ff;
+}
+
+.public-group-summary > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.public-group-summary > div > span {
+  color: #637089;
+}
+
+.public-group-summary ol {
+  display: grid;
+  gap: .55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public-group-summary li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: .55rem;
+  border-top: 1px solid #dfe5ef;
+}
+
+.public-group-summary li > span:last-child {
+  flex: 0 0 auto;
+  font-size: .8rem;
+  font-weight: 750;
+  text-align: right;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 760px) {
+  .public-service-choice-grid,
+  .public-group-slot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .public-selected-line {
+    grid-template-columns: 1fr;
+  }
+
+  .public-line-actions {
+    justify-content: flex-start;
+  }
+
+  .public-multi-date-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .public-multi-heading,
+  .public-service-choice,
+  .public-group-slot,
+  .public-group-summary > div,
+  .public-group-summary li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .public-service-price,
+  .public-group-slot > span:last-child,
+  .public-group-summary li > span:last-child {
+    text-align: left;
+  }
+
+  .public-line-actions {
+    display: grid;
+    grid-template-columns: 44px 44px minmax(0, 1fr);
+  }
+}
