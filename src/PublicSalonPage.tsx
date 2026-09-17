@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ApiRequestError, api } from './api';
 import PublicBookingPage from './PublicBookingPage';
+import PublicMultiServiceSelection from './PublicMultiServiceSelection';
+import './public-multi-service.css';
 
 type PublicMedia = {
   id: string;
@@ -181,6 +183,9 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
     </div>}
 
     <div id="randevu" className="public-salon-booking">
+      <div className="public-booking-shell public-multi-service-shell">
+        <PublicMultiServiceSelection slug={slug} />
+      </div>
       <PublicBookingPage slug={slug} />
     </div>
   </div>;
