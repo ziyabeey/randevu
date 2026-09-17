@@ -303,10 +303,12 @@ const cookieMutations = [
   ['POST', '/api/businesses'], ['POST', '/api/businesses/select'],
   ['POST', '/api/services'], ['PATCH', '/api/services/:id'],
   ['POST', '/api/staff'], ['PATCH', '/api/staff/:id'], ['PUT', '/api/staff/:staffId/services/:serviceId'],
-  ['POST', '/api/bookings'], ['POST', '/api/bookings/:id/reschedule'], ['POST', '/api/bookings/:id/status'],
+  ['POST', '/api/bookings'], ['POST', '/api/bookings/groups'],
+  ['POST', '/api/bookings/:id/reschedule'], ['POST', '/api/bookings/:id/status'],
   ['POST', '/api/customers'], ['PATCH', '/api/customers/:id'],
   ['PUT', '/api/availability/business-hours/:weekday'], ['PUT', '/api/availability/staff/:staffId/hours/:weekday'],
   ['POST', '/api/availability/blocks'], ['DELETE', '/api/availability/blocks/:id'],
+  ['POST', '/api/availability/group-slots'],
   ['PUT', '/api/public/settings'],
   ['PUT', '/api/public/profile'], ['POST', '/api/public/profile/media'],
   ['POST', '/api/public/profile/media/cleanup'], ['DELETE', '/api/public/profile/media/:mediaId'],
@@ -315,7 +317,10 @@ const cookieMutations = [
   ['PUT', '/api/team/members/:id/financial-permissions/:permission'],
 ];
 const exceptions = [
-  '/api/public/business/:slug/book', '/api/public/booking/recover', '/api/public/booking/resolve',
+  '/api/public/business/:slug/book',
+  '/api/public/business/:slug/group-slots',
+  '/api/public/business/:slug/group-book',
+  '/api/public/booking/recover', '/api/public/booking/resolve',
   '/api/manage/view', '/api/manage/slots', '/api/manage/reschedule', '/api/manage/cancel',
 ];
 const concrete = (path) => path.replace(':weekday', '1').replace(':slug', 'test-salon').replace(/:[A-Za-z]+/g, businessId);

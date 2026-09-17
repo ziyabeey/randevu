@@ -286,6 +286,31 @@
       ]
     },
     {
+      "name": "Verify F11-02 multi-service availability and atomic group creation",
+      "steps": [
+        { "database": "yzt_test", "file": "supabase/migrations/20260917120000_f11_multi_service_group_booking.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260917133000_f11_multi_service_final_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_group_availability.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_group_create_atomicity.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_group_create_concurrency.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917120000_f11_multi_service_group_booking.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917133000_f11_multi_service_final_repair.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_availability.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_create_atomicity.sql" }
+      ]
+    },
+    {
+      "name": "Verify F11-02 group notification repair and terminal retention",
+      "steps": [
+        { "database": "yzt_test", "file": "supabase/migrations/20260917143000_f11_group_notification_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_group_notification_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_terminal_pii_retention.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917143000_f11_group_notification_repair.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_notification_repair.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/s07_terminal_pii_retention.sql" }
+      ]
+    },
+    {
       "name": "Verify KC-01 Core platform schema, command ledger and RPC surface",
       "steps": [
         { "database": "yzt_test", "file": "supabase/migrations/20260916190000_kc01_core_platform_schema.sql" },
@@ -293,6 +318,22 @@
         { "database": "yzt_test", "file": "supabase/tests/kc01_core_platform_concurrency.sql" },
         { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260916190000_kc01_core_platform_schema.sql" },
         { "database": "yzt_s08_upgrade", "file": "supabase/tests/kc01_core_platform.sql" }
+      ]
+    },
+    {
+      "name": "Verify F11-02 recovery authority and RELEASE business-hours final repair",
+      "steps": [
+        {"database": "yzt_test", "file": "supabase/migrations/20260917150000_f11_business_hours_final_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260917150100_f11_group_recovery_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_final_binding.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_recovery_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_notification_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917150000_f11_business_hours_final_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917150100_f11_group_recovery_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_final_binding.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_recovery_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_notification_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_create_concurrency.sql"}
       ]
     }
   ]

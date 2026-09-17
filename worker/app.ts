@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import coreApp from './index.ts';
 import availability from './availability.ts';
 import bookings from './bookings.ts';
+import f11Groups from './f11-group-http.ts';
 import publicBookingRecovery from './public-booking-recovery.ts';
 import publicBooking from './public-booking.ts';
 import publicProfile from './public-profile.ts';
@@ -49,7 +50,9 @@ function mutationClass(method: string, path: string): MutationClass {
 
   if (normalizedMethod === 'POST' && (path === '/api/public/booking/recover'
       || path === '/api/public/booking/resolve'
-      || /^\/api\/public\/business\/[^/]+\/book$/.test(path))) {
+      || /^\/api\/public\/business\/[^/]+\/book$/.test(path)
+      || /^\/api\/public\/business\/[^/]+\/group-slots$/.test(path)
+      || /^\/api\/public\/business\/[^/]+\/group-book$/.test(path))) {
     return 'public';
   }
 
@@ -84,6 +87,9 @@ app.get('/api/deployment-health', (context) => deploymentHealth(context.req.raw,
 // partial successful snapshot. Mutations continue through their existing routers.
 app.route('/', snapshotReads);
 app.route('/', coreApp);
+// F11-02 exact group routes are registered before provisional handlers so the
+// final 503/error semantics and the public gate are the authoritative surface.
+app.route('/api', f11Groups);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);
 app.route('/api/customers', customers);

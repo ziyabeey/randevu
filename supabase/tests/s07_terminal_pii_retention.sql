@@ -50,6 +50,19 @@ values (
   '95000000-0000-4000-8000-000000000001',true
 ) on conflict (business_id,staff_id,service_id) do update set active=true;
 
+-- Keep this fixture publishable when the same retention assertions are rerun
+-- after F10's public-appointment readiness guard has been installed.
+insert into public.business_hours(business_id,weekday,starts_local,ends_local,active)
+values (
+  '94000000-0000-4000-8000-000000000001',1,time '09:00',time '18:00',true
+);
+
+insert into public.staff_hours(business_id,staff_id,weekday,starts_local,ends_local,active)
+values (
+  '94000000-0000-4000-8000-000000000001',
+  '96000000-0000-4000-8000-000000000001',1,time '09:00',time '18:00',true
+);
+
 -- 503 independent appointment/recovery anchors:
 -- 1..501 old terminal jobs, 502 just inside the retention boundary, 503 active.
 insert into public.customers(id,business_id,name,email,created_by)
