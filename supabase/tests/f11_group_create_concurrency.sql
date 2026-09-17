@@ -290,156 +290,142 @@ exception when others then
 end
 $$;
 
--- F11-04 high fan-out acceptance. The two-session block above remains the lock
--- correctness proof; this layer proves the bounded 100-request cardinality at
--- the same staff/interval under 100 distinct idempotency keys. The coordinator
--- session plus 99 dblink backends uses exactly 100 client slots, so it does not
--- require changing the disposable PostgreSQL server configuration.
+-- F11-04 bounded high fan-out acceptance. The genuine two-session block above
+-- remains the lock-order proof; this layer drives 100 distinct keys through the
+-- same staff/interval without turning PostgreSQL max_connections into the test.
+-- Twenty requests are truly in-flight per wave, five waves total.
 do $$
 declare
   v_business uuid := 'd1710000-0000-4000-8000-000000000001';
   v_owner uuid := 'd1700000-0000-4000-8000-000000000001';
-  v_day date := date_trunc('week',current_date)::date+7;
   v_start timestamptz := (date_trunc('week',current_date)::date+7+time '13:00') at time zone 'Europe/Istanbul';
   v_lock_key bigint := hashtextextended(v_business::text, 0);
   v_lock_held boolean := false;
   v_lines jsonb := '[{"serviceId":"d1730000-0000-4000-8000-000000000001"},{"serviceId":"d1730000-0000-4000-8000-000000000002"}]'::jsonb;
   v_conn text;
   v_sql text;
-  v_blocked integer := 0;
+  v_blocked integer;
+  v_busy integer;
+  v_index integer;
   v_result jsonb;
+  v_error text;
+  v_ok integer := 0;
+  v_failed integer := 0;
+  v_bad_error integer := 0;
+  v_rows integer;
+  v_groups integer;
+  v_commands integer;
+  v_orphans integer;
+  v_winner_group uuid;
 begin
-  if current_setting('max_connections')::integer < 100 then
-    raise exception 'F11-04 fanout requires 100 client slots, server exposes %',current_setting('max_connections');
-  end if;
-
-  perform pg_advisory_lock(v_lock_key);
-  v_lock_held := true;
-
-  for i in 1..99 loop
-    v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
+  -- Open a bounded reusable pool. Session-level role/claims survive each
+  -- autocommit statement, so every wave exercises the real authenticated RPC.
+  for i in 1..20 loop
+    v_conn := 'f1104_fanout_'||lpad(i::text,2,'0');
     perform dblink_connect(
       v_conn,
       'host=127.0.0.1 port=5432 dbname='||current_database()
         ||' user=postgres password=postgres application_name='||v_conn
     );
-    perform dblink_exec(v_conn,'set statement_timeout=60000');
+    perform dblink_exec(v_conn,'set statement_timeout=30000');
     perform dblink_exec(v_conn,'set role authenticated');
     perform dblink_exec(v_conn,'set "request.jwt.claim.sub" = '''||v_owner::text||'''');
     perform dblink_exec(v_conn,$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
-
-    v_sql := format($q$
-      select public.create_appointment_group(
-        %L::uuid,%L,%L,%L::jsonb,%L::timestamptz,%L
-      )
-    $q$,
-      v_business,
-      'f1104-fanout-'||lpad(i::text,3,'0'),
-      'Fanout Remote '||lpad(i::text,3,'0'),
-      v_lines,
-      v_start,
-      '055520'||lpad(i::text,5,'0')
-    );
-    if dblink_send_query(v_conn,v_sql) <> 1 then
-      raise exception 'F11-04 fanout request % did not start',i;
-    end if;
   end loop;
 
-  -- All 99 remote requests must be in-flight at the tenant lock before the local
-  -- 100th request is executed re-entrantly under the same session lock.
-  for attempt in 1..1000 loop
-    perform pg_stat_clear_snapshot();
-    select count(*)::integer into v_blocked
-    from pg_stat_activity
-    where application_name like 'f1104_fanout_%'
-      and wait_event_type='Lock';
-    exit when v_blocked=99;
-    perform pg_sleep(0.01);
-  end loop;
-  if v_blocked<>99 then
-    raise exception 'F11-04 fanout did not park 99 remote requests (blocked=%)',v_blocked;
-  end if;
+  for v_wave in 1..5 loop
+    perform pg_advisory_lock(v_lock_key);
+    v_lock_held := true;
 
-  perform set_config('request.jwt.claim.sub',v_owner::text,true);
-  perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
-  v_result := public.create_appointment_group(
-    v_business,'f1104-fanout-100','Fanout Local Winner',v_lines,v_start,'05552000100'
-  );
-  if v_result is null or v_result->>'groupId' is null then
-    raise exception 'F11-04 local fanout winner returned no group';
-  end if;
-  perform set_config('f1104.fanout_group',v_result->>'groupId',false);
-
-  perform pg_advisory_unlock(v_lock_key);
-  v_lock_held := false;
-  raise notice 'F11-04 fanout armed: 99 remote + 1 local create requests were concurrently in-flight';
-exception when others then
-  if v_lock_held then perform pg_advisory_unlock(v_lock_key); end if;
-  for i in 1..99 loop
-    v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
-    begin perform dblink_disconnect(v_conn); exception when others then null; end;
-  end loop;
-  raise;
-end
-$$;
-
--- The local winner above commits with the DO statement. Remote requests run in
--- autocommit mode, so each losing conflict releases its xact locks immediately;
--- this collection phase can safely wait for all 99 without retaining a loser lock.
-do $$
-declare
-  v_business uuid := 'd1710000-0000-4000-8000-000000000001';
-  v_group uuid := current_setting('f1104.fanout_group')::uuid;
-  v_conn text;
-  v_busy integer;
-  v_ok integer := 0;
-  v_failed integer := 0;
-  v_bad_error integer := 0;
-  v_result jsonb;
-  v_error text;
-  v_rows integer;
-  v_groups integer;
-  v_commands integer;
-  v_orphans integer;
-begin
-  -- Let the queued autocommit statements drain. No completed loser holds the
-  -- tenant lock, so progress is independent of result collection order.
-  for attempt in 1..12000 loop
-    v_busy := 0;
-    for i in 1..99 loop
-      v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
-      v_busy := v_busy + dblink_is_busy(v_conn);
-    end loop;
-    exit when v_busy=0;
-    perform pg_sleep(0.01);
-  end loop;
-  if v_busy<>0 then raise exception 'F11-04 fanout timed out with % busy requests',v_busy; end if;
-
-  for i in 1..99 loop
-    v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
-    v_result := null;
-    v_error := null;
-    begin
-      select t.result into strict v_result
-      from dblink_get_result(v_conn) as t(result jsonb);
-      v_ok := v_ok+1;
-    exception when others then
-      v_error := sqlerrm;
-      v_failed := v_failed+1;
-      if v_error not like '%APPOINTMENT_CONFLICT%'
-         and v_error not like '%GROUP_SLOT_UNAVAILABLE%' then
-        v_bad_error := v_bad_error+1;
+    for i in 1..20 loop
+      v_index := (v_wave-1)*20+i;
+      v_conn := 'f1104_fanout_'||lpad(i::text,2,'0');
+      v_sql := format($q$
+        select public.create_appointment_group(
+          %L::uuid,%L,%L,%L::jsonb,%L::timestamptz,%L
+        )
+      $q$,
+        v_business,
+        'f1104-fanout-'||lpad(v_index::text,3,'0'),
+        'Fanout Customer '||lpad(v_index::text,3,'0'),
+        v_lines,
+        v_start,
+        '055520'||lpad(v_index::text,5,'0')
+      );
+      if dblink_send_query(v_conn,v_sql) <> 1 then
+        raise exception 'F11-04 fanout request % did not start',v_index;
       end if;
-    end;
-    begin
-      perform * from dblink_get_result(v_conn,false) as t(result jsonb);
-    exception when others then null;
-    end;
+    end loop;
+
+    -- Every request in the wave must have reached the canonical tenant lock
+    -- before release; otherwise this would be sequential load, not contention.
+    v_blocked := 0;
+    for attempt in 1..1000 loop
+      perform pg_stat_clear_snapshot();
+      select count(*)::integer into v_blocked
+      from pg_stat_activity
+      where application_name like 'f1104_fanout_%'
+        and wait_event_type='Lock';
+      exit when v_blocked=20;
+      perform pg_sleep(0.01);
+    end loop;
+    if v_blocked<>20 then
+      raise exception 'F11-04 fanout wave % parked %/20 requests',v_wave,v_blocked;
+    end if;
+
+    perform pg_advisory_unlock(v_lock_key);
+    v_lock_held := false;
+
+    -- Autocommit is deliberate here: the first successful statement releases
+    -- its row/exclusion locks before the rest of the wave finishes.
+    for attempt in 1..6000 loop
+      v_busy := 0;
+      for i in 1..20 loop
+        v_conn := 'f1104_fanout_'||lpad(i::text,2,'0');
+        v_busy := v_busy+dblink_is_busy(v_conn);
+      end loop;
+      exit when v_busy=0;
+      perform pg_sleep(0.01);
+    end loop;
+    if v_busy<>0 then
+      raise exception 'F11-04 fanout wave % timed out with % busy requests',v_wave,v_busy;
+    end if;
+
+    for i in 1..20 loop
+      v_conn := 'f1104_fanout_'||lpad(i::text,2,'0');
+      v_result := null;
+      v_error := null;
+      begin
+        select t.result into strict v_result
+        from dblink_get_result(v_conn) as t(result jsonb);
+        v_ok := v_ok+1;
+        if v_winner_group is null then
+          v_winner_group := (v_result->>'groupId')::uuid;
+        elsif v_winner_group <> (v_result->>'groupId')::uuid then
+          raise exception 'F11-04 fanout produced multiple winner groups';
+        end if;
+      exception when others then
+        v_error := sqlerrm;
+        v_failed := v_failed+1;
+        if v_error not like '%APPOINTMENT_CONFLICT%'
+           and v_error not like '%GROUP_SLOT_UNAVAILABLE%' then
+          v_bad_error := v_bad_error+1;
+        end if;
+      end;
+      begin
+        perform * from dblink_get_result(v_conn,false) as t(result jsonb);
+      exception when others then null;
+      end;
+    end loop;
+  end loop;
+
+  for i in 1..20 loop
+    v_conn := 'f1104_fanout_'||lpad(i::text,2,'0');
     perform dblink_disconnect(v_conn);
   end loop;
 
-  if v_ok<>0 or v_failed<>99 or v_bad_error<>0 then
-    raise exception 'F11-04 fanout expected local winner + 99 deterministic conflicts, remote ok=% failed=% bad_error=%',
+  if v_ok<>1 or v_failed<>99 or v_bad_error<>0 or v_winner_group is null then
+    raise exception 'F11-04 bounded fanout expected 1 winner + 99 deterministic conflicts, ok=% failed=% bad_error=%',
       v_ok,v_failed,v_bad_error;
   end if;
 
@@ -450,13 +436,6 @@ begin
     raise exception 'F11-04 fanout expected one durable command, found %',v_commands;
   end if;
 
-  if not exists (
-    select 1 from public.booking_commands bc
-    where bc.business_id=v_business
-      and bc.idempotency_key='f1104-fanout-100'
-      and bc.group_id=v_group
-  ) then raise exception 'F11-04 fanout local winner command/group link missing'; end if;
-
   select count(*)::integer into v_groups
   from public.appointment_groups g
   where g.business_id=v_business
@@ -466,9 +445,14 @@ begin
     );
   select count(*)::integer into v_rows
   from public.appointments a
-  where a.business_id=v_business and a.group_id=v_group;
+  where a.business_id=v_business and a.group_id=v_winner_group;
   if v_groups<>1 or v_rows<>2 then
     raise exception 'F11-04 fanout half-state: groups=% lines=%',v_groups,v_rows;
+  end if;
+
+  if (select count(*) from public.appointment_events e
+      where e.business_id=v_business and e.group_id=v_winner_group and e.event_type='created')<>1 then
+    raise exception 'F11-04 fanout winner did not produce exactly one create event';
   end if;
 
   select count(*)::integer into v_orphans
@@ -499,10 +483,11 @@ begin
     raise exception 'F11-04 fanout changed fixture cardinality beyond one two-line winner';
   end if;
 
-  raise notice 'F11-04 100-way fanout accepted: requests=100 winners=1 conflicts=99 commands=1 groups=1 lines=2 orphan_evidence=0';
+  raise notice 'F11-04 bounded fanout accepted: requests=100 concurrency=20 waves=5 winners=1 conflicts=99 commands=1 groups=1 lines=2 orphan_evidence=0';
 exception when others then
-  for i in 1..99 loop
-    v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
+  if v_lock_held then perform pg_advisory_unlock(v_lock_key); end if;
+  for i in 1..20 loop
+    v_conn := 'f1104_fanout_'||lpad(i::text,2,'0');
     begin perform dblink_disconnect(v_conn); exception when others then null; end;
   end loop;
   raise;
