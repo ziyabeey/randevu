@@ -103,8 +103,8 @@ function timeInZone(value: string, timezone: string) {
 }
 
 function zonedLocalToIso(date: string, time: string, timezone: string) {
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = time.split(':').map(Number);
+  const [year = Number.NaN, month = Number.NaN, day = Number.NaN] = date.split('-').map(Number);
+  const [hour = Number.NaN, minute = Number.NaN] = time.split(':').map(Number);
   if (![year, month, day, hour, minute].every(Number.isFinite)) throw new Error('Tarih veya saat geçerli değil.');
   const desiredUtc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
   const guess = new Date(desiredUtc);
