@@ -321,6 +321,14 @@ async function uiContains(client, text, timeoutMs = 5_000) {
   return waitFor(async () => (await call(client, 'text')).includes(text), `UI did not show "${text}"`, timeoutMs);
 }
 
+async function waitForEnabledButton(client, text, timeoutMs = 5_000) {
+  return waitFor(
+    async () => (await call(client, 'buttons')).some((button) => button.text.includes(text) && !button.disabled),
+    `button did not become enabled: ${text}`,
+    timeoutMs,
+  );
+}
+
 function passed(name) { console.log(`F11-03 browser passed: ${name}`); }
 
 try {
@@ -385,6 +393,7 @@ try {
   //    than leave the customer retrying a version the server already replaced.
   fixture.rescheduleMode = 'conflict';
   assert.equal(await call(page, 'pickSlot', 0), true);
+  await waitForEnabledButton(page, 'Seçilen saate taşı');
   const viewsBeforeConflict = requestsTo('/api/manage/view').length;
   const slotsBeforeConflict = requestsTo('/api/manage/slots').length;
   assert.equal(await call(page, 'click', 'Seçilen saate taşı'), true);
@@ -403,6 +412,7 @@ try {
   assert.equal(await call(page, 'click', 'Saatleri göster'), true);
   await waitFor(async () => (await call(page, 'slots')).length === 2, 'slots did not reload after the conflict');
   assert.equal(await call(page, 'pickSlot', 1), true);
+  await waitForEnabledButton(page, 'Seçilen saate taşı');
   assert.equal(await call(page, 'click', 'Seçilen saate taşı'), true);
   await uiContains(page, 'tarihine taşındı');
   const retry = requestsTo('/api/manage/reschedule').at(-1);
@@ -436,6 +446,7 @@ try {
   assert.equal(legacySlotRequest.body.group, undefined);
   assert.equal(legacySlotRequest.body.staffId, 'any');
   assert.equal(await call(page, 'pickSlot', 0), true);
+  await waitForEnabledButton(page, 'Seçilen saate taşı');
   assert.equal(await call(page, 'click', 'Seçilen saate taşı'), true);
   await uiContains(page, 'tarihine taşındı');
   const legacyReschedule = requestsTo('/api/manage/reschedule').at(-1);
