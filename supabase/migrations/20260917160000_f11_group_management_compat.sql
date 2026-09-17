@@ -826,7 +826,7 @@ begin
   select
     p_business_id,
     a.id,
-    'status_changed',
+    'cancelled',
     p_actor_user_id,
     p_actor_type,
     case when a.status='cancelled' then 'scheduled' else a.status end,

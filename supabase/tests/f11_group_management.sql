@@ -9,6 +9,11 @@ begin
 end
 $$;
 
+-- S08 revokes the default EXECUTE on functions created by the migration role in
+-- every schema, pg_temp included, so this helper needs an explicit grant before
+-- the assertions run under the authenticated role.
+grant execute on function pg_temp.f1103_assert(boolean,text) to authenticated;
+
 insert into auth.users(id,email,raw_user_meta_data)
 values ('fc100000-0000-4000-8000-000000000001','f1103-owner@example.invalid','{}'::jsonb)
 on conflict(id) do nothing;
@@ -58,7 +63,12 @@ values ('fc110000-0000-4000-8000-000000000001',true,15,0,30)
 on conflict(business_id) do update
 set enabled=true,step_minutes=15,min_notice_minutes=0,horizon_days=30;
 
-set local role authenticated;
+-- The behaviour assertions below read committed rows directly, which API roles
+-- are never granted. They therefore run with owner rights while the JWT claims
+-- stay set: every management RPC is SECURITY DEFINER and authorizes itself from
+-- auth.uid() plus is_active_member, so the authorization path is still the one
+-- under test. The object-ACL boundary for anon/authenticated is asserted
+-- separately in this file.
 select set_config('request.jwt.claim.sub','fc100000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 
@@ -285,7 +295,7 @@ begin
   select count(*)::integer into v_changed_events
   from public.appointment_events e
   where e.business_id='fc110000-0000-4000-8000-000000000001'
-    and e.group_id=v_group and e.event_type='status_changed'
+    and e.group_id=v_group and e.event_type='cancelled'
     and e.payload->>'reason'='grup iptali';
   perform pg_temp.f1103_assert(v_changed_events=1,'whole-group cancel audited an already-cancelled sibling');
 

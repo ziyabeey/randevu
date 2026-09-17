@@ -140,7 +140,7 @@ begin
   select
     p_business_id,
     a.id,
-    'status_changed',
+    'cancelled',
     p_actor_user_id,
     p_actor_type,
     changed.item->>'fromStatus',
@@ -260,7 +260,7 @@ begin
   insert into public.appointment_events(
     business_id,appointment_id,event_type,actor_user_id,actor_type,from_status,to_status,payload
   ) values (
-    p_business_id,p_appointment_id,'status_changed',auth.uid(),'member',
+    p_business_id,p_appointment_id,'cancelled',auth.uid(),'member',
     v_line.status,'cancelled',
     jsonb_build_object(
       'groupId',p_group_id,
