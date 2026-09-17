@@ -26,7 +26,7 @@ insert into public.services(
   ('d1730000-0000-4000-8000-000000000001','d1710000-0000-4000-8000-000000000001','Race Boya',45,10,10,'Renk',10,null,'range',20000,30000,'TRY',true),
   ('d1730000-0000-4000-8000-000000000002','d1710000-0000-4000-8000-000000000001','Race Kesim',30,0,0,'Genel',20,15000,'fixed',15000,15000,'TRY',true);
 
--- One eligible stylist only: the two reservations cannot both be placed.
+-- One eligible stylist only: competing reservations cannot both be placed.
 insert into public.staff_profiles(id,business_id,name,active)
 values ('d1740000-0000-4000-8000-000000000001','d1710000-0000-4000-8000-000000000001','Race Staff',true);
 
@@ -97,8 +97,6 @@ begin
         'host=127.0.0.1 port=5432 dbname='||current_database()
           ||' user=postgres password=postgres application_name='||v_conn
       );
-      -- Both writers are deliberately parked on the tenant lock while the race
-      -- is armed, so their budget must cover that wait plus the winner's commit.
       perform dblink_exec(v_conn,'set statement_timeout=30000');
       perform dblink_exec(v_conn,'begin');
       perform dblink_exec(v_conn,'set local role authenticated');
@@ -129,8 +127,6 @@ begin
       raise exception 'could not start preferred race writer %', v_first_conn;
     end if;
 
-    -- Prove the preferred writer entered the lock queue first. This makes both
-    -- A-first and B-first completion orders deterministic across the two passes.
     v_first_waited := false;
     for i in 1..300 loop
       perform pg_stat_clear_snapshot();
@@ -154,8 +150,6 @@ begin
       raise exception 'could not start second race writer %', v_second_conn;
     end if;
 
-    -- Both must actually be waiting before the lock is released; otherwise the
-    -- test would prove nothing about interleaving.
     v_blocked := 0;
     for i in 1..300 loop
       perform pg_stat_clear_snapshot();
@@ -173,10 +167,6 @@ begin
     perform pg_advisory_unlock(v_lock_key);
     v_lock_held := false;
 
-    -- Collect whichever writer finishes first and end that remote transaction
-    -- before waiting on the other. A successful winner otherwise retains the
-    -- exclusion lock needed by the loser, making a fixed A-then-B collection
-    -- order deadlock when B wins.
     for i in 1..2 loop
       v_conn := null;
       for j in 1..3000 loop
@@ -206,8 +196,6 @@ begin
         v_current_error := sqlerrm;
       end;
 
-      -- libpq can accept COMMIT/ROLLBACK only after the trailing empty result is
-      -- consumed. Drain it for both success and remote-error paths.
       perform * from dblink_get_result(v_conn, false) as t(result jsonb);
       get diagnostics v_drain_rows = row_count;
       if v_drain_rows <> 0 then
@@ -275,8 +263,6 @@ begin
         v_scenario, v_rows;
     end if;
 
-    -- The key-scoped checks prove the intended command survived. Whole-fixture
-    -- totals also reject orphan groups or lines with no booking-command link.
     select count(*)::integer into v_groups
     from public.appointment_groups g
     where g.business_id = v_business;
@@ -300,6 +286,225 @@ exception when others then
   begin perform dblink_exec('f1102_race_b','rollback'); exception when others then null; end;
   begin perform dblink_disconnect('f1102_race_a'); exception when others then null; end;
   begin perform dblink_disconnect('f1102_race_b'); exception when others then null; end;
+  raise;
+end
+$$;
+
+-- F11-04 high fan-out acceptance. The two-session block above remains the lock
+-- correctness proof; this layer proves the bounded 100-request cardinality at
+-- the same staff/interval under 100 distinct idempotency keys. The coordinator
+-- session plus 99 dblink backends uses exactly 100 client slots, so it does not
+-- require changing the disposable PostgreSQL server configuration.
+do $$
+declare
+  v_business uuid := 'd1710000-0000-4000-8000-000000000001';
+  v_owner uuid := 'd1700000-0000-4000-8000-000000000001';
+  v_day date := date_trunc('week',current_date)::date+7;
+  v_start timestamptz := (date_trunc('week',current_date)::date+7+time '13:00') at time zone 'Europe/Istanbul';
+  v_lock_key bigint := hashtextextended(v_business::text, 0);
+  v_lock_held boolean := false;
+  v_lines jsonb := '[{"serviceId":"d1730000-0000-4000-8000-000000000001"},{"serviceId":"d1730000-0000-4000-8000-000000000002"}]'::jsonb;
+  v_conn text;
+  v_sql text;
+  v_blocked integer := 0;
+  v_result jsonb;
+begin
+  if current_setting('max_connections')::integer < 100 then
+    raise exception 'F11-04 fanout requires 100 client slots, server exposes %',current_setting('max_connections');
+  end if;
+
+  perform pg_advisory_lock(v_lock_key);
+  v_lock_held := true;
+
+  for i in 1..99 loop
+    v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
+    perform dblink_connect(
+      v_conn,
+      'host=127.0.0.1 port=5432 dbname='||current_database()
+        ||' user=postgres password=postgres application_name='||v_conn
+    );
+    perform dblink_exec(v_conn,'set statement_timeout=60000');
+    perform dblink_exec(v_conn,'set role authenticated');
+    perform dblink_exec(v_conn,'set "request.jwt.claim.sub" = '''||v_owner::text||'''');
+    perform dblink_exec(v_conn,$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+
+    v_sql := format($q$
+      select public.create_appointment_group(
+        %L::uuid,%L,%L,%L::jsonb,%L::timestamptz,%L
+      )
+    $q$,
+      v_business,
+      'f1104-fanout-'||lpad(i::text,3,'0'),
+      'Fanout Remote '||lpad(i::text,3,'0'),
+      v_lines,
+      v_start,
+      '055520'||lpad(i::text,5,'0')
+    );
+    if dblink_send_query(v_conn,v_sql) <> 1 then
+      raise exception 'F11-04 fanout request % did not start',i;
+    end if;
+  end loop;
+
+  -- All 99 remote requests must be in-flight at the tenant lock before the local
+  -- 100th request is executed re-entrantly under the same session lock.
+  for attempt in 1..1000 loop
+    perform pg_stat_clear_snapshot();
+    select count(*)::integer into v_blocked
+    from pg_stat_activity
+    where application_name like 'f1104_fanout_%'
+      and wait_event_type='Lock';
+    exit when v_blocked=99;
+    perform pg_sleep(0.01);
+  end loop;
+  if v_blocked<>99 then
+    raise exception 'F11-04 fanout did not park 99 remote requests (blocked=%)',v_blocked;
+  end if;
+
+  perform set_config('request.jwt.claim.sub',v_owner::text,true);
+  perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+  v_result := public.create_appointment_group(
+    v_business,'f1104-fanout-100','Fanout Local Winner',v_lines,v_start,'05552000100'
+  );
+  if v_result is null or v_result->>'groupId' is null then
+    raise exception 'F11-04 local fanout winner returned no group';
+  end if;
+  perform set_config('f1104.fanout_group',v_result->>'groupId',false);
+
+  perform pg_advisory_unlock(v_lock_key);
+  v_lock_held := false;
+  raise notice 'F11-04 fanout armed: 99 remote + 1 local create requests were concurrently in-flight';
+exception when others then
+  if v_lock_held then perform pg_advisory_unlock(v_lock_key); end if;
+  for i in 1..99 loop
+    v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
+    begin perform dblink_disconnect(v_conn); exception when others then null; end;
+  end loop;
+  raise;
+end
+$$;
+
+-- The local winner above commits with the DO statement. Remote requests run in
+-- autocommit mode, so each losing conflict releases its xact locks immediately;
+-- this collection phase can safely wait for all 99 without retaining a loser lock.
+do $$
+declare
+  v_business uuid := 'd1710000-0000-4000-8000-000000000001';
+  v_group uuid := current_setting('f1104.fanout_group')::uuid;
+  v_conn text;
+  v_busy integer;
+  v_ok integer := 0;
+  v_failed integer := 0;
+  v_bad_error integer := 0;
+  v_result jsonb;
+  v_error text;
+  v_rows integer;
+  v_groups integer;
+  v_commands integer;
+  v_orphans integer;
+begin
+  -- Let the queued autocommit statements drain. No completed loser holds the
+  -- tenant lock, so progress is independent of result collection order.
+  for attempt in 1..12000 loop
+    v_busy := 0;
+    for i in 1..99 loop
+      v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
+      v_busy := v_busy + dblink_is_busy(v_conn);
+    end loop;
+    exit when v_busy=0;
+    perform pg_sleep(0.01);
+  end loop;
+  if v_busy<>0 then raise exception 'F11-04 fanout timed out with % busy requests',v_busy; end if;
+
+  for i in 1..99 loop
+    v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
+    v_result := null;
+    v_error := null;
+    begin
+      select t.result into strict v_result
+      from dblink_get_result(v_conn) as t(result jsonb);
+      v_ok := v_ok+1;
+    exception when others then
+      v_error := sqlerrm;
+      v_failed := v_failed+1;
+      if v_error not like '%APPOINTMENT_CONFLICT%'
+         and v_error not like '%GROUP_SLOT_UNAVAILABLE%' then
+        v_bad_error := v_bad_error+1;
+      end if;
+    end;
+    begin
+      perform * from dblink_get_result(v_conn,false) as t(result jsonb);
+    exception when others then null;
+    end;
+    perform dblink_disconnect(v_conn);
+  end loop;
+
+  if v_ok<>0 or v_failed<>99 or v_bad_error<>0 then
+    raise exception 'F11-04 fanout expected local winner + 99 deterministic conflicts, remote ok=% failed=% bad_error=%',
+      v_ok,v_failed,v_bad_error;
+  end if;
+
+  select count(*)::integer into v_commands
+  from public.booking_commands bc
+  where bc.business_id=v_business and bc.idempotency_key like 'f1104-fanout-%';
+  if v_commands<>1 then
+    raise exception 'F11-04 fanout expected one durable command, found %',v_commands;
+  end if;
+
+  if not exists (
+    select 1 from public.booking_commands bc
+    where bc.business_id=v_business
+      and bc.idempotency_key='f1104-fanout-100'
+      and bc.group_id=v_group
+  ) then raise exception 'F11-04 fanout local winner command/group link missing'; end if;
+
+  select count(*)::integer into v_groups
+  from public.appointment_groups g
+  where g.business_id=v_business
+    and g.id in (
+      select bc.group_id from public.booking_commands bc
+      where bc.business_id=v_business and bc.idempotency_key like 'f1104-fanout-%'
+    );
+  select count(*)::integer into v_rows
+  from public.appointments a
+  where a.business_id=v_business and a.group_id=v_group;
+  if v_groups<>1 or v_rows<>2 then
+    raise exception 'F11-04 fanout half-state: groups=% lines=%',v_groups,v_rows;
+  end if;
+
+  select count(*)::integer into v_orphans
+  from public.booking_commands bc
+  left join public.appointment_groups g
+    on g.business_id=bc.business_id and g.id=bc.group_id
+  where bc.business_id=v_business
+    and bc.idempotency_key like 'f1104-fanout-%'
+    and (bc.group_id is null or g.id is null);
+  if v_orphans<>0 then raise exception 'F11-04 fanout left orphan booking commands: %',v_orphans; end if;
+
+  select count(*)::integer into v_orphans
+  from public.appointment_management_capabilities c
+  left join public.appointment_groups g
+    on g.business_id=c.business_id and g.id=c.group_id
+  where c.business_id=v_business and g.id is null;
+  if v_orphans<>0 then raise exception 'F11-04 fanout left orphan management capabilities: %',v_orphans; end if;
+
+  select count(*)::integer into v_orphans
+  from public.appointment_notification_jobs j
+  left join public.appointment_groups g
+    on g.business_id=j.business_id and g.id=j.group_id
+  where j.business_id=v_business and j.group_id is not null and g.id is null;
+  if v_orphans<>0 then raise exception 'F11-04 fanout left orphan notification jobs: %',v_orphans; end if;
+
+  if (select count(*) from public.appointment_groups where business_id=v_business)<>3
+     or (select count(*) from public.appointments where business_id=v_business)<>6 then
+    raise exception 'F11-04 fanout changed fixture cardinality beyond one two-line winner';
+  end if;
+
+  raise notice 'F11-04 100-way fanout accepted: requests=100 winners=1 conflicts=99 commands=1 groups=1 lines=2 orphan_evidence=0';
+exception when others then
+  for i in 1..99 loop
+    v_conn := 'f1104_fanout_'||lpad(i::text,3,'0');
+    begin perform dblink_disconnect(v_conn); exception when others then null; end;
+  end loop;
   raise;
 end
 $$;
