@@ -493,6 +493,29 @@ begin
   v_occupied_start := p_starts_at-make_interval(mins=>v_line.buffer_before_minutes_snapshot);
   v_occupied_end := v_staff_active_end+make_interval(mins=>v_line.buffer_after_minutes_snapshot);
 
+  -- F11-02 authority split: RELEASE shortens only staff occupancy. The full
+  -- customer-facing service interval must still fit one active business-hours
+  -- window and must not overlap a tenant-wide availability block.
+  if not exists (
+    select 1
+    from public.business_hours bh
+    where bh.business_id=p_business_id
+      and bh.weekday=extract(dow from (p_starts_at at time zone v_timezone)::date)::smallint
+      and bh.active
+      and ((((p_starts_at at time zone v_timezone)::date)+bh.starts_local) at time zone v_timezone) <= p_starts_at
+      and ((((p_starts_at at time zone v_timezone)::date)+bh.ends_local) at time zone v_timezone) >= v_ends_at
+  ) or exists (
+    select 1
+    from public.availability_blocks ab
+    where ab.business_id=p_business_id
+      and ab.staff_id is null
+      and ab.active
+      and ab.starts_at<v_ends_at
+      and ab.ends_at>p_starts_at
+  ) then
+    raise exception 'SLOT_UNAVAILABLE';
+  end if;
+
   if exists (
     select 1 from public.appointments a
     where a.business_id=p_business_id and a.group_id=p_group_id
