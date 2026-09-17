@@ -44,12 +44,13 @@ type RecoveryRow = {
   timezone: string;
   service_name: string;
   staff_name: string;
-  price_minor: number;
+  price_minor: number | null;
   currency: string;
   management_token_ciphertext: string;
   management_token_iv: string;
   key_version: number;
   recovery_expires_at: string;
+  group_payload?: unknown;
 };
 type ResolutionRow = {
   resolution: 'committed' | 'exists_nolink' | 'closed_absent';
@@ -68,6 +69,23 @@ type ResolutionRow = {
   management_token_iv: string | null;
   key_version: number | null;
   recovery_expires_at: string | null;
+  group_payload?: unknown;
+};
+
+type PublicGroupLine = {
+  appointmentId: string;
+  serviceName: string;
+  staffName: string;
+  status: string;
+  startsAt: string;
+  endsAt: string;
+  priceType: 'fixed' | 'range';
+  priceMinor: number | null;
+};
+type PublicGroupPayload = Record<string, unknown> & {
+  currency: string;
+  timezone: string;
+  lines: PublicGroupLine[];
 };
 
 const bookingRecovery = new Hono<{ Bindings: Env }>();
@@ -94,6 +112,103 @@ function validSlug(value: unknown): value is string {
 }
 function validTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value));
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+function validCurrency(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Z]{3}$/.test(value);
+}
+function validAmount(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 1_000_000_000;
+}
+function validInteger(value: unknown): value is number {
+  return Number.isInteger(value);
+}
+function validString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function validatedGroupPayload(value: unknown, row: RecoveryRow | ResolutionRow): PublicGroupPayload | null {
+  if (!isRecord(value)
+      || !validUuid(value.groupId)
+      || !validString(value.status)
+      || value.source !== 'public'
+      || !validInteger(value.version)
+      || !validUuid(value.customerId)
+      || !validTimestamp(value.startsAt)
+      || !validTimestamp(value.endsAt)
+      || !validString(value.timezone)
+      || !validCurrency(value.currency)
+      || !validAmount(value.estimateMinMinor)
+      || !validAmount(value.estimateMaxMinor)
+      || (value.estimateMaxMinor as number) < (value.estimateMinMinor as number)
+      || !Array.isArray(value.lines)
+      || value.lines.length < 1
+      || value.lines.length > 10) {
+    return null;
+  }
+
+  let estimateMinMinor = 0;
+  let estimateMaxMinor = 0;
+  const lines: PublicGroupLine[] = [];
+  for (let index = 0; index < value.lines.length; index += 1) {
+    const line = value.lines[index];
+    if (!isRecord(line)
+        || !validUuid(line.appointmentId)
+        || line.lineOrdinal !== index + 1
+        || !validUuid(line.serviceId)
+        || !validString(line.serviceName)
+        || !validUuid(line.staffId)
+        || !validString(line.staffName)
+        || !validString(line.status)
+        || !validTimestamp(line.startsAt)
+        || !validTimestamp(line.endsAt)
+        || !validTimestamp(line.occupiedStartsAt)
+        || !validTimestamp(line.occupiedEndsAt)
+        || (line.processingCapacityPolicy !== 'HOLD' && line.processingCapacityPolicy !== 'RELEASE')
+        || !validInteger(line.passiveWaitMinutes)
+        || !validInteger(line.processingPolicyVersion)
+        || (line.priceType !== 'fixed' && line.priceType !== 'range')
+        || !validAmount(line.priceMinMinor)
+        || !validAmount(line.priceMaxMinor)
+        || (line.priceMaxMinor as number) < (line.priceMinMinor as number)
+        || !validCurrency(line.currency)
+        || line.currency !== value.currency
+        || !validInteger(line.pricePolicyVersion)) {
+      return null;
+    }
+    if (line.priceType === 'fixed') {
+      if (line.priceMinMinor !== line.priceMaxMinor || line.priceMinor !== line.priceMinMinor) return null;
+    } else if (line.priceMinor !== null) {
+      return null;
+    }
+
+    estimateMinMinor += line.priceMinMinor as number;
+    estimateMaxMinor += line.priceMaxMinor as number;
+    if (!Number.isSafeInteger(estimateMinMinor) || !Number.isSafeInteger(estimateMaxMinor)
+        || estimateMinMinor > 1_000_000_000 || estimateMaxMinor > 1_000_000_000) {
+      return null;
+    }
+    lines.push(line as unknown as PublicGroupLine);
+  }
+
+  const anchor = value.lines[0] as Record<string, unknown>;
+  if (estimateMinMinor !== value.estimateMinMinor
+      || estimateMaxMinor !== value.estimateMaxMinor
+      || anchor.appointmentId !== row.appointment_id
+      || anchor.status !== row.status
+      || anchor.startsAt !== row.starts_at
+      || anchor.endsAt !== row.ends_at
+      || anchor.serviceName !== row.service_name
+      || anchor.staffName !== row.staff_name
+      || anchor.priceMinor !== row.price_minor
+      || value.timezone !== row.timezone
+      || value.currency !== row.currency) {
+    return null;
+  }
+
+  return { ...value, lines } as PublicGroupPayload;
 }
 function validSecret(value: unknown): value is string {
   return typeof value === 'string' && value.length >= 43 && value.length <= 128 && /^[A-Za-z0-9_-]+$/.test(value);
@@ -321,6 +436,11 @@ bookingRecovery.post('/booking/recover', async (context) => {
     return context.json({ error: { code: 'BOOKING_RECOVERY_NOT_FOUND', message: 'Randevu sonucu bulunamadı.' } }, 404);
   }
 
+  const group = row.group_payload === undefined ? null : validatedGroupPayload(row.group_payload, row);
+  if (row.group_payload !== undefined && !group) {
+    return context.json({ error: { code: 'BOOKING_RESULT_UNKNOWN', message: 'Randevu sonucu doğrulanamadı.' } }, 503);
+  }
+
   const managementToken = await decryptManagementToken(context.env, row, recoveryId);
   if (!managementToken || !validSecret(managementToken)) {
     return context.json({ error: { code: 'BOOKING_RECOVERY_UNAVAILABLE', message: 'Randevu bulundu ancak yönetim bağlantısı şu anda açılamıyor.' } }, 503);
@@ -339,6 +459,7 @@ bookingRecovery.post('/booking/recover', async (context) => {
       price_minor: row.price_minor,
       currency: row.currency,
     },
+    ...(group ? { group } : {}),
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: row.recovery_expires_at },
   });
@@ -388,9 +509,15 @@ bookingRecovery.post('/booking/resolve', async (context) => {
 
   if (!row.appointment_id || !row.business_name || !row.status || !row.starts_at
       || !row.ends_at || !row.timezone || !row.service_name || !row.staff_name
-      || !Number.isInteger(row.price_minor) || !row.currency
+      || !row.currency
       || !row.management_token_ciphertext || !row.management_token_iv
       || !row.key_version || !row.recovery_expires_at) {
+    return context.json({ error: { code: 'BOOKING_RESULT_UNKNOWN', message: 'Randevu sonucu doğrulanamadı.' } }, 503);
+  }
+
+  const group = row.group_payload === undefined ? null : validatedGroupPayload(row.group_payload, row);
+  if ((row.group_payload === undefined && !Number.isInteger(row.price_minor))
+      || (row.group_payload !== undefined && !group)) {
     return context.json({ error: { code: 'BOOKING_RESULT_UNKNOWN', message: 'Randevu sonucu doğrulanamadı.' } }, 503);
   }
 
@@ -414,6 +541,7 @@ bookingRecovery.post('/booking/resolve', async (context) => {
       price_minor: row.price_minor,
       currency: row.currency,
     },
+    ...(group ? { group } : {}),
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: row.recovery_expires_at },
   });
