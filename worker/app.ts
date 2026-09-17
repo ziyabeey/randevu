@@ -3,6 +3,7 @@ import coreApp from './index.ts';
 import availability from './availability.ts';
 import bookings from './bookings.ts';
 import f11Groups from './f11-group-http.ts';
+import f11GroupManagement from './f11-group-management-http.ts';
 import publicBookingRecovery from './public-booking-recovery.ts';
 import publicBooking from './public-booking.ts';
 import publicProfile from './public-profile.ts';
@@ -87,8 +88,11 @@ app.get('/api/deployment-health', (context) => deploymentHealth(context.req.raw,
 // partial successful snapshot. Mutations continue through their existing routers.
 app.route('/', snapshotReads);
 app.route('/', coreApp);
-// F11-02 exact group routes are registered before provisional handlers so the
-// final 503/error semantics and the public gate are the authoritative surface.
+// F11-03 group management owns exact group mutation routes and shadows the four
+// historical /api/manage routes only to add native group behavior. Legacy
+// capability responses remain unchanged when no native group projection exists.
+app.route('/api', f11GroupManagement);
+// F11-02 exact group create/availability routes stay isolated behind management.
 app.route('/api', f11Groups);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);
