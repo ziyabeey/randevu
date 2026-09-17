@@ -29,6 +29,25 @@ type CalendarAppointment = {
   cancellation_reason: string | null;
   source: 'operator' | 'public';
 };
+type CalendarGroupLine = {
+  appointmentId: string;
+  lineOrdinal: number;
+  serviceName: string;
+  staffName: string;
+  status: AppointmentStatus;
+  startsAt: string;
+  endsAt: string;
+};
+type CalendarGroupDetail = {
+  groupId: string;
+  status: GroupStatus;
+  version: number;
+  startsAt: string;
+  endsAt: string;
+  lineCount: number;
+  canCancelGroup: boolean;
+  lines: CalendarGroupLine[];
+};
 type Staff = { id: string; name: string; active: boolean };
 type CalendarPayload = {
   membership: { role: 'owner' | 'manager' | 'staff' };
@@ -99,11 +118,14 @@ export default function CalendarPage() {
   const [staffId, setStaffId] = useState('all');
   const [showCancelled, setShowCancelled] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<CalendarGroupDetail | null>(null);
+  const [selectedGroupLoading, setSelectedGroupLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const mutationKeys = useRef(new Map<string, string>());
+  const selectionGeneration = useRef(0);
 
   const load = useCallback(async (requestedDate?: string, requestedView?: ViewMode, requestedStaff?: string) => {
     const nextView = requestedView ?? view;
@@ -179,13 +201,46 @@ export default function CalendarPage() {
     done: logicalGroups.filter((item) => item.group_status === 'completed').length,
   }), [logicalGroups]);
 
+  function clearSelection() {
+    selectionGeneration.current += 1;
+    setSelectedGroupId(null);
+    setSelectedGroup(null);
+    setSelectedGroupLoading(false);
+    setCancelReason('');
+  }
+
+  function selectAppointment(appointment: CalendarAppointment) {
+    const generation = ++selectionGeneration.current;
+    setSelectedGroupId(appointment.group_id);
+    setSelectedGroup(null);
+    setCancelReason('');
+    if (appointment.group_legacy_appointment_id) {
+      setSelectedGroupLoading(false);
+      return;
+    }
+
+    setSelectedGroupLoading(true);
+    void api<{ group: CalendarGroupDetail }>(`/api/bookings/groups/${appointment.group_id}`)
+      .then((result) => {
+        if (generation !== selectionGeneration.current) return;
+        setSelectedGroup(result.group);
+      })
+      .catch((error) => {
+        if (generation !== selectionGeneration.current) return;
+        setNotice(error instanceof Error ? error.message : 'Rezervasyon grubunun tam detayı yüklenemedi.');
+      })
+      .finally(() => {
+        if (generation === selectionGeneration.current) setSelectedGroupLoading(false);
+      });
+  }
+
   function navigate(amount: number) {
     const base = date || payload?.date || payload?.localDate;
     if (!base) return;
     const step = view === 'week' ? 7 * amount : amount;
     const next = addDays(base, step);
     setDate(next);
-    setSelectedGroupId(null);
+    clearSelection();
     void load(next, view, staffId);
   }
 
@@ -194,13 +249,13 @@ export default function CalendarPage() {
     const nextDate = next === 'week' && base ? mondayOf(base) : base;
     setView(next);
     if (nextDate) setDate(nextDate);
-    setSelectedGroupId(null);
+    clearSelection();
     void load(nextDate, next, staffId);
   }
 
   function changeStaff(next: string) {
     setStaffId(next);
-    setSelectedGroupId(null);
+    clearSelection();
     void load(date, view, next);
   }
 
@@ -208,7 +263,7 @@ export default function CalendarPage() {
     if (!payload?.localDate) return;
     const next = view === 'week' ? mondayOf(payload.localDate) : payload.localDate;
     setDate(next);
-    setSelectedGroupId(null);
+    clearSelection();
     void load(next, view, staffId);
   }
 
@@ -235,8 +290,7 @@ export default function CalendarPage() {
         body: JSON.stringify({ status, reason: reason || null }),
       });
       mutationKeys.current.delete(fingerprint);
-      setCancelReason('');
-      setSelectedGroupId(null);
+      clearSelection();
       await load(date, view, staffId);
       setNotice(`Randevu durumu “${statusLabel(status)}” olarak güncellendi.`);
     } catch (error) {
@@ -246,21 +300,20 @@ export default function CalendarPage() {
     }
   }
 
-  async function cancelNativeGroup(appointment: CalendarAppointment) {
+  async function cancelNativeGroup(group: CalendarGroupDetail) {
     const reason = cancelReason.trim();
-    const fingerprint = `group:${appointment.group_id}:cancel:${appointment.group_version}:${reason}`;
+    const fingerprint = `group:${group.groupId}:cancel:${group.version}:${reason}`;
     const key = mutationKey(fingerprint);
     setBusy(true);
     setNotice('');
     try {
-      await api(`/api/bookings/groups/${appointment.group_id}/cancel`, {
+      await api(`/api/bookings/groups/${group.groupId}/cancel`, {
         method: 'POST',
         headers: { 'Idempotency-Key': key },
-        body: JSON.stringify({ expectedVersion: appointment.group_version, reason: reason || null }),
+        body: JSON.stringify({ expectedVersion: group.version, reason: reason || null }),
       });
       mutationKeys.current.delete(fingerprint);
-      setCancelReason('');
-      setSelectedGroupId(null);
+      clearSelection();
       await load(date, view, staffId);
       setNotice('Rezervasyon grubu iptal edildi.');
     } catch (error) {
@@ -282,6 +335,9 @@ export default function CalendarPage() {
   const title = view === 'day'
     ? formatDate(payload.date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
     : `${formatDate(payload.date, { day: 'numeric', month: 'short' })} – ${formatDate(addDays(payload.date, 6), { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  const drawerStatus = selectedGroup?.status ?? selected?.group_status ?? 'scheduled';
+  const drawerStartsAt = selectedGroup?.startsAt ?? selected?.group_starts_at ?? '';
+  const drawerEndsAt = selectedGroup?.endsAt ?? selected?.group_ends_at ?? '';
 
   return (
     <main className="calendar-shell">
@@ -346,7 +402,7 @@ export default function CalendarPage() {
                         className={`calendar-event status-${appointment.status}`}
                         style={{ top, height }}
                         type="button"
-                        onClick={() => { setSelectedGroupId(appointment.group_id); setCancelReason(''); }}
+                        onClick={() => selectAppointment(appointment)}
                       >
                         <strong>{instantParts(appointment.starts_at, timezone).time} · {appointment.customer_name}</strong>
                         <span>{appointment.service_name}{appointment.group_line_count > 1 ? ` · ${appointment.line_ordinal}/${appointment.group_line_count}` : ''}</span>
@@ -369,7 +425,7 @@ export default function CalendarPage() {
                 <header><span>{formatDate(day, { weekday: 'short' })}</span><strong>{formatDate(day, { day: 'numeric', month: 'short' })}</strong></header>
                 <div className="calendar-week-list">
                   {items.length ? items.map((appointment) => (
-                    <button type="button" className={`calendar-week-event status-${appointment.status}`} key={appointment.appointment_id} onClick={() => { setSelectedGroupId(appointment.group_id); setCancelReason(''); }}>
+                    <button type="button" className={`calendar-week-event status-${appointment.status}`} key={appointment.appointment_id} onClick={() => selectAppointment(appointment)}>
                       <strong>{instantParts(appointment.starts_at, timezone).time}</strong>
                       <span>{appointment.customer_name}</span>
                       <small>{appointment.staff_name} · {appointment.service_name}{appointment.group_line_count > 1 ? ` · ${appointment.line_ordinal}/${appointment.group_line_count}` : ''}</small>
@@ -383,15 +439,23 @@ export default function CalendarPage() {
       )}
 
       {selected && (
-        <div className="calendar-drawer-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedGroupId(null); }}>
+        <div className="calendar-drawer-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) clearSelection(); }}>
           <aside className="calendar-drawer" aria-label="Rezervasyon detayı">
-            <button className="calendar-drawer-close" type="button" onClick={() => setSelectedGroupId(null)} aria-label="Kapat">×</button>
+            <button className="calendar-drawer-close" type="button" onClick={clearSelection} aria-label="Kapat">×</button>
             <p className="calendar-kicker">REZERVASYON DETAYI</p>
             <h2>{selected.customer_name}</h2>
-            <span className={`calendar-status status-${selected.group_status}`}>{statusLabel(selected.group_status)}</span>
+            <span className={`calendar-status status-${drawerStatus}`}>{statusLabel(drawerStatus)}</span>
             <dl>
-              <div><dt>Tarih</dt><dd>{new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, dateStyle: 'long', timeStyle: 'short' }).format(new Date(selected.group_starts_at))} – {new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, timeStyle: 'short' }).format(new Date(selected.group_ends_at))}</dd></div>
-              <div><dt>Hizmetler</dt><dd>{selectedLines.map((line) => <div key={line.appointment_id}>{line.line_ordinal}. {line.service_name} · {line.staff_name} · {statusLabel(line.status)}</div>)}</dd></div>
+              <div><dt>Tarih</dt><dd>{new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, dateStyle: 'long', timeStyle: 'short' }).format(new Date(drawerStartsAt))} – {new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, timeStyle: 'short' }).format(new Date(drawerEndsAt))}</dd></div>
+              <div><dt>Hizmetler</dt><dd>
+                {selected.group_legacy_appointment_id
+                  ? selectedLines.map((line) => <div key={line.appointment_id}>{line.line_ordinal}. {line.service_name} · {line.staff_name} · {statusLabel(line.status)}</div>)
+                  : selectedGroupLoading
+                    ? <span>Rezervasyonun tüm hizmetleri yükleniyor…</span>
+                    : selectedGroup
+                      ? selectedGroup.lines.map((line) => <div key={line.appointmentId}>{line.lineOrdinal}. {line.serviceName} · {line.staffName} · {statusLabel(line.status)}</div>)
+                      : <span>Rezervasyonun tam hizmet listesi doğrulanamadı.</span>}
+              </dd></div>
               {selected.group_legacy_appointment_id && selected.price_minor !== null && <div><dt>Ücret</dt><dd>{money(selected.price_minor, selected.currency)}</dd></div>}
               <div><dt>Kaynak</dt><dd>{selected.source === 'public' ? 'Online rezervasyon' : 'Operatör'}</dd></div>
               {selected.customer_phone && <div><dt>Telefon</dt><dd>{selected.customer_phone}</dd></div>}
@@ -417,12 +481,12 @@ export default function CalendarPage() {
                   )}
                 </div>
               )
-            ) : selectedLines.some((line) => line.status === 'scheduled' || line.status === 'confirmed') ? (
+            ) : selectedGroup && selectedGroup.canCancelGroup && selectedGroup.lines.some((line) => line.status === 'scheduled' || line.status === 'confirmed') ? (
               <div className="calendar-actions">
                 <p>Çok hizmetli rezervasyon tek birim olarak yönetilir. Satır düzenleme ve taşıma Randevular ekranındadır.</p>
                 <div className="calendar-cancel-box">
                   <textarea value={cancelReason} maxLength={500} rows={2} placeholder="Grup iptal nedeni (isteğe bağlı)" onChange={(event) => setCancelReason(event.target.value)} />
-                  <button className="is-danger" type="button" disabled={busy} onClick={() => void cancelNativeGroup(selected)}>Tüm rezervasyonu iptal et</button>
+                  <button className="is-danger" type="button" disabled={busy || selectedGroupLoading} onClick={() => void cancelNativeGroup(selectedGroup)}>Tüm rezervasyonu iptal et</button>
                 </div>
               </div>
             ) : null}
