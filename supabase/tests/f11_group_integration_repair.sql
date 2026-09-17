@@ -36,6 +36,17 @@ insert into public.services(
   ('fd130000-0000-4000-8000-000000000002','fd110000-0000-4000-8000-000000000001','Bakım B',30,0,0,'Genel',20,15000,'fixed',15000,15000,'TRY',true),
   ('fd130000-0000-4000-8000-000000000003','fd110000-0000-4000-8000-000000000001','Uzun Bakım',45,0,0,'Genel',30,18000,'fixed',18000,18000,'TRY',true);
 
+-- RELEASE shortens staff occupancy by 30 minutes, but business authority must
+-- continue to cover the complete 60-minute customer interval.
+insert into public.services(
+  id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,
+  category,sort_order,price_minor,price_type,price_min_minor,price_max_minor,currency,active,
+  processing_capacity_policy,passive_wait_minutes
+) values (
+  'fd130000-0000-4000-8000-000000000004','fd110000-0000-4000-8000-000000000001',
+  'Release Bakım',60,0,0,'Genel',40,20000,'fixed',20000,20000,'TRY',true,'RELEASE',30
+);
+
 insert into public.staff_profiles(id,business_id,name,active)
 values
   ('fd140000-0000-4000-8000-000000000001','fd110000-0000-4000-8000-000000000001','Ada',true),
@@ -50,7 +61,8 @@ from unnest(array[
 cross join unnest(array[
   'fd130000-0000-4000-8000-000000000001',
   'fd130000-0000-4000-8000-000000000002',
-  'fd130000-0000-4000-8000-000000000003'
+  'fd130000-0000-4000-8000-000000000003',
+  'fd130000-0000-4000-8000-000000000004'
 ]) sv;
 
 insert into public.business_hours(id,business_id,weekday,starts_local,ends_local,active)
@@ -72,6 +84,7 @@ declare
   v_day date:=date_trunc('week',current_date)::date+7;
   v_group jsonb;
   v_legacy jsonb;
+  v_release jsonb;
   v_customer uuid;
 begin
   v_group:=public.create_appointment_group(
@@ -92,8 +105,28 @@ begin
     (v_day+time '12:00') at time zone 'Europe/Istanbul','05551112233'
   ));
   perform set_config('f1103i.legacy_id',v_legacy->>'id',false);
+
+  v_release:=public.create_appointment_group(
+    'fd110000-0000-4000-8000-000000000001',
+    'f1103i-create-release-0001','Release Boundary Customer',
+    '[{"serviceId":"fd130000-0000-4000-8000-000000000004","staffId":"fd140000-0000-4000-8000-000000000001"},{"serviceId":"fd130000-0000-4000-8000-000000000001","staffId":"fd140000-0000-4000-8000-000000000002"}]'::jsonb,
+    (v_day+time '14:00') at time zone 'Europe/Istanbul','05559990000'
+  );
+  perform set_config('f1103i.release_group',v_release->>'groupId',false);
+  perform set_config('f1103i.release_line',v_release#>>'{lines,0,appointmentId}',false);
+  perform set_config('f1103i.release_sibling',v_release#>>'{lines,1,appointmentId}',false);
 end
 $$;
+
+-- Tenant-wide closure lives only in the RELEASE passive tail for an 18:00 move.
+insert into public.availability_blocks(
+  id,business_id,staff_id,starts_at,ends_at,reason,active
+) values (
+  'fd170000-0000-4000-8000-000000000001','fd110000-0000-4000-8000-000000000001',null,
+  ((date_trunc('week',current_date)::date+7)+time '18:30') at time zone 'Europe/Istanbul',
+  ((date_trunc('week',current_date)::date+7)+time '19:00') at time zone 'Europe/Istanbul',
+  'tenant closure in release tail',true
+);
 
 -- One page row is one logical reservation. Cursoring after a one-row page lands
 -- on the next group, never on the second physical line of the same group.
@@ -109,13 +142,22 @@ begin
     'fd110000-0000-4000-8000-000000000001',1,null,null
   );
   perform pg_temp.f1103i_assert(v_first.group_id<>v_group,'newest logical booking root was not returned first');
-  perform pg_temp.f1103i_assert((v_first.booking->>'lineCount')::int=1,'legacy booking did not stay a single logical item');
+  perform pg_temp.f1103i_assert((v_first.booking->>'lineCount')::int=2,'newest release booking was not one two-line logical item');
 
   select * into v_second
   from public.list_business_booking_groups_page_v3(
     'fd110000-0000-4000-8000-000000000001',1,v_first.group_starts_at,v_first.group_id
   );
-  perform pg_temp.f1103i_assert(v_second.group_id=v_group,'group cursor skipped or split the native reservation');
+  perform pg_temp.f1103i_assert(v_second.group_id<>v_first.group_id,'group cursor repeated the same logical reservation');
+
+  -- Find the original native group explicitly; adding the RELEASE fixture must
+  -- not weaken the one-row-per-group invariant.
+  select * into v_second
+  from public.list_business_booking_groups_page_v3(
+    'fd110000-0000-4000-8000-000000000001',10,null,null
+  ) p
+  where p.group_id=v_group;
+  perform pg_temp.f1103i_assert(v_second.group_id=v_group,'native reservation disappeared from group-rooted page');
   perform pg_temp.f1103i_assert((v_second.booking->>'lineCount')::int=2,'native group was not returned as one two-line item');
   perform pg_temp.f1103i_assert(jsonb_array_length(v_second.booking->'lines')=2,'native group payload lost a service line');
 
@@ -233,6 +275,72 @@ begin
     v_raised:=true;
   end;
   perform pg_temp.f1103i_assert(v_raised,'stale line-reschedule version was accepted');
+end
+$$;
+
+-- R1 integrity regression: RELEASE can shorten staff occupancy, but never the
+-- customer interval used by business hours or tenant-wide availability blocks.
+-- Both rejected moves must leave target, sibling, group CAS, audit and command
+-- ledger exactly unchanged.
+do $$
+declare
+  v_group uuid:=current_setting('f1103i.release_group')::uuid;
+  v_target uuid:=current_setting('f1103i.release_line')::uuid;
+  v_sibling uuid:=current_setting('f1103i.release_sibling')::uuid;
+  v_day date:=date_trunc('week',current_date)::date+7;
+  v_target_before jsonb;
+  v_sibling_before jsonb;
+  v_version_before integer;
+  v_events_before bigint;
+  v_commands_before bigint;
+  v_raised boolean;
+begin
+  select to_jsonb(a) into v_target_before from public.appointments a where a.id=v_target;
+  select to_jsonb(a) into v_sibling_before from public.appointments a where a.id=v_sibling;
+  select g.version into v_version_before from public.appointment_groups g where g.id=v_group;
+  select count(*) into v_events_before from public.appointment_events e where e.appointment_id=v_target;
+  select count(*) into v_commands_before from public.booking_commands bc
+  where bc.business_id='fd110000-0000-4000-8000-000000000001';
+
+  v_raised:=false;
+  begin
+    perform public.reschedule_appointment_group_line(
+      'fd110000-0000-4000-8000-000000000001',v_group,v_target,
+      'f1103i-release-past-close',v_version_before,
+      'fd140000-0000-4000-8000-000000000001',
+      (v_day+time '19:30') at time zone 'Europe/Istanbul'
+    );
+  exception when others then
+    if sqlerrm not like '%SLOT_UNAVAILABLE%' then raise; end if;
+    v_raised:=true;
+  end;
+  perform pg_temp.f1103i_assert(v_raised,'RELEASE passive tail beyond business close was accepted');
+  perform pg_temp.f1103i_assert((select to_jsonb(a)=v_target_before from public.appointments a where a.id=v_target),'past-close rejection mutated target line');
+  perform pg_temp.f1103i_assert((select to_jsonb(a)=v_sibling_before from public.appointments a where a.id=v_sibling),'past-close rejection mutated sibling line');
+  perform pg_temp.f1103i_assert((select g.version=v_version_before from public.appointment_groups g where g.id=v_group),'past-close rejection moved group version');
+  perform pg_temp.f1103i_assert((select count(*)=v_events_before from public.appointment_events e where e.appointment_id=v_target),'past-close rejection wrote audit event');
+  perform pg_temp.f1103i_assert((select count(*)=v_commands_before from public.booking_commands bc where bc.business_id='fd110000-0000-4000-8000-000000000001'),'past-close rejection moved command ledger');
+  perform pg_temp.f1103i_assert(not exists(select 1 from public.booking_commands bc where bc.business_id='fd110000-0000-4000-8000-000000000001' and bc.idempotency_key='f1103i-release-past-close'),'past-close rejection retained command claim');
+
+  v_raised:=false;
+  begin
+    perform public.reschedule_appointment_group_line(
+      'fd110000-0000-4000-8000-000000000001',v_group,v_target,
+      'f1103i-release-tenant-tail',v_version_before,
+      'fd140000-0000-4000-8000-000000000001',
+      (v_day+time '18:00') at time zone 'Europe/Istanbul'
+    );
+  exception when others then
+    if sqlerrm not like '%SLOT_UNAVAILABLE%' then raise; end if;
+    v_raised:=true;
+  end;
+  perform pg_temp.f1103i_assert(v_raised,'tenant-wide block in RELEASE passive tail was ignored');
+  perform pg_temp.f1103i_assert((select to_jsonb(a)=v_target_before from public.appointments a where a.id=v_target),'tenant-tail rejection mutated target line');
+  perform pg_temp.f1103i_assert((select to_jsonb(a)=v_sibling_before from public.appointments a where a.id=v_sibling),'tenant-tail rejection mutated sibling line');
+  perform pg_temp.f1103i_assert((select g.version=v_version_before from public.appointment_groups g where g.id=v_group),'tenant-tail rejection moved group version');
+  perform pg_temp.f1103i_assert((select count(*)=v_events_before from public.appointment_events e where e.appointment_id=v_target),'tenant-tail rejection wrote audit event');
+  perform pg_temp.f1103i_assert((select count(*)=v_commands_before from public.booking_commands bc where bc.business_id='fd110000-0000-4000-8000-000000000001'),'tenant-tail rejection moved command ledger');
+  perform pg_temp.f1103i_assert(not exists(select 1 from public.booking_commands bc where bc.business_id='fd110000-0000-4000-8000-000000000001' and bc.idempotency_key='f1103i-release-tenant-tail'),'tenant-tail rejection retained command claim');
 end
 $$;
 
