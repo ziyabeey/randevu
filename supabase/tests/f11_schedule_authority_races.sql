@@ -64,11 +64,13 @@ insert into public.availability_blocks(id,business_id,staff_id,starts_at,ends_at
 values ('d1950000-0000-4000-8000-000000000001','d1910000-0000-4000-8000-000000000001',null,
   ((date_trunc('week',current_date)::date+7)+time '18:30') at time zone 'Europe/Istanbul',
   ((date_trunc('week',current_date)::date+7)+time '19:00') at time zone 'Europe/Istanbul','f1104 release tail',true);
-set role authenticated;
 do $$
 declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_g uuid:=current_setting('f1104.gr')::uuid; v_d date:=date_trunc('week',current_date)::date+7; v_v integer; v_s timestamptz; v_bad boolean;
 begin
   select g.version,a.starts_at into v_v,v_s from public.appointment_groups g join public.appointments a on a.group_id=g.id and a.line_ordinal=1 where g.id=v_g;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub','d1900000-0000-4000-8000-000000000001',true);
+  perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
   foreach v_bad in array array[false,true] loop
     begin
       perform public.reschedule_appointment_group(v_b,v_g,case when v_bad then 'f1104-release-tail' else 'f1104-release-close' end,v_v,
@@ -79,12 +81,12 @@ begin
       if sqlerrm not like '%GROUP_SLOT_UNAVAILABLE%' and sqlerrm not like '%SLOT_UNAVAILABLE%' then raise; end if;
     end;
   end loop;
+  execute 'reset role';
   if (select version from public.appointment_groups where id=v_g)<>v_v
      or (select starts_at from public.appointments where group_id=v_g and line_ordinal=1)<>v_s then
     raise exception 'F11-04 rejected RELEASE group move changed durable state';
   end if;
 end $$;
-reset role;
 delete from public.availability_blocks where id='d1950000-0000-4000-8000-000000000001';
 
 -- Create vs business-hours mutation.
