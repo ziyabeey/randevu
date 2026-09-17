@@ -98,6 +98,15 @@ do $$
 declare
   v_deadline bigint:=floor(extract(epoch from clock_timestamp()))::bigint+300;
 begin
+  perform set_config('f11n.range_management_hash',encode(extensions.digest(
+    'f11-notification/range-management','sha256'
+  ),'hex'),false);
+  perform set_config('f11n.multi_management_hash',encode(extensions.digest(
+    'f11-notification/multi-management','sha256'
+  ),'hex'),false);
+  perform set_config('f11n.fixed_management_hash',encode(extensions.digest(
+    'f11-notification/fixed-management','sha256'
+  ),'hex'),false);
   perform set_config('f11n.range_key',pg_temp.f11n_key(
     'fa170000-0000-4000-8000-000000000101',v_deadline,repeat('1',64)
   ),false);
@@ -109,6 +118,19 @@ begin
   ),false);
 end
 $$;
+
+select pg_temp.f11n_assert(
+  not exists (
+    select 1
+    from public.appointment_management_capabilities cap
+    where cap.token_hash=any(array[
+      current_setting('f11n.range_management_hash'),
+      current_setting('f11n.multi_management_hash'),
+      current_setting('f11n.fixed_management_hash')
+    ])
+  ),
+  'fixture-specific management hash already belongs to another capability'
+);
 
 -- One RANGE line goes through the real anon gate. Its recovery bind fires the
 -- production enqueue trigger inside the booking transaction.
@@ -124,7 +146,7 @@ begin
     'p_customer_name','Tek Aralık Müşterisi',
     'p_lines',jsonb_build_array(jsonb_build_object('serviceId','fa130000-0000-4000-8000-000000000001')),
     'p_starts_at',v_start,
-    'p_management_token_hash',repeat('a',64),
+    'p_management_token_hash',current_setting('f11n.range_management_hash'),
     'p_recovery_id','fa170000-0000-4000-8000-000000000101',
     'p_recovery_secret_hash',repeat('1',64),
     'p_management_token_ciphertext',repeat('c',64),
@@ -157,6 +179,7 @@ begin
       and bc.idempotency_key=r.idempotency_key and bc.appointment_id=r.appointment_id
     where r.recovery_id='fa170000-0000-4000-8000-000000000101'
       and r.idempotency_key=current_setting('f11n.range_key')
+      and r.management_token_hash=current_setting('f11n.range_management_hash')
       and r.recovery_secret_hash=repeat('1',64)
       and r.appointment_id=current_setting('f11n.range_appointment')::uuid
       and r.group_id=current_setting('f11n.range_group')::uuid
@@ -209,7 +232,7 @@ begin
     'p_customer_name','Tek Aralık Müşterisi',
     'p_lines',jsonb_build_array(jsonb_build_object('serviceId','fa130000-0000-4000-8000-000000000001')),
     'p_starts_at',v_start,
-    'p_management_token_hash',repeat('a',64),
+    'p_management_token_hash',current_setting('f11n.range_management_hash'),
     'p_recovery_id','fa170000-0000-4000-8000-000000000101',
     'p_recovery_secret_hash',repeat('1',64),
     'p_management_token_ciphertext',repeat('c',64),
@@ -255,7 +278,7 @@ begin
       jsonb_build_object('serviceId','fa130000-0000-4000-8000-000000000002')
     ),
     'p_starts_at',v_start,
-    'p_management_token_hash',repeat('b',64),
+    'p_management_token_hash',current_setting('f11n.multi_management_hash'),
     'p_recovery_id','fa170000-0000-4000-8000-000000000102',
     'p_recovery_secret_hash',repeat('2',64),
     'p_management_token_ciphertext',repeat('d',64),
@@ -309,7 +332,7 @@ begin
     'p_service_id','fa130000-0000-4000-8000-000000000002',
     'p_staff_id','fa140000-0000-4000-8000-000000000001',
     'p_starts_at',v_start,
-    'p_management_token_hash',repeat('c',64),
+    'p_management_token_hash',current_setting('f11n.fixed_management_hash'),
     'p_recovery_id','fa170000-0000-4000-8000-000000000103',
     'p_recovery_secret_hash',repeat('3',64),
     'p_management_token_ciphertext',repeat('e',64),
