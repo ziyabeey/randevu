@@ -6,6 +6,8 @@ const page = readFileSync(new URL('../src/CustomersPage.tsx', import.meta.url), 
 const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../worker/customers.ts', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20260914110000_f10_customer_records.sql', import.meta.url), 'utf8');
+const groupProjection = readFileSync(new URL('../supabase/migrations/20260917160500_f11_group_integration_repair.sql', import.meta.url), 'utf8');
+const groupPayload = readFileSync(new URL('../supabase/migrations/20260917133000_f11_multi_service_final_repair.sql', import.meta.url), 'utf8');
 
 await test('F10-05 customers are a dedicated workspace routed through the shared API client', () => {
   assert.match(main, /const isCustomers = path === '\/customers'/);
@@ -43,11 +45,15 @@ await test('F10-05 tenant switch clears scoped state and hard-navigates only aft
   assert.ok(apiCall >= 0 && navigation > apiCall, 'tenant UI must change only after server selection succeeds');
 });
 
-await test('F10-05 customer history renders appointment snapshots instead of current master fields', () => {
-  assert.match(page, /appointment\.customer_name_snapshot/);
-  assert.match(page, /appointment\.service_name_snapshot/);
-  assert.match(page, /appointment\.staff_name_snapshot/);
-  assert.match(page, /appointment\.price_minor_snapshot/);
+await test('F10-05 customer history renders frozen booking snapshots instead of current master fields', () => {
+  assert.match(page, /booking\.customerName/);
+  assert.match(page, /line\.serviceName/);
+  assert.match(page, /line\.staffName/);
+  assert.match(page, /bookingEstimate\(booking\)/);
+  assert.match(groupProjection, /v_anchor\.customer_name_snapshot/);
+  assert.match(groupPayload, /a\.service_name_snapshot/);
+  assert.match(groupPayload, /a\.staff_name_snapshot/);
+  assert.match(groupPayload, /a\.price_min_minor_snapshot/);
   assert.match(migration, /customer_name_snapshot/);
   assert.doesNotMatch(migration, /update\s+public\.appointments[\s\S]*customer_name_snapshot/i);
 });
