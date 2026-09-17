@@ -100,7 +100,7 @@ begin
   for i in 1..500 loop perform pg_stat_clear_snapshot(); if exists(select 1 from pg_stat_activity where application_name='f1104_hours' and wait_event_type='Lock') then v_wait:=true; exit; end if; perform pg_sleep(.01); end loop;
   if not v_wait then raise exception 'F11-04 create did not reach business-hours lock'; end if;
   execute 'set local role authenticated'; perform set_config('request.jwt.claim.sub',v_u::text,true); perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
-  perform * from public.replace_business_hours_guarded(v_b,v_w,'[{"start":"09:00","end":"17:00"}]'::jsonb,null); execute 'reset role'; perform pg_advisory_unlock(v_l);
+  perform * from public.replace_business_hours_guarded(v_b,v_w,'[{"start":"09:00","end":"17:00"}]'::jsonb,'[{"start":"09:00","end":"20:00"}]'::jsonb); execute 'reset role'; perform pg_advisory_unlock(v_l);
 end $$;
 do $$ declare v_r jsonb; v_fail boolean:=false; begin
   for i in 1..3000 loop exit when dblink_is_busy('f1104_hours')=0; perform pg_sleep(.01); end loop;
@@ -109,7 +109,7 @@ do $$ declare v_r jsonb; v_fail boolean:=false; begin
   if not v_fail or exists(select 1 from public.booking_commands where business_id='d1910000-0000-4000-8000-000000000001' and idempotency_key='f1104-race-hours') then raise exception 'F11-04 business-hours race failed closed incorrectly'; end if;
 end $$;
 set role authenticated;
-select count(*) from public.replace_business_hours_guarded('d1910000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,'[{"start":"09:00","end":"20:00"}]'::jsonb,null);
+select count(*) from public.replace_business_hours_guarded('d1910000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,'[{"start":"09:00","end":"20:00"}]'::jsonb,'[{"start":"09:00","end":"17:00"}]'::jsonb);
 reset role;
 
 -- Group reschedule vs staff-hours mutation.
@@ -123,7 +123,7 @@ begin
   perform pg_advisory_lock(v_l); v_q:=format($q$select public.reschedule_appointment_group(%L::uuid,%L::uuid,%L,%s,%L::timestamptz)$q$,v_b,v_g,'f1104-race-staff-hours',v_v,(v_d+time '18:00') at time zone 'Europe/Istanbul'); perform dblink_send_query('f1104_staff_hours',v_q);
   for i in 1..500 loop perform pg_stat_clear_snapshot(); if exists(select 1 from pg_stat_activity where application_name='f1104_staff_hours' and wait_event_type='Lock') then v_wait:=true; exit; end if; perform pg_sleep(.01); end loop;
   if not v_wait then raise exception 'F11-04 reschedule did not reach staff-hours lock'; end if;
-  execute 'set local role authenticated'; perform set_config('request.jwt.claim.sub',v_u::text,true); perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true); perform * from public.replace_staff_hours_guarded(v_b,v_s,v_w,'[{"start":"09:00","end":"17:00"}]'::jsonb,null); execute 'reset role'; perform pg_advisory_unlock(v_l);
+  execute 'set local role authenticated'; perform set_config('request.jwt.claim.sub',v_u::text,true); perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true); perform * from public.replace_staff_hours_guarded(v_b,v_s,v_w,'[{"start":"09:00","end":"17:00"}]'::jsonb,'[{"start":"09:00","end":"20:00"}]'::jsonb); execute 'reset role'; perform pg_advisory_unlock(v_l);
 end $$;
 do $$ declare v_r jsonb; v_fail boolean:=false; v_g uuid:=current_setting('f1104.ga')::uuid; begin
   for i in 1..3000 loop exit when dblink_is_busy('f1104_staff_hours')=0; perform pg_sleep(.01); end loop;
@@ -132,7 +132,7 @@ do $$ declare v_r jsonb; v_fail boolean:=false; v_g uuid:=current_setting('f1104
   if not v_fail or (select version from public.appointment_groups where id=v_g)<>current_setting('f1104.gav')::integer or exists(select 1 from public.booking_commands where business_id='d1910000-0000-4000-8000-000000000001' and idempotency_key='f1104-race-staff-hours') then raise exception 'F11-04 staff-hours race left durable movement'; end if;
 end $$;
 set role authenticated;
-select count(*) from public.replace_staff_hours_guarded('d1910000-0000-4000-8000-000000000001','d1940000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,'[{"start":"09:00","end":"20:00"}]'::jsonb,null);
+select count(*) from public.replace_staff_hours_guarded('d1910000-0000-4000-8000-000000000001','d1940000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,'[{"start":"09:00","end":"20:00"}]'::jsonb,'[{"start":"09:00","end":"17:00"}]'::jsonb);
 reset role;
 
 -- Group reschedule vs tenant-wide block; line reschedule vs staff-specific block.
@@ -166,30 +166,35 @@ delete from public.availability_blocks where business_id='d1910000-0000-4000-800
 
 -- Line reschedule vs assignment removal.
 do $$
-declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_g uuid:=current_setting('f1104.gb')::uuid; v_line uuid:=current_setting('f1104.gb2')::uuid; v_d date:=date_trunc('week',current_date)::date+7; v_v integer; v_l bigint:=hashtextextended('f10-04:assignments:'||'d1910000-0000-4000-8000-000000000001',0); v_q text; v_wait boolean:=false;
+declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_g uuid:=current_setting('f1104.gb')::uuid; v_line uuid:=current_setting('f1104.gb2')::uuid; v_d date:=date_trunc('week',current_date)::date+7; v_v integer; v_l bigint:=hashtextextended('f10-04:assignments:'||'d1910000-0000-4000-8000-000000000001',0); v_q text; v_wait boolean:=false; v_expected timestamptz;
 begin
   select version into v_v from public.appointment_groups where id=v_g;
+  select updated_at into v_expected from public.staff_services where business_id=v_b and staff_id='d1940000-0000-4000-8000-000000000002' and service_id='d1930000-0000-4000-8000-000000000002';
   perform dblink_connect('f1104_assignment','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_assignment'); perform dblink_exec('f1104_assignment','set role authenticated'); perform dblink_exec('f1104_assignment','set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec('f1104_assignment',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
   perform pg_advisory_lock(v_l); v_q:=format($q$select public.reschedule_appointment_group_line(%L::uuid,%L::uuid,%L::uuid,%L,%s,%L::uuid,%L::timestamptz)$q$,v_b,v_g,v_line,'f1104-race-assignment',v_v,'d1940000-0000-4000-8000-000000000002',(v_d+time '17:00') at time zone 'Europe/Istanbul'); perform dblink_send_query('f1104_assignment',v_q);
   for i in 1..500 loop perform pg_stat_clear_snapshot(); if exists(select 1 from pg_stat_activity where application_name='f1104_assignment' and wait_event_type='Lock') then v_wait:=true; exit; end if; perform pg_sleep(.01); end loop; if not v_wait then raise exception 'F11-04 line did not reach assignment lock'; end if;
-  execute 'set local role authenticated'; perform set_config('request.jwt.claim.sub',v_u::text,true); perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true); perform public.set_staff_service_guarded(v_b,'d1940000-0000-4000-8000-000000000002','d1930000-0000-4000-8000-000000000002',false,null); execute 'reset role'; perform pg_advisory_unlock(v_l);
+  execute 'set local role authenticated'; perform set_config('request.jwt.claim.sub',v_u::text,true); perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true); perform public.set_staff_service_guarded(v_b,'d1940000-0000-4000-8000-000000000002','d1930000-0000-4000-8000-000000000002',false,v_expected); execute 'reset role'; perform pg_advisory_unlock(v_l);
 end $$;
 do $$ declare v_r jsonb; v_fail boolean:=false; v_g uuid:=current_setting('f1104.gb')::uuid; begin
   for i in 1..3000 loop exit when dblink_is_busy('f1104_assignment')=0; perform pg_sleep(.01); end loop; begin select x.r into strict v_r from dblink_get_result('f1104_assignment') x(r jsonb); exception when others then if sqlerrm not like '%SLOT_UNAVAILABLE%' and sqlerrm not like '%GROUP_SLOT_UNAVAILABLE%' then raise; end if; v_fail:=true; end; begin perform * from dblink_get_result('f1104_assignment',false) x(r jsonb); exception when others then null; end; perform dblink_disconnect('f1104_assignment'); if not v_fail or (select version from public.appointment_groups where id=v_g)<>current_setting('f1104.gbv')::integer or exists(select 1 from public.booking_commands where business_id='d1910000-0000-4000-8000-000000000001' and idempotency_key='f1104-race-assignment') then raise exception 'F11-04 assignment race left durable movement'; end if;
 end $$;
 set role authenticated;
-select public.set_staff_service_guarded('d1910000-0000-4000-8000-000000000001','d1940000-0000-4000-8000-000000000002','d1930000-0000-4000-8000-000000000002',true,null);
+do $$ declare v_expected timestamptz; begin
+  select updated_at into v_expected from public.staff_services where business_id='d1910000-0000-4000-8000-000000000001' and staff_id='d1940000-0000-4000-8000-000000000002' and service_id='d1930000-0000-4000-8000-000000000002';
+  perform public.set_staff_service_guarded('d1910000-0000-4000-8000-000000000001','d1940000-0000-4000-8000-000000000002','d1930000-0000-4000-8000-000000000002',true,v_expected);
+end $$;
 reset role;
 
 -- Service and staff row-lock races use the real guarded edit RPCs in a remote
 -- open transaction, then let the booking writer reach the same row before the
 -- mutation commits.
 do $$
-declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_d date:=date_trunc('week',current_date)::date+7; v_q text; v_id uuid; v_wait boolean:=false; v_conn text;
+declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_d date:=date_trunc('week',current_date)::date+7; v_q text; v_id uuid; v_wait boolean:=false; v_conn text; v_expected timestamptz;
 begin
+  select updated_at into v_expected from public.services where business_id=v_b and id='d1930000-0000-4000-8000-000000000002';
   perform dblink_connect('f1104_service_mut','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_mut'); perform dblink_connect('f1104_service_book','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_book');
   for v_conn in select unnest(array['f1104_service_mut','f1104_service_book']) loop perform dblink_exec(v_conn,'set role authenticated'); perform dblink_exec(v_conn,'set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec(v_conn,$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$); end loop;
-  perform dblink_exec('f1104_service_mut','begin'); select x.id into strict v_id from dblink('f1104_service_mut',format($q$select (public.update_service_guarded(%L::uuid,%L::uuid,null,%L::jsonb)).id$q$,v_b,'d1930000-0000-4000-8000-000000000002','{"active":false}')) x(id uuid);
+  perform dblink_exec('f1104_service_mut','begin'); select x.id into strict v_id from dblink('f1104_service_mut',format($q$select (public.update_service_guarded(%L::uuid,%L::uuid,%L::timestamptz,%L::jsonb)).id$q$,v_b,'d1930000-0000-4000-8000-000000000002',v_expected,'{"active":false}')) x(id uuid);
   v_q:=format($q$select public.create_appointment_group(%L::uuid,%L,%L,%L::jsonb,%L::timestamptz,%L)$q$,v_b,'f1104-race-service-off','Race Service Off','[{"serviceId":"d1930000-0000-4000-8000-000000000002","staffId":"d1940000-0000-4000-8000-000000000002"}]',(v_d+time '15:00') at time zone 'Europe/Istanbul','05553000106'); perform dblink_send_query('f1104_service_book',v_q);
   for i in 1..500 loop perform pg_stat_clear_snapshot(); if exists(select 1 from pg_stat_activity where application_name='f1104_service_book' and wait_event_type='Lock') then v_wait:=true; exit; end if; perform pg_sleep(.01); end loop; if not v_wait then raise exception 'F11-04 create did not reach service row lock'; end if;
   perform dblink_exec('f1104_service_mut','commit'); perform dblink_disconnect('f1104_service_mut');
@@ -198,15 +203,19 @@ do $$ declare v_r jsonb; v_fail boolean:=false; begin
   for i in 1..3000 loop exit when dblink_is_busy('f1104_service_book')=0; perform pg_sleep(.01); end loop; begin select x.r into strict v_r from dblink_get_result('f1104_service_book') x(r jsonb); exception when others then if sqlerrm not like '%SLOT_UNAVAILABLE%' and sqlerrm not like '%GROUP_SLOT_UNAVAILABLE%' and sqlerrm not like '%SERVICE_NOT_FOUND%' then raise; end if; v_fail:=true; end; begin perform * from dblink_get_result('f1104_service_book',false) x(r jsonb); exception when others then null; end; perform dblink_disconnect('f1104_service_book'); if not v_fail or exists(select 1 from public.booking_commands where business_id='d1910000-0000-4000-8000-000000000001' and idempotency_key='f1104-race-service-off') then raise exception 'F11-04 service race left durable movement'; end if;
 end $$;
 set role authenticated;
-select (public.update_service_guarded('d1910000-0000-4000-8000-000000000001','d1930000-0000-4000-8000-000000000002',null,'{"active":true}'::jsonb)).id;
+do $$ declare v_expected timestamptz; begin
+  select updated_at into v_expected from public.services where business_id='d1910000-0000-4000-8000-000000000001' and id='d1930000-0000-4000-8000-000000000002';
+  perform public.update_service_guarded('d1910000-0000-4000-8000-000000000001','d1930000-0000-4000-8000-000000000002',v_expected,'{"active":true}'::jsonb);
+end $$;
 reset role;
 
 do $$
-declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_d date:=date_trunc('week',current_date)::date+7; v_q text; v_id uuid; v_wait boolean:=false; v_conn text;
+declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_d date:=date_trunc('week',current_date)::date+7; v_q text; v_id uuid; v_wait boolean:=false; v_conn text; v_expected timestamptz;
 begin
+  select updated_at into v_expected from public.staff_profiles where business_id=v_b and id='d1940000-0000-4000-8000-000000000002';
   perform dblink_connect('f1104_staff_mut','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_mut'); perform dblink_connect('f1104_staff_book','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_book');
   for v_conn in select unnest(array['f1104_staff_mut','f1104_staff_book']) loop perform dblink_exec(v_conn,'set role authenticated'); perform dblink_exec(v_conn,'set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec(v_conn,$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$); end loop;
-  perform dblink_exec('f1104_staff_mut','begin'); select x.id into strict v_id from dblink('f1104_staff_mut',format($q$select (public.update_staff_guarded(%L::uuid,%L::uuid,null,%L::jsonb)).id$q$,v_b,'d1940000-0000-4000-8000-000000000002','{"active":false}')) x(id uuid);
+  perform dblink_exec('f1104_staff_mut','begin'); select x.id into strict v_id from dblink('f1104_staff_mut',format($q$select (public.update_staff_guarded(%L::uuid,%L::uuid,%L::timestamptz,%L::jsonb)).id$q$,v_b,'d1940000-0000-4000-8000-000000000002',v_expected,'{"active":false}')) x(id uuid);
   v_q:=format($q$select public.create_appointment_group(%L::uuid,%L,%L,%L::jsonb,%L::timestamptz,%L)$q$,v_b,'f1104-race-staff-off','Race Staff Off','[{"serviceId":"d1930000-0000-4000-8000-000000000002","staffId":"d1940000-0000-4000-8000-000000000002"}]',(v_d+time '15:30') at time zone 'Europe/Istanbul','05553000107'); perform dblink_send_query('f1104_staff_book',v_q);
   for i in 1..500 loop perform pg_stat_clear_snapshot(); if exists(select 1 from pg_stat_activity where application_name='f1104_staff_book' and wait_event_type='Lock') then v_wait:=true; exit; end if; perform pg_sleep(.01); end loop; if not v_wait then raise exception 'F11-04 create did not reach staff row lock'; end if;
   perform dblink_exec('f1104_staff_mut','commit'); perform dblink_disconnect('f1104_staff_mut');
@@ -214,6 +223,12 @@ end $$;
 do $$ declare v_r jsonb; v_fail boolean:=false; begin
   for i in 1..3000 loop exit when dblink_is_busy('f1104_staff_book')=0; perform pg_sleep(.01); end loop; begin select x.r into strict v_r from dblink_get_result('f1104_staff_book') x(r jsonb); exception when others then if sqlerrm not like '%SLOT_UNAVAILABLE%' and sqlerrm not like '%GROUP_SLOT_UNAVAILABLE%' then raise; end if; v_fail:=true; end; begin perform * from dblink_get_result('f1104_staff_book',false) x(r jsonb); exception when others then null; end; perform dblink_disconnect('f1104_staff_book'); if not v_fail or exists(select 1 from public.booking_commands where business_id='d1910000-0000-4000-8000-000000000001' and idempotency_key='f1104-race-staff-off') then raise exception 'F11-04 staff race left durable movement'; end if;
 end $$;
+set role authenticated;
+do $$ declare v_expected timestamptz; begin
+  select updated_at into v_expected from public.staff_profiles where business_id='d1910000-0000-4000-8000-000000000001' and id='d1940000-0000-4000-8000-000000000002';
+  perform public.update_staff_guarded('d1910000-0000-4000-8000-000000000001','d1940000-0000-4000-8000-000000000002',v_expected,'{"active":true}'::jsonb);
+end $$;
+reset role;
 
 do $$ begin raise notice 'F11-04 schedule authority races accepted: business/staff hours, tenant/staff blocks, assignment, service and staff mutations'; end $$;
 delete from public.businesses where id='d1910000-0000-4000-8000-000000000001';
