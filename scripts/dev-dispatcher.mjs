@@ -100,7 +100,7 @@ function assertValidation(value) {
 
 export function validatePacket(raw) {
   assertPlainObject(raw, 'packet');
-  assertExactKeys(raw, new Set(['version', 'repository', 'task_id', 'base_sha', 'base_branch', 'branch', 'writable', 'forbidden', 'prompt', 'model', 'approval_mode', 'output_mode', 'budgets', 'validation', 'commit_message', 'pr']), 'packet');
+  assertExactKeys(raw, new Set(['version', 'repository', 'task_id', 'base_sha', 'base_branch', 'branch', 'writable', 'forbidden', 'prompt', 'model', 'approval_mode', 'output_mode', 'budgets', 'validation']), 'packet');
   if (raw.version !== 1) throw new DispatchError('INVALID_PACKET', 'version must be 1');
   assertString(raw.repository, 'repository', { max: 180, pattern: REPOSITORY_RE });
   assertString(raw.task_id, 'task_id', { max: 80, pattern: TASK_ID_RE });
@@ -138,11 +138,6 @@ export function validatePacket(raw) {
   }
 
   const validation = assertValidation(raw.validation);
-  assertString(raw.commit_message, 'commit_message', { max: 160, singleLine: true });
-
-  assertPlainObject(raw.pr, 'pr');
-  assertExactKeys(raw.pr, new Set(['title']), 'pr');
-  assertString(raw.pr.title, 'pr.title', { max: 160, singleLine: true });
 
   return {
     ...raw,
@@ -150,7 +145,6 @@ export function validatePacket(raw) {
     forbidden,
     validation,
     budgets: { ...raw.budgets },
-    pr: { ...raw.pr },
   };
 }
 
@@ -339,10 +333,6 @@ function assertRepository(repoRoot, packet) {
   const status = gitOutput(repoRoot, ['status', '--porcelain']);
   if (status) throw new DispatchError('DIRTY_REPO', 'dispatcher source repository must be clean');
   git(repoRoot, ['cat-file', '-e', `${packet.base_sha}^{commit}`]);
-  const baseRef = git(repoRoot, ['ls-remote', '--exit-code', '--heads', 'origin', `refs/heads/${packet.base_branch}`], { allowFailure: true, timeout: 60_000 });
-  if (baseRef.status !== 0) throw new DispatchError('BASE_REF_UNAVAILABLE', `could not resolve origin/${packet.base_branch}`);
-  const remoteBaseSha = baseRef.stdout.trim().split(/\s+/)[0];
-  if (remoteBaseSha !== packet.base_sha) throw new DispatchError('STALE_BASE', `origin/${packet.base_branch} does not match exact base SHA`);
   const expected = packet.repository.toLowerCase();
   const fetchUrls = git(repoRoot, ['remote', 'get-url', '--all', 'origin']).stdout.split(/\r?\n/).filter(Boolean);
   const pushUrls = git(repoRoot, ['remote', 'get-url', '--push', '--all', 'origin']).stdout.split(/\r?\n/).filter(Boolean);
@@ -350,6 +340,10 @@ function assertRepository(repoRoot, packet) {
   for (const remote of [...fetchUrls, ...pushUrls]) {
     if (normalizeGithubRemote(remote) !== expected) throw new DispatchError('REPO_MISMATCH', `origin fetch/push URL does not match ${packet.repository}`);
   }
+  const baseRef = git(repoRoot, ['ls-remote', '--exit-code', '--heads', 'origin', `refs/heads/${packet.base_branch}`], { allowFailure: true, timeout: 60_000 });
+  if (baseRef.status !== 0) throw new DispatchError('BASE_REF_UNAVAILABLE', `could not resolve origin/${packet.base_branch}`);
+  const remoteBaseSha = baseRef.stdout.trim().split(/\s+/)[0];
+  if (remoteBaseSha !== packet.base_sha) throw new DispatchError('STALE_BASE', `origin/${packet.base_branch} does not match exact base SHA`);
 }
 
 function branchExists(repoRoot, branch) {
@@ -530,14 +524,14 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
     const stagedPaths = parseNullList(git(worktreeState.worktree, ['diff', '--cached', '--name-only', '-z', validated.base_sha, '--']).stdout);
     const stagedScope = inspectChangedPaths(stagedPaths, validated);
     if (!stagedScope.ok) throw new DispatchError('SCOPE_VIOLATION', 'staged delivery exceeds authorized scope', stagedScope);
-    git(worktreeState.worktree, ['commit', '-m', validated.commit_message], { timeout: 120_000 });
+    git(worktreeState.worktree, ['commit', '-m', `feat(dispatch): ${validated.task_id} Qwen implementation`], { timeout: 120_000 });
     const headSha = gitOutput(worktreeState.worktree, ['rev-parse', 'HEAD']);
     const parentSha = gitOutput(worktreeState.worktree, ['rev-parse', 'HEAD^']);
     if (parentSha !== validated.base_sha) throw new DispatchError('BASE_MISMATCH', 'dispatcher commit is not a direct child of the exact base');
     git(worktreeState.worktree, ['push', '--set-upstream', 'origin', validated.branch], { timeout: 180_000 });
     const prBody = buildPrBody(validated, headSha, scope.changed, validations);
     const pr = run('gh', ['pr', 'create', '--draft', '--repo', validated.repository, '--base', validated.base_branch, '--head', validated.branch,
-      '--title', validated.pr.title, '--body', prBody], { cwd: worktreeState.worktree, env: process.env, timeout: 120_000, allowFailure: true });
+      '--title', `${validated.task_id}: Qwen implementation`, '--body', prBody], { cwd: worktreeState.worktree, env: process.env, timeout: 120_000, allowFailure: true });
     if (pr.error || pr.status !== 0) {
       throw new DispatchError('PR_CREATE_FAILED', 'branch was pushed but draft PR creation failed', {
         head_sha: headSha, branch: validated.branch, status: pr.status,
