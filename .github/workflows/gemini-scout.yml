@@ -1,0 +1,146 @@
+name: Gemini Scout
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue or PR number to analyze'
+        required: true
+        type: string
+      request:
+        description: 'Scout request'
+        required: true
+        type: string
+
+concurrency:
+  group: gemini-scout-${{ github.event.issue.number || inputs.issue_number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  scout:
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event.sender.type == 'User' &&
+          startsWith(github.event.comment.body || '', '@gemini-cli /scout') &&
+          contains(
+            fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+            github.event.comment.author_association
+          )
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+      REQUEST: ${{ github.event.comment.body || inputs.request }}
+      ISSUE_TITLE: ${{ github.event.issue.title || '' }}
+      ISSUE_BODY: ${{ github.event.issue.body || '' }}
+      REPOSITORY: ${{ github.repository }}
+
+    steps:
+      - name: Validate Gemini activation
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${ISSUE_NUMBER}"
+          if [ -z "${GEMINI_API_KEY}" ]; then
+            echo "::error title=Missing GEMINI_API_KEY::Add the Google AI Studio key as repository Actions secret GEMINI_API_KEY."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Run read-only Gemini scout
+        id: gemini
+        uses: google-github-actions/run-gemini-cli@v0
+        env:
+          GEMINI_CLI_TRUST_WORKSPACE: 'true'
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+          gemini_cli_version: ${{ vars.GEMINI_CLI_VERSION || 'latest' }}
+          gemini_debug: 'false'
+          upload_artifacts: 'false'
+          workflow_name: 'gemini-scout'
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 12
+              },
+              "telemetry": {
+                "enabled": false
+              },
+              "tools": {
+                "core": [
+                  "read_file",
+                  "read_many_files",
+                  "glob",
+                  "grep_search",
+                  "list_directory"
+                ]
+              }
+            }
+          prompt: |-
+            You are the read-only scouting agent for the Kepenk.ai Randevu repository.
+
+            Your job is to reduce implementation cost before a coding agent is invoked.
+            Do not edit files. Do not run shell commands. Do not create branches, commits, pull requests, reviews, labels, or other GitHub mutations.
+
+            Repository: ${{ github.repository }}
+            Issue or PR number: #${{ github.event.issue.number || inputs.issue_number }}
+
+            Issue title:
+            ${{ github.event.issue.title || '' }}
+
+            Issue body:
+            ${{ github.event.issue.body || '' }}
+
+            Trusted maintainer request:
+            ${{ github.event.comment.body || inputs.request }}
+
+            Inspect only the repository context needed to answer. Prefer targeted searches over reading the whole repository.
+
+            Return a compact implementation packet with exactly these sections:
+
+            ## Gemini Scout
+            **Goal:** one-sentence task interpretation.
+
+            **Likely files:** at most 10 repository paths, with one short reason each.
+
+            **Dependencies / contracts:** relevant existing APIs, schemas, tests, decisions, or neighboring work.
+
+            **Risks / unknowns:** only concrete blockers or ambiguity. Write "None" when there are none.
+
+            **Suggested validation:** the smallest useful validation set.
+
+            **Qwen handoff:** a concise implementation instruction that a maintainer can paste after `@qwencoder /implement`.
+
+            Do not implement the task and do not provide a final review verdict.
+
+      - name: Post scout result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GEMINI_SUMMARY: ${{ steps.gemini.outputs.summary }}
+        run: |
+          set -euo pipefail
+          body_file="${RUNNER_TEMP}/gemini-scout.md"
+          {
+            printf '%s\n\n' "## Gemini Scout"
+            printf '%s' "${GEMINI_SUMMARY}" | head -c 12000
+            printf '\n'
+          } > "${body_file}"
+          gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body-file "${body_file}"
