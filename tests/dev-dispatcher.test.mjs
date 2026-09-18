@@ -204,12 +204,14 @@ test('changed-path fence supports exact files and explicit directory prefixes on
   assert.deepEqual(nestedGit.forbidden, ['tests/pilot/.git/config']);
 });
 
-test('create-only push uses an explicit empty lease expectation for the task ref', () => {
-  assert.deepEqual(buildCreateOnlyPushArgs('agent/qwen-pilot-01'), [
+test('atomic push requires an absent task ref and an unchanged exact base ref', () => {
+  assert.deepEqual(buildCreateOnlyPushArgs('agent/qwen-pilot-01', 'main', sha), [
+    '--atomic',
     '--force-with-lease=refs/heads/agent/qwen-pilot-01:',
-    '--set-upstream',
+    `--force-with-lease=refs/heads/main:${sha}`,
     'origin',
     'HEAD:refs/heads/agent/qwen-pilot-01',
+    `${sha}:refs/heads/main`,
   ]);
 });
 
@@ -299,6 +301,20 @@ test('CLI dry-run is offline: it validates local repo/base/origin without contac
   } finally { rmSync(state.root, { recursive: true, force: true }); }
 });
 
+test('offline dry-run rejects a non-GitHub origin even when the local base is valid', () => {
+  const state = makeRepo({ bareRemote: true });
+  try {
+    const file = path.join(state.root, 'packet.json');
+    writeFileSync(file, JSON.stringify(packet(state.baseSha)));
+    const script = path.resolve(import.meta.dirname, '../scripts/dev-dispatcher.mjs');
+    const result = spawnSync(process.execPath, [script, '--packet', file, '--dry-run', '--repo-root', state.repoDir], {
+      cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8', env: process.env,
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /REPO_MISMATCH/);
+  } finally { rmSync(state.root, { recursive: true, force: true }); }
+});
+
 test('non-dry-run dispatcher executes fake Qwen, validates, commits, pushes and invokes draft PR transport', () => {
   const state = makeRepo({ bareRemote: true });
   try {
@@ -307,7 +323,11 @@ test('non-dry-run dispatcher executes fake Qwen, validates, commits, pushes and 
       "fs.writeFileSync('worker.mjs', 'export const answer = 42;\\n');",
       "process.stdout.write(JSON.stringify([{type:'result',subtype:'success',is_error:false,result:'implemented'}]));",
     ].join('\n'));
-    const gh = makeExecutable(state.root, 'fake-gh.cjs', "process.stdout.write('https://github.com/ziyabeey1-ai/randevu/pull/999\\n');");
+    const gh = makeExecutable(state.root, 'fake-gh.cjs', [
+      "if (process.env.GH_HOST !== 'github.com') process.exit(92);",
+      "if (process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY) process.exit(93);",
+      "process.stdout.write('https://github.com/ziyabeey1-ai/randevu/pull/999\\n');",
+    ].join('\n'));
     const value = packet(state.baseSha, 'agent/qwen-integration-success');
 
     const receipt = dispatch(value, {
