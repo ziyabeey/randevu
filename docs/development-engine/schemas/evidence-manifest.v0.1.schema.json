@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evidence Manifest v0.1",
+  "description": "Disposable evidence references, not acceptance authority. Unknown is null/pending; old SHA receipts remain historical.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_only", "example", "source_refs", "candidate", "proofs", "ci", "reviews", "merge", "post_main"],
+  "properties": {
+    "schema_version": { "const": "0.1" },
+    "observation_only": { "const": true },
+    "example": { "type": "boolean" },
+    "source_refs": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+    "candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["semantic_sha", "exact_head_sha", "supersedes"],
+      "properties": {
+        "semantic_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+        "exact_head_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+        "supersedes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "proofs": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["obligation", "kind", "status", "ref"],
+        "properties": {
+          "obligation": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["static", "unit", "http", "postgres", "postgres_concurrency", "browser", "hosted", "manual"] },
+          "status": { "enum": ["pass", "fail", "pending", "skipped", "unknown"] },
+          "ref": { "type": ["string", "null"], "minLength": 1 }
+        }
+      }
+    },
+    "ci": {
+      "type": "object", "additionalProperties": false,
+      "required": ["run", "status", "exact_sha", "tested_checkout_sha", "job", "attempt"],
+      "properties": {
+        "run": { "type": ["string", "null"], "minLength": 1 },
+        "status": { "enum": ["pending", "success", "failure", "cancelled", "skipped", "unknown"] },
+        "exact_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+        "tested_checkout_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+        "job": { "type": ["string", "null"], "minLength": 1 },
+        "attempt": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "reviews": {
+      "type": "object", "additionalProperties": false, "required": ["r1", "r2"],
+      "properties": {
+        "r1": {
+          "type": "object", "additionalProperties": false, "required": ["required", "verdict", "sha", "receipt"],
+          "properties": {
+            "required": { "type": "boolean" },
+            "verdict": { "enum": ["pending", "acceptable", "blocker", "incomplete", "not_required"] },
+            "sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+            "receipt": { "type": ["string", "null"], "minLength": 1 }
+          }
+        },
+        "r2": {
+          "type": "object", "additionalProperties": false, "required": ["required", "verdict", "sha", "receipt"],
+          "properties": {
+            "required": { "type": "boolean" },
+            "verdict": { "enum": ["pending", "acceptable", "blocker", "incomplete", "not_required"] },
+            "sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+            "receipt": { "type": ["string", "null"], "minLength": 1 }
+          }
+        }
+      }
+    },
+    "merge": {
+      "type": "object", "additionalProperties": false, "required": ["ready", "coordinator_receipt"],
+      "properties": {
+        "ready": { "type": ["boolean", "null"] },
+        "coordinator_receipt": { "type": ["string", "null"], "minLength": 1 }
+      }
+    },
+    "post_main": {
+      "type": "object", "additionalProperties": false, "required": ["merge_sha", "ci_run", "status"],
+      "properties": {
+        "merge_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+        "ci_run": { "type": ["string", "null"], "minLength": 1 },
+        "status": { "enum": ["pending", "success", "failure", "cancelled", "skipped", "unknown"] }
+      }
+    }
+  }
+}

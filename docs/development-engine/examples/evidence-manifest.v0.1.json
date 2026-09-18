@@ -1,0 +1,29 @@
+{
+  "schema_version": "0.1",
+  "observation_only": true,
+  "example": true,
+  "source_refs": ["docs/development-engine/README.md#projections"],
+  "candidate": { "semantic_sha": null, "exact_head_sha": null, "supersedes": [] },
+  "proofs": [
+    {
+      "obligation": "Illustrate schema shape without claiming live proof",
+      "kind": "static",
+      "status": "pending",
+      "ref": null
+    }
+  ],
+  "ci": {
+    "run": null,
+    "status": "pending",
+    "exact_sha": null,
+    "tested_checkout_sha": null,
+    "job": null,
+    "attempt": null
+  },
+  "reviews": {
+    "r1": { "required": false, "verdict": "pending", "sha": null, "receipt": null },
+    "r2": { "required": false, "verdict": "pending", "sha": null, "receipt": null }
+  },
+  "merge": { "ready": false, "coordinator_receipt": null },
+  "post_main": { "merge_sha": null, "ci_run": null, "status": "pending" }
+}
