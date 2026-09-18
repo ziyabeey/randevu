@@ -100,7 +100,7 @@ do $$
 declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_d date:=date_trunc('week',current_date)::date+7; v_w smallint:=extract(dow from v_d)::smallint; v_l bigint; v_q text; v_wait boolean:=false;
 begin
   v_l:=hashtextextended('f10-04:business-hours:'||v_b::text||':'||v_w::text,0);
-  perform dblink_connect('f1104_hours','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_hours');
+  perform dblink_connect('f1104_hours','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_hours'); perform dblink_exec('f1104_hours','set statement_timeout=30000');
   perform dblink_exec('f1104_hours','set role authenticated'); perform dblink_exec('f1104_hours','set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec('f1104_hours',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
   perform pg_advisory_lock(v_l);
   v_q:=format($q$select public.create_appointment_group(%L::uuid,%L,%L,%L::jsonb,%L::timestamptz,%L)$q$,v_b,'f1104-race-hours','Race Hours','[{"serviceId":"d1930000-0000-4000-8000-000000000001","staffId":"d1940000-0000-4000-8000-000000000001"}]',(v_d+time '18:00') at time zone 'Europe/Istanbul','05553000101');
@@ -126,7 +126,7 @@ declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-00
 begin
   select version into v_v from public.appointment_groups where id=v_g; perform set_config('f1104.gav',v_v::text,false);
   v_l:=hashtextextended('f10-04:staff-hours:'||v_b::text||':'||v_s::text||':'||v_w::text,0);
-  perform dblink_connect('f1104_staff_hours','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_hours');
+  perform dblink_connect('f1104_staff_hours','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_hours'); perform dblink_exec('f1104_staff_hours','set statement_timeout=30000');
   perform dblink_exec('f1104_staff_hours','set role authenticated'); perform dblink_exec('f1104_staff_hours','set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec('f1104_staff_hours',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
   perform pg_advisory_lock(v_l); v_q:=format($q$select public.reschedule_appointment_group(%L::uuid,%L::uuid,%L,%s,%L::timestamptz)$q$,v_b,v_g,'f1104-race-staff-hours',v_v,(v_d+time '18:00') at time zone 'Europe/Istanbul'); perform dblink_send_query('f1104_staff_hours',v_q);
   for i in 1..500 loop perform pg_stat_clear_snapshot(); if exists(select 1 from pg_stat_activity where application_name='f1104_staff_hours' and wait_event_type='Lock') then v_wait:=true; exit; end if; perform pg_sleep(.01); end loop;
@@ -162,7 +162,7 @@ begin
   perform set_config('f1104.csh.jobs',(select count(*)::text from public.appointment_notification_jobs where business_id=v_b),false);
   perform set_config('f1104.csh.commands',(select count(*)::text from public.booking_commands where business_id=v_b),false);
 
-  perform dblink_connect('f1104_create_staff_hours','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_create_staff_hours');
+  perform dblink_connect('f1104_create_staff_hours','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_create_staff_hours'); perform dblink_exec('f1104_create_staff_hours','set statement_timeout=30000');
   perform dblink_exec('f1104_create_staff_hours','set role authenticated');
   perform dblink_exec('f1104_create_staff_hours','set "request.jwt.claim.sub" = '''||v_u::text||'''');
   perform dblink_exec('f1104_create_staff_hours',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
@@ -235,7 +235,7 @@ do $$
 declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_g uuid:=current_setting('f1104.ga')::uuid; v_d date:=date_trunc('week',current_date)::date+7; v_v integer; v_l bigint:=hashtextextended('f10-04:availability-blocks:'||'d1910000-0000-4000-8000-000000000001',0); v_q text; v_wait boolean:=false;
 begin
   select version into v_v from public.appointment_groups where id=v_g;
-  perform dblink_connect('f1104_tenant_block','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_tenant_block'); perform dblink_exec('f1104_tenant_block','set role authenticated'); perform dblink_exec('f1104_tenant_block','set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec('f1104_tenant_block',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  perform dblink_connect('f1104_tenant_block','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_tenant_block'); perform dblink_exec('f1104_tenant_block','set statement_timeout=30000'); perform dblink_exec('f1104_tenant_block','set role authenticated'); perform dblink_exec('f1104_tenant_block','set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec('f1104_tenant_block',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
   perform pg_advisory_lock(v_l); v_q:=format($q$select public.reschedule_appointment_group(%L::uuid,%L::uuid,%L,%s,%L::timestamptz)$q$,v_b,v_g,'f1104-race-tenant-block',v_v,(v_d+time '16:00') at time zone 'Europe/Istanbul'); perform dblink_send_query('f1104_tenant_block',v_q);
   for i in 1..500 loop perform pg_stat_clear_snapshot(); if exists(select 1 from pg_stat_activity where application_name='f1104_tenant_block' and wait_event_type='Lock') then v_wait:=true; exit; end if; perform pg_sleep(.01); end loop; if not v_wait then raise exception 'F11-04 group did not reach block lock'; end if;
   execute 'set local role authenticated'; perform set_config('request.jwt.claim.sub',v_u::text,true); perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true); perform public.create_availability_block_local_guarded(v_b,null,v_d,time '16:10',time '16:20','f1104 tenant race'); execute 'reset role'; perform pg_advisory_unlock(v_l);
@@ -249,7 +249,7 @@ do $$
 declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_g uuid:=current_setting('f1104.gb')::uuid; v_line uuid:=current_setting('f1104.gb2')::uuid; v_d date:=date_trunc('week',current_date)::date+7; v_v integer; v_l bigint:=hashtextextended('f10-04:availability-blocks:'||'d1910000-0000-4000-8000-000000000001',0); v_q text; v_wait boolean:=false;
 begin
   select version into v_v from public.appointment_groups where id=v_g; perform set_config('f1104.gbv',v_v::text,false);
-  perform dblink_connect('f1104_staff_block','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_block'); perform dblink_exec('f1104_staff_block','set role authenticated'); perform dblink_exec('f1104_staff_block','set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec('f1104_staff_block',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  perform dblink_connect('f1104_staff_block','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_block'); perform dblink_exec('f1104_staff_block','set statement_timeout=30000'); perform dblink_exec('f1104_staff_block','set role authenticated'); perform dblink_exec('f1104_staff_block','set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec('f1104_staff_block',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
   perform pg_advisory_lock(v_l); v_q:=format($q$select public.reschedule_appointment_group_line(%L::uuid,%L::uuid,%L::uuid,%L,%s,%L::uuid,%L::timestamptz)$q$,v_b,v_g,v_line,'f1104-race-staff-block',v_v,'d1940000-0000-4000-8000-000000000002',(v_d+time '16:00') at time zone 'Europe/Istanbul'); perform dblink_send_query('f1104_staff_block',v_q);
   for i in 1..500 loop perform pg_stat_clear_snapshot(); if exists(select 1 from pg_stat_activity where application_name='f1104_staff_block' and wait_event_type='Lock') then v_wait:=true; exit; end if; perform pg_sleep(.01); end loop; if not v_wait then raise exception 'F11-04 line did not reach block lock'; end if;
   execute 'set local role authenticated'; perform set_config('request.jwt.claim.sub',v_u::text,true); perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true); perform public.create_availability_block_local_guarded(v_b,'d1940000-0000-4000-8000-000000000002',v_d,time '16:00',time '16:30','f1104 staff race'); execute 'reset role'; perform pg_advisory_unlock(v_l);
@@ -265,7 +265,7 @@ declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-00
 begin
   select version into v_v from public.appointment_groups where id=v_g;
   select updated_at into v_expected from public.staff_services where business_id=v_b and staff_id='d1940000-0000-4000-8000-000000000002' and service_id='d1930000-0000-4000-8000-000000000002';
-  perform dblink_connect('f1104_assignment','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_assignment'); perform dblink_exec('f1104_assignment','set role authenticated'); perform dblink_exec('f1104_assignment','set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec('f1104_assignment',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  perform dblink_connect('f1104_assignment','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_assignment'); perform dblink_exec('f1104_assignment','set statement_timeout=30000'); perform dblink_exec('f1104_assignment','set role authenticated'); perform dblink_exec('f1104_assignment','set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec('f1104_assignment',$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
   perform pg_advisory_lock(v_l); v_q:=format($q$select public.reschedule_appointment_group_line(%L::uuid,%L::uuid,%L::uuid,%L,%s,%L::uuid,%L::timestamptz)$q$,v_b,v_g,v_line,'f1104-race-assignment',v_v,'d1940000-0000-4000-8000-000000000002',(v_d+time '17:00') at time zone 'Europe/Istanbul'); perform dblink_send_query('f1104_assignment',v_q);
   for i in 1..500 loop perform pg_stat_clear_snapshot(); if exists(select 1 from pg_stat_activity where application_name='f1104_assignment' and wait_event_type='Lock') then v_wait:=true; exit; end if; perform pg_sleep(.01); end loop; if not v_wait then raise exception 'F11-04 line did not reach assignment lock'; end if;
   execute 'set local role authenticated'; perform set_config('request.jwt.claim.sub',v_u::text,true); perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true); perform public.set_staff_service_guarded(v_b,'d1940000-0000-4000-8000-000000000002','d1930000-0000-4000-8000-000000000002',false,v_expected); execute 'reset role'; perform pg_advisory_unlock(v_l);
@@ -287,7 +287,7 @@ do $$
 declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_d date:=date_trunc('week',current_date)::date+7; v_q text; v_id uuid; v_wait boolean:=false; v_conn text; v_expected timestamptz;
 begin
   select updated_at into v_expected from public.services where business_id=v_b and id='d1930000-0000-4000-8000-000000000002';
-  perform dblink_connect('f1104_service_mut','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_mut'); perform dblink_connect('f1104_service_book','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_book');
+  perform dblink_connect('f1104_service_mut','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_mut'); perform dblink_exec('f1104_service_mut','set statement_timeout=30000'); perform dblink_connect('f1104_service_book','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_book'); perform dblink_exec('f1104_service_book','set statement_timeout=30000');
   for v_conn in select unnest(array['f1104_service_mut','f1104_service_book']) loop perform dblink_exec(v_conn,'set role authenticated'); perform dblink_exec(v_conn,'set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec(v_conn,$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$); end loop;
   perform dblink_exec('f1104_service_mut','begin'); select x.id into strict v_id from dblink('f1104_service_mut',format($q$select (public.update_service_guarded(%L::uuid,%L::uuid,%L::timestamptz,%L::jsonb)).id$q$,v_b,'d1930000-0000-4000-8000-000000000002',v_expected,'{"active":false}')) x(id uuid);
   v_q:=format($q$select public.create_appointment_group(%L::uuid,%L,%L,%L::jsonb,%L::timestamptz,%L)$q$,v_b,'f1104-race-service-off','Race Service Off','[{"serviceId":"d1930000-0000-4000-8000-000000000002","staffId":"d1940000-0000-4000-8000-000000000002"}]',(v_d+time '15:00') at time zone 'Europe/Istanbul','05553000106'); perform dblink_send_query('f1104_service_book',v_q);
@@ -308,7 +308,7 @@ do $$
 declare v_b uuid:='d1910000-0000-4000-8000-000000000001'; v_u uuid:='d1900000-0000-4000-8000-000000000001'; v_d date:=date_trunc('week',current_date)::date+7; v_q text; v_id uuid; v_wait boolean:=false; v_conn text; v_expected timestamptz;
 begin
   select updated_at into v_expected from public.staff_profiles where business_id=v_b and id='d1940000-0000-4000-8000-000000000002';
-  perform dblink_connect('f1104_staff_mut','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_mut'); perform dblink_connect('f1104_staff_book','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_book');
+  perform dblink_connect('f1104_staff_mut','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_mut'); perform dblink_exec('f1104_staff_mut','set statement_timeout=30000'); perform dblink_connect('f1104_staff_book','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_book'); perform dblink_exec('f1104_staff_book','set statement_timeout=30000');
   for v_conn in select unnest(array['f1104_staff_mut','f1104_staff_book']) loop perform dblink_exec(v_conn,'set role authenticated'); perform dblink_exec(v_conn,'set "request.jwt.claim.sub" = '''||v_u::text||''''); perform dblink_exec(v_conn,$q$set "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$); end loop;
   perform dblink_exec('f1104_staff_mut','begin'); select x.id into strict v_id from dblink('f1104_staff_mut',format($q$select (public.update_staff_guarded(%L::uuid,%L::uuid,%L::timestamptz,%L::jsonb)).id$q$,v_b,'d1940000-0000-4000-8000-000000000002',v_expected,'{"active":false}')) x(id uuid);
   v_q:=format($q$select public.create_appointment_group(%L::uuid,%L,%L,%L::jsonb,%L::timestamptz,%L)$q$,v_b,'f1104-race-staff-off','Race Staff Off','[{"serviceId":"d1930000-0000-4000-8000-000000000002","staffId":"d1940000-0000-4000-8000-000000000002"}]',(v_d+time '15:30') at time zone 'Europe/Istanbul','05553000107'); perform dblink_send_query('f1104_staff_book',v_q);
@@ -349,8 +349,8 @@ begin
   perform set_config('f1104.conv.ga_line',v_la::text,false);
   perform set_config('f1104.conv.gb_line',v_lb::text,false);
 
-  perform dblink_connect('f1104_service_conv_a','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_conv_a');
-  perform dblink_connect('f1104_service_conv_b','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_conv_b');
+  perform dblink_connect('f1104_service_conv_a','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_conv_a'); perform dblink_exec('f1104_service_conv_a','set statement_timeout=30000');
+  perform dblink_connect('f1104_service_conv_b','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_service_conv_b'); perform dblink_exec('f1104_service_conv_b','set statement_timeout=30000');
   for v_conn in select unnest(array['f1104_service_conv_a','f1104_service_conv_b']) loop
     perform dblink_exec(v_conn,'set role authenticated');
     perform dblink_exec(v_conn,'set "request.jwt.claim.sub" = '''||v_u::text||'''');
@@ -421,8 +421,8 @@ begin
   perform set_config('f1104.conv2.ga_v',v_va::text,false);
   perform set_config('f1104.conv2.gb_v',v_vb::text,false);
 
-  perform dblink_connect('f1104_staff_conv_a','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_conv_a');
-  perform dblink_connect('f1104_staff_conv_b','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_conv_b');
+  perform dblink_connect('f1104_staff_conv_a','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_conv_a'); perform dblink_exec('f1104_staff_conv_a','set statement_timeout=30000');
+  perform dblink_connect('f1104_staff_conv_b','host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1104_staff_conv_b'); perform dblink_exec('f1104_staff_conv_b','set statement_timeout=30000');
   for v_conn in select unnest(array['f1104_staff_conv_a','f1104_staff_conv_b']) loop
     perform dblink_exec(v_conn,'set role authenticated');
     perform dblink_exec(v_conn,'set "request.jwt.claim.sub" = '''||v_u::text||'''');
