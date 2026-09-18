@@ -311,6 +311,20 @@ function assertFilesystemFence(worktree, paths) {
   for (const relativePath of paths) assertPathHasNoSymlink(worktree, relativePath);
 }
 
+export function auditWorkerState(worktree, packet, { rejectIgnored = true, actor = 'worker', requireChanges = true } = {}) {
+  assertHeadAtBase(worktree, packet.base_sha, actor);
+  if (rejectIgnored) {
+    const ignored = ignoredUntrackedPaths(worktree);
+    if (ignored.length > 0) throw new DispatchError('IGNORED_PATH_WRITE', `${actor} created ignored untracked paths`, { count: ignored.length });
+  }
+  const paths = stageableChangedPaths(worktree, packet.base_sha);
+  assertFilesystemFence(worktree, paths);
+  const scope = inspectChangedPaths(paths, packet);
+  if (!scope.ok) throw new DispatchError('SCOPE_VIOLATION', `${actor} changed paths outside the authorized scope`, scope);
+  if (requireChanges && scope.changed.length === 0) throw new DispatchError('NO_CHANGES', `${actor} left no authorized change`);
+  return scope;
+}
+
 function normalizeGithubRemote(value) {
   return value.trim().toLowerCase()
     .replace(/\.git$/, '')
@@ -456,7 +470,6 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
 
   let lockPath;
   let worktreeState;
-  let pushed = false;
   try {
     lockPath = acquireLock();
     assertRepository(repoRoot, validated);
@@ -489,22 +502,10 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
       throw new DispatchError('QWEN_ESCALATED', 'Qwen requested coordinator escalation');
     }
 
-    assertHeadAtBase(worktreeState.worktree, validated.base_sha, 'Qwen');
-    const ignored = ignoredUntrackedPaths(worktreeState.worktree);
-    if (ignored.length > 0) throw new DispatchError('IGNORED_PATH_WRITE', 'Qwen created ignored untracked paths', { count: ignored.length });
-    const initialPaths = stageableChangedPaths(worktreeState.worktree, validated.base_sha);
-    assertFilesystemFence(worktreeState.worktree, initialPaths);
-    const initialScope = inspectChangedPaths(initialPaths, validated);
-    if (!initialScope.ok) throw new DispatchError('SCOPE_VIOLATION', 'Qwen changed paths outside the authorized scope', initialScope);
-    if (initialScope.changed.length === 0) throw new DispatchError('NO_CHANGES', 'Qwen completed without changing an authorized path');
+    auditWorkerState(worktreeState.worktree, validated, { rejectIgnored: true, actor: 'Qwen' });
 
     const validations = runValidations(worktreeState.worktree, validated);
-    assertHeadAtBase(worktreeState.worktree, validated.base_sha, 'validation');
-    const finalPaths = stageableChangedPaths(worktreeState.worktree, validated.base_sha);
-    assertFilesystemFence(worktreeState.worktree, finalPaths);
-    const scope = inspectChangedPaths(finalPaths, validated);
-    if (!scope.ok) throw new DispatchError('SCOPE_VIOLATION', 'validation produced changes outside the authorized scope', scope);
-    if (scope.changed.length === 0) throw new DispatchError('NO_CHANGES', 'validation left no authorized change to deliver');
+    const scope = auditWorkerState(worktreeState.worktree, validated, { rejectIgnored: false, actor: 'validation' });
 
     git(worktreeState.worktree, ['add', '--all']);
     const stagedPaths = parseNullList(git(worktreeState.worktree, ['diff', '--cached', '--name-only', '-z', validated.base_sha, '--']).stdout);
@@ -515,8 +516,6 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
     const parentSha = gitOutput(worktreeState.worktree, ['rev-parse', 'HEAD^']);
     if (parentSha !== validated.base_sha) throw new DispatchError('BASE_MISMATCH', 'dispatcher commit is not a direct child of the exact base');
     git(worktreeState.worktree, ['push', '--set-upstream', 'origin', validated.branch], { timeout: 180_000 });
-    pushed = true;
-
     const prBody = buildPrBody(validated, headSha, scope.changed, validations);
     const pr = run('gh', ['pr', 'create', '--draft', '--repo', validated.repository, '--base', validated.base_branch, '--head', validated.branch,
       '--title', validated.pr.title, '--body', prBody], { cwd: worktreeState.worktree, env: process.env, timeout: 120_000, allowFailure: true });
