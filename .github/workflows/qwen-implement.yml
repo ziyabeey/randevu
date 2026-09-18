@@ -80,8 +80,8 @@ jobs:
           TARGET_BRANCH: qwen/task-${{ github.event.issue.number || inputs.issue_number }}-${{ github.run_id }}
         with:
           openai_api_key: ${{ secrets.QWEN_API_KEY }}
-          openai_base_url: ${{ vars.QWEN_BASE_URL }}
-          openai_model: ${{ vars.QWEN_MODEL }}
+          openai_base_url: ${{ vars.QWEN_BASE_URL || 'https://coding-intl.dashscope.aliyuncs.com/v1' }}
+          openai_model: ${{ vars.QWEN_MODEL || 'qwen3-coder-plus' }}
           qwen_debug: 'false'
           upload_artifacts: 'false'
           workflow_name: 'qwen-implement'
