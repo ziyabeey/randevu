@@ -19,9 +19,17 @@ findings for this PR lineage through native GitHub/repo tools.
 
 Determine the mode before reviewing:
 
-- **DISCOVERY**: no earlier R0 blocker receipt exists for this PR lineage.
-- **VERIFICATION**: an earlier R0 blocker receipt exists and the current head is a
-  repair descendant of that reviewed candidate.
+- A **completed discovery receipt** is a durable PR review/comment reference that
+  records the reviewed exact head and the frozen blocker set, including an explicit
+  empty set when discovery found no blockers.
+- **DISCOVERY**: no completed discovery receipt exists for this PR lineage.
+- **VERIFICATION**: a completed discovery receipt exists and the current head is a
+  descendant of its reviewed head. Use the receipt reference and frozen set even
+  when that set is empty.
+
+If discovery can only be returned as a local draft, it is not complete. Do not rely
+on automatic review of later pushes until the coordinator has persisted a freeze
+receipt on the PR.
 
 ## Allowed actions
 
@@ -33,10 +41,12 @@ that blocker set is frozen for the repair cycle.
 
 In **VERIFICATION**, inspect only:
 
-1. whether each frozen blocker is closed on the exact current head;
-2. whether the repair itself introduced a regression in the repaired surface or
+1. whether the delta from the discovery head stayed inside the approved writable
+   file scope and frozen repair/counterexample surface;
+2. whether each frozen blocker is closed on the exact current head;
+3. whether the repair itself introduced a regression in the repaired surface or
    one direct dependency hop; and
-3. the exact CI/test/verifier evidence relevant to those blockers.
+4. the exact CI/test/verifier evidence relevant to those blockers.
 
 The normal repair invariant is:
 
@@ -91,7 +101,9 @@ comment draft to the operator.
 ```text
 R0 / mode: DISCOVERY | VERIFICATION
 PR / base / exact head / observed UTC:
-Frozen blockers: IDs or none
+Discovery receipt ref / discovery exact head:
+Frozen blockers: IDs or explicit NONE
+CI evidence: run / job / attempt / tested checkout-or-merge-ref SHA, or unavailable
 Closed / still-open blocker evidence:
 Escape-blockers: ID / critical invariant / evidence, or none
 Deferred non-blocking observations: IDs/summary, or none
