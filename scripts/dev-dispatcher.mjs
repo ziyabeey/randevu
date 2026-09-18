@@ -258,7 +258,7 @@ function assertRepository(repoRoot, packet) {
   if (path.resolve(top) !== path.resolve(repoRoot)) throw new DispatchError('REPO_MISMATCH', 'repoRoot is not the git top-level');
   const status = gitOutput(repoRoot, ['status', '--porcelain']);
   if (status) throw new DispatchError('DIRTY_REPO', 'dispatcher source repository must be clean');
-  git(repoRoot, ['cat-file', '-e', `${packet.base_sha}^{commit}``]);
+  git(repoRoot, ['cat-file', '-e', `${packet.base_sha}^{commit}`]);
   const origin = gitOutput(repoRoot, ['remote', 'get-url', 'origin']);
   const expected = packet.repository.toLowerCase();
   const normalized = origin.toLowerCase().replace(/\.git$/, '').replace(/^git@github\.com:/, '').replace(/^https:\/\/github\.com\//, '').replace(/^ssh:\/\/git@github\.com\//, '');
