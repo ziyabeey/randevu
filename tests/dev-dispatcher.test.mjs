@@ -100,6 +100,7 @@ test('public packet surface, identifiers, scope sizes and validation argv are bo
     (v) => { v.validation = [['npm', 'run', 'typecheck']]; },
     (v) => { v.validation = [['node', '--test', 'worker.mjs']]; },
     (v) => { v.validation = [['node', '--check', '../outside.mjs']]; },
+    (v) => { v.validation = [['node', '--check', '--require=worker.mjs']]; },
     (v) => { v.validation = [['node', '--check', 'x'.repeat(2 * 1024 + 1)]]; },
     (v) => { v.writable = Array.from({ length: 65 }, (_, i) => `src/f${i}.ts`); },
     (v) => { v.merge = true; },
