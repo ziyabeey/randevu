@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { randomBase64Url } from '../shared/base64.ts';
 import {
   applicationOrigin,
   canManage,
@@ -87,10 +88,7 @@ function normalizeEmail(value: unknown) {
 }
 
 function randomInviteToken() {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return randomBase64Url(32);
 }
 
 async function sha256Hex(value: string) {

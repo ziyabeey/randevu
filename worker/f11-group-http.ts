@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { base64UrlToBytes, bytesToBase64Url } from '../shared/base64.ts';
 import {
   readJson,
   requireMember,
@@ -128,17 +129,6 @@ async function requireStandardMember(context: Parameters<typeof requireMember>[0
   return access;
 }
 
-function bytesToBase64Url(bytes: Uint8Array) {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-function base64UrlToBytes(value: string) {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  const binary = atob(padded);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-}
 async function encryptionKey(env: Env) {
   const raw = env.MANAGEMENT_LINK_ENCRYPTION_KEY_V1?.trim();
   if (!raw) return null;

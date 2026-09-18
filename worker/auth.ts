@@ -1,5 +1,11 @@
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import {
+  base64UrlToText,
+  bytesToBase64Url,
+  randomBase64Url,
+  textToBase64Url,
+} from '../shared/base64.ts';
 import { fetchTextWithTimeout } from './outbound-request.ts';
 
 export type AuthEnv = {
@@ -340,30 +346,6 @@ export async function requireMember<E extends AuthEnv>(context: AppContext<E>): 
 
 export function canManage(membership: Membership | null): membership is Membership {
   return membership?.role === 'owner' || membership?.role === 'manager';
-}
-
-function randomBase64Url(byteLength = 32) {
-  const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-
-function bytesToBase64Url(bytes: Uint8Array) {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-
-function textToBase64Url(value: string) {
-  return bytesToBase64Url(new TextEncoder().encode(value));
-}
-
-function base64UrlToText(value: string) {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  const binary = atob(padded);
-  return new TextDecoder().decode(Uint8Array.from(binary, (character) => character.charCodeAt(0)));
 }
 
 async function codeChallenge(verifier: string) {
