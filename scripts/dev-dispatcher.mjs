@@ -289,8 +289,15 @@ function run(command, args, { cwd, env = childEnv(), timeout = 120_000, allowFai
   return result;
 }
 
+function gitEnv() {
+  const env = { ...process.env };
+  for (const name of Object.keys(env)) if (name.startsWith('GIT_')) delete env[name];
+  env.GIT_TERMINAL_PROMPT = '0';
+  return env;
+}
+
 function git(cwd, args, options = {}) {
-  return run('git', args, { cwd, env: process.env, ...options });
+  return run('git', args, { cwd, env: gitEnv(), ...options });
 }
 
 function gitOutput(cwd, args) {
@@ -342,6 +349,19 @@ function assertFilesystemFence(worktree, paths) {
   for (const relativePath of paths) assertPathHasNoSymlink(worktree, relativePath);
 }
 
+function captureWorktreeMetadata(worktree) {
+  const marker = path.join(worktree, '.git');
+  if (!existsSync(marker) || !lstatSync(marker).isFile()) throw new DispatchError('GIT_METADATA', 'linked worktree .git marker must be a regular file');
+  return readFileSync(marker, 'utf8');
+}
+
+function assertWorktreeMetadata(worktree, expected) {
+  const marker = path.join(worktree, '.git');
+  if (!existsSync(marker) || !lstatSync(marker).isFile() || readFileSync(marker, 'utf8') !== expected) {
+    throw new DispatchError('GIT_METADATA', 'worker changed linked-worktree Git metadata');
+  }
+}
+
 export function auditWorkerState(worktree, packet, { rejectIgnored = true, actor = 'worker', requireChanges = true } = {}) {
   assertHeadAtBase(worktree, packet.base_sha, actor);
   if (rejectIgnored) {
@@ -364,7 +384,7 @@ function normalizeGithubRemote(value) {
     .replace(/^ssh:\/\/git@github\.com\//, '');
 }
 
-function assertRepository(repoRoot, packet) {
+function assertLocalRepository(repoRoot, packet) {
   const top = gitOutput(repoRoot, ['rev-parse', '--show-toplevel']);
   if (path.resolve(top) !== path.resolve(repoRoot)) throw new DispatchError('REPO_MISMATCH', 'repoRoot is not the git top-level');
   const status = gitOutput(repoRoot, ['status', '--porcelain']);
@@ -377,6 +397,9 @@ function assertRepository(repoRoot, packet) {
   for (const remote of [...fetchUrls, ...pushUrls]) {
     if (normalizeGithubRemote(remote) !== expected) throw new DispatchError('REPO_MISMATCH', `origin fetch/push URL does not match ${packet.repository}`);
   }
+}
+
+function assertRemoteRepositoryState(repoRoot, packet) {
   const baseRef = git(repoRoot, ['ls-remote', '--exit-code', '--heads', 'origin', `refs/heads/${packet.base_branch}`], { allowFailure: true, timeout: 60_000 });
   if (baseRef.status !== 0) throw new DispatchError('BASE_REF_UNAVAILABLE', `could not resolve origin/${packet.base_branch}`);
   const remoteBaseSha = baseRef.stdout.trim().split(/\s+/)[0];
@@ -400,15 +423,21 @@ function createWorktree(repoRoot, packet) {
   if (remoteBranchExists(repoRoot, packet.branch)) throw new DispatchError('BRANCH_EXISTS', `remote branch already exists: ${packet.branch}`);
   const parent = mkdtempSync(path.join(tmpdir(), 'kepenk-dispatch-'));
   const worktree = path.join(parent, 'worktree');
+  let created = false;
   try {
     git(repoRoot, ['worktree', 'add', '-b', packet.branch, worktree, packet.base_sha], { timeout: 180_000 });
+    created = true;
     const head = gitOutput(worktree, ['rev-parse', 'HEAD']);
     const current = gitOutput(worktree, ['branch', '--show-current']);
     if (head !== packet.base_sha || current !== packet.branch) throw new DispatchError('BASE_MISMATCH', 'created worktree does not match exact base/branch');
     return { parent, worktree };
   } catch (error) {
-    if (existsSync(worktree)) git(repoRoot, ['worktree', 'remove', '--force', worktree], { allowFailure: true, timeout: 120_000 });
-    git(repoRoot, ['branch', '-D', packet.branch], { allowFailure: true });
+    if (created) {
+      git(repoRoot, ['worktree', 'remove', '--force', worktree], { allowFailure: true, timeout: 120_000 });
+      git(repoRoot, ['branch', '-D', packet.branch], { allowFailure: true });
+    } else {
+      rmSync(worktree, { recursive: true, force: true });
+    }
     rmSync(parent, { recursive: true, force: true });
     throw error;
   }
