@@ -52,7 +52,7 @@ Kepenk Core platform çalışması ayrı track'tir: **KC-00…KC-07**, 54 MVP g�
 | [F12-01](docs/plan/phase-12.md#f12-01) | Görsel yön ve akış sözleşmesi | TEMEL | Tamamlandı | Ajan B / 2026-09-14 | `f12-01-visual-flow-contract` · base `364d006` · [PR #61](https://github.com/ziyabeey1-ai/randevu/pull/61) · [Sözleşme](docs/plan/f12-01-visual-flow-contract.md) · [Devir](docs/handoffs/F12-01.md) · koordinatör final ürün/tasarım kabulü verildi |
 | [F12-02](docs/plan/phase-12.md#f12-02) | Salon profili ve public fotoğraflar | F12-01, F10-03 | Tamamlandı | Ajan B + R1/R2 + koordinatör kabul / 2026-09-15 | `f12-02-salon-profile-public-media` · [PR #76](https://github.com/ziyabeey1-ai/randevu/pull/76) · [Devir](docs/handoffs/F12-02.md) · exact head `a889b077` · [CI #967](https://github.com/ziyabeey1-ai/randevu/actions/runs/34936411282) success · R1 `5676070062` **ACCEPTABLE** · R2 final **ACCEPTABLE** · main `eb4d741` · [main CI #984](https://github.com/ziyabeey1-ai/randevu/actions/runs/34943929715) success · hosted-only residual bulunmadığı için staging açılmadı |
 | [F12-03](docs/plan/phase-12.md#f12-03) | Hizmet kategorileri ve fiyat aralığı | F10-04 | Tamamlandı | Ajan C + R1/R2 + koordinatör kabul / 2026-09-15 | `f12-03-service-price-range` · [PR #103](https://github.com/ziyabeey1-ai/randevu/pull/103) · [Devir](docs/handoffs/F12-03.md) · semantic head `b0bb330c` · [CI #1039](https://github.com/ziyabeey1-ai/randevu/actions/runs/34994167963) success · final review head `cd4599b2` · [marker CI #1041](https://github.com/ziyabeey1-ai/randevu/actions/runs/34994931971) success · R1 `5684303886` **ACCEPTABLE** · R2 `5684769289` **ACCEPTABLE** · main `d0a9ec9` · [main CI #1042](https://github.com/ziyabeey1-ai/randevu/actions/runs/35000917517) success · hosted-only residual olmadığı için staging açılmadı |
-| [F12-04](docs/plan/phase-12.md#f12-04) | Çoklu hizmet, personel ve saat seçimi | F12-02, F12-03, F11-02 | Planlandı | — | — |
+| [F12-04](docs/plan/phase-12.md#f12-04) | Çoklu hizmet, personel ve saat seçimi | F12-02, F12-03, F11-02 | Engelli | Ajan B2 / 2026-09-17 | `f12-04-public-multi-service-selection` · [PR #114](https://github.com/ziyabeey1-ai/randevu/pull/114) (draft) · frontend candidate `e18e1ca4` · [CI #1131](https://github.com/ziyabeey1-ai/randevu/actions/runs/35212753232) success · blocker: additive range-aware public catalog support [`5712715799`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5712715799) · shared backend support F11-04 writer/schema gate kapanana kadar parkta |
 | [F12-05](docs/plan/phase-12.md#f12-05) | Özet, sonuç ve müşteri yönetimi | F12-04, F09-02, F11-03 | Planlandı | — | — |
 | [F13-01](docs/plan/phase-13.md#f13-01) | Takvim güncelliği ve istek yarışı | F11-03 | Planlandı | — | — |
 | [F13-02](docs/plan/phase-13.md#f13-02) | Gün, hafta ve liste görünümleri | F13-01, F12-01 | Planlandı | — | — |
@@ -115,8 +115,8 @@ Bağlayıcı topology [K04](docs/plan/k04-platform-core-contract.md), paket/bağ
 | GS | S01…S08 | **Kapalı** — S01…S08 tamamlandı; [GS kapanış devri](docs/handoffs/GS.md) |
 | G09 | F09-01…F09-05 | **Kapalı** — PR #30 / staging `34681540142`; stabilization takipleri GS içinde kapatıldı |
 | G10 | F10-01…F10-06 | Açık — F10-01/02/03/04/05 tamamlandı; yalnız F10-06 kaldı |
-| G11 | F11-01…F11-04 | Açık — F11-01 tamamlandı; F11-02 sıradaki aktif zincirdir |
-| G12 | F12-01…F12-05 | Açık — F12-01/02/03 tamamlandı; F12-04 F11-02'yi bekliyor |
+| G11 | F11-01…F11-04 | Açık — F11-01/02/03 tamamlandı; F11-04 PR #117 STRICT incelemede/frozen |
+| G12 | F12-01…F12-05 | Açık — F12-01/02/03 tamamlandı; F12-04 frontend green fakat range-aware public catalog support + F11-04 shared-schema gate nedeniyle parkta |
 | G13 | F13-01…F13-04 | Açık |
 | G14 | F14-01…F14-05 | Açık |
 | G15 | F15-01…F15-04 | Açık |
