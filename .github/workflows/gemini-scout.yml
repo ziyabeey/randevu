@@ -1,8 +1,6 @@
 name: Gemini Scout
 
 on:
-  issue_comment:
-    types: [created]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -13,9 +11,17 @@ on:
         description: 'Scout request'
         required: true
         type: string
+      issue_title:
+        description: 'Target issue or PR title supplied by the command router'
+        required: false
+        type: string
+      issue_body:
+        description: 'Target issue or PR body supplied by the command router'
+        required: false
+        type: string
 
 concurrency:
-  group: gemini-scout-${{ github.event.issue.number || inputs.issue_number || github.run_id }}
+  group: gemini-scout-${{ inputs.issue_number || github.run_id }}
   cancel-in-progress: true
 
 permissions:
@@ -25,27 +31,15 @@ permissions:
 
 jobs:
   scout:
-    if: >-
-      ${{
-        github.event_name == 'workflow_dispatch' ||
-        (
-          github.event.sender.type == 'User' &&
-          startsWith(github.event.comment.body || '', '@gemini-cli /scout') &&
-          contains(
-            fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
-            github.event.comment.author_association
-          )
-        )
-      }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
-      REQUEST: ${{ github.event.comment.body || inputs.request }}
-      ISSUE_TITLE: ${{ github.event.issue.title || '' }}
-      ISSUE_BODY: ${{ github.event.issue.body || '' }}
+      ISSUE_NUMBER: ${{ inputs.issue_number }}
+      REQUEST: ${{ inputs.request }}
+      ISSUE_TITLE: ${{ inputs.issue_title }}
+      ISSUE_BODY: ${{ inputs.issue_body }}
       REPOSITORY: ${{ github.repository }}
-      FORCE_CLOUDFLARE: ${{ startsWith(github.event.comment.body || '', '@gemini-cli /scout-cloudflare') }}
+      FORCE_CLOUDFLARE: ${{ startsWith(inputs.request || '', '@gemini-cli /scout-cloudflare') }}
 
     steps:
       - name: Validate Gemini activation
@@ -104,16 +98,16 @@ jobs:
             Do not edit files. Do not run shell commands. Do not create branches, commits, pull requests, reviews, labels, or other GitHub mutations.
 
             Repository: ${{ github.repository }}
-            Issue or PR number: #${{ github.event.issue.number || inputs.issue_number }}
+            Issue or PR number: #${{ inputs.issue_number }}
 
             Issue title:
-            ${{ github.event.issue.title || '' }}
+            ${{ inputs.issue_title }}
 
             Issue body:
-            ${{ github.event.issue.body || '' }}
+            ${{ inputs.issue_body }}
 
             Trusted maintainer request:
-            ${{ github.event.comment.body || inputs.request }}
+            ${{ inputs.request }}
 
             Inspect only the repository context needed to answer. Prefer targeted searches over reading the whole repository.
 
@@ -249,16 +243,16 @@ jobs:
             Do not edit files. Do not run shell commands. Do not create branches, commits, pull requests, reviews, labels, or other repository mutations.
 
             Repository: ${{ github.repository }}
-            Issue or PR number: #${{ github.event.issue.number || inputs.issue_number }}
+            Issue or PR number: #${{ inputs.issue_number }}
 
             Issue title:
-            ${{ github.event.issue.title || '' }}
+            ${{ inputs.issue_title }}
 
             Issue body:
-            ${{ github.event.issue.body || '' }}
+            ${{ inputs.issue_body }}
 
             Trusted maintainer request:
-            ${{ github.event.comment.body || inputs.request }}
+            ${{ inputs.request }}
 
             Inspect only the repository context needed to answer. Prefer targeted searches over broad reads.
 
