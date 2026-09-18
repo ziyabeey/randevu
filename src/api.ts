@@ -20,6 +20,19 @@ export class ApiRequestError extends Error {
   }
 }
 
+// Operator pages register the cross-tab workspace coherence guard at startup
+// (see workspace-coherence.ts); public and customer-management pages never do,
+// so for them the client behaves exactly as before.
+type WorkspaceGuard = {
+  writeAllowed(path: string): Promise<boolean>;
+  noteResponse(path: string, method: string, requestBody: unknown, responseBody: unknown): void;
+};
+let workspaceGuard: WorkspaceGuard | null = null;
+
+export function setWorkspaceGuard(guard: WorkspaceGuard | null) {
+  workspaceGuard = guard;
+}
+
 let csrfToken: string | null = null;
 let csrfRequest: Promise<string> | null = null;
 
@@ -125,7 +138,16 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
   headers.set('Accept', 'application/json');
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
-  const csrfRequired = unsafeMethod(init.method) && csrf !== 'skip';
+  const method = (init.method ?? 'GET').toUpperCase();
+  if (workspaceGuard && unsafeMethod(method) && !(await workspaceGuard.writeAllowed(path))) {
+    throw new ApiRequestError(
+      'Başka bir sekmede oturum veya işletme değişti. Sayfa güncel bilgilerle yenileniyor.',
+      409,
+      'WORKSPACE_CONTEXT_CHANGED',
+    );
+  }
+
+  const csrfRequired = unsafeMethod(method) && csrf !== 'skip';
   if (csrfRequired) {
     headers.set('X-YZT-CSRF', await obtainCsrfToken());
   }
@@ -154,5 +176,6 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
 
   const candidate = body as T & { csrfToken?: unknown };
   seedCsrfToken(candidate.csrfToken);
+  workspaceGuard?.noteResponse(path, method, init.body, body);
   return body as T;
 }

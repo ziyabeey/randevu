@@ -12,6 +12,8 @@ import PublicBookingSettingsPage from './PublicBookingSettingsPage';
 import ManageAppointmentPage from './ManageAppointmentPage';
 import TeamPage from './TeamPage';
 import { captureTeamInviteFromLocation, readPendingTeamInvite } from './teamInvite';
+import { setWorkspaceGuard } from './api';
+import { installWorkspaceCoherence, workspaceGuard } from './workspace-coherence';
 import './styles.css';
 import './phase4.css';
 import './phase5.css';
@@ -44,6 +46,15 @@ const isPublicPage = publicSlug !== null;
 
 if (!isManagementPage) captureTeamInviteFromLocation();
 const isInviteFlow = path === '/' && Boolean(readPendingTeamInvite());
+
+// Operator workspace pages are bound to the session/business they rendered so a
+// change made in another tab cannot be written through, or presented by, this
+// one. Calendar, public-booking settings and team do not read the session
+// themselves, so the binding is read once for them.
+if (!isManagementPage && !isPublicPage && !isInviteFlow) {
+  installWorkspaceCoherence({ readsSessionItself: !(isCalendar || isPublicSettings || isTeam) });
+  setWorkspaceGuard(workspaceGuard);
+}
 
 createRoot(root).render(
   <StrictMode>
