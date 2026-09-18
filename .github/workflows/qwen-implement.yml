@@ -154,13 +154,21 @@ jobs:
             --- END TRUSTED MAINTAINER REQUEST ---
 
       - name: Report Qwen delivery or escalation
-        if: ${{ always() && steps.qwen.outcome == 'success' }}
+        if: ${{ always() }}
         env:
           GH_TOKEN: ${{ github.token }}
+          QWEN_OUTCOME: ${{ steps.qwen.outcome }}
           QWEN_SUMMARY: ${{ steps.qwen.outputs.summary }}
           QWEN_ERROR: ${{ steps.qwen.outputs.error }}
         run: |
           set -euo pipefail
+          if [ "${QWEN_OUTCOME}" != "success" ]; then
+            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" \
+              --body "Qwen implementation failed before delivery. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "::error title=Qwen implementation failed::The model/action step failed before an implementation PR was delivered."
+            exit 1
+          fi
+
           pr_url="$(gh pr list --repo "${REPOSITORY}" --head "${QWEN_BRANCH}" --state open --json url --jq '.[0].url // empty')"
           if [ -n "${pr_url}" ]; then
             gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen delivery complete: ${pr_url}"
