@@ -14,19 +14,20 @@ local JSON packet
 scripts/dev-dispatcher.mjs
         |
         +--> exact base + isolated git worktree
-        +--> Qwen Code (implementer only)
-        +--> changed-path scope fence
+        +--> Qwen Code sandbox (implementer only)
+        +--> base-to-final + filesystem scope fences
         +--> coordinator-declared validation argv
-        +--> commit + push
+        +--> second scope fence
+        +--> dispatcher commit + push
         +--> DRAFT PR
         |
         v
 GitHub R0 + existing CI -> risk-based R1/R2 -> DANIŞMA
 ```
 
-v0.1 intentionally starts from a **local JSON packet**. GitHub issue polling/webhooks and queue claiming are a later adapter; untrusted issue/PR text must never become executable packet data by itself.
+v0.1 intentionally starts from a **local JSON packet**. GitHub issue polling/webhooks and queue claiming are a later adapter. Untrusted issue/PR text must never become executable packet data by itself.
 
-Qwen receives no GitHub token from the dispatcher. It is instructed not to run shell commands and runs with `auto-edit` or `auto`, never YOLO. The dispatcher, not Qwen, owns Git commit/push/draft-PR delivery. Qwen cannot issue R1/R2 acceptance, mark ready, approve, or merge.
+Qwen receives no GitHub token from the dispatcher. It runs only with `auto-edit`, inside the Qwen sandbox, with `shell` and `agent` excluded. The dispatcher, not Qwen, owns validation, Git commit/push, and draft-PR delivery. Qwen cannot issue R1/R2 acceptance, mark ready, approve, or merge.
 
 ## Packet
 
@@ -45,6 +46,7 @@ Example:
   "prompt": "Implement only the accepted F13-02 slice.",
   "model": "qwen3.8-flash",
   "approval_mode": "auto-edit",
+  "output_mode": "json",
   "budgets": {
     "max_wall_time": "10m",
     "max_tool_calls": 60,
@@ -62,26 +64,30 @@ Example:
 }
 ```
 
-A scope entry ending in `/` is an explicit directory prefix. Other writable/forbidden entries are exact file paths. `..`, absolute paths, backslashes, control characters, overlapping writable/forbidden scope, unsafe branch names, unknown packet fields and shell-style validation are rejected.
+A scope entry ending in `/` is an explicit directory prefix. Other writable/forbidden entries are exact file paths. `..`, absolute paths, backslashes, NUL/control separators where argv requires a single line, overlapping writable/forbidden scope, unsafe branch names, unknown packet fields and shell-style validation are rejected.
 
-Validation is argv-based with `shell:false`. By default only `node`, `npm`, `npx`, and `git` are accepted as validation executables. A server operator may extend that allowlist with `DEV_DISPATCH_ALLOWED_EXECUTABLES`; this is an operator configuration, not task authority.
+`output_mode` is intentionally JSON-only in v0.1. `max_wall_time` accepts Qwen duration syntax from 1 second through 2 hours. Validation is argv-based with `shell:false`. By default only `node`, `npm`, `npx`, and `git` are accepted as validation executables. A server operator may extend that executable allowlist with `DEV_DISPATCH_ALLOWED_EXECUTABLES`; this is operator configuration, not task authority.
 
 ## Dry run
 
 ```bash
-node scripts/dev-dispatcher.mjs --packet /secure/task.json --dry-run
+node scripts/dev-dispatcher.mjs \
+  --packet /secure/task.json \
+  --repo-root /srv/randevu \
+  --dry-run
 ```
 
-Dry run validates the packet and prints the Qwen execution plan without executing Git, Qwen, validation, push, or PR creation. The actual assignment prompt is replaced with `[PROMPT]` in the receipt.
+Dry run is write-free. It validates the packet, verifies the source repository identity, exact base commit, clean checkout, and local task-branch absence, then prints the Qwen execution plan. It does not execute Qwen, validation, push, or PR creation. The assignment prompt is replaced with `[PROMPT]`, and validation arguments are not published in the receipt.
 
 ## Execution
 
 Prerequisites on the dispatcher host:
 
 - Node >= repository engine requirement;
-- `git` with authenticated push access to the repository;
+- `git` with authenticated fetch/push access to the repository;
 - GitHub CLI `gh` authenticated for draft PR creation;
-- Qwen Code CLI `qwen` configured for the selected model/provider;
+- Qwen Code CLI `qwen` configured for the selected provider;
+- Docker or Podman available for Qwen sandboxing on Linux;
 - a clean repository checkout containing the exact base commit.
 
 Run:
@@ -90,20 +96,36 @@ Run:
 node scripts/dev-dispatcher.mjs --packet /secure/task.json --repo-root /srv/randevu
 ```
 
-Qwen is launched headlessly with explicit `--max-wall-time`, `--max-tool-calls`, `--max-session-turns`, JSON output and `--exclude-tools agent`. Excluding `agent` prevents subagent inner work from bypassing the top-level tool-call budget. The Qwen child receives only a minimal environment plus explicitly allowlisted provider credentials (`QWEN_API_KEY,DASHSCOPE_API_KEY` by default); GitHub tokens are not forwarded.
+Before work starts, the dispatcher verifies both effective fetch and push URLs for `origin`, verifies that the exact base commit exists, and rejects both local and remote reuse of the task branch.
 
-After Qwen exits successfully, the dispatcher checks every changed/untracked path before running validation. Any path outside `writable`, any forbidden path, no changes, failed validation, unavailable Qwen, dirty source checkout, base mismatch, existing task branch, or PR creation failure returns a machine-readable `MORE_CONTEXT | ESCALATE` receipt and never marks a PR ready or merges it.
+Qwen is launched headlessly with JSON output, `auto-edit`, `--sandbox`, explicit `--max-wall-time`, `--max-tool-calls`, `--max-session-turns`, and `--exclude-tools agent,shell`. Its HOME/XDG state is a disposable private directory under the dispatch temp area. Only explicitly allowlisted provider credentials are forwarded. Operator configuration cannot re-add `GH_TOKEN`, `GITHUB_TOKEN`, or equivalent GitHub-token names.
 
-A successful run creates a commit, pushes only the task branch, and opens a **draft** PR. Existing GitHub R0 and CI then take over. Readiness, independent R1/R2, merge, and post-main acceptance remain coordinator-controlled.
+The worktree fence rejects tracked or changed symlinks, path escapes, worker-created commits, ignored worker writes, paths outside `writable`, and paths matching `forbidden`. Scope is checked once after Qwen and again after coordinator-declared validation. The second check prevents validators from smuggling additional stageable paths into `git add --all`. The final dispatcher commit must be a direct child of the exact task base.
+
+If Qwen returns `MORE_CONTEXT | ESCALATE`, the dispatcher stops before validation/delivery even when Qwen exits zero. Failed Qwen or validation output is captured only as bounded status/byte-count metadata in emitted receipts. Raw model/validator stdout, stderr, validation arguments, and packet prompts are not copied into PR bodies or machine-readable receipts.
+
+A successful run creates one dispatcher-owned commit, pushes only the task branch, and opens a **draft** PR. Existing GitHub R0 and CI then take over. Readiness, independent R1/R2, merge, and post-main acceptance remain coordinator-controlled.
 
 ## Secrets
 
-Do not place credentials in packets, prompts, PR bodies, or validation arguments. Dispatcher error receipts redact values of sensitive environment variables before emission. Qwen does not receive `GH_TOKEN`/`GITHUB_TOKEN` from this process.
+Do not place credentials in packets, prompts, PR bodies, or validation arguments. The dispatcher does not rely on this instruction as its only protection: it omits validation arguments and raw subprocess output from public receipts, uses an isolated Qwen HOME, and hard-denies GitHub credential variables from the Qwen environment. Sensitive environment values are redacted when an error message itself contains them.
 
 ## Single-worker property
 
 v0.1 uses a host-level lock in the system temp directory. A second dispatcher invocation fails closed with `BUSY`. Queueing, crash leases, retries, cancellation and GitHub event intake are deliberately deferred until this execution kernel is proven on real tasks.
 
+## Validation
+
+The dedicated test suite covers packet rejection, hard budgets, command construction, secret-safe dry-run output, real temporary-repository exact-base fencing, authorized edits, worker-created commit rejection, symlink rejection, ignored-file rejection, and repository-identity mismatch.
+
+```bash
+node --check scripts/dev-dispatcher.mjs
+node --test tests/dev-dispatcher.test.mjs
+git diff --check
+```
+
+The repository's existing CI remains authoritative.
+
 ## Next adapter
 
-After v0.1 proves the execution kernel, the next layer may translate a coordinator-authored GitHub Issue/Task Manifest into this packet and invoke the dispatcher. That adapter must authenticate coordinator authority and remain idempotent; arbitrary issue text must never be executed as commands.
+After v0.1 proves the execution kernel, the next layer may translate a coordinator-authored GitHub Issue/Task Manifest into this packet and invoke the dispatcher. That adapter must authenticate coordinator authority, claim work idempotently, and keep arbitrary issue text as untrusted data rather than executable commands.
