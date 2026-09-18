@@ -13,7 +13,6 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  issues: write
   copilot-requests: write
 
 concurrency:
@@ -137,7 +136,7 @@ jobs:
           - <short factual note or NONE>
           PROMPT
 
-          copilot --agent=task \
+          copilot \
             --prompt "$(cat "${prompt_file}")" \
             --silent --no-ask-user \
             --deny-tool=write \
@@ -154,27 +153,6 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
           grep -Eq '^TEST_RESULT:[[:space:]]*PASS[[:space:]]*$' "${report_file}"
-
-      - name: Publish tester receipt
-        if: ${{ always() }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TEST_OUTCOME: ${{ steps.copilot.outcome }}
-          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
-        run: |
-          set -euo pipefail
-          if [ "${TEST_OUTCOME}" = "success" ]; then
-            result="PASS"
-          else
-            result="FAIL"
-          fi
-          body="## COPILOT TESTER — ${result}
-
-          Exact head: ${HEAD_SHA}
-          Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-
-          Read-only test lane only. This receipt does not replace R0 or independent R1/R2."
-          gh issue comment "${PR_NUMBER}" --repo "${REPOSITORY}" --body "${body}"
 
       - name: Remove disposable test database
         if: ${{ always() && steps.scope.outputs.mode == 'code' }}
