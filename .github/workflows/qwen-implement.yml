@@ -12,7 +12,7 @@ on:
         required: true
         type: string
       request:
-        description: 'Implementation request'
+        description: 'Complete implementation task context for manual dispatch'
         required: true
         type: string
 
@@ -75,7 +75,7 @@ jobs:
         id: qwen
         uses: QwenLM/qwen-code-action@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.QWEN_GITHUB_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
           REQUEST: ${{ github.event.comment.body || github.event.issue.body || inputs.request }}
           REPOSITORY: ${{ github.repository }}
@@ -119,7 +119,7 @@ jobs:
                     "create_pull_request"
                   ],
                   "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${{ secrets.QWEN_GITHUB_TOKEN || github.token }}"
                   }
                 }
               },
@@ -148,30 +148,17 @@ jobs:
             6. Keep the implementation to the smallest coherent scope. If the request is ambiguous, conflicts with repository guidance, requires broader authority, or would touch more than 20 files, post "MORE_CONTEXT | ESCALATE" on the issue/PR and stop without opening a PR.
             7. Do not claim tests ran unless you actually have evidence. CI is handled after delivery.
             8. After implementing, create a pull request targeting main. Make it a draft if the tool supports draft PRs. The PR body must include "Refs #${{ github.event.issue.number || inputs.issue_number }}", a concise change summary, changed paths, and a note that repository CI is authoritative.
-            9. Post the resulting PR link back to the issue/PR. Do not perform any further repository mutation after delivery.
+            9. After creating the pull request, stop. The workflow, not Qwen, owns the delivery-status comment. Do not perform any further repository mutation after PR creation.
 
             Issue title:
-            ${{ github.event.issue.title || '' }}
+            ${{ github.event.issue.title || 'Manual workflow dispatch' }}
 
-            Issue body:
-            ${{ github.event.issue.body || '' }}
+            Issue body / manual task context:
+            ${{ github.event.issue.body || inputs.request }}
 
             --- BEGIN TRUSTED MAINTAINER REQUEST ---
             ${{ github.event.comment.body || github.event.issue.body || inputs.request }}
             --- END TRUSTED MAINTAINER REQUEST ---
-
-      - name: Report Qwen delivery
-        if: ${{ success() }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          pr_url="$(gh pr list --repo "${REPOSITORY}" --head "${QWEN_BRANCH}" --state open --json url --jq '.[0].url // empty')"
-          if [ -n "${pr_url}" ]; then
-            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen delivery complete: ${pr_url}"
-          else
-            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen finished, but no open PR was found for branch \`${QWEN_BRANCH}\`. Check the workflow log before retrying."
-          fi
 
       - name: Dispatch CI when using the default GITHUB_TOKEN
         if: ${{ success() }}
@@ -187,4 +174,18 @@ jobs:
             echo "Dispatched CI explicitly because GITHUB_TOKEN-created events do not recursively trigger workflows."
           else
             echo "::warning title=Qwen branch missing::No task branch was found after Qwen completed; CI was not dispatched."
+          fi
+
+      - name: Report Qwen delivery
+        if: ${{ success() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pr_url="$(gh pr list --repo "${REPOSITORY}" --head "${QWEN_BRANCH}" --state open --json url --jq '.[0].url // empty')"
+          if [ -n "${pr_url}" ]; then
+            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen delivery complete: ${pr_url}"
+          else
+            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen finished, but no open PR was found for branch \`${QWEN_BRANCH}\`. Check the workflow log before retrying."
           fi
