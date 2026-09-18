@@ -159,18 +159,25 @@ jobs:
         if: ${{ always() && steps.qwen.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          QWEN_FINAL_RESPONSE: ${{ steps.qwen.outputs.summary }}
+          QWEN_SUMMARY: ${{ steps.qwen.outputs.summary }}
+          QWEN_ERROR: ${{ steps.qwen.outputs.error }}
         run: |
           set -euo pipefail
           pr_url="$(gh pr list --repo "${REPOSITORY}" --head "${QWEN_BRANCH}" --state open --json url --jq '.[0].url // empty')"
           if [ -n "${pr_url}" ]; then
             gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen delivery complete: ${pr_url}"
           else
+            echo "::group::Qwen delivery diagnostic"
+            printf 'summary:\n%s\n' "${QWEN_SUMMARY}" | head -c 4000
+            printf '\nerror:\n%s\n' "${QWEN_ERROR}" | head -c 4000
+            echo
+            echo "::endgroup::"
+
             summary_file="${RUNNER_TEMP}/qwen-delivery-summary.md"
             {
               printf '%s\n\n' "Qwen completed without an open PR for branch \`${QWEN_BRANCH}\`. Delivery failed."
               printf '%s\n\n' "**Qwen final response:**"
-              printf '%s' "${QWEN_FINAL_RESPONSE}" | head -c 6000
+              printf '%s' "${QWEN_SUMMARY}" | head -c 6000
               printf '\n'
             } > "${summary_file}"
             gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body-file "${summary_file}"
