@@ -1,12 +1,12 @@
 # YZT Randevu — Doğrulanmış mevcut durum
 
-**Kontrol: 16 Eylül 2026.** Bu dosya yalnız main'de doğrulanmış runtime durumunu ve aktif entegrasyon sınırını tutar. Canlı görev/sahiplik `TASKS.md`, bağımlılıklar `ROADMAP.md`, koordinasyon/conflict/staging kararları Issue #65 içindedir.
+**Kontrol: 18 Eylül 2026.** Bu dosya yalnız main'de doğrulanmış runtime durumunu ve aktif entegrasyon sınırını tutar. Canlı görev/sahiplik `TASKS.md`, bağımlılıklar `ROADMAP.md`, koordinasyon/conflict/staging kararları Issue #65 içindedir.
 
 ## Main referansı
 
 Bu dosya **exact current main SHA'yı bilerek içine gömmez**; belgeyi main'e merge etmek SHA'yı yeniden değiştirip kendi kendini bayatlatır. Güncel exact SHA için repository `main` ref'i otoritedir.
 
-Son runtime-affecting ürün baseline'ı **F11-01 grup/satır sözleşmesi ve ileri migration / PR #105**'tir. Final semantic head `40a476ec4bdf070d17d5595f76980fb4852457db`, latest-main docs-only descendant `d9960e6c487f86f49d90b0ed07db240dc6775682`, merge/main commit `83d61f4115dafb887b89eba66d1157311927139f`; semantic STRICT CI #1075, fresh-base CI #1078 ve merge sonrası main CI #1079 başarılıdır. R1 security/DB/access ve R2 browser/integration bağımsız kapıları final semantic head üzerinde **ACCEPTABLE** sonuçlanmış, Phase-11 gerçek saha receipt'i `5693460041` kabul edilmiştir; hosted-only residual bulunmadığı için ayrıca staging açılmamıştır. F11-01 mevcut `appointments` tablosunu fiziksel service-line store olarak korur ve additive `appointment_groups` başlığı ekler; legacy appointment kimliği/recovery/outbox kanıtı korunur. Fixed/range line snapshotları integer minor-unit min/max + currency + policy version taşır, range estimate definitive charge sayılmaz. Legacy fixed create concurrent katalog değişiminde eski para ile yeni policy version'ı karıştıramaz; authoritative service state uyuşmazlığı `SERVICE_PRICE_SNAPSHOT_MISMATCH` ile fail-closed olur. Gerçek saha receipt'iyle doğrulanan kısmi hizmet iptalinde non-legacy group lifecycle mixed line durumunu `partial` olarak temsil eder, sibling line status/time bağımsız kalır ve tenant/customer/source bütünlüğü korunur.
+Son doğrulanmış runtime-affecting ürün baseline'ı **F11-03 grup yönetimi ve mevcut ekranlarla uyum / PR #115**'tir. Final reviewed candidate `5ae74a2116e9283713020cae25fc7ac06f4a3a6c`, latest-main sync head `ffb08765d490cf09f16e78694bed4983d88d6303`, merge/main `65b12e0d568fcbc7cf281d7ade90f342badd4cce`; STRICT CI #1182 ve post-main CI #1183 başarılıdır. Fresh R1 `5717263393` ve R2 `5717349914` **ACCEPTABLE** sonuçlanmış, coordinator closure `5717770847` ile semantic freeze aktiftir. F11-01 ve F11-02 bunun kabul edilmiş ancestor sözleşmeleridir. F11-04 henüz main değildir; draft PR #117 frozen head `227b7698a70821a02bb8dfd45b9180194d4e301a` üzerinde STRICT kabul bekler ve son exact-head #1215 koşusu checkout öncesi runner/account allocation engeline takılmıştır.
 
 Önceki ana ürün kapanışları:
 
@@ -50,7 +50,7 @@ Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekra
 
 ## Randevu ürün track'i ve Kepenk Core platform track'i
 
-**Randevu ürün track'i:** runtime ürün baseline'ı F11-01'dir. Bu docs-only state-sync main'e girdikten sonra aktif ürün writer **Ajan D / F11-02** olur. F11-02 atomic multi-service availability/create işidir; F11-03 ve F11-04 kendi dependency kapıları açılana kadar kapalı kalır.
+**Randevu ürün track'i:** doğrulanmış runtime baseline artık **F11-03**'tür. F11-02 atomic multi-service availability/create ve F11-03 group-rooted yönetim/uyumluluk main'de kabul edilmiştir; F11-03 merge `65b12e0d568fcbc7cf281d7ade90f342badd4cce`, post-main CI #1183 / `35245968810` success. **F11-04 henüz main değildir**: draft PR #117 frozen head `227b7698a70821a02bb8dfd45b9180194d4e301a` üzerinde STRICT kabul bekler; son exact-head CI #1215 runner/account allocation nedeniyle checkout öncesi başarısızdır ve unrelated tooling CI bu adayı doğrulamaz.
 
 **Kepenk Core platform track'i:** K04 ve KC planı docs-only [PR #106](https://github.com/ziyabeey1-ai/randevu/pull/106) ile main'dedir ve Randevu F09–F17 54 MVP görev sayısını değiştirmez. KC-00 hosted numeric read-only inventory receipt'i **OPEN / Çalışılıyor**; Kepenk Issue #10 bunu toplar. KC-01 Core schema/RPC writer token'ı KC-00 receipt kabul edilene kadar **CLOSED / Engelli**. KC-02…KC-07 planlıdır. K04/KC, mevcut Randevu `profiles/businesses/memberships`, booking authority veya Firestore projection sınırlarını ikinci bir otorite yaratacak şekilde değiştirmez.
 

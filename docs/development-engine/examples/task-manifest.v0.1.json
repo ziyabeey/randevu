@@ -1,0 +1,47 @@
+{
+  "schema_version": "0.1",
+  "observation_only": true,
+  "example": true,
+  "source_refs": ["docs/development-engine/README.md#projections"],
+  "task": {
+    "id": "EXAMPLE-ONLY",
+    "domain": "tooling",
+    "size": "S",
+    "validation_budget": "LIGHT"
+  },
+  "identity": {
+    "owner": null,
+    "base_main_sha": null,
+    "branch": null,
+    "pr": null,
+    "current_head_sha": null
+  },
+  "scope": {
+    "writable": [],
+    "forbidden": ["src/**", "worker/**", "supabase/**", ".github/workflows/**"]
+  },
+  "risk": {
+    "auth": false,
+    "cross_tenant": false,
+    "migration": false,
+    "concurrent_writers": false,
+    "idempotency": false,
+    "temporal_semantics": false,
+    "money": false,
+    "external_side_effect": false,
+    "browser_flow": false
+  },
+  "contracts": {
+    "preserve": ["Canonical task, contract and Issue #65 authority"],
+    "change": [],
+    "invariants": ["No implementation or merge authority from this illustrative projection"]
+  },
+  "dependencies": { "tasks": ["TEMEL"], "accepted_evidence_refs": [] },
+  "acceptance": { "obligations": ["Illustrate schema shape without claiming live proof"] },
+  "review": { "r1": "optional", "r2": "optional", "coordinator_merge": "required" },
+  "state": {
+    "lifecycle": "planned",
+    "executor_mode": null,
+    "next_executable_step": "Replace this example with a fresh canonical-source observation; do not execute it."
+  }
+}
