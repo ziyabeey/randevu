@@ -110,8 +110,7 @@ function assertValidation(value) {
   if (!Array.isArray(value) || value.length === 0 || value.length > 20) {
     throw new DispatchError('INVALID_PACKET', 'validation must contain 1-20 argv arrays');
   }
-  const allowed = new Set((process.env.DEV_DISPATCH_ALLOWED_EXECUTABLES ?? [...DEFAULT_VALIDATION_EXECUTABLES].join(','))
-    .split(',').map((item) => item.trim()).filter(Boolean));
+  const allowed = DEFAULT_VALIDATION_EXECUTABLES;
   return value.map((argv, index) => {
     if (!Array.isArray(argv) || argv.length === 0 || argv.length > 32) {
       throw new DispatchError('INVALID_PACKET', `validation[${index}] must be a bounded argv array`);
