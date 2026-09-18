@@ -23,7 +23,7 @@ const QWEN_PROVIDER_ENV = new Set(DEFAULT_QWEN_ENV_ALLOWLIST);
 const BASE_ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME'];
 const QWEN_BASE_ENV_ALLOWLIST = ['PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP'];
 const GIT_ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'SSH_AUTH_SOCK', 'SSH_AGENT_PID', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY'];
-const GH_ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'GH_TOKEN', 'GITHUB_TOKEN', 'GH_HOST', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY'];
+const GH_ENV_ALLOWLIST = ['PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'GH_TOKEN', 'GITHUB_TOKEN', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY'];
 const VALIDATION_EXECUTABLE = 'node';
 const QWEN_CORE_TOOLS = ['read_file', 'grep_search', 'glob', 'edit', 'write_file'];
 const QWEN_DISABLED_TOOLS = ['run_shell_command', 'monitor', 'web_fetch', 'task', 'agent', 'skill', 'tool_search'];
@@ -313,7 +313,7 @@ function gitEnv() {
 }
 
 function ghEnv() {
-  return pickEnv(GH_ENV_ALLOWLIST);
+  return { ...pickEnv(GH_ENV_ALLOWLIST), GH_HOST: 'github.com', GH_PROMPT_DISABLED: '1' };
 }
 
 function git(cwd, args, options = {}) {
@@ -402,11 +402,16 @@ export function auditWorkerState(worktree, packet, { rejectIgnored = true, actor
 }
 
 function normalizeGithubRemote(value) {
-  return value.trim().toLowerCase()
-    .replace(/\.git$/, '')
-    .replace(/^git@github\.com:/, '')
-    .replace(/^https:\/\/github\.com\//, '')
-    .replace(/^ssh:\/\/git@github\.com\//, '');
+  const remote = value.trim().toLowerCase().replace(/\.git$/, '');
+  for (const pattern of [
+    /^git@github\.com:([a-z0-9_.-]+\/[a-z0-9_.-]+)$/,
+    /^https:\/\/github\.com\/([a-z0-9_.-]+\/[a-z0-9_.-]+)$/,
+    /^ssh:\/\/git@github\.com\/([a-z0-9_.-]+\/[a-z0-9_.-]+)$/,
+  ]) {
+    const match = pattern.exec(remote);
+    if (match) return match[1];
+  }
+  return null;
 }
 
 function assertLocalRepository(repoRoot, packet) {
@@ -506,15 +511,12 @@ function runValidations(worktree, packet, validationHome) {
       timeout: remaining,
       allowFailure: true,
     });
-    results.push({ command: 'node --check', target: argv[2], status: result.status, stdout_bytes: Buffer.byteLength(result.stdout ?? ''), stderr_bytes: Buffer.byteLength(result.stderr ?? '') });
+    results.push({ command: 'node --check', status: result.status, stdout_bytes: Buffer.byteLength(result.stdout ?? ''), stderr_bytes: Buffer.byteLength(result.stderr ?? '') });
     if (result.error?.code === 'ETIMEDOUT') throw new DispatchError('VALIDATION_TIMEOUT', 'static validation exceeded the 20 minute total deadline', { validation: results });
     if (result.error || result.status !== 0) {
-      throw new DispatchError('VALIDATION_FAILED', `static validation failed: ${argv[2]}`, { validation: results });
+      throw new DispatchError('VALIDATION_FAILED', 'static validation failed', { validation: results });
     }
   }
-  const diffCheck = git(worktree, ['diff', '--check'], { allowFailure: true, timeout: 60_000 });
-  results.push({ command: 'git diff --check', target: null, status: diffCheck.status, stdout_bytes: Buffer.byteLength(diffCheck.stdout ?? ''), stderr_bytes: Buffer.byteLength(diffCheck.stderr ?? '') });
-  if (diffCheck.error || diffCheck.status !== 0) throw new DispatchError('VALIDATION_FAILED', 'git diff --check failed', { validation: results });
   return results;
 }
 
@@ -523,7 +525,7 @@ function safeReceiptText(value) {
 }
 
 function buildPrBody(packet, headSha, changed, validations) {
-  const validationLines = validations.map(({ command, target, status }) => `- \`${command}${target ? ` ${target}` : ''}\` -> ${status === 0 ? 'PASS' : `exit ${status}`}`);
+  const validationLines = validations.map(({ command, status }) => `- \`${command}\` -> ${status === 0 ? 'PASS' : `exit ${status}`}`);
   return [
     'Coordinator-authored task packet executed by the bounded dispatcher.',
     '',
@@ -592,13 +594,16 @@ export function parseQwenCompletion(text) {
   return finalEvent;
 }
 
-export function buildCreateOnlyPushArgs(branch) {
-  const remoteRef = `refs/heads/${branch}`;
+export function buildCreateOnlyPushArgs(branch, baseBranch, baseSha) {
+  const taskRef = `refs/heads/${branch}`;
+  const baseRef = `refs/heads/${baseBranch}`;
   return [
-    `--force-with-lease=${remoteRef}:`,
-    '--set-upstream',
+    '--atomic',
+    `--force-with-lease=${taskRef}:`,
+    `--force-with-lease=${baseRef}:${baseSha}`,
     'origin',
-    `HEAD:${remoteRef}`,
+    `HEAD:${taskRef}`,
+    `${baseSha}:${baseRef}`,
   ];
 }
 
@@ -657,6 +662,16 @@ export function dispatch(packet, {
     const scope = auditWorkerState(worktreeState.worktree, validated, { rejectIgnored: false, actor: 'validation' });
 
     git(worktreeState.worktree, ['add', '--all']);
+    const stagedDiffCheck = git(worktreeState.worktree, ['diff', '--cached', '--check'], { allowFailure: true, timeout: 60_000 });
+    validations.push({
+      command: 'git diff --cached --check',
+      status: stagedDiffCheck.status,
+      stdout_bytes: Buffer.byteLength(stagedDiffCheck.stdout ?? ''),
+      stderr_bytes: Buffer.byteLength(stagedDiffCheck.stderr ?? ''),
+    });
+    if (stagedDiffCheck.error || stagedDiffCheck.status !== 0) {
+      throw new DispatchError('VALIDATION_FAILED', 'staged diff check failed', { validation: validations });
+    }
     const stagedPaths = parseNullList(git(worktreeState.worktree, ['diff', '--cached', '--name-only', '-z', validated.base_sha, '--']).stdout);
     const stagedScope = inspectChangedPaths(stagedPaths, validated);
     if (!stagedScope.ok) throw new DispatchError('SCOPE_VIOLATION', 'staged delivery exceeds authorized scope', stagedScope);
@@ -674,10 +689,10 @@ export function dispatch(packet, {
     if (!committedScope.ok || committedScope.changed.length === 0) {
       throw new DispatchError('SCOPE_VIOLATION', 'committed tree exceeds authorized scope', committedScope);
     }
-    localGuard(repoRoot, { ...validated, base_sha: headSha });
+    localGuard(repoRoot, validated);
     remoteGuard(repoRoot, validated);
     if (remoteBranchExists(repoRoot, validated.branch)) throw new DispatchError('BRANCH_EXISTS', `remote branch appeared before push: ${validated.branch}`);
-    const push = git(worktreeState.worktree, ['push', ...buildCreateOnlyPushArgs(validated.branch)], { timeout: 180_000, allowFailure: true });
+    const push = git(worktreeState.worktree, ['push', ...buildCreateOnlyPushArgs(validated.branch, validated.base_branch, validated.base_sha)], { timeout: 180_000, allowFailure: true });
     if (push.error || push.status !== 0) {
       throw new DispatchError('PUSH_FAILED', 'create-only task branch push failed', {
         branch: validated.branch, status: push.status,
@@ -705,7 +720,7 @@ export function dispatch(packet, {
     return {
       status: 'DRAFT_PR_CREATED', task_id: validated.task_id, repository: validated.repository,
       base_sha: validated.base_sha, head_sha: headSha, branch: validated.branch,
-      changed_paths: committedScope.changed, validation: validations.map(({ command, target, status }) => ({ command, target, status })),
+      changed_paths: committedScope.changed, validation: validations.map(({ command, status }) => ({ command, status })),
       pr_url: prUrl, qwen_exit: qwenResult.status,
       qwen_io: {
         output_mode: validated.output_mode,
