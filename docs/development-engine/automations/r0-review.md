@@ -41,8 +41,10 @@ that blocker set is frozen for the repair cycle.
 
 In **VERIFICATION**, inspect only:
 
-1. whether the delta from the discovery head stayed inside the approved writable
-   file scope and frozen repair/counterexample surface;
+1. whether the **authored repair delta** stayed inside the approved writable file
+   scope and frozen repair/counterexample surface. Exclude a separately identified
+   upstream-main/base-sync merge from authored scope only when its parent/base SHA
+   is recorded and those paths are byte-for-byte inherited from canonical main;
 2. whether each frozen blocker is closed on the exact current head;
 3. whether the repair itself introduced a regression in the repaired surface or
    one direct dependency hop; and
