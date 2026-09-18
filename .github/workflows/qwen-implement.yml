@@ -125,7 +125,7 @@ jobs:
             A trusted repository maintainer explicitly invoked you to implement a task.
 
             Repository: ${{ github.repository }}
-            Issue or PR number: #${{ inputs.issue_number }}
+            Issue number: #${{ inputs.issue_number }}
             Required task branch: qwen/task-${{ inputs.issue_number }}-${{ github.run_id }}
             Target branch: main
 
