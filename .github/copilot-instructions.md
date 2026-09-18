@@ -28,8 +28,11 @@ Derived manifests/audits are observation-only, never replacement authority.
   `NONE` for a clean discovery. With no completed discovery receipt, use
   DISCOVERY and assign stable IDs only to evidence-backed blockers. Once that
   durable receipt exists, any descendant-head review is VERIFICATION: first
-  confirm the delta stayed inside approved writable/frozen repair scope, then
-  check prior blocker closure plus regressions caused by the repair, not the
+  confirm the authored repair delta stayed inside approved writable/frozen repair
+  scope. A recorded upstream-main/base-sync merge is provenance, not authored
+  scope, only when its parent/base SHA is explicit and those paths are inherited
+  unchanged from canonical main. Then check prior blocker closure plus regressions
+  caused by the repair, not the
   whole repository again. Normal repair invariant: `next_blockers ⊆ frozen_blockers`.
   New non-critical observations are deferred/backlog candidates, not new current
   acceptance. Only concrete credential exposure, auth privilege escalation,
