@@ -22,7 +22,7 @@ const DEFAULT_QWEN_ENV_ALLOWLIST = ['QWEN_API_KEY', 'DASHSCOPE_API_KEY'];
 const QWEN_PROVIDER_ENV = new Set(DEFAULT_QWEN_ENV_ALLOWLIST);
 const BASE_ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME'];
 const QWEN_BASE_ENV_ALLOWLIST = ['PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP'];
-const DEFAULT_VALIDATION_EXECUTABLES = new Set(['node', 'npm']);
+const VALIDATION_EXECUTABLE = 'node';
 const QWEN_CORE_TOOLS = ['read_file', 'grep_search', 'glob', 'edit', 'write_file'];
 const QWEN_DISABLED_TOOLS = ['run_shell_command', 'monitor', 'web_fetch', 'task', 'agent', 'skill', 'tool_search'];
 
@@ -79,7 +79,7 @@ function scopesOverlap(left, right) {
 
 function assertSafeBranch(branch) {
   if (typeof branch !== 'string' || branch.length === 0 || branch.length > 180 || !SAFE_BRANCH_RE.test(branch)) return false;
-  if (branch.startsWith('/') || branch.endsWith('/') || branch.startsWith('.') || branch.endsWith('.') || branch.includes('..')) return false;
+  if (branch.startsWith('-') || branch.startsWith('/') || branch.endsWith('/') || branch.startsWith('.') || branch.endsWith('.') || branch.includes('..')) return false;
   if (branch.includes('@{') || branch.includes('//') || branch.endsWith('.lock')) return false;
   return branch.split('/').every((part) => part && part !== '.' && part !== '..');
 }
@@ -107,13 +107,12 @@ function assertStringArray(value, label, { min = 1, max = MAX_SCOPE_ENTRIES, sco
 }
 
 function assertValidation(value) {
-  if (!Array.isArray(value) || value.length === 0 || value.length > 20) {
-    throw new DispatchError('INVALID_PACKET', 'validation must contain 1-20 argv arrays');
+  if (!Array.isArray(value) || value.length > 20) {
+    throw new DispatchError('INVALID_PACKET', 'validation must contain 0-20 static preflight argv arrays');
   }
-  const allowed = DEFAULT_VALIDATION_EXECUTABLES;
   return value.map((argv, index) => {
-    if (!Array.isArray(argv) || argv.length === 0 || argv.length > 32) {
-      throw new DispatchError('INVALID_PACKET', `validation[${index}] must be a bounded argv array`);
+    if (!Array.isArray(argv) || argv.length !== 3) {
+      throw new DispatchError('INVALID_PACKET', `validation[${index}] must be exactly: node --check <relative-file>`);
     }
     let totalBytes = 0;
     for (const item of argv) {
@@ -123,7 +122,9 @@ function assertValidation(value) {
       totalBytes += Buffer.byteLength(item);
     }
     if (totalBytes > MAX_VALIDATION_COMMAND_BYTES) throw new DispatchError('INVALID_PACKET', `validation[${index}] exceeds the command byte budget`);
-    if (!allowed.has(argv[0])) throw new DispatchError('INVALID_PACKET', `validation executable is not allowed: ${argv[0]}`);
+    if (argv[0] !== VALIDATION_EXECUTABLE || argv[1] !== '--check' || !isSafeRelativePath(argv[2], { allowDirectory: false })) {
+      throw new DispatchError('INVALID_PACKET', `validation[${index}] must be exactly: node --check <relative-file>`);
+    }
     return [...argv];
   });
 }
@@ -169,6 +170,11 @@ export function validatePacket(raw) {
   }
 
   const validation = assertValidation(raw.validation);
+  for (const argv of validation) {
+    if (!writable.some((entry) => pathMatchesScope(argv[2], entry))) {
+      throw new DispatchError('INVALID_PACKET', `validation target is outside writable scope: ${argv[2]}`);
+    }
+  }
 
   return {
     ...raw,
@@ -463,19 +469,22 @@ function runValidations(worktree, packet, validationHome) {
   for (const argv of packet.validation) {
     const elapsed = Date.now() - started;
     const remaining = MAX_VALIDATION_TOTAL_MS - elapsed;
-    if (remaining <= 0) throw new DispatchError('VALIDATION_TIMEOUT', 'validation exceeded the 20 minute total deadline', { validation: results });
-    const result = run(argv[0], argv.slice(1), {
+    if (remaining <= 0) throw new DispatchError('VALIDATION_TIMEOUT', 'static validation exceeded the 20 minute total deadline', { validation: results });
+    const result = run(VALIDATION_EXECUTABLE, ['--check', argv[2]], {
       cwd: worktree,
       env: childEnv({ isolatedHome: validationHome }),
       timeout: remaining,
       allowFailure: true,
     });
-    results.push({ command: argv[0], status: result.status, stdout_bytes: Buffer.byteLength(result.stdout ?? ''), stderr_bytes: Buffer.byteLength(result.stderr ?? '') });
-    if (result.error?.code === 'ETIMEDOUT') throw new DispatchError('VALIDATION_TIMEOUT', 'validation exceeded the 20 minute total deadline', { validation: results });
+    results.push({ command: 'node --check', target: argv[2], status: result.status, stdout_bytes: Buffer.byteLength(result.stdout ?? ''), stderr_bytes: Buffer.byteLength(result.stderr ?? '') });
+    if (result.error?.code === 'ETIMEDOUT') throw new DispatchError('VALIDATION_TIMEOUT', 'static validation exceeded the 20 minute total deadline', { validation: results });
     if (result.error || result.status !== 0) {
-      throw new DispatchError('VALIDATION_FAILED', `validation failed: ${argv[0]}`, { validation: results });
+      throw new DispatchError('VALIDATION_FAILED', `static validation failed: ${argv[2]}`, { validation: results });
     }
   }
+  const diffCheck = git(worktree, ['diff', '--check'], { allowFailure: true, timeout: 60_000 });
+  results.push({ command: 'git diff --check', target: null, status: diffCheck.status, stdout_bytes: Buffer.byteLength(diffCheck.stdout ?? ''), stderr_bytes: Buffer.byteLength(diffCheck.stderr ?? '') });
+  if (diffCheck.error || diffCheck.status !== 0) throw new DispatchError('VALIDATION_FAILED', 'git diff --check failed', { validation: results });
   return results;
 }
 
@@ -484,7 +493,7 @@ function safeReceiptText(value) {
 }
 
 function buildPrBody(packet, headSha, changed, validations) {
-  const validationLines = validations.map(({ command, status }) => `- \`${command}\` -> ${status === 0 ? 'PASS' : `exit ${status}`}`);
+  const validationLines = validations.map(({ command, target, status }) => `- \`${command}${target ? ` ${target}` : ''}\` -> ${status === 0 ? 'PASS' : `exit ${status}`}`);
   return [
     'Coordinator-authored task packet executed by the bounded dispatcher.',
     '',
@@ -641,7 +650,7 @@ export function dispatch(packet, {
     return {
       status: 'DRAFT_PR_CREATED', task_id: validated.task_id, repository: validated.repository,
       base_sha: validated.base_sha, head_sha: headSha, branch: validated.branch,
-      changed_paths: committedScope.changed, validation: validations.map(({ command, status }) => ({ command, status })),
+      changed_paths: committedScope.changed, validation: validations.map(({ command, target, status }) => ({ command, target, status })),
       pr_url: pr.stdout.trim(), qwen_exit: qwenResult.status,
       qwen_io: {
         output_mode: validated.output_mode,
