@@ -124,7 +124,7 @@ function assertValidation(value) {
       totalBytes += Buffer.byteLength(item);
     }
     if (totalBytes > MAX_VALIDATION_COMMAND_BYTES) throw new DispatchError('INVALID_PACKET', `validation[${index}] exceeds the command byte budget`);
-    if (argv[0] !== VALIDATION_EXECUTABLE || argv[1] !== '--check' || !isSafeRelativePath(argv[2], { allowDirectory: false })) {
+    if (argv[0] !== VALIDATION_EXECUTABLE || argv[1] !== '--check' || argv[2].startsWith('-') || !isSafeRelativePath(argv[2], { allowDirectory: false })) {
       throw new DispatchError('INVALID_PACKET', `validation[${index}] must be exactly: node --check <relative-file>`);
     }
     return [...argv];
