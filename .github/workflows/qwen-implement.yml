@@ -55,7 +55,7 @@ jobs:
           set -euo pipefail
           test -n "${ISSUE_NUMBER}"
           if [ -z "${QWEN_API_KEY}" ]; then
-            echo "::error title=Missing QWEN_API_KEY::Add the Alibaba Cloud Token Plan key as repository Actions secret QWEN_API_KEY."
+            echo "::error title=Missing QWEN_API_KEY::Add the Qwen Token Plan key as repository Actions secret QWEN_API_KEY."
             exit 1
           fi
           if [ -z "${QWEN_GITHUB_TOKEN}" ]; then
@@ -77,42 +77,20 @@ jobs:
         uses: QwenLM/qwen-code-action@v1
         env:
           GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.QWEN_GITHUB_TOKEN }}
-          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
           ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
           REQUEST: ${{ github.event.comment.body || github.event.issue.body || inputs.request }}
           REPOSITORY: ${{ github.repository }}
           TARGET_BRANCH: qwen/task-${{ github.event.issue.number || inputs.issue_number }}-${{ github.run_id }}
         with:
           openai_api_key: ${{ secrets.QWEN_API_KEY }}
-          openai_base_url: ${{ vars.QWEN_AUTOMATION_BASE_URL || 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' }}
-          openai_model: ${{ vars.QWEN_AUTOMATION_MODEL || 'deepseek-v4.1-flash' }}
+          openai_base_url: ${{ vars.QWEN_BASE_URL || 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' }}
+          openai_model: ${{ vars.QWEN_MODEL || 'qwen3.8-flash' }}
           qwen_debug: 'false'
           upload_artifacts: 'false'
           workflow_name: 'qwen-implement'
           settings: |-
             {
-              "modelProviders": {
-                "anthropic": [
-                  {
-                    "id": "${{ vars.QWEN_AUTOMATION_MODEL || 'deepseek-v4.1-flash' }}",
-                    "name": "Alibaba Token Plan · Anthropic wire",
-                    "envKey": "QWEN_API_KEY",
-                    "baseUrl": "${{ vars.QWEN_AUTOMATION_ANTHROPIC_BASE_URL || 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/apps/anthropic' }}",
-                    "generationConfig": {
-                      "timeout": 120000,
-                      "maxRetries": 2,
-                      "contextWindowSize": 1000000
-                    }
-                  }
-                ]
-              },
-              "security": {
-                "auth": {
-                  "selectedType": "anthropic"
-                }
-              },
               "model": {
-                "name": "${{ vars.QWEN_AUTOMATION_MODEL || 'deepseek-v4.1-flash' }}",
                 "maxSessionTurns": 80
               },
               "telemetry": {
