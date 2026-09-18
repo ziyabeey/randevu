@@ -498,9 +498,8 @@ function parseWallTimeMs(value) {
   return Math.ceil(number * multiplier);
 }
 
-function runValidations(worktree, packet, validationHome) {
+function runValidations(worktree, packet, validationHome, started = Date.now()) {
   const results = [];
-  const started = Date.now();
   for (const argv of packet.validation) {
     const elapsed = Date.now() - started;
     const remaining = MAX_VALIDATION_TOTAL_MS - elapsed;
@@ -657,18 +656,24 @@ export function dispatch(packet, {
 
     const validationHome = path.join(worktreeState.parent, 'validation-home');
     mkdirSync(validationHome, { recursive: true, mode: 0o700 });
-    const validations = runValidations(worktreeState.worktree, validated, validationHome);
+    const validationStarted = Date.now();
+    const validations = runValidations(worktreeState.worktree, validated, validationHome, validationStarted);
     assertWorktreeMetadata(worktreeState.worktree, metadataSnapshot);
     const scope = auditWorkerState(worktreeState.worktree, validated, { rejectIgnored: false, actor: 'validation' });
 
     git(worktreeState.worktree, ['add', '--all']);
-    const stagedDiffCheck = git(worktreeState.worktree, ['diff', '--cached', '--check'], { allowFailure: true, timeout: 60_000 });
+    const stagedRemaining = MAX_VALIDATION_TOTAL_MS - (Date.now() - validationStarted);
+    if (stagedRemaining <= 0) throw new DispatchError('VALIDATION_TIMEOUT', 'static validation exceeded the 20 minute total deadline', { validation: validations });
+    const stagedDiffCheck = git(worktreeState.worktree, ['diff', '--cached', '--check'], { allowFailure: true, timeout: stagedRemaining });
     validations.push({
       command: 'git diff --cached --check',
       status: stagedDiffCheck.status,
       stdout_bytes: Buffer.byteLength(stagedDiffCheck.stdout ?? ''),
       stderr_bytes: Buffer.byteLength(stagedDiffCheck.stderr ?? ''),
     });
+    if (stagedDiffCheck.error?.code === 'ETIMEDOUT') {
+      throw new DispatchError('VALIDATION_TIMEOUT', 'static validation exceeded the 20 minute total deadline', { validation: validations });
+    }
     if (stagedDiffCheck.error || stagedDiffCheck.status !== 0) {
       throw new DispatchError('VALIDATION_FAILED', 'staged diff check failed', { validation: validations });
     }
