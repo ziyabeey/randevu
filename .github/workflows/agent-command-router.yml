@@ -1,0 +1,82 @@
+name: Agent Command Router
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  actions: write
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: agent-command-router-${{ github.event.issue.number }}-${{ github.event.comment.id }}
+  cancel-in-progress: false
+
+jobs:
+  route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      REPOSITORY: ${{ github.repository }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      COMMENT_BODY: ${{ github.event.comment.body }}
+      ISSUE_TITLE: ${{ github.event.issue.title }}
+      ISSUE_BODY: ${{ github.event.issue.body }}
+      AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+      SENDER_TYPE: ${{ github.event.sender.type }}
+      IS_PULL_REQUEST: ${{ github.event.issue.pull_request != null }}
+    steps:
+      - name: Route explicit AI command
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if [ "${SENDER_TYPE}" != "User" ]; then
+            echo "Ignoring non-user comment."
+            exit 0
+          fi
+
+          case "${AUTHOR_ASSOCIATION}" in
+            OWNER|MEMBER|COLLABORATOR) ;;
+            *)
+              echo "Ignoring command from untrusted association: ${AUTHOR_ASSOCIATION}"
+              exit 0
+              ;;
+          esac
+
+          dispatch() {
+            local workflow="$1"
+            local payload
+            payload="$(jq -n \
+              --arg issue_number "${ISSUE_NUMBER}" \
+              --arg request "${COMMENT_BODY}" \
+              --arg issue_title "${ISSUE_TITLE}" \
+              --arg issue_body "${ISSUE_BODY}" \
+              '{issue_number:$issue_number, request:$request, issue_title:$issue_title, issue_body:$issue_body}')"
+            printf '%s' "${payload}" | gh workflow run "${workflow}" --repo "${REPOSITORY}" --ref main --json
+          }
+
+          case "${COMMENT_BODY}" in
+            '@qwencoder /implement'*)
+              if [ "${IS_PULL_REQUEST}" = "true" ]; then
+                echo "::error title=Qwen target must be an issue::Move the implementation request to the binding issue."
+                exit 1
+              fi
+              dispatch "qwen-implement.yml"
+              echo "Dispatched Qwen Implement for issue #${ISSUE_NUMBER}."
+              ;;
+            '@gemini-cli /scout-cloudflare'*)
+              dispatch "gemini-scout.yml"
+              echo "Dispatched Gemini Scout in forced Cloudflare mode for #${ISSUE_NUMBER}."
+              ;;
+            '@gemini-cli /scout'*)
+              dispatch "gemini-scout.yml"
+              echo "Dispatched Gemini Scout for #${ISSUE_NUMBER}."
+              ;;
+            *)
+              echo "No explicit AI command; nothing dispatched."
+              ;;
+          esac
