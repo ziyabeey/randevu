@@ -9,6 +9,8 @@ test('F10-06 real-browser management choreography preserves current authority ac
     assert.ok(receipt.scenarios.includes('browser back/forward'));
     assert.ok(receipt.scenarios.includes('second-tab role downgrade'));
     assert.ok(receipt.scenarios.includes('logout/session expiry'));
+    assert.ok(receipt.scenarios.includes('cross-tab tenant drift'));
+    assert.ok(receipt.scenarios.includes('cross-tab logout without reload'));
   } catch (error) {
     const failures = error && typeof error === 'object' && Array.isArray(error.acceptanceFailures)
       ? error.acceptanceFailures

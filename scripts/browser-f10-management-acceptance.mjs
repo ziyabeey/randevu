@@ -286,6 +286,10 @@ export async function runManagementAcceptance(options = {}) {
     teamReadFailureOnce: false,
     failTeamReadAfterInvite: false,
     requests: [],
+    // Every invitation POST the fixture answered: which business it was
+    // written to (the shared selected business, exactly as the Worker resolves
+    // it from the origin-wide cookie) and the HTTP status returned.
+    invitationWrites: [],
     memberships: {
       [ids.businessA]: {
         id: ids.membershipA,
@@ -413,12 +417,19 @@ export async function runManagementAcceptance(options = {}) {
         }
         if (request.method === 'POST' && url.pathname === '/api/team/invitations') {
           const current = requireSelectedAccess(response);
-          if (!current) return;
-          if (current.role !== 'owner' && current.role !== 'manager') return denied(response);
+          if (!current) {
+            state.invitationWrites.push({ business: state.selected, status: response.statusCode });
+            return;
+          }
+          if (current.role !== 'owner' && current.role !== 'manager') {
+            state.invitationWrites.push({ business: state.selected, status: 403 });
+            return denied(response);
+          }
           if (state.failTeamReadAfterInvite) {
             state.failTeamReadAfterInvite = false;
             state.teamReadFailureOnce = true;
           }
+          state.invitationWrites.push({ business: state.selected, status: 201 });
           return sendJson(response, 201, { inviteUrl: `${origin}/invite#${'I'.repeat(43)}` });
         }
         if (request.method === 'POST' && url.pathname === '/api/auth/logout') {
@@ -549,6 +560,17 @@ export async function runManagementAcceptance(options = {}) {
       assert.equal(submitted, true, 'invite form was not available');
     }
 
+    // A person returning to an already-open tab: the browser fronts it and
+    // fires focus, visibilitychange and pageshow. Nothing is reloaded.
+    async function returnToTab(page) {
+      await page.send('Page.bringToFront');
+      await page.evaluate(`(() => {
+        window.dispatchEvent(new Event('focus'));
+        document.dispatchEvent(new Event('visibilitychange'));
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+      })()`);
+    }
+
     function recordFailure(code, message, details = {}) {
       failures.push({ code, message, details });
     }
@@ -641,9 +663,12 @@ export async function runManagementAcceptance(options = {}) {
     const successBefore = requestCount('/api/team/invitations', 'POST');
     await submitInvite(pageB, 'provider-gap@example.test');
     await waitFor(() => requestCount('/api/team/invitations', 'POST') === successBefore + 1, 'manager invite request was not sent');
-    await waitText(pageB, 'Ekip alanı açılamadı');
+    // Settle on the retryable read notice, which both the defective and the
+    // repaired UI render; waiting for the erase screen itself would time out on
+    // a correct implementation.
+    await waitText(pageB, 'Ekip bilgileri şu anda yenilenemiyor');
     const transientTeamText = await bodyText(pageB);
-    if (transientTeamText.includes('Ekip alanı açılamadı')) {
+    if (transientTeamText.includes('Ekip alanı açılamadı') || !transientTeamText.includes('Salon B Çalışanı')) {
       recordFailure(
         'TRANSIENT_TEAM_READ_ERASES_AUTHORITY_VIEW',
         'Başarılı yönetim işlemi sonrası tek seferlik 503, açık ve doğrulanmış ekip görünümünü erişim kaybı ekranına çevirdi.',
@@ -669,6 +694,80 @@ export async function runManagementAcceptance(options = {}) {
 
     await reload(pageC);
     await waitText(pageC, 'Yönetici');
+
+    // Cross-tab tenant drift. Two tabs show Salon B; tab 1 switches the shared
+    // selection to Salon A through the real UI; the person returns to tab 2
+    // without reloading it and uses the invite form it is showing. A write that
+    // lands on Salon A while tab 2 still presented Salon B is a silent
+    // cross-tenant durable write.
+    await reload(pageB);
+    await waitText(pageB, 'Salon B Çalışanı');
+    await waitText(pageB, 'Davet oluştur');
+    await navigate(pageA, '/setup');
+    await waitText(pageA, 'Salon A');
+    await clickButtonContaining(pageA, 'Salon A');
+    await waitFor(() => state.selected === ids.businessA, 'tab 1 did not switch the shared selection to Salon A');
+    await returnToTab(pageB);
+    await sleep(750);
+    const driftShown = await bodyText(pageB);
+    const driftWritesBefore = state.invitationWrites.length;
+    const driftFormAvailable = await pageB.evaluate('Boolean(document.querySelector(\'input[aria-label="Davet e-postası"]\'))');
+    if (driftFormAvailable) {
+      await submitInvite(pageB, 'cross-tab-drift@example.test');
+      await waitFor(() => state.invitationWrites.length > driftWritesBefore, 'stale-tab invite request was not answered', 3_000).catch(() => {});
+      await sleep(250);
+    }
+    const driftWrites = state.invitationWrites.slice(driftWritesBefore);
+    const tabShowedB = driftShown.includes('Salon B Çalışanı') && !driftShown.includes('Salon A Çalışanı');
+    if (tabShowedB && driftWrites.some((write) => write.status === 201 && write.business === ids.businessA)) {
+      recordFailure(
+        'CROSS_TAB_TENANT_DRIFT_WRITE',
+        'Salon B gösteren sekmeden gönderilen davet, başka sekmede seçilen Salon A işletmesine sessizce yazıldı.',
+        { displayed: 'Salon B', writtenTo: 'Salon A', writes: driftWrites },
+      );
+    }
+    const driftSettled = await bodyText(pageB);
+    const crossTab = {
+      driftShownBeforeWrite: tabShowedB ? 'Salon B' : (driftShown.includes('Salon A Çalışanı') ? 'Salon A' : 'neither'),
+      driftFormAvailable,
+      driftWrites,
+      driftSettledOn: driftSettled.includes('Salon A Çalışanı') ? 'Salon A' : (driftSettled.includes('Salon B Çalışanı') ? 'Salon B' : 'neither'),
+      logoutSurfaceClosed: null,
+    };
+    await assertSafeSurface(pageB, 'team/cross-tab drift');
+
+    // The same drift with no return signal at all: the stale tab writes before
+    // anything tells it the shared selection moved. The write path itself must
+    // refuse rather than land on the business the tab is not showing.
+    await reload(pageB);
+    await waitText(pageB, 'Salon A Çalışanı');
+    await waitText(pageB, 'Davet oluştur');
+    await navigate(pageA, '/setup');
+    await waitText(pageA, 'Salon B');
+    await clickButtonContaining(pageA, 'Salon B');
+    await waitFor(() => state.selected === ids.businessB, 'tab 1 did not switch the shared selection back to Salon B');
+    const silentShown = await bodyText(pageB);
+    const silentWritesBefore = state.invitationWrites.length;
+    await submitInvite(pageB, 'cross-tab-silent@example.test');
+    await sleep(1_000);
+    const silentWrites = state.invitationWrites.slice(silentWritesBefore);
+    crossTab.silentShownBeforeWrite = silentShown.includes('Salon A Çalışanı') && !silentShown.includes('Salon B Çalışanı') ? 'Salon A' : 'other';
+    crossTab.silentWrites = silentWrites;
+    if (silentWrites.some((write) => write.status === 201 && write.business === ids.businessB)) {
+      recordFailure(
+        'CROSS_TAB_TENANT_DRIFT_WRITE',
+        'Salon A gösteren sekmeden, dönüş sinyali olmadan gönderilen davet başka sekmede seçilen Salon B işletmesine sessizce yazıldı.',
+        { displayed: 'Salon A', writtenTo: 'Salon B', writes: silentWrites },
+      );
+    }
+    await waitText(pageB, 'Salon B Çalışanı');
+    await assertSafeSurface(pageB, 'team/cross-tab silent drift');
+
+    // Cross-tab logout without reload: tab 2 is re-verified after the drift leg
+    // so it shows a live management surface before tab 1 signs out.
+    await reload(pageB);
+    await waitText(pageB, 'Davet oluştur');
+
     const logoutClicked = await pageC.evaluate(`(() => {
       const button = [...document.querySelectorAll('button')].find((item) => (item.textContent ?? '').includes('Çıkış yap'));
       if (!button) return false;
@@ -679,7 +778,22 @@ export async function runManagementAcceptance(options = {}) {
     await waitText(pageC, 'Çalışma alanına girin');
     assert.equal(state.loggedIn, false, 'logout endpoint did not invalidate fixture session');
 
-    await reload(pageA);
+    await returnToTab(pageB);
+    const logoutStale = await waitFor(async () => {
+      const text = await bodyText(pageB);
+      return !text.includes('Davet oluştur') && !text.includes('Çalışanı');
+    }, 'stale authenticated surface', 3_000).then(() => false, () => true);
+    crossTab.logoutSurfaceClosed = !logoutStale;
+    if (logoutStale) {
+      const buttons = await buttonLabels(pageB);
+      recordFailure(
+        'CROSS_TAB_LOGOUT_STALE_SURFACE',
+        'Başka sekmede çıkış yapıldıktan sonra geri dönülen açık ekip sekmesi yeniden yüklenmeden yetkili yönetim yüzeyini göstermeye devam etti.',
+        { visibleButtons: buttons },
+      );
+    }
+
+    await navigate(pageA, '/setup');
     await waitText(pageA, 'Önce giriş yapın');
     const expiredSetupText = await bodyText(pageA);
     assert.ok(!expiredSetupText.includes('Salon B Hizmeti'));
@@ -701,6 +815,7 @@ export async function runManagementAcceptance(options = {}) {
       ok: true,
       selectedBusiness: state.selected,
       requestCount: state.requests.length,
+      crossTab,
       scenarios: [
         'two-business switch',
         'browser back/forward',
@@ -709,6 +824,8 @@ export async function runManagementAcceptance(options = {}) {
         'transient provider failure',
         'transient session failure',
         'logout/session expiry',
+        'cross-tab tenant drift',
+        'cross-tab logout without reload',
         'copy and unfinished-action scan',
       ],
     };
@@ -732,7 +849,9 @@ export async function runManagementAcceptance(options = {}) {
       for (const socket of sockets) socket.destroy();
       await new Promise((resolve) => server.close(() => resolve()));
     }
-    rmSync(work, { recursive: true, force: true });
+    // Chrome can still be flushing its profile right after SIGTERM; a single
+    // attempt then throws ENOTEMPTY from finally and hides the real result.
+    rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 }
 
