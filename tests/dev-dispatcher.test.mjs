@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -11,6 +11,7 @@ import {
   buildQwenArgs,
   buildQwenPrompt,
   dispatch,
+  dispatchTestHarness,
   inspectChangedPaths,
   isDeniedQwenEnvName,
   parseQwenCompletion,
@@ -142,7 +143,12 @@ test('Qwen command uses a positive file-tool allowlist plus explicit non-core de
   assert.equal(args[args.indexOf('--max-session-turns') + 1], '30');
   const valueFor = (flag) => args[args.indexOf(flag) + 1];
   assert.equal(valueFor('--core-tools'), 'read_file,grep_search,glob,edit,write_file');
-  assert.equal(valueFor('--exclude-tools'), 'run_shell_command,monitor,web_fetch,task,agent,skill,tool_search');
+  const denied = valueFor('--exclude-tools').split(',');
+  for (const tool of ['run_shell_command', 'agent', 'list_agents', 'task_stop', 'tool_search', 'structured_output', 'get_goal', 'update_goal', 'image_gen']) {
+    assert.equal(denied.includes(tool), true, tool);
+  }
+  assert.equal(args.includes('--safe-mode'), true);
+  assert.equal(valueFor('--extensions'), 'none');
   assert.equal(args.includes('--sandbox'), true);
   assert.equal(args.includes('--yolo'), false);
 });
@@ -275,6 +281,15 @@ test('worker-state audit accepts an authorized edit and rejects commits, symlink
       assert.throws(() => auditWorkerState(state.repoDir, value), /ignored/i);
     } finally { rmSync(state.root, { recursive: true, force: true }); }
   }
+  {
+    const state = makeRepo();
+    try {
+      const value = validatePacket(packet(state.baseSha));
+      mkdirSync(path.join(state.repoDir, 'tests', 'pilot', 'nested', '.git'), { recursive: true });
+      writeFileSync(path.join(state.repoDir, 'tests', 'pilot', 'nested', '.git', 'config'), '[core]\n');
+      assert.throws(() => auditWorkerState(state.repoDir, value), /Git metadata/i);
+    } finally { rmSync(state.root, { recursive: true, force: true }); }
+  }
 });
 
 test('CLI dry-run is offline: it validates local repo/base/origin without contacting GitHub', () => {
@@ -303,6 +318,40 @@ test('CLI dry-run is offline: it validates local repo/base/origin without contac
   } finally { rmSync(state.root, { recursive: true, force: true }); }
 });
 
+test('CLI rejects oversized packet files before JSON parsing and never echoes an unknown raw option', () => {
+  const state = makeRepo({ matchingGithubOrigin: true });
+  try {
+    const script = path.resolve(import.meta.dirname, '../scripts/dev-dispatcher.mjs');
+    const huge = path.join(state.root, 'huge.json');
+    writeFileSync(huge, ' '.repeat(65 * 1024));
+    const oversized = spawnSync(process.execPath, [script, '--packet', huge, '--dry-run', '--repo-root', state.repoDir], {
+      cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8', env: process.env,
+    });
+    assert.notEqual(oversized.status, 0);
+    assert.match(oversized.stderr, /bounded input size/i);
+
+    const secret = 'super-secret-option-value';
+    const unknown = spawnSync(process.execPath, [script, `--token=${secret}`], {
+      cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8', env: process.env,
+    });
+    assert.notEqual(unknown.status, 0);
+    assert.equal(unknown.stderr.includes(secret), false);
+    assert.match(unknown.stderr, /unknown command-line argument/i);
+  } finally { rmSync(state.root, { recursive: true, force: true }); }
+});
+
+test('dispatcher test harness is not callable from a normal Node process', () => {
+  const script = [
+    "import { dispatchTestHarness } from './scripts/dev-dispatcher.mjs';",
+    "try { dispatchTestHarness({}); } catch (error) { process.stdout.write(String(error.code)); }",
+  ].join('\n');
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8', env: { ...process.env, NODE_TEST_CONTEXT: '' },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'TEST_ONLY');
+});
+
 test('offline dry-run rejects a non-GitHub origin even when the local base is valid', () => {
   const state = makeRepo({ bareRemote: true });
   try {
@@ -321,6 +370,7 @@ test('non-dry-run dispatcher executes fake Qwen, validates, commits, pushes and 
   const state = makeRepo({ bareRemote: true });
   try {
     const qwen = makeExecutable(state.root, 'fake-qwen.cjs', [
+      "if (process.argv.includes('--version')) { process.stdout.write('0.24.0\\n'); process.exit(0); }",
       "const fs = require('node:fs');",
       "fs.writeFileSync('worker.mjs', 'export const answer = 42;\\n');",
       "process.stdout.write(JSON.stringify([{type:'result',subtype:'success',is_error:false,result:'implemented'}]));",
@@ -331,8 +381,9 @@ test('non-dry-run dispatcher executes fake Qwen, validates, commits, pushes and 
       "process.stdout.write('https://github.com/ziyabeey1-ai/randevu/pull/999\\n');",
     ].join('\n'));
     const value = packet(state.baseSha, 'agent/qwen-integration-success');
+    value.repository = 'ZIYABEEY1-AI/randevu';
 
-    const receipt = dispatch(value, {
+    const receipt = dispatchTestHarness(value, {
       repoRoot: state.repoDir,
       qwenBin: qwen,
       ghBin: gh,
@@ -342,6 +393,7 @@ test('non-dry-run dispatcher executes fake Qwen, validates, commits, pushes and 
 
     assert.equal(receipt.status, 'DRAFT_PR_CREATED');
     assert.equal(receipt.pr_url, 'https://github.com/ziyabeey1-ai/randevu/pull/999');
+    assert.equal(receipt.qwen_version, '0.24.0');
     assert.deepEqual(receipt.changed_paths, ['worker.mjs']);
     const pushed = run('git', ['--git-dir', state.remoteDir, 'show', 'refs/heads/agent/qwen-integration-success:worker.mjs'], state.root);
     assert.match(pushed.stdout, /answer = 42/);
@@ -354,6 +406,7 @@ test('Qwen escalation aborts before validation/push and cleans the local task br
   const state = makeRepo({ bareRemote: true });
   try {
     const qwen = makeExecutable(state.root, 'fake-qwen-escalate.cjs', [
+      "if (process.argv.includes('--version')) { process.stdout.write('0.24.0\\n'); process.exit(0); }",
       "const fs = require('node:fs');",
       "fs.writeFileSync('worker.mjs', 'export const partial = true;\\n');",
       "process.stdout.write(JSON.stringify([{type:'result',subtype:'success',is_error:false,result:'MORE_CONTEXT | ESCALATE: missing contract'}]));",
@@ -362,7 +415,7 @@ test('Qwen escalation aborts before validation/push and cleans the local task br
     const branch = 'agent/qwen-integration-escalate';
     const value = packet(state.baseSha, branch);
 
-    assert.throws(() => dispatch(value, {
+    assert.throws(() => dispatchTestHarness(value, {
       repoRoot: state.repoDir,
       qwenBin: qwen,
       ghBin: gh,
@@ -374,5 +427,43 @@ test('Qwen escalation aborts before validation/push and cleans the local task br
     assert.equal(remoteBranch.stdout.trim(), '');
     const localBranch = run('git', ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`], state.repoDir, { allowFailure: true });
     assert.notEqual(localBranch.status, 0);
+  } finally { rmSync(state.root, { recursive: true, force: true }); }
+});
+
+
+test('dispatcher rejects an unaudited Qwen CLI version before worker execution', () => {
+  const state = makeRepo({ bareRemote: true });
+  try {
+    const qwen = makeExecutable(state.root, 'fake-qwen-unsupported.cjs', [
+      "if (process.argv.includes('--version')) { process.stdout.write('9.9.9\\n'); process.exit(0); }",
+      "require('node:fs').writeFileSync('worker.mjs', 'should not happen\\n');",
+    ].join('\n'));
+    const gh = makeExecutable(state.root, 'fake-gh-never-version.cjs', "process.exitCode = 91;");
+    assert.throws(() => dispatchTestHarness(packet(state.baseSha, 'agent/qwen-unsupported-version'), {
+      repoRoot: state.repoDir, qwenBin: qwen, ghBin: gh, localGuard: () => {}, remoteGuard: () => {},
+    }), /has not been audited/i);
+    assert.equal(existsSync(path.join(state.repoDir, 'worker.mjs')), false);
+  } finally { rmSync(state.root, { recursive: true, force: true }); }
+});
+
+test('Qwen timeout kills and reaps the detached worker process group before cleanup', { skip: process.platform === 'win32' }, () => {
+  const state = makeRepo({ bareRemote: true });
+  try {
+    const marker = path.join(state.root, 'escaped-child.txt');
+    const childSource = `setTimeout(() => require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'escaped'), 1500); setTimeout(() => {}, 10000);`;
+    const qwen = makeExecutable(state.root, 'fake-qwen-timeout.cjs', [
+      "if (process.argv.includes('--version')) { process.stdout.write('0.24.0\\n'); process.exit(0); }",
+      "const { spawn } = require('node:child_process');",
+      `spawn(process.execPath, ['-e', ${JSON.stringify(childSource)}], { stdio: 'ignore' });`,
+      "setTimeout(() => {}, 10000);",
+    ].join('\n'));
+    const gh = makeExecutable(state.root, 'fake-gh-never-timeout.cjs', "process.exitCode = 91;");
+    const value = packet(state.baseSha, 'agent/qwen-timeout');
+    value.budgets.max_wall_time = '1s';
+    assert.throws(() => dispatchTestHarness(value, {
+      repoRoot: state.repoDir, qwenBin: qwen, ghBin: gh, localGuard: () => {}, remoteGuard: () => {},
+    }), /wall-time budget/i);
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1800);
+    assert.equal(existsSync(marker), false);
   } finally { rmSync(state.root, { recursive: true, force: true }); }
 });
