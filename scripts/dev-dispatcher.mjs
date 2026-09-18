@@ -270,11 +270,53 @@ function parseNullList(value) {
   return value ? value.split('\0').filter(Boolean) : [];
 }
 
-function changedPaths(worktree) {
-  const tracked = parseNullList(git(worktree, ['diff', '--name-only', '-z', 'HEAD']).stdout);
-  const staged = parseNullList(git(worktree, ['diff', '--cached', '--name-only', '-z', 'HEAD']).stdout);
+function stageableChangedPaths(worktree, baseSha) {
+  const tracked = parseNullList(git(worktree, ['diff', '--name-only', '-z', baseSha, '--']).stdout);
   const untracked = parseNullList(git(worktree, ['ls-files', '--others', '--exclude-standard', '-z']).stdout);
-  return [...new Set([...tracked, ...staged, ...untracked])];
+  return [...new Set([...tracked, ...untracked])];
+}
+
+function ignoredUntrackedPaths(worktree) {
+  return parseNullList(git(worktree, ['ls-files', '--others', '--ignored', '--exclude-standard', '-z']).stdout);
+}
+
+function assertHeadAtBase(worktree, baseSha, actor = 'worker') {
+  const head = gitOutput(worktree, ['rev-parse', 'HEAD']);
+  if (head !== baseSha) throw new DispatchError('UNAUTHORIZED_COMMIT', `${actor} changed HEAD; expected exact base ${baseSha}`);
+}
+
+function isInside(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
+}
+
+function assertPathHasNoSymlink(worktree, relativePath) {
+  const rootReal = realpathSync(worktree);
+  const body = relativePath.endsWith('/') ? relativePath.slice(0, -1) : relativePath;
+  let current = worktree;
+  for (const part of body.split('/')) {
+    current = path.join(current, part);
+    if (!existsSync(current)) break;
+    const info = lstatSync(current);
+    if (info.isSymbolicLink()) throw new DispatchError('SYMLINK_VIOLATION', `symlink is not allowed in worker path: ${relativePath}`);
+    const resolved = realpathSync(current);
+    if (!isInside(rootReal, resolved)) throw new DispatchError('PATH_ESCAPE', `worker path escapes worktree: ${relativePath}`);
+  }
+}
+
+function assertFilesystemFence(worktree, paths) {
+  const tracked = git(worktree, ['ls-files', '-s', '-z']).stdout.split('\0').filter(Boolean);
+  const symlink = tracked.find((entry) => entry.startsWith('120000 '));
+  if (symlink) throw new DispatchError('SYMLINK_VIOLATION', 'tracked repository symlinks are not allowed in Qwen worker worktrees');
+  for (const relativePath of paths) assertPathHasNoSymlink(worktree, relativePath);
+}
+
+function normalizeGithubRemote(value) {
+  return value.trim().toLowerCase()
+    .replace(/\.git$/, '')
+    .replace(/^git@github\.com:/, '')
+    .replace(/^https:\/\/github\.com\//, '')
+    .replace(/^ssh:\/\/git@github\.com\//, '');
 }
 
 function assertRepository(repoRoot, packet) {
@@ -283,10 +325,13 @@ function assertRepository(repoRoot, packet) {
   const status = gitOutput(repoRoot, ['status', '--porcelain']);
   if (status) throw new DispatchError('DIRTY_REPO', 'dispatcher source repository must be clean');
   git(repoRoot, ['cat-file', '-e', `${packet.base_sha}^{commit}`]);
-  const origin = gitOutput(repoRoot, ['remote', 'get-url', 'origin']);
   const expected = packet.repository.toLowerCase();
-  const normalized = origin.toLowerCase().replace(/\.git$/, '').replace(/^git@github\.com:/, '').replace(/^https:\/\/github\.com\//, '').replace(/^ssh:\/\/git@github\.com\//, '');
-  if (normalized !== expected) throw new DispatchError('REPO_MISMATCH', `origin does not match ${packet.repository}`);
+  const fetchUrls = git(repoRoot, ['remote', 'get-url', '--all', 'origin']).stdout.split(/\r?\n/).filter(Boolean);
+  const pushUrls = git(repoRoot, ['remote', 'get-url', '--push', '--all', 'origin']).stdout.split(/\r?\n/).filter(Boolean);
+  if (fetchUrls.length === 0 || pushUrls.length === 0) throw new DispatchError('REPO_MISMATCH', 'origin must have fetch and push URLs');
+  for (const remote of [...fetchUrls, ...pushUrls]) {
+    if (normalizeGithubRemote(remote) !== expected) throw new DispatchError('REPO_MISMATCH', `origin fetch/push URL does not match ${packet.repository}`);
+  }
 }
 
 function branchExists(repoRoot, branch) {
@@ -294,8 +339,16 @@ function branchExists(repoRoot, branch) {
   return result.status === 0;
 }
 
+function remoteBranchExists(repoRoot, branch) {
+  const result = git(repoRoot, ['ls-remote', '--exit-code', '--heads', 'origin', `refs/heads/${branch}`], { allowFailure: true, timeout: 60_000 });
+  if (result.status === 0) return true;
+  if (result.status === 2) return false;
+  throw new DispatchError('REMOTE_CHECK_FAILED', `could not verify remote task branch: ${branch}`);
+}
+
 function createWorktree(repoRoot, packet) {
   if (branchExists(repoRoot, packet.branch)) throw new DispatchError('BRANCH_EXISTS', `local branch already exists: ${packet.branch}`);
+  if (remoteBranchExists(repoRoot, packet.branch)) throw new DispatchError('BRANCH_EXISTS', `remote branch already exists: ${packet.branch}`);
   const parent = mkdtempSync(path.join(tmpdir(), 'kepenk-dispatch-'));
   const worktree = path.join(parent, 'worktree');
   try {
@@ -318,20 +371,20 @@ function cleanupWorktree(repoRoot, worktreeState, packet, { deleteBranch = false
 }
 
 function parseWallTimeMs(value) {
-  const match = /^(\d+(?:\.\d+)?)(\s|m|h)?$/.exec(value);
-  if (!match) return 600_000;
+  const match = /^(\d+(?:\.\d+)?)(s|m|h)?$/.exec(value);
+  if (!match) return Number.NaN;
   const number = Number(match[1]);
   const multiplier = match[2] === 'h' ? 3_600_000 : match[2] === 'm' ? 60_000 : 1_000;
-  return Math.ceil(number * multiplier + 30_000);
+  return Math.ceil(number * multiplier);
 }
 
 function runValidations(worktree, packet) {
   const results = [];
   for (const argv of packet.validation) {
     const result = run(argv[0], argv.slice(1), { cwd: worktree, env: childEnv(), timeout: 20 * 60_000, allowFailure: true });
-    results.push({ argv, status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' });
+    results.push({ command: argv[0], status: result.status, stdout_bytes: Buffer.byteLength(result.stdout ?? ''), stderr_bytes: Buffer.byteLength(result.stderr ?? '') });
     if (result.error || result.status !== 0) {
-      throw new DispatchError('VALIDATION_FAILED', `validation failed: ${argv.join(' ')}`, { validation: results });
+      throw new DispatchError('VALIDATION_FAILED', `validation failed: ${argv[0]}`, { validation: results });
     }
   }
   return results;
@@ -342,7 +395,7 @@ function safeReceiptText(value) {
 }
 
 function buildPrBody(packet, headSha, changed, validations) {
-  const validationLines = validations.map(({ argv, status }) => `- \`${argv.join(' ')}\` -> ${status === 0 ? 'PASS' : `exit ${status}`}`);
+  const validationLines = validations.map(({ command, status }) => `- \`${command}\` -> ${status === 0 ? 'PASS' : `exit ${status}`}`);
   return [
     packet.pr.body,
     '',
@@ -379,7 +432,7 @@ function releaseLock(lockPath) {
   if (lockPath && existsSync(lockPath)) unlinkSync(lockPath);
 }
 
-export function buildDryRun(packet) {
+export function buildDryRun(packet, qwenBin = 'qwen') {
   return {
     status: 'DRY_RUN',
     task_id: packet.task_id,
@@ -388,8 +441,8 @@ export function buildDryRun(packet) {
     branch: packet.branch,
     writable: packet.writable,
     forbidden: packet.forbidden,
-    qwen: { executable: 'qwen', args: buildQwenArgs(packet).map((value, index, args) => args[index - 1] === '--prompt' ? '[PROMPT]' : value) },
-    validation: packet.validation,
+    qwen: { executable: qwenBin, args: buildQwenArgs(packet).map((value, index, args) => args[index - 1] === '--prompt' ? '[PROMPT]' : value) },
+    validation: packet.validation.map((argv) => ({ command: argv[0] })),
   };
 }
 
