@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { ApiRequestError, api } from './api';
-import PublicBookingPage from './PublicBookingPage';
+
+const PublicBookingPage = lazy(() => import('./PublicBookingPage'));
 
 type PublicMedia = {
   id: string;
@@ -181,7 +182,9 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
     </div>}
 
     <div id="randevu" className="public-salon-booking">
-      <PublicBookingPage slug={slug} />
+      <Suspense fallback={<section className="public-salon-booking"><p>Randevu seçenekleri hazırlanıyor…</p></section>}>
+        <PublicBookingPage slug={slug} />
+      </Suspense>
     </div>
   </div>;
 }

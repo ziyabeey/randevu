@@ -58,6 +58,10 @@ type CalendarPayload = {
   staff: Staff[];
   appointments: CalendarAppointment[];
 };
+type CalendarViewAppointment = CalendarAppointment & {
+  startParts: ReturnType<typeof instantParts>;
+  endParts: ReturnType<typeof instantParts>;
+};
 type ViewMode = 'day' | 'week';
 
 function addDays(date: string, amount: number) {
@@ -155,18 +159,26 @@ export default function CalendarPage() {
     () => (payload?.appointments ?? []).filter((appointment) => showCancelled || appointment.group_status !== 'cancelled'),
     [payload, showCancelled],
   );
+  const viewAppointments = useMemo<CalendarViewAppointment[]>(
+    () => visibleAppointments.map((appointment) => ({
+      ...appointment,
+      startParts: instantParts(appointment.starts_at, timezone),
+      endParts: instantParts(appointment.ends_at, timezone),
+    })),
+    [timezone, visibleAppointments],
+  );
   const logicalGroups = useMemo(() => {
-    const groups = new Map<string, CalendarAppointment>();
-    for (const appointment of visibleAppointments) {
+    const groups = new Map<string, CalendarViewAppointment>();
+    for (const appointment of viewAppointments) {
       if (!groups.has(appointment.group_id) || appointment.line_ordinal === 1) groups.set(appointment.group_id, appointment);
     }
     return [...groups.values()];
-  }, [visibleAppointments]);
+  }, [viewAppointments]);
   const selectedLines = useMemo(
-    () => visibleAppointments
+    () => viewAppointments
       .filter((appointment) => appointment.group_id === selectedGroupId)
       .sort((a, b) => a.line_ordinal - b.line_ordinal),
-    [selectedGroupId, visibleAppointments],
+    [selectedGroupId, viewAppointments],
   );
   const selected = selectedLines[0] ?? null;
 
@@ -182,10 +194,10 @@ export default function CalendarPage() {
   }, [payload, visibleAppointments]);
 
   const dayStaff = staffId === 'all' ? calendarStaff : calendarStaff.filter((person) => person.id === staffId);
-  const dayAppointments = visibleAppointments.filter((appointment) => instantParts(appointment.starts_at, timezone).date === (payload?.date ?? date));
+  const dayAppointments = viewAppointments.filter((appointment) => appointment.startParts.date === (payload?.date ?? date));
   const appointmentMinutes = dayAppointments.flatMap((appointment) => {
-    const start = instantParts(appointment.starts_at, timezone).minutes;
-    const end = instantParts(appointment.ends_at, timezone).minutes;
+    const start = appointment.startParts.minutes;
+    const end = appointment.endParts.minutes;
     return [start, end];
   });
   const startHour = appointmentMinutes.length ? Math.max(0, Math.min(8, Math.floor(Math.min(...appointmentMinutes) / 60))) : 8;
@@ -392,8 +404,8 @@ export default function CalendarPage() {
                 <div className="calendar-staff-column" key={person.id} style={{ height: gridHeight }}>
                   {hours.map((hour) => <i className="calendar-hour-line" key={hour} style={{ top: (hour - startHour) * hourHeight }} />)}
                   {dayAppointments.filter((appointment) => appointment.staff_id === person.id).map((appointment) => {
-                    const start = instantParts(appointment.starts_at, timezone).minutes;
-                    const end = instantParts(appointment.ends_at, timezone).minutes;
+                    const start = appointment.startParts.minutes;
+                    const end = appointment.endParts.minutes;
                     const top = ((start - startHour * 60) / 60) * hourHeight;
                     const height = Math.max(42, ((end - start) / 60) * hourHeight);
                     return (
@@ -404,7 +416,7 @@ export default function CalendarPage() {
                         type="button"
                         onClick={() => selectAppointment(appointment)}
                       >
-                        <strong>{instantParts(appointment.starts_at, timezone).time} · {appointment.customer_name}</strong>
+                        <strong>{appointment.startParts.time} · {appointment.customer_name}</strong>
                         <span>{appointment.service_name}{appointment.group_line_count > 1 ? ` · ${appointment.line_ordinal}/${appointment.group_line_count}` : ''}</span>
                         <small>{statusLabel(appointment.group_status)}</small>
                       </button>
@@ -418,7 +430,7 @@ export default function CalendarPage() {
       ) : (
         <section className="calendar-week-grid">
           {weekDates.map((day) => {
-            const items = visibleAppointments.filter((appointment) => instantParts(appointment.starts_at, timezone).date === day);
+            const items = viewAppointments.filter((appointment) => appointment.startParts.date === day);
             const isToday = day === payload.localDate;
             return (
               <div className={`calendar-week-day ${isToday ? 'is-today' : ''}`} key={day}>
@@ -426,7 +438,7 @@ export default function CalendarPage() {
                 <div className="calendar-week-list">
                   {items.length ? items.map((appointment) => (
                     <button type="button" className={`calendar-week-event status-${appointment.status}`} key={appointment.appointment_id} onClick={() => selectAppointment(appointment)}>
-                      <strong>{instantParts(appointment.starts_at, timezone).time}</strong>
+                      <strong>{appointment.startParts.time}</strong>
                       <span>{appointment.customer_name}</span>
                       <small>{appointment.staff_name} · {appointment.service_name}{appointment.group_line_count > 1 ? ` · ${appointment.line_ordinal}/${appointment.group_line_count}` : ''}</small>
                     </button>
