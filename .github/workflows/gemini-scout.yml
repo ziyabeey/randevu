@@ -167,20 +167,54 @@ jobs:
         if: ${{ steps.route.outputs.provider == 'cloudflare' }}
         env:
           CLOUDFLARE_AI_API_TOKEN: ${{ secrets.CLOUDFLARE_AI_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_AI_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           if [ -z "${CLOUDFLARE_AI_API_TOKEN}" ]; then
-            echo "::error title=Missing CLOUDFLARE_AI_API_TOKEN::Add the Workers AI token as a repository Actions secret."
-            exit 1
-          fi
-          if ! printf '%s' "${CLOUDFLARE_ACCOUNT_ID}" | grep -Eq '^[a-fA-F0-9]{32}$'; then
-            echo "::error title=Missing CLOUDFLARE_ACCOUNT_ID::Add the Cloudflare Account ID as a repository Actions variable."
+            echo "::error title=Missing CLOUDFLARE_AI_API_TOKEN::Add a Workers AI token before using Cloudflare fallback."
             exit 1
           fi
 
-          echo "base_url=https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/v1" >> "${GITHUB_OUTPUT}"
-          echo "model=@cf/zai-org/glm-4.7-flash" >> "${GITHUB_OUTPUT}"
+          umask 077
+          npx --yes wrangler@4.131.0 whoami --json > "${RUNNER_TEMP}/cloudflare-whoami.json"
+
+          node <<'NODE'
+          const { appendFileSync, readFileSync } = require('node:fs');
+
+          const payload = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/cloudflare-whoami.json', 'utf8'));
+          if (payload.loggedIn !== true) throw new Error('Cloudflare token authentication failed');
+
+          const configuredAccountId = String(process.env.CLOUDFLARE_ACCOUNT_ID ?? '').trim();
+          const accounts = Array.isArray(payload.accounts) ? payload.accounts : [];
+          const accountId = configuredAccountId || (accounts.length === 1
+            ? String(accounts[0]?.id ?? accounts[0]?.accountId ?? '').trim()
+            : '');
+          if (!/^[a-f0-9]{32}$/i.test(accountId)) throw new Error('Cloudflare account ID is unavailable or invalid');
+
+          const token = process.env.CLOUDFLARE_AI_API_TOKEN;
+          const model = '@cf/zai-org/glm-4.7-flash';
+          const modelsUrl = new URL(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/models/search`);
+          modelsUrl.searchParams.set('search', model);
+          modelsUrl.searchParams.set('per_page', '5');
+
+          fetch(modelsUrl, { headers: { Authorization: `Bearer ${token}` } })
+            .then(async (response) => {
+              const body = await response.json().catch(() => null);
+              if (!response.ok || body?.success !== true) {
+                throw new Error(`Cloudflare Workers AI permission check failed (HTTP ${response.status})`);
+              }
+              appendFileSync(process.env.GITHUB_OUTPUT,
+                `base_url=https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1\nmodel=${model}\n`,
+                'utf8');
+              console.log(`Cloudflare Workers AI fallback ready on account ${accountId.slice(0, 6)}…`);
+            })
+            .catch((error) => {
+              console.error(error instanceof Error ? error.message : String(error));
+              process.exit(1);
+            });
+          NODE
+
       - name: Run Cloudflare scout fallback
         id: cloudflare_scout
         if: ${{ steps.route.outputs.provider == 'cloudflare' }}
