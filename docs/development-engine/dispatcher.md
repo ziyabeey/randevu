@@ -42,7 +42,7 @@ Example:
   "base_sha": "0123456789abcdef0123456789abcdef01234567",
   "base_branch": "main",
   "branch": "f13-02-example",
-  "writable": ["src/example.ts", "tests/example/"],
+  "writable": ["src/example.mjs", "tests/example/"],
   "forbidden": ["supabase/", ".github/workflows/"],
   "prompt": "Implement only the accepted F13-02 slice.",
   "model": "qwen3.8-flash",
@@ -54,15 +54,14 @@ Example:
     "max_session_turns": 30
   },
   "validation": [
-    ["npm", "run", "typecheck"],
-    ["node", "--test", "tests/example/example.test.mjs"]
+    ["node", "--check", "src/example.mjs"]
   ]
 }
 ```
 
 A scope entry ending in `/` is an explicit directory prefix. Other writable/forbidden entries are exact file paths. `..`, absolute paths, backslashes, any `.git` path component, NUL/control separators, overlapping writable/forbidden scope, unsafe branch names, leading-dash model identifiers, unknown packet fields, and shell-style validation are rejected. Scope lists and validation argv have explicit count and byte budgets.
 
-`output_mode` is JSON-only in v0.1. `max_wall_time` accepts Qwen duration syntax from 1 second through 2 hours. Validation is argv-based with `shell:false`, has a hard 20-minute total deadline across all commands, and accepts only `node` and `npm`. This executable allowlist is not operator-extensible.
+`output_mode` is JSON-only in v0.1. `max_wall_time` accepts Qwen duration syntax from 1 second through 2 hours. Local dispatcher validation is deliberately **non-executing**: it accepts zero to twenty `node --check <relative-file>` syntax preflights, each target must be inside the writable scope, and the dispatcher also runs `git diff --check`. It does not run Qwen-authored tests, npm scripts, builds, package managers, or arbitrary Node programs on the dispatcher host. Full typecheck/test/build remains the responsibility of GitHub CI after the draft PR is pushed.
 
 ## Dry run
 
@@ -100,7 +99,7 @@ Qwen provider credentials are a fixed allowlist of `QWEN_API_KEY` and `DASHSCOPE
 
 The worktree fence reserves `.git` metadata and rejects tracked or changed symlinks, path escapes, worker-created commits, ignored worker writes, paths outside `writable`, and paths matching `forbidden`. The linked-worktree `.git` marker is snapshotted and rechecked after Qwen and validation.
 
-Validation runs with its own disposable HOME/XDG state. Scope is checked after Qwen, after validation, after staging, and again against the actual committed tree. Git hooks and commit signing are disabled for the dispatcher-owned commit. The final commit must be a direct child of the exact task base.
+Static preflight runs with its own disposable HOME/XDG state and never executes generated application/test code. Scope is checked after Qwen, after static preflight, after staging, and again against the actual committed tree. Git hooks and commit signing are disabled for the dispatcher-owned commit. The final commit must be a direct child of the exact task base. Full behavioral/type/build validation occurs in the repository's existing GitHub CI on the exact draft-PR head.
 
 If Qwen reaches the wall-time budget, the receipt reports a bounded `QWEN_TIMEOUT`. If Qwen returns `MORE_CONTEXT | ESCALATE`, the dispatcher stops before validation/delivery even when Qwen exits zero. Failed Qwen or validation output is represented only as bounded status/byte-count metadata in emitted receipts. Raw model/validator stdout, stderr, validation arguments, and packet prompts are not copied into PR bodies or machine-readable receipts.
 
@@ -116,7 +115,7 @@ v0.1 uses a host-level lock in the system temp directory. A second dispatcher in
 
 ## Validation
 
-The dedicated test suite covers packet/scope/argv bounds, hard budgets, positive Qwen tool allowlisting, protocol escalation, secret-safe output, authorized edits, worker-created commit rejection, symlink/ignored-file rejection, and a network-free dry-run.
+The dedicated test suite covers packet/scope/argv bounds, leading-dash option rejection, hard budgets, positive Qwen tool allowlisting, protocol escalation, secret-safe output, authorized edits, worker-created commit rejection, symlink/ignored-file rejection, static-preflight fencing, and a network-free dry-run.
 
 It also runs a hermetic non-dry-run integration with a fake Qwen executable, local bare Git remote, and fake `gh` transport. That path proves worktree creation, worker edit, validation, dispatcher commit, push, draft-PR invocation, escalation-before-push, and cleanup without contacting GitHub.
 
