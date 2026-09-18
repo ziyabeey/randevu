@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { closeSync, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { closeSync, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,15 +19,31 @@ const MAX_SCOPE_ENTRIES = 64;
 const MAX_SCOPE_BYTES = 8 * 1024;
 const MAX_VALIDATION_ARG_BYTES = 2 * 1024;
 const MAX_VALIDATION_COMMAND_BYTES = 8 * 1024;
+const MAX_PACKET_BYTES = 64 * 1024;
+const MAX_FS_SCAN_ENTRIES = 50_000;
+const PROCESS_GROUP_REAP_MS = 5_000;
+const SUPPORTED_QWEN_CLI_VERSIONS = new Set(['0.23.4', '0.24.0']);
 const DEFAULT_QWEN_ENV_ALLOWLIST = ['QWEN_API_KEY', 'DASHSCOPE_API_KEY'];
 const QWEN_PROVIDER_ENV = new Set(DEFAULT_QWEN_ENV_ALLOWLIST);
 const BASE_ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME'];
 const QWEN_BASE_ENV_ALLOWLIST = ['PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP'];
-const GIT_ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'SSH_AUTH_SOCK', 'SSH_AGENT_PID', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY'];
+const GIT_ENV_ALLOWLIST = ['PATH', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'SSH_AUTH_SOCK', 'SSH_AGENT_PID', 'GIT_SSH', 'GIT_SSH_COMMAND', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY'];
 const GH_ENV_ALLOWLIST = ['PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'GH_TOKEN', 'GITHUB_TOKEN', 'HTTP_PROXY', 'HTTPS_PROXY', 'ALL_PROXY', 'NO_PROXY'];
 const VALIDATION_EXECUTABLE = 'node';
 const QWEN_CORE_TOOLS = ['read_file', 'grep_search', 'glob', 'edit', 'write_file'];
-const QWEN_DISABLED_TOOLS = ['run_shell_command', 'monitor', 'web_fetch', 'task', 'agent', 'skill', 'tool_search'];
+const QWEN_DISABLED_TOOLS = [
+  'exec', 'zoom_image', 'notebook_edit', 'run_shell_command', 'list_directory', 'read_mcp_resource',
+  'web_fetch', 'web_search', 'todo_write', 'save_memory', 'lsp', 'cron_create', 'cron_list', 'cron_delete',
+  'loop_wakeup', 'create_sub_session', 'monitor', 'agent', 'skill', 'exit_plan_mode', 'enter_plan_mode',
+  'ask_user_question', 'list_agents', 'task_stop', 'task_create', 'task_update', 'task_list', 'team_create',
+  'team_delete', 'team_plan_approval', 'request_shutdown', 'send_message', 'structured_output', 'tool_search',
+  'enter_worktree', 'exit_worktree', 'workflow', 'artifact', 'record_artifact', 'record_source', 'report_findings',
+  'get_goal', 'update_goal', 'propose_goal', 'image_gen', 'display_image', 'omni_downsample_image',
+  'omni_downscale_video', 'omni_downsample_audio', 'omni_extract_keyframes', 'omni_extract_audio',
+  'omni_clip_video', 'omni_convert_image', 'omni_transcribe_audio', 'omni_clip_image', 'omni_clip_audio',
+  'omni_caption_image', 'omni_caption_audio', 'omni_ocr_image', 'omni_understand_video_segments',
+  'omni_recall_media_memory',
+];
 
 export class DispatchError extends Error {
   constructor(code, message, details = {}) {
@@ -226,6 +243,8 @@ export function buildQwenArgs(packet) {
     '--max-wall-time', packet.budgets.max_wall_time,
     '--max-tool-calls', String(packet.budgets.max_tool_calls),
     '--max-session-turns', String(packet.budgets.max_session_turns),
+    '--safe-mode',
+    '--extensions', 'none',
     '--core-tools', QWEN_CORE_TOOLS.join(','),
     '--exclude-tools', QWEN_DISABLED_TOOLS.join(','),
     '--sandbox',
@@ -291,8 +310,36 @@ function childEnv({ includeProviderSecrets = false, isolatedHome = null } = {}) 
   return env;
 }
 
-function run(command, args, { cwd, env = childEnv(), timeout = 120_000, allowFailure = false } = {}) {
-  const result = spawnSync(command, args, { cwd, env, encoding: 'utf8', shell: false, timeout, maxBuffer: 8 * 1024 * 1024 });
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function reapProcessGroup(pid) {
+  if (!Number.isInteger(pid) || pid <= 0 || process.platform === 'win32') {
+    throw new DispatchError('PROCESS_GROUP_CLEANUP_FAILED', 'timed process cannot be safely reaped on this host');
+  }
+  try {
+    process.kill(-pid, 'SIGKILL');
+  } catch (error) {
+    if (error?.code === 'ESRCH') return;
+    throw new DispatchError('PROCESS_GROUP_CLEANUP_FAILED', 'failed to terminate timed process group');
+  }
+  const deadline = Date.now() + PROCESS_GROUP_REAP_MS;
+  while (Date.now() < deadline) {
+    try {
+      process.kill(-pid, 0);
+      sleepSync(25);
+    } catch (error) {
+      if (error?.code === 'ESRCH') return;
+      throw new DispatchError('PROCESS_GROUP_CLEANUP_FAILED', 'failed while waiting for timed process group cleanup');
+    }
+  }
+  throw new DispatchError('PROCESS_GROUP_CLEANUP_FAILED', 'timed process group did not terminate before cleanup');
+}
+
+function run(command, args, { cwd, env = childEnv(), timeout = 120_000, allowFailure = false, detached = false, reapGroupOnTimeout = false } = {}) {
+  const result = spawnSync(command, args, { cwd, env, encoding: 'utf8', shell: false, timeout, detached, maxBuffer: 8 * 1024 * 1024 });
+  if (reapGroupOnTimeout && result.error?.code === 'ETIMEDOUT') reapProcessGroup(result.pid);
   if (result.error && !allowFailure) throw new DispatchError('PROCESS_ERROR', `${command} could not start: ${result.error.message}`);
   if (!allowFailure && result.status !== 0) {
     throw new DispatchError('PROCESS_FAILED', `${command} exited with ${result.status ?? 'unknown'}`, {
@@ -309,7 +356,13 @@ function pickEnv(names) {
 }
 
 function gitEnv() {
-  return { ...pickEnv(GIT_ENV_ALLOWLIST), GIT_TERMINAL_PROMPT: '0' };
+  return {
+    ...pickEnv(GIT_ENV_ALLOWLIST),
+    GIT_TERMINAL_PROMPT: '0',
+    GIT_ASKPASS: '/bin/false',
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_CONFIG_GLOBAL: '/dev/null',
+  };
 }
 
 function ghEnv() {
@@ -317,7 +370,7 @@ function ghEnv() {
 }
 
 function git(cwd, args, options = {}) {
-  return run('git', ['-c', 'core.hooksPath=/dev/null', ...args], { cwd, env: gitEnv(), ...options });
+  return run('git', ['-c', 'core.hooksPath=/dev/null', '-c', 'credential.helper=', ...args], { cwd, env: gitEnv(), ...options });
 }
 
 function gitOutput(cwd, args) {
@@ -367,11 +420,44 @@ function assertPathHasNoSymlink(worktree, relativePath) {
   }
 }
 
+function assertNestedMetadataFence(worktree, scopeEntries) {
+  let visited = 0;
+  const scan = (relativePath) => {
+    const absolute = path.join(worktree, relativePath);
+    let info;
+    try {
+      info = lstatSync(absolute);
+    } catch (error) {
+      if (error?.code === 'ENOENT') return;
+      throw error;
+    }
+    if (info.isSymbolicLink()) throw new DispatchError('SYMLINK_VIOLATION', `symlink is not allowed in worker path: ${relativePath}`);
+    if (!info.isDirectory()) return;
+    if (relativePath.split('/').some((part) => part === '.git')) {
+      throw new DispatchError('GIT_METADATA', `nested Git metadata is not allowed in worker scope: ${relativePath}`);
+    }
+    for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+      visited += 1;
+      if (visited > MAX_FS_SCAN_ENTRIES) throw new DispatchError('FILESYSTEM_BUDGET', 'worker scope filesystem scan exceeded its entry budget');
+      const child = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+      if (entry.name === '.git') throw new DispatchError('GIT_METADATA', `nested Git metadata is not allowed in worker scope: ${child}`);
+      if (entry.isSymbolicLink()) throw new DispatchError('SYMLINK_VIOLATION', `symlink is not allowed in worker scope: ${child}`);
+      if (entry.isDirectory()) scan(child);
+    }
+  };
+  for (const scopeEntry of scopeEntries) {
+    const body = scopeEntry.endsWith('/') ? scopeEntry.slice(0, -1) : scopeEntry;
+    assertPathHasNoSymlink(worktree, body);
+    if (scopeEntry.endsWith('/')) scan(body);
+  }
+}
+
 function assertFilesystemFence(worktree, paths) {
   const tracked = git(worktree, ['ls-files', '-s', '-z']).stdout.split('\0').filter(Boolean);
-  const symlink = tracked.find((entry) => entry.startsWith('120000 '));
-  if (symlink) throw new DispatchError('SYMLINK_VIOLATION', 'tracked repository symlinks are not allowed in Qwen worker worktrees');
+  const unsafeIndexEntry = tracked.find((entry) => entry.startsWith('120000 ') || entry.startsWith('160000 '));
+  if (unsafeIndexEntry) throw new DispatchError('GIT_METADATA', 'tracked symlinks or gitlinks are not allowed in Qwen worker worktrees');
   for (const relativePath of paths) assertPathHasNoSymlink(worktree, relativePath);
+  assertNestedMetadataFence(worktree, paths);
 }
 
 function captureWorktreeMetadata(worktree) {
@@ -389,6 +475,7 @@ function assertWorktreeMetadata(worktree, expected) {
 
 export function auditWorkerState(worktree, packet, { rejectIgnored = true, actor = 'worker', requireChanges = true } = {}) {
   assertHeadAtBase(worktree, packet.base_sha, actor);
+  assertFilesystemFence(worktree, packet.writable);
   if (rejectIgnored) {
     const ignored = ignoredUntrackedPaths(worktree);
     if (ignored.length > 0) throw new DispatchError('IGNORED_PATH_WRITE', `${actor} created ignored untracked paths`, { count: ignored.length });
@@ -451,11 +538,15 @@ function branchExists(repoRoot, branch) {
   return result.status === 0;
 }
 
-function remoteBranchExists(repoRoot, branch) {
+function remoteBranchSha(repoRoot, branch) {
   const result = git(repoRoot, ['ls-remote', '--exit-code', '--heads', 'origin', `refs/heads/${branch}`], { allowFailure: true, timeout: 60_000 });
-  if (result.status === 0) return true;
-  if (result.status === 2) return false;
+  if (result.status === 0) return result.stdout.trim().split(/\s+/)[0] || null;
+  if (result.status === 2) return null;
   throw new DispatchError('REMOTE_CHECK_FAILED', `could not verify remote task branch: ${branch}`);
+}
+
+function remoteBranchExists(repoRoot, branch) {
+  return remoteBranchSha(repoRoot, branch) !== null;
 }
 
 function createWorktree(repoRoot, packet) {
@@ -504,7 +595,7 @@ function runValidations(worktree, packet, validationHome, started = Date.now()) 
     const elapsed = Date.now() - started;
     const remaining = MAX_VALIDATION_TOTAL_MS - elapsed;
     if (remaining <= 0) throw new DispatchError('VALIDATION_TIMEOUT', 'static validation exceeded the 20 minute total deadline', { validation: results });
-    const result = run(VALIDATION_EXECUTABLE, ['--check', argv[2]], {
+    const result = run(process.execPath, ['--check', argv[2]], {
       cwd: worktree,
       env: childEnv({ isolatedHome: validationHome }),
       timeout: remaining,
@@ -544,21 +635,48 @@ function buildPrBody(packet, headSha, changed, validations) {
   ].join('\n');
 }
 
-function acquireLock() {
-  const lockPath = path.join(tmpdir(), 'kepenk-dev-dispatcher.lock');
+function processIsAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
   try {
-    const fd = openSync(lockPath, 'wx', 0o600);
-    writeFileSync(fd, `${process.pid}\n`);
-    closeSync(fd);
-    return lockPath;
+    process.kill(pid, 0);
+    return true;
   } catch (error) {
-    if (error?.code === 'EEXIST') throw new DispatchError('BUSY', 'another dispatcher process holds the single-worker lock');
+    if (error?.code === 'ESRCH') return false;
+    if (error?.code === 'EPERM') return true;
     throw error;
   }
 }
 
-function releaseLock(lockPath) {
-  if (lockPath && existsSync(lockPath)) unlinkSync(lockPath);
+function acquireLock(repoRoot) {
+  const identity = createHash('sha256').update(realpathSync(repoRoot)).digest('hex').slice(0, 20);
+  const lockPath = path.join(tmpdir(), `kepenk-dev-dispatcher-${identity}.lock`);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const fd = openSync(lockPath, 'wx', 0o600);
+      writeFileSync(fd, `${process.pid}\n`);
+      closeSync(fd);
+      return { path: lockPath, pid: process.pid };
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error;
+      let owner = Number.NaN;
+      try { owner = Number(readFileSync(lockPath, 'utf8').trim()); } catch { /* raced stale lock cleanup */ }
+      if (processIsAlive(owner)) throw new DispatchError('BUSY', 'another dispatcher process holds the repository worker lock');
+      try { unlinkSync(lockPath); } catch (unlinkError) {
+        if (unlinkError?.code !== 'ENOENT') throw new DispatchError('BUSY', 'stale dispatcher lock could not be recovered safely');
+      }
+    }
+  }
+  throw new DispatchError('BUSY', 'dispatcher lock acquisition raced another process');
+}
+
+function releaseLock(lock) {
+  if (!lock?.path) return;
+  try {
+    const owner = Number(readFileSync(lock.path, 'utf8').trim());
+    if (owner === lock.pid) unlinkSync(lock.path);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
 }
 
 export function buildDryRun(packet, qwenBin = 'qwen') {
@@ -606,7 +724,7 @@ export function buildCreateOnlyPushArgs(branch, baseBranch, baseSha) {
   ];
 }
 
-export function dispatch(packet, {
+function dispatchInternal(packet, {
   repoRoot = process.cwd(),
   qwenBin = 'qwen',
   ghBin = 'gh',
@@ -624,7 +742,7 @@ export function dispatch(packet, {
   let lockPath;
   let worktreeState;
   try {
-    lockPath = acquireLock();
+    lockPath = acquireLock(repoRoot);
     localGuard(repoRoot, validated);
     remoteGuard(repoRoot, validated);
     worktreeState = createWorktree(repoRoot, validated);
@@ -633,12 +751,26 @@ export function dispatch(packet, {
     const metadataSnapshot = captureWorktreeMetadata(worktreeState.worktree);
     const qwenHome = path.join(worktreeState.parent, 'qwen-home');
     mkdirSync(qwenHome, { recursive: true, mode: 0o700 });
+    const versionResult = run(qwenBin, ['--version'], {
+      cwd: worktreeState.worktree,
+      env: childEnv({ isolatedHome: qwenHome }),
+      timeout: 10_000,
+      allowFailure: true,
+    });
+    if (versionResult.error || versionResult.status !== 0) throw new DispatchError('QWEN_UNAVAILABLE', 'Qwen version probe failed');
+    const versionMatch = /(?:^|\s)(\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?)(?:\s|$)/.exec(versionResult.stdout.trim());
+    const qwenVersion = versionMatch?.[1] ?? '';
+    if (!SUPPORTED_QWEN_CLI_VERSIONS.has(qwenVersion)) {
+      throw new DispatchError('QWEN_UNSUPPORTED_VERSION', 'Qwen CLI version has not been audited for the dispatcher capability surface', { version: qwenVersion || 'unknown' });
+    }
     const qwenArgs = buildQwenArgs(validated);
     const qwenResult = run(qwenBin, qwenArgs, {
       cwd: worktreeState.worktree,
       env: childEnv({ includeProviderSecrets: true, isolatedHome: qwenHome }),
       timeout: parseWallTimeMs(validated.budgets.max_wall_time),
       allowFailure: true,
+      detached: process.platform !== 'win32',
+      reapGroupOnTimeout: true,
     });
     if (qwenResult.error?.code === 'ETIMEDOUT') throw new DispatchError('QWEN_TIMEOUT', 'Qwen exceeded the declared wall-time budget');
     if (qwenResult.error) throw new DispatchError('QWEN_UNAVAILABLE', `Qwen could not start: ${qwenResult.error.message}`);
@@ -661,7 +793,9 @@ export function dispatch(packet, {
     assertWorktreeMetadata(worktreeState.worktree, metadataSnapshot);
     const scope = auditWorkerState(worktreeState.worktree, validated, { rejectIgnored: false, actor: 'validation' });
 
-    git(worktreeState.worktree, ['add', '--all']);
+    const stagingRemaining = MAX_VALIDATION_TOTAL_MS - (Date.now() - validationStarted);
+    if (stagingRemaining <= 0) throw new DispatchError('VALIDATION_TIMEOUT', 'static validation exceeded the 20 minute total deadline', { validation: validations });
+    git(worktreeState.worktree, ['add', '--all'], { timeout: stagingRemaining });
     const stagedRemaining = MAX_VALIDATION_TOTAL_MS - (Date.now() - validationStarted);
     if (stagedRemaining <= 0) throw new DispatchError('VALIDATION_TIMEOUT', 'static validation exceeded the 20 minute total deadline', { validation: validations });
     const stagedDiffCheck = git(worktreeState.worktree, ['diff', '--cached', '--check'], { allowFailure: true, timeout: stagedRemaining });
@@ -678,6 +812,7 @@ export function dispatch(packet, {
       throw new DispatchError('VALIDATION_FAILED', 'staged diff check failed', { validation: validations });
     }
     const stagedPaths = parseNullList(git(worktreeState.worktree, ['diff', '--cached', '--name-only', '-z', validated.base_sha, '--']).stdout);
+    assertFilesystemFence(worktreeState.worktree, stagedPaths);
     const stagedScope = inspectChangedPaths(stagedPaths, validated);
     if (!stagedScope.ok) throw new DispatchError('SCOPE_VIOLATION', 'staged delivery exceeds authorized scope', stagedScope);
     git(worktreeState.worktree, [
@@ -704,6 +839,7 @@ export function dispatch(packet, {
         stdout_bytes: Buffer.byteLength(push.stdout ?? ''), stderr_bytes: Buffer.byteLength(push.stderr ?? ''),
       });
     }
+    if (remoteBranchSha(repoRoot, validated.branch) !== headSha) throw new DispatchError('DELIVERY_RACE', 'remote task branch changed after atomic publication');
     const prBody = buildPrBody(validated, headSha, committedScope.changed, validations);
     const pr = run(ghBin, ['pr', 'create', '--draft', '--repo', validated.repository, '--base', validated.base_branch, '--head', validated.branch,
       '--title', `${validated.task_id}: Qwen implementation`, '--body', prBody], { cwd: worktreeState.worktree, env: ghEnv(), timeout: 120_000, allowFailure: true });
@@ -713,9 +849,10 @@ export function dispatch(packet, {
       });
     }
 
+    if (remoteBranchSha(repoRoot, validated.branch) !== headSha) throw new DispatchError('DELIVERY_RACE', 'remote task branch changed while draft PR was being created');
     const prUrl = safeReceiptText(pr.stdout.trim());
     const expectedPrPrefix = `https://github.com/${validated.repository}/pull/`;
-    const prNumber = prUrl.startsWith(expectedPrPrefix) ? prUrl.slice(expectedPrPrefix.length) : '';
+    const prNumber = prUrl.toLowerCase().startsWith(expectedPrPrefix.toLowerCase()) ? prUrl.slice(expectedPrPrefix.length) : '';
     if (!/^[1-9]\d*$/.test(prNumber)) {
       throw new DispatchError('PR_CREATE_PROTOCOL', 'gh returned an unexpected PR URL', {
         status: pr.status, stdout_bytes: Buffer.byteLength(pr.stdout ?? ''),
@@ -726,7 +863,7 @@ export function dispatch(packet, {
       status: 'DRAFT_PR_CREATED', task_id: validated.task_id, repository: validated.repository,
       base_sha: validated.base_sha, head_sha: headSha, branch: validated.branch,
       changed_paths: committedScope.changed, validation: validations.map(({ command, status }) => ({ command, status })),
-      pr_url: prUrl, qwen_exit: qwenResult.status,
+      pr_url: prUrl, qwen_exit: qwenResult.status, qwen_version: qwenVersion,
       qwen_io: {
         output_mode: validated.output_mode,
         stdout_bytes: Buffer.byteLength(qwenResult.stdout ?? ''),
@@ -736,6 +873,28 @@ export function dispatch(packet, {
   } finally {
     cleanupWorktree(repoRoot, worktreeState, validated, { deleteBranch: true });
     releaseLock(lockPath);
+  }
+}
+
+export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', ghBin = 'gh', dryRun = false } = {}) {
+  return dispatchInternal(packet, { repoRoot, qwenBin, ghBin, dryRun });
+}
+
+export function dispatchTestHarness(packet, options = {}) {
+  if (!process.env.NODE_TEST_CONTEXT) throw new DispatchError('TEST_ONLY', 'dispatcher test harness is available only under the Node test runner');
+  return dispatchInternal(packet, options);
+}
+
+function readPacketFile(packetPath) {
+  const resolved = path.resolve(packetPath);
+  const info = statSync(resolved);
+  if (!info.isFile() || info.size > MAX_PACKET_BYTES) throw new DispatchError('INVALID_PACKET', 'packet file exceeds the bounded input size');
+  const text = readFileSync(resolved, 'utf8');
+  if (Buffer.byteLength(text) > MAX_PACKET_BYTES) throw new DispatchError('INVALID_PACKET', 'packet file exceeds the bounded input size');
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new DispatchError('INVALID_PACKET', 'packet file is not valid JSON');
   }
 }
 
@@ -751,7 +910,7 @@ function parseCli(argv) {
       if (arg === '--packet') options.packetPath = value;
       if (arg === '--repo-root') options.repoRoot = path.resolve(value);
       if (arg === '--qwen-bin') options.qwenBin = value;
-    } else throw new DispatchError('USAGE', `unknown argument: ${arg}`);
+    } else throw new DispatchError('USAGE', 'unknown command-line argument');
   }
   if (!options.packetPath) throw new DispatchError('USAGE', '--packet is required');
   return options;
@@ -764,7 +923,7 @@ function isMain() {
 if (isMain()) {
   try {
     const options = parseCli(process.argv.slice(2));
-    const packet = JSON.parse(readFileSync(path.resolve(options.packetPath), 'utf8'));
+    const packet = readPacketFile(options.packetPath);
     const receipt = dispatch(packet, options);
     process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);
   } catch (error) {
