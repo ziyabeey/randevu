@@ -49,13 +49,13 @@ jobs:
     steps:
       - name: Validate Qwen activation
         env:
-          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          QWEN_AUTOMATION_API_KEY: ${{ secrets.QWEN_AUTOMATION_API_KEY }}
           QWEN_GITHUB_TOKEN: ${{ secrets.QWEN_GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           test -n "${ISSUE_NUMBER}"
-          if [ -z "${QWEN_API_KEY}" ]; then
-            echo "::error title=Missing QWEN_API_KEY::Add the Qwen Token Plan key as repository Actions secret QWEN_API_KEY."
+          if [ -z "${QWEN_AUTOMATION_API_KEY}" ]; then
+            echo "::error title=Missing QWEN_AUTOMATION_API_KEY::Add a standard QwenCloud pay-as-you-go API key as repository Actions secret QWEN_AUTOMATION_API_KEY."
             exit 1
           fi
           if [ -z "${QWEN_GITHUB_TOKEN}" ]; then
@@ -82,9 +82,9 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           TARGET_BRANCH: qwen/task-${{ github.event.issue.number || inputs.issue_number }}-${{ github.run_id }}
         with:
-          openai_api_key: ${{ secrets.QWEN_API_KEY }}
-          openai_base_url: ${{ vars.QWEN_BASE_URL || 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' }}
-          openai_model: ${{ vars.QWEN_MODEL || 'qwen3-coder-flash' }}
+          openai_api_key: ${{ secrets.QWEN_AUTOMATION_API_KEY }}
+          openai_base_url: ${{ vars.QWEN_AUTOMATION_BASE_URL || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' }}
+          openai_model: ${{ vars.QWEN_AUTOMATION_MODEL || 'qwen3-coder-flash' }}
           qwen_debug: 'false'
           upload_artifacts: 'false'
           workflow_name: 'qwen-implement'
