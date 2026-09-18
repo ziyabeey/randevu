@@ -14,11 +14,17 @@ const SAFE_APPROVAL_MODES = new Set(['auto-edit']);
 const SAFE_OUTPUT_MODES = new Set(['json']);
 const MAX_WALL_TIME_MS = 2 * 60 * 60 * 1000;
 const MAX_VALIDATION_TOTAL_MS = 20 * 60 * 1000;
+const MAX_SCOPE_ENTRIES = 64;
+const MAX_SCOPE_BYTES = 8 * 1024;
+const MAX_VALIDATION_ARG_BYTES = 2 * 1024;
+const MAX_VALIDATION_COMMAND_BYTES = 8 * 1024;
 const DEFAULT_QWEN_ENV_ALLOWLIST = ['QWEN_API_KEY', 'DASHSCOPE_API_KEY'];
-const QWEN_ENV_HARD_DENY = /(?:GITHUB|^GH_)/i;
+const QWEN_PROVIDER_ENV = new Set(DEFAULT_QWEN_ENV_ALLOWLIST);
 const BASE_ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME'];
 const QWEN_BASE_ENV_ALLOWLIST = ['PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP'];
-const DEFAULT_VALIDATION_EXECUTABLES = new Set(['node', 'npm', 'npx', 'git']);
+const DEFAULT_VALIDATION_EXECUTABLES = new Set(['node', 'npm']);
+const QWEN_CORE_TOOLS = ['read_file', 'grep_search', 'glob', 'edit', 'write_file'];
+const QWEN_DISABLED_TOOLS = ['run_shell_command', 'monitor', 'web_fetch', 'task', 'agent', 'skill', 'tool_search'];
 
 export class DispatchError extends Error {
   constructor(code, message, details = {}) {
@@ -46,7 +52,8 @@ function isSafeRelativePath(value, { allowDirectory = true } = {}) {
   if (/[\0\r\n\\]/.test(value) || path.posix.isAbsolute(value) || value.startsWith('~')) return false;
   const directory = allowDirectory && value.endsWith('/');
   const body = directory ? value.slice(0, -1) : value;
-  if (!body || body === '.' || body.split('/').some((part) => !part || part === '.' || part === '..')) return false;
+  const parts = body.split('/');
+  if (!body || body === '.' || parts.some((part) => !part || part === '.' || part === '..' || part === '.git')) return false;
   return path.posix.normalize(body) === body;
 }
 
@@ -57,6 +64,17 @@ function normalizeScopeEntry(value) {
 function pathMatchesScope(file, scopeEntry) {
   if (scopeEntry.endsWith('/')) return file.startsWith(scopeEntry);
   return file === scopeEntry;
+}
+
+function scopesOverlap(left, right) {
+  const leftDir = left.endsWith('/');
+  const rightDir = right.endsWith('/');
+  const leftBody = leftDir ? left.slice(0, -1) : left;
+  const rightBody = rightDir ? right.slice(0, -1) : right;
+  if (!leftDir && !rightDir) return leftBody === rightBody;
+  if (leftDir && rightDir) return leftBody === rightBody || leftBody.startsWith(`${rightBody}/`) || rightBody.startsWith(`${leftBody}/`);
+  if (leftDir) return rightBody === leftBody || rightBody.startsWith(`${leftBody}/`);
+  return leftBody === rightBody || leftBody.startsWith(`${rightBody}/`);
 }
 
 function assertSafeBranch(branch) {
@@ -72,11 +90,16 @@ function assertString(value, label, { min = 1, max = 10_000, pattern, singleLine
   }
 }
 
-function assertStringArray(value, label, { min = 1, scope = false } = {}) {
-  if (!Array.isArray(value) || value.length < min) throw new DispatchError('INVALID_PACKET', `${label} must contain at least ${min} item(s)`);
+function assertStringArray(value, label, { min = 1, max = MAX_SCOPE_ENTRIES, scope = false } = {}) {
+  if (!Array.isArray(value) || value.length < min || value.length > max) {
+    throw new DispatchError('INVALID_PACKET', `${label} must contain ${min}-${max} item(s)`);
+  }
   const seen = new Set();
+  let totalBytes = 0;
   for (const item of value) {
     if (typeof item !== 'string' || (scope && !isSafeRelativePath(item))) throw new DispatchError('INVALID_PACKET', `${label} contains an unsafe value`);
+    totalBytes += Buffer.byteLength(item);
+    if (totalBytes > MAX_SCOPE_BYTES) throw new DispatchError('INVALID_PACKET', `${label} exceeds the bounded scope size`);
     if (seen.has(item)) throw new DispatchError('INVALID_PACKET', `${label} contains duplicate value: ${item}`);
     seen.add(item);
   }
@@ -90,9 +113,17 @@ function assertValidation(value) {
   const allowed = new Set((process.env.DEV_DISPATCH_ALLOWED_EXECUTABLES ?? [...DEFAULT_VALIDATION_EXECUTABLES].join(','))
     .split(',').map((item) => item.trim()).filter(Boolean));
   return value.map((argv, index) => {
-    if (!Array.isArray(argv) || argv.length === 0 || argv.length > 32 || argv.some((item) => typeof item !== 'string' || item.length === 0 || /[\0\r\n]/.test(item))) {
+    if (!Array.isArray(argv) || argv.length === 0 || argv.length > 32) {
       throw new DispatchError('INVALID_PACKET', `validation[${index}] must be a bounded argv array`);
     }
+    let totalBytes = 0;
+    for (const item of argv) {
+      if (typeof item !== 'string' || item.length === 0 || /[\0\r\n]/.test(item) || Buffer.byteLength(item) > MAX_VALIDATION_ARG_BYTES) {
+        throw new DispatchError('INVALID_PACKET', `validation[${index}] contains an invalid or oversized argument`);
+      }
+      totalBytes += Buffer.byteLength(item);
+    }
+    if (totalBytes > MAX_VALIDATION_COMMAND_BYTES) throw new DispatchError('INVALID_PACKET', `validation[${index}] exceeds the command byte budget`);
     if (!allowed.has(argv[0])) throw new DispatchError('INVALID_PACKET', `validation executable is not allowed: ${argv[0]}`);
     return [...argv];
   });
@@ -113,13 +144,14 @@ export function validatePacket(raw) {
   const writable = assertStringArray(raw.writable, 'writable', { scope: true });
   const forbidden = assertStringArray(raw.forbidden, 'forbidden', { scope: true });
   for (const allowedPath of writable) {
-    if (forbidden.some((blocked) => pathMatchesScope(allowedPath.replace(/\/$/, ''), blocked) || pathMatchesScope(blocked.replace(/\/$/, ''), allowedPath))) {
+    if (forbidden.some((blocked) => scopesOverlap(allowedPath, blocked))) {
       throw new DispatchError('INVALID_PACKET', `writable/forbidden scope overlaps at ${allowedPath}`);
     }
   }
 
   assertString(raw.prompt, 'prompt', { max: 30_000 });
   assertString(raw.model, 'model', { max: 160, pattern: MODEL_RE });
+  if (raw.model.startsWith('-')) throw new DispatchError('INVALID_PACKET', 'model may not begin with an option prefix');
   if (!SAFE_APPROVAL_MODES.has(raw.approval_mode)) throw new DispatchError('INVALID_PACKET', 'approval_mode must be auto-edit');
   if (!SAFE_OUTPUT_MODES.has(raw.output_mode)) throw new DispatchError('INVALID_PACKET', 'output_mode must be json');
 
@@ -187,7 +219,8 @@ export function buildQwenArgs(packet) {
     '--max-wall-time', packet.budgets.max_wall_time,
     '--max-tool-calls', String(packet.budgets.max_tool_calls),
     '--max-session-turns', String(packet.budgets.max_session_turns),
-    '--exclude-tools', 'agent,shell',
+    ...QWEN_CORE_TOOLS.flatMap((tool) => ['--core-tools', tool]),
+    ...QWEN_DISABLED_TOOLS.flatMap((tool) => ['--exclude-tools', tool]),
     '--sandbox',
   ];
 }
@@ -217,7 +250,7 @@ export function redactText(text, secrets = []) {
 }
 
 export function isDeniedQwenEnvName(name) {
-  return QWEN_ENV_HARD_DENY.test(name);
+  return !QWEN_PROVIDER_ENV.has(name);
 }
 
 function childEnv({ includeProviderSecrets = false, isolatedHome = null } = {}) {
