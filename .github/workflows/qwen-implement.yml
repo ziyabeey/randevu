@@ -165,7 +165,14 @@ jobs:
           if [ -n "${pr_url}" ]; then
             gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen delivery complete: ${pr_url}"
           else
-            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen completed without an open PR for branch \`${QWEN_BRANCH}\`. Delivery failed; inspect the Qwen action result before retrying."
+            summary_file="${RUNNER_TEMP}/qwen-delivery-summary.md"
+            {
+              printf '%s\n\n' "Qwen completed without an open PR for branch \`${QWEN_BRANCH}\`. Delivery failed."
+              printf '%s\n\n' "**Qwen final response:**"
+              printf '%s' "${{ steps.qwen.outputs.summary }}" | head -c 6000
+              printf '\n'
+            } > "${summary_file}"
+            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body-file "${summary_file}"
             echo "::error title=Qwen delivery failed::The model step completed but no delivery PR exists for ${QWEN_BRANCH}."
             exit 1
           fi
