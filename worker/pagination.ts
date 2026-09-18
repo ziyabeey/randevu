@@ -29,6 +29,9 @@ function validTimestamp(value: unknown): value is string {
     && Number.isFinite(Date.parse(value));
 }
 
+/**
+ * Parses a page-size query parameter into the bounded limit used by server responses.
+ */
 export function parsePageLimit(value: string | undefined): number | null {
   if (value === undefined || value === '') return 25;
   if (!/^\d{1,3}$/.test(value)) return null;
@@ -36,11 +39,17 @@ export function parsePageLimit(value: string | undefined): number | null {
   return Number.isInteger(limit) && limit >= 1 && limit <= 100 ? limit : null;
 }
 
+/**
+ * Encodes a pagination cursor with the record timestamp and stable record ID.
+ */
 export function encodePageCursor(kind: PageKind, cursor: PageCursor) {
   const envelope: CursorEnvelope = { v: 1, k: kind, at: cursor.at, id: cursor.id };
   return base64UrlEncode(JSON.stringify(envelope));
 }
 
+/**
+ * Decodes a cursor and validates that it matches the expected page kind and schema.
+ */
 export function decodePageCursor(value: string | undefined, kind: PageKind): PageCursor | null | undefined {
   if (value === undefined || value === '') return null;
   if (value.length > 512) return undefined;
@@ -57,6 +66,9 @@ export function decodePageCursor(value: string | undefined, kind: PageKind): Pag
   }
 }
 
+/**
+ * Builds a page result with a stable next cursor only when more rows remain.
+ */
 export function pageResult<T>(
   rows: T[],
   limit: number,
@@ -71,6 +83,7 @@ export function pageResult<T>(
     page: {
       limit,
       hasMore,
+      // Keep the downstream cursor deterministic by using the last visible row.
       nextCursor: hasMore && last ? encodePageCursor(kind, cursorFor(last)) : null,
     },
   };

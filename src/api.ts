@@ -32,10 +32,19 @@ function validCsrf(value: unknown): value is string {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{43,128}$/.test(value);
 }
 
+/**
+ * Stores a trusted CSRF token that will be reused for subsequent mutating requests.
+ *
+ * The token is accepted only when it matches the server-issued format required by
+ * the public API layer.
+ */
 export function seedCsrfToken(value: unknown) {
   if (validCsrf(value)) csrfToken = value;
 }
 
+/**
+ * Clears the cached CSRF state so the next guarded write request re-fetches it.
+ */
 export function clearCsrfToken() {
   csrfToken = null;
   csrfRequest = null;
@@ -119,6 +128,13 @@ function retryAfterSeconds(response: Response) {
   return Number.isFinite(deadline) ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : undefined;
 }
 
+/**
+ * Sends a JSON request through the browser-facing API wrapper.
+ *
+ * Mutating requests automatically attach the cached CSRF token and retry once when
+ * the server reports an invalid token. The timeout is enforced per request so the
+ * UI can surface a friendly error instead of hanging on stalled network calls.
+ */
 export async function api<T = unknown>(path: string, init: ApiInit = {}): Promise<T> {
   const { csrf = 'required', skipCsrfRetry = false, timeoutMs, ...requestInit } = init;
   const headers = new Headers(init.headers);
@@ -130,6 +146,8 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
     headers.set('X-YZT-CSRF', await obtainCsrfToken());
   }
 
+  // The app treats a stalled fetch as a user-visible error rather than leaving the
+  // state silently pending in a background request.
   const { response, text } = await fetchText(path, {
     ...requestInit,
     headers,
