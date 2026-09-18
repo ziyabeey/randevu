@@ -21,6 +21,17 @@ Derived manifests/audits are observation-only, never replacement authority.
 - Keep existing required CI and risk-based independent R1/R2. R0/Copilot review
   is findings-only: never submit APPROVE or count it as independent R1/R2.
   An implementer cannot review itself into acceptance.
+- R0 has two modes. With no prior R0 blocker receipt for the PR lineage, use
+  DISCOVERY and assign stable IDs only to evidence-backed blockers. After that
+  blocker set is frozen, any review of a repair descendant is VERIFICATION:
+  check prior blocker closure plus regressions caused by the repair, not the
+  whole repository again. Normal repair invariant: `next_blockers ⊆ frozen_blockers`.
+  New non-critical observations are deferred/backlog candidates, not new current
+  acceptance. Only concrete credential exposure, auth privilege escalation,
+  cross-tenant breach, destructive data/migration corruption, financial
+  double-effect or another existing hard-safety-invariant violation may be added
+  as an escape-blocker. Never duplicate/rephrase an existing semantic finding
+  into a new blocker ID.
 - Hosted staging is only for hosted-only residuals, not a default ceremony.
   Preserve tenant, money, time, atomicity, recovery and public/private invariants.
 - Use native GitHub/API/CLI and repo tools for issues, PRs, files and CI, not
