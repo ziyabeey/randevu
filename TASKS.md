@@ -102,6 +102,12 @@ Bağlayıcı topology [K04](docs/plan/k04-platform-core-contract.md), paket/bağ
 | [KC-06](docs/plan/kepenk-core-migration-plan.md) | `auth.kepenk.ai` broker | KC-05 | Planlandı | — | İkinci uygulamada gerçek kullanıcı ihtiyacı doğmadan açılmaz |
 | [KC-07](docs/plan/kepenk-core-migration-plan.md) | Platform admin read RPC ve audit | KC-05 | Planlandı | — | Salt-okunur auditli admin sınırı; impersonation ayrı karar/R1 ister |
 
+## Development tooling track — 54 MVP görevinin dışında
+
+| Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / kanıt / sonraki adım |
+| --- | --- | --- | --- | --- | --- |
+| [DEV-ENGINE-01](https://github.com/ziyabeey1-ai/randevu/issues/119) | Copilot talimatları, Skills ve gözlem amaçlı geliştirme kanıtı | TEMEL | Çalışılıyor | Astra / 2026-09-18 | M / FOCUSED · base `e982fbf11641de358db21c81941a03696f791870` · `ziyabeey1-ai-development-engine-v1` · [onaylı dosya sınırı](https://github.com/ziyabeey1-ai/randevu/issues/119#issuecomment-5725382893) · [başlangıç](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5725388958) · [kurulum ve kaynaklar](docs/development-engine/README.md) · yerel validator + 10 test, docs/CI-coverage, npm ci/typecheck/build başarılı; hosted CI henüz kanıt değil · exact head/PR/CI ve canlı engel kaydı #119/PR devrinde tutulur · sonraki adım: draft PR exact-head CI; bağımsız R1/R2 ve ready/merge koordinatörde |
+
 ## Kabul kapıları
 
 | Kapı | Kapsam | Durum / kanıt |

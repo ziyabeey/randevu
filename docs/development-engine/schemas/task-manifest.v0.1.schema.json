@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Task Manifest v0.1",
+  "description": "Disposable observation-only projection; canonical TASKS, Context Pack, contracts and Issue #65 retain authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_only", "example", "source_refs", "task", "identity", "scope", "risk", "contracts", "dependencies", "acceptance", "review", "state"],
+  "properties": {
+    "schema_version": { "const": "0.1" },
+    "observation_only": { "const": true },
+    "example": { "type": "boolean" },
+    "source_refs": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+    "task": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "domain", "size", "validation_budget"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "domain": { "type": "string", "minLength": 1 },
+        "size": { "enum": ["S", "M", "L", "XL"] },
+        "validation_budget": { "enum": ["LIGHT", "FOCUSED", "STRICT"] }
+      }
+    },
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["owner", "base_main_sha", "branch", "pr", "current_head_sha"],
+      "properties": {
+        "owner": { "type": ["string", "null"], "minLength": 1 },
+        "base_main_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+        "branch": { "type": ["string", "null"], "minLength": 1 },
+        "pr": { "type": ["integer", "null"], "minimum": 1 },
+        "current_head_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" }
+      }
+    },
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["writable", "forbidden"],
+      "properties": {
+        "writable": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "forbidden": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "risk": {
+      "type": "object", "additionalProperties": false,
+      "required": ["auth", "cross_tenant", "migration", "concurrent_writers", "idempotency", "temporal_semantics", "money", "external_side_effect", "browser_flow"],
+      "properties": {
+        "auth": { "type": "boolean" },
+        "cross_tenant": { "type": "boolean" },
+        "migration": { "type": "boolean" },
+        "concurrent_writers": { "type": "boolean" },
+        "idempotency": { "type": "boolean" },
+        "temporal_semantics": { "type": "boolean" },
+        "money": { "type": "boolean" },
+        "external_side_effect": { "type": "boolean" },
+        "browser_flow": { "type": "boolean" }
+      }
+    },
+    "contracts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["preserve", "change", "invariants"],
+      "properties": {
+        "preserve": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "change": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "invariants": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "dependencies": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tasks", "accepted_evidence_refs"],
+      "properties": {
+        "tasks": { "type": "array", "items": { "type": "string", "pattern": "^(TEMEL|S[0-9]{2}|F[0-9]{2}-[0-9]{2}|GS|G[0-9]{2})$" } },
+        "accepted_evidence_refs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "acceptance": {
+      "type": "object", "additionalProperties": false, "required": ["obligations"],
+      "properties": { "obligations": { "type": "array", "items": { "type": "string", "minLength": 1 } } }
+    },
+    "review": {
+      "type": "object", "additionalProperties": false, "required": ["r1", "r2", "coordinator_merge"],
+      "properties": {
+        "r1": { "enum": ["required", "optional", "not_required"] },
+        "r2": { "enum": ["required", "optional", "not_required"] },
+        "coordinator_merge": { "const": "required" }
+      }
+    },
+    "state": {
+      "type": "object", "additionalProperties": false,
+      "required": ["lifecycle", "executor_mode", "next_executable_step"],
+      "properties": {
+        "lifecycle": { "enum": ["planned", "active", "validating", "repair", "review", "merged", "closed", "blocked"] },
+        "executor_mode": { "enum": [null, "ACTIVE", "VALIDATING", "SHADOW", "REPAIR", "REVIEW"] },
+        "next_executable_step": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
