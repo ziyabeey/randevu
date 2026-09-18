@@ -40,8 +40,8 @@ Kurallar:
 R0 acceptance authority değildir; deterministic CI/verifier kanıtı ve coordinator kararı arasında bounded bir sensördür.
 
 1. **DISCOVERY:** İlk candidate üzerinde changed surface + en fazla bir direct dependency hop incelenir. Confirmed blocker'lar `R0-B1...` olarak kimliklenir.
-2. **FREEZE:** Discovery sonunda blocker seti donar. Hipotez, nit ve öneriler acceptance'a eklenmez.
-3. **REPAIR:** Implementer yalnız frozen blocker/counterexample yüzeyini düzeltir; unrelated refactor veya yeni ürün scope'u açmaz.
+2. **FREEZE:** Discovery sonunda durable PR review/comment receipt'e discovery exact head ve blocker seti yazılır; temiz review'da bile açıkça `NONE` kaydedilir. Bu receipt olmadan yeni-push verification zinciri tamamlanmış sayılmaz. Hipotez, nit ve öneriler acceptance'a eklenmez.
+3. **REPAIR:** Mevcut PR'ın atanmış tek yazarı aynı branch üzerinde yalnız frozen blocker/counterexample yüzeyini düzeltir; unrelated refactor veya yeni ürün scope'u açmaz. Mevcut `@qwencoder /implement` akışı yeni task branch/PR açtığı için in-place repair değildir; ayrı bir repair mode uygulanıp doğrulanana kadar bu adımda kullanılmaz.
 4. **VERIFICATION:** Sonraki R0 turu eski blocker'ları ve repair'in doğrudan regression'ını doğrular. Normal invariant `next_blockers ⊆ frozen_blockers`'dır.
 5. **ESCAPE:** Yalnız somut secret/credential exposure, auth privilege escalation, cross-tenant breach, destructive data loss/migration corruption, financial double-effect veya mevcut hard safety invariant ihlali yeni blocker olarak mevcut PR'ı tekrar durdurabilir. Diğer yeni bulgular backlog adayıdır.
 
@@ -53,7 +53,7 @@ Bu yaşam döngüsü CEGIS/counterexample-guided repair fikrini korur: iterasyon
 | --- | --- |
 | Koordinatör — Sol/Astra veya insan operatör | Kontratları, validation bütçesini, dosya sahipliğini, kapsam dışını, bağımlılıkları, ajan routing'ini, kabulü ve merge sırasını belirler; yalnız gerekli review/staging kapılarını açar. |
 | Scout — Gemini | Yalnız belirsiz scope/dependency/repo keşfinde read-only context pack üretir; scope açıksa atlanır. |
-| Uygulayıcı — Qwen varsayılan otomasyon | Dondurulmuş kontrat ve atanmış dosyalarda en küçük coherent patch'i üretir; repair'de yalnız frozen blocker/counterexample yüzeyini düzeltir. |
+| Uygulayıcı otomasyon route'u — Qwen | Koordinatör açıkça seçtiğinde dondurulmuş kontrattan yeni task branch/PR üretir; model rolün otoritesi değildir. Mevcut workflow in-place repair yapmaz. |
 | R0 — Copilot | İlk candidate'da bounded discovery, repair descendant'ta frozen-blocker verification yapar; acceptance/merge authority değildir. |
 | Provider fallback — Cloudflare Workers AI | Yalnız desteklenen inference route'unda tercih edilen provider unavailable/quota olduğunda aynı rolü devralır; ekstra review katmanı oluşturmaz. |
 | R1 — security/DB reviewer | Yalnız DB/auth/access/security veya STRICT finans/migration riski gerektirdiğinde bağımsız inceleme yapar; feature implementeri değildir. |
