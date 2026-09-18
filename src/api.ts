@@ -20,6 +20,20 @@ export class ApiRequestError extends Error {
   }
 }
 
+// Operator pages register the cross-tab workspace coherence guard at startup
+// (see workspace-coherence.ts); public and customer-management pages never do,
+// so for them the client behaves exactly as before.
+type WorkspaceGuard = {
+  writeAllowed(path: string): Promise<boolean>;
+  expectedContext(path: string): { userId: string; businessId: string | null } | null;
+  noteResponse(path: string, method: string, requestBody: unknown, responseBody: unknown): void;
+};
+let workspaceGuard: WorkspaceGuard | null = null;
+
+export function setWorkspaceGuard(guard: WorkspaceGuard | null) {
+  workspaceGuard = guard;
+}
+
 let csrfToken: string | null = null;
 let csrfRequest: Promise<string> | null = null;
 
@@ -45,12 +59,17 @@ async function obtainCsrfToken() {
   if (csrfToken) return csrfToken;
   if (!csrfRequest) {
     csrfRequest = (async () => {
-      const response = await fetch('/api/csrf', {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-        credentials: 'same-origin',
-      });
+      let response: Response;
+      try {
+        response = await fetch('/api/csrf', {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+          credentials: 'same-origin',
+        });
+      } catch (error) {
+        throw normalizeFetchError(error);
+      }
       const body = await response.json().catch(() => null) as { csrfToken?: unknown } | null;
       if (!response.ok || !validCsrf(body?.csrfToken)) {
         throw new ApiRequestError('Güvenlik doğrulaması hazırlanamadı.', response.status || 503, 'CSRF_UNAVAILABLE');
@@ -66,10 +85,24 @@ function abortReason(signal: AbortSignal) {
   return signal.reason ?? new DOMException('The operation was aborted', 'AbortError');
 }
 
+function normalizeFetchError(error: unknown) {
+  if (error instanceof ApiRequestError) return error;
+  return new ApiRequestError(
+    'Bağlantı kurulamadı. Lütfen tekrar deneyin.',
+    0,
+    'NETWORK_UNAVAILABLE',
+  );
+}
+
 async function fetchText(path: string, init: RequestInit, timeoutMs?: number) {
   if (timeoutMs === undefined) {
-    const response = await fetch(path, init);
-    return { response, text: await response.text() };
+    try {
+      const response = await fetch(path, init);
+      return { response, text: await response.text() };
+    } catch (error) {
+      if (init.signal?.aborted) throw abortReason(init.signal);
+      throw normalizeFetchError(error);
+    }
   }
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new RangeError('timeoutMs must be a positive finite number');
 
@@ -94,8 +127,13 @@ async function fetchText(path: string, init: RequestInit, timeoutMs?: number) {
     rejectBoundary(error);
   }, timeoutMs);
   const operation = (async () => {
-    const response = await fetch(path, { ...init, signal: controller.signal });
-    return { response, text: await response.text() };
+    try {
+      const response = await fetch(path, { ...init, signal: controller.signal });
+      return { response, text: await response.text() };
+    } catch (error) {
+      if (controller.signal.aborted) throw controller.signal.reason ?? error;
+      throw normalizeFetchError(error);
+    }
   })();
   try {
     return await Promise.race([operation, boundary]);
@@ -125,7 +163,22 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
   headers.set('Accept', 'application/json');
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
-  const csrfRequired = unsafeMethod(init.method) && csrf !== 'skip';
+  const method = (init.method ?? 'GET').toUpperCase();
+  const unsafe = unsafeMethod(method);
+  if (workspaceGuard && unsafe && !(await workspaceGuard.writeAllowed(path))) {
+    throw new ApiRequestError(
+      'Başka bir sekmede oturum veya işletme değişti. Sayfa güncel bilgilerle yenileniyor.',
+      409,
+      'WORKSPACE_CONTEXT_CHANGED',
+    );
+  }
+  const expectedWorkspace = workspaceGuard && unsafe ? workspaceGuard.expectedContext(path) : null;
+  if (expectedWorkspace) {
+    headers.set('X-YZT-Expected-User', expectedWorkspace.userId);
+    headers.set('X-YZT-Expected-Business', expectedWorkspace.businessId ?? 'none');
+  }
+
+  const csrfRequired = unsafe && csrf !== 'skip';
   if (csrfRequired) {
     headers.set('X-YZT-CSRF', await obtainCsrfToken());
   }
@@ -154,5 +207,6 @@ export async function api<T = unknown>(path: string, init: ApiInit = {}): Promis
 
   const candidate = body as T & { csrfToken?: unknown };
   seedCsrfToken(candidate.csrfToken);
+  workspaceGuard?.noteResponse(path, method, init.body, body);
   return body as T;
 }

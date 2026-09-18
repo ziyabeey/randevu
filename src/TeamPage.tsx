@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { api } from './api';
+import { api, ApiRequestError } from './api';
 
 type Role = 'owner' | 'manager' | 'staff';
 type PermissionKey =
@@ -65,20 +65,27 @@ function dateLabel(value: string) {
     : new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
 }
 
+function isRetryableApiError(error: unknown) {
+  return error instanceof ApiRequestError
+    && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
+}
+
 export default function TeamPage() {
   const [team, setTeam] = useState<TeamSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [inviteUrl, setInviteUrl] = useState('');
+  const [authorityStale, setAuthorityStale] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const result = await api<{ team: TeamSnapshot }>('/api/team');
       setTeam(result.team);
+      setAuthorityStale(false);
     } catch (error) {
-      setTeam(null);
+      if (!isRetryableApiError(error)) setTeam(null);
       setNotice(error instanceof Error ? error.message : 'Ekip bilgileri alınamadı.');
     } finally {
       setLoading(false);
@@ -86,6 +93,12 @@ export default function TeamPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function refreshAuthorityAfterForbidden(error: unknown) {
+    if (!(error instanceof ApiRequestError) || error.status !== 403) return;
+    setAuthorityStale(true);
+    await load();
+  }
 
   async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true);
@@ -95,6 +108,7 @@ export default function TeamPage() {
       setNotice(success);
       await load();
     } catch (error) {
+      await refreshAuthorityAfterForbidden(error);
       setNotice(error instanceof Error ? error.message : 'İşlem tamamlanamadı.');
     } finally {
       setBusy(false);
@@ -118,6 +132,7 @@ export default function TeamPage() {
       setNotice('Davet oluşturuldu. Bağlantı yalnız bu yanıtta gösterilir; şimdi güvenli biçimde paylaşın.');
       await load();
     } catch (error) {
+      await refreshAuthorityAfterForbidden(error);
       setNotice(error instanceof Error ? error.message : 'Davet oluşturulamadı.');
     } finally {
       setBusy(false);
@@ -147,8 +162,8 @@ export default function TeamPage() {
     );
   }
 
-  const canManage = team.actor.role === 'owner' || team.actor.role === 'manager';
-  const isOwner = team.actor.role === 'owner';
+  const canManage = !authorityStale && (team.actor.role === 'owner' || team.actor.role === 'manager');
+  const isOwner = !authorityStale && team.actor.role === 'owner';
   const activeMembers = team.members.filter((member) => member.active);
 
   return (
