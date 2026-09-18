@@ -458,9 +458,13 @@ export async function runManagementAcceptance(options = {}) {
           return sendJson(response, 200, { team: teamPayload(state) });
         }
         if (request.method === 'POST' && url.pathname === '/api/businesses/select') {
-          if (!state.loggedIn) return denied(response, 'Oturumunuz sona erdi. Yeniden giriş yapın.');
+          if (!state.loggedIn) {
+            return sendJson(response, 401, { error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } });
+          }
           const next = membership(state, String(body.businessId ?? ''));
-          if (!next?.active) return denied(response, 'Bu işletmeye erişiminiz yok.');
+          if (!next?.active) {
+            return sendJson(response, 403, { error: { code: 'TENANT_FORBIDDEN', message: 'Bu işletmeye erişiminiz yok.' } });
+          }
           state.selected = next.businessId;
           return sendJson(response, 200, { ok: true });
         }
