@@ -126,11 +126,9 @@ test('Qwen command uses a positive file-tool allowlist plus explicit non-core de
   assert.equal(args[args.indexOf('--max-wall-time') + 1], '10m');
   assert.equal(args[args.indexOf('--max-tool-calls') + 1], '60');
   assert.equal(args[args.indexOf('--max-session-turns') + 1], '30');
-  const valuesFor = (flag) => args.flatMap((value, index) => value === flag ? [args[index + 1]] : []);
-  assert.deepEqual(valuesFor('--core-tools'), ['read_file', 'grep_search', 'glob', 'edit', 'write_file']);
-  for (const denied of ['run_shell_command', 'monitor', 'web_fetch', 'task', 'agent', 'skill', 'tool_search']) {
-    assert.ok(valuesFor('--exclude-tools').includes(denied), denied);
-  }
+  const valueFor = (flag) => args[args.indexOf(flag) + 1];
+  assert.equal(valueFor('--core-tools'), 'read_file,grep_search,glob,edit,write_file');
+  assert.equal(valueFor('--exclude-tools'), 'run_shell_command,monitor,web_fetch,task,agent,skill,tool_search');
   assert.equal(args.includes('--sandbox'), true);
   assert.equal(args.includes('--yolo'), false);
 });
