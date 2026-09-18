@@ -458,14 +458,19 @@ function parseWallTimeMs(value) {
   return Math.ceil(number * multiplier);
 }
 
-function runValidations(worktree, packet) {
+function runValidations(worktree, packet, validationHome) {
   const results = [];
   const started = Date.now();
   for (const argv of packet.validation) {
     const elapsed = Date.now() - started;
     const remaining = MAX_VALIDATION_TOTAL_MS - elapsed;
     if (remaining <= 0) throw new DispatchError('VALIDATION_TIMEOUT', 'validation exceeded the 20 minute total deadline', { validation: results });
-    const result = run(argv[0], argv.slice(1), { cwd: worktree, env: childEnv(), timeout: remaining, allowFailure: true });
+    const result = run(argv[0], argv.slice(1), {
+      cwd: worktree,
+      env: childEnv({ isolatedHome: validationHome }),
+      timeout: remaining,
+      allowFailure: true,
+    });
     results.push({ command: argv[0], status: result.status, stdout_bytes: Buffer.byteLength(result.stdout ?? ''), stderr_bytes: Buffer.byteLength(result.stderr ?? '') });
     if (result.error?.code === 'ETIMEDOUT') throw new DispatchError('VALIDATION_TIMEOUT', 'validation exceeded the 20 minute total deadline', { validation: results });
     if (result.error || result.status !== 0) {
@@ -552,9 +557,8 @@ export function parseQwenCompletion(text) {
 export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', dryRun = false } = {}) {
   const validated = validatePacket(packet);
   if (dryRun) {
-    assertRepository(repoRoot, validated);
+    assertLocalRepository(repoRoot, validated);
     if (branchExists(repoRoot, validated.branch)) throw new DispatchError('BRANCH_EXISTS', `local branch already exists: ${validated.branch}`);
-    if (remoteBranchExists(repoRoot, validated.branch)) throw new DispatchError('BRANCH_EXISTS', `remote branch already exists: ${validated.branch}`);
     return buildDryRun(validated, qwenBin);
   }
 
@@ -562,10 +566,12 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
   let worktreeState;
   try {
     lockPath = acquireLock();
-    assertRepository(repoRoot, validated);
+    assertLocalRepository(repoRoot, validated);
+    assertRemoteRepositoryState(repoRoot, validated);
     worktreeState = createWorktree(repoRoot, validated);
 
     assertFilesystemFence(worktreeState.worktree, validated.writable);
+    const metadataSnapshot = captureWorktreeMetadata(worktreeState.worktree);
     const qwenHome = path.join(worktreeState.parent, 'qwen-home');
     mkdirSync(qwenHome, { recursive: true, mode: 0o700 });
     const qwenArgs = buildQwenArgs(validated);
@@ -575,6 +581,7 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
       timeout: parseWallTimeMs(validated.budgets.max_wall_time),
       allowFailure: true,
     });
+    if (qwenResult.error?.code === 'ETIMEDOUT') throw new DispatchError('QWEN_TIMEOUT', 'Qwen exceeded the declared wall-time budget');
     if (qwenResult.error) throw new DispatchError('QWEN_UNAVAILABLE', `Qwen could not start: ${qwenResult.error.message}`);
     if (qwenResult.status !== 0) {
       throw new DispatchError('QWEN_FAILED', `Qwen exited with ${qwenResult.status ?? 'unknown'}`, {
@@ -585,22 +592,38 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
     }
 
     parseQwenCompletion(qwenResult.stdout);
-
+    assertWorktreeMetadata(worktreeState.worktree, metadataSnapshot);
     auditWorkerState(worktreeState.worktree, validated, { rejectIgnored: true, actor: 'Qwen' });
 
-    const validations = runValidations(worktreeState.worktree, validated);
+    const validationHome = path.join(worktreeState.parent, 'validation-home');
+    mkdirSync(validationHome, { recursive: true, mode: 0o700 });
+    const validations = runValidations(worktreeState.worktree, validated, validationHome);
+    assertWorktreeMetadata(worktreeState.worktree, metadataSnapshot);
     const scope = auditWorkerState(worktreeState.worktree, validated, { rejectIgnored: false, actor: 'validation' });
 
     git(worktreeState.worktree, ['add', '--all']);
     const stagedPaths = parseNullList(git(worktreeState.worktree, ['diff', '--cached', '--name-only', '-z', validated.base_sha, '--']).stdout);
     const stagedScope = inspectChangedPaths(stagedPaths, validated);
     if (!stagedScope.ok) throw new DispatchError('SCOPE_VIOLATION', 'staged delivery exceeds authorized scope', stagedScope);
-    git(worktreeState.worktree, ['commit', '-m', `feat(dispatch): ${validated.task_id} Qwen implementation`], { timeout: 120_000 });
+    git(worktreeState.worktree, [
+      '-c', 'core.hooksPath=/dev/null',
+      '-c', 'commit.gpgSign=false',
+      'commit', '--no-verify', '-m', `feat(dispatch): ${validated.task_id} Qwen implementation`,
+    ], { timeout: 120_000 });
     const headSha = gitOutput(worktreeState.worktree, ['rev-parse', 'HEAD']);
     const parentSha = gitOutput(worktreeState.worktree, ['rev-parse', 'HEAD^']);
     if (parentSha !== validated.base_sha) throw new DispatchError('BASE_MISMATCH', 'dispatcher commit is not a direct child of the exact base');
+    assertWorktreeMetadata(worktreeState.worktree, metadataSnapshot);
+    const committedPaths = parseNullList(git(worktreeState.worktree, ['diff-tree', '--no-commit-id', '--name-only', '-r', '-z', parentSha, headSha]).stdout);
+    const committedScope = inspectChangedPaths(committedPaths, validated);
+    if (!committedScope.ok || committedScope.changed.length === 0) {
+      throw new DispatchError('SCOPE_VIOLATION', 'committed tree exceeds authorized scope', committedScope);
+    }
+    assertLocalRepository(repoRoot, { ...validated, base_sha: headSha });
+    assertRemoteRepositoryState(repoRoot, validated);
+    if (remoteBranchExists(repoRoot, validated.branch)) throw new DispatchError('BRANCH_EXISTS', `remote branch appeared before push: ${validated.branch}`);
     git(worktreeState.worktree, ['push', '--set-upstream', 'origin', validated.branch], { timeout: 180_000 });
-    const prBody = buildPrBody(validated, headSha, scope.changed, validations);
+    const prBody = buildPrBody(validated, headSha, committedScope.changed, validations);
     const pr = run('gh', ['pr', 'create', '--draft', '--repo', validated.repository, '--base', validated.base_branch, '--head', validated.branch,
       '--title', `${validated.task_id}: Qwen implementation`, '--body', prBody], { cwd: worktreeState.worktree, env: process.env, timeout: 120_000, allowFailure: true });
     if (pr.error || pr.status !== 0) {
@@ -612,7 +635,7 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
     return {
       status: 'DRAFT_PR_CREATED', task_id: validated.task_id, repository: validated.repository,
       base_sha: validated.base_sha, head_sha: headSha, branch: validated.branch,
-      changed_paths: scope.changed, validation: validations.map(({ command, status }) => ({ command, status })),
+      changed_paths: committedScope.changed, validation: validations.map(({ command, status }) => ({ command, status })),
       pr_url: pr.stdout.trim(), qwen_exit: qwenResult.status,
       qwen_io: {
         output_mode: validated.output_mode,
