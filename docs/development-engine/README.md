@@ -45,8 +45,9 @@ for a current Context Refresh.
 Reading a Skill is not automatic execution or tool permission. Record the stable
 Skill name actually read; if unavailable, disclose it and use a coordinator-approved
 safe equivalent. R0 or implementer self-review never satisfies independent R1/R2.
-Risk-based reviewer selection for other tasks remains unchanged; #119 explicitly
-requires fresh R1/R2 contexts arranged by its coordinator after exact-head CI.
+Risk-based reviewer selection for current tasks remains unchanged. Historical #119
+required fresh R1/R2 and completed those reviews before its accepted merge; it is
+not an open review gate.
 
 ## Capability receipt — 2026-09-18
 
@@ -65,15 +66,14 @@ This is a dated inventory, not a continuously accurate settings claim.
 | Review instruction toggle and both auto-approval toggles | Unknown; required intended settings below are not observed facts |
 | Active implementation/setup | Native R0 behavior is observed; durable bounded-R0 contract is being updated in PR #136. Other activation/setup remains governed by Issue #121. |
 
-The initial main CI [35264446487](https://github.com/ziyabeey1-ai/randevu/actions/runs/35264446487)
-succeeded at the starting SHA. Separately, #117
+Historical evidence: the initial main CI
+[35264446487](https://github.com/ziyabeey1-ai/randevu/actions/runs/35264446487)
+succeeded at the original starting SHA. Separately, F11-04 #117
 [job/check 105480417908](https://github.com/ziyabeey1-ai/randevu/actions/runs/35306324484/job/105480417908)
 at `227b7698a70821a02bb8dfd45b9180194d4e301a` had `runner_id=0`, `steps=[]`
-and the exact native check annotation: "The job was not started because your
-account is locked due to a billing issue." That is provenance for that run,
-not a claim that this task's CI failed. Normal #119 CI must be attempted once;
-if similarly blocked, record its own head/run/job/annotation and stop retries.
-Do not change billing, rerun another task or bypass required CI.
+and a runner/account billing annotation before checkout. That receipt is fenced to
+that historical run. DEV-ENGINE-01/#119 later completed successfully and is closed;
+do not use this paragraph to infer a current account block or an open #119 action.
 
 ### Supported formats and product surfaces
 
@@ -107,9 +107,10 @@ Official sources:
 
 ## Setup
 
-**Repository sources present does not mean automation active.** All four sources
-below are canonical prompts, not executable/configuration files or registered
-automations. No settings activation is part of this delivery.
+**Repository sources alone do not activate account settings.** The prompt files
+below remain canonical source text. Native R0 behavior is now observed separately
+in the capability receipt above; the other app automation cards remain unclaimed
+until Issue #121 has a completion receipt.
 
 | Source | Intended trigger | Truthful initial fallback |
 | --- | --- | --- |
