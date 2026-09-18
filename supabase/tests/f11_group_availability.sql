@@ -97,11 +97,9 @@ begin
      or v_l2->>'staffId' <> 'd1640000-0000-4000-8000-000000000001' then
     raise exception 'F11-02 expected one staff to serve the whole run';
   end if;
-  -- Services are consecutive: the cut starts exactly when the colour ends.
   if (v_l2->>'startsAt')::timestamptz <> (v_l1->>'endsAt')::timestamptz then
     raise exception 'F11-02 lines are not consecutive';
   end if;
-  -- The run keeps the outer buffers only.
   if (v_l1->>'occupiedStartsAt')::timestamptz <> (v_l1->>'startsAt')::timestamptz - interval '10 minutes' then
     raise exception 'F11-02 run lost its leading buffer';
   end if;
@@ -230,6 +228,174 @@ begin
   end;
   if not v_raised then raise exception 'F11-02 probe budget was not enforced'; end if;
   raise notice 'F11-02 candidate budget fails loudly';
+end
+$$;
+
+-- F11-04 timezone/DST acceptance: the multi-service engine must keep real
+-- timestamptz identity and duration across IANA clock transitions. Phase-4
+-- already proves the single-service engine; this is the group-level proof.
+reset role;
+
+insert into public.businesses(id,name,slug,timezone,created_by)
+values (
+  'd1650000-0000-4000-8000-000000000001','F11-04 Berlin DST','f1104-berlin-dst',
+  'Europe/Berlin','d1600000-0000-4000-8000-000000000001'
+);
+
+insert into public.memberships(id,business_id,user_id,role,active)
+values (
+  'd1660000-0000-4000-8000-000000000001','d1650000-0000-4000-8000-000000000001',
+  'd1600000-0000-4000-8000-000000000001','owner',true
+);
+
+insert into public.services(
+  id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,
+  category,sort_order,price_minor,price_type,price_min_minor,price_max_minor,currency,active
+) values
+  ('d1670000-0000-4000-8000-000000000001','d1650000-0000-4000-8000-000000000001','DST A',30,0,0,'DST',10,1000,'fixed',1000,1000,'TRY',true),
+  ('d1670000-0000-4000-8000-000000000002','d1650000-0000-4000-8000-000000000001','DST B',30,0,0,'DST',20,1000,'fixed',1000,1000,'TRY',true);
+
+insert into public.staff_profiles(id,business_id,name,active)
+values ('d1680000-0000-4000-8000-000000000001','d1650000-0000-4000-8000-000000000001','Berlin Staff',true);
+
+insert into public.staff_services(business_id,staff_id,service_id,active)
+values
+  ('d1650000-0000-4000-8000-000000000001','d1680000-0000-4000-8000-000000000001','d1670000-0000-4000-8000-000000000001',true),
+  ('d1650000-0000-4000-8000-000000000001','d1680000-0000-4000-8000-000000000001','d1670000-0000-4000-8000-000000000002',true);
+
+-- DST transitions are Sundays. Monday is also present for the local-day/UTC-day
+-- boundary proof near midnight.
+insert into public.business_hours(business_id,weekday,starts_local,ends_local,active)
+values
+  ('d1650000-0000-4000-8000-000000000001',0,time '01:00',time '04:00',true),
+  ('d1650000-0000-4000-8000-000000000001',1,time '00:00',time '03:00',true);
+
+insert into public.staff_hours(business_id,staff_id,weekday,starts_local,ends_local,active)
+values
+  ('d1650000-0000-4000-8000-000000000001','d1680000-0000-4000-8000-000000000001',0,time '01:00',time '04:00',true),
+  ('d1650000-0000-4000-8000-000000000001','d1680000-0000-4000-8000-000000000001',1,time '00:00',time '03:00',true);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','d1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+
+do $$
+declare
+  v_year integer := extract(year from current_date)::integer;
+  v_spring date;
+  v_fall date;
+  v_boundary date := date_trunc('week',current_date)::date+7;
+  v_lines jsonb := '[{"serviceId":"d1670000-0000-4000-8000-000000000001","staffId":"d1680000-0000-4000-8000-000000000001"},{"serviceId":"d1670000-0000-4000-8000-000000000002","staffId":"d1680000-0000-4000-8000-000000000001"}]'::jsonb;
+  v_count integer;
+  v_bad integer;
+  v_start timestamptz;
+  v_end timestamptz;
+  v_first timestamptz;
+  v_last timestamptz;
+  v_tz text;
+  v_plan jsonb;
+  v_l1 jsonb;
+  v_l2 jsonb;
+begin
+  v_spring := make_date(v_year,3,31)-extract(dow from make_date(v_year,3,31))::integer;
+  if v_spring < current_date-1 then
+    v_year := v_year+1;
+    v_spring := make_date(v_year,3,31)-extract(dow from make_date(v_year,3,31))::integer;
+  end if;
+
+  v_year := extract(year from current_date)::integer;
+  v_fall := make_date(v_year,10,31)-extract(dow from make_date(v_year,10,31))::integer;
+  if v_fall < current_date-1 then
+    v_year := v_year+1;
+    v_fall := make_date(v_year,10,31)-extract(dow from make_date(v_year,10,31))::integer;
+  end if;
+
+  -- Spring-forward: 02:xx never exists. A group starting at local 01:30 still
+  -- has two real 30-minute lines: wall-clock labels jump 01:30 -> 03:00 while
+  -- timestamptz duration remains exact.
+  select count(*)::integer into v_count
+  from public.compute_group_availability_slots(
+    'd1650000-0000-4000-8000-000000000001',v_spring,v_lines,30
+  ) s
+  where (s.starts_at at time zone 'Europe/Berlin')::time >= time '02:00'
+    and (s.starts_at at time zone 'Europe/Berlin')::time < time '03:00';
+  if v_count <> 0 then raise exception 'F11-04 group engine emitted nonexistent spring 02:xx start'; end if;
+
+  select s.starts_at,s.ends_at,s.timezone,s.lines
+    into v_start,v_end,v_tz,v_plan
+  from public.compute_group_availability_slots(
+    'd1650000-0000-4000-8000-000000000001',v_spring,v_lines,30
+  ) s
+  where (s.starts_at at time zone 'Europe/Berlin')::time = time '01:30'
+  limit 1;
+  if v_start is null then raise exception 'F11-04 spring 01:30 group slot missing'; end if;
+  v_l1 := v_plan->0;
+  v_l2 := v_plan->1;
+  if v_tz <> 'Europe/Berlin' or v_end-v_start <> interval '60 minutes' then
+    raise exception 'F11-04 spring group lost timezone or real 60m duration';
+  end if;
+  if (v_l1->>'endsAt')::timestamptz-(v_l1->>'startsAt')::timestamptz <> interval '30 minutes'
+     or (v_l2->>'endsAt')::timestamptz-(v_l2->>'startsAt')::timestamptz <> interval '30 minutes' then
+    raise exception 'F11-04 spring line real duration drifted';
+  end if;
+  if ((v_l1->>'endsAt')::timestamptz at time zone 'Europe/Berlin')::time <> time '03:00' then
+    raise exception 'F11-04 spring wall-clock jump did not land at 03:00';
+  end if;
+  if (v_l2->>'startsAt')::timestamptz <> (v_l1->>'endsAt')::timestamptz
+     or (v_l1->>'occupiedEndsAt')::timestamptz <> (v_l1->>'endsAt')::timestamptz
+     or (v_l2->>'occupiedStartsAt')::timestamptz <> (v_l2->>'startsAt')::timestamptz then
+    raise exception 'F11-04 spring group sequence/zero-buffer occupancy drifted';
+  end if;
+
+  -- Fall-back: the two local 02:00 labels are two distinct instants one hour
+  -- apart. Both are valid group starts and every service remains 30 real minutes.
+  select count(*)::integer,min(s.starts_at),max(s.starts_at)
+    into v_count,v_first,v_last
+  from public.compute_group_availability_slots(
+    'd1650000-0000-4000-8000-000000000001',v_fall,v_lines,30
+  ) s
+  where (s.starts_at at time zone 'Europe/Berlin')::time = time '02:00';
+  if v_count <> 2 or v_last-v_first <> interval '1 hour' then
+    raise exception 'F11-04 repeated fall 02:00 instants were collapsed: count=% span=%',v_count,v_last-v_first;
+  end if;
+
+  select count(*)::integer into v_bad
+  from public.compute_group_availability_slots(
+    'd1650000-0000-4000-8000-000000000001',v_fall,v_lines,30
+  ) s
+  cross join lateral jsonb_array_elements(s.lines) l
+  where (s.starts_at at time zone 'Europe/Berlin')::time = time '02:00'
+    and (l->>'endsAt')::timestamptz-(l->>'startsAt')::timestamptz <> interval '30 minutes';
+  if v_bad <> 0 then raise exception 'F11-04 repeated-hour line duration drifted'; end if;
+
+  select count(*)::integer into v_bad
+  from public.compute_group_availability_slots(
+    'd1650000-0000-4000-8000-000000000001',v_fall,v_lines,30
+  ) s
+  where (s.starts_at at time zone 'Europe/Berlin')::time = time '02:00'
+    and s.ends_at-s.starts_at <> interval '60 minutes';
+  if v_bad <> 0 then raise exception 'F11-04 repeated-hour group duration drifted'; end if;
+
+  -- Local-day authority must not accidentally follow UTC. At Berlin 00:30 the
+  -- UTC calendar date is still the previous day, while the slot belongs to the
+  -- requested Monday business-local date.
+  select s.starts_at,s.ends_at,s.timezone,s.lines
+    into v_start,v_end,v_tz,v_plan
+  from public.compute_group_availability_slots(
+    'd1650000-0000-4000-8000-000000000001',v_boundary,v_lines,30
+  ) s
+  where (s.starts_at at time zone 'Europe/Berlin')::time = time '00:30'
+  limit 1;
+  if v_start is null then raise exception 'F11-04 local-day boundary slot missing'; end if;
+  if (v_start at time zone 'Europe/Berlin')::date <> v_boundary
+     or (v_start at time zone 'UTC')::date <> v_boundary-1 then
+    raise exception 'F11-04 business-local date followed UTC at midnight boundary';
+  end if;
+  if v_end-v_start <> interval '60 minutes' or v_tz <> 'Europe/Berlin' then
+    raise exception 'F11-04 local-day boundary duration/timezone drifted';
+  end if;
+
+  raise notice 'F11-04 group DST/timezone acceptance passed: spring skip, fall repeat, local-day identity';
 end
 $$;
 
