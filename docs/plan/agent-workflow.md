@@ -51,7 +51,7 @@ Bu yaşam döngüsü CEGIS/counterexample-guided repair fikrini korur: iterasyon
 
 | Rol | Sorumluluk |
 | --- | --- |
-| Koordinatör — Sol/Astra veya insan operatör | Kontratları, validation bütçesini, dosya sahipliğini, kapsam dışını, bağımlılıkları, ajan routing'ini, kabulü ve merge sırasını belirler; yalnız gerekli review/staging kapılarını açar. |
+| Koordinatör — atanmış koordinatör veya insan operatör | Kontratları, validation bütçesini, dosya sahipliğini, kapsam dışını, bağımlılıkları, ajan routing'ini, kabulü ve merge sırasını belirler; yalnız gerekli review/staging kapılarını açar. |
 | Scout — Gemini | Yalnız belirsiz scope/dependency/repo keşfinde read-only context pack üretir; scope açıksa atlanır. |
 | Uygulayıcı otomasyon route'u — Qwen | Koordinatör açıkça seçtiğinde dondurulmuş kontrattan yeni task branch/PR üretir; model rolün otoritesi değildir. Mevcut workflow in-place repair yapmaz. |
 | R0 — Copilot | İlk candidate'da bounded discovery, repair descendant'ta frozen-blocker verification yapar; acceptance/merge authority değildir. |
