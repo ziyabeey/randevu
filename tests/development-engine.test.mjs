@@ -102,7 +102,8 @@ test('AI comment commands use one router and model workflows are dispatch-only',
   assert.match(router, /@qwencoder \/implement/);
   assert.match(router, /@gemini-cli \/scout-cloudflare/);
   assert.match(router, /@gemini-cli \/scout/);
-  assert.match(router, /gh workflow run/);
+  assert.match(router, /actions\/workflows\/\$\{workflow\}\/dispatches/);
+  assert.match(router, /--method POST/);
 
   for (const workflow of [qwen, gemini]) {
     assert.match(workflow, /workflow_dispatch:/);
