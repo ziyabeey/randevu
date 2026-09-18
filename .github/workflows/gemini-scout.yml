@@ -166,11 +166,11 @@ jobs:
         id: cloudflare
         if: ${{ steps.route.outputs.provider == 'cloudflare' }}
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_AI_API_TOKEN: ${{ secrets.CLOUDFLARE_AI_API_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${CLOUDFLARE_API_TOKEN}" ]; then
-            echo "::error title=Missing CLOUDFLARE_API_TOKEN::Add a Workers AI token before using Cloudflare fallback."
+          if [ -z "${CLOUDFLARE_AI_API_TOKEN}" ]; then
+            echo "::error title=Missing CLOUDFLARE_AI_API_TOKEN::Add a Workers AI token before using Cloudflare fallback."
             exit 1
           fi
 
@@ -189,7 +189,7 @@ jobs:
           const accountId = String(accounts[0]?.id ?? accounts[0]?.accountId ?? '').trim();
           if (!/^[a-f0-9]{32}$/i.test(accountId)) throw new Error('Cloudflare returned an invalid account ID');
 
-          const token = process.env.CLOUDFLARE_API_TOKEN;
+          const token = process.env.CLOUDFLARE_AI_API_TOKEN;
           const model = '@cf/zai-org/glm-4.7-flash';
           const modelsUrl = new URL(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/models/search`);
           modelsUrl.searchParams.set('search', model);
@@ -217,7 +217,7 @@ jobs:
         if: ${{ steps.route.outputs.provider == 'cloudflare' }}
         uses: QwenLM/qwen-code-action@v1
         with:
-          openai_api_key: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          openai_api_key: ${{ secrets.CLOUDFLARE_AI_API_TOKEN }}
           openai_base_url: ${{ steps.cloudflare.outputs.base_url }}
           openai_model: ${{ steps.cloudflare.outputs.model }}
           qwen_debug: 'false'
