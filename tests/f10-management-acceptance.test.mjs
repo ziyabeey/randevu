@@ -6,6 +6,8 @@ test('F10-06 real-browser management choreography preserves current authority ac
   try {
     const receipt = await runManagementAcceptance();
     assert.equal(receipt.ok, true);
+    assert.equal(receipt.assetProof.cssRequested, true, 'browser did not request the production CSS asset');
+    assert.ok(receipt.assetProof.cssBytes > 0, 'Vite build did not emit CSS for the acceptance surface');
     assert.ok(receipt.scenarios.includes('browser back/forward'));
     assert.ok(receipt.scenarios.includes('second-tab role downgrade'));
     assert.ok(receipt.scenarios.includes('logout/session expiry'));

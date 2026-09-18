@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, closeSync, mkdtempSync, openSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, closeSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -269,7 +269,6 @@ export async function runManagementAcceptance(options = {}) {
   const bundleDir = path.join(work, 'bundle');
   const chromeLog = path.join(work, 'chrome.log');
   const sockets = new Set();
-  const hanging = new Set();
   const pages = [];
   const failures = [];
   let server;
@@ -277,6 +276,8 @@ export async function runManagementAcceptance(options = {}) {
   let chromeFd;
   let origin;
   let appJs;
+  let appCss = Buffer.alloc(0);
+  let cssRequested = false;
   let chromeStartError;
 
   const state = {
@@ -364,6 +365,8 @@ export async function runManagementAcceptance(options = {}) {
       },
     });
     appJs = readFileSync(path.join(bundleDir, 'app.js'));
+    const cssAsset = readdirSync(bundleDir).find((name) => name.endsWith('.css'));
+    if (cssAsset) appCss = readFileSync(path.join(bundleDir, cssAsset));
 
     server = createServer(async (request, response) => {
       try {
@@ -373,9 +376,15 @@ export async function runManagementAcceptance(options = {}) {
           response.end(appJs);
           return;
         }
+        if (url.pathname === '/app.css') {
+          cssRequested = true;
+          response.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-store' });
+          response.end(appCss);
+          return;
+        }
         if (!url.pathname.startsWith('/api/')) {
           response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-          response.end('<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>');
+          response.end('<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>');
           return;
         }
 
@@ -830,6 +839,10 @@ export async function runManagementAcceptance(options = {}) {
       ok: true,
       selectedBusiness: state.selected,
       requestCount: state.requests.length,
+      assetProof: {
+        cssRequested,
+        cssBytes: appCss.length,
+      },
       crossTab,
       scenarios: [
         'two-business switch',
@@ -854,7 +867,6 @@ export async function runManagementAcceptance(options = {}) {
     }
     throw error;
   } finally {
-    for (const response of hanging) response.destroy();
     for (const page of pages) {
       try { page.close(); } catch { /* best effort */ }
     }
