@@ -40,7 +40,13 @@ function harness({ server = () => ({ status: 200, body: session(businessA) }) } 
   };
   globalThis.fetch = async (input, init = {}) => {
     const path = String(input);
-    calls.push({ path, method: (init.method ?? 'GET').toUpperCase() });
+    const headers = new Headers(init.headers);
+    calls.push({
+      path,
+      method: (init.method ?? 'GET').toUpperCase(),
+      expectedUser: headers.get('X-YZT-Expected-User'),
+      expectedBusiness: headers.get('X-YZT-Expected-Business'),
+    });
     if (path === '/api/session') {
       const answer = server();
       return new Response(JSON.stringify(answer.body ?? {}), { status: answer.status, headers: { 'Content-Type': 'application/json' } });
@@ -167,4 +173,32 @@ await test('the API client never sends a drifted write and reports a typed confl
     (error) => error instanceof ApiRequestError && error.status === 409 && error.code === 'WORKSPACE_CONTEXT_CHANGED',
   );
   assert.equal(env.calls.filter((call) => call.path === '/api/team/invitations').length, 0, 'the drifted write reached the server');
+});
+
+
+await test('authenticated public settings mutations are bound and unsafe requests carry rendered context', async () => {
+  let current = businessA;
+  const env = harness({ server: () => ({ status: 200, body: session(current) }) });
+  installWorkspaceCoherence({ readsSessionItself: true });
+  setWorkspaceGuard(workspaceGuard);
+  seedCsrfToken('C'.repeat(43));
+  noteWorkspaceResponse('/api/session', 'GET', undefined, session(businessA));
+
+  await api('/api/public/settings', { method: 'POST', body: '{}' });
+  const write = env.calls.find((call) => call.path === '/api/public/settings');
+  assert.equal(write?.expectedUser, userId);
+  assert.equal(write?.expectedBusiness, businessA);
+
+  current = businessB;
+  assert.equal(await workspaceWriteAllowed('/api/public/settings'), false, 'authenticated /api/public mutation bypassed the workspace guard');
+});
+
+await test('plain network failures are normalized to retryable typed API errors', async () => {
+  globalThis.fetch = async () => { throw new TypeError('temporary network failure'); };
+  await assert.rejects(
+    api('/api/session'),
+    (error) => error instanceof ApiRequestError
+      && error.status === 0
+      && error.code === 'NETWORK_UNAVAILABLE',
+  );
 });

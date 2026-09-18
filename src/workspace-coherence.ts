@@ -24,12 +24,22 @@ let binding: Identity | null = null;
 let reloading = false;
 let returnCheck: Promise<void> | null = null;
 
-// Requests that are the tab's own context transitions, or not bound to the
-// operator workspace at all.
-const UNBOUND_PATHS = ['/api/businesses/select', '/api/auth/', '/api/csrf', '/api/session', '/api/public/', '/api/manage/'];
+// Only the tab's own context transitions are unbound. Public-booking pages and
+// capability-management pages do not install this guard at all, so broad path
+// prefixes must never exempt authenticated operator mutations.
+const UNBOUND_PATHS = new Set([
+  '/api/businesses/select',
+  '/api/auth/signup',
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/auth/recovery',
+  '/api/auth/confirm',
+  '/api/csrf',
+  '/api/session',
+]);
 
 function unbound(path: string) {
-  return UNBOUND_PATHS.some((prefix) => path === prefix || path.startsWith(prefix));
+  return UNBOUND_PATHS.has(path);
 }
 
 function identityOf(session: unknown): Identity | null {
@@ -117,6 +127,14 @@ export async function workspaceWriteAllowed(path: string): Promise<boolean> {
   return confirmBinding();
 }
 
+// The API client puts this tab-local rendered identity on the unsafe request
+// itself. The Worker compares it with the auth/business cookies from that same
+// HTTP request, closing the preflight-to-fetch race between tabs.
+export function workspaceExpectedContext(path: string) {
+  if (!installed || unbound(path) || !binding?.userId) return null;
+  return { userId: binding.userId, businessId: binding.businessId };
+}
+
 // Called by the API client after a successful response this tab will render
 // or has caused.
 export function noteWorkspaceResponse(path: string, method: string, requestBody: unknown, responseBody: unknown) {
@@ -139,6 +157,7 @@ export function noteWorkspaceResponse(path: string, method: string, requestBody:
 // Registered with the API client by main.tsx for operator routes.
 export const workspaceGuard = {
   writeAllowed: workspaceWriteAllowed,
+  expectedContext: workspaceExpectedContext,
   noteResponse: noteWorkspaceResponse,
 };
 

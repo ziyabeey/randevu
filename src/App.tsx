@@ -280,13 +280,16 @@ export default function App() {
 
   async function logout() {
     setBusy(true);
+    setShowPasswordChange(false);
+    setSession(null);
+    setCatalog(null);
+    setSessionUnavailable(false);
+    setNotice('');
     try {
       await api('/api/auth/logout', { method: 'POST' });
-      setShowPasswordChange(false);
-      setSession(null);
-      setCatalog(null);
-      setSessionUnavailable(false);
       await load();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Çıkış işlemi sunucuda doğrulanamadı. Yeniden giriş yapmadan önce tekrar deneyin.');
     } finally {
       setBusy(false);
     }

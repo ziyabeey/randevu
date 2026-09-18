@@ -296,11 +296,30 @@ export async function activeMembership<E extends AuthEnv>(
   return membership;
 }
 
+function workspaceExpectationMismatch<E extends AuthEnv>(context: AppContext<E>, auth: AuthSession) {
+  const expectedUser = context.req.header('X-YZT-Expected-User');
+  const expectedBusinessRaw = context.req.header('X-YZT-Expected-Business');
+  if (expectedUser === undefined && expectedBusinessRaw === undefined) return false;
+  if (!expectedUser || expectedBusinessRaw === undefined) return true;
+  const expectedBusiness = expectedBusinessRaw === 'none' ? null : expectedBusinessRaw;
+  return auth.user.id !== expectedUser || getActiveBusinessId(context) !== expectedBusiness;
+}
+
 export async function requireAuth<E extends AuthEnv>(context: AppContext<E>): Promise<AuthAccess> {
   try {
     const auth = await resolveAuth(context);
     if (!auth) {
       return { error: context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401) };
+    }
+    if (workspaceExpectationMismatch(context, auth)) {
+      return {
+        error: context.json({
+          error: {
+            code: 'WORKSPACE_CONTEXT_CHANGED',
+            message: 'Başka bir sekmede oturum veya işletme değişti. Sayfayı yenileyip tekrar deneyin.',
+          },
+        }, 409),
+      };
     }
     return { auth };
   } catch (error) {
