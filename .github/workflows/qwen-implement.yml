@@ -78,7 +78,7 @@ jobs:
         id: qwen
         uses: QwenLM/qwen-code-action@v1
         env:
-          QWEN_GITHUB_TOKEN: ${{ secrets.QWEN_GITHUB_TOKEN }}
+          GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.QWEN_GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
           REQUEST: ${{ github.event.comment.body || github.event.issue.body || inputs.request }}
           REPOSITORY: ${{ github.repository }}
@@ -120,10 +120,7 @@ jobs:
                     "delete_file",
                     "push_files",
                     "create_pull_request"
-                  ],
-                  "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${QWEN_GITHUB_TOKEN}"
-                  }
+                  ]
                 }
               }
             }
@@ -168,5 +165,7 @@ jobs:
           if [ -n "${pr_url}" ]; then
             gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen delivery complete: ${pr_url}"
           else
-            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen completed without an open PR for branch \`${QWEN_BRANCH}\`. Treat this as \`MORE_CONTEXT | ESCALATE\`; inspect the Qwen action log before retrying."
+            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen completed without an open PR for branch \`${QWEN_BRANCH}\`. Delivery failed; inspect the Qwen action result before retrying."
+            echo "::error title=Qwen delivery failed::The model step completed but no delivery PR exists for ${QWEN_BRANCH}."
+            exit 1
           fi
