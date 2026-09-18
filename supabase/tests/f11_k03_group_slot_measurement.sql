@@ -94,7 +94,10 @@ begin
   if v_n<>30 or v_p50<=0 or v_p95<v_p50 or v_probe_upper>public.f11_group_probe_budget() then
     raise exception 'F11 K03 measurement invalid: n=% p50=% p95=% probe=%',v_n,v_p50,v_p95,v_probe_upper;
   end if;
-  raise notice 'F11_K03_METRIC workload=group_slots warmup=3 samples=% services=10 staff=5 candidate_upper=% probe_upper=% slots_min=% slots_max=% db_rpc_calls=% p50_ms=% p95_ms=% errors=0',
+  -- Each sample is one compute_group_availability_slots invocation -- exactly the
+  -- single RPC a production slot request makes -- timed server-side inside one
+  -- session. Worker and network round-trip time are not included.
+  raise notice 'F11_K03_METRIC workload=group_slots warmup=3 samples=% services=10 staff=5 candidate_upper=% probe_upper=% slots_min=% slots_max=% rpc_invocations=% timing=server_side p50_ms=% p95_ms=% errors=0',
     v_n,v_candidate_upper,v_probe_upper,v_min_slots,v_max_slots,v_n,round(v_p50,3),round(v_p95,3);
 end $$;
 
