@@ -167,17 +167,18 @@ jobs:
           if [ -n "${pr_url}" ]; then
             gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen delivery complete: ${pr_url}"
           else
+            summary_preview="${QWEN_SUMMARY:0:4000}"
+            error_preview="${QWEN_ERROR:0:4000}"
             echo "::group::Qwen delivery diagnostic"
-            printf 'summary:\n%s\n' "${QWEN_SUMMARY}" | head -c 4000
-            printf '\nerror:\n%s\n' "${QWEN_ERROR}" | head -c 4000
-            echo
+            printf 'summary:\n%s\n' "${summary_preview}"
+            printf '\nerror:\n%s\n' "${error_preview}"
             echo "::endgroup::"
 
             summary_file="${RUNNER_TEMP}/qwen-delivery-summary.md"
             {
               printf '%s\n\n' "Qwen completed without an open PR for branch \`${QWEN_BRANCH}\`. Delivery failed."
               printf '%s\n\n' "**Qwen final response:**"
-              printf '%s' "${QWEN_SUMMARY}" | head -c 6000
+              printf '%s' "${QWEN_SUMMARY:0:6000}"
               printf '\n'
             } > "${summary_file}"
             gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body-file "${summary_file}"
