@@ -50,7 +50,7 @@ Tam tarihsel kanıtlar `TASKS.md` ve `docs/handoffs/**` içindedir; burada tekra
 
 ## Randevu ürün track'i ve Kepenk Core platform track'i
 
-**Randevu ürün track'i:** runtime ürün baseline'ı F11-01'dir. Bu docs-only state-sync main'e girdikten sonra aktif ürün writer **Ajan D / F11-02** olur. F11-02 atomic multi-service availability/create işidir; F11-03 ve F11-04 kendi dependency kapıları açılana kadar kapalı kalır.
+**Randevu ürün track'i:** doğrulanmış runtime baseline artık **F11-03**'tür. F11-02 atomic multi-service availability/create ve F11-03 group-rooted yönetim/uyumluluk main'de kabul edilmiştir; F11-03 merge `65b12e0d568fcbc7cf281d7ade90f342badd4cce`, post-main CI #1183 / `35245968810` success. **F11-04 henüz main değildir**: draft PR #117 frozen head `227b7698a70821a02bb8dfd45b9180194d4e301a` üzerinde STRICT kabul bekler; son exact-head CI #1215 runner/account allocation nedeniyle checkout öncesi başarısızdır ve unrelated tooling CI bu adayı doğrulamaz.
 
 **Kepenk Core platform track'i:** K04 ve KC planı docs-only [PR #106](https://github.com/ziyabeey1-ai/randevu/pull/106) ile main'dedir ve Randevu F09–F17 54 MVP görev sayısını değiştirmez. KC-00 hosted numeric read-only inventory receipt'i **OPEN / Çalışılıyor**; Kepenk Issue #10 bunu toplar. KC-01 Core schema/RPC writer token'ı KC-00 receipt kabul edilene kadar **CLOSED / Engelli**. KC-02…KC-07 planlıdır. K04/KC, mevcut Randevu `profiles/businesses/memberships`, booking authority veya Firestore projection sınırlarını ikinci bir otorite yaratacak şekilde değiştirmez.
 
