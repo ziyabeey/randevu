@@ -448,7 +448,11 @@ export function buildDryRun(packet, qwenBin = 'qwen') {
 
 export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', dryRun = false } = {}) {
   const validated = validatePacket(packet);
-  if (dryRun) return buildDryRun(validated);
+  if (dryRun) {
+    assertRepository(repoRoot, validated);
+    if (branchExists(repoRoot, validated.branch)) throw new DispatchError('BRANCH_EXISTS', `local branch already exists: ${validated.branch}`);
+    return buildDryRun(validated, qwenBin);
+  }
 
   let lockPath;
   let worktreeState;
@@ -458,28 +462,58 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
     assertRepository(repoRoot, validated);
     worktreeState = createWorktree(repoRoot, validated);
 
+    assertFilesystemFence(worktreeState.worktree, validated.writable);
+    const qwenHome = path.join(worktreeState.parent, 'qwen-home');
+    mkdirSync(qwenHome, { recursive: true, mode: 0o700 });
     const qwenArgs = buildQwenArgs(validated);
     const qwenResult = run(qwenBin, qwenArgs, {
       cwd: worktreeState.worktree,
-      env: childEnv({ includeProviderSecrets: true }),
-      timeout: parseWallTimeMs(validated.budgets.max_wall_time),
+      env: childEnv({ includeProviderSecrets: true, isolatedHome: qwenHome }),
+      timeout: parseWallTimeMs(validated.budgets.max_wall_time) + 30_000,
       allowFailure: true,
     });
     if (qwenResult.error) throw new DispatchError('QWEN_UNAVAILABLE', `Qwen could not start: ${qwenResult.error.message}`);
     if (qwenResult.status !== 0) {
       throw new DispatchError('QWEN_FAILED', `Qwen exited with ${qwenResult.status ?? 'unknown'}`, {
-        stdout: safeReceiptText(qwenResult.stdout), stderr: safeReceiptText(qwenResult.stderr), status: qwenResult.status,
+        status: qwenResult.status,
+        stdout_bytes: Buffer.byteLength(qwenResult.stdout ?? ''),
+        stderr_bytes: Buffer.byteLength(qwenResult.stderr ?? ''),
       });
     }
 
-    const scope = inspectChangedPaths(changedPaths(worktreeState.worktree), validated);
-    if (!scope.ok) throw new DispatchError('SCOPE_VIOLATION', 'Qwen changed paths outside the authorized scope', scope);
-    if (scope.changed.length === 0) throw new DispatchError('NO_CHANGES', 'Qwen completed without changing an authorized path');
+    const qwenText = String(qwenResult.stdout ?? '');
+    let qwenPayload = null;
+    try { qwenPayload = JSON.parse(qwenText); } catch {}
+    const serializedQwen = qwenPayload === null ? qwenText : JSON.stringify(qwenPayload);
+    if (serializedQwen.includes('MORE_CONTEXT | ESCALATE')) {
+      throw new DispatchError('QWEN_ESCALATED', 'Qwen requested coordinator escalation');
+    }
+
+    assertHeadAtBase(worktreeState.worktree, validated.base_sha, 'Qwen');
+    const ignored = ignoredUntrackedPaths(worktreeState.worktree);
+    if (ignored.length > 0) throw new DispatchError('IGNORED_PATH_WRITE', 'Qwen created ignored untracked paths', { count: ignored.length });
+    const initialPaths = stageableChangedPaths(worktreeState.worktree, validated.base_sha);
+    assertFilesystemFence(worktreeState.worktree, initialPaths);
+    const initialScope = inspectChangedPaths(initialPaths, validated);
+    if (!initialScope.ok) throw new DispatchError('SCOPE_VIOLATION', 'Qwen changed paths outside the authorized scope', initialScope);
+    if (initialScope.changed.length === 0) throw new DispatchError('NO_CHANGES', 'Qwen completed without changing an authorized path');
 
     const validations = runValidations(worktreeState.worktree, validated);
+    assertHeadAtBase(worktreeState.worktree, validated.base_sha, 'validation');
+    const finalPaths = stageableChangedPaths(worktreeState.worktree, validated.base_sha);
+    assertFilesystemFence(worktreeState.worktree, finalPaths);
+    const scope = inspectChangedPaths(finalPaths, validated);
+    if (!scope.ok) throw new DispatchError('SCOPE_VIOLATION', 'validation produced changes outside the authorized scope', scope);
+    if (scope.changed.length === 0) throw new DispatchError('NO_CHANGES', 'validation left no authorized change to deliver');
+
     git(worktreeState.worktree, ['add', '--all']);
+    const stagedPaths = parseNullList(git(worktreeState.worktree, ['diff', '--cached', '--name-only', '-z', validated.base_sha, '--']).stdout);
+    const stagedScope = inspectChangedPaths(stagedPaths, validated);
+    if (!stagedScope.ok) throw new DispatchError('SCOPE_VIOLATION', 'staged delivery exceeds authorized scope', stagedScope);
     git(worktreeState.worktree, ['commit', '-m', validated.commit_message], { timeout: 120_000 });
     const headSha = gitOutput(worktreeState.worktree, ['rev-parse', 'HEAD']);
+    const parentSha = gitOutput(worktreeState.worktree, ['rev-parse', 'HEAD^']);
+    if (parentSha !== validated.base_sha) throw new DispatchError('BASE_MISMATCH', 'dispatcher commit is not a direct child of the exact base');
     git(worktreeState.worktree, ['push', '--set-upstream', 'origin', validated.branch], { timeout: 180_000 });
     pushed = true;
 
@@ -488,18 +522,23 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
       '--title', validated.pr.title, '--body', prBody], { cwd: worktreeState.worktree, env: process.env, timeout: 120_000, allowFailure: true });
     if (pr.error || pr.status !== 0) {
       throw new DispatchError('PR_CREATE_FAILED', 'branch was pushed but draft PR creation failed', {
-        head_sha: headSha, branch: validated.branch, stdout: safeReceiptText(pr.stdout), stderr: safeReceiptText(pr.stderr),
+        head_sha: headSha, branch: validated.branch, status: pr.status,
       });
     }
 
     return {
       status: 'DRAFT_PR_CREATED', task_id: validated.task_id, repository: validated.repository,
       base_sha: validated.base_sha, head_sha: headSha, branch: validated.branch,
-      changed_paths: scope.changed, validation: validations.map(({ argv, status }) => ({ argv, status })),
+      changed_paths: scope.changed, validation: validations.map(({ command, status }) => ({ command, status })),
       pr_url: pr.stdout.trim(), qwen_exit: qwenResult.status,
+      qwen_io: {
+        output_mode: validated.output_mode,
+        stdout_bytes: Buffer.byteLength(qwenResult.stdout ?? ''),
+        stderr_bytes: Buffer.byteLength(qwenResult.stderr ?? ''),
+      },
     };
   } finally {
-    cleanupWorktree(repoRoot, worktreeState, validated, { deleteBranch: !pushed });
+    cleanupWorktree(repoRoot, worktreeState, validated, { deleteBranch: true });
     releaseLock(lockPath);
   }
 }
