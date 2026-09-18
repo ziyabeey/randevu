@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from './api';
+import { errorText, isTransientAuthorityRead, retainsVerifiedAuthorityView } from './sessionCoherence';
 
 type Business = { id: string; name: string; slug: string; timezone: string };
 type Membership = {
@@ -8,7 +9,6 @@ type Membership = {
   business_id: string;
   role: 'owner' | 'manager' | 'staff';
   active: boolean;
-  businesses: Business | null;
 };
 type Session = {
   user: null | { id: string; email: string | null; fullName: string | null };
@@ -55,9 +55,11 @@ export default function App() {
   const [notice, setNotice] = useState<string>('');
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [unverifiableSession, setUnverifiableSession] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setUnverifiableSession(false);
     try {
       const nextSession = await api<Session>('/api/session');
       setSession(nextSession);
@@ -71,7 +73,18 @@ export default function App() {
         setCatalog(null);
       }
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Bağlantı kurulamadı.');
+      if (retainsVerifiedAuthorityView(error)) {
+        // The session was not proven absent. Keep any last verified view and
+        // ask again instead of presenting a provider failure as a logout.
+        setUnverifiableSession(true);
+        setNotice(errorText(error, isTransientAuthorityRead(error)
+          ? 'Oturum durumu şu anda doğrulanamadı. Bu bir çıkış işlemi değil; yeniden deneyin.'
+          : 'Bağlantı kurulamadı.'));
+      } else {
+        setSession(null);
+        setCatalog(null);
+        setNotice('Oturumunuz doğrulanamadı. Güvenliğiniz için yeniden giriş yapın.');
+      }
     } finally {
       setLoading(false);
     }
@@ -301,7 +314,25 @@ export default function App() {
       <main className="workspace">
         {notice && <div className="notice" role="status">{notice}</div>}
 
+        {unverifiableSession && session?.user && (
+          <div className="notice" role="status">
+            Oturum şu anda yeniden doğrulanamadı; gösterilen görünüm en son doğrulanmış oturuma ait.
+            <button className="ghost-button" type="button" disabled={busy} onClick={() => void load()}>Yeniden dene</button>
+          </div>
+        )}
+
         {!session?.user ? (
+          unverifiableSession ? (
+            <section className="panel auth-panel">
+              <p className="eyebrow">OTURUM DOĞRULANAMADI</p>
+              <h1>Çalışma alanına şu anda erişilemedi</h1>
+              <p className="muted">Bu bir çıkış işlemi değil. Hesap servisine geçici olarak ulaşılamıyor; oturumunuz değişmedi.</p>
+              <button className="primary-button" type="button" disabled={busy} onClick={() => void load()}>Yeniden dene</button>
+              <div className="auth-actions">
+                <button className="text-button" type="button" onClick={() => setUnverifiableSession(false)}>Giriş ekranını aç</button>
+              </div>
+            </section>
+          ) : (
           <section className="panel auth-panel">
             <p className="eyebrow">GÜVENLİ HESAP ERİŞİMİ</p>
             <h1>
@@ -343,6 +374,7 @@ export default function App() {
               )}
             </div>
           </section>
+          )
         ) : showPasswordPanel ? (
           <section className="panel auth-panel">
             <p className="eyebrow">{passwordRequired ? 'PAROLA KURTARMA' : 'HESAP GÜVENLİĞİ'}</p>

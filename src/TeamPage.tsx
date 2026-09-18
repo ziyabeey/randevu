@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from './api';
+import {
+  errorText,
+  isPrivilegedAuthorityDenial,
+  isTransientAuthorityRead,
+  retainsVerifiedAuthorityView,
+} from './sessionCoherence';
 
 type Role = 'owner' | 'manager' | 'staff';
 type PermissionKey =
@@ -71,21 +77,43 @@ export default function TeamPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [inviteUrl, setInviteUrl] = useState('');
+  const [stale, setStale] = useState(false);
+  const [accessLost, setAccessLost] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options: { silent?: boolean } = {}) => {
     setLoading(true);
     try {
       const result = await api<{ team: TeamSnapshot }>('/api/team');
       setTeam(result.team);
+      setStale(false);
+      setAccessLost(false);
     } catch (error) {
-      setTeam(null);
-      setNotice(error instanceof Error ? error.message : 'Ekip bilgileri alınamadı.');
+      // Only a server-side denial invalidates the authority view. A retryable
+      // read leaves the last verified snapshot visible and marks it stale.
+      const retainsVerifiedView = retainsVerifiedAuthorityView(error);
+      if (!retainsVerifiedView) setTeam(null);
+      setAccessLost(!retainsVerifiedView);
+      setStale(retainsVerifiedView);
+      if (!options.silent) {
+        setNotice(retainsVerifiedView
+          ? errorText(error, isTransientAuthorityRead(error)
+            ? 'Ekip verilerine şu anda ulaşılamadı. Son doğrulanmış ekip görünümü korunuyor.'
+            : 'Ekip bilgileri alınamadı.')
+          : 'Ekip yönetimi yetkiniz sunucu tarafında doğrulanamadı. Yönetim kontrolleri kapatıldı.');
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function invalidateAfterDenial(error: unknown) {
+    if (!isPrivilegedAuthorityDenial(error)) return false;
+    setNotice('Yetkiniz sunucu tarafında değişti. Yönetim kontrolleri yeniden doğrulanıyor.');
+    await load({ silent: true });
+    return true;
+  }
 
   async function run(action: () => Promise<unknown>, success: string) {
     setBusy(true);
@@ -95,7 +123,9 @@ export default function TeamPage() {
       setNotice(success);
       await load();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'İşlem tamamlanamadı.');
+      if (!(await invalidateAfterDenial(error))) {
+        setNotice(errorText(error, 'İşlem tamamlanamadı.'));
+      }
     } finally {
       setBusy(false);
     }
@@ -118,7 +148,9 @@ export default function TeamPage() {
       setNotice('Davet oluşturuldu. Bağlantı yalnız bu yanıtta gösterilir; şimdi güvenli biçimde paylaşın.');
       await load();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Davet oluşturulamadı.');
+      if (!(await invalidateAfterDenial(error))) {
+        setNotice(errorText(error, 'Davet oluşturulamadı.'));
+      }
     } finally {
       setBusy(false);
     }
@@ -137,11 +169,22 @@ export default function TeamPage() {
   if (loading) return <main className="center-card"><p>Ekip erişimi doğrulanıyor…</p></main>;
 
   if (!team) {
+    if (accessLost) {
+      return (
+        <main className="center-card">
+          <h1>Ekip yönetimi kapalı</h1>
+          {notice && <div className="notice" role="status">{notice}</div>}
+          <p className="muted">Bu işletmede ekip yönetimi yetkiniz doğrulanamadı. Giriş yapın ve erişiminiz olan bir işletme seçin.</p>
+          <a className="primary-link" href="/">Çalışma alanına dön</a>
+        </main>
+      );
+    }
     return (
       <main className="center-card">
-        <h1>Ekip alanı açılamadı</h1>
+        <h1>Ekip alanı şu anda doğrulanamadı</h1>
         {notice && <div className="notice" role="status">{notice}</div>}
-        <p className="muted">Giriş yapın ve erişiminiz olan bir işletme seçin.</p>
+        <p className="muted">Bu bir çıkış değil: ekip servisine şu anda ulaşılamıyor. Doğrulanmış erişiminiz değişmedi.</p>
+        <button className="primary-button" type="button" disabled={busy} onClick={() => void load()}>Yeniden dene</button>
         <a className="primary-link" href="/">Çalışma alanına dön</a>
       </main>
     );
@@ -163,6 +206,12 @@ export default function TeamPage() {
         </div>
         <p className="muted">Hesap üyeliği uygulamaya giriş yetkisidir. Operasyon personeli ise randevu takviminde çalışan kişidir. İkisini yalnız gerektiğinde birbirine bağlayın.</p>
         {notice && <div className="notice" role="status">{notice}</div>}
+        {stale && (
+          <div className="notice" role="status">
+            Ekip görünümü şu anda yenilenemedi; son doğrulanmış kayıt gösteriliyor.
+            <button className="ghost-button" type="button" disabled={busy} onClick={() => void load()}>Yeniden dene</button>
+          </div>
+        )}
       </section>
 
       <div className="dashboard-grid team-grid">
