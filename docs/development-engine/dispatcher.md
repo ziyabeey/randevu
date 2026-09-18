@@ -55,18 +55,13 @@ Example:
   "validation": [
     ["npm", "run", "typecheck"],
     ["node", "--test", "tests/example/example.test.mjs"]
-  ],
-  "commit_message": "feat: implement F13-02 slice",
-  "pr": {
-    "title": "F13-02: bounded example",
-    "body": "Coordinator-authored task packet."
-  }
+  ]
 }
 ```
 
 A scope entry ending in `/` is an explicit directory prefix. Other writable/forbidden entries are exact file paths. `..`, absolute paths, backslashes, NUL/control separators where argv requires a single line, overlapping writable/forbidden scope, unsafe branch names, unknown packet fields and shell-style validation are rejected.
 
-`output_mode` is intentionally JSON-only in v0.1. `max_wall_time` accepts Qwen duration syntax from 1 second through 2 hours. Validation is argv-based with `shell:false`. By default only `node`, `npm`, `npx`, and `git` are accepted as validation executables. A server operator may extend that executable allowlist with `DEV_DISPATCH_ALLOWED_EXECUTABLES`; this is operator configuration, not task authority.
+`output_mode` is intentionally JSON-only in v0.1. `max_wall_time` accepts Qwen duration syntax from 1 second through 2 hours. Validation is argv-based with `shell:false` and has a separate hard 20-minute total deadline across all validation commands. By default only `node`, `npm`, `npx`, and `git` are accepted as validation executables. A server operator may extend that executable allowlist with `DEV_DISPATCH_ALLOWED_EXECUTABLES`; this is operator configuration, not task authority.
 
 ## Dry run
 
@@ -104,11 +99,11 @@ The worktree fence rejects tracked or changed symlinks, path escapes, worker-cre
 
 If Qwen returns `MORE_CONTEXT | ESCALATE`, the dispatcher stops before validation/delivery even when Qwen exits zero. Failed Qwen or validation output is captured only as bounded status/byte-count metadata in emitted receipts. Raw model/validator stdout, stderr, validation arguments, and packet prompts are not copied into PR bodies or machine-readable receipts.
 
-A successful run creates one dispatcher-owned commit, pushes only the task branch, and opens a **draft** PR. Existing GitHub R0 and CI then take over. Readiness, independent R1/R2, merge, and post-main acceptance remain coordinator-controlled.
+A successful run creates one dispatcher-owned commit, pushes only the task branch, and opens a **draft** PR. Commit and PR titles are generated deterministically from the validated `task_id`; packet-authored public commit/PR text is intentionally unsupported. Existing GitHub R0 and CI then take over. Readiness, independent R1/R2, merge, and post-main acceptance remain coordinator-controlled.
 
 ## Secrets
 
-Do not place credentials in packets, prompts, PR bodies, or validation arguments. The dispatcher does not rely on this instruction as its only protection: it omits validation arguments and raw subprocess output from public receipts, uses an isolated Qwen HOME, and hard-denies GitHub credential variables from the Qwen environment. Sensitive environment values are redacted when an error message itself contains them.
+Do not place credentials in packets, prompts, or validation arguments. The dispatcher does not accept packet-authored commit messages or PR text, omits validation arguments and raw subprocess output from public receipts, uses an isolated Qwen HOME, and hard-denies any provider allowlist variable whose name contains `GITHUB` or begins with `GH_`. Sensitive environment values, including underscore-style API key names, are redacted when an error message itself contains them.
 
 ## Single-worker property
 
