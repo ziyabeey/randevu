@@ -174,8 +174,12 @@ authority. Context Pack remains the human-readable projection during this PoC.
 The examples are explicitly illustrative (`example: true`), carry no fabricated
 live SHA or passing proof, and grant no writable scope. Regenerate real observations
 from canonical sources; do not update committed examples on every head change.
-`source_refs` links origin evidence, not copied logs. Unknown values stay null or
-pending; an actual false risk flag needs observation, not a schema default.
+`source_refs` links origin evidence, not copied logs. Unknown values use null only
+in explicitly nullable schema fields, or a supported pending/unknown status.
+Risk flags require assessed booleans: true or false needs source evidence.
+The schema cannot represent unassessed risk; stop and return that gap to the
+coordinator rather than defaulting it to false. Example risk values are illustrative,
+not defaults for real tasks.
 
 `candidate.exact_head_sha` and `ci.exact_sha` refer to the source PR head associated
 with the run. `ci.tested_checkout_sha` records the actual tested tree (often the

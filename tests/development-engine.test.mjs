@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync, cpSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,12 +20,57 @@ const taskSchema = load('task', 'schemas'), evidenceSchema = load('evidence', 's
 const taskExample = load('task', 'examples'), evidenceExample = load('evidence', 'examples');
 const a = 'a'.repeat(40), b = 'b'.repeat(40);
 
-test('committed native artifacts are valid and the existing full CI discovers this test', async () => {
+test('committed native artifacts are valid and the existing full CI discovers this test', async (t) => {
   const result = await validateArtifacts(root);
+  for (const warning of result.warnings) t.diagnostic(`ADVISORY: ${warning}`);
   assert.deepEqual(result.errors, []);
-  assert.deepEqual(result.warnings, ['Candidate identity is unknown; no live acceptance can be inferred.']);
   assert.ok((await discoverHttpTests(root)).includes('tests/development-engine.test.mjs'));
   assert.equal(classifyPaths(['.github/copilot-instructions.md', `${home}/examples/task-manifest.v0.1.json`]), 'code');
+});
+
+test('required artifact-test path reports extra advisories without failing, but rejects static errors', async () => {
+  const fixture = mkdtempSync(path.join(tmpdir(), 'randevu-engine-advisory-'));
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  const run = (args) => {
+    const result = spawnSync(process.execPath, args, { cwd: fixture, env, encoding: 'utf8', timeout: 30_000 });
+    assert.ifError(result.error);
+    assert.equal(result.signal, null);
+    return result;
+  };
+  const artifactTest = ['--test', '--test-reporter=tap', '--test-name-pattern=^committed native artifacts',
+    'tests/development-engine.test.mjs'];
+  try {
+    for (const directory of ['.github', home]) {
+      cpSync(path.join(root, directory), path.join(fixture, directory), { recursive: true });
+    }
+    for (const file of ['scripts/validate-development-engine.mjs', 'scripts/ci-files.mjs',
+      'scripts/ci-scope.mjs', 'scripts/run-http-tests.mjs', 'tests/development-engine.test.mjs']) {
+      mkdirSync(path.dirname(path.join(fixture, file)), { recursive: true });
+      cpSync(path.join(root, file), path.join(fixture, file));
+    }
+    const instructions = '.github/copilot-instructions.md';
+    writeFileSync(path.join(fixture, instructions), read(instructions)
+      .replace('Never self-ready or self-merge', 'Never mark your own PR ready or merge it'));
+    const observation = await validateArtifacts(fixture);
+    assert.deepEqual(observation.errors, []);
+    assert.ok(observation.warnings.some((warning) => warning.includes('coordinator-only readiness/merge')));
+    const cli = run(['scripts/validate-development-engine.mjs']);
+    assert.equal(cli.status, 0, cli.stdout + cli.stderr);
+    assert.match(cli.stderr, /ADVISORY: .*coordinator-only readiness\/merge/);
+    const advisoryTest = run(artifactTest);
+    assert.equal(advisoryTest.status, 0, advisoryTest.stdout + advisoryTest.stderr);
+    assert.match(advisoryTest.stdout, /ADVISORY: .*coordinator-only readiness\/merge/);
+
+    const scoped = '.github/instructions/implementation.instructions.md';
+    writeFileSync(path.join(fixture, scoped), read(scoped).replace(/^---\r?\n/, '---\nunsupported: "fixture"\n'));
+    const invalidCli = run(['scripts/validate-development-engine.mjs']);
+    assert.equal(invalidCli.status, 1, invalidCli.stdout + invalidCli.stderr);
+    assert.match(invalidCli.stderr, /ERROR: .*unsupported frontmatter key/);
+    const invalidTest = run(artifactTest);
+    assert.equal(invalidTest.status, 1, invalidTest.stdout + invalidTest.stderr);
+    assert.match(invalidTest.stdout, /unsupported frontmatter key/);
+  } finally { rmSync(fixture, { recursive: true, force: true }); }
 });
 
 test('both manifest examples are explicitly non-authoritative and do not fabricate current evidence', () => {
@@ -44,6 +90,7 @@ test('bounded schema validation checks required, extra, nested, array, enum, typ
   const cases = [
     (value) => { delete value.risk.auth; },
     (value) => { value.risk.auth = 'false'; },
+    (value) => { value.risk.auth = null; },
     (value) => { value.identity.current_head_sha = 'abc123'; },
     (value) => { value.identity.pr = 0; },
     (value) => { value.task.size = 'XXL'; },
