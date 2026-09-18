@@ -43,9 +43,13 @@ stable.
    - AI opinion cannot override a deterministic failing hard invariant.
 
 6. **Risk-based R1/R2 — independent specialist review when required**
-   - R1 only for actual DB/auth/access/security/STRICT financial or migration risk.
-   - R2 only for actual browser/integration/a11y/user-flow risk.
-   - Do not add both unless both risk classes are present.
+   - R1 follows the canonical workflow/Skill risk mapping. Trigger classes include,
+     non-exhaustively: DB/auth/access/security, concurrency, idempotency/CAS,
+     half-state/orphan risk, money/time/snapshot/audit/outbox integrity, destructive
+     migration and other R1-owned invariant classes.
+   - R2 follows the canonical browser/integration Skill for actual
+     browser/integration/a11y/user-flow risk.
+   - Do not add both unless both canonical risk classes are present.
 
 7. **Cloudflare Workers AI — provider fallback, not another reviewer**
    - Used only on workflow routes that explicitly support Cloudflare fallback when
