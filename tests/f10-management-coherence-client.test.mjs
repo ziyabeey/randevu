@@ -72,6 +72,5 @@ test('F10-06R transient session failure is not presented as a logout', () => {
   assert.match(app, /setUnverifiableSession\(true\);/);
   // The login form may render only for a verified anonymous session.
   assert.match(app, /\{!session\?\.user \?\s*\(\s*unverifiableSession \?\s*\(\s*<section className="panel auth-panel">/);
-  assert.match(app, /\.onClick\(\) => setUnverifiableSession\(false\)/);
+  assert.match(app, /onClick=\{\(\) => setUnverifiableSession\(false\)\}/);
 });
-
