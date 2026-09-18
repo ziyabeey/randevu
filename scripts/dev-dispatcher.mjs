@@ -218,8 +218,8 @@ export function buildQwenArgs(packet) {
     '--max-wall-time', packet.budgets.max_wall_time,
     '--max-tool-calls', String(packet.budgets.max_tool_calls),
     '--max-session-turns', String(packet.budgets.max_session_turns),
-    ...QWEN_CORE_TOOLS.flatMap((tool) => ['--core-tools', tool]),
-    ...QWEN_DISABLED_TOOLS.flatMap((tool) => ['--exclude-tools', tool]),
+    '--core-tools', QWEN_CORE_TOOLS.join(','),
+    '--exclude-tools', QWEN_DISABLED_TOOLS.join(','),
     '--sandbox',
   ];
 }
