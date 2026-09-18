@@ -13,8 +13,9 @@ const WALL_TIME_RE = /^(?:[1-9]\d*)(?:\.\d+)?(?:s|m|h)?$/;
 const SAFE_APPROVAL_MODES = new Set(['auto-edit']);
 const SAFE_OUTPUT_MODES = new Set(['json']);
 const MAX_WALL_TIME_MS = 2 * 60 * 60 * 1000;
+const MAX_VALIDATION_TOTAL_MS = 20 * 60 * 1000;
 const DEFAULT_QWEN_ENV_ALLOWLIST = ['QWEN_API_KEY', 'DASHSCOPE_API_KEY'];
-const QWEN_ENV_HARD_DENY = /^(?:GH_TOKEN|GITHUB_TOKEN|GITHUB_PAT|GH_ENTERPRISE_TOKEN|GITHUB_ENTERPRISE_TOKEN)$/i;
+const QWEN_ENV_HARD_DENY = /(?:GITHUB|^GH_)/i;
 const BASE_ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME'];
 const QWEN_BASE_ENV_ALLOWLIST = ['PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP'];
 const DEFAULT_VALIDATION_EXECUTABLES = new Set(['node', 'npm', 'npx', 'git']);
@@ -140,9 +141,8 @@ export function validatePacket(raw) {
   assertString(raw.commit_message, 'commit_message', { max: 160, singleLine: true });
 
   assertPlainObject(raw.pr, 'pr');
-  assertExactKeys(raw.pr, new Set(['title', 'body']), 'pr');
+  assertExactKeys(raw.pr, new Set(['title']), 'pr');
   assertString(raw.pr.title, 'pr.title', { max: 160, singleLine: true });
-  assertString(raw.pr.body, 'pr.body', { max: 20_000 });
 
   return {
     ...raw,
@@ -376,6 +376,8 @@ function createWorktree(repoRoot, packet) {
     if (head !== packet.base_sha || current !== packet.branch) throw new DispatchError('BASE_MISMATCH', 'created worktree does not match exact base/branch');
     return { parent, worktree };
   } catch (error) {
+    if (existsSync(worktree)) git(repoRoot, ['worktree', 'remove', '--force', worktree], { allowFailure: true, timeout: 120_000 });
+    git(repoRoot, ['branch', '-D', packet.branch], { allowFailure: true });
     rmSync(parent, { recursive: true, force: true });
     throw error;
   }
@@ -398,9 +400,14 @@ function parseWallTimeMs(value) {
 
 function runValidations(worktree, packet) {
   const results = [];
+  const started = Date.now();
   for (const argv of packet.validation) {
-    const result = run(argv[0], argv.slice(1), { cwd: worktree, env: childEnv(), timeout: 20 * 60_000, allowFailure: true });
+    const elapsed = Date.now() - started;
+    const remaining = MAX_VALIDATION_TOTAL_MS - elapsed;
+    if (remaining <= 0) throw new DispatchError('VALIDATION_TIMEOUT', 'validation exceeded the 20 minute total deadline', { validation: results });
+    const result = run(argv[0], argv.slice(1), { cwd: worktree, env: childEnv(), timeout: remaining, allowFailure: true });
     results.push({ command: argv[0], status: result.status, stdout_bytes: Buffer.byteLength(result.stdout ?? ''), stderr_bytes: Buffer.byteLength(result.stderr ?? '') });
+    if (result.error?.code === 'ETIMEDOUT') throw new DispatchError('VALIDATION_TIMEOUT', 'validation exceeded the 20 minute total deadline', { validation: results });
     if (result.error || result.status !== 0) {
       throw new DispatchError('VALIDATION_FAILED', `validation failed: ${argv[0]}`, { validation: results });
     }
@@ -415,7 +422,7 @@ function safeReceiptText(value) {
 function buildPrBody(packet, headSha, changed, validations) {
   const validationLines = validations.map(({ command, status }) => `- \`${command}\` -> ${status === 0 ? 'PASS' : `exit ${status}`}`);
   return [
-    packet.pr.body,
+    'Coordinator-authored task packet executed by the bounded dispatcher.',
     '',
     '## Dispatcher receipt',
     `- Task: \`${packet.task_id}\``,
