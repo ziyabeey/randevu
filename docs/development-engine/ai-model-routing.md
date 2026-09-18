@@ -19,12 +19,13 @@ stable.
    - Produces a compact implementation packet.
    - Does not edit, commit, open a PR, review, approve or merge.
 
-3. **Qwen Implementer — default automated code-writing worker**
+3. **Qwen Implementer — configured automated code-writing route**
    - Trigger: `@qwencoder /implement <request>`.
-   - Runs only when implementation is needed and the coordinator has frozen scope.
-   - Creates the task branch/PR and the smallest coherent patch.
-   - Repair runs consume frozen blocker/counterexample evidence rather than
-     reopening architecture discovery.
+   - Runs only when the coordinator explicitly selects this automation route for
+     new implementation and has frozen scope.
+   - Creates a new task branch/PR and the smallest coherent patch.
+   - The current `@qwencoder /implement` workflow is **new-task delivery only**;
+     it is not an in-place existing-PR repair mechanism.
    - Does not merge, approve, mark ready or change repository settings.
 
 4. **Copilot R0 — bounded advisory review**
@@ -54,14 +55,20 @@ stable.
 
 ## Routing rules
 
-- **Clear, bounded implementation:** coordinator → Qwen → CI → R0 discovery if
-  required → repair only for frozen blockers → R0 verification → coordinator.
-  Skip Gemini.
-- **Unclear/high-search task:** Gemini Scout → coordinator freezes contract → Qwen
-  → CI → bounded R0.
-- **Explanation/discovery only:** Gemini Scout or coordinator. Do not invoke Qwen.
-- **Repair:** Qwen receives the exact blocker IDs/counterexamples. Do not ask Gemini
-  or R0 to rediscover the whole task.
+- **Clear, bounded implementation:** coordinator → selected implementer (Qwen when
+  explicitly selected) → exact-head CI → bounded R0 if required → current-branch
+  repair for frozen blockers if needed → R0 verification → applicable risk-based
+  R1/R2 → coordinator merge → post-main CI. Skip Gemini when scope is already clear.
+- **Unclear/high-search task:** Gemini Scout → coordinator freezes contract →
+  selected implementer → exact-head CI → bounded R0 → applicable R1/R2 →
+  coordinator merge → post-main CI.
+- **Explanation/discovery only:** Gemini Scout or coordinator. Do not invoke an
+  implementation route.
+- **Repair of an existing PR:** the PR's current assigned single writer repairs the
+  same branch using the frozen blocker IDs/counterexamples. Do not invoke the
+  current `@qwencoder /implement` workflow for in-place repair because it creates
+  a new main-based task branch/PR. A future dedicated repair mode must be separately
+  implemented and validated before Qwen may own this step.
 - **Provider failure:** use the configured provider fallback for the same role.
   Do not turn fallback into an additional opinion.
 - **Independent specialist review:** open only the R1/R2 gate justified by the
@@ -85,6 +92,6 @@ stable.
 ## Success condition
 
 Automation is successful when a scoped request becomes the correct branch/PR,
-required exact-head deterministic validation passes, bounded review obligations are
-closed, and the coordinator can merge without a human manually carrying context
-between models.
+required exact-head deterministic validation passes, bounded R0 and applicable
+risk-based R1/R2 obligations are closed, the coordinator merges, and post-main CI
+passes without a human manually carrying context between models.
