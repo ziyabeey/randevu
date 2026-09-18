@@ -50,7 +50,6 @@ select 'd1610000-0000-4000-8000-000000000001'::uuid,'d1640000-0000-4000-8000-000
 union all
 select 'd1610000-0000-4000-8000-000000000001'::uuid,'d1640000-0000-4000-8000-000000000002'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
 
-
 set local role authenticated;
 select set_config('request.jwt.claim.sub','d1600000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
@@ -93,7 +92,6 @@ begin
   where a.business_id = 'd1610000-0000-4000-8000-000000000001' and a.group_id = v_group;
   if v_lines <> 2 then raise exception 'F11-02 expected two lines, found %', v_lines; end if;
 
-  -- One reservation is one command with one request hash, never N commands.
   select count(*)::integer into v_commands
   from public.booking_commands bc
   where bc.business_id = 'd1610000-0000-4000-8000-000000000001' and bc.group_id = v_group;
@@ -105,7 +103,6 @@ begin
     and e.group_id = v_group and e.event_type = 'created';
   if v_events <> 1 then raise exception 'F11-02 expected one create event, found %', v_events; end if;
 
-  -- Lines are consecutive and ordered.
   if exists (
     select 1
     from public.appointments a
@@ -119,8 +116,6 @@ begin
     raise exception 'F11-02 committed lines are not consecutive';
   end if;
 
-  -- Price meaning is frozen per line: the range service never collapses into a
-  -- definitive amount, the fixed one keeps its scalar.
   select jsonb_agg(l order by (l->>'lineOrdinal')::int) into v_l1
   from jsonb_array_elements(v_result->'lines') l;
   v_l2 := v_l1->1;
@@ -176,6 +171,77 @@ begin
 end
 $$;
 
+-- F11-04 ordered-intent binding. A booking key belongs to the exact ordered
+-- request, not merely the same group shape. Reordering services, pinning staff,
+-- moving the start or changing contact data must conflict before any new durable
+-- evidence survives the failed statement.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','d1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $$
+declare
+  v_day date := date_trunc('week',current_date)::date+7;
+  v_lines jsonb;
+  v_start timestamptz;
+  v_phone text;
+  v_label text;
+  v_raised boolean;
+  v_groups_before integer;
+  v_lines_before integer;
+  v_commands_before integer;
+  v_events_before integer;
+begin
+  reset role;
+  select count(*)::integer into v_groups_before from public.appointment_groups
+    where business_id='d1610000-0000-4000-8000-000000000001';
+  select count(*)::integer into v_lines_before from public.appointments
+    where business_id='d1610000-0000-4000-8000-000000000001';
+  select count(*)::integer into v_commands_before from public.booking_commands
+    where business_id='d1610000-0000-4000-8000-000000000001';
+  select count(*)::integer into v_events_before from public.appointment_events
+    where business_id='d1610000-0000-4000-8000-000000000001';
+  set local role authenticated;
+  perform set_config('request.jwt.claim.sub','d1600000-0000-4000-8000-000000000001',true);
+  perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+
+  for i in 1..4 loop
+    v_lines := case i
+      when 1 then '[{"serviceId":"d1630000-0000-4000-8000-000000000002"},{"serviceId":"d1630000-0000-4000-8000-000000000001"}]'::jsonb
+      when 2 then '[{"serviceId":"d1630000-0000-4000-8000-000000000001","staffId":"d1640000-0000-4000-8000-000000000001"},{"serviceId":"d1630000-0000-4000-8000-000000000002"}]'::jsonb
+      else '[{"serviceId":"d1630000-0000-4000-8000-000000000001"},{"serviceId":"d1630000-0000-4000-8000-000000000002"}]'::jsonb
+    end;
+    v_start := (v_day + case when i=3 then time '10:30' else time '10:00' end) at time zone 'Europe/Istanbul';
+    v_phone := case when i=4 then '05551112234' else '05551112233' end;
+    v_label := case i when 1 then 'reordered services' when 2 then 'staff preference' when 3 then 'start time' else 'contact' end;
+    v_raised := false;
+
+    begin
+      perform public.create_appointment_group(
+        'd1610000-0000-4000-8000-000000000001',
+        'f1102-group-create-0001',
+        'Deniz Yıldız',v_lines,v_start,v_phone
+      );
+    exception when others then
+      if sqlerrm not like '%IDEMPOTENCY_CONFLICT%' then raise; end if;
+      v_raised := true;
+    end;
+    if not v_raised then raise exception 'F11-04 same key accepted mutated %',v_label; end if;
+
+    reset role;
+    if (select count(*) from public.appointment_groups where business_id='d1610000-0000-4000-8000-000000000001')<>v_groups_before
+       or (select count(*) from public.appointments where business_id='d1610000-0000-4000-8000-000000000001')<>v_lines_before
+       or (select count(*) from public.booking_commands where business_id='d1610000-0000-4000-8000-000000000001')<>v_commands_before
+       or (select count(*) from public.appointment_events where business_id='d1610000-0000-4000-8000-000000000001')<>v_events_before then
+      raise exception 'F11-04 mutated % conflict left durable movement',v_label;
+    end if;
+    set local role authenticated;
+    perform set_config('request.jwt.claim.sub','d1600000-0000-4000-8000-000000000001',true);
+    perform set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+  end loop;
+  raise notice 'F11-04 ordered intent idempotency accepted: reorder/staff/start/contact all conflict with zero durable movement';
+end
+$$;
+
 -- The same key with a different reservation is refused, and an unplaceable
 -- reservation leaves nothing behind.
 set local role authenticated;
@@ -203,7 +269,6 @@ begin
 
   v_raised := false;
   begin
-    -- Berk cannot serve the colour, so this pinned line has no placement.
     perform public.create_appointment_group(
       'd1610000-0000-4000-8000-000000000001',
       'f1102-group-create-0002',
