@@ -26,6 +26,10 @@ Determine the mode before reviewing:
 - **VERIFICATION**: a completed discovery receipt exists and the current head is a
   descendant of its reviewed head. Use the receipt reference and frozen set even
   when that set is empty.
+- **PROVENANCE CONFLICT**: a completed discovery receipt exists but the current
+  head is not a descendant of its reviewed head. Stop. Do not silently reuse the
+  frozen set or restart discovery. The coordinator must either establish the
+  lineage or explicitly authorize a fresh DISCOVERY/freeze cycle.
 
 If discovery can only be returned as a local draft, it is not complete. Do not rely
 on automatic review of later pushes until the coordinator has persisted a freeze
