@@ -99,9 +99,9 @@ test('AI comment commands use one router and model workflows are dispatch-only',
 
   assert.match(router, /issue_comment:/);
   assert.match(router, /actions: write/);
-  assert.match(router, /'@qwencoder \/implement'\*/);
-  assert.match(router, /'@gemini-cli \/scout-cloudflare'\*/);
-  assert.match(router, /'@gemini-cli \/scout'\*/);
+  assert.match(router, /@qwencoder \/implement/);
+  assert.match(router, /@gemini-cli \/scout-cloudflare/);
+  assert.match(router, /@gemini-cli \/scout/);
   assert.match(router, /gh workflow run/);
 
   for (const workflow of [qwen, gemini]) {
@@ -110,7 +110,9 @@ test('AI comment commands use one router and model workflows are dispatch-only',
     assert.doesNotMatch(workflow, /github\.event\.comment/);
   }
   assert.match(qwen, /inputs\.issue_body/);
+  assert.match(qwen, /Qwen implementation failed before delivery/);
   assert.match(gemini, /inputs\.issue_body/);
+  assert.match(gemini, /Gemini Scout failed before producing a scout result/);
   assert.match(gemini, /startsWith\(inputs\.request \|\| '', '@gemini-cli \/scout-cloudflare'\)/);
 });
 
