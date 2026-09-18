@@ -56,7 +56,12 @@ jobs:
               --arg issue_title "${ISSUE_TITLE}" \
               --arg issue_body "${ISSUE_BODY}" \
               '{issue_number:$issue_number, request:$request, issue_title:$issue_title, issue_body:$issue_body}')"
-            printf '%s' "${payload}" | gh workflow run "${workflow}" --repo "${REPOSITORY}" --ref main --json
+            payload="$(jq --arg ref "main" '{ref:$ref, inputs:.}' <<<"${payload}")"
+            printf '%s' "${payload}" | gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              "repos/${REPOSITORY}/actions/workflows/${workflow}/dispatches" \
+              --input -
           }
 
           first_line="${COMMENT_BODY%%$'\n'*}"
