@@ -1,21 +1,27 @@
 name: Qwen Implement
 
 on:
-  issue_comment:
-    types: [created]
   workflow_dispatch:
     inputs:
       issue_number:
-        description: 'Issue or PR number to work on'
+        description: 'Issue number to work on'
         required: true
         type: string
       request:
         description: 'Complete implementation task context for manual dispatch'
         required: true
         type: string
+      issue_title:
+        description: 'Target issue title supplied by the command router'
+        required: false
+        type: string
+      issue_body:
+        description: 'Target issue body supplied by the command router'
+        required: false
+        type: string
 
 concurrency:
-  group: qwen-implement-${{ github.event.issue.number || inputs.issue_number || github.run_id }}
+  group: qwen-implement-${{ inputs.issue_number || github.run_id }}
   cancel-in-progress: false
 
 permissions:
@@ -25,35 +31,28 @@ permissions:
 
 jobs:
   implement:
-    if: >-
-      ${{
-        github.event_name == 'workflow_dispatch' ||
-        (
-          github.event.sender.type == 'User' &&
-          !github.event.issue.pull_request &&
-          startsWith(github.event.comment.body || github.event.issue.body || '', '@qwencoder /implement') &&
-          contains(
-            fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
-            github.event.comment.author_association || github.event.issue.author_association
-          )
-        )
-      }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
-      REQUEST: ${{ github.event.comment.body || github.event.issue.body || inputs.request }}
+      ISSUE_NUMBER: ${{ inputs.issue_number }}
+      REQUEST: ${{ inputs.request }}
       REPOSITORY: ${{ github.repository }}
-      QWEN_BRANCH: qwen/task-${{ github.event.issue.number || inputs.issue_number }}-${{ github.run_id }}
+      QWEN_BRANCH: qwen/task-${{ inputs.issue_number }}-${{ github.run_id }}
 
     steps:
       - name: Validate Qwen activation
         env:
           QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
           QWEN_GITHUB_TOKEN: ${{ secrets.QWEN_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test -n "${ISSUE_NUMBER}"
+          target_json="$(gh api "repos/${REPOSITORY}/issues/${ISSUE_NUMBER}")"
+          if jq -e '.pull_request != null' >/dev/null <<<"${target_json}"; then
+            echo "::error title=Qwen target must be an issue::Use Qwen Implement on an issue, not a pull request."
+            exit 1
+          fi
           if [ -z "${QWEN_API_KEY}" ]; then
             echo "::error title=Missing QWEN_API_KEY::Add the Qwen Token Plan key as repository Actions secret QWEN_API_KEY."
             exit 1
@@ -77,10 +76,10 @@ jobs:
         uses: QwenLM/qwen-code-action@v1
         env:
           GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.QWEN_GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
-          REQUEST: ${{ github.event.comment.body || github.event.issue.body || inputs.request }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          REQUEST: ${{ inputs.request }}
           REPOSITORY: ${{ github.repository }}
-          TARGET_BRANCH: qwen/task-${{ github.event.issue.number || inputs.issue_number }}-${{ github.run_id }}
+          TARGET_BRANCH: qwen/task-${{ inputs.issue_number }}-${{ github.run_id }}
         with:
           openai_api_key: ${{ secrets.QWEN_API_KEY }}
           openai_base_url: ${{ vars.QWEN_BASE_URL || 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' }}
@@ -126,8 +125,8 @@ jobs:
             A trusted repository maintainer explicitly invoked you to implement a task.
 
             Repository: ${{ github.repository }}
-            Issue or PR number: #${{ github.event.issue.number || inputs.issue_number }}
-            Required task branch: qwen/task-${{ github.event.issue.number || inputs.issue_number }}-${{ github.run_id }}
+            Issue or PR number: #${{ inputs.issue_number }}
+            Required task branch: qwen/task-${{ inputs.issue_number }}-${{ github.run_id }}
             Target branch: main
 
             Execution mode: SURGICAL DELIVERY. Implement the maintainer request; do not rediscover or re-plan the project.
@@ -141,17 +140,17 @@ jobs:
             6. Never merge, approve, mark ready, close an issue, change repository settings, expose secrets, or modify .github/workflows/**.
             7. Keep the implementation to the smallest coherent scope. If the requested surface is missing, contradictory, requires broader authority, or would touch more than 20 files, return "MORE_CONTEXT | ESCALATE" and stop without opening a PR. Do not explore adjacent features looking for another solution.
             8. Do not spend model turns running the repository test suite. CI owns execution. You may add or update a narrowly scoped deterministic test file only when the maintainer request requires proof for the requested behavior; do not execute the suite yourself.
-            9. After the minimum coherent patch is written, create one draft pull request targeting main. Its body must include "Refs #${{ github.event.issue.number || inputs.issue_number }}", a concise change summary, exact changed paths, and "Repository CI is authoritative."
+            9. After the minimum coherent patch is written, create one draft pull request targeting main. Its body must include "Refs #${{ inputs.issue_number }}", a concise change summary, exact changed paths, and "Repository CI is authoritative."
             10. After creating the draft PR, stop immediately. The workflow owns delivery reporting. No further repository reads, writes, comments, review, or cleanup after PR creation.
 
             Issue title:
-            ${{ github.event.issue.title || 'Manual workflow dispatch' }}
+            ${{ inputs.issue_title || 'Manual workflow dispatch' }}
 
-            Prior issue context (only when the maintainer request came from an issue comment):
-            ${{ github.event_name == 'issue_comment' && github.event.issue.body || '' }}
+            Target issue context:
+            ${{ inputs.issue_body }}
 
             --- BEGIN TRUSTED MAINTAINER REQUEST ---
-            ${{ github.event.comment.body || github.event.issue.body || inputs.request }}
+            ${{ inputs.request }}
             --- END TRUSTED MAINTAINER REQUEST ---
 
       - name: Report Qwen delivery or escalation
