@@ -694,7 +694,15 @@ export function dispatch(packet, {
     }
 
     const prUrl = safeReceiptText(pr.stdout.trim());
-    const expectedPr = new RegExp(`^https://github\\.com/${validated.repository.replace(/[.*+?^$()|[\\]{}]/g, '\\    return {
+    const expectedPrPrefix = `https://github.com/${validated.repository}/pull/`;
+    const prNumber = prUrl.startsWith(expectedPrPrefix) ? prUrl.slice(expectedPrPrefix.length) : '';
+    if (!/^[1-9]\d*$/.test(prNumber)) {
+      throw new DispatchError('PR_CREATE_PROTOCOL', 'gh returned an unexpected PR URL', {
+        status: pr.status, stdout_bytes: Buffer.byteLength(pr.stdout ?? ''),
+      });
+    }
+
+    return {
       status: 'DRAFT_PR_CREATED', task_id: validated.task_id, repository: validated.repository,
       base_sha: validated.base_sha, head_sha: headSha, branch: validated.branch,
       changed_paths: committedScope.changed, validation: validations.map(({ command, target, status }) => ({ command, target, status })),
