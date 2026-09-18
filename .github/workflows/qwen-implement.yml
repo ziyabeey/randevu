@@ -68,6 +68,8 @@ jobs:
       - name: Acknowledge request
         env:
           GH_TOKEN: ${{ github.token }}
+          QWEN_SUMMARY: ${{ steps.qwen.outputs.summary }}
+          QWEN_ERROR: ${{ steps.qwen.outputs.error }}
         run: |
           set -euo pipefail
           gh issue comment "${ISSUE_NUMBER}" \
@@ -165,7 +167,12 @@ jobs:
           if [ -n "${pr_url}" ]; then
             gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen delivery complete: ${pr_url}"
           else
-            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen completed without an open PR for branch \`${QWEN_BRANCH}\`. Delivery failed; inspect the Qwen action result before retrying."
+            echo "::group::Qwen delivery diagnostic"
+            printf 'summary:\n%s\n' "${QWEN_SUMMARY}" | head -c 4000
+            printf '\nerror:\n%s\n' "${QWEN_ERROR}" | head -c 4000
+            echo
+            echo "::endgroup::"
+            gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body "Qwen completed without an open PR for branch \`${QWEN_BRANCH}\`. Delivery failed; inspect the sanitized Qwen summary/error in the workflow log before retrying."
             echo "::error title=Qwen delivery failed::The model step completed but no delivery PR exists for ${QWEN_BRANCH}."
             exit 1
           fi
