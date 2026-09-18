@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,9 +10,13 @@ const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const MODEL_RE = /^[A-Za-z0-9._:/-]+$/;
 const SAFE_BRANCH_RE = /^[A-Za-z0-9._/-]+$/;
 const WALL_TIME_RE = /^(?:[1-9]\d*)(?:\.\d+)?(?:s|m|h)?$/;
-const SAFE_APPROVAL_MODES = new Set(['auto-edit', 'auto']);
+const SAFE_APPROVAL_MODES = new Set(['auto-edit']);
+const SAFE_OUTPUT_MODES = new Set(['json']);
+const MAX_WALL_TIME_MS = 2 * 60 * 60 * 1000;
 const DEFAULT_QWEN_ENV_ALLOWLIST = ['QWEN_API_KEY', 'DASHSCOPE_API_KEY'];
+const QWEN_ENV_HARD_DENY = /^(?:GH_TOKEN|GITHUB_TOKEN|GITHUB_PAT|GH_ENTERPRISE_TOKEN|GITHUB_ENTERPRISE_TOKEN)$/i;
 const BASE_ENV_ALLOWLIST = ['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME'];
+const QWEN_BASE_ENV_ALLOWLIST = ['PATH', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TMPDIR', 'TEMP', 'TMP'];
 const DEFAULT_VALIDATION_EXECUTABLES = new Set(['node', 'npm', 'npx', 'git']);
 
 export class DispatchError extends Error {
@@ -61,8 +65,8 @@ function assertSafeBranch(branch) {
   return branch.split('/').every((part) => part && part !== '.' && part !== '..');
 }
 
-function assertString(value, label, { min = 1, max = 10_000, pattern } = {}) {
-  if (typeof value !== 'string' || value.length < min || value.length > max || (pattern && !pattern.test(value))) {
+function assertString(value, label, { min = 1, max = 10_000, pattern, singleLine = false } = {}) {
+  if (typeof value !== 'string' || value.length < min || value.length > max || value.includes('\0') || (singleLine && /[\r\n]/.test(value)) || (pattern && !pattern.test(value))) {
     throw new DispatchError('INVALID_PACKET', `${label} is invalid`);
   }
 }
@@ -95,7 +99,7 @@ function assertValidation(value) {
 
 export function validatePacket(raw) {
   assertPlainObject(raw, 'packet');
-  assertExactKeys(raw, new Set(['version', 'repository', 'task_id', 'base_sha', 'base_branch', 'branch', 'writable', 'forbidden', 'prompt', 'model', 'approval_mode', 'budgets', 'validation', 'commit_message', 'pr']), 'packet');
+  assertExactKeys(raw, new Set(['version', 'repository', 'task_id', 'base_sha', 'base_branch', 'branch', 'writable', 'forbidden', 'prompt', 'model', 'approval_mode', 'output_mode', 'budgets', 'validation', 'commit_message', 'pr']), 'packet');
   if (raw.version !== 1) throw new DispatchError('INVALID_PACKET', 'version must be 1');
   assertString(raw.repository, 'repository', { max: 180, pattern: REPOSITORY_RE });
   assertString(raw.task_id, 'task_id', { max: 80, pattern: TASK_ID_RE });
@@ -115,11 +119,16 @@ export function validatePacket(raw) {
 
   assertString(raw.prompt, 'prompt', { max: 30_000 });
   assertString(raw.model, 'model', { max: 160, pattern: MODEL_RE });
-  if (!SAFE_APPROVAL_MODES.has(raw.approval_mode)) throw new DispatchError('INVALID_PACKET', 'approval_mode must be auto-edit or auto');
+  if (!SAFE_APPROVAL_MODES.has(raw.approval_mode)) throw new DispatchError('INVALID_PACKET', 'approval_mode must be auto-edit');
+  if (!SAFE_OUTPUT_MODES.has(raw.output_mode)) throw new DispatchError('INVALID_PACKET', 'output_mode must be json');
 
   assertPlainObject(raw.budgets, 'budgets');
   assertExactKeys(raw.budgets, new Set(['max_wall_time', 'max_tool_calls', 'max_session_turns']), 'budgets');
   assertString(raw.budgets.max_wall_time, 'budgets.max_wall_time', { max: 16, pattern: WALL_TIME_RE });
+  const wallTimeMs = parseWallTimeMs(raw.budgets.max_wall_time);
+  if (!Number.isFinite(wallTimeMs) || wallTimeMs < 1_000 || wallTimeMs > MAX_WALL_TIME_MS) {
+    throw new DispatchError('INVALID_PACKET', 'budgets.max_wall_time must be between 1s and 2h');
+  }
   if (!Number.isInteger(raw.budgets.max_tool_calls) || raw.budgets.max_tool_calls < 1 || raw.budgets.max_tool_calls > 500) {
     throw new DispatchError('INVALID_PACKET', 'budgets.max_tool_calls must be an integer from 1 to 500');
   }
@@ -128,11 +137,11 @@ export function validatePacket(raw) {
   }
 
   const validation = assertValidation(raw.validation);
-  assertString(raw.commit_message, 'commit_message', { max: 160 });
+  assertString(raw.commit_message, 'commit_message', { max: 160, singleLine: true });
 
   assertPlainObject(raw.pr, 'pr');
   assertExactKeys(raw.pr, new Set(['title', 'body']), 'pr');
-  assertString(raw.pr.title, 'pr.title', { max: 160 });
+  assertString(raw.pr.title, 'pr.title', { max: 160, singleLine: true });
   assertString(raw.pr.body, 'pr.body', { max: 20_000 });
 
   return {
@@ -180,11 +189,12 @@ export function buildQwenArgs(packet) {
     '--prompt', buildQwenPrompt(packet),
     '--model', packet.model,
     '--approval-mode', packet.approval_mode,
-    '--output-format', 'json',
+    '--output-format', packet.output_mode,
     '--max-wall-time', packet.budgets.max_wall_time,
     '--max-tool-calls', String(packet.budgets.max_tool_calls),
     '--max-session-turns', String(packet.budgets.max_session_turns),
-    '--exclude-tools', 'agent',
+    '--exclude-tools', 'agent,shell',
+    '--sandbox',
   ];
 }
 
@@ -198,7 +208,7 @@ export function inspectChangedPaths(changedPaths, packet) {
 function sensitiveValues(env) {
   const values = [];
   for (const [name, value] of Object.entries(env)) {
-    if (!value || value.length < 6) continue;
+    if (!value) continue;
     if (/(TOKEN|SECRET|PASSWORD|API[-]?KEY|PRIVATE[-]?KEY|AUTH)/i.test(name)) values.push(value);
   }
   return values.sort((a, b) => b.length - a.length);
@@ -212,13 +222,27 @@ export function redactText(text, secrets = []) {
   return output;
 }
 
-function childEnv({ includeProviderSecrets = false } = {}) {
+function childEnv({ includeProviderSecrets = false, isolatedHome = null } = {}) {
   const env = {};
-  for (const name of BASE_ENV_ALLOWLIST) if (process.env[name] !== undefined) env[name] = process.env[name];
+  const baseNames = isolatedHome ? QWEN_BASE_ENV_ALLOWLIST : BASE_ENV_ALLOWLIST;
+  for (const name of baseNames) if (process.env[name] !== undefined) env[name] = process.env[name];
+  if (isolatedHome) {
+    const configHome = path.join(isolatedHome, 'config');
+    const cacheHome = path.join(isolatedHome, 'cache');
+    const runtimeHome = path.join(isolatedHome, 'runtime');
+    for (const dir of [isolatedHome, configHome, cacheHome, runtimeHome]) mkdirSync(dir, { recursive: true, mode: 0o700 });
+    env.HOME = isolatedHome;
+    env.XDG_CONFIG_HOME = configHome;
+    env.XDG_CACHE_HOME = cacheHome;
+    env.QWEN_RUNTIME_DIR = runtimeHome;
+  }
   if (includeProviderSecrets) {
     const names = (process.env.DEV_DISPATCH_QWEN_ENV_ALLOWLIST ?? DEFAULT_QWEN_ENV_ALLOWLIST.join(','))
       .split(',').map((item) => item.trim()).filter(Boolean);
-    for (const name of names) if (process.env[name] !== undefined) env[name] = process.env[name];
+    for (const name of names) {
+      if (QWEN_ENV_HARD_DENY.test(name)) throw new DispatchError('UNSAFE_CONFIG', `Qwen environment allowlist may not contain GitHub credential: ${name}`);
+      if (process.env[name] !== undefined) env[name] = process.env[name];
+    }
   }
   return env;
 }
@@ -228,14 +252,14 @@ function run(command, args, { cwd, env = childEnv(), timeout = 120_000, allowFai
   if (result.error && !allowFailure) throw new DispatchError('PROCESS_ERROR', `${command} could not start: ${result.error.message}`);
   if (!allowFailure && result.status !== 0) {
     throw new DispatchError('PROCESS_FAILED', `${command} exited with ${result.status ?? 'unknown'}`, {
-      command, args, stdout: result.stdout ?? '', stderr: result.stderr ?? '', status: result.status,
+      command, status: result.status, stdout_bytes: Buffer.byteLength(result.stdout ?? ''), stderr_bytes: Buffer.byteLength(result.stderr ?? ''),
     });
   }
   return result;
 }
 
 function git(cwd, args, options = {}) {
-  return run('git', args, { cwd, ...options });
+  return run('git', args, { cwd, env: process.env, ...options });
 }
 
 function gitOutput(cwd, args) {
