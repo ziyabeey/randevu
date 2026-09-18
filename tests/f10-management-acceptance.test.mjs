@@ -8,6 +8,7 @@ test('F10-06 real-browser management choreography preserves current authority ac
     assert.equal(receipt.ok, true);
     assert.equal(receipt.assetProof.cssRequested, true, 'browser did not request the production CSS asset');
     assert.ok(receipt.assetProof.cssBytes > 0, 'Vite build did not emit CSS for the acceptance surface');
+    assert.equal(receipt.assetProof.missingAssetStatus, 404, 'missing asset request fell through to app HTML');
     assert.ok(receipt.scenarios.includes('browser back/forward'));
     assert.ok(receipt.scenarios.includes('second-tab role downgrade'));
     assert.ok(receipt.scenarios.includes('logout/session expiry'));

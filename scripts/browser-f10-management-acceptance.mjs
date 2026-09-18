@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, closeSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, closeSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -11,6 +11,25 @@ const modulePath = fileURLToPath(import.meta.url);
 const root = path.resolve(path.dirname(modulePath), '..');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const csrfToken = 'F'.repeat(43);
+
+function assetContentType(filePath) {
+  switch (path.extname(filePath).toLowerCase()) {
+    case '.js':
+    case '.mjs': return 'text/javascript; charset=utf-8';
+    case '.css': return 'text/css; charset=utf-8';
+    case '.json':
+    case '.map': return 'application/json; charset=utf-8';
+    case '.svg': return 'image/svg+xml';
+    case '.png': return 'image/png';
+    case '.jpg':
+    case '.jpeg': return 'image/jpeg';
+    case '.webp': return 'image/webp';
+    case '.woff': return 'font/woff';
+    case '.woff2': return 'font/woff2';
+    case '.ico': return 'image/x-icon';
+    default: return 'application/octet-stream';
+  }
+}
 
 const ids = {
   user: 'fa000000-0000-4000-8000-000000000001',
@@ -367,6 +386,7 @@ export async function runManagementAcceptance(options = {}) {
     appJs = readFileSync(path.join(bundleDir, 'app.js'));
     const cssAsset = readdirSync(bundleDir).find((name) => name.endsWith('.css'));
     if (cssAsset) appCss = readFileSync(path.join(bundleDir, cssAsset));
+    const bundleRoot = path.resolve(bundleDir);
 
     server = createServer(async (request, response) => {
       try {
@@ -380,6 +400,26 @@ export async function runManagementAcceptance(options = {}) {
           cssRequested = true;
           response.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-store' });
           response.end(appCss);
+          return;
+        }
+        if (!url.pathname.startsWith('/api/') && path.extname(url.pathname)) {
+          let relativePath;
+          try {
+            relativePath = decodeURIComponent(url.pathname).replace(/^\/+/, '');
+          } catch {
+            response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+            response.end('Bad asset path');
+            return;
+          }
+          const assetPath = path.resolve(bundleRoot, relativePath);
+          const insideBundle = assetPath.startsWith(`${bundleRoot}${path.sep}`);
+          if (!insideBundle || !existsSync(assetPath) || !statSync(assetPath).isFile()) {
+            response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+            response.end('Asset not found');
+            return;
+          }
+          response.writeHead(200, { 'Content-Type': assetContentType(assetPath), 'Cache-Control': 'no-store' });
+          response.end(readFileSync(assetPath));
           return;
         }
         if (!url.pathname.startsWith('/api/')) {
@@ -611,6 +651,8 @@ export async function runManagementAcceptance(options = {}) {
     }
 
     const pageA = await openPage('/setup');
+    const missingAssetStatus = await pageA.evaluate(`fetch('/missing-chunk.js', { cache: 'no-store' }).then((response) => response.status)`);
+    assert.equal(missingAssetStatus, 404, 'missing emitted-asset request fell through to the app HTML');
     await waitText(pageA, 'Salon A');
     await waitText(pageA, 'Salon B');
     await waitText(pageA, 'İşletme sahibi');
@@ -773,7 +815,11 @@ export async function runManagementAcceptance(options = {}) {
     const silentShown = await bodyText(pageB);
     const silentWritesBefore = state.invitationWrites.length;
     await submitInvite(pageB, 'cross-tab-silent@example.test');
-    await sleep(1_000);
+    await waitFor(async () => {
+      if (state.invitationWrites.length > silentWritesBefore) return true;
+      const text = await bodyText(pageB);
+      return text.includes('Salon B Çalışanı') && !text.includes('Salon A Çalışanı');
+    }, 'silent cross-tab drift did not settle', 3_000).catch(() => {});
     const silentWrites = state.invitationWrites.slice(silentWritesBefore);
     crossTab.silentShownBeforeWrite = silentShown.includes('Salon A Çalışanı') && !silentShown.includes('Salon B Çalışanı') ? 'Salon A' : 'other';
     crossTab.silentWrites = silentWrites;
@@ -842,6 +888,7 @@ export async function runManagementAcceptance(options = {}) {
       assetProof: {
         cssRequested,
         cssBytes: appCss.length,
+        missingAssetStatus,
       },
       crossTab,
       scenarios: [
