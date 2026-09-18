@@ -6,7 +6,7 @@ stable.
 
 ## Authority chain
 
-1. **Coordinator — Sol/Astra or the human operator**
+1. **Coordinator — currently assigned coordinator or human operator**
    - Freezes task scope, writable paths, acceptance contract, validation budget and
      agent routing.
    - Owns scope changes, readiness and merge decisions.
