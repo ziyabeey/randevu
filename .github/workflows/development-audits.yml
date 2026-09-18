@@ -262,7 +262,7 @@ jobs:
           GEMINI_CLI_TRUST_WORKSPACE: 'true'
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: ${{ vars.GEMINI_AUDIT_MODEL || 'gemini-3.8-flash' }}
+          gemini_model: ${{ vars.GEMINI_AUDIT_MODEL || 'gemini-3.5-flash-lite' }}
           gemini_cli_version: ${{ vars.GEMINI_CLI_VERSION || 'latest' }}
           gemini_debug: 'false'
           upload_artifacts: 'false'
@@ -386,7 +386,7 @@ jobs:
           GEMINI_CLI_TRUST_WORKSPACE: 'true'
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: ${{ vars.GEMINI_TELEMETRY_MODEL || vars.GEMINI_AUDIT_MODEL || 'gemini-3.8-flash' }}
+          gemini_model: ${{ vars.GEMINI_TELEMETRY_MODEL || vars.GEMINI_AUDIT_MODEL || 'gemini-3.5-flash-lite' }}
           gemini_cli_version: ${{ vars.GEMINI_CLI_VERSION || 'latest' }}
           gemini_debug: 'false'
           upload_artifacts: 'false'
