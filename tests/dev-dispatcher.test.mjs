@@ -224,7 +224,8 @@ test('dry-run receipt hides prompt and validation arguments and reports selected
   assert.ok(dry.qwen.args.includes('[PROMPT]'));
   const serialized = JSON.stringify(dry);
   assert.equal(serialized.includes(value.prompt), false);
-  assert.equal(serialized.includes('worker.mjs'), false);
+  assert.deepEqual(dry.validation, [{ command: 'node' }]);
+  assert.equal(serialized.includes('--check'), false);
 });
 
 test('worker-state audit accepts an authorized edit and rejects commits, symlinks and ignored writes', () => {
