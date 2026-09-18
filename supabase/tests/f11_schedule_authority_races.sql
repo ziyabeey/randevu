@@ -146,7 +146,7 @@ reset role;
 -- Fresh create vs staff-hours mutation. The booking must reach the staff-hours
 -- advisory before its strong participating-staff row lock; otherwise the
 -- guarded replace and the deferred booking fence form a row/advisory deadlock.
-do $
+do $$
 declare
   v_b uuid:='d1910000-0000-4000-8000-000000000001';
   v_u uuid:='d1900000-0000-4000-8000-000000000001';
@@ -194,9 +194,9 @@ begin
   );
   execute 'reset role';
   perform pg_advisory_unlock(v_l);
-end $;
+end $$;
 
-do $
+do $$
 declare v_r jsonb; v_fail boolean:=false; v_b uuid:='d1910000-0000-4000-8000-000000000001';
 begin
   for i in 1..3000 loop exit when dblink_is_busy('f1104_create_staff_hours')=0; perform pg_sleep(.01); end loop;
@@ -218,7 +218,7 @@ begin
      or (select count(*) from public.booking_commands where business_id=v_b)<>current_setting('f1104.csh.commands')::bigint then
     raise exception 'F11-04 create/staff-hours race left durable half-state';
   end if;
-end $;
+end $$;
 
 set role authenticated;
 select count(*) from public.replace_staff_hours_guarded(
@@ -328,7 +328,7 @@ reset role;
 -- Two independent booking writers are forced to hold FK KEY SHARE on the same
 -- target service before either can enter the deferred authority fence. The
 -- fence must use a parent lock compatible with the other booking's KEY SHARE.
-do $
+do $$
 declare
   v_b uuid:='d1910000-0000-4000-8000-000000000001';
   v_u uuid:='d1900000-0000-4000-8000-000000000001';
@@ -374,9 +374,9 @@ begin
   end loop;
   if not (v_wait_a and v_wait_b) then raise exception 'F11-04 cross-group service writers did not reach shared authority barrier'; end if;
   perform pg_advisory_unlock(v_l);
-end $;
+end $$;
 
-do $
+do $$
 declare
   v_ra jsonb; v_rb jsonb;
   v_b uuid:='d1910000-0000-4000-8000-000000000001';
@@ -397,13 +397,13 @@ begin
      or (select version from public.appointment_groups where business_id=v_b and id=v_gb)<>current_setting('f1104.conv.gb_v')::integer+1 then
     raise exception 'F11-04 shared-service booking writers did not both commit';
   end if;
-end $;
+end $$;
 
 -- Repeat the same barrier with both groups moving onto one new target staff.
 -- Updating staff_id takes FK KEY SHARE on the target parent; the deferred staff
 -- authority fence must not upgrade that parent to a lock that conflicts with
 -- the other booking writer.
-do $
+do $$
 declare
   v_b uuid:='d1910000-0000-4000-8000-000000000001';
   v_u uuid:='d1900000-0000-4000-8000-000000000001';
@@ -446,9 +446,9 @@ begin
   end loop;
   if not (v_wait_a and v_wait_b) then raise exception 'F11-04 cross-group staff writers did not reach shared authority barrier'; end if;
   perform pg_advisory_unlock(v_l);
-end $;
+end $$;
 
-do $
+do $$
 declare
   v_ra jsonb; v_rb jsonb;
   v_b uuid:='d1910000-0000-4000-8000-000000000001';
@@ -472,7 +472,7 @@ begin
      or (select version from public.appointment_groups where business_id=v_b and id=v_gb)<>current_setting('f1104.conv2.gb_v')::integer+1 then
     raise exception 'F11-04 shared-staff booking writers did not both commit';
   end if;
-end $;
+end $$;
 
 do $ begin raise notice 'F11-04 schedule authority races accepted: create/group/line vs hours, blocks, assignment, service/staff mutations plus shared-parent booking writers'; end $;
 delete from public.businesses where id='d1910000-0000-4000-8000-000000000001';
