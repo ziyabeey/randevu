@@ -49,12 +49,25 @@ test('required artifact-test path reports extra advisories without failing, but 
       mkdirSync(path.dirname(path.join(fixture, file)), { recursive: true });
       cpSync(path.join(root, file), path.join(fixture, file));
     }
-    const instructions = '.github/copilot-instructions.md';
-    writeFileSync(path.join(fixture, instructions), read(instructions)
-      .replace('Never self-ready or self-merge', 'Never mark your own PR ready or merge it'));
-    const telemetry = `${home}/automations/development-telemetry-review.md`;
-    writeFileSync(path.join(fixture, telemetry), read(telemetry)
-      .replace('a tiny cohort', 'a very small cohort'));
+    // Controlled inputs make intended warnings independent of live Markdown wording or formatting.
+    const advisoryInputs = [
+      ['.github/copilot-instructions.md', [
+        'Never mark your own PR ready or merge it. Require post-main CI.',
+        'Semantic runtime changes invalidate old semantic review receipts.',
+        'Accepted migrations are immutable.',
+      ].join('\n'), 'coordinator-only readiness/merge'],
+      [`${home}/automations/development-telemetry-review.md`, [
+        'Control maturity `SHADOW`.',
+        'Unknown values are null with a reason, not zero.',
+        'Do not generalize from a very small cohort.',
+      ].join('\n'), 'small-sample limitation'],
+    ];
+    for (const [file, markdown, invariant] of advisoryInputs) {
+      assert.deepEqual(validateGuidance(file, markdown), {
+        errors: [], warnings: [`${file}: inspect possible drift of ${invariant}`],
+      });
+      writeFileSync(path.join(fixture, file), markdown);
+    }
     const observation = await validateArtifacts(fixture);
     assert.deepEqual(observation.errors, []);
     assert.ok(observation.warnings.some((warning) => warning.includes('coordinator-only readiness/merge')));
@@ -69,7 +82,7 @@ test('required artifact-test path reports extra advisories without failing, but 
     assert.match(advisoryTest.stdout, /ADVISORY: .*small-sample limitation/);
 
     const scoped = '.github/instructions/implementation.instructions.md';
-    writeFileSync(path.join(fixture, scoped), read(scoped).replace(/^---\r?\n/, '---\nunsupported: "fixture"\n'));
+    writeFileSync(path.join(fixture, scoped), '---\napplyTo: "**"\nunsupported: "fixture"\n---\nControlled invalid fixture.\n');
     const invalidCli = run(['scripts/validate-development-engine.mjs']);
     assert.equal(invalidCli.status, 1, invalidCli.stdout + invalidCli.stderr);
     assert.match(invalidCli.stderr, /ERROR: .*unsupported frontmatter key/);
