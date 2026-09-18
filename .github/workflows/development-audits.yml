@@ -335,8 +335,8 @@ jobs:
             process.exit(1);
           }
 
-          const blockersRegion = summary.match(/(?:^|\n)blockers:\s*([\s\S]*?)(?=\nreviews:|$)/m)?.[1] ?? '';
-          const nextActionRegion = summary.match(/(?:^|\n)next_action:\s*([\s\S]*?)(?=\nsource_refs:|$)/m)?.[1] ?? '';
+          const blockersRegion = summary.match(/(?:^|\n)[\t ]*blockers:\s*([\s\S]*?)(?=\n[\t ]*reviews:|$)/m)?.[1] ?? '';
+          const nextActionRegion = summary.match(/(?:^|\n)[\t ]*next_action:\s*([\s\S]*?)(?=\n[\t ]*source_refs:|$)/m)?.[1] ?? '';
           if (evidence.current_runtime?.cloudflare_route_ready === true && /CLOUDFLARE_ACCOUNT_ID/i.test(blockersRegion + '\n' + nextActionRegion)) {
             console.error('Historical Cloudflare account-ID blocker rejected because the current provider route is ready.');
             process.exit(1);
