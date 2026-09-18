@@ -92,6 +92,28 @@ test('required artifact-test path reports extra advisories without failing, but 
   } finally { rmSync(fixture, { recursive: true, force: true }); }
 });
 
+test('AI comment commands use one router and model workflows are dispatch-only', () => {
+  const router = read('.github/workflows/agent-command-router.yml');
+  const qwen = read('.github/workflows/qwen-implement.yml');
+  const gemini = read('.github/workflows/gemini-scout.yml');
+
+  assert.match(router, /issue_comment:/);
+  assert.match(router, /actions: write/);
+  assert.match(router, /'@qwencoder \/implement'\*/);
+  assert.match(router, /'@gemini-cli \/scout-cloudflare'\*/);
+  assert.match(router, /'@gemini-cli \/scout'\*/);
+  assert.match(router, /gh workflow run/);
+
+  for (const workflow of [qwen, gemini]) {
+    assert.match(workflow, /workflow_dispatch:/);
+    assert.doesNotMatch(workflow, /issue_comment:/);
+    assert.doesNotMatch(workflow, /github\.event\.comment/);
+  }
+  assert.match(qwen, /inputs\.issue_body/);
+  assert.match(gemini, /inputs\.issue_body/);
+  assert.match(gemini, /startsWith\(inputs\.request \|\| '', '@gemini-cli \/scout-cloudflare'\)/);
+});
+
 test('both manifest examples are explicitly non-authoritative and do not fabricate current evidence', () => {
   for (const [schema, example] of [[taskSchema, taskExample], [evidenceSchema, evidenceExample]]) {
     assert.deepEqual(validateManifest(schema, example), []);
