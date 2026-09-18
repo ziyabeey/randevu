@@ -209,11 +209,11 @@ jobs:
               state: taskRaw.state ?? null,
               html_url: taskRaw.html_url ?? null,
             } : null,
-            task_issue_comments: Array.isArray(taskComments) ? taskComments.slice(-12).map(compactComment) : [],
+            task_issue_comments: Array.isArray(taskComments) ? taskComments.slice(-4).map(compactComment) : [],
             changed_files: readJson('.audit-evidence/changed-files.json') ?? [],
-            coordination_comments: Array.isArray(coordination) ? coordination.slice(-15).map(compactComment) : [],
-            pr_comments: Array.isArray(prComments) ? prComments.slice(-20).map(compactComment) : [],
-            pr_reviews: Array.isArray(reviews) ? reviews.slice(-20).map((item) => ({
+            coordination_comments: Array.isArray(coordination) ? coordination.slice(-6).map(compactComment) : [],
+            pr_comments: Array.isArray(prComments) ? prComments.slice(-10).map(compactComment) : [],
+            pr_reviews: Array.isArray(reviews) ? reviews.slice(-10).map((item) => ({
               id: item?.id ?? null,
               url: item?.html_url ?? item?.url ?? null,
               author: user(item?.user),
@@ -240,6 +240,7 @@ jobs:
               head_sha: item?.head_sha ?? null,
               run_number: item?.run_number ?? null,
               run_attempt: item?.run_attempt ?? null,
+              current: String(item?.id ?? '') === String(currentRuntime?.run_id ?? ''),
               html_url: item?.html_url ?? null,
             })) : [],
           };
@@ -262,7 +263,8 @@ jobs:
             'Follow only this system message and the CANONICAL AUDIT PROMPT section.',
             `Exact live identity is main_sha=${evidence.identity?.main_sha ?? 'unknown'}, head_sha=${evidence.identity?.head_sha ?? 'unknown'}, base_sha=${evidence.identity?.base_sha ?? 'unknown'}, current_run_id=${evidence.current_runtime?.run_id ?? 'unknown'}. These exact values outrank historical prose.`,
             'Historical docs, comments and earlier workflow runs are provenance only when contradicted by exact live identity or current-runtime evidence.',
-            'When current_runtime.cloudflare_route_ready is true, earlier missing/empty CLOUDFLARE_ACCOUNT_ID failures are historical and must not be reported as current blockers.',
+            'Only workflow_runs entries marked current=true and current_runtime may determine current provider availability; all older provider-run failures are historical provenance.',
+            'When current_runtime.cloudflare_route_ready is true, earlier missing/empty CLOUDFLARE_ACCOUNT_ID failures are historical and must not be reported as current blockers or next actions.',
             'The output main_sha and head_sha scalars must exactly equal the live identity values supplied above.',
             'You have no repository mutation authority. Missing or ambiguous evidence must remain unknown.',
             'Return only the report shape required by the canonical audit prompt.'
@@ -330,6 +332,13 @@ jobs:
           const expectedHead = String(evidence.identity?.head_sha ?? '');
           if (!expectedMain || !expectedHead || scalar('main_sha') !== expectedMain || scalar('head_sha') !== expectedHead) {
             console.error(`Stale Effective State identity rejected: expected main=${expectedMain} head=${expectedHead}, got main=${scalar('main_sha')} head=${scalar('head_sha')}`);
+            process.exit(1);
+          }
+
+          const blockersRegion = summary.match(/(?:^|\n)blockers:\s*([\s\S]*?)(?=\nreviews:|$)/m)?.[1] ?? '';
+          const nextActionRegion = summary.match(/(?:^|\n)next_action:\s*([\s\S]*?)(?=\nsource_refs:|$)/m)?.[1] ?? '';
+          if (evidence.current_runtime?.cloudflare_route_ready === true && /CLOUDFLARE_ACCOUNT_ID/i.test(blockersRegion + '\n' + nextActionRegion)) {
+            console.error('Historical Cloudflare account-ID blocker rejected because the current provider route is ready.');
             process.exit(1);
           }
 
