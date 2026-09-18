@@ -93,6 +93,14 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
+
+          configured="${CLOUDFLARE_ACCOUNT_ID:-}"
+          if [[ "${configured}" =~ ^[A-Fa-f0-9]{32}$ ]]; then
+            printf 'base_url=https://api.cloudflare.com/client/v4/accounts/%s/ai/v1\n' "${configured}" >> "${GITHUB_OUTPUT}"
+            echo "Cloudflare Workers AI route ready from configured account."
+            exit 0
+          fi
+
           npx --yes wrangler@4.131.0 whoami --json > "${RUNNER_TEMP}/cloudflare-whoami.json"
           node <<'NODE'
           const { appendFileSync, readFileSync } = require('node:fs');
@@ -100,14 +108,13 @@ jobs:
           const payload = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/cloudflare-whoami.json', 'utf8'));
           if (payload.loggedIn !== true) throw new Error('Cloudflare token authentication failed');
 
-          const configured = String(process.env.CLOUDFLARE_ACCOUNT_ID ?? '').trim();
           const accounts = Array.isArray(payload.accounts) ? payload.accounts : [];
-          const accountId = configured || (accounts.length === 1
-            ? String(accounts[0]?.id ?? accounts[0]?.accountId ?? '').trim()
-            : '');
-
+          if (accounts.length !== 1) {
+            throw new Error(`Cloudflare account ID is unavailable or ambiguous; received ${accounts.length} accounts`);
+          }
+          const accountId = String(accounts[0]?.id ?? accounts[0]?.accountId ?? '').trim();
           if (!/^[a-f0-9]{32}$/i.test(accountId)) {
-            throw new Error('Cloudflare account ID is unavailable or ambiguous');
+            throw new Error('Cloudflare account ID is unavailable or invalid');
           }
 
           appendFileSync(
@@ -115,7 +122,7 @@ jobs:
             `base_url=https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1\n`,
             'utf8',
           );
-          console.log(`Cloudflare Workers AI route ready on account ${accountId.slice(0, 6)}…`);
+          console.log(`Cloudflare Workers AI route ready on discovered account ${accountId.slice(0, 6)}…`);
           NODE
 
       - name: Run Cloudflare Effective State Audit
@@ -255,7 +262,7 @@ jobs:
           GEMINI_CLI_TRUST_WORKSPACE: 'true'
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: ${{ vars.GEMINI_AUDIT_MODEL || vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+          gemini_model: ${{ vars.GEMINI_AUDIT_MODEL || 'gemini-3.8-flash' }}
           gemini_cli_version: ${{ vars.GEMINI_CLI_VERSION || 'latest' }}
           gemini_debug: 'false'
           upload_artifacts: 'false'
@@ -379,7 +386,7 @@ jobs:
           GEMINI_CLI_TRUST_WORKSPACE: 'true'
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: ${{ vars.GEMINI_TELEMETRY_MODEL || vars.GEMINI_AUDIT_MODEL || vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+          gemini_model: ${{ vars.GEMINI_TELEMETRY_MODEL || vars.GEMINI_AUDIT_MODEL || 'gemini-3.8-flash' }}
           gemini_cli_version: ${{ vars.GEMINI_CLI_VERSION || 'latest' }}
           gemini_debug: 'false'
           upload_artifacts: 'false'
