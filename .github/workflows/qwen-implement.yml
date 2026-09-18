@@ -49,13 +49,13 @@ jobs:
     steps:
       - name: Validate Qwen activation
         env:
-          QWEN_AUTOMATION_API_KEY: ${{ secrets.QWEN_AUTOMATION_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
           QWEN_GITHUB_TOKEN: ${{ secrets.QWEN_GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           test -n "${ISSUE_NUMBER}"
-          if [ -z "${QWEN_AUTOMATION_API_KEY}" ]; then
-            echo "::error title=Missing QWEN_AUTOMATION_API_KEY::Add a standard QwenCloud pay-as-you-go API key as repository Actions secret QWEN_AUTOMATION_API_KEY."
+          if [ -z "${DASHSCOPE_API_KEY}" ]; then
+            echo "::error title=Missing DASHSCOPE_API_KEY::Add the standard Model Studio / DashScope pay-as-you-go API key as repository Actions secret DASHSCOPE_API_KEY."
             exit 1
           fi
           if [ -z "${QWEN_GITHUB_TOKEN}" ]; then
@@ -82,7 +82,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           TARGET_BRANCH: qwen/task-${{ github.event.issue.number || inputs.issue_number }}-${{ github.run_id }}
         with:
-          openai_api_key: ${{ secrets.QWEN_AUTOMATION_API_KEY }}
+          openai_api_key: ${{ secrets.DASHSCOPE_API_KEY }}
           openai_base_url: ${{ vars.QWEN_AUTOMATION_BASE_URL || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' }}
           openai_model: ${{ vars.QWEN_AUTOMATION_MODEL || 'qwen3-coder-flash' }}
           qwen_debug: 'false'
