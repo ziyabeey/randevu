@@ -112,7 +112,7 @@ automations. No settings activation is part of this delivery.
 
 | Source | Intended trigger | Truthful initial fallback |
 | --- | --- | --- |
-| [R0](automations/r0-review.md) | PR opened / new commits | Manual review; native auto-review UI only if eligible |
+| [R0](automations/r0-review.md) | PR opened; repair push = verification only | Manual review; native auto-review UI only if eligible |
 | [Effective state](automations/effective-state-audit.md) | PR changes / manual | Manual prompt/Skill after a head change |
 | [Stale reviews](automations/stale-review-detector.md) | Head changes after receipt | Manual prompt; advisory comment draft |
 | [Telemetry](automations/development-telemetry-review.md) | Manual / scheduled | Manual first, optional approved local schedule |
@@ -127,9 +127,13 @@ automations. No settings activation is part of this delivery.
    Review effort may be Lite for cheap R0; this does not change required CI/R1/R2.
 3. **Settings > Rulesets > Rulesets > New ruleset > New branch ruleset**.
    Name it, choose Active and target the default branch. Add **Automatically
-   request Copilot code review** and **Review new pushes** (otherwise only one
-   review). Draft review is a separate explicit choice. Preserve existing ruleset
-   23159972; do not replace/relax its checks.
+   request Copilot code review**. Enable **Review new pushes** only when repository
+   instructions are being applied and the reviewer can observe the prior frozen
+   blocker receipt; new-push reviews must run in VERIFICATION mode, not restart
+   discovery. If that state cannot be observed reliably, leave **Review new
+   pushes** off and request one targeted verification after the repair candidate.
+   Draft review is a separate explicit choice. Preserve existing ruleset 23159972;
+   do not replace/relax its checks.
 4. Save only after operator authorization, then verify on an actual PR/head and
    record the setup receipt. Native review reads supported instructions/Skills;
    there is no assumed arbitrary saved-prompt field for our R0 Markdown.
@@ -215,7 +219,7 @@ is satisfied by this work.
 
 | Control | Maturity | Relation to existing controls |
 | --- | --- | --- |
-| DE-R0 | SHADOW | reinforces scoped implementation; overlaps R1/R2, never replaces them |
+| DE-R0 | SHADOW | bounded DISCOVERY → frozen blockers → VERIFICATION; reinforces scoped implementation and overlaps R1/R2, never replaces them |
 | DE-STATE | SHADOW | depends_on main/PR/#65 provenance; reinforces Context Refresh |
 | DE-STALE | SHADOW | reinforces SHA fencing; overlaps stale approval dismissal |
 | DE-TELEMETRY | SHADOW | depends_on exact receipts; overlaps CI/review measurements |
