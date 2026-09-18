@@ -4,12 +4,11 @@ Repo-native guidance for `task/contract -> implementer -> exact-head CI ->
 independent R1/R2 -> coordinator merge -> post-main CI`. This is tooling, not a
 product feature, authority database, automatic merge system or new required gate.
 
-Task **DEV-ENGINE-01 / [#119](https://github.com/ziyabeey1-ai/randevu/issues/119)**,
-size M, FOCUSED; [approved 21-path scope and TASKS reservation](https://github.com/ziyabeey1-ai/randevu/issues/119#issuecomment-5725382893),
-[task-start receipt](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5725388958).
-Starting main: `e982fbf11641de358db21c81941a03696f791870`; branch
-`ziyabeey1-ai-development-engine-v1`. No F11-04 branch, runtime, roadmap,
-accepted migration, existing CI/configuration or dependency changes are authorized.
+Historical implementation task **DEV-ENGINE-01 / [#119](https://github.com/ziyabeey1-ai/randevu/issues/119)** is **accepted and closed**.
+PR #120 merged at main `02d0a2a6605e9ade1c526cf5f1542ceefa523936`;
+post-main CI #1220 / `35312768868` succeeded. Its original 21-path scope and
+starting SHA are provenance only, not current execution state. Current task state
+comes from TASKS + open PRs + the latest binding Issue #65 receipt.
 
 ## Authority and entry points
 
@@ -20,6 +19,7 @@ accepted migration, existing CI/configuration or dependency changes are authoriz
 | Ownership / active writer / acceptance | [TASKS](../../TASKS.md), open PRs and latest binding [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) receipt |
 | Task scope / refresh | [Context Pack protocol](../plan/context-packs.md) and the assigned contract |
 | Executor wait-mode | [Shadow Validation Mode](../plan/shadow-validation-mode.md) |
+| AI/provider routing | [AI model routing](ai-model-routing.md); coordinator selects roles/routes, models remain replaceable |
 | Copilot bootstrap | [Global instructions](../../.github/copilot-instructions.md) and [path instructions](../../.github/instructions) |
 
 TASKS/main prose can lag an active PR overlay; that alone is not an error.
@@ -29,8 +29,9 @@ Context Pack obligations must be satisfied or explicitly `narrows`/`supersedes`
 with coordinator rationale and preserved invariants.
 
 For an assigned issue/PR, provide task ID, canonical Context Pack/receipt,
-base/head and allowed paths, then invoke the relevant Skill. Roles stay stable;
-model/engine choices are replaceable. Never paste all history as a substitute
+base/head and allowed paths, then follow [AI model routing](ai-model-routing.md)
+and invoke only the relevant Skill/route. Roles stay stable; model/engine choices
+are replaceable. Never paste all history as a substitute
 for a current Context Refresh.
 
 | Skill | Use |
@@ -55,14 +56,14 @@ This is a dated inventory, not a continuously accurate settings claim.
 | --- | --- |
 | Repository | Native API: public, admin/write access, Actions enabled, auto-merge disabled; none establishes Copilot entitlement |
 | Main protection | Ruleset 23159972 active: strict `CI gate`, stale-approval dismissal, resolved threads, deletion/non-fast-forward protection; approving-review count 0 |
-| Native automatic R0 rule | No Copilot-review rule in observed ruleset inventory; personal review settings unknown |
-| Project app automations | Coordinator's project-scoped `list_workflows` returned `[]`; global automations unknown |
+| Native automatic R0 rule | **Observed active** on PR #136, including review after head updates. Exact account/ruleset toggle state was not independently reread in this repo pass. |
+| Project app automations | Activation Issue #121 remains open with no completion receipt; Effective State / Stale Review / Telemetry cards are not claimed active. |
 | Instruction/Skill sources | Supplied by this change; discovery in a future/refreshed executor session must be verified, not assumed |
 | Cloud automations | **Unavailable for public repositories** under current official docs; private/internal only |
 | Local app automation | Documented manual/schedule support; local public-repo event-trigger eligibility not verified |
 | Copilot plan, credit balance, UI rollout, Skill enablement | Unknown |
 | Review instruction toggle and both auto-approval toggles | Unknown; required intended settings below are not observed facts |
-| Active implementation/setup | No automation or account setting enabled by this change |
+| Active implementation/setup | Native R0 behavior is observed; durable bounded-R0 contract is being updated in PR #136. Other activation/setup remains governed by Issue #121. |
 
 The initial main CI [35264446487](https://github.com/ziyabeey1-ai/randevu/actions/runs/35264446487)
 succeeded at the starting SHA. Separately, #117
