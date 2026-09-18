@@ -209,7 +209,7 @@ function sensitiveValues(env) {
   const values = [];
   for (const [name, value] of Object.entries(env)) {
     if (!value) continue;
-    if (/(TOKEN|SECRET|PASSWORD|API[-]?KEY|PRIVATE[-]?KEY|AUTH)/i.test(name)) values.push(value);
+    if (/(TOKEN|SECRET|PASSWORD|API[_-]?KEY|PRIVATE[_-]?KEY|AUTH)/i.test(name)) values.push(value);
   }
   return values.sort((a, b) => b.length - a.length);
 }
@@ -339,6 +339,10 @@ function assertRepository(repoRoot, packet) {
   const status = gitOutput(repoRoot, ['status', '--porcelain']);
   if (status) throw new DispatchError('DIRTY_REPO', 'dispatcher source repository must be clean');
   git(repoRoot, ['cat-file', '-e', `${packet.base_sha}^{commit}`]);
+  const baseRef = git(repoRoot, ['ls-remote', '--exit-code', '--heads', 'origin', `refs/heads/${packet.base_branch}`], { allowFailure: true, timeout: 60_000 });
+  if (baseRef.status !== 0) throw new DispatchError('BASE_REF_UNAVAILABLE', `could not resolve origin/${packet.base_branch}`);
+  const remoteBaseSha = baseRef.stdout.trim().split(/\s+/)[0];
+  if (remoteBaseSha !== packet.base_sha) throw new DispatchError('STALE_BASE', `origin/${packet.base_branch} does not match exact base SHA`);
   const expected = packet.repository.toLowerCase();
   const fetchUrls = git(repoRoot, ['remote', 'get-url', '--all', 'origin']).stdout.split(/\r?\n/).filter(Boolean);
   const pushUrls = git(repoRoot, ['remote', 'get-url', '--push', '--all', 'origin']).stdout.split(/\r?\n/).filter(Boolean);
@@ -465,6 +469,7 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
   if (dryRun) {
     assertRepository(repoRoot, validated);
     if (branchExists(repoRoot, validated.branch)) throw new DispatchError('BRANCH_EXISTS', `local branch already exists: ${validated.branch}`);
+    if (remoteBranchExists(repoRoot, validated.branch)) throw new DispatchError('BRANCH_EXISTS', `remote branch already exists: ${validated.branch}`);
     return buildDryRun(validated, qwenBin);
   }
 
@@ -482,7 +487,7 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
     const qwenResult = run(qwenBin, qwenArgs, {
       cwd: worktreeState.worktree,
       env: childEnv({ includeProviderSecrets: true, isolatedHome: qwenHome }),
-      timeout: parseWallTimeMs(validated.budgets.max_wall_time) + 30_000,
+      timeout: parseWallTimeMs(validated.budgets.max_wall_time),
       allowFailure: true,
     });
     if (qwenResult.error) throw new DispatchError('QWEN_UNAVAILABLE', `Qwen could not start: ${qwenResult.error.message}`);
@@ -495,12 +500,19 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
     }
 
     const qwenText = String(qwenResult.stdout ?? '');
-    let qwenPayload = null;
-    try { qwenPayload = JSON.parse(qwenText); } catch {}
-    const serializedQwen = qwenPayload === null ? qwenText : JSON.stringify(qwenPayload);
-    if (serializedQwen.includes('MORE_CONTEXT | ESCALATE')) {
-      throw new DispatchError('QWEN_ESCALATED', 'Qwen requested coordinator escalation');
+    let qwenPayload;
+    try {
+      qwenPayload = JSON.parse(qwenText);
+    } catch {
+      throw new DispatchError('QWEN_PROTOCOL', 'Qwen JSON output could not be parsed', { stdout_bytes: Buffer.byteLength(qwenText) });
     }
+    if (!Array.isArray(qwenPayload) || qwenPayload.length === 0) throw new DispatchError('QWEN_PROTOCOL', 'Qwen JSON output must be a non-empty event array');
+    const finalEvent = qwenPayload[qwenPayload.length - 1];
+    if (!finalEvent || finalEvent.type !== 'result' || finalEvent.subtype !== 'success' || finalEvent.is_error !== false) {
+      throw new DispatchError('QWEN_PROTOCOL', 'Qwen did not finish with an explicit success result');
+    }
+    const finalText = typeof finalEvent.result === 'string' ? finalEvent.result : JSON.stringify(finalEvent.result ?? '');
+    if (finalText.includes('MORE_CONTEXT | ESCALATE')) throw new DispatchError('QWEN_ESCALATED', 'Qwen requested coordinator escalation');
 
     auditWorkerState(worktreeState.worktree, validated, { rejectIgnored: true, actor: 'Qwen' });
 
