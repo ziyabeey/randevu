@@ -159,6 +159,7 @@ jobs:
         if: ${{ always() && steps.qwen.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          QWEN_FINAL_RESPONSE: ${{ steps.qwen.outputs.summary }}
         run: |
           set -euo pipefail
           pr_url="$(gh pr list --repo "${REPOSITORY}" --head "${QWEN_BRANCH}" --state open --json url --jq '.[0].url // empty')"
@@ -169,7 +170,7 @@ jobs:
             {
               printf '%s\n\n' "Qwen completed without an open PR for branch \`${QWEN_BRANCH}\`. Delivery failed."
               printf '%s\n\n' "**Qwen final response:**"
-              printf '%s' "${{ steps.qwen.outputs.summary }}" | head -c 6000
+              printf '%s' "${QWEN_FINAL_RESPONSE}" | head -c 6000
               printf '\n'
             } > "${summary_file}"
             gh issue comment "${ISSUE_NUMBER}" --repo "${REPOSITORY}" --body-file "${summary_file}"
