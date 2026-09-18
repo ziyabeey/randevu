@@ -84,7 +84,7 @@ jobs:
         with:
           openai_api_key: ${{ secrets.QWEN_API_KEY }}
           openai_base_url: ${{ vars.QWEN_BASE_URL || 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1' }}
-          openai_model: ${{ vars.QWEN_MODEL || 'qwen3.8-flash' }}
+          openai_model: ${{ vars.QWEN_MODEL || 'qwen3-coder-flash' }}
           qwen_debug: 'false'
           upload_artifacts: 'false'
           workflow_name: 'qwen-implement'
