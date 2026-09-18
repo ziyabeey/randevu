@@ -554,10 +554,17 @@ export function parseQwenCompletion(text) {
   return finalEvent;
 }
 
-export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', dryRun = false } = {}) {
+export function dispatch(packet, {
+  repoRoot = process.cwd(),
+  qwenBin = 'qwen',
+  ghBin = 'gh',
+  dryRun = false,
+  localGuard = assertLocalRepository,
+  remoteGuard = assertRemoteRepositoryState,
+} = {}) {
   const validated = validatePacket(packet);
   if (dryRun) {
-    assertLocalRepository(repoRoot, validated);
+    localGuard(repoRoot, validated);
     if (branchExists(repoRoot, validated.branch)) throw new DispatchError('BRANCH_EXISTS', `local branch already exists: ${validated.branch}`);
     return buildDryRun(validated, qwenBin);
   }
@@ -566,8 +573,8 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
   let worktreeState;
   try {
     lockPath = acquireLock();
-    assertLocalRepository(repoRoot, validated);
-    assertRemoteRepositoryState(repoRoot, validated);
+    localGuard(repoRoot, validated);
+    remoteGuard(repoRoot, validated);
     worktreeState = createWorktree(repoRoot, validated);
 
     assertFilesystemFence(worktreeState.worktree, validated.writable);
@@ -619,12 +626,12 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
     if (!committedScope.ok || committedScope.changed.length === 0) {
       throw new DispatchError('SCOPE_VIOLATION', 'committed tree exceeds authorized scope', committedScope);
     }
-    assertLocalRepository(repoRoot, { ...validated, base_sha: headSha });
-    assertRemoteRepositoryState(repoRoot, validated);
+    localGuard(repoRoot, { ...validated, base_sha: headSha });
+    remoteGuard(repoRoot, validated);
     if (remoteBranchExists(repoRoot, validated.branch)) throw new DispatchError('BRANCH_EXISTS', `remote branch appeared before push: ${validated.branch}`);
     git(worktreeState.worktree, ['push', '--set-upstream', 'origin', validated.branch], { timeout: 180_000 });
     const prBody = buildPrBody(validated, headSha, committedScope.changed, validations);
-    const pr = run('gh', ['pr', 'create', '--draft', '--repo', validated.repository, '--base', validated.base_branch, '--head', validated.branch,
+    const pr = run(ghBin, ['pr', 'create', '--draft', '--repo', validated.repository, '--base', validated.base_branch, '--head', validated.branch,
       '--title', `${validated.task_id}: Qwen implementation`, '--body', prBody], { cwd: worktreeState.worktree, env: process.env, timeout: 120_000, allowFailure: true });
     if (pr.error || pr.status !== 0) {
       throw new DispatchError('PR_CREATE_FAILED', 'branch was pushed but draft PR creation failed', {
