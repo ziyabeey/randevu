@@ -482,6 +482,21 @@ export async function runManagementAcceptance(options = {}) {
     }, 'Chrome did not expose a debugging port', 10_000);
     const debugUrl = `http://127.0.0.1:${port}`;
 
+    // A freshly created target can still be committing its initial
+    // about:blank load; commands sent in that window fail with "Inspected
+    // target navigated or closed". Only these idempotent setup and navigation
+    // commands are retried -- never a click or a form submission.
+    async function retryWhileTargetSettles(action) {
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          return await action();
+        } catch (error) {
+          if (attempt >= 5 || !/navigated or closed/i.test(String(error?.message ?? error))) throw error;
+          await sleep(100);
+        }
+      }
+    }
+
     async function openPage(pathname) {
       const target = await (await fetch(`${debugUrl}/json/new?${encodeURIComponent('about:blank')}`, {
         method: 'PUT',
@@ -489,15 +504,15 @@ export async function runManagementAcceptance(options = {}) {
       })).json();
       const page = await Cdp.connect(target.webSocketDebuggerUrl);
       pages.push(page);
-      await page.send('Runtime.enable');
-      await page.send('Page.enable');
+      await retryWhileTargetSettles(() => page.send('Runtime.enable'));
+      await retryWhileTargetSettles(() => page.send('Page.enable'));
       await navigate(page, pathname);
       return page;
     }
 
     async function navigate(page, pathname) {
       const url = `${origin}${pathname}`;
-      await page.send('Page.navigate', { url });
+      await retryWhileTargetSettles(() => page.send('Page.navigate', { url }));
       await waitFor(async () => {
         const current = await page.evaluate('location.href');
         const ready = await page.evaluate('document.readyState === "complete" || document.readyState === "interactive"');
