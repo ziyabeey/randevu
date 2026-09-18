@@ -82,7 +82,7 @@ await test('authenticated /api/public operator mutations use the same authoritat
   };
   try {
     const response = await app.request('http://localhost/api/public/settings', {
-      method: 'POST',
+      method: 'PUT',
       headers: headers(businessB, businessA),
       body: '{}',
     }, env);
