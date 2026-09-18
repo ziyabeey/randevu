@@ -59,8 +59,69 @@ jobs:
             printf '%s' "${payload}" | gh workflow run "${workflow}" --repo "${REPOSITORY}" --ref main --json
           }
 
-          case "${COMMENT_BODY}" in
-            '@qwencoder /implement'*)
+          if [[ "${COMMENT_BODY}" == "@qwencoder /implement" || "${COMMENT_BODY}" == "@qwencoder /implement "* || "${COMMENT_BODY}" == "@qwencoder /implement"              if [ "${IS_PULL_REQUEST}" = "true" ]; then
+                echo "::error title=Qwen target must be an issue::Move the implementation request to the binding issue."
+                exit 1
+              fi
+              dispatch "qwen-implement.yml"
+              echo "Dispatched Qwen Implement for issue #${ISSUE_NUMBER}."
+              exit 0
+          fi
+
+          if [[ "${COMMENT_BODY}" == "@gemini-cli /scout-cloudflare" || "${COMMENT_BODY}" == "@gemini-cli /scout-cloudflare "* || "${COMMENT_BODY}" == "@gemini-cli /scout-cloudflare"\n'* ]]; then
+              if [ "${IS_PULL_REQUEST}" = "true" ]; then
+                echo "::error title=Qwen target must be an issue::Move the implementation request to the binding issue."
+                exit 1
+              fi
+              dispatch "qwen-implement.yml"
+              echo "Dispatched Qwen Implement for issue #${ISSUE_NUMBER}."
+              ;;
+            '@gemini-cli /scout-cloudflare'*)
+              dispatch "gemini-scout.yml"
+              echo "Dispatched Gemini Scout in forced Cloudflare mode for #${ISSUE_NUMBER}."
+              ;;
+            '@gemini-cli /scout'*)
+              dispatch "gemini-scout.yml"
+              echo "Dispatched Gemini Scout for #${ISSUE_NUMBER}."
+              ;;
+            *)
+              echo "No explicit AI command; nothing dispatched."
+              ;;
+          esac
+\n'* ]]; then
+            dispatch "gemini-scout.yml"
+            echo "Dispatched Gemini Scout in forced Cloudflare mode for #${ISSUE_NUMBER}."
+            exit 0
+          fi
+
+          if [[ "${COMMENT_BODY}" == "@gemini-cli /scout" || "${COMMENT_BODY}" == "@gemini-cli /scout "* || "${COMMENT_BODY}" == "@gemini-cli /scout"\n'* ]]; then
+              if [ "${IS_PULL_REQUEST}" = "true" ]; then
+                echo "::error title=Qwen target must be an issue::Move the implementation request to the binding issue."
+                exit 1
+              fi
+              dispatch "qwen-implement.yml"
+              echo "Dispatched Qwen Implement for issue #${ISSUE_NUMBER}."
+              ;;
+            '@gemini-cli /scout-cloudflare'*)
+              dispatch "gemini-scout.yml"
+              echo "Dispatched Gemini Scout in forced Cloudflare mode for #${ISSUE_NUMBER}."
+              ;;
+            '@gemini-cli /scout'*)
+              dispatch "gemini-scout.yml"
+              echo "Dispatched Gemini Scout for #${ISSUE_NUMBER}."
+              ;;
+            *)
+              echo "No explicit AI command; nothing dispatched."
+              ;;
+          esac
+\n'* ]]; then
+            dispatch "gemini-scout.yml"
+            echo "Dispatched Gemini Scout for #${ISSUE_NUMBER}."
+            exit 0
+          fi
+
+          echo "No explicit AI command; nothing dispatched."
+\n'* ]]; then
               if [ "${IS_PULL_REQUEST}" = "true" ]; then
                 echo "::error title=Qwen target must be an issue::Move the implementation request to the binding issue."
                 exit 1
