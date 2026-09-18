@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   auditWorkerState,
+  buildCreateOnlyPushArgs,
   buildDryRun,
   buildQwenArgs,
   buildQwenPrompt,
@@ -198,6 +199,18 @@ test('changed-path fence supports exact files and explicit directory prefixes on
   const blocked = inspectChangedPaths(['supabase/x.sql'], value);
   assert.equal(blocked.ok, false);
   assert.deepEqual(blocked.forbidden, ['supabase/x.sql']);
+  const nestedGit = inspectChangedPaths(['tests/pilot/.git/config'], value);
+  assert.equal(nestedGit.ok, false);
+  assert.deepEqual(nestedGit.forbidden, ['tests/pilot/.git/config']);
+});
+
+test('create-only push uses an explicit empty lease expectation for the task ref', () => {
+  assert.deepEqual(buildCreateOnlyPushArgs('agent/qwen-pilot-01'), [
+    '--force-with-lease=refs/heads/agent/qwen-pilot-01:',
+    '--set-upstream',
+    'origin',
+    'HEAD:refs/heads/agent/qwen-pilot-01',
+  ]);
 });
 
 test('dry-run receipt hides prompt and validation arguments and reports selected Qwen binary', () => {
@@ -245,6 +258,14 @@ test('worker-state audit accepts an authorized edit and rejects commits, symlink
     const state = makeRepo();
     try {
       const value = validatePacket(packet(state.baseSha));
+      symlinkSync(path.join(state.root, 'does-not-exist'), path.join(state.repoDir, 'worker.mjs'));
+      assert.throws(() => auditWorkerState(state.repoDir, value), /symlink/i);
+    } finally { rmSync(state.root, { recursive: true, force: true }); }
+  }
+  {
+    const state = makeRepo();
+    try {
+      const value = validatePacket(packet(state.baseSha));
       mkdirSync(path.join(state.repoDir, 'ignored'));
       writeFileSync(path.join(state.repoDir, 'ignored', 'secret.txt'), 'not deliverable\n');
       assert.throws(() => auditWorkerState(state.repoDir, value), /ignored/i);
@@ -266,6 +287,15 @@ test('CLI dry-run is offline: it validates local repo/base/origin without contac
     assert.equal(receipt.status, 'DRY_RUN');
     assert.equal(receipt.base_sha, state.baseSha);
     assert.equal(receipt.qwen.executable, '/opt/qwen');
+
+    writeFileSync(path.join(state.repoDir, 'seed.txt'), 'advanced\n');
+    run('git', ['add', 'seed.txt'], state.repoDir);
+    run('git', ['commit', '-m', 'advance local main'], state.repoDir);
+    const stale = spawnSync(process.execPath, [script, '--packet', file, '--dry-run', '--repo-root', state.repoDir], {
+      cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8', env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    });
+    assert.notEqual(stale.status, 0);
+    assert.match(stale.stderr, /STALE_LOCAL_BASE/);
   } finally { rmSync(state.root, { recursive: true, force: true }); }
 });
 
