@@ -1,0 +1,181 @@
+name: Copilot Tester
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to test'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+  copilot-requests: write
+
+concurrency:
+  group: copilot-tester-${{ github.event.pull_request.number || inputs.pr_number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        github.event.pull_request.head.repo.full_name == github.repository
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+      REPOSITORY: ${{ github.repository }}
+
+    steps:
+      - name: Resolve exact PR head
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pr_json="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}")"
+          head_sha="$(jq -r '.head.sha' <<<"${pr_json}")"
+          base_sha="$(jq -r '.base.sha' <<<"${pr_json}")"
+          head_repo="$(jq -r '.head.repo.full_name' <<<"${pr_json}")"
+          test "${head_repo}" = "${REPOSITORY}"
+          echo "head_sha=${head_sha}" >> "${GITHUB_OUTPUT}"
+          echo "base_sha=${base_sha}" >> "${GITHUB_OUTPUT}"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Select repository validation scope
+        id: scope
+        run: node scripts/ci-scope.mjs
+
+      - name: Install dependencies
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm ci
+
+      - name: Install PostgreSQL client
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Start disposable PostgreSQL 17
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        timeout-minutes: 2
+        run: |
+          docker run --detach --name randevu-copilot-postgres \
+            --env POSTGRES_PASSWORD=postgres --env POSTGRES_DB=yzt_test \
+            --publish 127.0.0.1:5432:5432 \
+            --health-cmd='pg_isready -U postgres -d yzt_test' \
+            --health-interval=1s --health-timeout=3s --health-retries=30 postgres:17
+          for attempt in {1..30}; do
+            if [ "$(docker inspect --format '{{.State.Health.Status}}' randevu-copilot-postgres)" = healthy ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'Copilot tester PostgreSQL did not become healthy.'
+          exit 1
+
+      - name: Install Copilot CLI
+        run: npm install --global @github/copilot@latest
+
+      - name: Copilot task-agent validation
+        id: copilot
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PGPASSWORD: postgres
+          EXACT_HEAD: ${{ steps.pr.outputs.head_sha }}
+          BASE_SHA: ${{ steps.pr.outputs.base_sha }}
+          CI_MODE: ${{ steps.scope.outputs.mode }}
+        run: |
+          set -euo pipefail
+          prompt_file="${RUNNER_TEMP}/copilot-tester-prompt.txt"
+          report_file="${RUNNER_TEMP}/copilot-tester-report.txt"
+          cat > "${prompt_file}" <<'PROMPT'
+          You are TESTER, not the writer and not R0. Do not edit source files, create
+          commits, push, open PRs, or suggest product-scope expansion.
+
+          Validate the exact checked-out PR head using real repository commands.
+          First inspect the branch diff and existing CI/test scripts. Then execute the
+          authoritative validations appropriate to the changed surfaces.
+
+          Required minimum:
+          - run the repository documentation/task-graph validator;
+          - when CI_MODE=code, run the repository authoritative code validator against
+            the already-prepared disposable PostgreSQL instance;
+          - run any directly relevant targeted regression command that is clearly
+            required by the changed surface and is not already covered by the
+            authoritative validator;
+          - never weaken, rewrite, or skip a failing test.
+
+          Do not claim a test ran unless you actually executed it. A required command
+          that cannot be executed is a FAIL, not a PASS. Report only observed
+          failures; do not turn speculative review ideas into test failures.
+
+          Finish with this exact receipt shape:
+          TEST_RESULT: PASS | FAIL
+          TESTED_HEAD: <sha>
+          BASE_SHA: <sha>
+          COMMANDS:
+          - <command> -> <exit status/result>
+          FAILURES:
+          - <exact failure or NONE>
+          NOTES:
+          - <short factual note or NONE>
+          PROMPT
+
+          copilot --agent=task \
+            --prompt "$(cat "${prompt_file}")" \
+            --silent --no-ask-user \
+            --deny-tool=write \
+            --allow-tool='shell(git diff:*),shell(git status:*),shell(node:*),shell(npm:*),shell(npx:*),shell(psql:*),shell(pg_isready:*),shell(docker:*)' \
+            > "${report_file}"
+
+          cat "${report_file}"
+          {
+            echo "## Copilot Tester"
+            echo
+            echo '```text'
+            cat "${report_file}"
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          grep -Eq '^TEST_RESULT:[[:space:]]*PASS[[:space:]]*$' "${report_file}"
+
+      - name: Publish tester receipt
+        if: ${{ always() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST_OUTCOME: ${{ steps.copilot.outcome }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ "${TEST_OUTCOME}" = "success" ]; then
+            result="PASS"
+          else
+            result="FAIL"
+          fi
+          body="## COPILOT TESTER — ${result}
+
+          Exact head: ${HEAD_SHA}
+          Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          Read-only test lane only. This receipt does not replace R0 or independent R1/R2."
+          gh issue comment "${PR_NUMBER}" --repo "${REPOSITORY}" --body "${body}"
+
+      - name: Remove disposable test database
+        if: ${{ always() && steps.scope.outputs.mode == 'code' }}
+        run: docker rm --force --volumes randevu-copilot-postgres || true
