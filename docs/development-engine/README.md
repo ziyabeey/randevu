@@ -4,12 +4,11 @@ Repo-native guidance for `task/contract -> implementer -> exact-head CI ->
 independent R1/R2 -> coordinator merge -> post-main CI`. This is tooling, not a
 product feature, authority database, automatic merge system or new required gate.
 
-Task **DEV-ENGINE-01 / [#119](https://github.com/ziyabeey1-ai/randevu/issues/119)**,
-size M, FOCUSED; [approved 21-path scope and TASKS reservation](https://github.com/ziyabeey1-ai/randevu/issues/119#issuecomment-5725382893),
-[task-start receipt](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5725388958).
-Starting main: `e982fbf11641de358db21c81941a03696f791870`; branch
-`ziyabeey1-ai-development-engine-v1`. No F11-04 branch, runtime, roadmap,
-accepted migration, existing CI/configuration or dependency changes are authorized.
+Historical implementation task **DEV-ENGINE-01 / [#119](https://github.com/ziyabeey1-ai/randevu/issues/119)** is **accepted and closed**.
+PR #120 merged at main `02d0a2a6605e9ade1c526cf5f1542ceefa523936`;
+post-main CI #1220 / `35312768868` succeeded. Its original 21-path scope and
+starting SHA are provenance only, not current execution state. Current task state
+comes from TASKS + open PRs + the latest binding Issue #65 receipt.
 
 ## Authority and entry points
 
@@ -20,6 +19,7 @@ accepted migration, existing CI/configuration or dependency changes are authoriz
 | Ownership / active writer / acceptance | [TASKS](../../TASKS.md), open PRs and latest binding [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) receipt |
 | Task scope / refresh | [Context Pack protocol](../plan/context-packs.md) and the assigned contract |
 | Executor wait-mode | [Shadow Validation Mode](../plan/shadow-validation-mode.md) |
+| AI/provider routing | [AI model routing](ai-model-routing.md); coordinator selects roles/routes, models remain replaceable |
 | Copilot bootstrap | [Global instructions](../../.github/copilot-instructions.md) and [path instructions](../../.github/instructions) |
 
 TASKS/main prose can lag an active PR overlay; that alone is not an error.
@@ -29,8 +29,9 @@ Context Pack obligations must be satisfied or explicitly `narrows`/`supersedes`
 with coordinator rationale and preserved invariants.
 
 For an assigned issue/PR, provide task ID, canonical Context Pack/receipt,
-base/head and allowed paths, then invoke the relevant Skill. Roles stay stable;
-model/engine choices are replaceable. Never paste all history as a substitute
+base/head and allowed paths, then follow [AI model routing](ai-model-routing.md)
+and invoke only the relevant Skill/route. Roles stay stable; model/engine choices
+are replaceable. Never paste all history as a substitute
 for a current Context Refresh.
 
 | Skill | Use |
@@ -44,8 +45,9 @@ for a current Context Refresh.
 Reading a Skill is not automatic execution or tool permission. Record the stable
 Skill name actually read; if unavailable, disclose it and use a coordinator-approved
 safe equivalent. R0 or implementer self-review never satisfies independent R1/R2.
-Risk-based reviewer selection for other tasks remains unchanged; #119 explicitly
-requires fresh R1/R2 contexts arranged by its coordinator after exact-head CI.
+Risk-based reviewer selection for current tasks remains unchanged. Historical #119
+required fresh R1/R2 and completed those reviews before its accepted merge; it is
+not an open review gate.
 
 ## Capability receipt — 2026-09-18
 
@@ -55,24 +57,23 @@ This is a dated inventory, not a continuously accurate settings claim.
 | --- | --- |
 | Repository | Native API: public, admin/write access, Actions enabled, auto-merge disabled; none establishes Copilot entitlement |
 | Main protection | Ruleset 23159972 active: strict `CI gate`, stale-approval dismissal, resolved threads, deletion/non-fast-forward protection; approving-review count 0 |
-| Native automatic R0 rule | No Copilot-review rule in observed ruleset inventory; personal review settings unknown |
-| Project app automations | Coordinator's project-scoped `list_workflows` returned `[]`; global automations unknown |
+| Native automatic R0 rule | **Observed active** on PR #136, including review after head updates. Exact account/ruleset toggle state was not independently reread in this repo pass. |
+| Project app automations | Activation Issue #121 remains open with no completion receipt; Effective State / Stale Review / Telemetry cards are not claimed active. |
 | Instruction/Skill sources | Supplied by this change; discovery in a future/refreshed executor session must be verified, not assumed |
 | Cloud automations | **Unavailable for public repositories** under current official docs; private/internal only |
 | Local app automation | Documented manual/schedule support; local public-repo event-trigger eligibility not verified |
 | Copilot plan, credit balance, UI rollout, Skill enablement | Unknown |
 | Review instruction toggle and both auto-approval toggles | Unknown; required intended settings below are not observed facts |
-| Active implementation/setup | No automation or account setting enabled by this change |
+| Active implementation/setup | Native R0 behavior is observed; durable bounded-R0 contract is being updated in PR #136. Other activation/setup remains governed by Issue #121. |
 
-The initial main CI [35264446487](https://github.com/ziyabeey1-ai/randevu/actions/runs/35264446487)
-succeeded at the starting SHA. Separately, #117
+Historical evidence: the initial main CI
+[35264446487](https://github.com/ziyabeey1-ai/randevu/actions/runs/35264446487)
+succeeded at the original starting SHA. Separately, F11-04 #117
 [job/check 105480417908](https://github.com/ziyabeey1-ai/randevu/actions/runs/35306324484/job/105480417908)
 at `227b7698a70821a02bb8dfd45b9180194d4e301a` had `runner_id=0`, `steps=[]`
-and the exact native check annotation: "The job was not started because your
-account is locked due to a billing issue." That is provenance for that run,
-not a claim that this task's CI failed. Normal #119 CI must be attempted once;
-if similarly blocked, record its own head/run/job/annotation and stop retries.
-Do not change billing, rerun another task or bypass required CI.
+and a runner/account billing annotation before checkout. That receipt is fenced to
+that historical run. DEV-ENGINE-01/#119 later completed successfully and is closed;
+do not use this paragraph to infer a current account block or an open #119 action.
 
 ### Supported formats and product surfaces
 
@@ -106,13 +107,14 @@ Official sources:
 
 ## Setup
 
-**Repository sources present does not mean automation active.** All four sources
-below are canonical prompts, not executable/configuration files or registered
-automations. No settings activation is part of this delivery.
+**Repository sources alone do not activate account settings.** The prompt files
+below remain canonical source text. Native R0 behavior is now observed separately
+in the capability receipt above; the other app automation cards remain unclaimed
+until Issue #121 has a completion receipt.
 
 | Source | Intended trigger | Truthful initial fallback |
 | --- | --- | --- |
-| [R0](automations/r0-review.md) | PR opened / new commits | Manual review; native auto-review UI only if eligible |
+| [R0](automations/r0-review.md) | PR opened; repair push = verification only | Manual review; native auto-review UI only if eligible |
 | [Effective state](automations/effective-state-audit.md) | PR changes / manual | Manual prompt/Skill after a head change |
 | [Stale reviews](automations/stale-review-detector.md) | Head changes after receipt | Manual prompt; advisory comment draft |
 | [Telemetry](automations/development-telemetry-review.md) | Manual / scheduled | Manual first, optional approved local schedule |
@@ -127,9 +129,13 @@ automations. No settings activation is part of this delivery.
    Review effort may be Lite for cheap R0; this does not change required CI/R1/R2.
 3. **Settings > Rulesets > Rulesets > New ruleset > New branch ruleset**.
    Name it, choose Active and target the default branch. Add **Automatically
-   request Copilot code review** and **Review new pushes** (otherwise only one
-   review). Draft review is a separate explicit choice. Preserve existing ruleset
-   23159972; do not replace/relax its checks.
+   request Copilot code review**. Enable **Review new pushes** only when repository
+   instructions are being applied and the reviewer can observe the prior frozen
+   blocker receipt; new-push reviews must run in VERIFICATION mode, not restart
+   discovery. If that state cannot be observed reliably, leave **Review new
+   pushes** off and request one targeted verification after the repair candidate.
+   Draft review is a separate explicit choice. Preserve existing ruleset 23159972;
+   do not replace/relax its checks.
 4. Save only after operator authorization, then verify on an actual PR/head and
    record the setup receipt. Native review reads supported instructions/Skills;
    there is no assumed arbitrary saved-prompt field for our R0 Markdown.
@@ -215,7 +221,7 @@ is satisfied by this work.
 
 | Control | Maturity | Relation to existing controls |
 | --- | --- | --- |
-| DE-R0 | SHADOW | reinforces scoped implementation; overlaps R1/R2, never replaces them |
+| DE-R0 | SHADOW | bounded DISCOVERY → frozen blockers → VERIFICATION; reinforces scoped implementation and overlaps R1/R2, never replaces them |
 | DE-STATE | SHADOW | depends_on main/PR/#65 provenance; reinforces Context Refresh |
 | DE-STALE | SHADOW | reinforces SHA fencing; overlaps stale approval dismissal |
 | DE-TELEMETRY | SHADOW | depends_on exact receipts; overlaps CI/review measurements |
