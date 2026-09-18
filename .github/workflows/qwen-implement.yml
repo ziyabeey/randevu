@@ -46,7 +46,6 @@ jobs:
       REQUEST: ${{ github.event.comment.body || github.event.issue.body || inputs.request }}
       REPOSITORY: ${{ github.repository }}
       QWEN_BRANCH: qwen/task-${{ github.event.issue.number || inputs.issue_number }}-${{ github.run_id }}
-      GITHUB_TOKEN: ${{ github.token }}
 
     steps:
       - name: Validate Qwen activation
@@ -78,7 +77,7 @@ jobs:
         id: qwen
         uses: QwenLM/qwen-code-action@v1
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          QWEN_GITHUB_TOKEN: ${{ secrets.QWEN_GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
           REQUEST: ${{ github.event.comment.body || github.event.issue.body || inputs.request }}
           REPOSITORY: ${{ github.repository }}
@@ -122,7 +121,7 @@ jobs:
                     "create_pull_request"
                   ],
                   "env": {
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${{ secrets.QWEN_GITHUB_TOKEN }}"
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${QWEN_GITHUB_TOKEN}"
                   }
                 }
               },
