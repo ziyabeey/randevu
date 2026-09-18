@@ -199,7 +199,7 @@ export function inspectChangedPaths(changedPaths, packet) {
   return { changed: unique, outsideWritable, forbidden, ok: outsideWritable.length === 0 && forbidden.length === 0 };
 }
 
-function sensitiveValues(env) {
+export function sensitiveValues(env) {
   const values = [];
   for (const [name, value] of Object.entries(env)) {
     if (!value) continue;
@@ -214,6 +214,10 @@ export function redactText(text, secrets = []) {
     if (secret) output = output.split(secret).join('[REDACTED]');
   }
   return output;
+}
+
+export function isDeniedQwenEnvName(name) {
+  return QWEN_ENV_HARD_DENY.test(name);
 }
 
 function childEnv({ includeProviderSecrets = false, isolatedHome = null } = {}) {
@@ -234,7 +238,7 @@ function childEnv({ includeProviderSecrets = false, isolatedHome = null } = {}) 
     const names = (process.env.DEV_DISPATCH_QWEN_ENV_ALLOWLIST ?? DEFAULT_QWEN_ENV_ALLOWLIST.join(','))
       .split(',').map((item) => item.trim()).filter(Boolean);
     for (const name of names) {
-      if (QWEN_ENV_HARD_DENY.test(name)) throw new DispatchError('UNSAFE_CONFIG', `Qwen environment allowlist may not contain GitHub credential: ${name}`);
+      if (isDeniedQwenEnvName(name)) throw new DispatchError('UNSAFE_CONFIG', `Qwen environment allowlist may not contain GitHub credential: ${name}`);
       if (process.env[name] !== undefined) env[name] = process.env[name];
     }
   }
@@ -465,6 +469,24 @@ export function buildDryRun(packet, qwenBin = 'qwen') {
   };
 }
 
+export function parseQwenCompletion(text) {
+  const qwenText = String(text ?? '');
+  let events;
+  try {
+    events = JSON.parse(qwenText);
+  } catch {
+    throw new DispatchError('QWEN_PROTOCOL', 'Qwen JSON output could not be parsed', { stdout_bytes: Buffer.byteLength(qwenText) });
+  }
+  if (!Array.isArray(events) || events.length === 0) throw new DispatchError('QWEN_PROTOCOL', 'Qwen JSON output must be a non-empty event array');
+  const finalEvent = events[events.length - 1];
+  if (!finalEvent || finalEvent.type !== 'result' || finalEvent.subtype !== 'success' || finalEvent.is_error !== false) {
+    throw new DispatchError('QWEN_PROTOCOL', 'Qwen did not finish with an explicit success result');
+  }
+  const finalText = typeof finalEvent.result === 'string' ? finalEvent.result : JSON.stringify(finalEvent.result ?? '');
+  if (finalText.includes('MORE_CONTEXT | ESCALATE')) throw new DispatchError('QWEN_ESCALATED', 'Qwen requested coordinator escalation');
+  return finalEvent;
+}
+
 export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', dryRun = false } = {}) {
   const validated = validatePacket(packet);
   if (dryRun) {
@@ -500,20 +522,7 @@ export function dispatch(packet, { repoRoot = process.cwd(), qwenBin = 'qwen', d
       });
     }
 
-    const qwenText = String(qwenResult.stdout ?? '');
-    let qwenPayload;
-    try {
-      qwenPayload = JSON.parse(qwenText);
-    } catch {
-      throw new DispatchError('QWEN_PROTOCOL', 'Qwen JSON output could not be parsed', { stdout_bytes: Buffer.byteLength(qwenText) });
-    }
-    if (!Array.isArray(qwenPayload) || qwenPayload.length === 0) throw new DispatchError('QWEN_PROTOCOL', 'Qwen JSON output must be a non-empty event array');
-    const finalEvent = qwenPayload[qwenPayload.length - 1];
-    if (!finalEvent || finalEvent.type !== 'result' || finalEvent.subtype !== 'success' || finalEvent.is_error !== false) {
-      throw new DispatchError('QWEN_PROTOCOL', 'Qwen did not finish with an explicit success result');
-    }
-    const finalText = typeof finalEvent.result === 'string' ? finalEvent.result : JSON.stringify(finalEvent.result ?? '');
-    if (finalText.includes('MORE_CONTEXT | ESCALATE')) throw new DispatchError('QWEN_ESCALATED', 'Qwen requested coordinator escalation');
+    parseQwenCompletion(qwenResult.stdout);
 
     auditWorkerState(worktreeState.worktree, validated, { rejectIgnored: true, actor: 'Qwen' });
 
