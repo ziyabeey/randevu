@@ -74,6 +74,9 @@ jobs:
             --repo "${REPOSITORY}" \
             --body "Qwen implementer accepted this request. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
+      - name: Pre-pull GitHub MCP server image
+        run: docker pull ghcr.io/github/github-mcp-server:v0.18.0
+
       - name: Run official Qwen Code action
         id: qwen
         uses: QwenLM/qwen-code-action@v1
