@@ -142,6 +142,7 @@ jobs:
           node <<'NODE'
           const { appendFileSync, existsSync, readFileSync } = require('node:fs');
 
+          (async () => {
           const clip = (value, max = 12000) => {
             const text = String(value ?? '');
             return text.length > max ? text.slice(0, max) + '\n...[truncated]' : text;
@@ -300,6 +301,10 @@ jobs:
           const delimiter = `CLOUDFLARE_SUMMARY_${Date.now()}`;
           appendFileSync(process.env.GITHUB_OUTPUT, `summary<<${delimiter}\n${summary}\n${delimiter}\n`, 'utf8');
           console.log(`Cloudflare Effective State Audit completed with ${summary.length} output characters.`);
+          })().catch((error) => {
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exit(1);
+          });
           NODE
 
   effective_state_report:
