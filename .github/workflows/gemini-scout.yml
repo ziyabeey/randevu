@@ -167,6 +167,7 @@ jobs:
         if: ${{ steps.route.outputs.provider == 'cloudflare' }}
         env:
           CLOUDFLARE_AI_API_TOKEN: ${{ secrets.CLOUDFLARE_AI_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_AI_API_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${CLOUDFLARE_AI_API_TOKEN}" ]; then
