@@ -67,7 +67,11 @@
       "type": "object", "additionalProperties": false,
       "required": ["tasks", "accepted_evidence_refs"],
       "properties": {
-        "tasks": { "type": "array", "items": { "type": "string", "pattern": "^(TEMEL|S[0-9]{2}|F[0-9]{2}-[0-9]{2}|GS|G[0-9]{2})$" } },
+        "tasks": {
+          "description": "Reference syntax only, including canonical task and contract families. Canonical records determine existence and dependency meaning; accepting a contract reference does not make it a task node or authorize an edge.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^(TEMEL|S[0-9]{2}|F[0-9]{2}-[0-9]{2}|GS|G[0-9]{2}|K[0-9]{2}|KC-[0-9]{2}|MKT-[0-9]{2}|DEV-ENGINE-[0-9]{2})$(?![\\s\\S])" }
+        },
         "accepted_evidence_refs": { "type": "array", "items": { "type": "string", "minLength": 1 } }
       }
     },

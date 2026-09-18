@@ -52,15 +52,21 @@ test('required artifact-test path reports extra advisories without failing, but 
     const instructions = '.github/copilot-instructions.md';
     writeFileSync(path.join(fixture, instructions), read(instructions)
       .replace('Never self-ready or self-merge', 'Never mark your own PR ready or merge it'));
+    const telemetry = `${home}/automations/development-telemetry-review.md`;
+    writeFileSync(path.join(fixture, telemetry), read(telemetry)
+      .replace('a tiny cohort', 'a very small cohort'));
     const observation = await validateArtifacts(fixture);
     assert.deepEqual(observation.errors, []);
     assert.ok(observation.warnings.some((warning) => warning.includes('coordinator-only readiness/merge')));
+    assert.ok(observation.warnings.some((warning) => warning.includes('small-sample limitation')));
     const cli = run(['scripts/validate-development-engine.mjs']);
     assert.equal(cli.status, 0, cli.stdout + cli.stderr);
     assert.match(cli.stderr, /ADVISORY: .*coordinator-only readiness\/merge/);
+    assert.match(cli.stderr, /ADVISORY: .*small-sample limitation/);
     const advisoryTest = run(artifactTest);
     assert.equal(advisoryTest.status, 0, advisoryTest.stdout + advisoryTest.stderr);
     assert.match(advisoryTest.stdout, /ADVISORY: .*coordinator-only readiness\/merge/);
+    assert.match(advisoryTest.stdout, /ADVISORY: .*small-sample limitation/);
 
     const scoped = '.github/instructions/implementation.instructions.md';
     writeFileSync(path.join(fixture, scoped), read(scoped).replace(/^---\r?\n/, '---\nunsupported: "fixture"\n'));
@@ -96,7 +102,7 @@ test('bounded schema validation checks required, extra, nested, array, enum, typ
     (value) => { value.task.size = 'XXL'; },
     (value) => { value.task.validation_budget = 'SKIP'; },
     (value) => { value.scope.writable = [42]; },
-    (value) => { value.dependencies.tasks = ['K01']; },
+    (value) => { value.dependencies.tasks = ['K-01']; },
     (value) => { value.state.executor_mode = 'BLOCK'; },
     (value) => { value.review.coordinator_merge = 'optional'; },
     (value) => { value.source_refs = []; },
@@ -116,6 +122,40 @@ test('bounded schema validation checks required, extra, nested, array, enum, typ
   evidence.reviews.r1.sha = 'main';
   evidence.proofs[0].status = 'green-ish';
   assert.equal(validateManifest(evidenceSchema, evidence).length, 2);
+});
+
+test('canonical KC dependencies can be projected without omitting the K04 contract', () => {
+  for (const [id, dependencies] of [
+    ['KC-00', ['K04']],
+    ['KC-01', ['KC-00']],
+    ['KC-03', ['KC-01', 'KC-02']],
+  ]) {
+    const value = structuredClone(taskExample);
+    value.task.id = id;
+    value.dependencies.tasks = dependencies;
+    assert.deepEqual(validateManifest(taskSchema, value), [], `${id} -> ${dependencies.join(', ')}`);
+  }
+});
+
+test('dependency reference syntax covers canonical families without authorizing graph edges', () => {
+  const value = structuredClone(taskExample);
+  value.task.id = 'ILLUSTRATIVE-SYNTAX-ONLY';
+  value.dependencies.tasks = ['TEMEL', 'S08', 'F11-04', 'GS', 'G11', 'K01', 'K04', 'KC-00', 'MKT-01', 'DEV-ENGINE-01'];
+  assert.deepEqual(validateManifest(taskSchema, value), []);
+});
+
+test('malformed or unsafe dependency references still fail static validation', () => {
+  for (const dependency of [
+    '', 'K4', 'K004', 'K-04', 'KC-0', 'KC-000', 'KC_00', 'kc-00',
+    'MKT01', 'MKT-1', 'DEV-ENGINE-1', 'DEV-ENGINE-001', 'UNKNOWN-01',
+    'S1', 'F11-4', 'G1', '../KC-00', 'K04/KC-00', 'KC-00 extra',
+    ' KC-00', 'KC-00 ', 'KC-00\n', 'KC-00\r\n', 'KC-00\u2028', 'KC-00\u0000',
+  ]) {
+    const value = structuredClone(taskExample);
+    value.dependencies.tasks = [dependency];
+    assert.ok(validateManifest(taskSchema, value).some((error) => error.includes('$.dependencies.tasks[0]')),
+      JSON.stringify(dependency));
+  }
 });
 
 test('unsupported or malformed schema features are errors, never silently ignored', () => {
@@ -165,12 +205,14 @@ test('all five Skills have role/input/evidence/SHA/output/stop boundaries, not a
 
 test('governance wording drift is advisory rather than a new live BLOCK gate', () => {
   const file = '.github/copilot-instructions.md';
-  const text = read(file).replace('Never self-ready or self-merge', 'Self-merge is allowed');
+  const text = 'Self-merge is allowed';
   const result = validateGuidance(file, text);
   assert.deepEqual(result.errors, []);
   assert.ok(result.warnings.some((warning) => warning.includes('coordinator-only')));
   const telemetry = `${home}/automations/development-telemetry-review.md`;
-  const changed = read(telemetry).replace('null with a reason, not zero', 'zero')
+  const controlled = 'Control maturity `SHADOW`. Unknown values are null with a reason, not zero. Do not generalize from a tiny cohort.';
+  assert.deepEqual(validateGuidance(telemetry, controlled), { errors: [], warnings: [] });
+  const changed = controlled.replace('null with a reason, not zero', 'zero')
     .replace('maturity `SHADOW`', 'maturity `BLOCK`');
   const drift = validateGuidance(telemetry, changed);
   assert.deepEqual(drift.errors, []);
@@ -201,7 +243,9 @@ test('a different tested merge-tree SHA is not itself stale CI; green CI is not 
   task.identity.current_head_sha = a;
   evidence.candidate.exact_head_sha = a;
   evidence.ci = { run: 'fixture:run', status: 'success', exact_sha: a, tested_checkout_sha: b, job: 'fixture:job', attempt: 1 };
-  assert.deepEqual(inspectProjections(task, evidence), []);
+  const freshCiWarnings = inspectProjections(task, evidence)
+    .filter((warning) => warning.startsWith('CI evidence') || warning.startsWith('Successful CI claim'));
+  assert.deepEqual(freshCiWarnings, []);
   assert.equal(evidence.post_main.status, 'pending');
   assert.equal(evidence.merge.ready, false);
   evidence.post_main.status = 'success';
