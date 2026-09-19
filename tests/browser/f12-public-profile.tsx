@@ -9,6 +9,13 @@ const root = document.getElementById('root');
 if (!root) throw new Error('F12 browser harness root missing');
 const slug = window.location.pathname.split('/').filter(Boolean).at(-1) ?? 'missing-salon';
 
+Object.defineProperty(navigator, 'share', {
+  configurable: true,
+  value: async (data: ShareData) => {
+    document.documentElement.dataset.f12SharedUrl = String(data.url ?? '');
+  },
+});
+
 function recordMetrics() {
   const anchors = Array.from(document.querySelectorAll<HTMLElement>('.public-salon-section-nav a'));
   document.documentElement.dataset.f12Overflow = String(document.documentElement.scrollWidth > window.innerWidth + 1);
