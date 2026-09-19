@@ -9,7 +9,7 @@
 
 Kullanıcının açık ve güncel talebi önceliklidir. Planlanan durum, uygulanmış kod ve doğrulanmış sonuç ayrı raporlanır. Sohbet tek kalıcı talimat veya devir kaynağı olamaz.
 
-Teknik düzeltmeler `S01…S08` ve kapı `GS`, [stabilizasyon planında](docs/plan/stabilization.md) tanımlıdır. Güncel tamamlanma ve açık PR sahipliği TASKS/PROJECT_STATE üzerinden kontrol edilir; tarihsel teslim yeni iş gibi sahiplenilmez. `K01…K03`, [mimari sözleşmelerdeki](docs/plan/architecture-contracts.md) tasarım bölümleridir, bağımlılık düğümü değildir. Plan değişikliği uygulama başlatmaz. Koordinatör mimari ve bağımsız incelemeyi yürütür; kullanıcının seçtiği varsayılan uygulayıcı **GPT-5.6 Sol**'dür. İnsan veya başka ajan katkısı açık dosya/görev sınırıyla aynı protokole uyar.
+Teknik düzeltmeler `S01…S08` ve kapı `GS`, [stabilizasyon planında](docs/plan/stabilization.md) tanımlıdır. Güncel tamamlanma ve kalıcı sahiplik yalnız TASKS üzerinden kontrol edilir; açık PR ve Issue #65 geçici çalışma/koordinasyon kanıtıdır ve tarihsel teslim yeni iş gibi sahiplenilmez. `K01…K03`, [mimari sözleşmelerdeki](docs/plan/architecture-contracts.md) tasarım bölümleridir, bağımlılık düğümü değildir. Plan değişikliği uygulama başlatmaz. Koordinatör mimari ve bağımsız incelemeyi yürütür; kullanıcının seçtiği varsayılan uygulayıcı **GPT-5.6 Sol**'dür. İnsan veya başka ajan katkısı açık dosya/görev sınırıyla aynı protokole uyar.
 
 ## Ürün ve mimari sınırları
 
