@@ -101,6 +101,7 @@ function normalizeR0(r0 = {}) {
     freeze: pick(r0.freeze, ['none', 'blockers', 'missing', 'unknown']),
     frozenBlockers: stableList(r0.frozenBlockers),
     blockerClosures: stableObjects(blockerClosures, 'id'),
+    reviewedHeadSha: r0.reviewedHeadSha ?? r0.sha ?? null,
     lineage: pick(r0.lineage, ['same_head', 'descendant', 'non_descendant', 'unknown']),
     change: pick(r0.change, ['same', 'docs_only_descendant', 'semantic_descendant', 'unknown']),
     deltaConfirmation: pick(r0.deltaConfirmation, ['confirmed', 'unconfirmed', 'unknown']),
@@ -202,10 +203,13 @@ function deriveCi(facts, unknowns, obligations) {
   }
 
   let baseApplicability = 'unknown';
-  if (!facts.candidate.baseMainSha || !facts.ci.baseMainSha) {
+  if (!facts.candidate.baseMainSha || !facts.ci.baseMainSha || !facts.observation.liveMainSha) {
     unknowns.add('CI_BASE_BINDING_UNKNOWN');
   } else {
-    baseApplicability = facts.candidate.baseMainSha === facts.ci.baseMainSha ? 'current' : 'stale';
+    baseApplicability = facts.candidate.baseMainSha === facts.ci.baseMainSha
+      && facts.candidate.baseMainSha === facts.observation.liveMainSha
+      ? 'current'
+      : 'stale';
   }
 
   let checkoutBinding = 'unknown';
@@ -247,42 +251,52 @@ function deriveR0(facts, contradictions, unknowns, obligations) {
     contradictions.add('R0_BLOCKER_FREEZE_WITHOUT_BLOCKERS');
   }
 
-  if (r0.requirement === 'not_required') return { mode: 'not_applicable', openBlockers: [], unverifiedBlockers: [] };
+  if (r0.requirement === 'not_required') return { mode: 'not_applicable', receiptFreshness: 'not_applicable', openBlockers: [], unverifiedBlockers: [] };
   if (r0.requirement === 'unknown') {
     unknowns.add('R0_REQUIREMENT_UNKNOWN');
-    return { mode: 'unknown', openBlockers: [], unverifiedBlockers: [] };
+    return { mode: 'unknown', receiptFreshness: 'unknown', openBlockers: [], unverifiedBlockers: [] };
   }
 
   if (r0.receipt === 'inaccessible') {
     unknowns.add('R0_RECEIPT_INACCESSIBLE');
     addObligation(obligations, 'RECOVER_R0_RECEIPT', { role: 'coordinator', source: 'r0' });
-    return { mode: 'unknown', openBlockers: [], unverifiedBlockers: [] };
+    return { mode: 'unknown', receiptFreshness: 'unknown', openBlockers: [], unverifiedBlockers: [] };
   }
   if (r0.receipt === 'unknown') {
     unknowns.add('R0_RECEIPT_UNKNOWN');
-    return { mode: 'unknown', openBlockers: [], unverifiedBlockers: [] };
+    return { mode: 'unknown', receiptFreshness: 'unknown', openBlockers: [], unverifiedBlockers: [] };
   }
   if (r0.receipt === 'missing') {
     addObligation(obligations, 'R0_DISCOVERY_REQUIRED', { role: 'r0', source: 'r0' });
-    return { mode: 'discovery_needed', openBlockers: [], unverifiedBlockers: [] };
-  }
-  if (r0.lineage === 'non_descendant') {
-    addObligation(obligations, 'R0_LINEAGE_REFRESH_REQUIRED', { role: 'coordinator', source: 'r0' });
-    return { mode: 'conflict', openBlockers: [], unverifiedBlockers: [] };
-  }
-  if (r0.lineage === 'unknown') {
-    unknowns.add('R0_LINEAGE_UNKNOWN');
-    return { mode: 'unknown', openBlockers: [], unverifiedBlockers: [] };
-  }
-  if (r0.lineage === 'descendant') {
-    addObligation(obligations, 'R0_VERIFICATION_REQUIRED', { role: 'r0', source: 'r0' });
-    return { mode: 'verification_needed', openBlockers: [], unverifiedBlockers: [] };
+    return { mode: 'discovery_needed', receiptFreshness: 'missing', openBlockers: [], unverifiedBlockers: [] };
   }
 
-  if (r0.freeze === 'none') return { mode: 'satisfied_none', openBlockers: [], unverifiedBlockers: [] };
+  if (!facts.candidate.headSha || !r0.reviewedHeadSha) {
+    unknowns.add('R0_REVIEWED_HEAD_UNKNOWN');
+    return { mode: 'unknown', receiptFreshness: 'unknown', openBlockers: [], unverifiedBlockers: [] };
+  }
+
+  const receiptFreshness = r0.reviewedHeadSha === facts.candidate.headSha ? 'current' : 'historical';
+  if (receiptFreshness === 'historical') {
+    if (r0.lineage === 'non_descendant') {
+      addObligation(obligations, 'R0_LINEAGE_REFRESH_REQUIRED', { role: 'coordinator', source: 'r0' });
+      return { mode: 'conflict', receiptFreshness, openBlockers: [], unverifiedBlockers: [] };
+    }
+    if (r0.lineage === 'unknown' || r0.lineage === 'same_head') {
+      if (r0.lineage === 'same_head') contradictions.add('R0_SAME_HEAD_LINEAGE_SHA_MISMATCH');
+      unknowns.add('R0_LINEAGE_UNKNOWN');
+      return { mode: 'unknown', receiptFreshness, openBlockers: [], unverifiedBlockers: [] };
+    }
+    if (r0.lineage === 'descendant') {
+      addObligation(obligations, 'R0_VERIFICATION_REQUIRED', { role: 'r0', source: 'r0' });
+      return { mode: 'verification_needed', receiptFreshness, openBlockers: [], unverifiedBlockers: [] };
+    }
+  }
+
+  if (r0.freeze === 'none') return { mode: 'satisfied_none', receiptFreshness, openBlockers: [], unverifiedBlockers: [] };
   if (r0.freeze === 'missing' || r0.freeze === 'unknown') {
     unknowns.add('R0_FREEZE_UNKNOWN');
-    return { mode: 'unknown', openBlockers: [], unverifiedBlockers: [] };
+    return { mode: 'unknown', receiptFreshness, openBlockers: [], unverifiedBlockers: [] };
   }
 
   const closureById = new Map(r0.blockerClosures.map((entry) => [entry.id, entry.status]));
@@ -296,15 +310,14 @@ function deriveR0(facts, contradictions, unknowns, obligations) {
 
   if (openBlockers.length > 0) {
     addObligation(obligations, 'R0_FROZEN_BLOCKER_REPAIR_REQUIRED', { role: 'implementer', source: 'r0' });
-    return { mode: 'blocked', openBlockers: stableList(openBlockers), unverifiedBlockers: stableList(unverifiedBlockers) };
+    return { mode: 'blocked', receiptFreshness, openBlockers: stableList(openBlockers), unverifiedBlockers: stableList(unverifiedBlockers) };
   }
   if (unverifiedBlockers.length > 0) {
     addObligation(obligations, 'R0_VERIFICATION_REQUIRED', { role: 'r0', source: 'r0' });
-    return { mode: 'verification_needed', openBlockers: [], unverifiedBlockers: stableList(unverifiedBlockers) };
+    return { mode: 'verification_needed', receiptFreshness, openBlockers: [], unverifiedBlockers: stableList(unverifiedBlockers) };
   }
-  return { mode: 'satisfied_blockers', openBlockers: [], unverifiedBlockers: [] };
+  return { mode: 'satisfied_blockers', receiptFreshness, openBlockers: [], unverifiedBlockers: [] };
 }
-
 function reviewFreshness(facts, review) {
   if (!facts.candidate.headSha || !review.reviewedHeadSha) return 'unknown';
   if (review.reviewedHeadSha === facts.candidate.headSha) return 'current';
@@ -417,9 +430,7 @@ function derivePostMain(facts, unknowns, obligations) {
 }
 
 export function deriveConditions(inputFacts) {
-  const facts = inputFacts?.candidate && inputFacts?.task && inputFacts?.ci
-    ? inputFacts
-    : normalizeFacts(inputFacts);
+  const facts = normalizeFacts(inputFacts);
 
   const contradictions = new Set();
   const unknowns = new Set();
@@ -524,6 +535,14 @@ export function recommendNextAction(conditions) {
     return recommendation('refuse', 'coordinator', 'refresh_snapshot', ['HEAD_CHANGED_DURING_OBSERVATION'], {
       blockedBy: ['stale_snapshot'],
       rule: 'R1_FRESHNESS_INVALIDATES_HEAD_BOUND_ROUTING',
+      facts: ['observation.observedHeadSha', 'observation.liveHeadSha'],
+      conditions: ['state.snapshotFreshness'],
+    });
+  }
+  if (state.candidatePresence === 'active' && state.snapshotFreshness === 'unknown') {
+    return recommendation('refuse', 'coordinator', 'refresh_snapshot', ['HEAD_FRESHNESS_UNKNOWN'], {
+      blockedBy: ['head_freshness_unknown'],
+      rule: 'R1B_UNKNOWN_HEAD_FRESHNESS_REFUSES_HEAD_BOUND_ROUTING',
       facts: ['observation.observedHeadSha', 'observation.liveHeadSha'],
       conditions: ['state.snapshotFreshness'],
     });
