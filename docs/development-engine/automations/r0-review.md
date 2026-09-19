@@ -65,7 +65,7 @@ comment draft to the operator.
 
 ```text
 VERDICT: FINDINGS | NO FINDINGS | INCOMPLETE
-BLOCKERS: open frozen IDs / ESCAPE-BLOCKER with invariant, or NONE
+BLOCKERS: open frozen IDs / ESCAPE-BLOCKER with invariant; NONE only when verified empty; UNKNOWN when blocker identity/provenance is unresolved
 EVIDENCE GAPS: missing / failed / skipped / unavailable checks, or NONE
 REVIEWED SHA: exact reviewed head
 NEXT ACTION: coordinator's next concrete step

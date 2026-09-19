@@ -230,12 +230,22 @@ test('review lineage kernel is canonical and R0/R1/R2 outputs stay decision-firs
     const text = read(file);
     assert.deepEqual(validateGuidance(file, text).errors, [], file);
     for (const label of decisionFirstLabels) assert.ok(text.includes(label), `${file} missing ${label}`);
+    assert.match(text, /BLOCKERS:.*NONE.*UNKNOWN/, `${file} must distinguish verified-empty NONE from unresolved UNKNOWN`);
     assert.ok(text.includes('#review-lineage-kernel'), `${file} missing canonical kernel ref`);
     const withoutKernelRef = text.replace(/.*#review-lineage-kernel\).*\n/, '');
     assert.ok(validateGuidance(file, withoutKernelRef).errors.some((error) => error.includes('canonical review lineage kernel')));
     const withoutReviewedSha = text.replace('REVIEWED SHA:', 'REVIEW SHA:');
     assert.ok(validateGuidance(file, withoutReviewedSha).errors.some((error) => error.includes('decision-first receipt labels')));
+    const reordered = text.replace(/(REVIEWED SHA:[^\n]*\n)(NEXT ACTION:[^\n]*\n)/, '$2$1');
+    assert.ok(validateGuidance(file, reordered).errors.some((error) => error.includes('canonical order')));
+    const prefaced = text.replace('```text\nVERDICT:', '```text\nNOTE: not decision-first\nVERDICT:');
+    assert.ok(validateGuidance(file, prefaced).errors.some((error) => error.includes('must start with VERDICT')));
   }
+  const staleDetector = 'docs/development-engine/automations/stale-review-detector.md';
+  const staleText = read(staleDetector);
+  assert.deepEqual(validateGuidance(staleDetector, staleText).errors, []);
+  const staleWithoutKernelRef = staleText.replace(/.*#review-lineage-kernel\).*\n/, '');
+  assert.ok(validateGuidance(staleDetector, staleWithoutKernelRef).errors.some((error) => error.includes('canonical review lineage kernel')));
 });
 
 test('governance wording drift is advisory rather than a new live BLOCK gate', () => {
@@ -348,6 +358,17 @@ test('required review and unfinished current proof remain visible', () => {
     assert.deepEqual(validateManifest(evidenceSchema, evidence), []);
     assert.ok(inspectProjections(task, evidence).some((warning) => warning.includes(`current proof result is ${status}`)));
   }
+  const unbound = candidateProjection();
+  unbound.evidence.proofs.push({
+    ...unbound.evidence.proofs[0],
+    kind: 'browser',
+    status: 'pending',
+    exact_sha: null,
+    tested_checkout_sha: null,
+    ref: 'fixture:unbound-pending',
+  });
+  assert.ok(inspectProjections(unbound.task, unbound.evidence)
+    .some((warning) => warning.includes('non-pass proof is not bound to a candidate SHA')));
   const { task, evidence } = candidateProjection();
   evidence.proofs.push({ ...evidence.proofs[0], kind: 'browser' });
   assert.deepEqual(inspectProjections(task, evidence), []);

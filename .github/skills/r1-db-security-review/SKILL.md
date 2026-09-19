@@ -53,7 +53,7 @@ green CI alone does not establish the access/concurrency invariant.
 
 ```text
 VERDICT: ACCEPTABLE | BLOCKER | INCOMPLETE
-BLOCKERS: open carried findings or new confirmed blockers, or NONE
+BLOCKERS: open carried findings or new confirmed blockers; NONE only when verified empty; UNKNOWN when blocker identity/provenance is unresolved
 EVIDENCE GAPS: missing / failed / skipped obligations, or NONE
 REVIEWED SHA: exact candidate head reviewed for this receipt
 NEXT ACTION: coordinator's next concrete step

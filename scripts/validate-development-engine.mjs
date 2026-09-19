@@ -13,8 +13,14 @@ const reviewLineageKernelHeading = '### Review lineage kernel';
 export const reviewLineageKernelRef = 'docs/plan/agent-workflow.md#review-lineage-kernel';
 const reviewLineageRefs = new Map([
   ['docs/development-engine/automations/r0-review.md', '../../plan/agent-workflow.md#review-lineage-kernel'],
+  ['docs/development-engine/automations/stale-review-detector.md', '../../plan/agent-workflow.md#review-lineage-kernel'],
   ['.github/skills/r1-db-security-review/SKILL.md', '../../../docs/plan/agent-workflow.md#review-lineage-kernel'],
   ['.github/skills/r2-browser-integration-review/SKILL.md', '../../../docs/plan/agent-workflow.md#review-lineage-kernel'],
+]);
+const decisionFirstFiles = new Set([
+  'docs/development-engine/automations/r0-review.md',
+  '.github/skills/r1-db-security-review/SKILL.md',
+  '.github/skills/r2-browser-integration-review/SKILL.md',
 ]);
 const sections = ['Role', 'Required inputs', 'Allowed actions', 'Forbidden actions', 'Evidence', 'Exact SHA', 'Output', 'Stop'];
 const keywords = new Set(['$schema', 'title', 'description', 'type', 'const', 'enum', 'properties',
@@ -189,9 +195,15 @@ export function validateGuidance(file, markdown) {
   if (reviewLineageRefs.has(file)) {
     const expectedRef = reviewLineageRefs.get(file);
     if (!markdown.includes(expectedRef)) errors.push(`must reference canonical review lineage kernel ${expectedRef}`);
+  }
+  if (decisionFirstFiles.has(file)) {
     const output = codeFence(sectionBody(markdown, 'Output') ?? '');
     if (!output) errors.push('missing text output code fence for decision-first receipt');
-    else if (!orderedLabels(output, decisionFirstLabels)) errors.push('decision-first receipt labels must appear in canonical order');
+    else {
+      const normalizedOutput = output.trimStart();
+      if (!normalizedOutput.startsWith('VERDICT:')) errors.push('decision-first receipt must start with VERDICT');
+      if (!orderedLabels(output, decisionFirstLabels)) errors.push('decision-first receipt labels must appear in canonical order');
+    }
   }
   const normalized = markdown.replace(/\s+/g, ' ');
   for (const [target, pattern, invariant] of driftRules) {
@@ -228,8 +240,14 @@ export function inspectProjections(task, evidence) {
     if (task.review[role] === 'required' && review.verdict !== 'acceptable') warnings.push(`${role}: required review has no acceptable receipt (${review.verdict}).`);
   }
   for (const proof of evidence.proofs) {
-    if (head && proof.exact_sha === head && proof.status !== 'pass') {
-      warnings.push(`${proof.obligation}: ${proof.kind} current proof result is ${proof.status}; inspect obligation coverage (${proof.ref ?? 'no reference'}).`);
+    if (proof.status !== 'pass') {
+      if (!proof.exact_sha) {
+        warnings.push(`${proof.obligation}: non-pass proof is not bound to a candidate SHA.`);
+      } else if (head && proof.exact_sha === head) {
+        warnings.push(`${proof.obligation}: ${proof.kind} current proof result is ${proof.status}; inspect obligation coverage (${proof.ref ?? 'no reference'}).`);
+      } else if (head && proof.exact_sha !== head) {
+        warnings.push(`${proof.obligation}: non-pass proof is historical, not current candidate evidence.`);
+      }
     }
     if (['pass', 'fail'].includes(proof.status) && !proof.ref) warnings.push(`${proof.obligation}: proof result has no evidence reference.`);
     if (['pass', 'fail'].includes(proof.status)) {
