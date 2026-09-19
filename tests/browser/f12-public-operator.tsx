@@ -150,7 +150,7 @@ function recordReady() {
   if (
     text.includes('Salon profiliniz ve randevu bağlantınız') ||
     text.includes('Çalışma alanı açılamadı.') ||
-    text.includes('Şu anda online randevuya açık hizmet bulunmuyor.')
+    text.includes('Şu anda seçilebilecek hizmet bulunmuyor.')
   ) {
     document.documentElement.dataset.f12OperatorReady = 'true';
   }
