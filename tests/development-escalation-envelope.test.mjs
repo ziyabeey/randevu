@@ -109,7 +109,9 @@ test('Haiku request owns the Opus handoff without doing the Opus reasoning', () 
   assert.match(text, /^EVIDENCE_COMPRESSION_REQUEST/);
   assert.match(text, /sole model layer authorized to trigger the Opus Escalation Governor/);
   assert.match(text, /Do not answer the technical question yourself/);
-  assert.match(text, /node scripts\/fire-opus-escalation\.mjs --package .* --expected-fingerprint [a-f0-9]{64}/);
+  assert.match(text, /SOURCE_ENVELOPE_BYTES = \d+/);
+  assert.match(text, /node scripts\/fire-opus-escalation\.mjs --package .* --expected-fingerprint [a-f0-9]{64} --expected-source-bytes \d+/);
+  assert.match(text, /COMPRESSION_RATIO/);
   assert.match(text, /Do not ask GitHub Actions, the dispatcher, or the caller to trigger Opus/);
   assert.match(text, /OPUS_HANDOFF_BLOCKED/);
   assert.match(text, new RegExp(head));
