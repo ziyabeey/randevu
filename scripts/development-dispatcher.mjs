@@ -1,5 +1,5 @@
 function stableList(values) {
-  return [...new Set((values ?? []).filter((value) => typeof value === 'string' && value.length > 0))]
+  return [...new Set(Array.from(values ?? []).filter((value) => typeof value === 'string' && value.length > 0))]
     .sort((left, right) => left.localeCompare(right, 'en'));
 }
 

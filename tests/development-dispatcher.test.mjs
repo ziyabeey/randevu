@@ -219,6 +219,23 @@ test('docs-only descendants keep current acceptable reviews while semantic desce
   });
 });
 
+test('required R1 and R2 pending/blocker/incomplete states remain visible', async (t) => {
+  for (const role of ['r1', 'r2']) {
+    for (const verdict of ['pending', 'blocker', 'incomplete']) {
+      await t.test(`${role}:${verdict}`, () => {
+        const result = deriveEffectiveState(baseSnapshot({
+          reviews: {
+            [role]: { required: true, verdict, receipt: 'accessible' },
+          },
+        }));
+        assert.equal(result.lifecycle, 'REVIEW_DISPATCH');
+        assert.deepEqual(result.pendingReviews, [role]);
+        assert.ok(result.reasonCodes.includes(`${role.toUpperCase()}_${verdict.toUpperCase()}`));
+      });
+    }
+  }
+});
+
 test('required R1 and R2 states remain distinct and block merge-ready inference', () => {
   const result = deriveEffectiveState(baseSnapshot({
     reviews: {
@@ -253,17 +270,21 @@ test('explicitly bound merge-ref differs from raw head without becoming stale', 
   assert.deepEqual(result.evidenceGaps, []);
 });
 
-test('current failing or pending proof cannot be masked by another pass', () => {
-  const result = deriveEffectiveState(baseSnapshot({
-    proofs: [
-      { key: 'browser', status: 'pass', exactHeadSha: headA, required: true },
-      { key: 'browser', status: 'fail', exactHeadSha: headA, required: true },
-      { key: 'docs', status: 'pass', exactHeadSha: oldHead, required: true },
-    ],
-  }));
-  assert.equal(result.lifecycle, 'WAIT_PROOF');
-  assert.ok(result.reasonCodes.includes('CURRENT_PROOF_NOT_PASS'));
-  assert.ok(result.evidenceGaps.includes('PROOF_BROWSER_FAIL'));
+test('current fail/pending/skipped proof cannot be masked by another pass', async (t) => {
+  for (const status of ['fail', 'pending', 'skipped']) {
+    await t.test(status, () => {
+      const result = deriveEffectiveState(baseSnapshot({
+        proofs: [
+          { key: 'browser', status: 'pass', exactHeadSha: headA, required: true },
+          { key: 'browser', status, exactHeadSha: headA, required: true },
+          { key: 'docs', status: 'pass', exactHeadSha: oldHead, required: true },
+        ],
+      }));
+      assert.equal(result.lifecycle, 'WAIT_PROOF');
+      assert.ok(result.reasonCodes.includes('CURRENT_PROOF_NOT_PASS'));
+      assert.ok(result.evidenceGaps.includes(`PROOF_BROWSER_${status.toUpperCase()}`));
+    });
+  }
 });
 
 test('shared-writer overlap requires coordinator intervention', () => {
