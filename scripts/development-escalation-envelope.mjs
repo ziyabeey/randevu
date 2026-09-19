@@ -51,14 +51,17 @@ const HUMAN_ACTIONS = new Set([
 ]);
 
 function sortStrings(values) {
-  return [...new Set(Array.from(values ?? []).filter((value) => typeof value === 'string' && value.length > 0))]
+  return [...new Set(Array.from(values ?? [])
+    .filter((value) => typeof value === 'string' && value.length > 0))]
     .sort((a, b) => a.localeCompare(b, 'en'));
 }
 
 function stableValue(value) {
   if (Array.isArray(value)) return value.map(stableValue);
   if (!value || typeof value !== 'object') return value;
-  return Object.fromEntries(Object.keys(value).sort((a, b) => a.localeCompare(b, 'en')).map((key) => [key, stableValue(value[key])]));
+  return Object.fromEntries(Object.keys(value)
+    .sort((a, b) => a.localeCompare(b, 'en'))
+    .map((key) => [key, stableValue(value[key])]));
 }
 
 function stableJson(value) {
@@ -68,7 +71,9 @@ function stableJson(value) {
 function normalizeMaterialEvidence(evidence = {}) {
   return {
     observedAt: typeof evidence.observedAt === 'string' ? evidence.observedAt : null,
-    question: typeof evidence.question === 'string' && evidence.question.trim() ? evidence.question.trim() : null,
+    question: typeof evidence.question === 'string' && evidence.question.trim()
+      ? evidence.question.trim()
+      : null,
     escalationType: typeof evidence.escalationType === 'string' && evidence.escalationType.trim()
       ? evidence.escalationType.trim()
       : null,
@@ -77,6 +82,10 @@ function normalizeMaterialEvidence(evidence = {}) {
     sourceRefs: sortStrings(evidence.sourceRefs),
     materialFacts: stableValue(evidence.materialFacts ?? {}),
   };
+}
+
+function mergedSourceRefs(dispatcherResult, evidence) {
+  return sortStrings([...(dispatcherResult?.sourceRefs ?? []), ...evidence.sourceRefs]);
 }
 
 export function classifyEscalationDisposition(dispatcherResult = {}) {
@@ -91,8 +100,12 @@ export function classifyEscalationDisposition(dispatcherResult = {}) {
   }
 
   if (NO_ACTIONS.has(action)) return { disposition: 'NO_ACTION', reason: action };
-  if (DETERMINISTIC_ACTIONS.has(action)) return { disposition: 'DETERMINISTIC_ACTION', reason: action };
-  if (REASONING_ACTIONS.has(action)) return { disposition: 'REASONING_REQUIRED', reason: action };
+  if (DETERMINISTIC_ACTIONS.has(action)) {
+    return { disposition: 'DETERMINISTIC_ACTION', reason: action };
+  }
+  if (REASONING_ACTIONS.has(action)) {
+    return { disposition: 'REASONING_REQUIRED', reason: action };
+  }
   if (HUMAN_ACTIONS.has(action)) return { disposition: 'HUMAN_REQUIRED', reason: action };
 
   return {
@@ -132,7 +145,7 @@ function materialFingerprintInput(dispatcherResult, evidence, classification) {
     actionsAlreadyTaken: evidence.actionsAlreadyTaken,
     forbiddenScope: evidence.forbiddenScope,
     materialFacts: evidence.materialFacts,
-    sourceRefs: evidence.sourceRefs,
+    sourceRefs: mergedSourceRefs(dispatcherResult, evidence),
   };
 }
 
@@ -143,15 +156,26 @@ export function buildCaseFingerprint(dispatcherResult = {}, rawEvidence = {}) {
   return createHash('sha256').update(stableJson(material)).digest('hex');
 }
 
+function sourceEnvelopePayload(envelope = {}) {
+  const { sourceEnvelopeBytes: _bytes, trust: _trust, ...payload } = envelope;
+  return payload;
+}
+
+export function canonicalSourceEnvelopeJson(envelope = {}) {
+  return stableJson(sourceEnvelopePayload(envelope));
+}
+
 export function buildEscalationEnvelope(dispatcherResult = {}, rawEvidence = {}) {
   const classification = classifyEscalationDisposition(dispatcherResult);
-  if (!DISPOSITIONS.has(classification.disposition)) throw new Error('Invalid escalation disposition.');
+  if (!DISPOSITIONS.has(classification.disposition)) {
+    throw new Error('Invalid escalation disposition.');
+  }
   const evidence = normalizeMaterialEvidence(rawEvidence);
   const facts = dispatcherResult?.facts ?? {};
   const candidate = facts.candidate ?? {};
   const observation = facts.observation ?? {};
 
-  const envelope = {
+  const baseEnvelope = {
     schemaVersion: 'development-escalation-envelope.v0',
     disposition: classification.disposition,
     dispositionReason: classification.reason,
@@ -164,6 +188,7 @@ export function buildEscalationEnvelope(dispatcherResult = {}, rawEvidence = {})
       observedAt: evidence.observedAt,
     },
     dispatcher: {
+      facts: stableValue(facts),
       recommendation: stableValue(dispatcherResult?.recommendation ?? null),
       contradictions: sortStrings(dispatcherResult?.contradictions),
       unknowns: sortStrings(dispatcherResult?.unknowns),
@@ -175,14 +200,15 @@ export function buildEscalationEnvelope(dispatcherResult = {}, rawEvidence = {})
       question: evidence.question,
       actionsAlreadyTaken: evidence.actionsAlreadyTaken,
       forbiddenScope: evidence.forbiddenScope,
-      sourceRefs: sortStrings([...(dispatcherResult?.sourceRefs ?? []), ...evidence.sourceRefs]),
+      sourceRefs: mergedSourceRefs(dispatcherResult, evidence),
       materialFacts: evidence.materialFacts,
     },
+    caseFingerprint: buildCaseFingerprint(dispatcherResult, rawEvidence),
   };
 
   return {
-    ...envelope,
-    caseFingerprint: buildCaseFingerprint(dispatcherResult, rawEvidence),
+    ...baseEnvelope,
+    sourceEnvelopeBytes: Buffer.byteLength(stableJson(baseEnvelope), 'utf8'),
   };
 }
 
@@ -190,37 +216,58 @@ export function renderHaikuCompressionRequest(envelope = {}) {
   if (envelope.disposition !== 'REASONING_REQUIRED') {
     throw new Error(`Haiku compression is only valid for REASONING_REQUIRED; received ${envelope.disposition ?? 'unknown'}.`);
   }
+  if (!/^[a-f0-9]{64}$/.test(envelope.caseFingerprint ?? '')) {
+    throw new Error('Haiku compression requires a valid case fingerprint.');
+  }
+  if (!Number.isInteger(envelope.sourceEnvelopeBytes) || envelope.sourceEnvelopeBytes <= 0) {
+    throw new Error('Haiku compression requires a valid source envelope byte count.');
+  }
 
-  const sourceEnvelopeJson = stableJson(envelope);
-  const sourceEnvelopeBytes = Buffer.byteLength(sourceEnvelopeJson, 'utf8');
+  const sourceEnvelopeJson = canonicalSourceEnvelopeJson(envelope);
+  const actualSourceBytes = Buffer.byteLength(sourceEnvelopeJson, 'utf8');
+  if (actualSourceBytes !== envelope.sourceEnvelopeBytes) {
+    throw new Error('Haiku compression source envelope byte count changed.');
+  }
+
+  const attestation = envelope.trust?.githubOidcAttestation;
+  if (typeof attestation !== 'string' || !/^[-_A-Za-z0-9]+\.[-_A-Za-z0-9]+\.[-_A-Za-z0-9]+$/.test(attestation)) {
+    throw new Error('Haiku compression requires a GitHub OIDC attestation.');
+  }
 
   return [
     'EVIDENCE_COMPRESSION_REQUEST',
     '',
     'You are the Haiku Evidence Context Compressor and the sole model layer authorized to trigger the Opus Escalation Governor for this case.',
-    'Compress the following freshness-fenced dispatcher envelope. Do not answer the technical question yourself.',
-    'Preserve exact SHA/PR/CI/review provenance, contradictions, unknowns, forbidden scope and source references.',
+    'Compress the freshness-fenced source envelope below. Do not answer the technical question yourself.',
+    'Preserve exact SHA/PR/CI/review/proof provenance, contradictions, unknowns, forbidden scope and source references.',
     'Remove duplicate or historical material that does not affect the current candidate.',
     '',
-    'When compression is complete, write one JSON object to a temporary file with exactly these top-level fields:',
+    'Write exactly one JSON object to /tmp/kepenk-opus-handoff.json with these top-level fields:',
     'DISPOSITION = "REASONING_REQUIRED"',
     'CASE_FINGERPRINT = the unchanged dispatcher case fingerprint',
-    `SOURCE_ENVELOPE_BYTES = ${sourceEnvelopeBytes}`,
+    `SOURCE_ENVELOPE_BYTES = ${envelope.sourceEnvelopeBytes}`,
+    `TRUSTED_ATTESTATION = ${attestation}`,
     'OPUS_ESCALATION_PACKAGE = the compact package defined by your routine instructions',
     '',
-    'Then trigger Opus exactly once from THIS Haiku routine session by executing this fingerprint-bound command:',
-    `node scripts/fire-opus-escalation.mjs --package <temporary-json-file> --expected-fingerprint ${envelope.caseFingerprint} --expected-source-bytes ${sourceEnvelopeBytes}`,
+    'Do not interpolate evidence values into shell syntax.',
+    'After writing the JSON file, run this fixed command exactly once:',
+    'node scripts/fire-opus-escalation.mjs --package /tmp/kepenk-opus-handoff.json',
     '',
-    'Do not ask GitHub Actions, the dispatcher, or the caller to trigger Opus for you.',
+    'The adapter cryptographically verifies the GitHub-issued attestation and binds it to the original case fingerprint, source byte count, workflow and repository.',
+    'Do not ask GitHub Actions, the Dispatcher, or the caller to trigger Opus for you.',
     'Do not expose CLAUDE_OPUS_ROUTINE_URL or CLAUDE_OPUS_ROUTINE_TOKEN.',
     'If the handoff command cannot run or does not return OPUS_TRIGGERED, stop with OPUS_HANDOFF_BLOCKED and the exact non-secret reason.',
-    'After a successful handoff, report only OPUS_TRIGGERED, CASE_FINGERPRINT, SOURCE_ENVELOPE_BYTES, COMPRESSED_PACKAGE_BYTES, COMPRESSION_RATIO and the returned Claude session URL. Do not perform Opus-level reasoning yourself.',
+    'After a successful handoff, report only OPUS_TRIGGERED, CASE_FINGERPRINT, SOURCE_ENVELOPE_BYTES, COMPRESSED_PACKAGE_BYTES, COMPRESSION_RATIO and the returned Claude session URL.',
+    'Do not perform Opus-level reasoning yourself.',
     '',
+    'SOURCE_ENVELOPE_JSON',
     sourceEnvelopeJson,
   ].join('\n');
 }
 
 export function buildRoutineFireBody(text) {
-  if (typeof text !== 'string' || !text.trim()) throw new Error('Routine fire text must be a non-empty string.');
+  if (typeof text !== 'string' || !text.trim()) {
+    throw new Error('Routine fire text must be a non-empty string.');
+  }
   return { text };
 }
