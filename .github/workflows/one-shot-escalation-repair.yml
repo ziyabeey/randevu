@@ -1,0 +1,89 @@
+name: One-shot escalation repair
+
+on:
+  push:
+    branches:
+      - experiment/escalation-context-delivery
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    name: Close dispatcher review findings
+    if: ${{ contains(github.event.head_commit.message, 'trigger one-shot escalation repair') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experiment/escalation-context-delivery
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Apply exact bounded repairs
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          from pathlib import Path
+
+          dispatcher = Path('scripts/development-dispatcher.mjs')
+          text = dispatcher.read_text()
+          old = """  if (facts.r0.lineage === 'descendant'\n    && facts.r0.change === 'docs_only_descendant'\n    && facts.r0.deltaConfirmation === 'confirmed') return 'carried_forward';\n"""
+          new = """  if (facts.r0.lineage === 'descendant'\n    && facts.r0.change === 'docs_only_descendant'\n    && facts.r0.deltaConfirmation === 'confirmed'\n    && facts.r0.reviewedHeadSha\n    && review.reviewedHeadSha === facts.r0.reviewedHeadSha) return 'carried_forward';\n"""
+          if old not in text:
+              raise SystemExit('dispatcher carry-forward anchor not found')
+          dispatcher.write_text(text.replace(old, new, 1))
+
+          tests = Path('tests/development-dispatcher.test.mjs')
+          text = tests.read_text()
+          anchor = """  await t.test('explicit confirmation carries review without relabeling it current', () => {\n    const output = result({\n      r0: { lineage: 'descendant', change: 'docs_only_descendant', deltaConfirmation: 'confirmed' },\n      reviews,\n    });\n    assert.equal(output.state.reviews.r1.freshness, 'carried_forward');\n    assert.equal(output.state.reviews.r1.status, 'acceptable_carried_forward');\n    assert.equal(output.recommendation.suggestedAction, 'assess_current_evidence');\n  });\n"""
+          addition = anchor + """\n  await t.test('confirmation carries only the exact confirmed ancestor receipt', () => {\n    const output = result({\n      r0: {\n        reviewedHeadSha: oldHead,\n        lineage: 'descendant',\n        change: 'docs_only_descendant',\n        deltaConfirmation: 'confirmed',\n      },\n      reviews: {\n        r1: {\n          requirement: 'required',\n          verdict: 'acceptable',\n          receipt: 'accessible',\n          reviewedHeadSha: sha('f'),\n        },\n      },\n    });\n    assert.equal(output.state.reviews.r1.freshness, 'stale');\n    assert.equal(output.state.reviews.r1.status, 'stale');\n    assert.equal(output.recommendation.suggestedAction, 'request_required_reviews');\n  });\n"""
+          if anchor not in text:
+              raise SystemExit('dispatcher test anchor not found')
+          tests.write_text(text.replace(anchor, addition, 1))
+
+          tasks = Path('TASKS.md')
+          text = tasks.read_text()
+          if '| DEV-ENGINE-02 |' not in text:
+              lines = text.splitlines()
+              index = next((i for i, line in enumerate(lines) if line.startswith('| [DEV-ENGINE-01]')), None)
+              if index is None:
+                  raise SystemExit('DEV-ENGINE-01 TASKS row not found')
+              row = ('| DEV-ENGINE-02 | Deterministik dispatcher, Haiku context compression ve Opus escalation delivery | '
+                     'DEV-ENGINE-01 | İncelemede | Koordinatör / 2026-09-19 | M / FOCUSED · '
+                     '[PR #182](https://github.com/ziyabeey1-ai/randevu/pull/182) current repair candidate · '
+                     '[PR #179](https://github.com/ziyabeey1-ai/randevu/pull/179) bu PR tarafından superseded · '
+                     'pure reducer + GitHub OIDC-attested Haiku → Opus handoff · exact-head CI ve review-thread kapanışı bekleniyor |')
+              lines.insert(index + 1, row)
+              tasks.write_text('\n'.join(lines) + '\n')
+
+          Path('.github/workflows/one-shot-escalation-repair.yml').unlink()
+          PY
+
+      - name: Run focused regression tests
+        run: |
+          set -euo pipefail
+          node --check scripts/development-dispatcher.mjs
+          node --check scripts/development-escalation-envelope.mjs
+          node --check scripts/fire-claude-routine.mjs
+          node --check scripts/fire-opus-escalation.mjs
+          node --check scripts/prepare-haiku-escalation-request.mjs
+          node --test \
+            tests/development-dispatcher.test.mjs \
+            tests/development-escalation-envelope.test.mjs \
+            tests/fire-opus-escalation.test.mjs
+          git diff --check
+
+      - name: Commit bounded repair
+        run: |
+          set -euo pipefail
+          git config user.name 'Kepenk Coordinator'
+          git config user.email 'actions@users.noreply.github.com'
+          git add scripts/development-dispatcher.mjs tests/development-dispatcher.test.mjs TASKS.md .github/workflows/one-shot-escalation-repair.yml
+          git commit -m 'repair: close escalation review and task authority gaps'
+          git push origin HEAD:experiment/escalation-context-delivery
