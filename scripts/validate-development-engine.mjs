@@ -163,6 +163,14 @@ export function inspectProjections(task, evidence) {
   if (!head || !task.identity.current_head_sha) warnings.push('Candidate identity is unknown; no live acceptance can be inferred.');
   else if (head !== task.identity.current_head_sha) warnings.push('Task and Evidence heads differ; refresh the projection.');
   if (head && evidence.ci.exact_sha !== head) warnings.push('CI evidence is missing or stale for the candidate.');
+  if (evidence.ci.status !== 'success') warnings.push(`CI result is not successful: ${evidence.ci.status}; required evidence remains incomplete.`);
+  if (evidence.ci.status === 'success') {
+    if (!evidence.candidate.base_main_sha || !evidence.ci.base_main_sha) {
+      warnings.push('CI base identity is unknown; current integration freshness cannot be inferred.');
+    } else if (evidence.candidate.base_main_sha !== evidence.ci.base_main_sha) {
+      warnings.push('CI base differs from the observed candidate base; refresh integration evidence.');
+    }
+  }
   if (evidence.ci.status === 'success'
     && (!evidence.ci.run || !evidence.ci.job || !evidence.ci.attempt || !evidence.ci.tested_checkout_sha || !evidence.ci.exact_sha)) {
     warnings.push('Successful CI claim lacks exact run/job/attempt/checkout provenance.');
@@ -173,9 +181,22 @@ export function inspectProjections(task, evidence) {
     if (review.sha && head && review.sha !== head) warnings.push(`${role}: SHA-bound receipt is stale; coordinator delta/final confirmation needed.`);
     if (review.verdict === 'acceptable' && (!review.sha || !review.receipt || !head)) warnings.push(`${role}: acceptance provenance is incomplete.`);
     if (review.required && review.verdict === 'not_required') warnings.push(`${role}: required review is recorded as not_required.`);
+    if (task.review[role] === 'required' && review.verdict !== 'acceptable') {
+      warnings.push(`${role}: required review has no acceptable receipt (${review.verdict}).`);
+    }
   }
   for (const proof of evidence.proofs) {
     if (['pass', 'fail'].includes(proof.status) && !proof.ref) warnings.push(`${proof.obligation}: proof result has no evidence reference.`);
+    if (['pass', 'fail'].includes(proof.status)) {
+      if (!proof.exact_sha || !proof.tested_checkout_sha) warnings.push(`${proof.obligation}: proof identity is incomplete.`);
+      if (proof.exact_sha && head && proof.exact_sha !== head) warnings.push(`${proof.obligation}: proof is historical, not current candidate evidence.`);
+    }
+  }
+  for (const obligation of task.acceptance.obligations) {
+    if (!evidence.proofs.some((proof) => proof.obligation === obligation && proof.status === 'pass'
+      && head && proof.exact_sha === head && proof.tested_checkout_sha && proof.ref)) {
+      warnings.push(`${obligation}: no current candidate-bound passing proof is recorded; consult the source obligation.`);
+    }
   }
   if (evidence.merge.ready === true) {
     warnings.push(evidence.merge.coordinator_receipt

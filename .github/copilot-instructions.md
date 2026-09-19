@@ -24,23 +24,12 @@ Derived manifests/audits are observation-only, never replacement authority.
 - Keep existing required CI and risk-based independent R1/R2. R0/Copilot review
   is findings-only: never submit APPROVE or count it as independent R1/R2.
   An implementer cannot review itself into acceptance.
-- R0 has two modes. A completed discovery receipt is a durable PR review/comment
-  that names its reviewed exact head and frozen blocker set, including explicit
-  `NONE` for a clean discovery. With no completed discovery receipt, use
-  DISCOVERY and assign stable IDs only to evidence-backed blockers. Once that
-  durable receipt exists, any descendant-head review is VERIFICATION: first
-  confirm the authored repair delta stayed inside approved writable/frozen repair
-  scope. A recorded upstream-main/base-sync merge is provenance, not authored
-  scope, only when its parent/base SHA is explicit and those paths are inherited
-  unchanged from canonical main. Then check prior blocker closure plus regressions
-  caused by the repair, not the
-  whole repository again. Normal repair invariant: `next_blockers ⊆ frozen_blockers`.
-  New non-critical observations are deferred/backlog candidates, not new current
-  acceptance. Only concrete credential exposure, auth privilege escalation,
-  cross-tenant breach, destructive data/migration corruption, financial
-  double-effect or another existing hard-safety-invariant violation may be added
-  as an escape-blocker. Never duplicate/rephrase an existing semantic finding
-  into a new blocker ID.
+- Use the canonical [review lineage contract](../docs/plan/agent-workflow.md#review-lineage)
+  before selecting review mode or reusing evidence. It owns R0 discovery/freeze/
+  verification, stable blocker IDs (including explicit NONE), critical escapes,
+  inherited-main scope, freshness routing and decision-first receipts. A repair
+  push never silently restarts discovery; provenance conflict returns to the
+  coordinator. R1/R2 keep their independent risk-based obligations.
 - Hosted staging is only for hosted-only residuals, not a default ceremony.
   Preserve tenant, money, time, atomicity, recovery and public/private invariants.
 - Use native GitHub/API/CLI and repo tools for issues, PRs, files and CI, not

@@ -54,7 +54,8 @@ Koordinatör M veya L büyüklüğündeki işlerde görev paketini aşağıdaki 
 
 ```text
 CONTEXT PACK
-Task / domain:
+Task / domain / owner:
+Sources: TASKS anchor / coordinator assignment or refresh receipt
 Goal:
 Base main SHA:
 Current branch / PR / head:
@@ -85,6 +86,14 @@ Next executable step:
 ```
 
 Context Pack'e uzun sohbet özeti, ilgisiz ürün vizyonu veya tekrar eden repo dokümantasyonu kopyalanmaz. Gerekli ayrıntı canonical belgeye linklenir.
+
+Owner ve assignment kaynağı aynı satır/linkten türetilebiliyorsa tekrar yazılmaz.
+Bağımlılık ve kabul kanıtı TASKS/kontrat kaynağından okunur; buraya ikinci status
+tablosu kopyalanmaz. Mevcut candidate yoksa head açıkça bilinmiyor olarak kalır.
+Takip review'da yalnız ilgili previous receipt/freeze ve approved delta linkleri
+eklenir; semantic SHA, CI run/job/attempt, served build veya migration chain yalnız
+ilgili kanıt için gerekir. Koşullu alanları bütün görevlere form olarak ekleme.
+Freshness/lineage kararı [tek review protokolündedir](agent-workflow.md#review-lineage).
 
 ## 3. Görev boyutu
 

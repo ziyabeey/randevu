@@ -255,7 +255,8 @@ test('a different tested merge-tree SHA is not itself stale CI; green CI is not 
   const task = structuredClone(taskExample), evidence = structuredClone(evidenceExample);
   task.identity.current_head_sha = a;
   evidence.candidate.exact_head_sha = a;
-  evidence.ci = { run: 'fixture:run', status: 'success', exact_sha: a, tested_checkout_sha: b, job: 'fixture:job', attempt: 1 };
+  evidence.candidate.base_main_sha = b;
+  evidence.ci = { run: 'fixture:run', status: 'success', exact_sha: a, base_main_sha: b, tested_checkout_sha: b, job: 'fixture:job', attempt: 1 };
   const freshCiWarnings = inspectProjections(task, evidence)
     .filter((warning) => warning.startsWith('CI evidence') || warning.startsWith('Successful CI claim'));
   assert.deepEqual(freshCiWarnings, []);
@@ -266,6 +267,96 @@ test('a different tested merge-tree SHA is not itself stale CI; green CI is not 
   const warnings = inspectProjections(task, evidence);
   assert.ok(warnings.some((warning) => warning.includes('Post-main')));
   assert.ok(warnings.some((warning) => warning.includes('no evidence reference')));
+});
+
+test('every manifest SHA rejects trailing line terminators, abbreviated and whitespace identities', () => {
+  for (const [schema, example] of [[taskSchema, taskExample], [evidenceSchema, evidenceExample]]) {
+    function check(rule, value, keys = []) {
+      if (rule.pattern?.includes('{40}')) {
+        for (const sha of [a, null, `${a}\n`, `${a}\r\n`, `${a}\u2028`, ` ${a}`, 'abc123']) {
+          const copy = structuredClone(example);
+          let parent = copy;
+          for (const key of keys.slice(0, -1)) parent = parent[key];
+          parent[keys.at(-1)] = sha;
+          assert.equal(validateManifest(schema, copy).length === 0, sha === a || sha === null,
+            `${keys.join('.')}: ${JSON.stringify(sha)}`);
+        }
+      }
+      for (const [key, child] of Object.entries(rule.properties ?? {})) check(child, value?.[key], [...keys, key]);
+      if (rule.items) (value ?? []).forEach((item, index) => check(rule.items, item, [...keys, index]));
+    }
+    check(schema, example);
+  }
+});
+
+function candidateProjection() {
+  const task = structuredClone(taskExample), evidence = structuredClone(evidenceExample);
+  task.identity.current_head_sha = a;
+  evidence.candidate.exact_head_sha = a;
+  evidence.candidate.base_main_sha = b;
+  evidence.ci = { run: 'fixture:run', status: 'success', exact_sha: a,
+    base_main_sha: b, tested_checkout_sha: 'c'.repeat(40), job: 'fixture:job', attempt: 2 };
+  evidence.proofs[0] = { ...evidence.proofs[0], status: 'pass', ref: 'fixture:proof',
+    exact_sha: a, tested_checkout_sha: 'c'.repeat(40) };
+  return { task, evidence };
+}
+
+test('same-head CI on another or unknown base is advisory, not current integration proof', () => {
+  const { task, evidence } = candidateProjection();
+  assert.deepEqual(validateManifest(evidenceSchema, evidence), []);
+  assert.deepEqual(inspectProjections(task, evidence), []);
+  for (const base of [null, 'd'.repeat(40), undefined]) {
+    const copy = structuredClone(evidence);
+    if (base === undefined) delete copy.ci.base_main_sha;
+    else copy.ci.base_main_sha = base;
+    assert.deepEqual(validateManifest(evidenceSchema, copy), []);
+    assert.ok(inspectProjections(task, copy).some((warning) => /CI.*base/.test(warning)));
+  }
+  evidence.candidate.base_main_sha = null;
+  assert.ok(inspectProjections(task, evidence).some((warning) => /CI.*base/.test(warning)));
+});
+
+test('proofs bind source head and tested checkout independently; historical pass cannot cover current obligations', () => {
+  const { task, evidence } = candidateProjection();
+  for (const sha of [b, null, undefined]) {
+    const copy = structuredClone(evidence);
+    if (sha === undefined) delete copy.proofs[0].exact_sha;
+    else copy.proofs[0].exact_sha = sha;
+    const before = JSON.stringify(copy);
+    assert.deepEqual(validateManifest(evidenceSchema, copy), []);
+    const warnings = inspectProjections(task, copy);
+    assert.ok(warnings.some((warning) => /proof.*(identity|historical)/.test(warning)));
+    assert.ok(warnings.some((warning) => /no current candidate-bound passing proof/.test(warning)));
+    assert.equal(JSON.stringify(copy), before);
+  }
+  for (const field of ['ref', 'tested_checkout_sha']) {
+    const copy = structuredClone(evidence);
+    copy.proofs[0][field] = null;
+    assert.ok(inspectProjections(task, copy).some((warning) => /no current candidate-bound passing proof/.test(warning)));
+  }
+  evidence.proofs = [];
+  assert.ok(inspectProjections(task, evidence).some((warning) => /no current candidate-bound passing proof/.test(warning)));
+});
+
+test('failed, missing and unknown evidence never looks like a clean current projection', () => {
+  for (const status of ['pending', 'failure', 'cancelled', 'skipped', 'unknown']) {
+    const { task, evidence } = candidateProjection();
+    evidence.ci.status = status;
+    assert.ok(inspectProjections(task, evidence).some((warning) => /CI result is not successful/.test(warning)));
+  }
+  for (const status of ['fail', 'pending', 'skipped', 'unknown']) {
+    const { task, evidence } = candidateProjection();
+    evidence.proofs[0].status = status;
+    assert.ok(inspectProjections(task, evidence).some((warning) => /no current candidate-bound passing proof/.test(warning)));
+  }
+  for (const role of ['r1', 'r2']) {
+    for (const verdict of ['pending', 'blocker', 'incomplete', 'not_required']) {
+      const { task, evidence } = candidateProjection();
+      task.review[role] = 'required';
+      evidence.reviews[role] = { required: true, verdict, sha: a, receipt: 'fixture:review' };
+      assert.ok(inspectProjections(task, evidence).some((warning) => warning.startsWith(`${role}: required review has no acceptable receipt`)));
+    }
+  }
 });
 
 test('missing artifacts and symlinked discovery fail visibly without following outside data', async () => {

@@ -35,17 +35,112 @@ Kurallar:
 5. **R0 gerekiyorsa bounded çalışır; yalnız gerekli bağımsız inceleme açılır.** İlk R0 adayında confirmed blocker'lar stable ID ile dondurulur. Repair sonrası R0 bütün sistemi yeniden keşfetmez; yalnız frozen blocker kapanışı ve repair-caused regression kontrol eder. Validation bütçesi ve gerçek risk alanı hangi bağımsız reviewer'ı gerektiriyorsa yalnız o kapı açılır. Auth/DB/access için R1; browser/integration/a11y için R2. İki reviewer ancak iki risk alanı gerçekten kesişiyorsa gerekir.
 6. **Kalıcı devir yazılır.** [CONTRIBUTING şablonu](../../CONTRIBUTING.md#oturum-sonu-devri) doldurulur; TASKS ve PR aynı gerçek durumu gösterir. Sonraki oturumun ilk adımı tek ve çalıştırılabilir olur.
 
-### R0 review yaşam döngüsü
+### Review lineage
 
-R0 acceptance authority değildir; deterministic CI/verifier kanıtı ve coordinator kararı arasında bounded bir sensördür.
+Bu bölüm review modu, receipt freshness ve takip kapsamının **tek protokol sahibidir**;
+Skills rolün risk/kanıt ayrıntılarını ekler. TASKS canlı otorite, PR receipt'leri
+candidate-bound kanıt olarak kalır. Yeni tracker, JSON receipt veya her push'ta yeni
+Context Pack zorunluluğu yoktur; mevcut PR brief'ine kaynak linkleri yeterlidir.
 
-1. **DISCOVERY:** İlk candidate üzerinde changed surface + en fazla bir direct dependency hop incelenir. Confirmed blocker'lar `R0-B1...` olarak kimliklenir.
-2. **FREEZE:** Discovery sonunda durable PR review/comment receipt'e discovery exact head ve blocker seti yazılır; temiz review'da bile açıkça `NONE` kaydedilir. Bu receipt olmadan yeni-push verification zinciri tamamlanmış sayılmaz. Hipotez, nit ve öneriler acceptance'a eklenmez.
-3. **REPAIR:** Mevcut PR'ın atanmış tek yazarı aynı branch üzerinde yalnız frozen blocker/counterexample yüzeyini düzeltir; unrelated refactor veya yeni ürün scope'u açmaz. Mevcut `@qwencoder /implement` akışı yeni task branch/PR açtığı için in-place repair değildir; ayrı bir repair mode uygulanıp doğrulanana kadar bu adımda kullanılmaz.
-4. **VERIFICATION:** Sonraki R0 turu eski blocker'ları ve repair'in doğrudan regression'ını doğrular. Normal invariant `next_blockers ⊆ frozen_blockers`'dır.
-5. **ESCAPE:** Yalnız somut secret/credential exposure, auth privilege escalation, cross-tenant breach, destructive data loss/migration corruption, financial double-effect veya mevcut hard safety invariant ihlali yeni blocker olarak mevcut PR'ı tekrar durdurabilir. Diğer yeni bulgular backlog adayıdır.
+**Önce kimlik:** aynı görev/PR ve aynı rolün önceki durable receipt'i, reviewed
+exact SHA, current head/base, onaylı repair delta ve frozen blocker setini bağla.
+R0 discovery/freeze referansı zincir boyunca korunur. Önceki receipt yokluğu gerçekten
+doğrulanmış olmalıdır; erişilemeyen receipt `NONE` değildir. Git ancestry kontrolü
+ve diff kullan; shallow history eksikliği veya aynı branch adı lineage kanıtı değildir.
+Head aynıysa yeni discovery yoktur; eksik kanıt veya kapanış kontrolünden devam edilir.
 
-Bu yaşam döngüsü CEGIS/counterexample-guided repair fikrini korur: iterasyon devam edebilir, fakat her tur problem alanını daraltır. Yeni push, otomatik olarak yeni acceptance keşfi yetkisi vermez.
+**R0: DISCOVERY → FREEZE → REPAIR → VERIFICATION → CLOSURE.**
+İlk inceleme changed surface + en fazla bir direct dependency hop'tur.
+Tamamlanmış discovery, PR review/comment üzerinde exact reviewed head ve frozen
+ID'ler veya açık `NONE` taşır. Local draft freeze değildir. Repair descendant'ı
+VERIFICATION'dır; önce authored delta'nın onaylı writable/counterexample sınırını,
+sonra blocker kapanışını, doğrudan repair regression'ını ve ilgili kanıtı incele.
+Normal invariant `next_blockers ⊆ frozen_blockers`; CLOSURE yalnız bu R0 turunda
+açık blocker/kanıt boşluğu kalmadığıdır, acceptance veya merge izni değildir.
+Tek yazar mevcut branch'te onaylı repair yapar; new-task Qwen route'u repair değildir.
+
+**Blocker kimliği:** kimlik `(PR, rol, discovery receipt, ID)` içindedir; global
+numaralama veya tüm geçmişte arama gerekmez. R0 `R0-B1…` kullanır; mevcut canonical
+ID'leri yeniden numaralama. Aynı invariant/counterexample başka ifadeyle dönerse
+aynı ID altında kanıt ekle. Her frozen ID için current head üzerinde
+`CLOSED | OPEN | UNVERIFIED` ve kanıt referansı ver; eski CLOSED receipt'i yeni
+head'i kendiliğinden kapatmaz. Kapanmış kusur gerçekten yeniden oluşursa aynı ID
+ile önceki closure'a ve yeni counterexample'a bağla; sessiz reopening yapma.
+Eksik test `UNVERIFIED`/kanıt boşluğudur, yeni semantic blocker değildir.
+`NONE` bilinen boş kümedir; bilinmeyen küme değildir ve sonraki push discovery açmaz.
+
+**Escape sınırı:** VERIFICATION'da yalnız somut secret/credential exposure,
+auth privilege escalation, cross-tenant breach, destructive data loss/migration
+corruption, financial double-effect veya mevcut hard safety invariant ihlali
+yeni `ESCAPE-BLOCKER` ekleyebilir. Yeni ID, exact-head kanıt ve ihlal edilen mevcut
+invariant gerekir; coordinator repair scope'unu günceller. Non-critical yeni R0
+gözlemleri `DEFERRED`, nit/öneriler non-blocking kalır. Bu istisna yeni kalite
+kriteri üretmez. Scope ihlali, ID çoğaltmak yerine koordinatöre dönen scope conflict'tir.
+
+**R1/R2:** aynı rolün takip turu kapanış/delta odaklıdır; R0 receipt'i ilk bağımsız
+R1/R2 incelemesini takip turuna dönüştürmez. Fresh independent context, risk-based
+atama ve bütün gerekli kabul yükümlülükleri korunur. R0'ın dar kapsamı R1/R2'nin
+karşılanmamış zorunlu kanıtını kapatamaz. Yeni semantic değişiklik etkilenen kabulü
+sıfırlar, fakat R0 frozen geçmişini silmez. Full review yalnız gerekli risk/kapsam
+için koordinatörce atanır, her head değişiminde otomatik yapılmaz.
+
+**Kanıt kimliği:** starting main, current base, raw head, semantic SHA, gerçekten
+test edilen checkout/merge-ref ve run/job/attempt ayrı anlamlardır. Semantic SHA
+tek başına eşdeğerlik kanıtı değildir. CI source head doğru olsa bile eski base
+üzerindeki merge-ref current integration kanıtı değildir. Browser kanıtında served
+build, DB kanıtında migration chain kimliği ilgili artifact'te kalır; tüm rollere
+yeni alan eklenmez. Post-main CI yalnız actual merge SHA'ya aittir. `unknown`,
+başarısız veya atlanmış kanıt PASS/NONE/false'a dönüştürülmez.
+
+#### Routing tablosu
+
+Tablo üst üste uygulanır: provenance/scope conflict ve değişmiş live head önce
+çözülür; sonra kanıt boşluğu değerlendirilir. Bütün reviewer modları read-only'dir.
+Yazma yalnız atanmış implementerin güncel approved writable scope'undadır; tablo
+izin üretmez. Eski receipt'ler silinmez, ancak yeni head için current sayılmaz.
+
+| Durum | Mod / yeniden kullanılabilir bağlam | İnceleme, gerekli kanıt ve sonraki coordinator adımı |
+| --- | --- | --- |
+| 1. İlk semantic candidate, aynı rolde receipt yok | R0 DISCOVERY; gerekli R1/R2 ilk bağımsız inceleme | Atanmış changed/risk scope + current required CI/proof; R0 durable freeze, ardından yalnız gerekli bağımsız kabul. |
+| 2. Frozen blocker sonrası repair üretimi | Implementer REPAIR; frozen ID/kontrat korunur | Approved delta içinde counterexample repair/test; yeni head CI. Pending CI sırasında write freeze review açmaz. |
+| 3. Descendant repair head | R0 VERIFICATION; R1/R2 atanmış kapanış/delta | Authored scope, her frozen ID, direct regression ve current kanıt; açık ID → repair, boşluk → kanıtı tamamla, kapanış → kalan bağımsız kapı. |
+| 4. Upstream-main sync, authored delta aynı | VERIFICATION; eski authored bulgular bağlamdır | Merge parent/base SHA'ları ve canonical main'den değişmeden miras kalan yollar kanıtlanırsa inherited yollar authored scope dışında; integration etkisi yine incelenir ve fresh CI gerekir. Conflict resolution otomatik inherited sayılmaz. |
+| 5. Yalnız docs/metadata descendant | Delta confirmation adayı; exact receipt stale, semantic bağlam reusable | İçerik diff'iyle semantic etkisizlik doğrulanır (dosya uzantısı yetmez); fresh CI + coordinator-required delta confirmation, otomatik full reset yok. |
+| 6. Kabulden sonra semantic değişiklik | Etkilenen R1/R2 kabulü stale; R0 lineage devam eder | Değişen invariant/risk için fresh kanıt ve bağımsız review; koordinatör affected scope'u atar, eski acceptance taşınmaz. |
+| 7. Receipt başka/non-descendant lineage veya ancestry bilinmiyor | PROVENANCE CONFLICT; reuse/discovery yok | INCOMPLETE dön; coordinator ancestry/eşdeğer authored-delta mapping'ini kanıtlar veya açık fresh discovery/freeze atar. Rebase/aynı patch-id kendiliğinden reuse yetkisi değildir. |
+| 8. Required kanıt eksik/failed/unavailable | Review tamamlanamaz; freeze geçmişi korunur | INCOMPLETE + exact gap; deterministic required failure bypass edilmez. Coordinator kanıt/repair atar; stronger obligation yalnız gerekçeli `narrows`/`supersedes` ile değişir. |
+| 9. Discovery `NONE` | Tamamlanmış freeze; descendant VERIFICATION | Yalnız approved delta/regression/kanıt; hayali blocker veya yeni discovery turu üretme. |
+| 10. Yeni kritik ihlal | VERIFICATION + ESCAPE-BLOCKER | Mevcut hard invariant + exact counterexample; coordinator bounded repair atar. Non-critical gözlem current acceptance'a eklenmez. |
+| 11. İki yazar aynı shared critical alanı ister | Scope conflict; review modundan bağımsız dur | TASKS + aktif #65 claim + açık PR writable scope karşılaştırılır. Overlap veya belirsizlikte yazma; coordinator tek writer/merge sırası ya da izole scope verir. Dependency veya eski token sahipliği izin değildir. |
+| 12. CI merge-ref raw head'den farklı | Tek başına staleness değildir | Run/job/attempt, source head, tested checkout ve testteki base bağını doğrula; raw SHA'yı merge SHA ile değiştirme. Binding eksikse kanıt boşluğu. |
+| 13. Historical green kanıt | Kontrat/counterexample bağlamı; current proof değil | Current obligation'a bağlı kanıt getir veya coordinator'ın açık delta kararını bağla; geçmiş PASS yeni head'e kopyalanmaz. |
+| 14. Review sırasında head değişti | Head-specific sonuç stale, yayınlanacak current verdict yok | INCOMPLETE; eski gözlemi SHA'sıyla koru, yeni head için assignment refresh iste. Otomatik rediscovery/recompute döngüsü başlatma. |
+
+Base/main değişip raw head aynı kaldığında da 4/12 uygulanır: authored review sırf
+base hareket etti diye sıfırlanmaz, integration kanıtı yenilenir. Unknown semantic
+impact coordinator değerlendirmesini bekler; docs-only olarak tahmin edilmez.
+
+#### Brief ve karar-öncelikli receipt
+
+Mevcut PR brief'inde önceki same-role receipt/SHA, current head/base, approved
+delta/scope kaynağı, frozen ID/NONE ve ID → closure evidence bağları bulunur.
+Bunlar linkle taşınabilir; ayrı form/manifest üretme. R0 freeze ile en son takip
+receipt'i farklıysa ikisini de bağla. Kanıt boşlukları ve tek next action aşağıdaki
+çıktıda yer alır; brief ve sonuçta aynı envanteri tekrar etme.
+
+```text
+VERDICT: R0 = FINDINGS | NO FINDINGS | INCOMPLETE; R1/R2 = ACCEPTABLE | BLOCKER | INCOMPLETE
+BLOCKERS: açık frozen ID'ler / ESCAPE-BLOCKER; yoksa NONE, bilinmiyorsa UNKNOWN
+EVIDENCE GAPS: eksik/failed/skipped kanıt veya provenance/scope conflict; yoksa NONE
+REVIEWED SHA: gerçekten incelenen exact head (değiştiyse STALE ve gözlenen yeni head)
+NEXT ACTION: coordinator için tek somut adım
+```
+
+Sonra rol/PR/brief referansı, ID bazında closure, delta/regression sonucu ve
+rol-specific kanıt verilir. Hem confirmed defect hem gap varsa ikisini de göster;
+R0 FINDINGS/R1-R2 BLOCKER kusuru görünür tutar ama eksik kanıtı kapatmaz. Head
+değişimi/provenance conflict'te INCOMPLETE önceliklidir. Başta ve yayınlamadan önce
+live head/base kontrol edilir. Hiçbir sonuç APPROVE, self-ready veya merge yetkisi değildir.
 
 ## Rol sınırları
 

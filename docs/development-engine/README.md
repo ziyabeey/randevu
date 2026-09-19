@@ -20,6 +20,7 @@ coordination evidence, but they do not override TASKS.
 | Product boundary / planned sequence | [PRODUCT_SPEC](../../PRODUCT_SPEC.md), [ROADMAP](../../ROADMAP.md) and actual main ref |
 | Temporary writer claim / conflict / dispatch | open PRs and [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65); never a second durable status source |
 | Task scope / refresh | [Context Pack protocol](../plan/context-packs.md) and the assigned contract |
+| Review mode / lineage / blocker identity / freshness | [Review lineage contract](../plan/agent-workflow.md#review-lineage); Skills add role-specific evidence only |
 | Executor wait-mode | [Shadow Validation Mode](../plan/shadow-validation-mode.md) |
 | AI/provider routing | [AI model routing](ai-model-routing.md); coordinator selects roles/routes, models remain replaceable |
 | Copilot bootstrap | [Global instructions](../../.github/copilot-instructions.md) and [path instructions](../../.github/instructions) |
@@ -197,12 +198,26 @@ identifies the semantic candidate, not an automatic equivalence assertion.
 `supersedes` preserves prior artifact/receipt references. Compare external live
 head/base again before using any snapshot.
 
-Stale review/CI SHA fields are intentionally representable: preserving an old
-receipt is better than rewriting it to look current. Flag the mismatch and ask
-the coordinator for required delta/final confirmation. Semantic changes reset
-affected acceptance; docs-only descendants do not automatically trigger full
-review. Prose receipts still need freshness checks even when GitHub dismisses
-stale approving reviews.
+The optional v0.1 provenance fields close two otherwise unrepresentable distinctions:
+`candidate.base_main_sha` is the **observed current base**, whereas
+`task.identity.base_main_sha` is the task's **starting main**.
+`ci.base_main_sha` is the base actually used by that run. A same-head run on an
+older base is not current integration proof. Each proof's `exact_sha` and
+`tested_checkout_sha` bind its source candidate and actual checkout independently;
+the enclosing manifest must not lend its identity to historical proof.
+Omitted fields in older projections mean unknown, never implicit equality.
+No producer must migrate historical receipts or start maintaining a live manifest.
+Served-build and migration-chain identity remain in role-specific linked artifacts.
+
+Stale/unsupported claims remain representable; diagnostics do not rewrite them.
+The checker flags missing current passing proof references for the task's named
+obligations, non-success CI, missing required review verdicts, unknown identities
+and head/base mismatches. A matching label/SHA is only structural consistency:
+it does not prove the artifact is authentic, covers every scenario or ran the
+claimed tree. Use the canonical [routing table](../plan/agent-workflow.md#review-lineage)
+to decide whether evidence refresh, delta confirmation or affected independent
+review is needed. The checker deliberately does not guess semantic equivalence,
+ancestry, blocker closure, shared-writer ownership or readiness.
 
 `merge.ready` is only a recorded coordinator claim with a receipt, never a
 computed authorization. `post_main` records separate merge-SHA/CI evidence;
@@ -283,6 +298,6 @@ local commands/results, failed or skipped checks, CI run/job/attempt/checkout,
 blocker and next executable step. This document is setup guidance, not a claim
 of acceptance or a constantly regenerated state board.
 
-After fresh exact-head CI, coordinator arranges independent R1/R2 contexts and
+After fresh exact-head CI, coordinator arranges only the risk-required independent R1/R2 contexts and
 owns ready/merge plus post-main CI. If CI cannot execute, keep the task blocked:
 no formal review opening, readiness or fabricated green evidence.

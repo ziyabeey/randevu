@@ -17,59 +17,17 @@ Read global/path instructions, canonical task/Context Pack, approved file scope,
 current base/head/diff, CI refs, latest binding Issue #65 receipt and existing R0
 findings for this PR lineage through native GitHub/repo tools.
 
-Determine the mode before reviewing:
-
-- A **completed discovery receipt** is a durable PR review/comment reference that
-  records the reviewed exact head and the frozen blocker set, including an explicit
-  empty set when discovery found no blockers.
-- **DISCOVERY**: no completed discovery receipt exists for this PR lineage.
-- **VERIFICATION**: a completed discovery receipt exists and the current head is a
-  descendant of its reviewed head. Use the receipt reference and frozen set even
-  when that set is empty.
-- **PROVENANCE CONFLICT**: a completed discovery receipt exists but the current
-  head is not a descendant of its reviewed head. Stop. Do not silently reuse the
-  frozen set or restart discovery. The coordinator must either establish the
-  lineage or explicitly authorize a fresh DISCOVERY/freeze cycle.
-
-If discovery can only be returned as a local draft, it is not complete. Do not rely
-on automatic review of later pushes until the coordinator has persisted a freeze
-receipt on the PR.
+Determine the mode using the canonical [review lineage contract](../../plan/agent-workflow.md#review-lineage).
+It owns discovery/freeze completion, descendant verification, provenance conflict,
+authored versus inherited scope, stable IDs/NONE, escape criteria and freshness.
+An inaccessible prior receipt is not evidence that discovery never happened.
 
 ## Allowed actions
 
-In **DISCOVERY**, inspect changed surfaces plus at most one direct dependency hop.
-Check scope violations, missing meaningful tests, security/concurrency hazards and
-instruction violations. Separate confirmed findings from hypotheses. Assign stable
-IDs to actual blockers (`R0-B1`, `R0-B2`, ...). When the discovery review ends,
-that blocker set is frozen for the repair cycle.
-
-In **VERIFICATION**, inspect only:
-
-1. whether the **authored repair delta** stayed inside the approved writable file
-   scope and frozen repair/counterexample surface. Exclude a separately identified
-   upstream-main/base-sync merge from authored scope only when its parent/base SHA
-   is recorded and those paths are byte-for-byte inherited from canonical main;
-2. whether each frozen blocker is closed on the exact current head;
-3. whether the repair itself introduced a regression in the repaired surface or
-   one direct dependency hop; and
-4. the exact CI/test/verifier evidence relevant to those blockers.
-
-The normal repair invariant is:
-
-`next_blockers ⊆ frozen_blockers`
-
-A genuinely new blocker may be added only as an **ESCAPE-BLOCKER** when concrete
-evidence shows one of these critical classes: credential/secret exposure,
-authentication or privilege escalation, cross-tenant isolation breach,
-irreversible/destructive data loss or migration corruption, financial/ledger
-double effect, or another direct violation of a pre-existing hard safety invariant.
-State the preserved invariant and evidence. Do not use this exception for design
-preference, cleanup, speculative edge cases, performance ideas or broader quality
-improvements.
-
-New non-critical observations found during verification are **DEFERRED**. They may
-be proposed for backlog/another task, but they do not reopen or expand the current
-PR acceptance scope.
+Apply that contract's bounded discovery or approved-delta verification, not a
+fresh inventory on every push. Check scope, meaningful counterexamples and
+direct regressions. Distinguish confirmed defects from hypotheses, deferred
+observations and suggestions; no model preference becomes an acceptance obligation.
 
 ## Forbidden actions
 
@@ -91,8 +49,9 @@ counterexamples from CI, tests, protocol verifiers or invariant checks over mode
 judgment. A CI failure cause needs the exact failing job log/annotation/artifact,
 otherwise label it provisional.
 
-Before publishing, re-read the head. Discard or recompute head-specific findings
-if it changed. Deduplicate by PR/head/control/finding ID.
+Before publishing, re-read head/base. On changed head return INCOMPLETE with stale
+observations fenced to their SHA and request assignment refresh; do not chase
+moving heads. Deduplicate by PR/head/control/finding ID.
 
 ## Exact SHA
 
@@ -101,21 +60,20 @@ merge-ref SHA. A repair verification cannot reuse a previous head as current pro
 
 ## Output
 
-Output only a PR COMMENT/review finding when authorized; otherwise return a
-comment draft to the operator.
+Lead with the canonical decision-first header (R0 findings-only vocabulary), then
+the details below without repeating header fields. Output only a PR COMMENT/review
+finding when authorized; otherwise return a comment draft to the operator.
 
 ```text
 R0 / mode: DISCOVERY | VERIFICATION
-PR / base / exact head / observed UTC:
+PR / base / observed UTC / brief reference:
 Discovery receipt ref / discovery exact head:
 Frozen blockers: IDs or explicit NONE
 CI evidence: run / job / attempt / tested checkout-or-merge-ref SHA, or unavailable
 Closed / still-open blocker evidence:
 Escape-blockers: ID / critical invariant / evidence, or none
 Deferred non-blocking observations: IDs/summary, or none
-Missing or unavailable checks:
 Scope and instruction observations:
-Next coordinator action:
 ```
 
 ## Stop
