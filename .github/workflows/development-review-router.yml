@@ -110,6 +110,9 @@ jobs:
     name: Fire independent R1 Routine
     needs: route
     if: ${{ needs.route.outputs.r1_required == 'true' }}
+    concurrency:
+      group: development-review-r1-${{ needs.route.outputs.pr_number }}-${{ needs.route.outputs.head_sha }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -170,10 +173,10 @@ jobs:
 
           body="${marker}
           ## Development R1 Routine launch
-          - status: `RESERVED`
-          - exact head: `${HEAD_SHA}`
-          - dispatcher case: `${CASE_FINGERPRINT}`
-          - role request: `${REQUEST_FINGERPRINT}`
+          - status: RESERVED
+          - exact head: ${HEAD_SHA}
+          - dispatcher case: ${CASE_FINGERPRINT}
+          - role request: ${REQUEST_FINGERPRINT}
           - this reservation is not an R1 verdict and grants no merge authority"
 
           payload="${RUNNER_TEMP}/r1-reservation.json"
@@ -198,12 +201,12 @@ jobs:
           marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R1 Routine launch
-          - status: `ROUTINE_TRIGGERED`
-          - exact head: `${HEAD_SHA}`
-          - dispatcher case: `${CASE_FINGERPRINT}`
-          - role request: `${REQUEST_FINGERPRINT}`
+          - status: ROUTINE_TRIGGERED
+          - exact head: ${HEAD_SHA}
+          - dispatcher case: ${CASE_FINGERPRINT}
+          - role request: ${REQUEST_FINGERPRINT}
           - Claude session: ${session_url}
-          - launch receipt only; R1 remains open until a SHA-bound `ACCEPTABLE | BLOCKER | INCOMPLETE` receipt is published"
+          - launch receipt only; R1 remains open until a SHA-bound ACCEPTABLE | BLOCKER | INCOMPLETE receipt is published"
 
           jq -n --arg body "${body}" '{body:$body}'             | gh api --method PATCH               "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}"               --input -
 
@@ -217,10 +220,10 @@ jobs:
           marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R1 Routine launch
-          - status: `LAUNCH_UNCERTAIN`
-          - exact head: `${HEAD_SHA}`
-          - dispatcher case: `${CASE_FINGERPRINT}`
-          - role request: `${REQUEST_FINGERPRINT}`
+          - status: LAUNCH_UNCERTAIN
+          - exact head: ${HEAD_SHA}
+          - dispatcher case: ${CASE_FINGERPRINT}
+          - role request: ${REQUEST_FINGERPRINT}
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
           - no R1 verdict is implied"
 
@@ -230,6 +233,9 @@ jobs:
     name: Fire independent R2 Routine
     needs: route
     if: ${{ needs.route.outputs.r2_required == 'true' }}
+    concurrency:
+      group: development-review-r2-${{ needs.route.outputs.pr_number }}-${{ needs.route.outputs.head_sha }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -290,10 +296,10 @@ jobs:
 
           body="${marker}
           ## Development R2 Routine launch
-          - status: `RESERVED`
-          - exact head: `${HEAD_SHA}`
-          - dispatcher case: `${CASE_FINGERPRINT}`
-          - role request: `${REQUEST_FINGERPRINT}`
+          - status: RESERVED
+          - exact head: ${HEAD_SHA}
+          - dispatcher case: ${CASE_FINGERPRINT}
+          - role request: ${REQUEST_FINGERPRINT}
           - this reservation is not an R2 verdict and grants no merge authority"
 
           payload="${RUNNER_TEMP}/r2-reservation.json"
@@ -318,12 +324,12 @@ jobs:
           marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R2 Routine launch
-          - status: `ROUTINE_TRIGGERED`
-          - exact head: `${HEAD_SHA}`
-          - dispatcher case: `${CASE_FINGERPRINT}`
-          - role request: `${REQUEST_FINGERPRINT}`
+          - status: ROUTINE_TRIGGERED
+          - exact head: ${HEAD_SHA}
+          - dispatcher case: ${CASE_FINGERPRINT}
+          - role request: ${REQUEST_FINGERPRINT}
           - Claude session: ${session_url}
-          - launch receipt only; R2 remains open until a SHA-bound `ACCEPTABLE | BLOCKER | INCOMPLETE` receipt is published"
+          - launch receipt only; R2 remains open until a SHA-bound ACCEPTABLE | BLOCKER | INCOMPLETE receipt is published"
 
           jq -n --arg body "${body}" '{body:$body}'             | gh api --method PATCH               "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}"               --input -
 
@@ -337,10 +343,10 @@ jobs:
           marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R2 Routine launch
-          - status: `LAUNCH_UNCERTAIN`
-          - exact head: `${HEAD_SHA}`
-          - dispatcher case: `${CASE_FINGERPRINT}`
-          - role request: `${REQUEST_FINGERPRINT}`
+          - status: LAUNCH_UNCERTAIN
+          - exact head: ${HEAD_SHA}
+          - dispatcher case: ${CASE_FINGERPRINT}
+          - role request: ${REQUEST_FINGERPRINT}
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
           - no R2 verdict is implied"
 
