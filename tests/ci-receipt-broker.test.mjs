@@ -164,6 +164,12 @@ test('control-plane manifest includes workflow, CI scripts, package scripts and 
     'scripts/report-npm-audit.mjs',
     'scripts/test-staging-control-db.mjs',
     'scripts/browser-smoke.sh',
+    'tsconfig.json',
+    'tsconfig.app.json',
+    'tsconfig.worker.json',
+    'tsconfig.node.json',
+    'vite.config.ts',
+    'wrangler.jsonc',
   ]) assert.ok(TRUSTED_CONTROL_FILES.includes(file), file);
 });
 
