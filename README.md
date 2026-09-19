@@ -16,21 +16,9 @@ Marketing sitesi ürün uygulamasından ayrı bir track'tir. **MKT-01 / Issue #7
 
 ## Güncel durum
 
-Main'de Faz 1–8 temeli, F09 güvenilir rezervasyon/bildirim işleri, F10-01/02/03 hesap-üyelik-kurulum zinciri, F12-01 görsel sözleşmesi, F17-01/02 staging/CI temeli ve S01–S08 stabilization kapanışı vardır.
+Canlı proje durumu bu README içinde tekrar edilmez. **Tek güncel kaynak [TASKS.md](TASKS.md)** dosyasıdır; tamamlanan/açık işler, sahiplik, engeller ve kabul kapıları oradan okunur.
 
-**GS kapalıdır.** Artık yeni özellikleri engelleyen bir stabilization önkoşulu değildir.
-
-Aktif ürün lane'leri:
-
-- **F10-05 / Ajan A:** işletmenin müşteri kayıtları — PR #74 draft.
-- **F10-04 / Ajan C:** hizmet, personel ve çalışma ayarları — PR #75 draft.
-- **F12-02 / Ajan B:** salon profili ve public fotoğraflar — PR #76 draft.
-
-Shared CI-plan sırası nedeniyle F10-05 entegrasyonu F10-04'ten önce kapanacaktır; bu ürün önceliği değil conflict önleme sırasıdır. Güncel koordinasyon [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) içindedir.
-
-**Marketing:** PR #69 ile brand/motion docs main'e girdi. **MKT-01 / Issue #70** aktif; ilk izole implementation slice'ı **PR #77** üzerinde ilerliyor. Bu track 54 MVP ürün/teknik görev sayısına dahil değildir.
-
-Canlı pilot henüz yapılmadı. Staging/CI başarısı production/pilot kabulü değildir.
+Bu README ürünün giriş ve kaynak haritasıdır. PR, Issue, handoff veya burada yazan tarihsel örnekler TASKS ile çelişirse güncel durum sayılmaz.
 
 ## Kanonik proje kaynakları
 
