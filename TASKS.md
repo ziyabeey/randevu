@@ -118,7 +118,7 @@ Bağlayıcı topology [K04](docs/plan/k04-platform-core-contract.md), paket/bağ
 | G09 | F09-01…F09-05 | **Kapalı** — PR #30 / staging `34681540142`; stabilization takipleri GS içinde kapatıldı |
 | G10 | F10-01…F10-06 | Açık — F10-01/02/03/04/05 tamamlandı; yalnız F10-06 kaldı |
 | G11 | F11-01…F11-04 | **Kapalı** — F11-01/02/03/04 tamamlandı; #117 main `c51297bc`, post-main CI #1377 success |
-| G12 | F12-01…F12-05 | Açık — F12-01/02/03 tamamlandı; F12-04 frontend green fakat range-aware public catalog support + F11-04 shared-schema gate nedeniyle parkta |
+| G12 | F12-01…F12-05 | Açık — F12-01/02/03 tamamlandı; F12-04 frontend candidate green, kalan backend gate additive range-aware public catalog support / Issue #162 |
 | G13 | F13-01…F13-04 | Açık |
 | G14 | F14-01…F14-05 | Açık |
 | G15 | F15-01…F15-04 | Açık |
