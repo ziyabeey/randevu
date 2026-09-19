@@ -45,7 +45,7 @@ Canlı pilot henüz yapılmadı. Staging/CI başarısı production/pilot kabulü
 - [docs/brand/README.md](docs/brand/README.md) — Randevu marka, homepage ve motion sistemi.
 - [docs/references/README.md](docs/references/README.md) — ürün sahibinin referans ekran eşleştirmesi.
 
-**Okuma sırası:** `PROJECT_STATE.md` → `TASKS.md` → ilgili faz kartı → açık PR/Issue #65.
+**Okuma sırası:** `TASKS.md` → ilgili faz kartı → gerekiyorsa açık PR ve Issue #65 koordinasyon kanıtı.
 
 ## Yerel kurulum
 
