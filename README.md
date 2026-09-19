@@ -35,9 +35,8 @@ Canlı pilot henüz yapılmadı. Staging/CI başarısı production/pilot kabulü
 ## Kanonik proje kaynakları
 
 - [PRODUCT_SPEC.md](PRODUCT_SPEC.md) — ürün sınırı ve üç kol.
-- [TASKS.md](TASKS.md) — 54 MVP ürün/teknik görevinin durum ve sahiplik kaynağı; ayrıca ayrı marketing track kaydı.
-- [PROJECT_STATE.md](PROJECT_STATE.md) — main'de gerçekten doğrulanmış durum.
-- [ROADMAP.md](ROADMAP.md) — bağımlılık ve faz sırası.
+- [TASKS.md](TASKS.md) — **tek canlı durum kaynağı**: görev, sahiplik, bağımlılık, kabul kapısı, main kabulü ve açık engeller.
+- [ROADMAP.md](ROADMAP.md) — bağımlılık ve faz planı; canlı durum tutmaz.
 - [MVP_ACCEPTANCE.md](MVP_ACCEPTANCE.md) — birleşik release/pilot kabul matrisi.
 - [CONTRIBUTING.md](CONTRIBUTING.md) — branch/PR/sahiplik ve merge kuralları.
 - [DECISIONS.md](DECISIONS.md) — teknik kararlar ve veri sınırları.
