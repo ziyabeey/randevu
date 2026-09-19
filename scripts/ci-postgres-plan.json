@@ -4,1218 +4,384 @@
     {
       "name": "Verify migrations, tenancy, booking, management, calendar, recovery and notifications",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/bootstrap.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911100000_phase3_services_team.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911110000_phase4_availability.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911120000_phase5_booking_core.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911130000_phase6_public_booking.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911150000_phase8_calendar.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911160000_phase9_booking_recovery.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911170000_phase9_notification_outbox.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911170100_phase9_notification_maintenance.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase3_services_team.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase4_availability.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase5_booking_core.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase6_public_booking.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase7_customer_manage.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase8_calendar.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase9_booking_recovery.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase9_notification_outbox.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase9_notification_outbox_concurrency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase9_booking_recovery_concurrency.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/tests/bootstrap.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911100000_phase3_services_team.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911110000_phase4_availability.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911120000_phase5_booking_core.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911130000_phase6_public_booking.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911150000_phase8_calendar.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911160000_phase9_booking_recovery.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911170000_phase9_notification_outbox.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911170100_phase9_notification_maintenance.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase3_services_team.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase4_availability.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase5_booking_core.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase6_public_booking.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase7_customer_manage.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase8_calendar.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase9_booking_recovery.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase9_notification_outbox.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase9_notification_outbox_concurrency.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase9_booking_recovery_concurrency.sql" }
       ]
     },
     {
       "name": "Verify F09-03 upgrade and backfill path",
       "steps": [
-        {
-          "database": "postgres",
-          "sql": "drop database if exists yzt_upgrade;"
-        },
-        {
-          "database": "postgres",
-          "sql": "create database yzt_upgrade;"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/tests/bootstrap.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911100000_phase3_services_team.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911110000_phase4_availability.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911120000_phase5_booking_core.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911130000_phase6_public_booking.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911150000_phase8_calendar.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911160000_phase9_booking_recovery.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/tests/phase9_notification_upgrade_fixture.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911170000_phase9_notification_outbox.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/migrations/20260911170100_phase9_notification_maintenance.sql"
-        },
-        {
-          "database": "yzt_upgrade",
-          "file": "supabase/tests/phase9_notification_upgrade_assert.sql"
-        }
+        { "database": "postgres", "sql": "drop database if exists yzt_upgrade;" },
+        { "database": "postgres", "sql": "create database yzt_upgrade;" },
+        { "database": "yzt_upgrade", "file": "supabase/tests/bootstrap.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911100000_phase3_services_team.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911110000_phase4_availability.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911120000_phase5_booking_core.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911130000_phase6_public_booking.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911150000_phase8_calendar.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911160000_phase9_booking_recovery.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/tests/phase9_notification_upgrade_fixture.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911170000_phase9_notification_outbox.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/migrations/20260911170100_phase9_notification_maintenance.sql" },
+        { "database": "yzt_upgrade", "file": "supabase/tests/phase9_notification_upgrade_assert.sql" }
       ]
     },
     {
       "name": "Verify F09-04 public abuse gate and hosted ACL boundary",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911180000_phase9_public_abuse_control.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260911180200_phase9_public_abuse_retention.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f17_hosted_acl_hardening.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase9_public_abuse_recovery_probe.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase9_public_abuse_control.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/phase9_public_abuse_retention.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f17_staging_fixture.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260911180000_phase9_public_abuse_control.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260911180200_phase9_public_abuse_retention.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f17_hosted_acl_hardening.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase9_public_abuse_recovery_probe.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase9_public_abuse_control.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/phase9_public_abuse_retention.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f17_staging_fixture.sql" }
       ]
     },
     {
       "name": "Verify S03 frozen notification events and conservative upgrade",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260912123000_s03_notification_consistency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s03_notification_consistency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s03_notification_concurrency.sql"
-        },
-        {
-          "database": "postgres",
-          "sql": "drop database if exists yzt_s03_upgrade;"
-        },
-        {
-          "database": "postgres",
-          "sql": "create database yzt_s03_upgrade;"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/tests/bootstrap.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911100000_phase3_services_team.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911110000_phase4_availability.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911120000_phase5_booking_core.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911130000_phase6_public_booking.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911150000_phase8_calendar.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911160000_phase9_booking_recovery.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911170000_phase9_notification_outbox.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911170100_phase9_notification_maintenance.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911180000_phase9_public_abuse_control.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260911180200_phase9_public_abuse_retention.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/tests/s03_notification_upgrade_fixture.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/migrations/20260912123000_s03_notification_consistency.sql"
-        },
-        {
-          "database": "yzt_s03_upgrade",
-          "file": "supabase/tests/s03_notification_upgrade_assert.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260912123000_s03_notification_consistency.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s03_notification_consistency.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s03_notification_concurrency.sql" },
+        { "database": "postgres", "sql": "drop database if exists yzt_s03_upgrade;" },
+        { "database": "postgres", "sql": "create database yzt_s03_upgrade;" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/tests/bootstrap.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911100000_phase3_services_team.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911110000_phase4_availability.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911120000_phase5_booking_core.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911130000_phase6_public_booking.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911150000_phase8_calendar.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911160000_phase9_booking_recovery.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911170000_phase9_notification_outbox.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911170100_phase9_notification_maintenance.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911180000_phase9_public_abuse_control.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260911180200_phase9_public_abuse_retention.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/tests/s03_notification_upgrade_fixture.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/migrations/20260912123000_s03_notification_consistency.sql" },
+        { "database": "yzt_s03_upgrade", "file": "supabase/tests/s03_notification_upgrade_assert.sql" }
       ]
     },
     {
       "name": "Verify S04 resource limits and concurrent recovery",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260913030912_s04_resource_limits.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s04_resource_limits.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s04_resource_limits_concurrency.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260913030912_s04_resource_limits.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s04_resource_limits.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s04_resource_limits_concurrency.sql" }
       ]
     },
     {
       "name": "Verify S05 key overlap, upgrade preservation and concurrent transitions",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s05_upgrade_fixture.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260913042902_s05_deploy_consistency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s05_deploy_consistency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s05_deploy_concurrency.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/tests/s05_upgrade_fixture.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260913042902_s05_deploy_consistency.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s05_deploy_consistency.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s05_deploy_concurrency.sql" }
       ]
     },
     {
       "name": "Verify S07 public booking resolution and lock races",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_resolution_upgrade_fixture.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260913120601_s07_public_booking_resolution.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_resolution_upgrade_assert.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_booking_resolution.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_booking_resolution_concurrency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s04_resource_limits.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s03_notification_consistency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_client_cutover_pre_fixture.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260913141830_s07_client_cutover.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_client_cutover.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260913151500_s07_terminal_pii_retention.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_terminal_pii_retention.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260913163000_s07_list_pagination_budgets.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_list_pagination.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260913184500_s07_snapshot_overflow.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_snapshot_overflow.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_load_measurement.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/tests/s07_resolution_upgrade_fixture.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260913120601_s07_public_booking_resolution.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_resolution_upgrade_assert.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_booking_resolution.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_booking_resolution_concurrency.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s04_resource_limits.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s03_notification_consistency.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_client_cutover_pre_fixture.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260913141830_s07_client_cutover.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_client_cutover.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260913151500_s07_terminal_pii_retention.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_terminal_pii_retention.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260913163000_s07_list_pagination_budgets.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_list_pagination.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260913184500_s07_snapshot_overflow.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_snapshot_overflow.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_load_measurement.sql" }
       ]
     },
     {
       "name": "Verify S08 future object ACL gate, tenant isolation and upgrade path",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260913201500_s08_db_object_access_gate.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s08_db_object_access_gate.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s08_post_s04_acl_regression.sql"
-        },
-        {
-          "database": "postgres",
-          "sql": "drop database if exists yzt_s08_upgrade;"
-        },
-        {
-          "database": "postgres",
-          "sql": "create database yzt_s08_upgrade;"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/bootstrap.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911100000_phase3_services_team.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911110000_phase4_availability.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911120000_phase5_booking_core.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911130000_phase6_public_booking.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911150000_phase8_calendar.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911160000_phase9_booking_recovery.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911170000_phase9_notification_outbox.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911170100_phase9_notification_maintenance.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911180000_phase9_public_abuse_control.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260911180200_phase9_public_abuse_retention.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260912123000_s03_notification_consistency.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260913030912_s04_resource_limits.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260913042902_s05_deploy_consistency.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260913120601_s07_public_booking_resolution.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260913141830_s07_client_cutover.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260913151500_s07_terminal_pii_retention.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260913163000_s07_list_pagination_budgets.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260913184500_s07_snapshot_overflow.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260913201500_s08_db_object_access_gate.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/s08_db_object_access_gate.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/s08_post_s04_acl_regression.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260913201500_s08_db_object_access_gate.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s08_db_object_access_gate.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s08_post_s04_acl_regression.sql" },
+        { "database": "postgres", "sql": "drop database if exists yzt_s08_upgrade;" },
+        { "database": "postgres", "sql": "create database yzt_s08_upgrade;" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/bootstrap.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911100000_phase3_services_team.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911110000_phase4_availability.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911120000_phase5_booking_core.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911130000_phase6_public_booking.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911150000_phase8_calendar.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911160000_phase9_booking_recovery.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911170000_phase9_notification_outbox.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911170100_phase9_notification_maintenance.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911180000_phase9_public_abuse_control.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260911180200_phase9_public_abuse_retention.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260912123000_s03_notification_consistency.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260913030912_s04_resource_limits.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260913042902_s05_deploy_consistency.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260913120601_s07_public_booking_resolution.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260913141830_s07_client_cutover.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260913151500_s07_terminal_pii_retention.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260913163000_s07_list_pagination_budgets.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260913184500_s07_snapshot_overflow.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260913201500_s08_db_object_access_gate.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/s08_db_object_access_gate.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/s08_post_s04_acl_regression.sql" }
       ]
     },
     {
       "name": "Verify F10-02 team access, permissions and upgrade path",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914033000_f10_team_access.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914043000_f10_team_snapshot.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914060000_f10_team_security_hardening.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_team_access.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_team_snapshot.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_team_security_hardening.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_team_access_concurrency.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914033000_f10_team_access.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914043000_f10_team_snapshot.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914060000_f10_team_security_hardening.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_team_access.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_team_snapshot.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_team_security_hardening.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260914033000_f10_team_access.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914043000_f10_team_snapshot.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914060000_f10_team_security_hardening.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_team_access.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_team_snapshot.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_team_security_hardening.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_team_access_concurrency.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914033000_f10_team_access.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914043000_f10_team_snapshot.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914060000_f10_team_security_hardening.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_team_access.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_team_snapshot.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_team_security_hardening.sql" }
       ]
     },
     {
       "name": "Verify F10-03 onboarding readiness and publish guard",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914090000_f10_onboarding_readiness.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_onboarding_readiness.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914090000_f10_onboarding_readiness.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_onboarding_readiness.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260914090000_f10_onboarding_readiness.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_onboarding_readiness.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914090000_f10_onboarding_readiness.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_onboarding_readiness.sql" }
       ]
     },
     {
       "name": "Verify F10-05 customer records, authority repair, history and concurrency",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914110000_f10_customer_records.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_customer_records.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_customer_records_concurrency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914110300_f10_customer_read_recovery_guard.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_customer_authority_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_customer_read_recovery_guard.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_customer_authority_repair_concurrency.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914110000_f10_customer_records.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_customer_records.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914110300_f10_customer_read_recovery_guard.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_customer_authority_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_customer_read_recovery_guard.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260914110000_f10_customer_records.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_customer_records.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_customer_records_concurrency.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914110300_f10_customer_read_recovery_guard.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_customer_authority_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_customer_read_recovery_guard.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_customer_authority_repair_concurrency.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914110000_f10_customer_records.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_customer_records.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914110300_f10_customer_read_recovery_guard.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_customer_authority_repair.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_customer_read_recovery_guard.sql" }
       ]
     },
     {
       "name": "Verify F12-02 public profile, media ACL and interruption recovery",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f12_storage_fixture.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914110500_f12_salon_profile_media.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914110600_f12_media_lifecycle_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f12_public_profile_media.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f12_public_media_lifecycle_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f12_public_media_lifecycle_concurrency.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f12_storage_fixture.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914110500_f12_salon_profile_media.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914110600_f12_media_lifecycle_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f12_public_profile_media.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f12_public_media_lifecycle_repair.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/tests/f12_storage_fixture.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914110500_f12_salon_profile_media.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914110600_f12_media_lifecycle_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f12_public_profile_media.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f12_public_media_lifecycle_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f12_public_media_lifecycle_concurrency.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f12_storage_fixture.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914110500_f12_salon_profile_media.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914110600_f12_media_lifecycle_repair.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f12_public_profile_media.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f12_public_media_lifecycle_repair.sql" }
       ]
     },
     {
       "name": "Verify F10-04 catalog and hours management",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914111600_f10_catalog_hours_limits.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914111800_f10_catalog_snapshot_session_guard.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260914111900_f10_catalog_read_session_guard.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_catalog_hours_management.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_catalog_hours_limits.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f10_catalog_read_session_guard.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914111600_f10_catalog_hours_limits.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914111800_f10_catalog_snapshot_session_guard.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260914111900_f10_catalog_read_session_guard.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_catalog_hours_management.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_catalog_hours_limits.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f10_catalog_read_session_guard.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914111600_f10_catalog_hours_limits.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914111800_f10_catalog_snapshot_session_guard.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260914111900_f10_catalog_read_session_guard.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_catalog_hours_management.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_catalog_hours_limits.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f10_catalog_read_session_guard.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914111600_f10_catalog_hours_limits.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914111800_f10_catalog_snapshot_session_guard.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260914111900_f10_catalog_read_session_guard.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_catalog_hours_management.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_catalog_hours_limits.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f10_catalog_read_session_guard.sql" }
       ]
     },
     {
       "name": "Verify F12-03 service category and price-range clean/upgrade contract",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260915150000_f12_service_price_range.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f12_service_price_range.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f12_service_price_range_upgrade_fixture.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260915150000_f12_service_price_range.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f12_service_price_range_upgrade_assert.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f12_service_price_range.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260915150000_f12_service_price_range.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f12_service_price_range.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f12_service_price_range_upgrade_fixture.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260915150000_f12_service_price_range.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f12_service_price_range_upgrade_assert.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f12_service_price_range.sql" }
       ]
     },
     {
       "name": "Verify F11-01 group/line clean and lossless upgrade contract",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260915160000_f11_group_line_contract.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260915160200_f11_notification_group_version_backfill.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260915160300_f11_partial_line_lifecycle.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_line_contract.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_partial_line_lifecycle.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_legacy_consumers.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_line_upgrade_fixture.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260915160000_f11_group_line_contract.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260915160200_f11_notification_group_version_backfill.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260915160300_f11_partial_line_lifecycle.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_line_upgrade_assert.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260915160000_f11_group_line_contract.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260915160200_f11_notification_group_version_backfill.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260915160300_f11_partial_line_lifecycle.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_line_upgrade_assert.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_partial_line_lifecycle.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_price_snapshot_concurrency.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_line_upgrade_cleanup.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260915160000_f11_group_line_contract.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260915160200_f11_notification_group_version_backfill.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260915160300_f11_partial_line_lifecycle.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_group_line_contract.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_partial_line_lifecycle.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_legacy_consumers.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_line_upgrade_fixture.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260915160000_f11_group_line_contract.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260915160200_f11_notification_group_version_backfill.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260915160300_f11_partial_line_lifecycle.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_line_upgrade_assert.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260915160000_f11_group_line_contract.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260915160200_f11_notification_group_version_backfill.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260915160300_f11_partial_line_lifecycle.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_line_upgrade_assert.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_partial_line_lifecycle.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_price_snapshot_concurrency.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_line_upgrade_cleanup.sql" }
       ]
     },
     {
       "name": "Verify F11-02 multi-service availability and atomic group creation",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917120000_f11_multi_service_group_booking.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917133000_f11_multi_service_final_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_availability.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_create_atomicity.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_create_concurrency.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917120000_f11_multi_service_group_booking.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917133000_f11_multi_service_final_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_availability.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_create_atomicity.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260917120000_f11_multi_service_group_booking.sql" },
+        { "database": "yzt_test", "file": "supabase/migrations/20260917133000_f11_multi_service_final_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_group_availability.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_group_create_atomicity.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_group_create_concurrency.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917120000_f11_multi_service_group_booking.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917133000_f11_multi_service_final_repair.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_availability.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_create_atomicity.sql" }
       ]
     },
     {
       "name": "Verify F11-02 group notification repair and terminal retention",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917143000_f11_group_notification_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_notification_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/s07_terminal_pii_retention.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917143000_f11_group_notification_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_notification_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/s07_terminal_pii_retention.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260917143000_f11_group_notification_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/f11_group_notification_repair.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/s07_terminal_pii_retention.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917143000_f11_group_notification_repair.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_notification_repair.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/s07_terminal_pii_retention.sql" }
       ]
     },
     {
       "name": "Verify KC-01 Core platform schema, command ledger and RPC surface",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260916190000_kc01_core_platform_schema.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/kc01_core_platform.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/kc01_core_platform_concurrency.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260916190000_kc01_core_platform_schema.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/kc01_core_platform.sql"
-        }
+        { "database": "yzt_test", "file": "supabase/migrations/20260916190000_kc01_core_platform_schema.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/kc01_core_platform.sql" },
+        { "database": "yzt_test", "file": "supabase/tests/kc01_core_platform_concurrency.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/migrations/20260916190000_kc01_core_platform_schema.sql" },
+        { "database": "yzt_s08_upgrade", "file": "supabase/tests/kc01_core_platform.sql" }
       ]
     },
     {
       "name": "Verify F11-02 recovery authority and RELEASE business-hours final repair",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917150000_f11_business_hours_final_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917150100_f11_group_recovery_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_final_binding.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_recovery_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_notification_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917150000_f11_business_hours_final_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917150100_f11_group_recovery_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_final_binding.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_recovery_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_notification_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_create_concurrency.sql"
-        }
+        {"database": "yzt_test", "file": "supabase/migrations/20260917150000_f11_business_hours_final_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260917150100_f11_group_recovery_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_final_binding.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_recovery_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_notification_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917150000_f11_business_hours_final_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917150100_f11_group_recovery_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_final_binding.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_recovery_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_notification_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_create_concurrency.sql"}
       ]
     },
     {
       "name": "Verify F11-03 group management, legacy compatibility and consumer reads",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917160000_f11_group_management_compat.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917160100_f11_public_group_management.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917160200_f11_group_management_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917160300_f11_group_consumer_reads.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917160400_f11_public_group_error_vocabulary.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917160500_f11_group_integration_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917170000_f11_schedule_authority_race_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260917171000_f11_schedule_authority_lock_order.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260918070000_f11_lock_order_final_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_schedule_authority_races.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_k03_group_slot_measurement.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_availability.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_create_atomicity.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_final_binding.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_create_concurrency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_management.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_public_group_management.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_integration_repair.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f11_group_management_concurrency.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917160000_f11_group_management_compat.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917160100_f11_public_group_management.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917160200_f11_group_management_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917160300_f11_group_consumer_reads.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917160400_f11_public_group_error_vocabulary.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917160500_f11_group_integration_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917170000_f11_schedule_authority_race_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260917171000_f11_schedule_authority_lock_order.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260918070000_f11_lock_order_final_repair.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_availability.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_create_atomicity.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_final_binding.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_management.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_public_group_management.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f11_group_integration_repair.sql"
-        }
+        {"database": "yzt_test", "file": "supabase/migrations/20260917160000_f11_group_management_compat.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260917160100_f11_public_group_management.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260917160200_f11_group_management_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260917160300_f11_group_consumer_reads.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260917160400_f11_public_group_error_vocabulary.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260917160500_f11_group_integration_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260917170000_f11_schedule_authority_race_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260917171000_f11_schedule_authority_lock_order.sql"},
+        {"database": "yzt_test", "file": "supabase/migrations/20260918070000_f11_lock_order_final_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_schedule_authority_races.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_k03_group_slot_measurement.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_availability.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_create_atomicity.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_final_binding.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_create_concurrency.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_management.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_public_group_management.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_integration_repair.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f11_group_management_concurrency.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917160000_f11_group_management_compat.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917160100_f11_public_group_management.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917160200_f11_group_management_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917160300_f11_group_consumer_reads.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917160400_f11_public_group_error_vocabulary.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917160500_f11_group_integration_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917170000_f11_schedule_authority_race_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260917171000_f11_schedule_authority_lock_order.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260918070000_f11_lock_order_final_repair.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_availability.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_create_atomicity.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_final_binding.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_management.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_public_group_management.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f11_group_integration_repair.sql"}
       ]
     },
     {
       "name": "Verify F12-04C range-aware public catalog v2 clean/upgrade contract",
       "steps": [
-        {
-          "database": "yzt_test",
-          "file": "supabase/migrations/20260919070000_f12_public_catalog_v2.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/f12_public_catalog_v2.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/migrations/20260919070000_f12_public_catalog_v2.sql"
-        },
-        {
-          "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f12_public_catalog_v2.sql"
-        }
+        {"database": "yzt_test", "file": "supabase/migrations/20260919070000_f12_public_catalog_v2.sql"},
+        {"database": "yzt_test", "file": "supabase/tests/f12_public_catalog_v2.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/migrations/20260919070000_f12_public_catalog_v2.sql"},
+        {"database": "yzt_s08_upgrade", "file": "supabase/tests/f12_public_catalog_v2.sql"}
       ]
     }
   ]
