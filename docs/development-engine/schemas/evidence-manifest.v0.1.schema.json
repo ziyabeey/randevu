@@ -14,6 +14,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["semantic_sha", "exact_head_sha", "supersedes"],
       "properties": {
+        "base_main_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$", "description": "Observed current PR base, not the task's original starting main. Omitted means unknown." },
         "semantic_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
         "exact_head_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
         "supersedes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
@@ -28,7 +29,9 @@
           "obligation": { "type": "string", "minLength": 1 },
           "kind": { "enum": ["static", "unit", "http", "postgres", "postgres_concurrency", "browser", "hosted", "manual"] },
           "status": { "enum": ["pass", "fail", "pending", "skipped", "unknown"] },
-          "ref": { "type": ["string", "null"], "minLength": 1 }
+          "ref": { "type": ["string", "null"], "minLength": 1 },
+          "exact_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$", "description": "Source candidate associated with this proof, not inferred from the surrounding manifest. Omitted means unknown." },
+          "tested_checkout_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$", "description": "Actual tested checkout or merge-ref. Served-build/migration-chain identity remains in the linked proof. Omitted means unknown." }
         }
       }
     },
@@ -39,6 +42,7 @@
         "run": { "type": ["string", "null"], "minLength": 1 },
         "status": { "enum": ["pending", "success", "failure", "cancelled", "skipped", "unknown"] },
         "exact_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
+        "base_main_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$", "description": "Base used by this CI run; required for interpreting integration freshness, not inferred from live main. Omitted means unknown." },
         "tested_checkout_sha": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40}$" },
         "job": { "type": ["string", "null"], "minLength": 1 },
         "attempt": { "type": ["integer", "null"], "minimum": 1 }

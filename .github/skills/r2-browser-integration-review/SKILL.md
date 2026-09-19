@@ -15,7 +15,9 @@ task risk. Do not invent runtime browser obligations for a documentation-only ta
 
 Coordinator assignment, Context Pack/acceptance and approved reference;
 PR/base/semantic/exact head, integration diff, CI/proof refs; runnable candidate
-with served-build identity and safe fixtures; prior findings/delta scope.
+with served-build identity and safe fixtures; prior findings/delta scope. Use the
+canonical [review lineage contract](../../../docs/plan/agent-workflow.md#review-lineage-kernel)
+for mode, freshness, blocker identity and follow-up scope.
 
 ## Allowed actions
 
@@ -44,21 +46,24 @@ staging only addresses a concrete hosted-only residual.
 
 ## Exact SHA
 
-Verify live head and served candidate before testing and before the receipt.
-Changed head invalidates head-specific conclusions; request delta/final
-confirmation or fresh review from the coordinator. Semantic changes reset
-affected acceptance. Record tested workflow/merge-ref SHA separately.
+Apply the canonical lineage/freshness routing before testing and before publishing.
+Also verify the served build actually corresponds to the tested checkout; a
+current source head does not make an unidentified browser build current.
 
 ## Output
 
 ```text
+VERDICT: ACCEPTABLE | BLOCKER | INCOMPLETE
+BLOCKERS: open carried findings or new confirmed blockers; NONE only when verified empty; UNKNOWN when blocker identity/provenance is unresolved
+EVIDENCE GAPS: missing / failed / skipped obligations, or NONE
+REVIEWED SHA: exact candidate head reviewed for this receipt
+NEXT ACTION: coordinator's next concrete step
 R2 / reviewer context / task / PR:
-Base / semantic SHA / exact candidate / served build:
-Verdict: ACCEPTABLE | BLOCKER | INCOMPLETE
+Brief reference / previous receipt / previous reviewed SHA / approved delta:
+Base / semantic SHA / exact candidate / tested checkout / served build:
 Scenario -> route / viewport / action / result / evidence:
 Material findings and regression scope:
 Untested or hosted-only residuals:
-Next coordinator action:
 ```
 
 `ACCEPTABLE` is a SHA-bound R2 receipt, not GitHub APPROVE or merge authority.

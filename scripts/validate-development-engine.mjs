@@ -8,6 +8,20 @@ const home = 'docs/development-engine';
 export const skillNames = ['kepenk-implementer', 'r1-db-security-review',
   'r2-browser-integration-review', 'effective-state-audit', 'development-telemetry-review'];
 export const promptNames = ['r0-review', 'effective-state-audit', 'stale-review-detector', 'development-telemetry-review'];
+export const decisionFirstLabels = ['VERDICT:', 'BLOCKERS:', 'EVIDENCE GAPS:', 'REVIEWED SHA:', 'NEXT ACTION:'];
+const reviewLineageKernelHeading = '### Review lineage kernel';
+export const reviewLineageKernelRef = 'docs/plan/agent-workflow.md#review-lineage-kernel';
+const reviewLineageRefs = new Map([
+  ['docs/development-engine/automations/r0-review.md', '../../plan/agent-workflow.md#review-lineage-kernel'],
+  ['docs/development-engine/automations/stale-review-detector.md', '../../plan/agent-workflow.md#review-lineage-kernel'],
+  ['.github/skills/r1-db-security-review/SKILL.md', '../../../docs/plan/agent-workflow.md#review-lineage-kernel'],
+  ['.github/skills/r2-browser-integration-review/SKILL.md', '../../../docs/plan/agent-workflow.md#review-lineage-kernel'],
+]);
+const decisionFirstFiles = new Set([
+  'docs/development-engine/automations/r0-review.md',
+  '.github/skills/r1-db-security-review/SKILL.md',
+  '.github/skills/r2-browser-integration-review/SKILL.md',
+]);
 const sections = ['Role', 'Required inputs', 'Allowed actions', 'Forbidden actions', 'Evidence', 'Exact SHA', 'Output', 'Stop'];
 const keywords = new Set(['$schema', 'title', 'description', 'type', 'const', 'enum', 'properties',
   'required', 'additionalProperties', 'items', 'minItems', 'minLength', 'minimum', 'pattern']);
@@ -117,6 +131,24 @@ export function parseFrontmatter(markdown, allowed) {
   return { fields, body: match[2] };
 }
 
+function sectionBody(markdown, heading) {
+  return markdown.match(new RegExp(`^## ${heading}\\r?\\n([\\s\\S]*?)(?=^## |$(?![\\s\\S]))`, 'm'))?.[1] ?? null;
+}
+
+function codeFence(markdown) {
+  return markdown.match(/```text\r?\n([\s\S]*?)```/)?.[1] ?? null;
+}
+
+function orderedLabels(text, labels) {
+  let cursor = 0;
+  for (const label of labels) {
+    const next = text.indexOf(label, cursor);
+    if (next === -1) return false;
+    cursor = next + label.length;
+  }
+  return true;
+}
+
 const driftRules = [
   ['.github/copilot-instructions.md', /Never self-ready or self-merge/, 'coordinator-only readiness/merge'],
   ['.github/copilot-instructions.md', /Semantic runtime changes invalidate/, 'semantic review reset'],
@@ -149,6 +181,30 @@ export function validateGuidance(file, markdown) {
       if (fields.excludeAgent && !['code-review', 'cloud-agent'].includes(fields.excludeAgent)) errors.push('unsupported excludeAgent');
     }
   } catch (error) { errors.push(error.message); }
+  if (file === 'docs/plan/agent-workflow.md') {
+    if (!markdown.includes(reviewLineageKernelHeading)) errors.push('missing canonical review lineage kernel heading');
+    const kernel = markdown.match(/^### Review lineage kernel\r?\n([\s\S]*?)(?=^## |^### |$(?![\s\S]))/m)?.[1];
+    if (!kernel?.trim()) errors.push('missing canonical review lineage kernel body');
+    else {
+      for (const label of ['Previous receipt:', 'Previous reviewed SHA:', 'Candidate SHA:', 'Approved delta:', 'Frozen blockers:', 'Closure evidence:', 'Evidence gaps:', 'Next coordinator action:']) {
+        if (!kernel.includes(label)) errors.push(`review lineage kernel missing ${label}`);
+      }
+      if (!orderedLabels(kernel, decisionFirstLabels)) errors.push('review lineage kernel must keep decision-first receipt labels in canonical order');
+    }
+  }
+  if (reviewLineageRefs.has(file)) {
+    const expectedRef = reviewLineageRefs.get(file);
+    if (!markdown.includes(expectedRef)) errors.push(`must reference canonical review lineage kernel ${expectedRef}`);
+  }
+  if (decisionFirstFiles.has(file)) {
+    const output = codeFence(sectionBody(markdown, 'Output') ?? '');
+    if (!output) errors.push('missing text output code fence for decision-first receipt');
+    else {
+      const normalizedOutput = output.trimStart();
+      if (!normalizedOutput.startsWith('VERDICT:')) errors.push('decision-first receipt must start with VERDICT');
+      if (!orderedLabels(output, decisionFirstLabels)) errors.push('decision-first receipt labels must appear in canonical order');
+    }
+  }
   const normalized = markdown.replace(/\s+/g, ' ');
   for (const [target, pattern, invariant] of driftRules) {
     if (target === file && !pattern.test(normalized)) warnings.push(`${file}: inspect possible drift of ${invariant}`);
@@ -163,6 +219,14 @@ export function inspectProjections(task, evidence) {
   if (!head || !task.identity.current_head_sha) warnings.push('Candidate identity is unknown; no live acceptance can be inferred.');
   else if (head !== task.identity.current_head_sha) warnings.push('Task and Evidence heads differ; refresh the projection.');
   if (head && evidence.ci.exact_sha !== head) warnings.push('CI evidence is missing or stale for the candidate.');
+  if (evidence.ci.status !== 'success') warnings.push(`CI result is not successful: ${evidence.ci.status}; required evidence remains incomplete.`);
+  if (evidence.ci.status === 'success') {
+    if (!evidence.candidate.base_main_sha || !evidence.ci.base_main_sha) {
+      warnings.push('CI base identity is unknown; current integration freshness cannot be inferred.');
+    } else if (evidence.candidate.base_main_sha !== evidence.ci.base_main_sha) {
+      warnings.push('CI base differs from the observed candidate base; refresh integration evidence.');
+    }
+  }
   if (evidence.ci.status === 'success'
     && (!evidence.ci.run || !evidence.ci.job || !evidence.ci.attempt || !evidence.ci.tested_checkout_sha || !evidence.ci.exact_sha)) {
     warnings.push('Successful CI claim lacks exact run/job/attempt/checkout provenance.');
@@ -173,9 +237,23 @@ export function inspectProjections(task, evidence) {
     if (review.sha && head && review.sha !== head) warnings.push(`${role}: SHA-bound receipt is stale; coordinator delta/final confirmation needed.`);
     if (review.verdict === 'acceptable' && (!review.sha || !review.receipt || !head)) warnings.push(`${role}: acceptance provenance is incomplete.`);
     if (review.required && review.verdict === 'not_required') warnings.push(`${role}: required review is recorded as not_required.`);
+    if (task.review[role] === 'required' && review.verdict !== 'acceptable') warnings.push(`${role}: required review has no acceptable receipt (${review.verdict}).`);
   }
   for (const proof of evidence.proofs) {
+    if (proof.status !== 'pass') {
+      if (!proof.exact_sha) {
+        warnings.push(`${proof.obligation}: non-pass proof is not bound to a candidate SHA.`);
+      } else if (head && proof.exact_sha === head) {
+        warnings.push(`${proof.obligation}: ${proof.kind} current proof result is ${proof.status}; inspect obligation coverage (${proof.ref ?? 'no reference'}).`);
+      } else if (head && proof.exact_sha !== head) {
+        warnings.push(`${proof.obligation}: non-pass proof is historical, not current candidate evidence.`);
+      }
+    }
     if (['pass', 'fail'].includes(proof.status) && !proof.ref) warnings.push(`${proof.obligation}: proof result has no evidence reference.`);
+    if (['pass', 'fail'].includes(proof.status)) {
+      if (!proof.exact_sha || !proof.tested_checkout_sha) warnings.push(`${proof.obligation}: proof identity is incomplete.`);
+      if (proof.exact_sha && head && proof.exact_sha !== head) warnings.push(`${proof.obligation}: proof is historical, not current candidate evidence.`);
+    }
   }
   if (evidence.merge.ready === true) {
     warnings.push(evidence.merge.coordinator_receipt
@@ -192,12 +270,14 @@ export async function validateArtifacts(repo = root) {
   const errors = [];
   const warnings = [];
   const requiredMarkdown = ['.github/copilot-instructions.md',
+    'docs/plan/agent-workflow.md',
     ...['implementation', 'db-security', 'browser-integration'].map((name) => `.github/instructions/${name}.instructions.md`),
     ...skillNames.map((name) => `.github/skills/${name}/SKILL.md`),
     ...promptNames.map((name) => `${home}/automations/${name}.md`), `${home}/README.md`];
   const discovered = new Set([
     ...await discoverFiles(repo, '.github', '.md'),
     ...await discoverFiles(repo, home, '.md'),
+    ...await discoverFiles(repo, 'docs/plan', '.md'),
     ...await discoverFiles(repo, home, '.json'),
   ]);
   const read = (file) => {
