@@ -88,10 +88,16 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
   const [notice, setNotice] = useState('');
   const [bookingSelection, setBookingSelection] = useState<PublicMultiServiceSelectionState | null>(null);
   const [bookingResultVisible, setBookingResultVisible] = useState(false);
+  const [groupPlannerAvailable, setGroupPlannerAvailable] = useState(true);
   const [availabilityRefreshToken, setAvailabilityRefreshToken] = useState(0);
   const refreshBookingAvailability = useCallback(() => setAvailabilityRefreshToken((value) => value + 1), []);
   const [favorite, setFavorite] = useState(false);
   const [actionNotice, setActionNotice] = useState('');
+
+  useEffect(() => {
+    setGroupPlannerAvailable(true);
+    setBookingSelection(null);
+  }, [slug]);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,11 +260,13 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
         <PublicMultiServiceSelection
           slug={slug}
           availabilityRefreshToken={availabilityRefreshToken}
+          onAvailabilityChange={setGroupPlannerAvailable}
           onSelectionChange={setBookingSelection}
         />
       </div>}
       <PublicBookingPage
         slug={slug}
+        groupMode={groupPlannerAvailable}
         multiServiceSelection={bookingSelection}
         onPlanNeedsRefresh={refreshBookingAvailability}
         onResultVisibilityChange={setBookingResultVisible}

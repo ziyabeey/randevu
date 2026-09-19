@@ -14,6 +14,9 @@ const chromeLog = path.join(work, 'chrome.log');
 const sockets = new Set();
 const requests = [];
 const recoveries = new Map();
+const failedResolveOnce = new Set();
+const browserChunks = new Map();
+const servedChunks = new Set();
 let testJs = Buffer.alloc(0);
 let testCss = Buffer.alloc(0);
 let chrome;
@@ -23,6 +26,7 @@ const serviceA = '41000000-0000-4000-8000-000000000011';
 const serviceB = '41000000-0000-4000-8000-000000000012';
 const staffA = '51000000-0000-4000-8000-000000000011';
 const staffB = '51000000-0000-4000-8000-000000000012';
+const staffC = '51000000-0000-4000-8000-000000000013';
 const appointmentA = '81000000-0000-4000-8000-000000000011';
 const appointmentB = '81000000-0000-4000-8000-000000000012';
 const groupId = '61000000-0000-4000-8000-000000000011';
@@ -178,6 +182,13 @@ const server = createServer(async (request, response) => {
     response.end(testCss);
     return;
   }
+  const chunk = browserChunks.get(url.pathname);
+  if (chunk) {
+    servedChunks.add(url.pathname);
+    response.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
+    response.end(chunk);
+    return;
+  }
   if (url.pathname.startsWith('/r/') || url.pathname === '/m' || url.pathname === '/m/') {
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     response.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/test.js"></script></body></html>');
@@ -204,9 +215,19 @@ const server = createServer(async (request, response) => {
   const bookMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/group-book$/);
   if (request.method === 'POST' && bookMatch) {
     const group = createdGroup(body.lines);
+    if (bookMatch[1] === 'reassign-salon') {
+      group.lines[0].staffId = staffC;
+      group.lines[0].staffName = 'Ece';
+    }
+    if (bookMatch[1] === 'invalid-line-salon') {
+      group.lines[1].startsAt = '2026-09-20T08:15:00.000Z';
+    }
+    if (bookMatch[1] === 'closed-salon') {
+      return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon sonucu şu anda doğrulanamıyor.' } });
+    }
     const saved = { group, managementToken: body.managementToken, slug: bookMatch[1] };
     recoveries.set(body.recoveryId, saved);
-    if (bookMatch[1] === 'recovery-salon') {
+    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon') {
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon sonucu şu anda doğrulanamıyor.' } });
     }
     return sendJson(response, 201, {
@@ -218,6 +239,10 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'POST' && url.pathname === '/api/public/booking/resolve') {
     const saved = recoveries.get(body.recoveryId);
+    if (saved?.slug === 'reload-salon' && !failedResolveOnce.has(body.recoveryId)) {
+      failedResolveOnce.add(body.recoveryId);
+      return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Randevu sonucu henüz doğrulanamıyor.' } });
+    }
     return saved
       ? sendJson(response, 200, recoveryResponse(saved, body.recoveryId))
       : sendJson(response, 200, { resolution: 'closed_absent', recoveryId: body.recoveryId });
@@ -302,21 +327,54 @@ class Cdp {
   close() { this.ws.close(); }
 }
 
+async function openRoute(debugUrl, origin, pathname, width) {
+  const target = await (await fetch(`${debugUrl}/json/new?${encodeURIComponent(`${origin}${pathname}`)}`, { method: 'PUT', signal: AbortSignal.timeout(5_000) })).json();
+  const page = await Cdp.connect(target.webSocketDebuggerUrl);
+  await page.send('Runtime.enable');
+  await page.send('Page.enable');
+  await page.send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: true });
+  return page;
+}
+
+async function pressTab(page) {
+  const key = { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, nativeVirtualKeyCode: 9 };
+  await page.send('Input.dispatchKeyEvent', { type: 'keyDown', ...key });
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...key });
+  await sleep(35);
+  return page.evaluate('(() => { const node=document.activeElement; const style=getComputedStyle(node); return {name:node?.getAttribute?.("name")||"",className:node?.className||"",focusVisible:Boolean(node?.matches?.(":focus-visible")),outlineStyle:style.outlineStyle,outlineWidth:style.outlineWidth}; })()');
+}
+
+async function preparePlan(page, slug) {
+  await waitFor(() => page.evaluate('document.querySelectorAll(".public-service-choice").length === 2'), `${slug} catalog did not load`);
+  await page.evaluate('document.activeElement instanceof HTMLElement && document.activeElement.blur()');
+  let serviceFocus = null;
+  for (let index = 0; index < 8; index += 1) {
+    const focus = await pressTab(page);
+    if (String(focus.className).includes('public-service-choice')) { serviceFocus = focus; break; }
+  }
+  assert.ok(serviceFocus?.focusVisible && serviceFocus.outlineStyle !== 'none' && serviceFocus.outlineWidth !== '0px', `${slug} service choice did not receive visible keyboard focus: ${JSON.stringify(serviceFocus)}`);
+  await page.evaluate('Array.from(document.querySelectorAll(".public-service-choice")).forEach((button) => button.click())');
+  await waitFor(() => page.evaluate('document.querySelectorAll(".public-selected-line").length === 2'), `${slug} services were not selected`);
+  await page.evaluate('Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
+  await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-slot"))'), `${slug} group slot did not load`);
+  await page.evaluate('document.querySelector(".public-group-slot")?.click()');
+  await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-customer-card input[name=customerName]"))'), `${slug} contact form did not open`);
+}
+
+async function submitContact(page) {
+  await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const email=document.querySelector("input[name=customerEmail]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(email,"deniz@example.test"); email.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
+}
+
 async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
   const start = requests.length;
-  const target = await (await fetch(`${debugUrl}/json/new?${encodeURIComponent(`${origin}/r/${slug}`)}`, { method: 'PUT', signal: AbortSignal.timeout(5_000) })).json();
-  const page = await Cdp.connect(target.webSocketDebuggerUrl);
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, width);
   try {
-    await page.send('Runtime.enable');
-    await page.send('Page.enable');
-    await page.send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: true });
-    await waitFor(() => page.evaluate('document.querySelectorAll(".public-service-choice").length === 2'), `${slug} catalog did not load`);
-    await page.evaluate('Array.from(document.querySelectorAll(".public-service-choice")).forEach((button) => button.click())');
-    await waitFor(() => page.evaluate('document.querySelectorAll(".public-selected-line").length === 2'), `${slug} services were not selected`);
-    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
-    await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-slot"))'), `${slug} group slot did not load`);
-    await page.evaluate('document.querySelector(".public-group-slot")?.click()');
-    await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-customer-card input[name=customerName]"))'), `${slug} contact form did not open`);
+    await preparePlan(page, slug);
+
+    await page.evaluate('document.querySelector("input[name=customerName]")?.focus()');
+    const contactFocus = await pressTab(page);
+    assert.equal(contactFocus.name, 'customerPhone', `${slug} keyboard did not advance into contact fields`);
+    assert.ok(contactFocus.focusVisible && contactFocus.outlineStyle !== 'none' && contactFocus.outlineWidth !== '0px', `${slug} contact field did not receive visible keyboard focus: ${JSON.stringify(contactFocus)}`);
 
     await page.evaluate('(() => { const input=document.querySelector("input[name=customerName]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"Deniz Örnek"); input.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
     await waitFor(() => page.evaluate('Boolean(document.querySelector("#public-contact-error"))'), `${slug} contact relation error did not appear`);
@@ -358,9 +416,76 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
   }
 }
 
+async function runClosedAbsent(debugUrl, origin) {
+  const slug = 'closed-salon';
+  const start = requests.length;
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(page, slug);
+    await submitContact(page);
+    await waitFor(() => page.evaluate('document.body.innerText.includes("güvenli olarak kapatıldı")'), 'closed_absent receipt did not appear');
+    await waitFor(() => requests.slice(start).filter((item) => item.path.endsWith('/group-slots')).length >= 2, 'closed_absent did not refresh group availability');
+    const journeyRequests = requests.slice(start);
+    assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book')).length, 1, 'closed_absent sent duplicate group create requests');
+    assert.equal(journeyRequests.filter((item) => item.path === '/api/public/booking/resolve').length, 1, 'closed_absent did not resolve exactly once');
+    assert.equal(await page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), false);
+    assert.deepEqual(page.diagnostics, []);
+  } finally {
+    page.close();
+  }
+}
+
+async function runReloadRecovery(debugUrl, origin) {
+  const slug = 'reload-salon';
+  const start = requests.length;
+  const first = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(first, slug);
+    await submitContact(first);
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 1, 'reload recovery first resolve did not fail once');
+    await waitFor(() => first.evaluate('document.body.innerText.includes("henüz doğrulanamıyor")'), 'reload recovery did not retain an unresolved result');
+  } finally {
+    first.close();
+  }
+
+  const second = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await waitFor(() => second.evaluate('document.body.innerText.includes("Önceki randevu işleminizin sonucu")'), 'reload did not restore the unresolved receipt');
+    await second.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Sonucu tekrar kontrol et"))?.click()');
+    await waitFor(() => second.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), 'reload recovery did not restore the committed group');
+    const journeyRequests = requests.slice(start);
+    assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book')).length, 1, 'reload recovery sent duplicate group create requests');
+    assert.equal(journeyRequests.filter((item) => item.path === '/api/public/booking/resolve').length, 2, 'reload recovery resolve count mismatch');
+    assert.deepEqual(second.diagnostics, []);
+  } finally {
+    second.close();
+  }
+}
+
+async function runRejectedLineMutation(debugUrl, origin) {
+  const slug = 'invalid-line-salon';
+  const start = requests.length;
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(page, slug);
+    await submitContact(page);
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 1, 'invalid-line response was not checked through one-shot recovery');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("Randevu sonucu doğrulanamadı")'), 'invalid-line response did not remain fail closed');
+    assert.equal(await page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), false, 'invalid-line response reached the result screen');
+    const journeyRequests = requests.slice(start);
+    assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book')).length, 1, 'invalid-line response sent duplicate group create requests');
+    assert.deepEqual(page.diagnostics, []);
+  } finally {
+    page.close();
+  }
+}
+
 try {
-  await build({ configFile: false, root, publicDir: false, logLevel: 'error', define: { 'process.env.NODE_ENV': JSON.stringify('production') }, build: { outDir: bundleDir, emptyOutDir: true, minify: false, lib: { entry: path.join(root, 'tests/browser/f12-public-group-booking.tsx'), formats: ['es'] }, rollupOptions: { output: { entryFileNames: 'test.js' } } } });
+  await build({ configFile: false, root, publicDir: false, logLevel: 'error', define: { 'process.env.NODE_ENV': JSON.stringify('production') }, build: { outDir: bundleDir, emptyOutDir: true, minify: false, lib: { entry: path.join(root, 'tests/browser/f12-public-group-booking.tsx'), formats: ['es'] }, rollupOptions: { output: { entryFileNames: 'test.js', chunkFileNames: '[name]-[hash].js' } } } });
   testJs = readFileSync(path.join(bundleDir, 'test.js'));
+  for (const file of readdirSync(bundleDir).filter((name) => name.endsWith('.js') && name !== 'test.js')) {
+    browserChunks.set(`/${file}`, readFileSync(path.join(bundleDir, file)));
+  }
   const cssFile = readdirSync(bundleDir).find((name) => name.endsWith('.css'));
   assert.ok(cssFile, 'F12-05 browser bundle did not emit CSS');
   testCss = readFileSync(path.join(bundleDir, cssFile));
@@ -378,7 +503,13 @@ try {
 
   await runJourney(debugUrl, origin, 'success-salon', 360, false);
   await runJourney(debugUrl, origin, 'recovery-salon', 390, true);
-  console.log('F12-05 public group browser passed: 360/390 create, result, one-shot recovery and /m management journey.');
+  await runJourney(debugUrl, origin, 'reassign-salon', 390, false);
+  await runClosedAbsent(debugUrl, origin);
+  await runReloadRecovery(debugUrl, origin);
+  await runRejectedLineMutation(debugUrl, origin);
+  assert.ok([...servedChunks].some((name) => /PublicSalonPage-.*\.js$/.test(name)), `production public route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
+  assert.ok([...servedChunks].some((name) => /ManageAppointmentPage-.*\.js$/.test(name)), `production management route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
+  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, unpinned reassignment, line-integrity rejection, closed_absent, reload recovery and /m management.');
 } catch (error) {
   let diagnostics = '';
   try { diagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }

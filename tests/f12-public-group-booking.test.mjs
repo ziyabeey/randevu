@@ -6,6 +6,8 @@ const booking = await readFile(new URL('../src/PublicBookingPage.tsx', import.me
 const selection = await readFile(new URL('../src/PublicMultiServiceSelection.tsx', import.meta.url), 'utf8');
 const salon = await readFile(new URL('../src/PublicSalonPage.tsx', import.meta.url), 'utf8');
 const entry = await readFile(new URL('../src/main.tsx', import.meta.url), 'utf8');
+const browserEntry = await readFile(new URL('./browser/f12-public-group-booking.tsx', import.meta.url), 'utf8');
+const browserRunner = await readFile(new URL('../scripts/browser-f12-public-group-booking.mjs', import.meta.url), 'utf8');
 const css = await readFile(new URL('../src/public-booking.css', import.meta.url), 'utf8');
 
 test('F12-05 consumes the accepted group create contract with the durable v2 intent', () => {
@@ -23,6 +25,12 @@ test('F12-05 consumes the accepted group create contract with the durable v2 int
 test('F12-05 validates ordered group results, range estimates and the exact management capability', () => {
   assert.match(booking, /validGroupConfirmation/);
   assert.match(booking, /groupMatchesSelection/);
+  assert.match(booking, /created\.startsAt !== planned\.startsAt/);
+  assert.match(booking, /created\.endsAt !== planned\.endsAt/);
+  assert.match(booking, /created\.priceType !== planned\.priceType/);
+  assert.match(booking, /created\.priceMinMinor !== planned\.priceMinMinor/);
+  assert.match(booking, /created\.priceMaxMinor !== planned\.priceMaxMinor/);
+  assert.match(booking, /line\.staffId === null/);
   assert.match(booking, /result\.management\?\.url !== `\/m#\$\{managementToken\}`/);
   assert.match(booking, /estimateMinMinor/);
   assert.match(booking, /estimateMaxMinor/);
@@ -35,7 +43,8 @@ test('F12-05 validates ordered group results, range estimates and the exact mana
 test('F12-05 resolves uncertain submissions without issuing a second create', () => {
   assert.match(booking, /markPublicBookingUnresolved/);
   assert.match(booking, /\/api\/public\/booking\/resolve/);
-  assert.match(booking, /if \(unresolved && isRecoverableRecord\(unresolved\)\) await resolveStoredResult\(unresolved, true\)/);
+  assert.match(booking, /await resolveStoredResult\(unresolved, true, isGroupMode \? multiServiceSelection! : undefined\)/);
+  assert.match(booking, /expectedGroupSelection !== undefined/);
   assert.match(booking, /resolution === 'closed_absent'/);
   assert.match(booking, /if \(isGroupMode\) onPlanNeedsRefresh\?\.\(\)/);
   assert.match(selection, /availabilityRefreshToken/);
@@ -56,8 +65,14 @@ test('F12-05 keeps one booking-state owner and lazy-loads private/operator page 
   assert.match(salon, /onResultVisibilityChange=\{setBookingResultVisible\}/);
   assert.match(salon, /!bookingResultVisible/);
   assert.equal((salon.match(/<PublicBookingPage/g) ?? []).length, 1);
+  assert.match(salon, /onAvailabilityChange=\{setGroupPlannerAvailable\}/);
+  assert.match(salon, /groupMode=\{groupPlannerAvailable\}/);
+  assert.match(booking, /const isGroupMode = groupMode;/);
   assert.match(entry, /lazy\(\(\) => import\('\.\/PublicSalonPage'\)\)/);
   assert.match(entry, /lazy\(\(\) => import\('\.\/ManageAppointmentPage'\)\)/);
   assert.match(entry, /lazy\(\(\) => import\('\.\/CalendarPage'\)\)/);
   assert.doesNotMatch(entry, /^import (?:App|CalendarPage|CustomersPage|BookingPage) from/m);
+  assert.match(browserEntry, /import '\.\.\/\.\.\/src\/main';/);
+  assert.match(browserRunner, /PublicSalonPage-\.\*\\\.js/);
+  assert.match(browserRunner, /ManageAppointmentPage-\.\*\\\.js/);
 });

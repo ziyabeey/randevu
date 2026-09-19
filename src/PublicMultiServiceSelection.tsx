@@ -64,6 +64,7 @@ export type PublicMultiServiceSelectionState = {
 type Props = {
   slug: string;
   availabilityRefreshToken?: number;
+  onAvailabilityChange?: (available: boolean) => void;
   onSelectionChange?: (state: PublicMultiServiceSelectionState | null) => void;
 };
 
@@ -145,7 +146,7 @@ function matchesRequestedLines(slot: PublicGroupSlot, expected: PublicMultiServi
   });
 }
 
-export default function PublicMultiServiceSelection({ slug, availabilityRefreshToken = 0, onSelectionChange }: Props) {
+export default function PublicMultiServiceSelection({ slug, availabilityRefreshToken = 0, onAvailabilityChange, onSelectionChange }: Props) {
   const [page, setPage] = useState<PagePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
@@ -197,15 +198,17 @@ export default function PublicMultiServiceSelection({ slug, availabilityRefreshT
         const next: PagePayload = { business: business.business, services: catalog.services };
         setPage(next);
         setDate(next.business.local_date);
+        onAvailabilityChange?.(true);
       } catch (error) {
         if (generation !== catalogGeneration.current || abortError(error)) return;
+        onAvailabilityChange?.(false);
         setNotice(errorMessage(error, 'Hizmet listesi yüklenemedi.'));
       } finally {
         if (generation === catalogGeneration.current) setLoading(false);
       }
     })();
     return () => controller.abort();
-  }, [slug, catalogAttempt]);
+  }, [slug, catalogAttempt, onAvailabilityChange, onSelectionChange]);
 
   const services = useMemo(() => {
     const copy = [...(page?.services ?? [])];

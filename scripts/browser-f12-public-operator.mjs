@@ -195,10 +195,6 @@ const server = createServer(async (request, response) => {
         services: [], bookingClock: { serverNowEpochSeconds: 1789440000, submitWindowSeconds: 300 },
       });
     }
-    if (request.method === 'GET' && url.pathname === '/api/public/business/visibility-salon/services-v2') {
-      return sendJson(response, 200, { services: [] });
-    }
-
     return sendJson(response, 404, { error: { code: 'NOT_FOUND', message: 'Fixture route missing.' } });
   } catch (error) {
     sendJson(response, 500, { error: { code: 'FIXTURE_ERROR', message: error instanceof Error ? error.message : String(error) } });
@@ -413,7 +409,7 @@ try {
 
   const publicPage = await openPage(debugUrl, origin, '/public-visibility', 390);
   await waitText(publicPage, 'Visibility Salon');
-  await waitText(publicPage, 'Şu anda seçilebilecek hizmet bulunmuyor.');
+  await waitText(publicPage, 'Şu anda online randevuya açık hizmet bulunmuyor.');
   const publicHtml = await call(publicPage, 'html');
   assert.match(publicHtml, /READY-PUBLIC-MEDIA/);
   assert.doesNotMatch(publicHtml, /PENDING-MUST-NOT-RENDER|DELETING-MUST-NOT-RENDER|CLEANUP-MUST-NOT-RENDER/);
@@ -429,5 +425,10 @@ try {
   await new Promise((resolve) => server.close(resolve));
   if (chrome && chrome.exitCode === null) chrome.kill('SIGTERM');
   if (chromeFd !== undefined) closeSync(chromeFd);
-  rmSync(work, { recursive: true, force: true });
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try { rmSync(work, { recursive: true, force: true }); break; } catch (error) {
+      if (error?.code !== 'ENOTEMPTY' || attempt === 5) throw error;
+      await sleep(100 * (attempt + 1));
+    }
+  }
 }

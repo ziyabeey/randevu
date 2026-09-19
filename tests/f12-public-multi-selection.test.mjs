@@ -57,7 +57,9 @@ test('F12-04 is mounted only on the public salon surface and hands its state to 
   assert.match(salon, /import PublicMultiServiceSelection from '\.\/PublicMultiServiceSelection';/);
   assert.match(salon, /<PublicMultiServiceSelection/);
   assert.match(salon, /onSelectionChange=\{setBookingSelection\}/);
+  assert.match(salon, /onAvailabilityChange=\{setGroupPlannerAvailable\}/);
   assert.match(salon, /<PublicBookingPage/);
+  assert.match(salon, /groupMode=\{groupPlannerAvailable\}/);
   assert.match(salon, /multiServiceSelection=\{bookingSelection\}/);
 });
 

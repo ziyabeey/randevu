@@ -67,6 +67,7 @@ type ResolveResponse = { resolution: 'committed' | 'exists_nolink' | 'closed_abs
 type UnpersistedConfirmation = { id: string; expectedStatuses: readonly ('submitting' | 'unresolved' | 'legacy_pending')[] };
 type Props = {
   slug: string;
+  groupMode?: boolean;
   multiServiceSelection?: PublicMultiServiceSelectionState | null;
   onPlanNeedsRefresh?: () => void;
   onResultVisibilityChange?: (visible: boolean) => void;
@@ -222,10 +223,16 @@ function groupMatchesSelection(group: GroupConfirmation, selection: PublicMultiS
   return selection.lines.every((line, index) => {
     const created = group.lines[index];
     const planned = selection.slot.lines[index];
-    return created?.serviceId === line.serviceId
-      && created?.serviceId === planned?.serviceId
-      && created?.staffId === planned?.staffId
-      && (line.staffId === null || created?.staffId === line.staffId);
+    if (!created || !planned
+        || created.serviceId !== line.serviceId
+        || created.serviceId !== planned.serviceId
+        || created.startsAt !== planned.startsAt
+        || created.endsAt !== planned.endsAt
+        || created.priceType !== planned.priceType
+        || created.priceMinMinor !== planned.priceMinMinor
+        || created.priceMaxMinor !== planned.priceMaxMinor) return false;
+    return line.staffId === null
+      || (planned.staffId === line.staffId && created.staffId === line.staffId);
   });
 }
 
@@ -248,8 +255,8 @@ function isRecoverableRecord(record: PublicBookingRecord): record is V2PendingRe
   return record.status === 'submitting' || record.status === 'unresolved' || record.status === 'legacy_pending';
 }
 
-export default function PublicBookingPage({ slug, multiServiceSelection, onPlanNeedsRefresh, onResultVisibilityChange }: Props) {
-  const isGroupMode = multiServiceSelection !== undefined;
+export default function PublicBookingPage({ slug, groupMode = false, multiServiceSelection, onPlanNeedsRefresh, onResultVisibilityChange }: Props) {
+  const isGroupMode = groupMode;
   const [page, setPage] = useState<PagePayload | null>(null);
   const [serviceId, setServiceId] = useState('');
   const [staffId, setStaffId] = useState('any');
@@ -489,7 +496,11 @@ export default function PublicBookingPage({ slug, multiServiceSelection, onPlanN
     }
   }
 
-  async function resolveStoredResult(record: V2PendingRecord | LegacyPendingRecord, automatic = false) {
+  async function resolveStoredResult(
+    record: V2PendingRecord | LegacyPendingRecord,
+    automatic = false,
+    expectedGroupSelection?: PublicMultiServiceSelectionState,
+  ) {
     if (automatic) {
       if (automaticResolveIds.current.has(record.id)) return;
       automaticResolveIds.current.add(record.id);
@@ -525,6 +536,8 @@ export default function PublicBookingPage({ slug, multiServiceSelection, onPlanN
         if (result.resolution === 'committed'
             && (!validConfirmation(result.appointment, result.group !== undefined)
               || (result.group !== undefined && !validGroupConfirmation(result.group, result.appointment))
+              || (expectedGroupSelection !== undefined
+                && (result.group === undefined || !groupMatchesSelection(result.group, expectedGroupSelection)))
               || (result.group === undefined && result.appointment?.price_minor === null)
               || !validManagementUrl(result.management?.url)
               || typeof result.recovery?.expiresAt !== 'string'
@@ -672,7 +685,9 @@ export default function PublicBookingPage({ slug, multiServiceSelection, onPlanN
           setNotice(messageFor(error, 'Çok fazla istek yapıldı. Daha sonra sonucu tekrar kontrol edin.'));
         } else {
           setNotice('Randevu isteğinin sonucu belirsiz kaldı. Aynı işlemin sonucunu bir kez kontrol ediyoruz…');
-          if (unresolved && isRecoverableRecord(unresolved)) await resolveStoredResult(unresolved, true);
+          if (unresolved && isRecoverableRecord(unresolved)) {
+            await resolveStoredResult(unresolved, true, isGroupMode ? multiServiceSelection! : undefined);
+          }
         }
       }
     } finally {
