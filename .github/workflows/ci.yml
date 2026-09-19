@@ -22,6 +22,79 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Resolve trusted prior full-code CI receipts
+        if: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CURRENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          receipts="${RUNNER_TEMP}/trusted-ci-receipts.json"
+          runs_raw="${RUNNER_TEMP}/trusted-ci-runs.raw.json"
+          candidates="${RUNNER_TEMP}/trusted-ci-candidates.tsv"
+          printf '[]\n' > "${receipts}"
+          : > "${candidates}"
+
+          runs_url="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?event=pull_request&status=success&per_page=100"
+          if ! curl --fail --silent --show-error --connect-timeout 3 --max-time 10 \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${runs_url}" > "${runs_raw}"; then
+            echo "Prior CI lookup unavailable; full code checks remain required."
+            exit 0
+          fi
+
+          if ! jq -e '.workflow_runs | type == "array"' "${runs_raw}" >/dev/null 2>&1; then
+            echo "Prior CI lookup returned an unexpected shape; full code checks remain required."
+            exit 0
+          fi
+
+          if ! jq -r --argjson pr "${PR_NUMBER}" \
+            --arg head "${CURRENT_HEAD_SHA}" \
+            '[.workflow_runs[]
+              | select(.head_sha != $head)
+              | select(any(.pull_requests[]?; .number == $pr))
+              | [.id, .head_sha]]
+             | .[:20][]
+             | @tsv' "${runs_raw}" > "${candidates}"; then
+            echo "Prior CI candidate parsing failed; full code checks remain required."
+            exit 0
+          fi
+
+          while IFS=$'\t' read -r run_id head_sha; do
+            [ -n "${run_id}" ] || continue
+            [ -n "${head_sha}" ] || continue
+            jobs_raw="${RUNNER_TEMP}/trusted-ci-jobs-${run_id}.json"
+            jobs_url="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs?per_page=100"
+
+            if ! curl --fail --silent --show-error --connect-timeout 3 --max-time 10 \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "${jobs_url}" > "${jobs_raw}"; then
+              continue
+            fi
+
+            if ! jq -e '
+              (.jobs | type == "array")
+              and any(.jobs[]?;
+                .name == "CI gate"
+                and .conclusion == "success"
+                and any(.steps[]?;
+                  .name == "Run all required code checks"
+                  and .conclusion == "success")
+                and any(.steps[]?;
+                  .name == "Require the selected checks to complete"
+                  and .conclusion == "success"))
+            ' "${jobs_raw}" >/dev/null 2>&1; then
+              continue
+            fi
+
+            jq --arg head "${head_sha}" --argjson run "${run_id}" \
+              '. + [{headSha: $head, runId: $run}]' \
+              "${receipts}" > "${receipts}.next"
+            mv "${receipts}.next" "${receipts}"
+          done < "${candidates}"
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -32,6 +105,8 @@ jobs:
           cache: npm
       - name: Select required checks
         id: scope
+        env:
+          TRUSTED_CI_RECEIPTS_FILE: ${{ runner.temp }}/trusted-ci-receipts.json
         run: node scripts/ci-scope.mjs
       - name: Check documentation and task graph
         id: docs
