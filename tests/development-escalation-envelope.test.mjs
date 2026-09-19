@@ -4,6 +4,7 @@ import {
   buildCaseFingerprint,
   buildEscalationEnvelope,
   buildRoutineFireBody,
+  canonicalSourceEnvelopeJson,
   classifyEscalationDisposition,
   renderHaikuCompressionRequest,
 } from '../scripts/development-escalation-envelope.mjs';
@@ -16,10 +17,36 @@ function dispatcher(action, overrides = {}) {
   return {
     facts: {
       task: { id: 'F12-04C' },
-      candidate: { taskId: 'F12-04C', prNumber: 176, branch: 'f12-04c', headSha: head },
-      observation: { liveMainSha: main, observedMainSha: main },
+      candidate: {
+        taskId: 'F12-04C',
+        prNumber: 176,
+        branch: 'f12-04c',
+        headSha: head,
+        baseMainSha: main,
+      },
+      observation: {
+        liveMainSha: main,
+        observedMainSha: main,
+        liveHeadSha: head,
+        observedHeadSha: head,
+      },
+      ci: {
+        status: 'fail',
+        exactHeadSha: head,
+        testedCheckoutSha: sha('c'),
+        baseMainSha: main,
+        run: '35436650118',
+        job: '105000000000',
+        attempt: 1,
+      },
+      r0: { reviewedHeadSha: sha('d') },
+      reviews: {
+        r1: { reviewedHeadSha: sha('d') },
+        r2: { reviewedHeadSha: null },
+      },
+      proofs: [{ key: 'browser', exactHeadSha: head, sourceRef: 'proof:browser' }],
     },
-    state: { ci: { result: 'pass' }, reviews: { r1: { status: 'stale' } } },
+    state: { ci: { result: 'fail' }, reviews: { r1: { status: 'stale' } } },
     contradictions: [],
     unknowns: [],
     obligations: [],
@@ -33,6 +60,13 @@ function dispatcher(action, overrides = {}) {
     },
     sourceRefs: ['pr:176'],
     ...overrides,
+  };
+}
+
+function withTrust(envelope) {
+  return {
+    ...envelope,
+    trust: { githubOidcAttestation: 'header.payload.signature' },
   };
 }
 
@@ -54,7 +88,7 @@ test('unknown dispatcher actions fail closed to human rather than spending model
   assert.match(result.reason, /^UNCLASSIFIED_DISPATCHER_ACTION:/);
 });
 
-test('envelope preserves exact identities, unknowns, contradictions and provenance', () => {
+test('envelope preserves normalized facts, exact provenance and merged source refs', () => {
   const input = dispatcher('resolve_contradictory_evidence', {
     contradictions: ['MIXED_CURRENT_PROOF_STATUS:browser'],
     unknowns: ['R1_FRESHNESS_UNKNOWN'],
@@ -66,19 +100,26 @@ test('envelope preserves exact identities, unknowns, contradictions and provenan
     question: 'Fresh full R1 or bounded delta confirmation?',
     forbiddenScope: ['merge', 'TASKS write'],
     sourceRefs: ['review:123'],
-    materialFacts: { exactHeadCi: 'PASS' },
+    materialFacts: { exactHeadCi: 'FAIL' },
   });
 
   assert.equal(envelope.disposition, 'REASONING_REQUIRED');
   assert.equal(envelope.case.pr, 176);
   assert.equal(envelope.case.currentHead, head);
   assert.equal(envelope.case.currentMain, main);
+  assert.equal(envelope.dispatcher.facts.ci.run, '35436650118');
+  assert.equal(envelope.dispatcher.facts.reviews.r1.reviewedHeadSha, sha('d'));
+  assert.equal(envelope.dispatcher.facts.proofs[0].sourceRef, 'proof:browser');
   assert.deepEqual(envelope.dispatcher.contradictions, ['MIXED_CURRENT_PROOF_STATUS:browser']);
   assert.deepEqual(envelope.evidence.sourceRefs, ['pr:176', 'review:123']);
   assert.equal(envelope.caseFingerprint.length, 64);
+  assert.equal(
+    envelope.sourceEnvelopeBytes,
+    Buffer.byteLength(canonicalSourceEnvelopeJson(envelope), 'utf8'),
+  );
 });
 
-test('fingerprint is stable across ordering noise and changes on material evidence', () => {
+test('fingerprint is stable across ordering noise and changes on all material provenance', () => {
   const input = dispatcher('investigate_current_ci_failure', {
     contradictions: ['B', 'A'],
     unknowns: ['Y', 'X'],
@@ -88,31 +129,33 @@ test('fingerprint is stable across ordering noise and changes on material eviden
   const changed = buildCaseFingerprint(input, { sourceRefs: ['z', 'a'], materialFacts: { b: 3, a: 1 } });
   const changedScope = buildCaseFingerprint(input, { sourceRefs: ['z', 'a'], materialFacts: { b: 2, a: 1 }, forbiddenScope: ['merge'] });
   const changedActions = buildCaseFingerprint(input, { sourceRefs: ['z', 'a'], materialFacts: { b: 2, a: 1 }, actionsAlreadyTaken: ['rerun-ci'] });
+  const changedDispatcherRef = buildCaseFingerprint({ ...input, sourceRefs: ['pr:176', 'ci:new'] }, { sourceRefs: ['z', 'a'], materialFacts: { b: 2, a: 1 } });
   const timestampOnly = buildCaseFingerprint(input, { sourceRefs: ['z', 'a'], materialFacts: { b: 2, a: 1 }, observedAt: '2026-09-19T10:00:00Z' });
   assert.equal(first, second);
   assert.equal(first, timestampOnly);
   assert.notEqual(first, changed);
   assert.notEqual(first, changedScope);
   assert.notEqual(first, changedActions);
+  assert.notEqual(first, changedDispatcherRef);
 });
 
 test('Haiku request is refused for non-reasoning dispositions', () => {
   const envelope = buildEscalationEnvelope(dispatcher('request_required_reviews'));
-  assert.throws(() => renderHaikuCompressionRequest(envelope), /REASONING_REQUIRED/);
+  assert.throws(() => renderHaikuCompressionRequest(withTrust(envelope)), /REASONING_REQUIRED/);
 });
 
-test('Haiku request owns the Opus handoff without doing the Opus reasoning', () => {
-  const envelope = buildEscalationEnvelope(dispatcher('investigate_current_ci_failure'), {
-    question: 'Classify the ambiguous failure cause.',
-  });
+test('Haiku request uses a fixed command and carries a GitHub-signed attestation', () => {
+  const envelope = withTrust(buildEscalationEnvelope(
+    dispatcher('investigate_current_ci_failure'),
+    { question: 'Classify the ambiguous failure cause.' },
+  ));
   const text = renderHaikuCompressionRequest(envelope);
   assert.match(text, /^EVIDENCE_COMPRESSION_REQUEST/);
-  assert.match(text, /sole model layer authorized to trigger the Opus Escalation Governor/);
   assert.match(text, /Do not answer the technical question yourself/);
-  assert.match(text, /SOURCE_ENVELOPE_BYTES = \d+/);
-  assert.match(text, /node scripts\/fire-opus-escalation\.mjs --package .* --expected-fingerprint [a-f0-9]{64} --expected-source-bytes \d+/);
-  assert.match(text, /COMPRESSION_RATIO/);
-  assert.match(text, /Do not ask GitHub Actions, the dispatcher, or the caller to trigger Opus/);
+  assert.match(text, /TRUSTED_ATTESTATION = header\.payload\.signature/);
+  assert.match(text, /node scripts\/fire-opus-escalation\.mjs --package \/tmp\/kepenk-opus-handoff\.json/);
+  assert.doesNotMatch(text, /--expected-fingerprint|--expected-source-bytes/);
+  assert.match(text, /cryptographically verifies the GitHub-issued attestation/);
   assert.match(text, /OPUS_HANDOFF_BLOCKED/);
   assert.match(text, new RegExp(head));
   assert.match(text, /investigate_current_ci_failure/);
