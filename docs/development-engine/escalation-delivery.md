@@ -64,11 +64,14 @@ The Haiku Routine environment owns these runtime-only variables:
 
 After Haiku compresses a `REASONING_REQUIRED` case, Haiku writes the compact
 `OPUS_ESCALATION_PACKAGE` to a temporary JSON file and executes
-`node scripts/fire-opus-escalation.mjs --package <file> --expected-fingerprint <dispatcher-fingerprint>` from its own Routine
+`node scripts/fire-opus-escalation.mjs --package <file> --expected-fingerprint <dispatcher-fingerprint> --expected-source-bytes <dispatcher-envelope-bytes>` from its own Routine
 session. That adapter validates the reasoning disposition and requires the compressed
-package fingerprint to match the original Dispatcher fingerprint,
+package fingerprint and source byte count to match the original Dispatcher request,
 restricts the destination to the Anthropic Routine fire endpoint, never prints the
-token and treats the returned session ID/URL only as a launch receipt.
+token and treats the returned session ID/URL only as a launch receipt. The same
+receipt exposes `sourceEnvelopeBytes`, `compressedPackageBytes` and
+`compressionRatio` so Haiku compression can be evaluated empirically without
+turning Haiku's own prose into authority.
 
 If that handoff is unavailable, Haiku must stop with `OPUS_HANDOFF_BLOCKED`.
 It must not perform Opus-level reasoning as a fallback, and GitHub Actions must not
