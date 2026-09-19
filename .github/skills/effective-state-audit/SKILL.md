@@ -13,9 +13,9 @@ Read [source/authority map](../../../docs/development-engine/README.md).
 
 ## Required inputs
 
-Repository/task/PR, live main ref, main TASKS/PROJECT_STATE, current PR/head,
-CI run/job/attempt and checkout identity, current Context Pack, latest binding
-Issue #65 receipts and any disposable Task/Evidence projections.
+Repository/task/PR, live main ref, main TASKS, current PR/head,
+CI run/job/attempt and checkout identity, current Context Pack, temporary
+Issue #65 coordination receipts and any disposable Task/Evidence projections.
 
 ## Allowed actions
 

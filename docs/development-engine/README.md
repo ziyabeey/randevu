@@ -7,24 +7,27 @@ product feature, authority database, automatic merge system or new required gate
 Historical implementation task **DEV-ENGINE-01 / [#119](https://github.com/ziyabeey1-ai/randevu/issues/119)** is **accepted and closed**.
 PR #120 merged at main `02d0a2a6605e9ade1c526cf5f1542ceefa523936`;
 post-main CI #1220 / `35312768868` succeeded. Its original 21-path scope and
-starting SHA are provenance only, not current execution state. Current task state
-comes from TASKS + open PRs + the latest binding Issue #65 receipt.
+starting SHA are provenance only, not current execution state. Current durable task
+state comes only from TASKS. Open PRs and Issue #65 may carry newer candidate or
+coordination evidence, but they do not override TASKS.
 
 ## Authority and entry points
 
 | Question | Canonical source |
 | --- | --- |
 | Permanent rules / handoff | [AGENTS](../../AGENTS.md), [CONTRIBUTING](../../CONTRIBUTING.md), [workflow](../plan/agent-workflow.md) |
-| Verified main / product boundary | [PROJECT_STATE](../../PROJECT_STATE.md), [PRODUCT_SPEC](../../PRODUCT_SPEC.md), [ROADMAP](../../ROADMAP.md) and actual main ref |
-| Ownership / active writer / acceptance | [TASKS](../../TASKS.md), open PRs and latest binding [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) receipt |
+| Live task / accepted-main status | [TASKS](../../TASKS.md) only |
+| Product boundary / planned sequence | [PRODUCT_SPEC](../../PRODUCT_SPEC.md), [ROADMAP](../../ROADMAP.md) and actual main ref |
+| Temporary writer claim / conflict / dispatch | open PRs and [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65); never a second durable status source |
 | Task scope / refresh | [Context Pack protocol](../plan/context-packs.md) and the assigned contract |
 | Executor wait-mode | [Shadow Validation Mode](../plan/shadow-validation-mode.md) |
 | AI/provider routing | [AI model routing](ai-model-routing.md); coordinator selects roles/routes, models remain replaceable |
 | Copilot bootstrap | [Global instructions](../../.github/copilot-instructions.md) and [path instructions](../../.github/instructions) |
 
-TASKS/main prose can lag an active PR overlay; that alone is not an error.
-Verified-main closure drift is reported with source references, not repaired by
-an audit. Projections cannot grant writer tokens or weaken acceptance. Stronger
+An active PR may contain a newer candidate than TASKS; that is candidate evidence,
+not accepted project state. Durable status changes only when TASKS is updated through
+the normal coordinator/merge flow. Verified-main drift is reported with source
+references, not silently repaired by an audit. Projections cannot grant writer tokens or weaken acceptance. Stronger
 Context Pack obligations must be satisfied or explicitly `narrows`/`supersedes`
 with coordinator rationale and preserved invariants.
 
