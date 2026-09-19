@@ -12,19 +12,18 @@ type PublicBusiness = {
 type PublicService = {
   service_id: string;
   name: string;
+  category: string;
+  sort_order: number;
   duration_minutes: number;
-  price_minor: number;
+  price_type: 'fixed' | 'range';
+  price_min_minor: number;
+  price_max_minor: number;
   currency: string;
-  category?: string | null;
-  sort_order?: number;
-  priceType?: 'fixed' | 'range';
-  price_type?: 'fixed' | 'range';
-  priceMinMinor?: number;
-  price_min_minor?: number;
-  priceMaxMinor?: number;
-  price_max_minor?: number;
+  price_policy_version: number;
 };
 
+type BusinessPayload = { business: PublicBusiness };
+type CatalogPayload = { services: PublicService[] };
 type PagePayload = { business: PublicBusiness; services: PublicService[] };
 type PublicStaff = { staff_id: string; staff_name: string };
 
@@ -79,9 +78,7 @@ function formatTime(value: string, timezone: string) {
 }
 
 function serviceRange(service: PublicService) {
-  const min = service.priceMinMinor ?? service.price_min_minor ?? service.price_minor;
-  const max = service.priceMaxMinor ?? service.price_max_minor ?? service.price_minor;
-  return { min, max };
+  return { min: service.price_min_minor, max: service.price_max_minor };
 }
 
 function servicePriceLabel(service: PublicService) {
@@ -178,11 +175,18 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     onSelectionChange?.(null);
     void (async () => {
       try {
-        const next = await api<PagePayload>(`/api/public/business/${encodeURIComponent(slug)}`, {
-          signal: controller.signal,
-          timeoutMs: HTTP_TIMEOUT_MS,
-        });
+        const [business, catalog] = await Promise.all([
+          api<BusinessPayload>(`/api/public/business/${encodeURIComponent(slug)}`, {
+            signal: controller.signal,
+            timeoutMs: HTTP_TIMEOUT_MS,
+          }),
+          api<CatalogPayload>(`/api/public/business/${encodeURIComponent(slug)}/services-v2`, {
+            signal: controller.signal,
+            timeoutMs: HTTP_TIMEOUT_MS,
+          }),
+        ]);
         if (generation !== catalogGeneration.current) return;
+        const next: PagePayload = { business: business.business, services: catalog.services };
         setPage(next);
         setDate(next.business.local_date);
       } catch (error) {
