@@ -264,6 +264,38 @@ source, Issue #65 remains temporary coordination, and PR/CI/receipts remain
 candidate-bound evidence. No dispatcher DB, queue, scheduler, workflow DSL or
 second status surface is introduced.
 
+## Independent R1/R2 Routine delivery
+
+When the pure Development Dispatcher reaches `request_required_reviews`, the
+existing Development Escalation Router may dispatch the dedicated
+`Development Review Router` on canonical `main`. The review router recomputes
+the Dispatcher result from the same observation/evidence, requires the same case
+fingerprint and exact current CI provenance, then fires only the roles listed in
+`eligibleRoles`.
+
+R1 and R2 remain independent role contracts. The repository routes to role
+endpoints rather than model names:
+
+- `CLAUDE_R1_ROUTINE_URL` + `CLAUDE_R1_ROUTINE_TOKEN`
+- `CLAUDE_R2_ROUTINE_URL` + `CLAUDE_R2_ROUTINE_TOKEN`
+
+The Routine configuration owns the provider/model choice. Changing a model must
+not change R1/R2 scope, acceptance semantics or Dispatcher policy.
+
+The Claude Code Routine fire API creates a new session for every successful call
+and has no idempotency key. The review router therefore reserves a PR comment
+using `role + dispatcher case fingerprint` before firing. An existing reservation,
+successful launch receipt or uncertain launch blocks automatic duplicate spend.
+A launch receipt records only the exact head, case fingerprint and Claude session
+URL. It is **not** an `ACCEPTABLE | BLOCKER | INCOMPLETE` review receipt and never
+grants merge authority.
+
+Routine requests are bounded data packages. Exact task/PR/base/head/main identity,
+current CI checkout/run/job/attempt, same-role prior receipt state, obligations and
+source refs are preserved. Evidence strings are explicitly treated as data rather
+than instructions. Missing/mismatched candidate identity, current-pass CI or case
+fingerprint fails closed before a Routine is fired.
+
 ## Validation
 
 ```bash
