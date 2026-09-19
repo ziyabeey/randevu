@@ -6,7 +6,12 @@ const component = await readFile(new URL('../src/PublicMultiServiceSelection.tsx
 const salon = await readFile(new URL('../src/PublicSalonPage.tsx', import.meta.url), 'utf8');
 const css = await readFile(new URL('../src/public-multi-service.css', import.meta.url), 'utf8');
 
-test('F12-04 public selection consumes the real group-slot endpoint without advancing into group create', () => {
+test('F12-04 consumes the additive range-aware catalog and real group-slot endpoint without advancing into group create', () => {
+  assert.match(component, /\/api\/public\/business\/\$\{encodeURIComponent\(slug\)\}\/services-v2/);
+  assert.match(component, /price_type:\s*'fixed' \| 'range'/);
+  assert.match(component, /price_min_minor:\s*number/);
+  assert.match(component, /price_max_minor:\s*number/);
+  assert.doesNotMatch(component, /price_minor:\s*number/);
   assert.match(component, /\/api\/public\/business\/\$\{encodeURIComponent\(slug\)\}\/group-slots/);
   assert.match(component, /method:\s*'POST'/);
   assert.match(component, /csrf:\s*'skip'/);
@@ -49,4 +54,16 @@ test('F12-04 mobile controls retain 44px touch targets and narrow layouts', () =
   assert.match(css, /@media \(max-width:\s*760px\)/);
   assert.match(css, /@media \(max-width:\s*430px\)/);
   assert.match(css, /:focus-visible/);
+});
+
+test('F12-04 keeps favorite device-local and shares only the safe public salon URL', () => {
+  assert.match(salon, /randevu-kolay:favorite-salon:/);
+  assert.match(salon, /window\.localStorage\.setItem/);
+  assert.match(salon, /window\.localStorage\.removeItem/);
+  assert.match(salon, /url\.search = ''/);
+  assert.match(salon, /url\.hash = ''/);
+  assert.match(salon, /navigator\.share/);
+  assert.match(salon, /navigator\.clipboard\?\.writeText/);
+  assert.match(salon, /aria-pressed=\{favorite\}/);
+  assert.doesNotMatch(salon, /customerPhone|customerEmail|recoverySecret/);
 });
