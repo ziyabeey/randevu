@@ -64,8 +64,9 @@ The Haiku Routine environment owns these runtime-only variables:
 
 After Haiku compresses a `REASONING_REQUIRED` case, Haiku writes the compact
 `OPUS_ESCALATION_PACKAGE` to a temporary JSON file and executes
-`node scripts/fire-opus-escalation.mjs --package <file>` from its own Routine
-session. That adapter validates the reasoning disposition and case fingerprint,
+`node scripts/fire-opus-escalation.mjs --package <file> --expected-fingerprint <dispatcher-fingerprint>` from its own Routine
+session. That adapter validates the reasoning disposition and requires the compressed
+package fingerprint to match the original Dispatcher fingerprint,
 restricts the destination to the Anthropic Routine fire endpoint, never prints the
 token and treats the returned session ID/URL only as a launch receipt.
 
