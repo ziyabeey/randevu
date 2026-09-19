@@ -94,7 +94,7 @@ test('Claude repository instructions make Haiku the exclusive Opus caller only f
   assert.match(guidance, /node scripts\/fire-opus-escalation\.mjs --package .* --expected-fingerprint/);
   assert.match(guidance, /GitHub Actions, the Dispatcher, and the caller are not Opus callers/);
   assert.match(guidance, /OPUS_HANDOFF_BLOCKED/);
-  assert.match(guidance, /Outside an `EVIDENCE_COMPRESSION_REQUEST` session, this section grants no new authority/);
+  assert.match(guidance, /Outside an `EVIDENCE_COMPRESSION_REQUEST` session, this section grants no new\s+authority/);
 });
 
 
