@@ -249,6 +249,7 @@ async function inspectMultiSelection(debugUrl, origin, width) {
 
     await page.evaluate('Array.from(document.querySelectorAll(".public-service-choice")).forEach((button)=>button.click())');
     await waitFor(() => page.evaluate('document.querySelectorAll(".public-selected-line").length === 2'), 'F12-04 did not select two services');
+    await waitFor(() => page.evaluate('document.querySelector(".public-selected-line select")?.options.length > 1'), 'F12-04 staff options did not load');
 
     await page.evaluate('(() => { const firstSelect=document.querySelector(".public-selected-line select"); firstSelect.value="' + staffA + '"; firstSelect.dispatchEvent(new Event("change",{bubbles:true})); const up=Array.from(document.querySelectorAll(".public-line-actions button")).find((button)=>button.getAttribute("aria-label")?.includes("Kesim hizmetini yukarı")); up?.click(); })()');
     await waitFor(() => page.evaluate('document.querySelector(".public-selected-line strong")?.textContent === "Kesim"'), 'F12-04 reorder did not persist');
@@ -334,6 +335,9 @@ try {
   assert.match(broken390.html, /Fotoğraf yüklenemedi/);
   assert.match(broken390.html, /Kırık Görsel Salon/);
 
+  await inspectMultiSelection(debugUrl, origin, 360);
+  await inspectMultiSelection(debugUrl, origin, 390);
+
   assert.ok(requests.includes('GET /api/public/business/missing-salon/profile'));
   assert.ok(requests.includes('GET /api/public/business/missing-salon'));
   assert.ok(requests.includes('GET /api/public/business/broken-salon/profile'));
@@ -348,5 +352,13 @@ try {
   await new Promise((resolve) => server.close(resolve));
   if (chrome && chrome.exitCode === null) chrome.kill('SIGTERM');
   if (chromeFd !== undefined) closeSync(chromeFd);
-  rmSync(work, { recursive: true, force: true });
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      rmSync(work, { recursive: true, force: true });
+      break;
+    } catch (error) {
+      if (error?.code !== 'ENOTEMPTY' || attempt === 5) throw error;
+      await sleep(100 * (attempt + 1));
+    }
+  }
 }
