@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiRequestError, api } from './api';
 import { clearPendingTeamInvite, readPendingTeamInvite } from './teamInvite';
+import { getErrorMessage } from './errors.ts';
 
 type Session = {
   user: null | { id: string; email: string | null; fullName: string | null };
@@ -31,7 +32,7 @@ export default function InvitePage() {
     try {
       setSession(await api<Session>('/api/session'));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Hesap durumu doğrulanamadı.');
+      setNotice(getErrorMessage(error, 'Hesap durumu doğrulanamadı.'));
     } finally {
       setLoading(false);
     }
@@ -57,7 +58,7 @@ export default function InvitePage() {
       if (error instanceof ApiRequestError && error.code && TERMINAL_INVITE_CODES.has(error.code)) {
         clearPendingTeamInvite();
       }
-      setNotice(error instanceof Error ? error.message : 'Davet kabul edilemedi.');
+      setNotice(getErrorMessage(error, 'Davet kabul edilemedi.'));
     }).finally(() => setBusy(false));
   }, [session]);
 
@@ -90,7 +91,7 @@ export default function InvitePage() {
       }
       await load();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Hesap işlemi tamamlanamadı.');
+      setNotice(getErrorMessage(error, 'Hesap işlemi tamamlanamadı.'));
     } finally {
       setBusy(false);
     }

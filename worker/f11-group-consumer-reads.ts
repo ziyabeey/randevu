@@ -14,9 +14,10 @@ import {
   snapshotOverflow,
   snapshotProbeLimit,
 } from './snapshot-bounds.ts';
+import { isDate, isUuid } from '../shared/validation.ts';
+import { dateInTimezone, first, rpcErrorMessage, upstreamUnavailable } from './common.ts';
 
 type Env = AuthEnv;
-type SupabaseError = { message?: string };
 type Business = { id: string; name: string; timezone: string };
 type Staff = { id: string; name: string; active: boolean };
 type GroupBookingRow = {
@@ -77,33 +78,6 @@ type GroupAwareCustomerAppointment = {
 
 const reads = new Hono<{ Bindings: Env }>();
 
-function first<T>(rows: T[] | null): T | null {
-  return rows?.[0] ?? null;
-}
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-function isDate(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0,10)===value;
-}
-function dateInTimezone(timezone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-function errorMessage(data: unknown) {
-  return typeof data === 'object' && data !== null
-    ? String((data as SupabaseError).message ?? '') : '';
-}
-function unavailable(status: number) {
-  return status===0 || status>=500;
-}
-
 // Current operator booking list. It pages reservation groups, never physical
 // service lines. Legacy one-line appointments are still represented as one
 // deterministic group with managementMode=legacy_single.
@@ -131,14 +105,14 @@ reads.get('/bookings/groups', async (context) => {
     access.auth.accessToken,
   );
   if (!result.ok) {
-    const message=errorMessage(result.data);
+    const message=rpcErrorMessage(result.data);
     if (message.includes('NOT_ALLOWED')) {
       return context.json({ error: { code:'NOT_ALLOWED', message:'Bu işletme için işlem yetkiniz yok.' } },403);
     }
     if (message.includes('INVALID_PAGE')) {
       return context.json({ error: { code:'INVALID_PAGE', message:'Sayfa bilgisi geçerli değil.' } },400);
     }
-    const isUnavailable=unavailable(result.status);
+    const isUnavailable=upstreamUnavailable(result.status);
     return context.json({ error: {
       code:isUnavailable?'BOOKING_GROUPS_UNAVAILABLE':'BOOKING_GROUPS_FAILED',
       message:isUnavailable?'Randevular şu anda okunamıyor. Lütfen tekrar deneyin.':'Randevular okunamadı.',
@@ -209,14 +183,14 @@ reads.get('/calendar', async (context) => {
     access.auth.accessToken,
   );
   if (!appointments.ok) {
-    const message = errorMessage(appointments.data);
+    const message = rpcErrorMessage(appointments.data);
     if (message.includes('NOT_ALLOWED')) {
       return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işletmenin takvimine erişiminiz yok.' } }, 403);
     }
     if (message.includes('INVALID_CALENDAR_RANGE')) {
       return context.json({ error: { code: 'INVALID_CALENDAR_RANGE', message: 'Takvim tarih aralığı geçerli değil.' } }, 400);
     }
-    const isUnavailable = unavailable(appointments.status);
+    const isUnavailable = upstreamUnavailable(appointments.status);
     return context.json({ error: {
       code: isUnavailable ? 'CALENDAR_UNAVAILABLE' : 'CALENDAR_READ_FAILED',
       message: isUnavailable ? 'Takvim şu anda doğrulanamıyor. Lütfen tekrar deneyin.' : 'Takvim yüklenemedi.',
@@ -262,7 +236,7 @@ reads.get('/customers/:id/group-history', async (context) => {
     access.auth.accessToken,
   );
   if (!result.ok) {
-    const message=errorMessage(result.data);
+    const message=rpcErrorMessage(result.data);
     if (message.includes('NOT_ALLOWED')) {
       return context.json({ error: { code:'TENANT_FORBIDDEN', message:'Bu işletmeye erişiminiz yok.' } },403);
     }
@@ -272,7 +246,7 @@ reads.get('/customers/:id/group-history', async (context) => {
     if (message.includes('INVALID_PAGE')) {
       return context.json({ error: { code:'INVALID_PAGE', message:'Sayfa bilgisi geçerli değil.' } },400);
     }
-    const isUnavailable=unavailable(result.status);
+    const isUnavailable=upstreamUnavailable(result.status);
     return context.json({ error: {
       code:isUnavailable?'CUSTOMERS_UNAVAILABLE':'CUSTOMERS_FAILED',
       message:isUnavailable?'Randevu geçmişi şu anda okunamıyor. Lütfen tekrar deneyin.':'Randevu geçmişi okunamadı.',
@@ -315,7 +289,7 @@ reads.get('/customers/:id/history', async (context) => {
     access.auth.accessToken,
   );
   if (!result.ok) {
-    const message = errorMessage(result.data);
+    const message = rpcErrorMessage(result.data);
     if (message.includes('NOT_ALLOWED')) {
       return context.json({ error: { code: 'TENANT_FORBIDDEN', message: 'Bu işletmeye erişiminiz yok.' } }, 403);
     }
@@ -325,7 +299,7 @@ reads.get('/customers/:id/history', async (context) => {
     if (message.includes('INVALID_PAGE')) {
       return context.json({ error: { code: 'INVALID_PAGE', message: 'Sayfa bilgisi geçerli değil.' } }, 400);
     }
-    const isUnavailable = unavailable(result.status);
+    const isUnavailable = upstreamUnavailable(result.status);
     return context.json({ error: {
       code: isUnavailable ? 'CUSTOMERS_UNAVAILABLE' : 'CUSTOMERS_FAILED',
       message: isUnavailable ? 'Randevu geçmişi şu anda okunamıyor. Lütfen tekrar deneyin.' : 'Randevu geçmişi okunamadı.',

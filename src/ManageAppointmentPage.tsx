@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
+import { formatDateTime, formatMoney, formatTime } from './format.ts';
+import { getErrorMessage } from './errors.ts';
 
 type ManagedAppointment = {
   appointment_id: string;
@@ -66,28 +68,8 @@ type SlotChoice =
 
 type ViewResponse = { appointment: ManagedAppointment; group?: ManagedGroup };
 
-function formatDateTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
-    timeZone: timezone,
-    dateStyle: 'long',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
-
-function formatTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
-}
-
-function money(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
-}
-
 function moneyRange(min: number, max: number, currency: string) {
-  return min === max ? money(min, currency) : `${money(min, currency)} – ${money(max, currency)}`;
+  return min === max ? formatMoney(min, currency) : `${formatMoney(min, currency)} – ${formatMoney(max, currency)}`;
 }
 
 function statusLabel(status: string) {
@@ -149,7 +131,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         setGroup(result.group ?? null);
         setDate(result.appointment.local_date);
       } catch (error) {
-        if (!cancelled) setNotice(error instanceof Error ? error.message : 'Randevu bilgisi yüklenemedi.');
+        if (!cancelled) setNotice(getErrorMessage(error, 'Randevu bilgisi yüklenemedi.'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -196,7 +178,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     } catch (error) {
       setSlots([]);
       setGroupSlots([]);
-      setNotice(error instanceof Error ? error.message : 'Uygun saatler yüklenemedi.');
+      setNotice(getErrorMessage(error, 'Uygun saatler yüklenemedi.'));
     } finally {
       setBusy(false);
     }
@@ -347,7 +329,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
               <div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div>
               <div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div>
               <div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div>
-              <div><dt>Ücret</dt><dd>{money(appointment.price_minor, appointment.currency)}</dd></div>
+              <div><dt>Ücret</dt><dd>{formatMoney(appointment.price_minor, appointment.currency)}</dd></div>
             </dl>
           )}
           <p className="manage-security-note">Bu sayfanın bağlantısı randevunuzu değiştirme yetkisi verir. Bağlantıyı yalnız güvendiğiniz kişilerle paylaşın.</p>

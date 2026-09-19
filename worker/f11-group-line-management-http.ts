@@ -6,17 +6,14 @@ import {
   upstreamUnavailable,
   type AuthEnv,
 } from './auth.ts';
+import { isUuid } from '../shared/validation.ts';
+import { rpcErrorMessage } from './common.ts';
 
 type Env = AuthEnv;
-type SupabaseError = { message?: string };
 type GroupPayload = Record<string, unknown> & { version?: number };
 
 const router = new Hono<{ Bindings: Env }>();
 
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
 function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value));
 }
@@ -26,11 +23,6 @@ function isVersion(value: unknown): value is number {
 function idempotencyKey(value: string | undefined) {
   const key = value?.trim() ?? '';
   return key.length >= 8 && key.length <= 128 ? key : null;
-}
-function rpcMessage(data: unknown) {
-  return typeof data === 'object' && data !== null
-    ? String((data as SupabaseError).message ?? '')
-    : '';
 }
 
 async function requireStandardMember(context: Parameters<typeof requireMember>[0]) {
@@ -118,7 +110,7 @@ router.post('/bookings/groups/:groupId/lines/:lineId/service', async (context) =
     if (upstreamUnavailable(result.status)) {
       return context.json({ error: { code: 'GROUP_LINE_MUTATION_UNAVAILABLE', message: 'Hizmet değişikliğinin sonucu şu anda doğrulanamıyor. Aynı işlem anahtarıyla tekrar deneyin.' } }, 503);
     }
-    const error = mutationError(rpcMessage(result.data));
+    const error = mutationError(rpcErrorMessage(result.data));
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ group: result.data });
@@ -152,7 +144,7 @@ router.post('/bookings/groups/:groupId/lines/:lineId/reschedule', async (context
     if (upstreamUnavailable(result.status)) {
       return context.json({ error: { code: 'GROUP_LINE_MUTATION_UNAVAILABLE', message: 'Hizmet taşıma sonucu şu anda doğrulanamıyor. Aynı işlem anahtarıyla tekrar deneyin.' } }, 503);
     }
-    const error = mutationError(rpcMessage(result.data));
+    const error = mutationError(rpcErrorMessage(result.data));
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ group: result.data });

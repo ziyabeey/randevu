@@ -1,22 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
+import type { Membership, Session } from '../shared/types.ts';
+import { formatDateTime, formatMoney } from './format.ts';
+import { getErrorMessage } from './errors.ts';
 
-type Role = 'owner' | 'manager' | 'staff';
-type Business = { id: string; name: string; slug: string; timezone: string };
-type Membership = {
-  id: string;
-  business_id: string;
-  role: Role;
-  active: boolean;
-  businesses: Business | null;
-};
-type Session = {
-  user: null | { id: string; email: string | null; fullName: string | null };
-  memberships: Membership[];
-  activeBusinessId: string | null;
-  passwordRecovery: boolean;
-};
 type Customer = {
   customer_id: string;
   name: string;
@@ -64,22 +52,12 @@ type CustomerListResponse = { membership: Membership; customers: Customer[]; pag
 type HistoryResponse = { bookings: CustomerBookingGroup[]; page: PageInfo };
 type LoadState = 'idle' | 'loading' | 'success' | 'error';
 
-function message(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
-
 function localDateTime(value: string, timezone?: string) {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat('tr-TR', {
-    ...(timezone ? { timeZone: timezone } : {}),
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
+  return formatDateTime(value, timezone, 'medium', 'short');
 }
 
 function tryAmount(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
+  return formatMoney(minor, currency);
 }
 
 function bookingEstimate(booking: CustomerBookingGroup) {
@@ -165,7 +143,7 @@ export default function CustomersPage() {
       }
     } catch (error) {
       if (controller.signal.aborted || generation !== listGeneration.current || tenant !== tenantGeneration.current) return;
-      const text = message(error, 'Müşteriler yüklenemedi.');
+      const text = getErrorMessage(error, 'Müşteriler yüklenemedi.');
       if (append) {
         setNotice(text);
       } else {
@@ -197,7 +175,7 @@ export default function CustomersPage() {
       if (!append) setHistoryState('success');
     } catch (error) {
       if (controller.signal.aborted || generation !== historyGeneration.current || tenant !== tenantGeneration.current) return;
-      const text = message(error, 'Randevu geçmişi yüklenemedi.');
+      const text = getErrorMessage(error, 'Randevu geçmişi yüklenemedi.');
       if (append) {
         setNotice(text);
       } else {
@@ -222,7 +200,7 @@ export default function CustomersPage() {
         await loadCustomers('', null, false);
       }
     } catch (error) {
-      if (!controller.signal.aborted) setNotice(message(error, 'Müşteri çalışma alanı yüklenemedi.'));
+      if (!controller.signal.aborted) setNotice(getErrorMessage(error, 'Müşteri çalışma alanı yüklenemedi.'));
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
@@ -269,7 +247,7 @@ export default function CustomersPage() {
       });
       window.location.assign('/customers');
     } catch (error) {
-      setNotice(message(error, 'İşletme değiştirilemedi.'));
+      setNotice(getErrorMessage(error, 'İşletme değiştirilemedi.'));
       setBusy(false);
       window.location.assign('/customers');
     }
@@ -298,7 +276,7 @@ export default function CustomersPage() {
       await loadHistory(result.customer.customer_id);
       setNotice('Müşteri kaydı oluşturuldu.');
     } catch (error) {
-      setNotice(message(error, 'Müşteri oluşturulamadı.'));
+      setNotice(getErrorMessage(error, 'Müşteri oluşturulamadı.'));
     } finally {
       setBusy(false);
     }
@@ -327,7 +305,7 @@ export default function CustomersPage() {
       if (error instanceof ApiRequestError && error.code === 'CUSTOMER_VERSION_CONFLICT') {
         await loadCustomers(search, null, false);
       }
-      setNotice(message(error, 'Müşteri güncellenemedi.'));
+      setNotice(getErrorMessage(error, 'Müşteri güncellenemedi.'));
     } finally {
       setBusy(false);
     }

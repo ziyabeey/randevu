@@ -14,6 +14,8 @@ import {
   type PublicAbuseEnv,
 } from './public-abuse.ts';
 import { publicOperation } from './public-rpc.ts';
+import { isUuid, stringOrNull } from '../shared/validation.ts';
+import { rpcErrorMessage } from './common.ts';
 
 type Env = AuthEnv & PublicAbuseEnv;
 type BaseContext = AppContext<Env>;
@@ -56,11 +58,6 @@ const STORAGE_TIMEOUT_MS = 10_000;
 
 const publicProfile = new Hono<{ Bindings: Env }>();
 
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-function stringOrNull(value: unknown) { return typeof value === 'string' ? value : null; }
 function encodeStoragePath(path: string) { return path.split('/').map((part) => encodeURIComponent(part)).join('/'); }
 
 async function storageFetch(env: AuthEnv, accessToken: string | undefined, path: string, init: RequestInit = {}) {
@@ -143,13 +140,6 @@ function profileError(message: string) {
   if (message.includes('NOT_ALLOWED')) return { code: 'NOT_ALLOWED', message: 'Bu işletmenin public profilini değiştirme yetkiniz yok.', status: 403 as const };
   return { code: 'PUBLIC_PROFILE_FAILED', message: 'Salon profili işlemi tamamlanamadı.', status: 502 as const };
 }
-function rpcMessage(data: unknown) {
-  if (!data || typeof data !== 'object') return '';
-  const value = data as { message?: unknown; error?: { message?: unknown } };
-  if (typeof value.message === 'string') return value.message;
-  if (typeof value.error?.message === 'string') return value.error.message;
-  return '';
-}
 
 async function cleanupMarkedMedia(context: BaseContext, businessId: string, accessToken: string) {
   const listed = await supabaseRequest<CleanupMedia[]>(context.env, 'rest/v1/rpc/list_business_public_media_cleanup', {
@@ -175,7 +165,7 @@ publicProfile.get('/profile', async (context) => {
     method: 'POST', body: JSON.stringify({ p_business_id: access.membership.business_id }),
   }, access.auth.accessToken);
   if (!result.ok) {
-    const error = profileError(rpcMessage(result.data));
+    const error = profileError(rpcErrorMessage(result.data));
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ membership: access.membership, profile: first(result.data) });
@@ -194,7 +184,7 @@ publicProfile.put('/profile', async (context) => {
     method: 'POST', body: JSON.stringify(profileRpcBody(body, access.membership.business_id)),
   }, access.auth.accessToken);
   if (!result.ok) {
-    const error = profileError(rpcMessage(result.data));
+    const error = profileError(rpcErrorMessage(result.data));
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ profile: first(result.data) });
@@ -232,7 +222,7 @@ publicProfile.post('/profile/media', async (context) => {
     }),
   }, access.auth.accessToken);
   if (!begun.ok || !first(begun.data)) {
-    const error = profileError(rpcMessage(begun.data));
+    const error = profileError(rpcErrorMessage(begun.data));
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
 
@@ -271,7 +261,7 @@ publicProfile.delete('/profile/media/:mediaId', async (context) => {
   }, access.auth.accessToken);
   const target = first(begun.data);
   if (!begun.ok || !target) {
-    const error = profileError(rpcMessage(begun.data));
+    const error = profileError(rpcErrorMessage(begun.data));
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   const removed = await storageFetch(context.env, access.auth.accessToken, target.storage_path, { method: 'DELETE' }).catch(() => null);

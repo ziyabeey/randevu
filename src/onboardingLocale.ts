@@ -40,12 +40,4 @@ export const onboardingCopy = {
   } as Record<string, string>,
 } as const;
 
-export function formatTry(minor: number) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(minor / 100);
-}
-
-export function formatLocalDate(value: string) {
-  const [year, month, day] = value.split('-').map(Number);
-  if (!year || !month || !day) return value;
-  return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'long' }).format(new Date(year, month - 1, day));
-}
+export { formatLocalDate, formatTry } from './format.ts';

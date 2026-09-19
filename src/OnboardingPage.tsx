@@ -2,23 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
 import { formatLocalDate, formatTry, onboardingCopy as copy } from './onboardingLocale';
+import type { Business, Role, Session } from '../shared/types.ts';
+import { getErrorMessage } from './errors.ts';
 
-type Business = { id: string; name: string; slug: string; timezone: string };
-type Role = 'owner' | 'manager' | 'staff';
-type Membership = {
-  id: string;
-  business_id: string;
-  role: Role;
-  active: boolean;
-  businesses: Business | null;
-};
-type Session = {
-  user: null | { id: string; email: string | null; fullName: string | null };
-  memberships: Membership[];
-  activeBusinessId: string | null;
-  passwordRecovery: boolean;
-  csrfToken: string;
-};
 type Service = {
   id: string;
   name: string;
@@ -84,10 +70,6 @@ function todayInputValue() {
   return local.toISOString().slice(0, 10);
 }
 
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
-
 export default function OnboardingPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -119,7 +101,7 @@ export default function OnboardingPage() {
     } catch (error) {
       if (controller.signal.aborted || generation !== requestGeneration.current) return;
       setSnapshot(null);
-      setNotice(errorMessage(error, copy.reloadFailed));
+      setNotice(getErrorMessage(error, copy.reloadFailed));
     }
   }, [replaceReadRequest]);
 
@@ -140,7 +122,7 @@ export default function OnboardingPage() {
       }
     } catch (error) {
       if (!controller.signal.aborted && generation === requestGeneration.current) {
-        setNotice(errorMessage(error, copy.reloadFailed));
+        setNotice(getErrorMessage(error, copy.reloadFailed));
       }
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
@@ -183,7 +165,7 @@ export default function OnboardingPage() {
       });
       window.location.assign('/setup');
     } catch (error) {
-      setNotice(errorMessage(error, 'İşletme oluşturulamadı.'));
+      setNotice(getErrorMessage(error, 'İşletme oluşturulamadı.'));
       setBusy(false);
     }
   }
@@ -203,7 +185,7 @@ export default function OnboardingPage() {
       });
       window.location.assign('/setup');
     } catch (error) {
-      setNotice(errorMessage(error, 'İşletme değiştirilemedi.'));
+      setNotice(getErrorMessage(error, 'İşletme değiştirilemedi.'));
       setBusy(false);
       await loadPage();
     }
@@ -230,7 +212,7 @@ export default function OnboardingPage() {
       setNotice(copy.serviceCreated);
       await loadSnapshot(snapshot.business.id);
     } catch (error) {
-      setNotice(errorMessage(error, 'Hizmet eklenemedi.'));
+      setNotice(getErrorMessage(error, 'Hizmet eklenemedi.'));
     } finally {
       setBusy(false);
     }
@@ -275,7 +257,7 @@ export default function OnboardingPage() {
       setNotice(partialNotice || copy.staffCreated);
       await loadSnapshot(snapshot.business.id);
     } catch (error) {
-      setNotice(errorMessage(error, 'Personel eklenemedi.'));
+      setNotice(getErrorMessage(error, 'Personel eklenemedi.'));
       await loadSnapshot(snapshot.business.id);
     } finally {
       setBusy(false);
@@ -294,7 +276,7 @@ export default function OnboardingPage() {
       setNotice('Personel kaydı hesabınıza bağlandı.');
       await loadSnapshot(snapshot.business.id);
     } catch (error) {
-      setNotice(errorMessage(error, 'Personel-hesap bağlantısı tamamlanamadı.'));
+      setNotice(getErrorMessage(error, 'Personel-hesap bağlantısı tamamlanamadı.'));
     } finally {
       setBusy(false);
     }
@@ -324,7 +306,7 @@ export default function OnboardingPage() {
       setNotice(copy.hoursSaved);
       await loadSnapshot(snapshot.business.id);
     } catch (error) {
-      setNotice(errorMessage(error, 'Çalışma saatleri tamamen kaydedilemedi. Kaydedilen adımlar korunur; değerleri kontrol edip yeniden deneyin.'));
+      setNotice(getErrorMessage(error, 'Çalışma saatleri tamamen kaydedilemedi. Kaydedilen adımlar korunur; değerleri kontrol edip yeniden deneyin.'));
       await loadSnapshot(snapshot.business.id);
     } finally {
       setBusy(false);
@@ -347,7 +329,7 @@ export default function OnboardingPage() {
     } catch (error) {
       setSlots([]);
       setPreviewedDate(date);
-      setNotice(errorMessage(error, 'Saat önizlemesi alınamadı.'));
+      setNotice(getErrorMessage(error, 'Saat önizlemesi alınamadı.'));
     } finally {
       setBusy(false);
     }
@@ -373,7 +355,7 @@ export default function OnboardingPage() {
       if (error instanceof ApiRequestError && !snapshot.readiness.publishable) {
         setNotice(copy.publicNotReady);
       } else {
-        setNotice(errorMessage(error, 'Yayın durumu güncellenemedi.'));
+        setNotice(getErrorMessage(error, 'Yayın durumu güncellenemedi.'));
       }
     } finally {
       setBusy(false);

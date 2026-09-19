@@ -2,14 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiRequestError, api } from './api';
 import CatalogSettingsPanel, { type ManagedCatalog, type ManagedStaff } from './CatalogSettingsPanel';
+import type { Role, Session } from '../shared/types.ts';
+import { formatDateTime, roleLabel } from './format.ts';
+import { getErrorMessage } from './errors.ts';
 
-type Role = 'owner' | 'manager' | 'staff';
-type Session = {
-  user: null | { id: string; email: string | null; fullName: string | null };
-  memberships: Array<{ id: string; business_id: string; role: Role; active: boolean }>;
-  activeBusinessId: string | null;
-  passwordRecovery?: boolean;
-};
 type HourRow = { id: string; weekday: number; starts_local: string; ends_local: string; active: boolean };
 type StaffHourRow = HourRow & { staff_id: string };
 type Block = {
@@ -49,24 +45,6 @@ function formatSlot(value: string, timezone: string) {
     minute: '2-digit',
     timeZoneName: 'shortOffset',
   }).format(new Date(value));
-}
-
-function formatDateTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
-    timeZone: timezone,
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value));
-}
-
-function roleLabel(role: Role) {
-  if (role === 'owner') return 'İşletme sahibi';
-  if (role === 'manager') return 'Yönetici';
-  return 'Çalışan';
-}
-
-function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
 }
 
 export default function AvailabilityPage() {
@@ -134,7 +112,7 @@ export default function AvailabilityPage() {
       setCatalog(null);
       setSetup(null);
       setSlots([]);
-      setLoadError(errorMessage(error, 'İşletme ayarları yüklenemedi.'));
+      setLoadError(getErrorMessage(error, 'İşletme ayarları yüklenemedi.'));
       setLoadState('error');
       return false;
     }
@@ -175,7 +153,7 @@ export default function AvailabilityPage() {
       }
       return;
     }
-    setNotice(errorMessage(error, fallback));
+    setNotice(getErrorMessage(error, fallback));
   }
 
   async function replaceBusinessDay(weekday: number, intervals: Interval[], expectedIntervals: Interval[]) {
@@ -279,7 +257,7 @@ export default function AvailabilityPage() {
       const result = await api<{ slots: Slot[] }>(`/api/availability/slots?${params}`);
       setSlots(result.slots);
       setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : 'Bu seçim için uygun saat yok.');
-    } catch (error) { setNotice(errorMessage(error, 'Uygun saatler hesaplanamadı.')); }
+    } catch (error) { setNotice(getErrorMessage(error, 'Uygun saatler hesaplanamadı.')); }
     finally { setBusy(false); }
   }
 

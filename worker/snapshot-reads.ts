@@ -22,6 +22,8 @@ import {
 import { publicOperation } from './public-rpc.ts';
 import { PUBLIC_BOOKING_SUBMIT_WINDOW_SECONDS } from '../shared/public-booking-intent.ts';
 import { SNAPSHOT_LIMITS, snapshotOverflow, snapshotProbeLimit } from './snapshot-bounds.ts';
+import { isDate, isUuid } from '../shared/validation.ts';
+import { dateInTimezone, rpcErrorMessage } from './common.ts';
 
 type Env = AuthEnv & PublicAbuseEnv;
 type SnapshotContext = Context<{ Bindings: Env }>;
@@ -71,7 +73,6 @@ type PublicService = {
   currency: string;
 };
 type PublicStaff = { staff_id: string; staff_name: string };
-type SupabaseError = { message?: string };
 
 const snapshotReads = new Hono<{ Bindings: Env }>();
 
@@ -86,17 +87,6 @@ function limitExceeded(context: SnapshotContext, code: string, message: string) 
   return context.json({ error: { code, message } }, 409);
 }
 
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function isDate(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
 function isSlug(value: unknown): value is string {
   return typeof value === 'string'
     && value.length >= 1
@@ -104,25 +94,8 @@ function isSlug(value: unknown): value is string {
     && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value);
 }
 
-function dateInTimezone(timezone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
-function errorMessage(data: unknown) {
-  return typeof data === 'object' && data !== null
-    ? String((data as SupabaseError).message ?? '')
-    : '';
-}
-
 function calendarRpcError(data: unknown) {
-  const message = errorMessage(data);
+  const message = rpcErrorMessage(data);
   if (message.includes('NOT_ALLOWED')) {
     return { code: 'NOT_ALLOWED', message: 'Bu işletmenin takvimine erişiminiz yok.', status: 403 as const };
   }
@@ -142,7 +115,7 @@ function publicSnapshotError(data: unknown, fallback: string) {
       retryAfter,
     };
   }
-  const message = errorMessage(data);
+  const message = rpcErrorMessage(data);
   if (message.includes('PUBLIC_SERVICES_LIMIT_EXCEEDED')) {
     return {
       code: 'PUBLIC_SERVICES_LIMIT_EXCEEDED',
@@ -278,7 +251,7 @@ snapshotReads.get('/api/catalog', async (context) => {
   );
 
   if (!result.ok) {
-    const message = errorMessage(result.data);
+    const message = rpcErrorMessage(result.data);
     if (message.includes('CATALOG_SERVICES_LIMIT_EXCEEDED')) {
       return limitExceeded(context, 'CATALOG_SERVICES_LIMIT_EXCEEDED', 'Hizmet kataloğu güvenli snapshot sınırını aşıyor.');
     }

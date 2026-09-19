@@ -111,4 +111,13 @@ app.route('/api/calendar', calendar);
 app.route('/api/team', team);
 app.route('/api/onboarding', onboarding);
 
+app.onError((_err, context) => {
+  return context.json({
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'Beklenmeyen bir hata oluştu.',
+    },
+  }, 500);
+});
+
 export default app;

@@ -7,10 +7,11 @@ import {
   supabaseRequest,
   type AuthEnv,
 } from './auth.ts';
+import { isDate, isUuid } from '../shared/validation.ts';
+import { rpcErrorMessage } from './common.ts';
 
 type Env = AuthEnv;
 type IntervalInput = { start: string; end: string };
-type RpcError = { message?: string };
 type OnboardingSnapshot = {
   business: { id: string; timezone: string };
   business_hours: unknown[];
@@ -47,16 +48,6 @@ const availability = new Hono<{ Bindings: Env }>();
 
 function isTime(value: unknown): value is string {
   return typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
-}
-
-function isDate(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 // F11-02: a reservation is an ordered list of services. Staff is optional per
@@ -101,10 +92,6 @@ function validDateHorizon(date: string) {
   const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
   const day = 86_400_000;
   return target >= todayUtc - day && target <= todayUtc + 366 * day;
-}
-
-function rpcMessage(data: unknown) {
-  return typeof data === 'object' && data !== null ? String((data as RpcError).message ?? '') : '';
 }
 
 function mutationError(message: string, fallbackCode: string, fallbackMessage: string) {
@@ -188,7 +175,7 @@ availability.get('/setup', async (context) => {
   ]);
 
   if (!snapshotResult.ok) {
-    const message = rpcMessage(snapshotResult.data);
+    const message = rpcErrorMessage(snapshotResult.data);
     if (message.includes('ONBOARDING_BUSINESS_HOURS_LIMIT_EXCEEDED')
         || message.includes('ONBOARDING_STAFF_HOURS_LIMIT_EXCEEDED')
         || message.includes('CATALOG_')) {
@@ -264,7 +251,7 @@ availability.put('/business-hours/:weekday', async (context) => {
     }),
   }, access.auth.accessToken);
   if (!result.ok) {
-    const error = mutationError(rpcMessage(result.data), 'HOURS_UPDATE_FAILED', 'Çalışma saatleri kaydedilemedi. Aralıkların çakışmadığını kontrol edin.');
+    const error = mutationError(rpcErrorMessage(result.data), 'HOURS_UPDATE_FAILED', 'Çalışma saatleri kaydedilemedi. Aralıkların çakışmadığını kontrol edin.');
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ hours: result.data ?? [] });
@@ -321,7 +308,7 @@ availability.put('/staff/:staffId/hours/:weekday', async (context) => {
     }),
   }, access.auth.accessToken);
   if (!result.ok) {
-    const error = mutationError(rpcMessage(result.data), 'STAFF_HOURS_UPDATE_FAILED', 'Personel çalışma saatleri kaydedilemedi.');
+    const error = mutationError(rpcErrorMessage(result.data), 'STAFF_HOURS_UPDATE_FAILED', 'Personel çalışma saatleri kaydedilemedi.');
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ hours: result.data ?? [] });
@@ -354,7 +341,7 @@ availability.post('/blocks', async (context) => {
     }),
   }, access.auth.accessToken);
   if (!result.ok) {
-    const error = mutationError(rpcMessage(result.data), 'BLOCK_CREATE_FAILED', 'İzin/kapanış kaydedilemedi.');
+    const error = mutationError(rpcErrorMessage(result.data), 'BLOCK_CREATE_FAILED', 'İzin/kapanış kaydedilemedi.');
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ block: result.data }, 201);
@@ -372,7 +359,7 @@ availability.delete('/blocks/:id', async (context) => {
     body: JSON.stringify({ p_business_id: access.membership.business_id, p_block_id: blockId }),
   }, access.auth.accessToken);
   if (!result.ok) {
-    const error = mutationError(rpcMessage(result.data), 'BLOCK_DELETE_FAILED', 'İzin/kapanış silinemedi.');
+    const error = mutationError(rpcErrorMessage(result.data), 'BLOCK_DELETE_FAILED', 'İzin/kapanış silinemedi.');
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   if (result.data !== true) return context.json({ error: { code: 'BLOCK_DELETE_FAILED', message: 'İzin/kapanış bulunamadı.' } }, 404);
@@ -434,7 +421,7 @@ availability.post('/group-slots', async (context) => {
   }, access.auth.accessToken);
 
   if (!result.ok) {
-    const message = rpcMessage(result.data);
+    const message = rpcErrorMessage(result.data);
     if (message.includes('GROUP_LINE_LIMIT_EXCEEDED')) {
       return context.json({ error: { code: 'GROUP_LINE_LIMIT_EXCEEDED', message: `Bir randevuda en fazla ${GROUP_LINE_LIMIT} hizmet seçilebilir.` } }, 409);
     }

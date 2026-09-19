@@ -15,6 +15,8 @@ import {
 } from './public-booking-pending';
 import type { LegacyPendingRecord, PublicBookingRecord, V2PendingRecord } from './public-booking-pending';
 import { derivePublicBookingIntentV2, sha256Hex } from '../shared/public-booking-intent';
+import { bytesToBase64Url } from '../shared/validation.ts';
+import { formatDateTime, formatMoney, formatTime } from './format.ts';
 
 type PublicBusiness = { name: string; slug: string; timezone: string; local_date: string; max_date: string; step_minutes: number; min_notice_minutes: number; horizon_days: number };
 type PublicService = { service_id: string; name: string; duration_minutes: number; price_minor: number; currency: string };
@@ -30,24 +32,10 @@ type UnpersistedConfirmation = { id: string; expectedStatuses: readonly ('submit
 const HTTP_TIMEOUT_MS = 10_000;
 const CLOCK_MAX_AGE_MS = 30_000;
 
-function formatTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, hour: '2-digit', minute: '2-digit' }).format(new Date(value));
-}
-
-function formatDateTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, dateStyle: 'long', timeStyle: 'short' }).format(new Date(value));
-}
-
-function money(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
-}
-
 function createSecret() {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return bytesToBase64Url(bytes);
 }
 
 function validClock(value: unknown): value is BookingClock {
@@ -497,7 +485,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
     return <main className="public-booking-shell"><section className="public-booking-card public-confirmation">
       <div className="public-success-mark">✓</div><p className="public-kicker">RANDEVU OLUŞTURULDU</p>
       <h1>{confirmation.business_name ?? page?.business.name ?? 'Randevu'}</h1>
-      <dl className="public-confirmation-list"><div><dt>Hizmet</dt><dd>{confirmation.service_name}</dd></div><div><dt>Personel</dt><dd>{confirmation.staff_name}</dd></div><div><dt>Tarih</dt><dd>{formatDateTime(confirmation.starts_at, confirmation.timezone)}</dd></div><div><dt>Ücret</dt><dd>{money(confirmation.price_minor, confirmation.currency)}</dd></div></dl>
+      <dl className="public-confirmation-list"><div><dt>Hizmet</dt><dd>{confirmation.service_name}</dd></div><div><dt>Personel</dt><dd>{confirmation.staff_name}</dd></div><div><dt>Tarih</dt><dd>{formatDateTime(confirmation.starts_at, confirmation.timezone)}</dd></div><div><dt>Ücret</dt><dd>{formatMoney(confirmation.price_minor, confirmation.currency)}</dd></div></dl>
       <p className="public-confirmation-note">Randevunuz işletmenin paneline kaydedildi. Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.</p>
       {confirmation.manage_url && <a className="public-primary" href={confirmation.manage_url}>Randevumu yönet</a>}
       {confirmationStorageError && <div className="public-booking-notice" role="alert">{confirmationStorageError} Bu kayıt tamamlanana kadar yeni randevu başlatmayın.</div>}
@@ -541,7 +529,7 @@ export default function PublicBookingPage({ slug }: { slug: string }) {
     <div className="public-booking-layout">
       <section className="public-booking-card"><span className="public-step">1</span><h2>Hizmet ve tarih</h2>
         {page.services.length ? <form className="public-picker-form" onSubmit={(event) => void loadSlots(event)}>
-          <label><span>Hizmet</span><select value={serviceId} onChange={(event) => { setServiceId(event.target.value); resetSlotSelection(); }}>{page.services.map((service) => <option key={service.service_id} value={service.service_id}>{service.name} · {service.duration_minutes} dk · {money(service.price_minor, service.currency)}</option>)}</select></label>
+          <label><span>Hizmet</span><select value={serviceId} onChange={(event) => { setServiceId(event.target.value); resetSlotSelection(); }}>{page.services.map((service) => <option key={service.service_id} value={service.service_id}>{service.name} · {service.duration_minutes} dk · {formatMoney(service.price_minor, service.currency)}</option>)}</select></label>
           <label><span>Personel</span><select value={staffId} onChange={(event) => { setStaffId(event.target.value); resetSlotSelection(); }}><option value="any">Fark etmez</option>{staff.map((person) => <option key={person.staff_id} value={person.staff_id}>{person.staff_name}</option>)}</select></label>
           <label><span>Tarih</span><input type="date" value={date} min={page.business.local_date} max={page.business.max_date} onChange={(event) => { setDate(event.target.value); resetSlotSelection(); }} required /></label>
           <button className="public-primary" disabled={busy || !serviceId}>{busy ? 'Bakılıyor…' : 'Uygun saatleri göster'}</button>

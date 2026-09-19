@@ -17,10 +17,11 @@ import {
   type PublicAbuseEnv,
 } from './public-abuse.ts';
 import { PUBLIC_BOOKING_SUBMIT_WINDOW_SECONDS } from '../shared/public-booking-intent.ts';
+import { integerIn, isDate, isUuid } from '../shared/validation.ts';
+import { rpcErrorMessage } from './common.ts';
 
 type Env = AuthEnv & PublicAbuseEnv;
 type BaseContext = AppContext<Env>;
-type SupabaseError = { message?: string; code?: string; details?: string };
 
 type PublicSettings = {
   business_id: string;
@@ -57,19 +58,8 @@ type PublicSlot = {
 
 const publicBooking = new Hono<{ Bindings: Env }>();
 
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-function isDate(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
 function isSlug(value: unknown): value is string {
   return typeof value === 'string' && value.length >= 1 && value.length <= 60 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value);
-}
-function integerIn(value: unknown, min: number, max: number): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 }
 
 function rpcError(data: unknown, fallback: string) {
@@ -82,7 +72,7 @@ function rpcError(data: unknown, fallback: string) {
       retryAfter,
     };
   }
-  const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  const message = rpcErrorMessage(data);
   if (message === 'PUBLIC_OPERATION_UNAVAILABLE') return { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon bilgileri şu anda alınamıyor. Lütfen tekrar deneyin.', status: 503 as const };
   if (message.includes('PUBLIC_BOOKING_GATE_UNAVAILABLE') || message.includes('PUBLIC_BOOKING_GATE_INVALID_PROOF')) {
     return { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon güvenlik kontrolü şu anda hazır değil.', status: 503 as const };

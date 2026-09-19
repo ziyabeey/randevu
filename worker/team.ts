@@ -15,6 +15,7 @@ import {
   type Role,
   type SupabaseResult,
 } from './auth.ts';
+import { isUuid } from '../shared/validation.ts';
 
 type TeamContext = AppContext<AuthEnv>;
 type PermissionKey =
@@ -56,7 +57,6 @@ type TeamSnapshot = {
 type RpcError = { code?: unknown; message?: unknown; details?: unknown; hint?: unknown };
 
 const team = new Hono<{ Bindings: AuthEnv }>();
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const INVITE_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43,128}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROLES = new Set<Role>(['owner', 'manager', 'staff']);
@@ -67,10 +67,6 @@ const PERMISSIONS = new Set<PermissionKey>([
   'inventory_write',
   'expenses_write',
 ]);
-
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && UUID_PATTERN.test(value);
-}
 
 function isRole(value: unknown): value is Role {
   return typeof value === 'string' && ROLES.has(value as Role);

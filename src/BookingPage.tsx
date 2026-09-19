@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
+import type { Role, Session } from '../shared/types.ts';
+import { formatDateTime, formatMoney, formatTime } from './format.ts';
 
-type Role = 'owner' | 'manager' | 'staff';
-type Session = {
-  user: null | { id: string; email: string | null; fullName: string | null };
-  memberships: Array<{ id: string; business_id: string; role: Role; active: boolean }>;
-  activeBusinessId: string | null;
-};
 type Service = {
   id: string; name: string; duration_minutes: number; buffer_before_minutes: number;
   buffer_after_minutes: number; price_minor: number; currency: string; active: boolean;
@@ -132,31 +128,15 @@ function zonedLocalToIso(date: string, time: string, timezone: string) {
   return result.toISOString();
 }
 
-function formatDateTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
-    timeZone: timezone, dateStyle: 'medium', timeStyle: 'short',
-  }).format(new Date(value));
-}
-
-function formatTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
-    timeZone: timezone, hour: '2-digit', minute: '2-digit',
-  }).format(new Date(value));
-}
-
-function money(value: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(value / 100);
-}
-
 function priceText(line: BookingLine) {
-  if (line.priceType === 'fixed') return money(line.priceMinor ?? line.priceMinMinor, line.currency);
-  return `${money(line.priceMinMinor, line.currency)} – ${money(line.priceMaxMinor, line.currency)}`;
+  if (line.priceType === 'fixed') return formatMoney(line.priceMinor ?? line.priceMinMinor, line.currency);
+  return `${formatMoney(line.priceMinMinor, line.currency)} – ${formatMoney(line.priceMaxMinor, line.currency)}`;
 }
 
 function estimateText(booking: BookingGroup) {
   return booking.estimateMinMinor === booking.estimateMaxMinor
-    ? money(booking.estimateMinMinor, booking.currency)
-    : `${money(booking.estimateMinMinor, booking.currency)} – ${money(booking.estimateMaxMinor, booking.currency)}`;
+    ? formatMoney(booking.estimateMinMinor, booking.currency)
+    : `${formatMoney(booking.estimateMinMinor, booking.currency)} – ${formatMoney(booking.estimateMaxMinor, booking.currency)}`;
 }
 
 function legacyCreateBookable(service: Service) {
@@ -502,7 +482,7 @@ export default function BookingPage() {
           <label>Telefon<input value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+90…" maxLength={40} /></label>
           <label>E-posta<input value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} type="email" placeholder="mail@…" maxLength={254} /></label>
           <label>Hizmet<select value={serviceId} onChange={(event) => { setServiceId(event.target.value); setStaffId('any'); setSlots([]); setSelectedSlot(null); }}>
-            {activeServices.map((service) => <option key={service.id} value={service.id}>{service.name} · {service.duration_minutes} dk · {money(service.price_minor, service.currency)}</option>)}
+            {activeServices.map((service) => <option key={service.id} value={service.id}>{service.name} · {service.duration_minutes} dk · {formatMoney(service.price_minor, service.currency)}</option>)}
           </select></label>
           <label>Personel<select value={staffId} onChange={(event) => { setStaffId(event.target.value); setSlots([]); setSelectedSlot(null); }}>
             <option value="any">Fark etmez</option>{eligibleStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>

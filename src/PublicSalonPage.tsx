@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ApiRequestError, api } from './api';
 import PublicBookingPage from './PublicBookingPage';
+import { initials } from './format.ts';
+import { getErrorMessage } from './errors.ts';
 
 type PublicMedia = {
   id: string;
@@ -26,11 +28,6 @@ type PublicProfile = {
 };
 
 const dayLabels = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  return (parts.slice(0, 2).map((part) => part[0]?.toLocaleUpperCase('tr-TR') ?? '').join('') || 'R').slice(0, 2);
-}
 
 function timeLabel(value: string) {
   return value.slice(0, 5);
@@ -88,7 +85,7 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
           setInactive(true);
           return;
         }
-        setNotice(error instanceof Error ? error.message : 'Salon bilgileri şu anda yüklenemedi.');
+        setNotice(getErrorMessage(error, 'Salon bilgileri şu anda yüklenemedi.'));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };

@@ -12,10 +12,11 @@ import {
   pageResult,
   parsePageLimit,
 } from './pagination.ts';
+import { cleanOptional, isUuid } from '../shared/validation.ts';
+import { rpcErrorMessage } from './common.ts';
 
 type Env = AuthEnv;
 type BaseContext = AppContext<Env>;
-type SupabaseError = { message?: string };
 
 type Customer = {
   customer_id: string;
@@ -46,19 +47,8 @@ type CustomerAppointment = {
 
 const customers = new Hono<{ Bindings: Env }>();
 
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
 function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value));
-}
-
-function cleanOptional(value: unknown, max: number) {
-  if (value === null || value === undefined || value === '') return null;
-  if (typeof value !== 'string') return undefined;
-  const result = value.trim();
-  return result.length <= max ? (result || null) : undefined;
 }
 
 function cleanCustomerBody(body: Record<string, unknown> | null) {
@@ -71,14 +61,8 @@ function cleanCustomerBody(body: Record<string, unknown> | null) {
   return { name, phone, email, notes };
 }
 
-function errorMessage(data: unknown) {
-  return typeof data === 'object' && data !== null
-    ? String((data as SupabaseError).message ?? '')
-    : '';
-}
-
 function rpcFailure(context: BaseContext, data: unknown, status: number, fallback: string) {
-  const message = errorMessage(data);
+  const message = rpcErrorMessage(data);
   if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
     return context.json({ error: { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.' } }, 403);
   }

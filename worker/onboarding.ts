@@ -3,9 +3,9 @@ import {
   first,
   requireMember,
   supabaseRequest,
-  upstreamUnavailable,
   type AuthEnv,
 } from './auth.ts';
+import { rpcErrorMessage, upstreamUnavailable } from './common.ts';
 
 type Readiness = {
   business_id: string;
@@ -38,15 +38,8 @@ type OnboardingSnapshot = {
   settings: PublicSettings;
   readiness: Readiness;
 };
-type SupabaseError = { message?: string };
 
 const onboarding = new Hono<{ Bindings: AuthEnv }>();
-
-function errorMessage(data: unknown) {
-  return typeof data === 'object' && data !== null
-    ? String((data as SupabaseError).message ?? '')
-    : '';
-}
 
 function limitError(message: string) {
   if (message.includes('CATALOG_SERVICES_LIMIT_EXCEEDED')) {
@@ -100,7 +93,7 @@ onboarding.get('/', async (context) => {
   }
 
   if (!result.ok) {
-    const message = errorMessage(result.data);
+    const message = rpcErrorMessage(result.data);
     const overflow = limitError(message);
     if (overflow) return context.json({ error: overflow }, 409);
     if (message.includes('PASSWORD_UPDATE_REQUIRED')) {

@@ -5,9 +5,10 @@ import {
   supabaseRequest,
   type AuthEnv,
 } from './auth.ts';
+import { isDate, isUuid } from '../shared/validation.ts';
+import { dateInTimezone, rpcErrorMessage } from './common.ts';
 
 type Env = AuthEnv;
-type SupabaseError = { message?: string };
 
 type CalendarAppointment = {
   appointment_id: string;
@@ -33,27 +34,8 @@ type Business = { id: string; name: string; timezone: string };
 
 const calendar = new Hono<{ Bindings: Env }>();
 
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-function isDate(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-function dateInTimezone(timezone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
 function rpcError(data: unknown) {
-  const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  const message = rpcErrorMessage(data);
   if (message.includes('NOT_ALLOWED')) return { code: 'NOT_ALLOWED', message: 'Bu işletmenin takvimine erişiminiz yok.', status: 403 as const };
   if (message.includes('INVALID_CALENDAR_RANGE')) return { code: 'INVALID_CALENDAR_RANGE', message: 'Takvim tarih aralığı geçerli değil.', status: 400 as const };
   return { code: 'CALENDAR_READ_FAILED', message: 'Takvim yüklenemedi.', status: 502 as const };

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
+import { formatMoney } from './format.ts';
+import { getErrorMessage } from './errors.ts';
 
 type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'no_show' | 'cancelled';
 type GroupStatus = AppointmentStatus | 'partial';
@@ -90,10 +92,6 @@ function instantParts(value: string, timezone: string) {
   };
 }
 
-function money(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
-}
-
 function statusLabel(status: GroupStatus) {
   return {
     scheduled: 'Planlandı',
@@ -142,7 +140,7 @@ export default function CalendarPage() {
       setPayload(result);
       setDate((current) => current || result.date);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Takvim yüklenemedi.');
+      setNotice(getErrorMessage(error, 'Takvim yüklenemedi.'));
     } finally {
       setLoading(false);
     }
@@ -227,7 +225,7 @@ export default function CalendarPage() {
       })
       .catch((error) => {
         if (generation !== selectionGeneration.current) return;
-        setNotice(error instanceof Error ? error.message : 'Rezervasyon grubunun tam detayı yüklenemedi.');
+        setNotice(getErrorMessage(error, 'Rezervasyon grubunun tam detayı yüklenemedi.'));
       })
       .finally(() => {
         if (generation === selectionGeneration.current) setSelectedGroupLoading(false);
@@ -294,7 +292,7 @@ export default function CalendarPage() {
       await load(date, view, staffId);
       setNotice(`Randevu durumu “${statusLabel(status)}” olarak güncellendi.`);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Randevu güncellenemedi.');
+      setNotice(getErrorMessage(error, 'Randevu güncellenemedi.'));
     } finally {
       setBusy(false);
     }
@@ -317,7 +315,7 @@ export default function CalendarPage() {
       await load(date, view, staffId);
       setNotice('Rezervasyon grubu iptal edildi.');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Rezervasyon grubu iptal edilemedi.');
+      setNotice(getErrorMessage(error, 'Rezervasyon grubu iptal edilemedi.'));
     } finally {
       setBusy(false);
     }
@@ -456,7 +454,7 @@ export default function CalendarPage() {
                       ? selectedGroup.lines.map((line) => <div key={line.appointmentId}>{line.lineOrdinal}. {line.serviceName} · {line.staffName} · {statusLabel(line.status)}</div>)
                       : <span>Rezervasyonun tam hizmet listesi doğrulanamadı.</span>}
               </dd></div>
-              {selected.group_legacy_appointment_id && selected.price_minor !== null && <div><dt>Ücret</dt><dd>{money(selected.price_minor, selected.currency)}</dd></div>}
+              {selected.group_legacy_appointment_id && selected.price_minor !== null && <div><dt>Ücret</dt><dd>{formatMoney(selected.price_minor, selected.currency)}</dd></div>}
               <div><dt>Kaynak</dt><dd>{selected.source === 'public' ? 'Online rezervasyon' : 'Operatör'}</dd></div>
               {selected.customer_phone && <div><dt>Telefon</dt><dd>{selected.customer_phone}</dd></div>}
               {selected.customer_email && <div><dt>E-posta</dt><dd>{selected.customer_email}</dd></div>}

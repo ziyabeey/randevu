@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
+import type { Role } from '../shared/types.ts';
+import { formatDateTime, roleLabel } from './format.ts';
+import { getErrorMessage, isRetryableApiError } from './errors.ts';
 
-type Role = 'owner' | 'manager' | 'staff';
 type PermissionKey =
   | 'payments_write'
   | 'pricing_adjustments_write'
@@ -52,22 +54,11 @@ const PERMISSIONS: Array<{ key: PermissionKey; label: string }> = [
   { key: 'expenses_write', label: 'Masraf yazımı' },
 ];
 
-function roleLabel(role: Role) {
-  if (role === 'owner') return 'İşletme sahibi';
-  if (role === 'manager') return 'Yönetici';
-  return 'Çalışan';
-}
-
 function dateLabel(value: string) {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
     ? 'Bilinmiyor'
-    : new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
-}
-
-function isRetryableApiError(error: unknown) {
-  return error instanceof ApiRequestError
-    && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
+    : formatDateTime(value, undefined, 'medium', 'short');
 }
 
 export default function TeamPage() {
@@ -86,7 +77,7 @@ export default function TeamPage() {
       setAuthorityStale(false);
     } catch (error) {
       if (!isRetryableApiError(error)) setTeam(null);
-      setNotice(error instanceof Error ? error.message : 'Ekip bilgileri alınamadı.');
+      setNotice(getErrorMessage(error, 'Ekip bilgileri alınamadı.'));
     } finally {
       setLoading(false);
     }
@@ -109,7 +100,7 @@ export default function TeamPage() {
       await load();
     } catch (error) {
       await refreshAuthorityAfterForbidden(error);
-      setNotice(error instanceof Error ? error.message : 'İşlem tamamlanamadı.');
+      setNotice(getErrorMessage(error, 'İşlem tamamlanamadı.'));
     } finally {
       setBusy(false);
     }
@@ -133,7 +124,7 @@ export default function TeamPage() {
       await load();
     } catch (error) {
       await refreshAuthorityAfterForbidden(error);
-      setNotice(error instanceof Error ? error.message : 'Davet oluşturulamadı.');
+      setNotice(getErrorMessage(error, 'Davet oluşturulamadı.'));
     } finally {
       setBusy(false);
     }

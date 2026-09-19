@@ -22,12 +22,12 @@ import {
   sha256Hex,
   verifyPublicBookingIntentV2,
 } from '../shared/public-booking-intent.ts';
+import { cleanOptional, isDate, isUuid } from '../shared/validation.ts';
+import { rpcErrorMessage } from './common.ts';
 
 type Env = AuthEnv & PublicAbuseEnv & {
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
 };
-
-type SupabaseError = { message?: string };
 type GroupLine = { serviceId: string; staffId: string | null };
 type PublicGroupCreateRow = {
   appointment_id: string;
@@ -39,27 +39,12 @@ const groups = new Hono<{ Bindings: Env }>();
 const GROUP_LINE_LIMIT = 10;
 const AAD_PREFIX = 'public-booking-recovery:v1|';
 
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string'
-    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
 function isSlug(value: unknown): value is string {
   return typeof value === 'string' && value.length >= 1 && value.length <= 60
     && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value);
 }
-function isDate(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
 function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value));
-}
-function cleanOptional(value: unknown, max: number) {
-  if (value === null || value === undefined || value === '') return null;
-  if (typeof value !== 'string') return undefined;
-  const cleaned = value.trim();
-  return cleaned.length <= max ? (cleaned || null) : undefined;
 }
 function idempotencyKey(value: string | undefined) {
   const key = value?.trim() ?? '';
@@ -80,11 +65,7 @@ function parseLines(value: unknown): GroupLine[] | null {
   }
   return lines;
 }
-function rpcMessage(data: unknown) {
-  return typeof data === 'object' && data !== null
-    ? String((data as SupabaseError).message ?? '')
-    : '';
-}
+
 function groupError(message: string) {
   if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
     return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
@@ -174,7 +155,7 @@ function publicFailure(data: unknown, fallback: string) {
     status: 429 as const,
     retryAfter,
   };
-  const message = rpcMessage(data);
+  const message = rpcErrorMessage(data);
   if (message.includes('PUBLIC_BOOKING_NOT_FOUND') || message.includes('PUBLIC_BOOKING_DISABLED')) {
     return { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.', status: 404 as const };
   }
@@ -240,7 +221,7 @@ groups.post('/availability/group-slots', async (context) => {
     if (upstreamUnavailable(result.status)) {
       return context.json({ error: { code: 'GROUP_AVAILABILITY_UNAVAILABLE', message: 'Grup müsaitliği şu anda doğrulanamıyor. Lütfen tekrar deneyin.' } }, 503);
     }
-    const error = groupError(rpcMessage(result.data));
+    const error = groupError(rpcErrorMessage(result.data));
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ slots: result.data ?? [] });
@@ -285,7 +266,7 @@ groups.post('/bookings/groups', async (context) => {
     if (upstreamUnavailable(result.status)) {
       return context.json({ error: { code: 'GROUP_BOOKING_UNAVAILABLE', message: 'Grup rezervasyonu şu anda doğrulanamıyor. Lütfen tekrar deneyin.' } }, 503);
     }
-    const error = groupError(rpcMessage(result.data));
+    const error = groupError(rpcErrorMessage(result.data));
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ group: result.data }, 201);

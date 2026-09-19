@@ -12,10 +12,11 @@ import {
   pageResult,
   parsePageLimit,
 } from './pagination.ts';
+import { isDate, isUuid } from '../shared/validation.ts';
+import { rpcErrorMessage, upstreamUnavailable } from './common.ts';
 
 type Env = AuthEnv;
 type BaseContext = AppContext<Env>;
-type SupabaseError = { message?: string; code?: string; details?: string };
 
 type Appointment = {
   id: string;
@@ -52,14 +53,6 @@ type Slot = { staff_id: string; staff_name: string; starts_at: string; ends_at: 
 
 const bookings = new Hono<{ Bindings: Env }>();
 
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-function isDate(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
 function isTimestamp(value: unknown): value is string {
   return typeof value === 'string' && Number.isFinite(Date.parse(value));
 }
@@ -99,7 +92,7 @@ function idempotencyKey(context: BaseContext) {
 }
 
 function rpcMessage(data: unknown, fallback: string) {
-  const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  const message = rpcErrorMessage(data);
   if (message.includes('IDEMPOTENCY_CONFLICT')) return { code: 'IDEMPOTENCY_CONFLICT', message: 'Bu işlem anahtarı farklı bir istek için zaten kullanılmış.', status: 409 as const };
   if (message.includes('APPOINTMENT_CONFLICT')) return { code: 'APPOINTMENT_CONFLICT', message: 'Bu saat az önce başka bir randevu tarafından alındı.', status: 409 as const };
   if (message.includes('SLOT_UNAVAILABLE')) return { code: 'SLOT_UNAVAILABLE', message: 'Seçilen saat artık müsait değil.', status: 409 as const };
@@ -121,14 +114,14 @@ function readPage(context: BaseContext, kind: 'bookings' | 'events') {
 }
 
 function readFailure(context: BaseContext, data: unknown, status: number, code: string, fallback: string) {
-  const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  const message = rpcErrorMessage(data);
   if (message.includes('NOT_ALLOWED')) {
     return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işletme için işlem yetkiniz yok.' } }, 403);
   }
   if (message.includes('APPOINTMENT_NOT_FOUND')) {
     return context.json({ error: { code: 'APPOINTMENT_NOT_FOUND', message: 'Randevu bulunamadı.' } }, 404);
   }
-  const unavailable = status === 0 || status >= 500;
+  const unavailable = upstreamUnavailable(status);
   return context.json({
     error: {
       code: unavailable ? `${code}_UNAVAILABLE` : `${code}_FAILED`,

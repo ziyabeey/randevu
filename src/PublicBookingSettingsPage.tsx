@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from './api';
 import { preparePublicMedia } from './publicMedia';
+import type { Role } from '../shared/types.ts';
+import { getErrorMessage } from './errors.ts';
 
-type Role = 'owner' | 'manager' | 'staff';
 type PublicSettings = {
   business_id: string;
   enabled: boolean;
@@ -83,7 +84,7 @@ export default function PublicBookingSettingsPage() {
       setNotice('');
       return { ok: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Online randevu ayarları yüklenemedi.';
+      const message = getErrorMessage(error, 'Online randevu ayarları yüklenemedi.');
       setNotice(message);
       setData(null);
       setProfile(null);
@@ -109,7 +110,7 @@ export default function PublicBookingSettingsPage() {
       setData((current) => current ? { ...current, settings: result.settings } : current);
       setNotice(enabled ? 'Online randevu sayfası güncellendi ve aktif.' : 'Online randevu sayfası kapatıldı.');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Ayarlar kaydedilemedi.');
+      setNotice(getErrorMessage(error, 'Ayarlar kaydedilemedi.'));
     } finally { setBusy(false); }
   }
 
@@ -138,7 +139,7 @@ export default function PublicBookingSettingsPage() {
       setProfile(result.profile);
       setNotice('Salon profili kaydedildi.');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Salon profili kaydedilemedi.');
+      setNotice(getErrorMessage(error, 'Salon profili kaydedilemedi.'));
     } finally { setBusy(false); }
   }
 
@@ -163,7 +164,7 @@ export default function PublicBookingSettingsPage() {
         setNotice('Yükleme sunucuda tamamlandı, ancak güncel salon durumu yeniden yüklenemedi. Tekrar yükleyin.');
       }
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Fotoğraf yüklenemedi.');
+      setNotice(getErrorMessage(error, 'Fotoğraf yüklenemedi.'));
     } finally { setBusy(false); }
   }
 
@@ -176,7 +177,7 @@ export default function PublicBookingSettingsPage() {
       });
       setProfile(result.profile);
       setNotice(mediaId ? 'Kapak fotoğrafı güncellendi.' : 'Kapak fotoğrafı kaldırıldı.');
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Kapak fotoğrafı güncellenemedi.'); }
+    } catch (error) { setNotice(getErrorMessage(error, 'Kapak fotoğrafı güncellenemedi.')); }
     finally { setBusy(false); }
   }
 
@@ -190,7 +191,7 @@ export default function PublicBookingSettingsPage() {
       } else {
         setNotice('Silme işlemi sunucuda tamamlandı, ancak güncel salon durumu yeniden yüklenemedi. Tekrar yükleyin.');
       }
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Fotoğraf silinemedi.'); }
+    } catch (error) { setNotice(getErrorMessage(error, 'Fotoğraf silinemedi.')); }
     finally { setBusy(false); }
   }
 

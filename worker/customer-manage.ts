@@ -1,12 +1,13 @@
 import { publicOperation } from './public-rpc.ts';
 import { Hono, type Context } from 'hono';
 import { publicGateUnavailableBody, publicRateLimitedBody, rateLimitFromRpcError, resolvePublicAbuseIdentity, type PublicAbuseEnv } from './public-abuse.ts';
+import { isDate, isUuid } from '../shared/validation.ts';
+import { first, rpcErrorMessage } from './common.ts';
 
 type Env = PublicAbuseEnv & {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
 };
-type SupabaseError = { message?: string };
 type ManagedAppointment = {
   appointment_id: string;
   business_name: string;
@@ -33,26 +34,11 @@ type ManagedSlot = {
 
 const customerManage = new Hono<{ Bindings: Env }>();
 
-
-function first<T>(items: T[] | null): T | null {
-  return items?.[0] ?? null;
-}
-
 function validToken(value: unknown): value is string {
   return typeof value === 'string'
     && value.length >= 43
     && value.length <= 128
     && /^[A-Za-z0-9_-]+$/.test(value);
-}
-
-function validDate(value: unknown): value is string {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
-function validUuid(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function validTimestamp(value: unknown): value is string {
@@ -78,7 +64,7 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
 function rpcError(data: unknown, fallback: string) {
   const retryAfter = rateLimitFromRpcError(data);
   if (retryAfter) return { code: 'PUBLIC_BOOKING_RATE_LIMITED', message: 'Çok fazla istek yapıldı.', status: 429 as const, retryAfter };
-  const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  const message = rpcErrorMessage(data);
   if (message.includes('PUBLIC_BOOKING_GATE_') || message === 'PUBLIC_OPERATION_UNAVAILABLE') {
     return { code: 'MANAGEMENT_UNAVAILABLE', message: 'Randevu yönetimi şu anda kullanılamıyor. Lütfen tekrar deneyin.', status: 503 as const };
   }
@@ -138,7 +124,7 @@ customerManage.post('/slots', async (context) => {
   const date = body?.date;
   const staffRaw = body?.staffId;
   const staffId = staffRaw && staffRaw !== 'any' ? staffRaw : null;
-  if (!validToken(token) || !validDate(date) || (staffId !== null && !validUuid(staffId))) {
+  if (!validToken(token) || !isDate(date) || (staffId !== null && !isUuid(staffId))) {
     return context.json({ error: { code: 'INVALID_MANAGEMENT_QUERY', message: 'Tarih veya personel bilgisi geçerli değil.' } }, 400);
   }
 
@@ -156,7 +142,7 @@ customerManage.post('/reschedule', async (context) => {
   const key = idempotencyKey(context.req.header('Idempotency-Key'));
   const body = await readJson(context.req.raw);
   const token = body?.token;
-  if (!validToken(token) || !key || !validUuid(body?.staffId) || !validTimestamp(body?.startsAt)) {
+  if (!validToken(token) || !key || !isUuid(body?.staffId) || !validTimestamp(body?.startsAt)) {
     return context.json({ error: { code: 'INVALID_RESCHEDULE', message: 'Yeni randevu saati geçerli değil.' } }, 400);
   }
 

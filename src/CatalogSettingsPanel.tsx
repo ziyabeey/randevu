@@ -1,46 +1,17 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react';
 import { ApiRequestError, api } from './api';
 import './catalog-settings.css';
+import type {
+  ManagedAssignment,
+  ManagedCatalog,
+  ManagedService,
+  ManagedStaff,
+  PriceType,
+  Role,
+} from '../shared/types.ts';
+import { getErrorMessage } from './errors.ts';
 
-type Role = 'owner' | 'manager' | 'staff';
-type PriceType = 'fixed' | 'range';
-export type ManagedService = {
-  id: string;
-  name: string;
-  duration_minutes: number;
-  buffer_before_minutes: number;
-  buffer_after_minutes: number;
-  category?: string;
-  sort_order?: number;
-  price_minor: number;
-  price_type?: PriceType;
-  price_min_minor?: number;
-  price_max_minor?: number;
-  price_policy_version?: number;
-  currency: string;
-  active: boolean;
-  updated_at: string;
-};
-export type ManagedStaff = {
-  id: string;
-  membership_id: string | null;
-  name: string;
-  phone: string | null;
-  active: boolean;
-  updated_at: string;
-};
-export type ManagedAssignment = {
-  staff_id: string;
-  service_id: string;
-  active: boolean;
-  updated_at: string;
-};
-export type ManagedCatalog = {
-  membership: { id: string; business_id: string; role: Role; active: boolean };
-  services: ManagedService[];
-  staff: ManagedStaff[];
-  assignments: ManagedAssignment[];
-};
+export type { ManagedAssignment, ManagedCatalog, ManagedService, ManagedStaff, PriceType, Role };
 
 type Props = {
   catalog: ManagedCatalog;
@@ -131,7 +102,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
           setNotice('Bu kayıt başka bir oturumda değişti. Güncel bilgiler yeniden yüklendi; yaptığınız değişiklik uygulanmadı.');
         }
       } else {
-        setNotice(error instanceof Error ? error.message : 'Değişiklik kaydedilemedi.');
+        setNotice(getErrorMessage(error, 'Değişiklik kaydedilemedi.'));
       }
       setBusy(false);
       return false;

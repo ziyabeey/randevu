@@ -1,22 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { api, ApiRequestError } from './api';
+import { api } from './api';
+import type { Session } from '../shared/types.ts';
+import { formatMoney, roleLabel } from './format.ts';
+import { isRetryableApiError } from './errors.ts';
 
-type Business = { id: string; name: string; slug: string; timezone: string };
-type Membership = {
-  id: string;
-  business_id: string;
-  role: 'owner' | 'manager' | 'staff';
-  active: boolean;
-  businesses: Business | null;
-};
-type Session = {
-  user: null | { id: string; email: string | null; fullName: string | null };
-  memberships: Membership[];
-  activeBusinessId: string | null;
-  passwordRecovery: boolean;
-  csrfToken: string;
-};
 type Service = {
   id: string;
   name: string;
@@ -36,21 +24,6 @@ type Catalog = {
   assignments: Assignment[];
 };
 type AuthMode = 'login' | 'signup' | 'recovery';
-
-function money(minor: number) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(minor / 100);
-}
-
-function roleLabel(role: Membership['role']) {
-  if (role === 'owner') return 'İşletme sahibi';
-  if (role === 'manager') return 'Yönetici';
-  return 'Çalışan';
-}
-
-function isRetryableApiError(error: unknown) {
-  return error instanceof ApiRequestError
-    && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
-}
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -417,7 +390,7 @@ export default function App() {
             <section className="panel">
               <div className="section-head"><h2>Hizmetler</h2><span>{catalog.services.filter((item) => item.active).length}</span></div>
               {catalog.services.length === 0 ? <p className="empty">Henüz hizmet yok.</p> : <ul className="data-list">{catalog.services.map((service) => (
-                <li key={service.id}><div><strong>{service.name}</strong><span>{service.duration_minutes} dk · {money(service.price_minor)}</span></div><span className={service.active ? 'dot active' : 'dot'} /></li>
+                <li key={service.id}><div><strong>{service.name}</strong><span>{service.duration_minutes} dk · {formatMoney(service.price_minor, service.currency)}</span></div><span className={service.active ? 'dot active' : 'dot'} /></li>
               ))}</ul>}
               {catalog.membership.role !== 'staff' && <form className="inline-form" onSubmit={addService}>
                 <input name="name" placeholder="Hizmet adı" required minLength={2} />
