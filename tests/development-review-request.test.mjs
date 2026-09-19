@@ -129,6 +129,48 @@ test('review launch fails closed when CI provenance is not an exact current pass
   );
 });
 
+
+test('review request requires durable task identity', () => {
+  const input = dispatcher(['r1']);
+  input.facts.task.id = null;
+  input.facts.candidate.taskId = null;
+  assert.throws(
+    () => buildIndependentReviewRequest(input, {}, 'r1'),
+    /TASK_ID_MISSING/,
+  );
+});
+
+test('merge-ref CI evidence must preserve explicit candidate binding', () => {
+  const input = dispatcher(['r1']);
+  input.facts.ci.testedCheckoutSha = sha('d');
+  input.facts.ci.explicitlyBoundToHead = false;
+  assert.throws(
+    () => buildIndependentReviewRequest(input, {}, 'r1'),
+    /TESTED_CHECKOUT_UNBOUND/,
+  );
+
+  input.facts.ci.explicitlyBoundToHead = true;
+  const request = buildIndependentReviewRequest(input, {}, 'r1');
+  assert.equal(request.currentEvidence.ci.testedCheckoutSha, sha('d'));
+  assert.equal(request.currentEvidence.ci.explicitlyBoundToHead, true);
+});
+
+test('review request requires exact CI run job and attempt identity', () => {
+  for (const [key, bad, pattern] of [
+    ['run', null, /CI_RUN_INVALID/],
+    ['job', '', /CI_JOB_INVALID/],
+    ['attempt', null, /CI_ATTEMPT_INVALID/],
+  ]) {
+    const input = dispatcher(['r1']);
+    input.facts.ci[key] = bad;
+    assert.throws(
+      () => buildIndependentReviewRequest(input, {}, 'r1'),
+      pattern,
+      key,
+    );
+  }
+});
+
 test('an accessible previous same-role receipt turns the request into follow-up mode', () => {
   const input = dispatcher(['r1']);
   input.facts.reviews.r1 = {
