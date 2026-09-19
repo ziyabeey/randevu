@@ -32,6 +32,18 @@ Shared CI-plan sırası nedeniyle F10-05 entegrasyonu F10-04'ten önce kapanacak
 
 Canlı pilot henüz yapılmadı. Staging/CI başarısı production/pilot kabulü değildir.
 
+## Kod tabanı özeti
+
+Bu repo, kullanıcı arayüzü ve worker API katmanlarını birlikte sunan tek bir Vite tabanlı uygulamadır:
+
+- `src/` — React ekranları, müşteri/rezervasyon arayüzleri ve istemci yardımcıları.
+- `worker/` — Hono tabanlı API rotaları, auth akışı, public booking ve işletme operasyon mantığı.
+- `tests/` — HTTP, browser smoke ve CI regresyon kontrolleri.
+- `docs/` — ürün, mimari ve karşılaştırma belgeleri; marka, plan ve handoff akışı burada bulunur.
+- `scripts/` — staging ve CI doğrulama araçları.
+
+Ürün akışı, `src` arayüzleri ile `worker` RPC ve API katmanları arasında açık bir sınır kullanır; public booking, onboarding ve güvenlik akışları bu ikili yapı etrafında düzenlenmiştir.
+
 ## Kanonik proje kaynakları
 
 - [PRODUCT_SPEC.md](PRODUCT_SPEC.md) — ürün sınırı ve üç kol.

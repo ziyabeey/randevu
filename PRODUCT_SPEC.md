@@ -2,7 +2,7 @@
 
 Karar tarihi: 11 Eylül 2026. Kaynak: ürün sahibinin üç kol kararı ve paylaştığı 11 mobil ekran. 12 Eylül plan v3 teknik sıra/kontrat revizyonu bu ürün kapsamını korur; yeni kullanıcı dostu özellik/görsel kararlar ayrı çalışmadır.
 
-Bu dosya hedef davranışı tanımlar. Uygulanan özellikler için [PROJECT_STATE.md](PROJECT_STATE.md), sıra ve kabul ölçütleri için [ROADMAP.md](ROADMAP.md) esas alınır. Buradaki bir özelliğin listelenmesi, kodda hazır olduğu anlamına gelmez.
+Bu dosya hedef davranışı tanımlar. Uygulanan/kabul edilmiş özelliklerin canlı durumu için yalnız [TASKS.md](TASKS.md), sıra ve kabul ölçütleri için [ROADMAP.md](ROADMAP.md) esas alınır. Buradaki bir özelliğin listelenmesi, kodda hazır olduğu anlamına gelmez.
 
 ## 1. Üç kol, ortak ürün
 

@@ -3,6 +3,12 @@ const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43,128}$/;
 
 let memoryToken: string | null = null;
 
+/**
+ * Parses a team-invite token from the current hash fragment.
+ *
+ * The application stores the invite on the hash because it is a short-lived,
+ * single-use onboarding value that should not be persisted in the URL path.
+ */
 export function parseTeamInviteHash(hash: string) {
   if (!hash.startsWith('#invite=')) return null;
   const value = hash.slice('#invite='.length);
@@ -17,6 +23,11 @@ function safeSessionStorage() {
   }
 }
 
+/**
+ * Moves team-invite state from the URL hash into browser storage for the current SPA session.
+ *
+ * The hash is stripped after capture so the invite token does not remain in a user-visible URL.
+ */
 export function captureTeamInviteFromLocation() {
   if (window.location.pathname === '/m' || window.location.pathname === '/m/') return null;
   const token = parseTeamInviteHash(window.location.hash);
@@ -33,6 +44,9 @@ export function captureTeamInviteFromLocation() {
   return token;
 }
 
+/**
+ * Returns the pending team invite from memory or session storage when available.
+ */
 export function readPendingTeamInvite() {
   if (memoryToken && TOKEN_PATTERN.test(memoryToken)) return memoryToken;
   try {
@@ -48,6 +62,9 @@ export function readPendingTeamInvite() {
   return null;
 }
 
+/**
+ * Removes any remembered invite token from memory and browser storage.
+ */
 export function clearPendingTeamInvite() {
   memoryToken = null;
   try {

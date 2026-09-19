@@ -1,5 +1,6 @@
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
+import { bytesToBase64Url } from '../../shared/base64.ts';
 import PublicBookingPage from '../../src/PublicBookingPage.tsx';
 import {
   PUBLIC_BOOKING_RECOVERY_TTL_MS,
@@ -17,9 +18,7 @@ const LEGACY_PREFIX = 'yzt-public-booking-pending-v1:';
 
 function secret(seed: number) {
   const bytes = new Uint8Array(32).fill(seed & 255);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return bytesToBase64Url(bytes);
 }
 
 async function candidate(slug: string, seed: number) {

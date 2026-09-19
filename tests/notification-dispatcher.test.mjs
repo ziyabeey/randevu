@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { base64UrlToBytes, bytesToBase64Url } from '../shared/base64.ts';
 import { dispatchNotificationBatch } from '../worker/notifications.ts';
 
 const encryptionKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
@@ -22,14 +23,6 @@ function json(data, status = 200, headers = {}) {
     status,
     headers: { 'Content-Type': 'application/json', ...headers },
   });
-}
-
-function base64UrlToBytes(value) {
-  return Uint8Array.from(Buffer.from(value, 'base64url'));
-}
-
-function bytesToBase64Url(bytes) {
-  return Buffer.from(bytes).toString('base64url');
 }
 
 async function encryptedMaterial(token, id) {

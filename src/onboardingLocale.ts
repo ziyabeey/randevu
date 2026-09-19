@@ -40,10 +40,16 @@ export const onboardingCopy = {
   } as Record<string, string>,
 } as const;
 
+/**
+ * Formats a minor-unit Turkish Lira amount using the app's local currency convention.
+ */
 export function formatTry(minor: number) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(minor / 100);
 }
 
+/**
+ * Converts a YYYY-MM-DD date string into a localized Turkish display date.
+ */
 export function formatLocalDate(value: string) {
   const [year, month, day] = value.split('-').map(Number);
   if (!year || !month || !day) return value;

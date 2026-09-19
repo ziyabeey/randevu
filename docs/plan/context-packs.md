@@ -1,6 +1,6 @@
 # Context Pack ve görev boyutlandırma
 
-Bu belge, büyük görevlerde ajan context'inin şişmesini önlemek için mevcut ajan çalışma akışına eklenen hafif protokoldür. Yeni bir orkestrasyon katmanı veya ikinci görev sistemi oluşturmaz. `TASKS.md`, açık PR'lar, `PROJECT_STATE.md`, faz/kontrat belgeleri ve mevcut devir kayıtları authoritative kalır.
+Bu belge, büyük görevlerde ajan context'inin şişmesini önlemek için mevcut ajan çalışma akışına eklenen hafif protokoldür. Yeni bir orkestrasyon katmanı veya ikinci görev sistemi oluşturmaz. Canlı durum için yalnız `TASKS.md` authoritative kalır. Açık PR'lar, faz/kontrat belgeleri ve devir kayıtları çalışma/tarihsel kanıt sağlar; TASKS ile paralel durum tablosu oluşturmaz.
 
 Amaç: her ajanın tüm projeyi yeniden öğrenmesi yerine, görevi çözmek için gereken en küçük doğrulanmış bağlamla çalışması.
 

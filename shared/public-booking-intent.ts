@@ -1,3 +1,5 @@
+import { base64UrlToBytes, bytesToBase64Url } from './base64.ts';
+
 const V2_KEY_PATTERN = /^pub2_([1-9][0-9]{9})_([0-9a-f]{64})$/;
 const V2_LOOKALIKE_PATTERN = /^\s*pub2_/i;
 const CANONICAL_UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -6,19 +8,6 @@ const INTENT_DOMAIN = 'yzt:public-booking:intent:v2';
 
 export const PUBLIC_BOOKING_SUBMIT_WINDOW_SECONDS = 300;
 export const PUBLIC_BOOKING_MAX_FUTURE_SECONDS = 330;
-
-function bytesToBase64Url(bytes: Uint8Array) {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-
-function base64UrlToBytes(value: string) {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  const binary = atob(padded);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-}
 
 export function isCanonicalPublicBookingRecoveryId(value: unknown): value is string {
   return typeof value === 'string' && value.length === 36 && CANONICAL_UUID_V4_PATTERN.test(value);

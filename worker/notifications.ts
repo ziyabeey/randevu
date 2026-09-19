@@ -1,3 +1,4 @@
+import { base64UrlToBytes } from '../shared/base64.ts';
 import { fetchTextWithTimeout } from './outbound-request.ts';
 
 export type NotificationEnv = {
@@ -100,12 +101,6 @@ function bytesToText(bytes: Uint8Array) {
 }
 function bytesToHex(bytes: Uint8Array) {
   return [...bytes].map((value) => value.toString(16).padStart(2, '0')).join('');
-}
-function base64UrlToBytes(value: string) {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  const binary = atob(padded);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 function validSecret(value: string | undefined) {
   const secret = value?.trim() ?? '';

@@ -10,7 +10,7 @@ Domain/marka sınırı için bağlayıcı kaynak: [Randevu Kolay domain, marka v
 
 - Yeni ürün metni, görev paketi, branch/PR açıklaması ve kullanıcıya görünen adlandırmada `KolayApp` kullanılır.
 - Tarihsel commit, PR, issue, receipt ve eski handoff metinleri kanıt bütünlüğü için geriye dönük olarak yeniden yazılmaz.
-- Mevcut plan/README/PRODUCT_SPEC/TASKS/PROJECT_STATE içindeki yaşayan `SalonApp` referansları ilk uygun docs/state sync'te `KolayApp` olarak topluca güncellenir.
+- Mevcut plan/README/PRODUCT_SPEC içindeki yaşayan `SalonApp` adlandırması ilgili doküman değişikliğinde güncellenir; canlı görev durumu yalnız TASKS'ta tutulur.
 - Bu isim değişikliği route, API, database schema, auth/session modeli veya alt menü sırasını tek başına değiştirmez.
 - Sabit mobil alt menü sırası korunur: `Randevular / Adisyonlar / Yeni / Müşteriler / Diğer`.
 - KolayApp private işletme uygulamasının mobil kabuğudur; ayrı customer-facing marka/domain/backend değildir.
