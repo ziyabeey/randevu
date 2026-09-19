@@ -288,7 +288,7 @@ const server = createServer(async (request, response) => {
     }
     const saved = { group, managementToken: body.managementToken, slug: bookMatch[1] };
     recoveries.set(body.recoveryId, saved);
-    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon' || bookMatch[1] === 'scalar-reload-salon' || bookMatch[1] === 'changed-plan-salon' || bookMatch[1] === 'cancelled-recovery-salon' || bookMatch[1] === 'partial-recovery-salon' || bookMatch[1] === 'manual-invalid-salon') {
+    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon' || bookMatch[1] === 'scalar-reload-salon' || bookMatch[1] === 'changed-plan-salon' || bookMatch[1] === 'completed-recovery-salon' || bookMatch[1] === 'cancelled-recovery-salon' || bookMatch[1] === 'partial-recovery-salon' || bookMatch[1] === 'manual-invalid-salon') {
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon sonucu şu anda doğrulanamıyor.' } });
     }
     return sendJson(response, 201, {
@@ -309,6 +309,10 @@ const server = createServer(async (request, response) => {
     if (saved?.slug === 'cancelled-recovery-salon') {
       saved.group.status = 'cancelled';
       for (const line of saved.group.lines) line.status = 'cancelled';
+    }
+    if (saved?.slug === 'completed-recovery-salon') {
+      saved.group.status = 'completed';
+      for (const line of saved.group.lines) line.status = 'completed';
     }
     if (saved?.slug === 'partial-recovery-salon') {
       saved.group.status = 'partial';
@@ -474,7 +478,7 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
 
     await page.evaluate('(() => { const input=document.querySelector("input[name=customerEmail]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"deniz@example.test"); input.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
     await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), `${slug} confirmation did not appear`);
-    const result = await page.evaluate('(() => { const root=document.documentElement; const controls=Array.from(document.querySelectorAll("button,input,textarea,a.public-primary")); const status=document.querySelector(".public-result-status"); return {text:document.body.innerText,overflow:root.scrollWidth>root.clientWidth+1,targets:controls.length>0&&controls.every((node)=>node.getBoundingClientRect().height>=44),shortControls:controls.map((node)=>({tag:node.tagName,className:node.className,text:(node.textContent||node.name||"").trim(),height:node.getBoundingClientRect().height})).filter((item)=>item.height<44),planner:Boolean(document.querySelector(".public-multi-service")),href:document.querySelector("a.public-primary")?.getAttribute("href"),statusClass:status?.className}; })()');
+    const result = await page.evaluate('(() => { const root=document.documentElement; const controls=Array.from(document.querySelectorAll("button,input,textarea,a.public-primary")); const status=document.querySelector(".public-result-status"); const marker=document.querySelector(".public-result-mark"); return {text:document.body.innerText,overflow:root.scrollWidth>root.clientWidth+1,targets:controls.length>0&&controls.every((node)=>node.getBoundingClientRect().height>=44),shortControls:controls.map((node)=>({tag:node.tagName,className:node.className,text:(node.textContent||node.name||"").trim(),height:node.getBoundingClientRect().height})).filter((item)=>item.height<44),planner:Boolean(document.querySelector(".public-multi-service")),href:document.querySelector("a.public-primary")?.getAttribute("href"),statusClass:status?.className,markerClass:marker?.className}; })()');
     assert.equal(result.overflow, false, `${slug} overflowed at ${width}px`);
     assert.equal(result.targets, true, `${slug} has a control below 44px at ${width}px: ${JSON.stringify(result.shortControls)}`);
     assert.equal(result.planner, false, `${slug} left the planner visible behind the result`);
@@ -486,6 +490,7 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.match(result.text, /Mesaj durumu:/);
     assert.match(result.href, /^\/m#[A-Za-z0-9_-]{43}$/);
     assert.match(result.statusClass, /\bis-active\b/, `${slug} active result did not use the active status tone`);
+    assert.match(result.markerClass, /\bis-active\b/, `${slug} active result did not use the active marker tone`);
 
     const journeyRequests = requests.slice(start);
     assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book')).length, 1, `${slug} sent duplicate group create requests`);
@@ -608,18 +613,20 @@ async function runChangedPlanRecovery(debugUrl, origin) {
   }
 }
 
-async function runLifecycleStateRecovery(debugUrl, origin, slug, expectedKicker) {
+async function runLifecycleStateRecovery(debugUrl, origin, slug, expectedKicker, expectedTone) {
   const start = requests.length;
   const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
   try {
     await preparePlan(page, slug);
     await submitContact(page);
     await waitFor(() => page.evaluate(`document.body.innerText.includes(${JSON.stringify(expectedKicker)})`), `${slug} did not render its status-specific recovery outcome`);
-    const result = await page.evaluate('(() => { const status=document.querySelector(".public-result-status"); return {text:document.body.innerText,neutral:Boolean(document.querySelector(".public-result-mark")),statusClass:status?.className,statusBackground:status ? getComputedStyle(status).backgroundColor : null}; })()');
-    assert.equal(result.neutral, true, `${slug} rendered a success mark for a terminal/partial result`);
-    assert.match(result.statusClass, /\bis-attention\b/, `${slug} did not use the attention status tone`);
+    const result = await page.evaluate('(() => { const status=document.querySelector(".public-result-status"); const marker=document.querySelector(".public-result-mark"); return {text:document.body.innerText,statusClass:status?.className,statusBackground:status ? getComputedStyle(status).backgroundColor : null,markerClass:marker?.className,markerBackground:marker ? getComputedStyle(marker).backgroundColor : null}; })()');
+    assert.match(result.statusClass, new RegExp(`\\bis-${expectedTone}\\b`), `${slug} did not use the ${expectedTone} status tone`);
+    assert.match(result.markerClass, new RegExp(`\\bis-${expectedTone}\\b`), `${slug} did not use the ${expectedTone} marker tone`);
     assert.doesNotMatch(result.statusClass, /\bis-active\b/, `${slug} retained the active success status tone`);
+    assert.doesNotMatch(result.markerClass, /\bis-active\b/, `${slug} retained the active success marker tone`);
     assert.notEqual(result.statusBackground, 'rgb(238, 249, 242)', `${slug} retained the green active status surface`);
+    assert.notEqual(result.markerBackground, 'rgb(230, 247, 237)', `${slug} retained the green active marker surface`);
     assert.doesNotMatch(result.text, /RANDEVU OLUŞTURULDU/, `${slug} rendered create-success copy`);
     if (slug === 'partial-recovery-salon') {
       assert.match(result.text, /Durum: Planlandı/);
@@ -804,8 +811,9 @@ try {
   await runReloadRecovery(debugUrl, origin);
   await runRejectedScalarReloadRecovery(debugUrl, origin);
   await runChangedPlanRecovery(debugUrl, origin);
-  await runLifecycleStateRecovery(debugUrl, origin, 'cancelled-recovery-salon', 'RANDEVU İPTAL EDİLDİ');
-  await runLifecycleStateRecovery(debugUrl, origin, 'partial-recovery-salon', 'RANDEVU PLANI KISMEN DEĞİŞTİ');
+  await runLifecycleStateRecovery(debugUrl, origin, 'completed-recovery-salon', 'RANDEVU TAMAMLANDI', 'neutral');
+  await runLifecycleStateRecovery(debugUrl, origin, 'cancelled-recovery-salon', 'RANDEVU İPTAL EDİLDİ', 'attention');
+  await runLifecycleStateRecovery(debugUrl, origin, 'partial-recovery-salon', 'RANDEVU PLANI KISMEN DEĞİŞTİ', 'attention');
   await runPreF12SingleRecoveryWithGroupSelection(debugUrl, origin);
   await runLegacyFallback(debugUrl, origin);
   await runRejectedLineMutation(debugUrl, origin);

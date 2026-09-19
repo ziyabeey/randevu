@@ -769,7 +769,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     const appointment = confirmation.appointment;
     const outcome = confirmationOutcome(appointment, confirmation.group);
     return <main className="public-booking-shell"><section className="public-booking-card public-confirmation">
-      <div className={outcome.active ? 'public-success-mark' : 'public-result-mark'}>{outcome.symbol}</div><p className="public-kicker">{outcome.kicker}</p>
+      <div className={`public-result-mark is-${outcome.tone}`}>{outcome.symbol}</div><p className="public-kicker">{outcome.kicker}</p>
       <h1>{appointment.business_name ?? page?.business.name ?? 'Randevu'}</h1>
       {confirmation.group ? <>
         <p className="public-confirmation-lead">{confirmation.group.lines.length} hizmetlik planınız {outcome.groupTail}</p>

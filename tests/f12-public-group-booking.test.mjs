@@ -49,6 +49,7 @@ test('F12-05 validates ordered group results, range estimates and the exact mana
   assert.match(booking, /Durum: \{appointmentStatusLabel\(line\.status\)\}/);
   assert.match(booking, /case 'completed': return \{ active: false, tone: 'neutral'/);
   assert.match(booking, /case 'cancelled': return \{ active: false, tone: 'attention'/);
+  assert.match(booking, /className=\{`public-result-mark is-\$\{outcome\.tone\}`\}/);
   assert.match(booking, /className=\{`public-result-status is-\$\{outcome\.tone\}`\}/);
 });
 
@@ -78,7 +79,11 @@ test('F12-05 exposes associated contact errors and non-color result cues', () =>
   assert.match(css, /\.public-field-error/);
   assert.match(css, /\.public-primary:focus-visible/);
   assert.match(css, /\.public-result-status\.is-active/);
+  assert.match(css, /\.public-result-status\.is-neutral/);
   assert.match(css, /\.public-result-status\.is-attention/);
+  assert.match(css, /\.public-result-mark\.is-active/);
+  assert.match(css, /\.public-result-mark\.is-neutral/);
+  assert.match(css, /\.public-result-mark\.is-attention/);
 });
 
 test('F12-05 keeps one booking-state owner and lazy-loads private/operator page implementations', () => {
