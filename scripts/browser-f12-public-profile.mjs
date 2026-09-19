@@ -258,7 +258,7 @@ async function inspectMultiSelection(debugUrl, origin, width) {
     await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
     await waitFor(() => requestDetails.some((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-20'), 'F12-04 old-date request missing');
 
-    await page.evaluate('(() => { const input=document.querySelector(".public-multi-date-row input[type=date]"); input.value="2026-09-21"; input.dispatchEvent(new Event("change",{bubbles:true})); })()');
+    await page.evaluate('(() => { const input=document.querySelector(".public-multi-date-row input[type=date]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"2026-09-21"); input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); })()');
     await waitFor(() => page.evaluate('document.querySelector(".public-multi-date-row input")?.value === "2026-09-21"'), 'F12-04 date change did not apply');
     await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
     await waitFor(() => requestDetails.some((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-21'), 'F12-04 new-date request missing');
