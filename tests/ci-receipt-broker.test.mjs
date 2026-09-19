@@ -4,11 +4,12 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  TRUSTED_CONTROL_FILES,
   eventIdentity,
   exactRunAssociation,
   fullCodeGate,
   lookupTrustedFullCodeReceipt,
-  sameTrustedCiDefinition,
+  sameTrustedControlPlane,
 } from '../scripts/ci-receipt-broker.mjs';
 
 const sha = (c) => c.repeat(40);
@@ -65,10 +66,47 @@ function jobs({
   return { jobs: Array.from({ length: gateCount }, () => ({ ...gate })) };
 }
 
+function manifest(blob = trustedBlob) {
+  return Object.fromEntries(TRUSTED_CONTROL_FILES.map((file) => [file, blob]));
+}
+
+function controlFileFromUrl(url) {
+  const parsed = new URL(url);
+  const marker = '/contents/';
+  const index = parsed.pathname.indexOf(marker);
+  if (index < 0) return null;
+  return decodeURIComponent(parsed.pathname.slice(index + marker.length));
+}
+
+function makeFetch({
+  history = { workflow_runs: [run()] },
+  jobPayload = jobs(),
+  baseManifest = manifest(),
+  candidateManifest = manifest(),
+} = {}) {
+  return async (url) => {
+    if (url.includes('actions/workflows/ci.yml/runs')) return history;
+    if (url.includes('/actions/runs/11/jobs')) return jobPayload;
+
+    const file = controlFileFromUrl(url);
+    if (file) {
+      const ref = new URL(url).searchParams.get('ref');
+      const source = ref === base ? baseManifest : ref === previous ? candidateManifest : null;
+      if (!source || !source[file]) throw new Error(`missing manifest entry ${file}@${ref}`);
+      return { sha: source[file] };
+    }
+
+    throw new Error('unexpected ' + url);
+  };
+}
+
 test('event identity is derived only from the trusted pull_request synchronize event', () => {
   assert.deepEqual(eventIdentity(event()), { prNumber: 190, baseSha: base, currentHeadSha: current });
   assert.equal(eventIdentity(event('opened')), null);
-  assert.equal(eventIdentity({ action: 'synchronize', pull_request: { number: 190, base: { sha: 'bad' }, head: { sha: current } } }), null);
+  assert.equal(eventIdentity({
+    action: 'synchronize',
+    pull_request: { number: 190, base: { sha: 'bad' }, head: { sha: current } },
+  }), null);
 });
 
 test('run association is exact and uses the source PR head rather than workflow head_sha', () => {
@@ -78,7 +116,9 @@ test('run association is exact and uses the source PR head rather than workflow 
     sourceHeadSha: previous,
     baseSha: base,
   });
-  assert.equal(exactRunAssociation(run({ extraAssociations: [{ number: 191, base: { sha: base }, head: { sha: sha('f') } }] }), identity), null);
+  assert.equal(exactRunAssociation(run({
+    extraAssociations: [{ number: 191, base: { sha: base }, head: { sha: sha('f') } }],
+  }), identity), null);
   assert.equal(exactRunAssociation(run({ pr: 191 }), identity), null);
   assert.equal(exactRunAssociation(run({ runBase: sha('f') }), identity), null);
   assert.equal(exactRunAssociation(run({ sourceHead: current }), identity), null);
@@ -92,28 +132,49 @@ test('full-code gate requires one successful CI gate and an actually executed co
   assert.equal(fullCodeGate({ jobs: [] }), null);
 });
 
-test('trusted CI definition requires the candidate workflow blob to equal the exact base blob', () => {
-  assert.equal(sameTrustedCiDefinition({ sha: trustedBlob }, { sha: trustedBlob }), true);
-  assert.equal(sameTrustedCiDefinition({ sha: trustedBlob }, { sha: sha('e') }), false);
-  assert.equal(sameTrustedCiDefinition({}, { sha: trustedBlob }), false);
+test('trusted control plane requires every gate-defining blob to equal the exact base blob', () => {
+  const baseManifest = manifest();
+  assert.equal(sameTrustedControlPlane(baseManifest, manifest()), true);
+
+  for (const file of TRUSTED_CONTROL_FILES) {
+    const changed = manifest();
+    changed[file] = sha('e');
+    assert.equal(sameTrustedControlPlane(baseManifest, changed), false, file);
+  }
+  assert.equal(sameTrustedControlPlane(baseManifest, null), false);
 });
 
-test('lookup returns a sanitized receipt only for same-PR/base full-code success with trusted CI definition', async () => {
-  const calls = [];
-  const fetchJson = async (url) => {
-    calls.push(url);
-    if (url.includes('contents/.github/workflows/ci.yml?ref=' + base)) return { sha: trustedBlob };
-    if (url.includes('actions/workflows/ci.yml/runs')) return { workflow_runs: [run()] };
-    if (url.includes('/actions/runs/11/jobs')) return jobs();
-    if (url.includes('contents/.github/workflows/ci.yml?ref=' + previous)) return { sha: trustedBlob };
-    throw new Error('unexpected ' + url);
-  };
+test('control-plane manifest includes workflow, CI scripts, package scripts and indirect runners', () => {
+  for (const file of [
+    '.github/workflows/ci.yml',
+    'package.json',
+    'package-lock.json',
+    'scripts/ci-scope.mjs',
+    'scripts/ci-docs.mjs',
+    'scripts/ci-result.mjs',
+    'scripts/ci-code.mjs',
+    'scripts/ci-files.mjs',
+    'scripts/ci-postgres.mjs',
+    'scripts/ci-postgres-plan.json',
+    'scripts/run-http-tests.mjs',
+    'scripts/verify-ci-coverage.mjs',
+    'scripts/report-npm-audit.mjs',
+    'scripts/test-staging-control-db.mjs',
+    'scripts/browser-smoke.sh',
+  ]) assert.ok(TRUSTED_CONTROL_FILES.includes(file), file);
+});
 
+test('lookup returns a sanitized receipt only for same-PR/base full-code success with trusted control plane', async () => {
+  const calls = [];
+  const baseFetch = makeFetch();
   const result = await lookupTrustedFullCodeReceipt({
     event: event(),
     repo: 'ziyabeey1-ai/randevu',
     api: 'https://api.github.com',
-    fetchJson,
+    fetchJson: async (url) => {
+      calls.push(url);
+      return baseFetch(url);
+    },
   });
 
   assert.equal(result.reason, 'trusted_full_code_receipt');
@@ -123,43 +184,35 @@ test('lookup returns a sanitized receipt only for same-PR/base full-code success
     runId: 11,
     jobId: 77,
     fullCode: true,
-    ciDefinitionSha: trustedBlob,
+    controlPlaneSha: trustedBlob,
   }]);
   assert.ok(calls.some((url) => url.includes('actions/workflows/ci.yml/runs')));
 });
 
-test('lookup fails closed for docs-only success, ambiguous association and changed CI definition', async () => {
+test('lookup fails closed for docs-only success, ambiguous association and any changed control-plane file', async () => {
   const scenarios = [
+    { history: { workflow_runs: [run()] }, jobPayload: jobs({ code: 'skipped' }), candidateManifest: manifest() },
     {
-      candidate: run(),
-      jobPayload: jobs({ code: 'skipped' }),
-      candidateCi: { sha: trustedBlob },
-    },
-    {
-      candidate: run({ extraAssociations: [{ number: 191, base: { sha: base }, head: { sha: sha('f') } }] }),
+      history: { workflow_runs: [run({
+        extraAssociations: [{ number: 191, base: { sha: base }, head: { sha: sha('f') } }],
+      })] },
       jobPayload: jobs(),
-      candidateCi: { sha: trustedBlob },
-    },
-    {
-      candidate: run(),
-      jobPayload: jobs(),
-      candidateCi: { sha: sha('e') },
+      candidateManifest: manifest(),
     },
   ];
 
+  for (const file of TRUSTED_CONTROL_FILES) {
+    const changed = manifest();
+    changed[file] = sha('e');
+    scenarios.push({ history: { workflow_runs: [run()] }, jobPayload: jobs(), candidateManifest: changed });
+  }
+
   for (const scenario of scenarios) {
-    const fetchJson = async (url) => {
-      if (url.includes('contents/.github/workflows/ci.yml?ref=' + base)) return { sha: trustedBlob };
-      if (url.includes('actions/workflows/ci.yml/runs')) return { workflow_runs: [scenario.candidate] };
-      if (url.includes('/actions/runs/11/jobs')) return scenario.jobPayload;
-      if (url.includes('contents/.github/workflows/ci.yml?ref=' + previous)) return scenario.candidateCi;
-      throw new Error('unexpected ' + url);
-    };
     const result = await lookupTrustedFullCodeReceipt({
       event: event(),
       repo: 'ziyabeey1-ai/randevu',
       api: 'https://api.github.com',
-      fetchJson,
+      fetchJson: makeFetch(scenario),
     });
     assert.deepEqual(result.receipts, []);
   }
@@ -172,15 +225,13 @@ test('lookup follows bounded pagination and can find an older valid full-code re
     sourceHead: sha(index % 2 ? 'e' : 'f'),
   }));
 
+  const baseFetch = makeFetch();
   const fetchJson = async (url) => {
-    if (url.includes('contents/.github/workflows/ci.yml?ref=' + base)) return { sha: trustedBlob };
     if (url.includes('actions/workflows/ci.yml/runs')) {
       const page = new URL(url).searchParams.get('page');
       return page === '1' ? { workflow_runs: wrongRuns } : { workflow_runs: [run()] };
     }
-    if (url.includes('/actions/runs/11/jobs')) return jobs();
-    if (url.includes('contents/.github/workflows/ci.yml?ref=' + previous)) return { sha: trustedBlob };
-    throw new Error('unexpected ' + url);
+    return baseFetch(url);
   };
 
   const result = await lookupTrustedFullCodeReceipt({
@@ -194,16 +245,26 @@ test('lookup follows bounded pagination and can find an older valid full-code re
   assert.equal(result.receipts[0].runId, 11);
 });
 
-test('malformed or unavailable history produces no receipt instead of throwing', async () => {
+test('malformed or unavailable history/control manifests produce no receipt instead of throwing', async () => {
   for (const history of [null, {}, { workflow_runs: null }]) {
     const result = await lookupTrustedFullCodeReceipt({
       event: event(),
       repo: 'ziyabeey1-ai/randevu',
       api: 'https://api.github.com',
-      fetchJson: async (url) => url.includes('contents/') ? { sha: trustedBlob } : history,
+      fetchJson: makeFetch({ history }),
     });
     assert.deepEqual(result.receipts, []);
   }
+
+  const missingBase = manifest();
+  delete missingBase['scripts/ci-code.mjs'];
+  const noBase = await lookupTrustedFullCodeReceipt({
+    event: event(),
+    repo: 'ziyabeey1-ai/randevu',
+    api: 'https://api.github.com',
+    fetchJson: makeFetch({ baseManifest: missingBase }),
+  });
+  assert.deepEqual(noBase.receipts, []);
 
   const failed = await lookupTrustedFullCodeReceipt({
     event: event(),
