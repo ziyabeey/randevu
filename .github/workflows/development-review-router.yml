@@ -148,6 +148,9 @@ jobs:
           NODE
           node scripts/run-development-dispatcher.mjs             "${RUNNER_TEMP}/dispatcher-observation.json"             > "${RUNNER_TEMP}/dispatcher-result.json"
           node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r1 "${CASE_FINGERPRINT}"             > "${RUNNER_TEMP}/r1-fire-body.json"
+          request_fingerprint="$(jq -r '.text' "${RUNNER_TEMP}/r1-fire-body.json" | sed -n 's/^REQUEST_FINGERPRINT: \([a-f0-9]\{64\}\)$/\1/p')"
+          [[ "${request_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
+          printf 'request_fingerprint=%s\n' "${request_fingerprint}" >> "${GITHUB_OUTPUT}"
 
       - name: Reserve exact-case R1 launch receipt
         id: reserve
@@ -265,6 +268,9 @@ jobs:
           NODE
           node scripts/run-development-dispatcher.mjs             "${RUNNER_TEMP}/dispatcher-observation.json"             > "${RUNNER_TEMP}/dispatcher-result.json"
           node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r2 "${CASE_FINGERPRINT}"             > "${RUNNER_TEMP}/r2-fire-body.json"
+          request_fingerprint="$(jq -r '.text' "${RUNNER_TEMP}/r2-fire-body.json" | sed -n 's/^REQUEST_FINGERPRINT: \([a-f0-9]\{64\}\)$/\1/p')"
+          [[ "${request_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
+          printf 'request_fingerprint=%s\n' "${request_fingerprint}" >> "${GITHUB_OUTPUT}"
 
       - name: Reserve exact-case R2 launch receipt
         id: reserve
