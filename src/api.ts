@@ -33,10 +33,9 @@ function validCsrf(value: unknown): value is string {
 }
 
 /**
- * Stores a trusted CSRF token that will be reused for subsequent mutating requests.
+ * Stores a shape-validated CSRF token supplied by the caller for reuse by guarded requests.
  *
- * The token is accepted only when it matches the server-issued format required by
- * the public API layer.
+ * This helper validates only the token format; provenance and trust remain the caller's responsibility.
  */
 export function seedCsrfToken(value: unknown) {
   if (validCsrf(value)) csrfToken = value;
@@ -131,9 +130,9 @@ function retryAfterSeconds(response: Response) {
 /**
  * Sends a JSON request through the browser-facing API wrapper.
  *
- * Mutating requests automatically attach the cached CSRF token and retry once when
- * the server reports an invalid token. The timeout is enforced per request so the
- * UI can surface a friendly error instead of hanging on stalled network calls.
+ * Requests using the default CSRF mode attach the cached token; `csrf: 'skip'` deliberately omits it.
+ * A CSRF_INVALID response is retried once with a refreshed token. A timeout is enforced only when
+ * `timeoutMs` is supplied by the caller.
  */
 export async function api<T = unknown>(path: string, init: ApiInit = {}): Promise<T> {
   const { csrf = 'required', skipCsrfRetry = false, timeoutMs, ...requestInit } = init;
