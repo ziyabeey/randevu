@@ -81,8 +81,17 @@ function buildText(pkg) {
 }
 
 const target = argValue('--package') ?? process.argv[2] ?? '-';
+const expectedFingerprint = argValue('--expected-fingerprint');
 const dryRun = process.argv.includes('--dry-run');
 const pkg = normalizePackage(readJson(target));
+
+if (!expectedFingerprint || !/^[a-f0-9]{64}$/i.test(expectedFingerprint)) {
+  throw new Error('OPUS_HANDOFF_BLOCKED: EXPECTED_FINGERPRINT_INVALID');
+}
+if (pkg.caseFingerprint.toLowerCase() !== expectedFingerprint.toLowerCase()) {
+  throw new Error('OPUS_HANDOFF_BLOCKED: CASE_FINGERPRINT_MISMATCH');
+}
+
 const text = buildText(pkg);
 
 if (Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) {
