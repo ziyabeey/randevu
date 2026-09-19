@@ -36,6 +36,8 @@ export type V2PendingRecord = BookingRecordBase & {
   version: 2;
   source: 'v2';
   status: 'submitting' | 'unresolved';
+  /** Missing only on pre-F12-05 records, which were necessarily single-service. */
+  bookingKind?: 'single' | 'group';
   idempotencyKey: string;
   recoveryId: string;
   recoverySecret: string;
@@ -67,6 +69,7 @@ export type PublicBookingRecord = V2PendingRecord | LegacyPendingRecord | Termin
 
 export type NewPublicBookingIntent = {
   slug: string;
+  bookingKind?: 'single' | 'group';
   idempotencyKey: string;
   recoveryId: string;
   recoverySecret: string;
@@ -206,6 +209,7 @@ function isStoredRecord(value: unknown, slug: string): value is PublicBookingRec
   if (record.status === 'submitting' || record.status === 'unresolved') {
     const pending = record as Partial<V2PendingRecord>;
     return pending.version === 2 && pending.source === 'v2'
+      && (pending.bookingKind === undefined || pending.bookingKind === 'single' || pending.bookingKind === 'group')
       && typeof pending.idempotencyKey === 'string'
       && isCanonicalPublicBookingRecoveryId(pending.recoveryId)
       && isCanonicalPublicBookingSecret(pending.recoverySecret)
@@ -434,6 +438,7 @@ export async function acquirePublicBookingIntent(
     version: 2,
     source: 'v2',
     status: 'submitting',
+    bookingKind: candidate.bookingKind ?? 'single',
     idempotencyKey: candidate.idempotencyKey,
     recoveryId: candidate.recoveryId,
     recoverySecret: candidate.recoverySecret,

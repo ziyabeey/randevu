@@ -139,7 +139,7 @@ Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value:
 const pending = await import('../src/public-booking-pending.ts');
 
 let intentSequence = 0;
-async function candidate(slug, now = Date.now()) {
+async function candidate(slug, now = Date.now(), bookingKind) {
   intentSequence += 1;
   const suffix = String(intentSequence).padStart(12, '0');
   const recoveryId = `8c000000-0000-4000-8000-${suffix}`;
@@ -149,6 +149,7 @@ async function candidate(slug, now = Date.now()) {
   assert.ok(intent);
   return {
     slug,
+    ...(bookingKind ? { bookingKind } : {}),
     idempotencyKey: intent.idempotencyKey,
     recoveryId,
     recoverySecret,
@@ -162,10 +163,11 @@ async function candidate(slug, now = Date.now()) {
 }
 
 await test('S07 pending: per-slug acquire, owner transition and terminal replacement use exact intent CAS', async () => {
-  const firstCandidate = await candidate('Case-Salon');
+  const firstCandidate = await candidate('Case-Salon', Date.now(), 'group');
   const first = await pending.acquirePublicBookingIntent(firstCandidate);
   assert.equal(first.created, true);
   assert.equal(first.record.slug, 'case-salon');
+  assert.equal(first.record.bookingKind, 'group');
 
   const competing = await pending.acquirePublicBookingIntent(await candidate('case-salon'));
   assert.equal(competing.created, false);
@@ -175,12 +177,14 @@ await test('S07 pending: per-slug acquire, owner transition and terminal replace
   assert.equal(wrongOwner.status, 'submitting');
   const unresolved = await pending.markPublicBookingUnresolved(first.record.id, first.record.ownerId);
   assert.equal(unresolved.status, 'unresolved');
+  assert.equal(unresolved.bookingKind, 'group');
   const terminal = await pending.completePublicBookingIntent(first.record.id, ['unresolved'], 'closed_absent');
   assert.equal(terminal.applied, true);
   assert.equal('recoverySecret' in terminal.record, false);
 
   const next = await pending.acquirePublicBookingIntent(await candidate('CASE-SALON'));
   assert.equal(next.created, true, 'closed_absent only permits a new key after this explicit acquire');
+  assert.equal(next.record.bookingKind, 'single', 'new callers default to the deployed single-service contract');
   const late = await pending.completePublicBookingIntent(first.record.id, ['unresolved'], 'committed');
   assert.equal(late.applied, false);
   assert.equal((await pending.loadPublicBookingRecords('case-salon')).find((record) => record.id === next.record.id).status, 'submitting');

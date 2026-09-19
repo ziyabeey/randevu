@@ -139,6 +139,28 @@ function recoveryResponse(saved, recoveryId) {
   };
 }
 
+function scalarRecoveryResponse(saved, recoveryId) {
+  const anchor = saved.group.lines[0];
+  return {
+    resolution: 'committed',
+    recoveryId,
+    appointment: {
+      appointment_id: anchor.appointmentId,
+      business_name: 'F12 Salon',
+      status: anchor.status,
+      starts_at: anchor.startsAt,
+      ends_at: anchor.endsAt,
+      timezone: saved.group.timezone,
+      service_name: anchor.serviceName,
+      staff_name: anchor.staffName,
+      price_minor: anchor.priceMinMinor,
+      currency: saved.group.currency,
+    },
+    management: { url: `/m#${saved.managementToken}` },
+    recovery: { expiresAt: '2026-09-23T07:00:00.000Z' },
+  };
+}
+
 function managedProjection(group) {
   return {
     groupId: group.groupId,
@@ -230,7 +252,7 @@ const server = createServer(async (request, response) => {
     }
     const saved = { group, managementToken: body.managementToken, slug: bookMatch[1] };
     recoveries.set(body.recoveryId, saved);
-    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon' || bookMatch[1] === 'manual-invalid-salon') {
+    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon' || bookMatch[1] === 'scalar-reload-salon' || bookMatch[1] === 'manual-invalid-salon') {
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon sonucu şu anda doğrulanamıyor.' } });
     }
     return sendJson(response, 201, {
@@ -247,6 +269,7 @@ const server = createServer(async (request, response) => {
       if (saved.slug === 'manual-invalid-salon') saved.group.lines[1].startsAt = '2026-09-20T08:15:00.000Z';
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Randevu sonucu henüz doğrulanamıyor.' } });
     }
+    if (saved?.slug === 'scalar-reload-salon') return sendJson(response, 200, scalarRecoveryResponse(saved, body.recoveryId));
     return saved
       ? sendJson(response, 200, recoveryResponse(saved, body.recoveryId))
       : sendJson(response, 200, { resolution: 'closed_absent', recoveryId: body.recoveryId });
@@ -470,6 +493,34 @@ async function runReloadRecovery(debugUrl, origin) {
   }
 }
 
+async function runRejectedScalarReloadRecovery(debugUrl, origin) {
+  const slug = 'scalar-reload-salon';
+  const start = requests.length;
+  const first = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(first, slug);
+    await submitContact(first);
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 1, 'scalar reload recovery automatic resolve did not run');
+    await waitFor(() => first.evaluate('document.body.innerText.includes("Randevu sonucu doğrulanamadı")'), 'scalar group recovery did not fail closed before reload');
+    assert.equal(await first.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), false, 'scalar group recovery reached the result before reload');
+  } finally {
+    first.close();
+  }
+
+  const second = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await waitFor(() => second.evaluate('document.body.innerText.includes("Önceki randevu işleminizin sonucu")'), 'scalar reload did not restore the persisted group intent');
+    await second.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Sonucu tekrar kontrol et"))?.click()');
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 2, 'scalar reload retry did not resolve again');
+    await waitFor(() => second.evaluate('document.body.innerText.includes("Randevu sonucu doğrulanamadı")'), 'persisted group kind did not reject scalar recovery after reload');
+    assert.equal(await second.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), false, 'scalar reload recovery reached the result screen');
+    assert.equal(requests.slice(start).filter((item) => item.path.endsWith('/group-book')).length, 1, 'scalar reload recovery sent duplicate group create requests');
+    assert.deepEqual(second.diagnostics, []);
+  } finally {
+    second.close();
+  }
+}
+
 async function runRejectedLineMutation(debugUrl, origin) {
   const slug = 'invalid-line-salon';
   const start = requests.length;
@@ -571,13 +622,14 @@ try {
   await runJourney(debugUrl, origin, 'reassign-salon', 390, false);
   await runClosedAbsent(debugUrl, origin);
   await runReloadRecovery(debugUrl, origin);
+  await runRejectedScalarReloadRecovery(debugUrl, origin);
   await runRejectedLineMutation(debugUrl, origin);
   await runRejectedTimezone(debugUrl, origin);
   await runRejectedPinnedReassignment(debugUrl, origin);
   await runRejectedManualRecoveryMutation(debugUrl, origin);
   assert.ok([...servedChunks].some((name) => /PublicSalonPage-.*\.js$/.test(name)), `production public route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
   assert.ok([...servedChunks].some((name) => /ManageAppointmentPage-.*\.js$/.test(name)), `production management route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
-  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, unpinned/pinned staff validation, automatic/manual recovery integrity, line/timezone rejection, closed_absent, reload recovery and /m management.');
+  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, unpinned/pinned staff validation, automatic/manual/reload group recovery integrity, scalar/line/timezone rejection, closed_absent and /m management.');
 } catch (error) {
   let diagnostics = '';
   try { diagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }

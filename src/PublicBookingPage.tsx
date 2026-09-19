@@ -537,13 +537,15 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         await keepConfirmedResult(record, ['legacy_pending'], result.appointment, result.management.url);
         setNotice('');
       } else {
+        const expectsGroup = record.bookingKind === 'group';
         const result = await api<ResolveResponse>('/api/public/booking/resolve', {
           method: 'POST', csrf: 'skip', timeoutMs: HTTP_TIMEOUT_MS,
           body: JSON.stringify({ recoveryId: record.recoveryId, idempotencyKey: record.idempotencyKey, recoverySecret: record.recoverySecret }),
         });
         if (result.recoveryId !== record.recoveryId || !['committed', 'exists_nolink', 'closed_absent'].includes(result.resolution)) throw new Error('Randevu sonucu doğrulanamadı.');
         if (result.resolution === 'committed'
-            && (!validConfirmation(result.appointment, result.group !== undefined)
+            && (expectsGroup !== (result.group !== undefined)
+              || !validConfirmation(result.appointment, expectsGroup)
               || (result.group !== undefined && !validGroupConfirmation(result.group, result.appointment))
               || (expectedGroupSelection !== undefined
                 && (result.group === undefined || !groupMatchesSelection(result.group, expectedGroupSelection)))
@@ -564,7 +566,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
             setNotice('Randevunuz alınmış. Yönetim bağlantısı artık bu cihazdan açılamıyor.');
           } else if (result.resolution === 'closed_absent' && completed.applied) {
             setNotice('Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Yeni bir saat seçerek yeniden deneyebilirsiniz.');
-            if (isGroupMode) onPlanNeedsRefresh?.();
+            if (expectsGroup) onPlanNeedsRefresh?.();
             else {
               setSelectedSlot(null);
               void loadSlots();
@@ -631,7 +633,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       if (!intent) throw new Error('Rezervasyon işlemi güvenli olarak hazırlanamadı.');
       const sampledAtEpochMs = Date.now();
       const acquired = await acquirePublicBookingIntent({
-        slug, idempotencyKey: intent.idempotencyKey, recoveryId, recoverySecret,
+        slug, bookingKind: isGroupMode ? 'group' : 'single', idempotencyKey: intent.idempotencyKey, recoveryId, recoverySecret,
         requestFingerprint: await sha256Hex(JSON.stringify(payload)), sampledAtEpochMs,
         expiresAtEpochMs: sampledAtEpochMs + PUBLIC_BOOKING_RECOVERY_TTL_MS,
         submitDeadlineEpochSeconds: deadline, settleAfterEpochMs: Date.now() + PUBLIC_BOOKING_SETTLE_MS,

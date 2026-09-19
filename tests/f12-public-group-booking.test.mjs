@@ -47,9 +47,12 @@ test('F12-05 resolves uncertain submissions without issuing a second create', ()
   assert.match(booking, /\/api\/public\/booking\/resolve/);
   assert.match(booking, /await resolveStoredResult\(unresolved, true, isGroupMode \? multiServiceSelection! : undefined\)/);
   assert.match(booking, /resolveStoredResult\(blockingRecord, false, multiServiceSelection \?\? undefined\)/);
+  assert.match(booking, /bookingKind: isGroupMode \? 'group' : 'single'/);
+  assert.match(booking, /const expectsGroup = record\.bookingKind === 'group'/);
+  assert.match(booking, /expectsGroup !== \(result\.group !== undefined\)/);
   assert.match(booking, /expectedGroupSelection !== undefined/);
   assert.match(booking, /resolution === 'closed_absent'/);
-  assert.match(booking, /if \(isGroupMode\) onPlanNeedsRefresh\?\.\(\)/);
+  assert.match(booking, /if \(expectsGroup\) onPlanNeedsRefresh\?\.\(\)/);
   assert.match(selection, /availabilityRefreshToken/);
   assert.match(selection, /if \(date && lines\.length\) void loadSlots\(\)/);
 });
