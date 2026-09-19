@@ -21,6 +21,9 @@ const serviceB = 'fa300000-0000-4000-8000-000000000002';
 const staffA = 'fa400000-0000-4000-8000-000000000001';
 const staffB = 'fa400000-0000-4000-8000-000000000002';
 const requestDetails = [];
+let retryCatalogCalls = 0;
+let retryStaffCalls = 0;
+let retrySlotCalls = 0;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function readJson(request) {
@@ -31,7 +34,7 @@ async function readJson(request) {
 
 function profile(slug) {
   const broken = slug === 'broken-salon';
-  const multi = slug === 'multi-salon';
+  const multi = ['multi-salon', 'retry-salon', 'empty-salon'].includes(slug);
   return {
     public_name: multi ? 'Çoklu Salon' : broken ? 'Kırık Görsel Salon' : 'Fotoğrafsız Salon',
     short_description: 'Gerçek salon bilgileriyle sade online randevu.',
@@ -44,8 +47,9 @@ function profile(slug) {
   };
 }
 function bookingPayload(slug) {
+  const multi = ['multi-salon', 'retry-salon', 'empty-salon'].includes(slug);
   return {
-    business: { name: slug === 'multi-salon' ? 'Çoklu Salon' : slug === 'broken-salon' ? 'Kırık Görsel Salon' : 'Fotoğrafsız Salon', slug, timezone: 'Europe/Istanbul', local_date: slug === 'multi-salon' ? '2026-09-20' : '2026-09-14', max_date: '2026-11-13', step_minutes: 15, min_notice_minutes: 60, horizon_days: 60 },
+    business: { name: multi ? 'Çoklu Salon' : slug === 'broken-salon' ? 'Kırık Görsel Salon' : 'Fotoğrafsız Salon', slug, timezone: 'Europe/Istanbul', local_date: multi ? '2026-09-20' : '2026-09-14', max_date: '2026-11-13', step_minutes: 15, min_notice_minutes: 60, horizon_days: 60 },
     services: [], bookingClock: { serverNowEpochSeconds: 1789360000, submitWindowSeconds: 300 },
   };
 }
@@ -58,6 +62,7 @@ function multiCatalog() {
 }
 
 function groupSlots(body) {
+  if (body.date === '2026-09-22') return { slots: [] };
   const newer = body.date === '2026-09-21';
   const startsAt = newer ? '2026-09-21T07:00:00Z' : '2026-09-20T06:00:00Z';
   const catalog = new Map(multiCatalog().services.map((service) => [service.service_id, service]));
@@ -103,13 +108,28 @@ const server = createServer(async (request, response) => {
   const profileMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/profile$/);
   if (request.method === 'GET' && profileMatch) return sendJson(response, 200, { profile: profile(decodeURIComponent(profileMatch[1])) });
   if (request.method === 'GET' && url.pathname === '/api/public/business/multi-salon/services-v2') return sendJson(response, 200, multiCatalog());
-  if (request.method === 'GET' && url.pathname === '/api/public/business/multi-salon/staff') {
+  if (request.method === 'GET' && url.pathname === '/api/public/business/empty-salon/services-v2') return sendJson(response, 200, { services: [] });
+  if (request.method === 'GET' && url.pathname === '/api/public/business/retry-salon/services-v2') {
+    retryCatalogCalls += 1;
+    return retryCatalogCalls === 1
+      ? sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Hizmetler geçici olarak yüklenemedi.' } })
+      : sendJson(response, 200, multiCatalog());
+  }
+  if (request.method === 'GET' && ['/api/public/business/multi-salon/staff', '/api/public/business/retry-salon/staff'].includes(url.pathname)) {
+    if (url.pathname.includes('retry-salon')) {
+      retryStaffCalls += 1;
+      if (retryStaffCalls === 1) return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Personel geçici olarak yüklenemedi.' } });
+    }
     const serviceId = url.searchParams.get('serviceId');
     return sendJson(response, 200, { staff: serviceId === serviceA
       ? [{ staff_id: staffA, staff_name: 'Ada' }]
       : serviceId === serviceB ? [{ staff_id: staffB, staff_name: 'Bora' }] : [] });
   }
   if (request.method === 'POST' && url.pathname === '/api/public/business/multi-salon/group-slots') {
+    if (body.date === '2026-09-23') {
+      retrySlotCalls += 1;
+      if (retrySlotCalls % 2 === 1) return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Uygun saatler geçici olarak yüklenemedi.' } });
+    }
     const payload = groupSlots(body);
     if (body.date === '2026-09-20') await sleep(900);
     return sendJson(response, 200, payload);
@@ -226,6 +246,7 @@ async function inspectViewport(debugUrl, origin, slug, width) {
 
 
 async function inspectMultiSelection(debugUrl, origin, width) {
+  const requestStart = requestDetails.length;
   const targetUrl = origin + '/r/multi-salon?customer=secret#private';
   const target = await (await fetch(debugUrl + '/json/new?' + encodeURIComponent(targetUrl), { method: 'PUT', signal: AbortSignal.timeout(5_000) })).json();
   const page = await Cdp.connect(target.webSocketDebuggerUrl);
@@ -256,15 +277,15 @@ async function inspectMultiSelection(debugUrl, origin, width) {
     await waitFor(() => page.evaluate('document.querySelector(".public-selected-line strong")?.textContent === "Kesim"'), 'F12-04 reorder did not persist');
 
     await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
-    await waitFor(() => requestDetails.some((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-20'), 'F12-04 old-date request missing');
+    await waitFor(() => requestDetails.slice(requestStart).some((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-20'), 'F12-04 old-date request missing');
 
     await page.evaluate('(() => { const input=document.querySelector(".public-multi-date-row input[type=date]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"2026-09-21"); input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); })()');
     await waitFor(() => page.evaluate('document.querySelector(".public-multi-date-row input")?.value === "2026-09-21"'), 'F12-04 date change did not apply');
     await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
-    await waitFor(() => requestDetails.some((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-21'), 'F12-04 new-date request missing');
+    await waitFor(() => requestDetails.slice(requestStart).some((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-21'), 'F12-04 new-date request missing');
     await waitFor(() => page.evaluate('document.querySelectorAll(".public-group-slot").length === 1'), 'F12-04 new-date slot missing');
 
-    const latest = [...requestDetails].reverse().find((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-21');
+    const latest = [...requestDetails.slice(requestStart)].reverse().find((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-21');
     assert.deepEqual(latest.body.lines, [
       { serviceId: serviceB, staffId: null },
       { serviceId: serviceA, staffId: staffA },
@@ -279,15 +300,77 @@ async function inspectMultiSelection(debugUrl, origin, width) {
     assert.match(summary, /10:00/);
     assert.doesNotMatch(summary, /09:00/);
 
-    let keyboardReached = false;
-    for (let index = 0; index < 30; index += 1) {
+    const completedViewport = await page.evaluate('(() => { const root=document.documentElement; const controls=Array.from(document.querySelectorAll(".public-multi-service button, .public-multi-service select, .public-multi-service input, .public-salon-actions button")); const offenders=Array.from(document.querySelectorAll("body *")).map((node)=>{const rect=node.getBoundingClientRect();return {tag:node.tagName,className:typeof node.className==="string"?node.className:"",right:rect.right,left:rect.left,scrollWidth:node.scrollWidth,clientWidth:node.clientWidth};}).filter((item)=>item.right>root.clientWidth+1||item.left<-1||item.scrollWidth>item.clientWidth+1).slice(0,12); return {overflow:root.scrollWidth>root.clientWidth+1,offenders,targets:controls.length>0&&controls.every((node)=>node.getBoundingClientRect().height>=44)}; })()');
+    assert.equal(completedViewport.overflow, false, 'F12-04 completed planner overflowed at ' + width + 'px: ' + JSON.stringify(completedViewport.offenders));
+    assert.equal(completedViewport.targets, true, 'F12-04 completed planner has a sub-44px control at ' + width + 'px');
+
+    await page.evaluate('document.body.tabIndex=-1; document.body.focus()');
+    const keyboard = { action: false, service: false, staff: false, date: false, submit: false, slot: false };
+    for (let index = 0; index < 80; index += 1) {
       await page.tab();
-      keyboardReached = await page.evaluate('(() => { const node=document.activeElement; return Boolean(node?.classList?.contains("public-service-choice") && node.matches(":focus-visible")); })()');
-      if (keyboardReached) break;
+      const focus = await page.evaluate('(() => { const node=document.activeElement; const visible=Boolean(node?.matches?.(":focus-visible")); return {visible,action:Boolean(node?.closest?.(".public-salon-actions")),service:Boolean(node?.classList?.contains("public-service-choice")),staff:node?.tagName==="SELECT",date:node?.getAttribute?.("type")==="date",submit:Boolean(node?.classList?.contains("public-primary")),slot:Boolean(node?.classList?.contains("public-group-slot"))}; })()');
+      if (focus.visible) {
+        for (const key of Object.keys(keyboard)) keyboard[key] ||= focus[key];
+      }
+      if (Object.values(keyboard).every(Boolean)) break;
     }
-    assert.equal(keyboardReached, true, 'F12-04 keyboard focus never reached a service choice');
+    assert.deepEqual(keyboard, { action: true, service: true, staff: true, date: true, submit: true, slot: true }, 'F12-04 keyboard focus did not reach every planner control family');
+
+    await page.evaluate('(() => { const input=document.querySelector(".public-multi-date-row input[type=date]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"2026-09-22"); input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); })()');
+    await waitFor(() => page.evaluate('document.querySelector(".public-multi-date-row input")?.value === "2026-09-22" && !document.querySelector(".public-group-summary")'), 'F12-04 selected plan survived a date change');
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("Bu seçim için uygun ortak saat bulunamadı. Başka bir tarih seçin.")'), 'F12-04 empty-slot state missing');
+    assert.equal(await page.evaluate('document.querySelectorAll(".public-group-slot").length'), 0);
+
+    await page.evaluate('(() => { const input=document.querySelector(".public-multi-date-row input[type=date]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"2026-09-23"); input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); })()');
+    await waitFor(() => page.evaluate('document.querySelector(".public-multi-date-row input")?.value === "2026-09-23"'), 'F12-04 retry date change did not apply');
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
+    await waitFor(() => page.evaluate('Array.from(document.querySelectorAll("button")).some((button)=>button.textContent.includes("Uygun saatleri tekrar dene"))'), 'F12-04 slot retry action missing');
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Uygun saatleri tekrar dene"))?.click()');
+    await waitFor(() => page.evaluate('document.querySelectorAll(".public-group-slot").length === 1'), 'F12-04 slot retry did not recover');
     assert.deepEqual(page.diagnostics, []);
     return { favorite: actions.favorite };
+  } finally {
+    page.close();
+  }
+}
+
+async function inspectRetryRecovery(debugUrl, origin) {
+  const target = await (await fetch(debugUrl + '/json/new?' + encodeURIComponent(origin + '/r/retry-salon'), { method: 'PUT', signal: AbortSignal.timeout(5_000) })).json();
+  const page = await Cdp.connect(target.webSocketDebuggerUrl);
+  try {
+    await page.send('Runtime.enable');
+    await page.send('Page.enable');
+    await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 1000, deviceScaleFactor: 1, mobile: true });
+    await waitFor(() => page.evaluate('Array.from(document.querySelectorAll("button")).some((button)=>button.textContent.trim()==="Tekrar dene")'), 'F12-04 catalog retry action missing');
+    assert.match(await page.evaluate('document.body.innerText'), /Hizmetler geçici olarak yüklenemedi/);
+    assert.equal(await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.trim()==="Tekrar dene")?.getBoundingClientRect().height >= 44'), true);
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.trim()==="Tekrar dene")?.click()');
+    await waitFor(() => page.evaluate('document.querySelectorAll(".public-service-choice").length === 2'), 'F12-04 catalog retry did not recover');
+
+    await page.evaluate('document.querySelector(".public-service-choice")?.click()');
+    await waitFor(() => page.evaluate('Array.from(document.querySelectorAll("button")).some((button)=>button.textContent.includes("Personeli tekrar yükle"))'), 'F12-04 staff retry action missing');
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Personeli tekrar yükle"))?.click()');
+    await waitFor(() => page.evaluate('document.querySelector(".public-selected-line select")?.options.length > 1'), 'F12-04 staff retry did not recover');
+    assert.equal(retryCatalogCalls, 2);
+    assert.equal(retryStaffCalls, 2);
+    assert.deepEqual(page.diagnostics, []);
+  } finally {
+    page.close();
+  }
+}
+
+async function inspectEmptyCatalog(debugUrl, origin) {
+  const target = await (await fetch(debugUrl + '/json/new?' + encodeURIComponent(origin + '/r/empty-salon'), { method: 'PUT', signal: AbortSignal.timeout(5_000) })).json();
+  const page = await Cdp.connect(target.webSocketDebuggerUrl);
+  try {
+    await page.send('Runtime.enable');
+    await page.send('Page.enable');
+    await page.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 900, deviceScaleFactor: 1, mobile: true });
+    await waitFor(() => page.evaluate('document.body.innerText.includes("Şu anda seçilebilecek hizmet bulunmuyor.")'), 'F12-04 empty catalog state missing');
+    assert.equal(await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Hizmetleri yenile"))?.getBoundingClientRect().height >= 44'), true);
+    assert.equal(await page.evaluate('document.documentElement.scrollWidth > document.documentElement.clientWidth + 1'), false);
+    assert.deepEqual(page.diagnostics, []);
   } finally {
     page.close();
   }
@@ -338,12 +421,14 @@ try {
 
   await inspectMultiSelection(debugUrl, origin, 360);
   await inspectMultiSelection(debugUrl, origin, 390);
+  await inspectRetryRecovery(debugUrl, origin);
+  await inspectEmptyCatalog(debugUrl, origin);
 
   assert.ok(requests.includes('GET /api/public/business/missing-salon/profile'));
   assert.ok(requests.includes('GET /api/public/business/missing-salon'));
   assert.ok(requests.includes('GET /api/public/business/broken-salon/profile'));
   assert.ok(requests.includes(`GET /api/public/media/${brokenMediaId}`));
-  console.log('F12-02 browser passed: exact 360/390 layout viewports, missing/broken media fallback and preserved booking surface.');
+  console.log('F12 public browser passed: F12-02 media fallbacks plus F12-04 360/390 multi-service, stale/empty/error retry and keyboard acceptance.');
 } catch (error) {
   let chromeDiagnostics = '';
   try { chromeDiagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }

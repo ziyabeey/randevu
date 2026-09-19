@@ -148,13 +148,17 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
   const [page, setPage] = useState<PagePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [staffByService, setStaffByService] = useState<Record<string, PublicStaff[]>>({});
   const [staffChoice, setStaffChoice] = useState<Record<string, string>>({});
+  const [staffAttempt, setStaffAttempt] = useState(0);
+  const [staffRetryable, setStaffRetryable] = useState(false);
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<PublicGroupSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<PublicGroupSlot | null>(null);
   const [busy, setBusy] = useState(false);
+  const [slotRetryable, setSlotRetryable] = useState(false);
   const catalogGeneration = useRef(0);
   const staffGeneration = useRef(0);
   const slotGeneration = useRef(0);
@@ -169,9 +173,11 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     setSelectedIds([]);
     setStaffByService({});
     setStaffChoice({});
+    setStaffRetryable(false);
     setSlots([]);
     setSelectedSlot(null);
     setBusy(false);
+    setSlotRetryable(false);
     onSelectionChange?.(null);
     void (async () => {
       try {
@@ -197,7 +203,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
       }
     })();
     return () => controller.abort();
-  }, [slug]);
+  }, [slug, catalogAttempt]);
 
   const services = useMemo(() => {
     const copy = [...(page?.services ?? [])];
@@ -221,6 +227,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     setBusy(false);
     setSlots([]);
     setSelectedSlot(null);
+    setSlotRetryable(false);
     onSelectionChange?.(null);
   }
 
@@ -256,6 +263,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     const generation = ++staffGeneration.current;
     const controllers: AbortController[] = [];
     const selectedSet = new Set(selectedIds);
+    setStaffRetryable(false);
     setStaffChoice((current) => Object.fromEntries(Object.entries(current).filter(([id]) => selectedSet.has(id))));
     setStaffByService((current) => Object.fromEntries(Object.entries(current).filter(([id]) => selectedSet.has(id))));
     if (!selectedIds.length) return undefined;
@@ -271,11 +279,12 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
         setStaffByService((current) => ({ ...current, [serviceId]: result.staff }));
       }).catch((error) => {
         if (generation !== staffGeneration.current || abortError(error)) return;
-        setNotice(errorMessage(error, 'Personel seçenekleri yüklenemedi.'));
+        setStaffRetryable(true);
+        setNotice(errorMessage(error, 'Personel seçenekleri yüklenemedi. Tekrar deneyin.'));
       });
     }
     return () => controllers.forEach((controller) => controller.abort());
-  }, [selectedIds, slug]);
+  }, [selectedIds, slug, staffAttempt]);
 
   const lines = useMemo<PublicMultiServiceLineSelection[]>(() => selectedIds.map((serviceId) => ({
     serviceId,
@@ -304,11 +313,13 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
         throw new Error('Uygunluk yanıtı doğrulanamadı.');
       }
       setSlots(next);
-      setNotice(next.length ? `${next.length} birlikte uygun başlangıç bulundu.` : 'Bu seçim için uygun ortak saat bulunamadı.');
+      setSlotRetryable(false);
+      setNotice(next.length ? `${next.length} birlikte uygun başlangıç bulundu.` : 'Bu seçim için uygun ortak saat bulunamadı. Başka bir tarih seçin.');
     } catch (error) {
       if (generation !== slotGeneration.current || abortError(error)) return;
       setSlots([]);
-      setNotice(errorMessage(error, 'Çoklu hizmet uygunluğu getirilemedi.'));
+      setSlotRetryable(true);
+      setNotice(errorMessage(error, 'Çoklu hizmet uygunluğu getirilemedi. Tekrar deneyin.'));
     } finally {
       if (generation === slotGeneration.current) {
         setBusy(false);
@@ -333,14 +344,15 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
   }, [services]);
 
   if (loading) return <section className="public-booking-card public-multi-service" aria-busy="true"><span className="public-step">A</span><h2>Birden fazla hizmet planla</h2><p className="public-muted">Hizmetler hazırlanıyor…</p></section>;
-  if (!page) return <section className="public-booking-card public-multi-service"><span className="public-step">A</span><h2>Birden fazla hizmet planla</h2><p className="public-muted">{notice || 'Çoklu hizmet seçimi şu anda hazırlanamadı.'}</p></section>;
+  if (!page) return <section className="public-booking-card public-multi-service"><span className="public-step">A</span><h2>Birden fazla hizmet planla</h2><div className="public-inline-notice is-error" role="alert"><p>{notice || 'Çoklu hizmet seçimi şu anda hazırlanamadı.'}</p><button className="public-retry" type="button" onClick={() => setCatalogAttempt((current) => current + 1)}>Tekrar dene</button></div></section>;
 
   return <section className="public-booking-card public-multi-service" aria-labelledby="public-multi-service-title">
     <span className="public-step">A</span>
     <div className="public-multi-heading"><div><h2 id="public-multi-service-title">Birden fazla hizmet planla</h2><p className="public-muted">Hizmetleri sırayla seçin. Personeli her hizmet için ayrı belirleyebilirsiniz. Tek hizmetli randevu oluşturma akışı aşağıda kullanılmaya devam eder.</p></div><strong>{selectedIds.length}/{MAX_LINES}</strong></div>
     {notice && <div className="public-inline-notice" role="status">{notice}</div>}
+    {staffRetryable && <button className="public-retry" type="button" onClick={() => { setNotice(''); setStaffRetryable(false); setStaffAttempt((current) => current + 1); }}>Personeli tekrar yükle</button>}
 
-    <div className="public-service-catalog">
+    {categoryGroups.length === 0 ? <div className="public-inline-notice public-empty-state" role="status"><p>Şu anda seçilebilecek hizmet bulunmuyor. Kısa süre sonra yeniden deneyin.</p><button className="public-retry" type="button" onClick={() => setCatalogAttempt((current) => current + 1)}>Hizmetleri yenile</button></div> : <div className="public-service-catalog">
       {categoryGroups.map(([category, categoryServices]) => <fieldset key={category} className="public-service-category"><legend>{category}</legend>
         <div className="public-service-choice-grid">{categoryServices.map((service) => {
           const selected = selectedIds.includes(service.service_id);
@@ -349,7 +361,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
           </button>;
         })}</div>
       </fieldset>)}
-    </div>
+    </div>}
 
     {selectedServices.length > 0 && <div className="public-selected-lines" aria-label="Seçilen hizmet sırası">
       {selectedServices.map((service, index) => <div className="public-selected-line" key={service.service_id}>
@@ -362,7 +374,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     {selectedServices.length > 0 && <div className="public-multi-date-row">
       <div className="public-date-shortcuts" aria-label="Tarih kısayolları"><button type="button" className={date === page.business.local_date ? 'is-selected' : ''} onClick={() => { setDate(page.business.local_date); invalidatePlan(); }}>Bugün</button><button type="button" onClick={() => { const next = new Date(`${page.business.local_date}T12:00:00Z`); next.setUTCDate(next.getUTCDate() + 1); const value = next.toISOString().slice(0, 10); if (value <= page.business.max_date) { setDate(value); invalidatePlan(); } }}>Yarın</button></div>
       <label><span>Tarih</span><input type="date" value={date} min={page.business.local_date} max={page.business.max_date} onChange={(event) => { setDate(event.target.value); invalidatePlan(); }} /></label>
-      <button className="public-primary" type="button" disabled={busy || !date || !selectedIds.length} onClick={() => void loadSlots()}>{busy ? 'Birlikte uygunluk aranıyor…' : 'Birlikte uygun saatleri bul'}</button>
+      <button className="public-primary" type="button" disabled={busy || !date || !selectedIds.length} onClick={() => void loadSlots()}>{busy ? 'Birlikte uygunluk aranıyor…' : slotRetryable ? 'Uygun saatleri tekrar dene' : 'Birlikte uygun saatleri bul'}</button>
     </div>}
 
     {slots.length > 0 && <div className="public-group-slot-grid" aria-label="Çoklu hizmet uygun saatleri">{slots.map((slot) => {

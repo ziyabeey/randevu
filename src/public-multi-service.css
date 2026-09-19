@@ -20,6 +20,28 @@
   margin-top: 1rem;
 }
 
+.public-multi-service .public-inline-notice p {
+  margin: 0;
+}
+
+.public-retry {
+  min-height: 44px;
+  margin-top: .7rem;
+  padding: .6rem .85rem;
+  border: 1px solid #3159d9;
+  border-radius: .7rem;
+  background: #fff;
+  color: #3159d9;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.public-retry:focus-visible {
+  outline: 3px solid #9eb5ff;
+  outline-offset: 2px;
+}
+
 .public-multi-heading {
   display: flex;
   align-items: flex-start;

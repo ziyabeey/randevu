@@ -31,6 +31,17 @@ test('F12-04 keeps stale catalog, staff and slot responses from overwriting newe
   assert.match(component, /matchesRequestedLines\(slot, lines\)/);
 });
 
+test('F12-04 gives recoverable catalog, staff and slot failures an explicit retry action', () => {
+  assert.match(component, /catalogAttempt/);
+  assert.match(component, /staffAttempt/);
+  assert.match(component, /staffRetryable/);
+  assert.match(component, /slotRetryable/);
+  assert.match(component, />Tekrar dene</);
+  assert.match(component, />Personeli tekrar yükle</);
+  assert.match(component, /Uygun saatleri tekrar dene/);
+  assert.match(component, /Şu anda seçilebilecek hizmet bulunmuyor/);
+});
+
 test('F12-04 exposes an explicit handoff state and server-authoritative estimate copy', () => {
   assert.match(component, /export type PublicMultiServiceSelectionState/);
   assert.match(component, /date:\s*string;/);
