@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   normalizeLiveReviewIdentity,
+  taskPrNumbersFromRow,
   verifyDevelopmentReviewLiveState,
   verifyTaskBinding,
 } from '../scripts/verify-development-review-live-state.mjs';
@@ -74,16 +75,19 @@ function liveFetch(overrides = {}) {
         status: 'completed',
         conclusion: overrides.runConclusion ?? 'success',
         run_attempt: 1,
+        event: overrides.runEvent ?? 'pull_request',
+        pull_requests: overrides.pullRequests ?? [{ number: 183 }],
         path: '.github/workflows/ci.yml',
       });
     }
-    if (url.includes('/actions/runs/100/jobs?')) {
+    if (url.includes('/actions/runs/100/attempts/1/jobs?')) {
       return response({
         jobs: [{
           id: 200,
           name: 'CI gate',
           status: 'completed',
           conclusion: overrides.jobConclusion ?? 'success',
+          run_attempt: overrides.jobAttempt ?? 1,
         }],
       });
     }
@@ -104,6 +108,11 @@ test('normalization keeps exact task candidate and CI identity', () => {
 test('canonical TASKS must bind the exact task to the exact PR', () => {
   const identity = normalizeLiveReviewIdentity(request());
   assert.match(verifyTaskBinding(tasks(), identity, 'ziyabeey1-ai/randevu'), /F13-01/);
+  assert.deepEqual(taskPrNumbersFromRow(tasks(), 'ziyabeey1-ai/randevu'), [183]);
+  assert.deepEqual(
+    taskPrNumbersFromRow('| [F13-01](x) | https://github.com/ziyabeey1-ai/randevu/pull/1830 |', 'ziyabeey1-ai/randevu'),
+    [1830],
+  );
   assert.throws(
     () => verifyTaskBinding(tasks(999), identity, 'ziyabeey1-ai/randevu'),
     /TASK_PR_BINDING_MISSING/,
@@ -145,6 +154,61 @@ test('live verifier rejects stale PR identity and failed CI', async () => {
       fetchImpl: liveFetch({ runConclusion: 'failure' }),
     }),
     /LIVE_CI_RUN_MISMATCH/,
+  );
+});
+
+
+test('live verifier rejects manually dispatched or wrong-PR CI evidence', async () => {
+  await assert.rejects(
+    verifyDevelopmentReviewLiveState(request(), {
+      repository: 'ziyabeey1-ai/randevu',
+      token: 'test-token',
+      tasksText: tasks(),
+      fetchImpl: liveFetch({ runEvent: 'workflow_dispatch' }),
+    }),
+    /LIVE_CI_RUN_MISMATCH/,
+  );
+  await assert.rejects(
+    verifyDevelopmentReviewLiveState(request(), {
+      repository: 'ziyabeey1-ai/randevu',
+      token: 'test-token',
+      tasksText: tasks(),
+      fetchImpl: liveFetch({ pullRequests: [{ number: 999 }] }),
+    }),
+    /LIVE_CI_RUN_MISMATCH/,
+  );
+});
+
+test('live verifier binds the CI gate job to the requested run attempt', async () => {
+  await assert.rejects(
+    verifyDevelopmentReviewLiveState(request(), {
+      repository: 'ziyabeey1-ai/randevu',
+      token: 'test-token',
+      tasksText: tasks(),
+      fetchImpl: liveFetch({ jobAttempt: 2 }),
+    }),
+    /LIVE_CI_JOB_MISMATCH/,
+  );
+});
+
+test('canonical task binding refuses a second open PR referenced by the same task row', async () => {
+  const taskText = [
+    '| Kimlik | İş | Önkoşullar | Durum | Sahip | Kanıt |',
+    '| --- | --- | --- | --- | --- | --- |',
+    '| [F13-01](docs/plan/phase-13.md#f13-01) | Takvim | F11-03 | İncelemede | Koordinatör | [PR #183](https://github.com/ziyabeey1-ai/randevu/pull/183) · [old PR #190](https://github.com/ziyabeey1-ai/randevu/pull/190) |',
+  ].join('\n');
+  const fetchImpl = async (url) => {
+    if (url.endsWith('/pulls/190')) return response({ state: 'open', head: { sha: sha('e') }, base: { sha: main } });
+    return liveFetch()(url);
+  };
+  await assert.rejects(
+    verifyDevelopmentReviewLiveState(request(), {
+      repository: 'ziyabeey1-ai/randevu',
+      token: 'test-token',
+      tasksText: taskText,
+      fetchImpl,
+    }),
+    /TASK_OPEN_PR_BINDING_AMBIGUOUS/,
   );
 });
 
