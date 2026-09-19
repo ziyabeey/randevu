@@ -85,3 +85,14 @@ test('GitHub escalation router can fire Haiku but has no Opus credential path', 
   assert.doesNotMatch(workflow, /CLAUDE_OPUS_ROUTINE_URL/);
   assert.doesNotMatch(workflow, /CLAUDE_OPUS_ROUTINE_TOKEN/);
 });
+
+
+test('Claude repository instructions make Haiku the exclusive Opus caller only for marked compressor runs', () => {
+  const guidance = readFileSync(path.resolve('CLAUDE.md'), 'utf8');
+  assert.match(guidance, /EVIDENCE_COMPRESSION_REQUEST/);
+  assert.match(guidance, /trigger Opus exactly once/);
+  assert.match(guidance, /node scripts\/fire-opus-escalation\.mjs --package/);
+  assert.match(guidance, /GitHub Actions, the Dispatcher, and the caller are not Opus callers/);
+  assert.match(guidance, /OPUS_HANDOFF_BLOCKED/);
+  assert.match(guidance, /Outside an `EVIDENCE_COMPRESSION_REQUEST` session, this section grants no new authority/);
+});
