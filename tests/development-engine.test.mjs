@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   assertSchema, validateManifest, parseFrontmatter, validateGuidance,
-  inspectProjections, validateArtifacts, skillNames,
+  inspectProjections, validateArtifacts, skillNames, decisionFirstLabels,
 } from '../scripts/validate-development-engine.mjs';
 import { discoverHttpTests } from '../scripts/run-http-tests.mjs';
 import { classifyPaths } from '../scripts/ci-scope.mjs';
@@ -44,7 +44,8 @@ test('required artifact-test path reports extra advisories without failing, but 
     for (const directory of ['.github', home]) {
       cpSync(path.join(root, directory), path.join(fixture, directory), { recursive: true });
     }
-    for (const file of ['scripts/validate-development-engine.mjs', 'scripts/ci-files.mjs',
+    for (const file of ['docs/plan/agent-workflow.md',
+      'scripts/validate-development-engine.mjs', 'scripts/ci-files.mjs',
       'scripts/ci-scope.mjs', 'scripts/run-http-tests.mjs', 'tests/development-engine.test.mjs']) {
       mkdirSync(path.dirname(path.join(fixture, file)), { recursive: true });
       cpSync(path.join(root, file), path.join(fixture, file));
@@ -216,6 +217,37 @@ test('all five Skills have role/input/evidence/SHA/output/stop boundaries, not a
   }
 });
 
+test('review lineage kernel is canonical and R0/R1/R2 outputs stay decision-first', () => {
+  const workflow = 'docs/plan/agent-workflow.md';
+  const workflowText = read(workflow);
+  assert.deepEqual(validateGuidance(workflow, workflowText).errors, []);
+  assert.ok(workflowText.includes('### Review lineage kernel'));
+  for (const file of [
+    'docs/development-engine/automations/r0-review.md',
+    '.github/skills/r1-db-security-review/SKILL.md',
+    '.github/skills/r2-browser-integration-review/SKILL.md',
+  ]) {
+    const text = read(file);
+    assert.deepEqual(validateGuidance(file, text).errors, [], file);
+    for (const label of decisionFirstLabels) assert.ok(text.includes(label), `${file} missing ${label}`);
+    assert.match(text, /BLOCKERS:.*NONE.*UNKNOWN/, `${file} must distinguish verified-empty NONE from unresolved UNKNOWN`);
+    assert.ok(text.includes('#review-lineage-kernel'), `${file} missing canonical kernel ref`);
+    const withoutKernelRef = text.replace(/.*#review-lineage-kernel\).*\n/, '');
+    assert.ok(validateGuidance(file, withoutKernelRef).errors.some((error) => error.includes('canonical review lineage kernel')));
+    const withoutReviewedSha = text.replace('REVIEWED SHA:', 'REVIEW SHA:');
+    assert.ok(validateGuidance(file, withoutReviewedSha).errors.some((error) => error.includes('decision-first receipt labels')));
+    const reordered = text.replace(/(REVIEWED SHA:[^\n]*\n)(NEXT ACTION:[^\n]*\n)/, '$2$1');
+    assert.ok(validateGuidance(file, reordered).errors.some((error) => error.includes('canonical order')));
+    const prefaced = text.replace('```text\nVERDICT:', '```text\nNOTE: not decision-first\nVERDICT:');
+    assert.ok(validateGuidance(file, prefaced).errors.some((error) => error.includes('must start with VERDICT')));
+  }
+  const staleDetector = 'docs/development-engine/automations/stale-review-detector.md';
+  const staleText = read(staleDetector);
+  assert.deepEqual(validateGuidance(staleDetector, staleText).errors, []);
+  const staleWithoutKernelRef = staleText.replace(/.*#review-lineage-kernel\).*\n/, '');
+  assert.ok(validateGuidance(staleDetector, staleWithoutKernelRef).errors.some((error) => error.includes('canonical review lineage kernel')));
+});
+
 test('governance wording drift is advisory rather than a new live BLOCK gate', () => {
   const file = '.github/copilot-instructions.md';
   const text = 'Self-merge is allowed';
@@ -255,7 +287,8 @@ test('a different tested merge-tree SHA is not itself stale CI; green CI is not 
   const task = structuredClone(taskExample), evidence = structuredClone(evidenceExample);
   task.identity.current_head_sha = a;
   evidence.candidate.exact_head_sha = a;
-  evidence.ci = { run: 'fixture:run', status: 'success', exact_sha: a, tested_checkout_sha: b, job: 'fixture:job', attempt: 1 };
+  evidence.candidate.base_main_sha = b;
+  evidence.ci = { run: 'fixture:run', status: 'success', exact_sha: a, base_main_sha: b, tested_checkout_sha: b, job: 'fixture:job', attempt: 1 };
   const freshCiWarnings = inspectProjections(task, evidence)
     .filter((warning) => warning.startsWith('CI evidence') || warning.startsWith('Successful CI claim'));
   assert.deepEqual(freshCiWarnings, []);
@@ -268,11 +301,84 @@ test('a different tested merge-tree SHA is not itself stale CI; green CI is not 
   assert.ok(warnings.some((warning) => warning.includes('no evidence reference')));
 });
 
+function candidateProjection() {
+  const task = structuredClone(taskExample), evidence = structuredClone(evidenceExample);
+  task.identity.current_head_sha = a;
+  evidence.candidate.exact_head_sha = a;
+  evidence.candidate.base_main_sha = b;
+  evidence.ci = { run: 'fixture:run', status: 'success', exact_sha: a,
+    base_main_sha: b, tested_checkout_sha: 'c'.repeat(40), job: 'fixture:job', attempt: 2 };
+  evidence.proofs[0] = { ...evidence.proofs[0], status: 'pass', ref: 'fixture:proof',
+    exact_sha: a, tested_checkout_sha: 'c'.repeat(40) };
+  return { task, evidence };
+}
+
+test('same-head CI on another or unknown base is advisory, not current integration proof', () => {
+  const { task, evidence } = candidateProjection();
+  assert.deepEqual(validateManifest(evidenceSchema, evidence), []);
+  assert.deepEqual(inspectProjections(task, evidence), []);
+  for (const base of [null, 'd'.repeat(40), undefined]) {
+    const copy = structuredClone(evidence);
+    if (base === undefined) delete copy.ci.base_main_sha;
+    else copy.ci.base_main_sha = base;
+    assert.deepEqual(validateManifest(evidenceSchema, copy), []);
+    assert.ok(inspectProjections(task, copy).some((warning) => /CI.*base/.test(warning)));
+  }
+  evidence.candidate.base_main_sha = null;
+  assert.ok(inspectProjections(task, evidence).some((warning) => /CI.*base/.test(warning)));
+});
+
+test('proof identity stays candidate-bound without becoming an acceptance engine', () => {
+  const { task, evidence } = candidateProjection();
+  for (const sha of [b, null, undefined]) {
+    const copy = structuredClone(evidence);
+    if (sha === undefined) delete copy.proofs[0].exact_sha;
+    else copy.proofs[0].exact_sha = sha;
+    assert.deepEqual(validateManifest(evidenceSchema, copy), []);
+    const warnings = inspectProjections(task, copy);
+    assert.ok(warnings.some((warning) => /proof.*(identity|historical)/.test(warning)));
+  }
+  const missingCheckout = structuredClone(evidence);
+  missingCheckout.proofs[0].tested_checkout_sha = null;
+  assert.ok(inspectProjections(task, missingCheckout).some((warning) => /proof identity is incomplete/.test(warning)));
+});
+
+test('required review and unfinished current proof remain visible', () => {
+  for (const role of ['r1', 'r2']) {
+    for (const verdict of ['pending', 'blocker', 'incomplete', 'not_required']) {
+      const { task, evidence } = candidateProjection();
+      task.review[role] = 'required';
+      evidence.reviews[role] = { required: true, verdict, sha: a, receipt: 'fixture:review' };
+      assert.ok(inspectProjections(task, evidence).some((warning) => warning.startsWith(`${role}: required review has no acceptable receipt`)));
+    }
+  }
+  for (const status of ['fail', 'pending', 'skipped', 'unknown']) {
+    const { task, evidence } = candidateProjection();
+    evidence.proofs.push({ ...evidence.proofs[0], kind: 'browser', status, ref: 'fixture:browser-result' });
+    assert.deepEqual(validateManifest(evidenceSchema, evidence), []);
+    assert.ok(inspectProjections(task, evidence).some((warning) => warning.includes(`current proof result is ${status}`)));
+  }
+  const unbound = candidateProjection();
+  unbound.evidence.proofs.push({
+    ...unbound.evidence.proofs[0],
+    kind: 'browser',
+    status: 'pending',
+    exact_sha: null,
+    tested_checkout_sha: null,
+    ref: 'fixture:unbound-pending',
+  });
+  assert.ok(inspectProjections(unbound.task, unbound.evidence)
+    .some((warning) => warning.includes('non-pass proof is not bound to a candidate SHA')));
+  const { task, evidence } = candidateProjection();
+  evidence.proofs.push({ ...evidence.proofs[0], kind: 'browser' });
+  assert.deepEqual(inspectProjections(task, evidence), []);
+});
 test('missing artifacts and symlinked discovery fail visibly without following outside data', async () => {
   const fixture = mkdtempSync(path.join(tmpdir(), 'randevu-engine-'));
   try {
     mkdirSync(path.join(fixture, '.github'), { recursive: true });
     mkdirSync(path.join(fixture, home), { recursive: true });
+    mkdirSync(path.join(fixture, 'docs/plan'), { recursive: true });
     const result = await validateArtifacts(fixture);
     assert.ok(result.errors.some((error) => error.includes('missing artifact')));
     const target = path.join(fixture, 'outside.json');

@@ -70,6 +70,18 @@ type PublicService = {
   price_minor: number;
   currency: string;
 };
+type PublicServiceV2 = {
+  service_id: string;
+  name: string;
+  category: string;
+  sort_order: number;
+  duration_minutes: number;
+  price_type: 'fixed' | 'range';
+  price_min_minor: number;
+  price_max_minor: number;
+  currency: string;
+  price_policy_version: number;
+};
 type PublicStaff = { staff_id: string; staff_name: string };
 type SupabaseError = { message?: string };
 
@@ -409,6 +421,31 @@ snapshotReads.get('/api/public/business/:slug', async (context) => {
       submitWindowSeconds: PUBLIC_BOOKING_SUBMIT_WINDOW_SECONDS,
     },
   });
+});
+
+snapshotReads.get('/api/public/business/:slug/services-v2', async (context) => {
+  const slug = context.req.param('slug');
+  if (!isSlug(slug)) {
+    return context.json({ error: { code: 'NOT_FOUND', message: 'Rezervasyon bağlantısı bulunamadı.' } }, 404);
+  }
+
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+
+  const services = await publicOperation<PublicServiceV2[]>(
+    context.env,
+    'services_v2',
+    { p_slug: slug },
+    abuse,
+  );
+  if (!services.ok) {
+    return publicErrorResponse(context, publicSnapshotError(services.data, 'Hizmetler yüklenemedi.'));
+  }
+  if (snapshotOverflow(services.data, SNAPSHOT_LIMITS.services)) {
+    return limitExceeded(context, 'PUBLIC_SERVICES_LIMIT_EXCEEDED', 'Hizmet kataloğu güvenli snapshot sınırını aşıyor.');
+  }
+
+  return context.json({ services: services.data });
 });
 
 snapshotReads.get('/api/public/business/:slug/staff', async (context) => {
