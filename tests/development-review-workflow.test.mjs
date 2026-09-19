@@ -30,12 +30,16 @@ test('R1 and R2 have separate role endpoints and secrets without model names in 
   assert.doesNotMatch(review, /Sonnet|Opus/);
 });
 
-test('exact-case reservation prevents automatic duplicate Routine spend and never claims a verdict', () => {
-  assert.match(review, /development-review-launch:r1:\$\{CASE_FINGERPRINT\}/);
-  assert.match(review, /development-review-launch:r2:\$\{CASE_FINGERPRINT\}/);
+test('role-specific reservation plus exact-head concurrency prevents duplicate Routine spend', () => {
+  assert.match(review, /development-review-launch:r1:\$\{REQUEST_FINGERPRINT\}/);
+  assert.match(review, /development-review-launch:r2:\$\{REQUEST_FINGERPRINT\}/);
+  assert.match(review, /group: development-review-r1-/);
+  assert.match(review, /group: development-review-r2-/);
+  assert.match(review, /cancel-in-progress: false/);
   assert.match(review, /refusing duplicate Routine fire/);
   assert.match(review, /LAUNCH_UNCERTAIN/);
   assert.match(review, /automatic retry is blocked to avoid duplicate Routine sessions/);
   assert.match(review, /launch receipt only; R1 remains open/);
   assert.match(review, /launch receipt only; R2 remains open/);
+  assert.doesNotMatch(review, /- status: \`RESERVED\`/);
 });
