@@ -248,7 +248,7 @@ await test('calendar binds business and staff filters to the active membership',
       assert.equal(url.searchParams.get('business_id'), `eq.${businessId}`);
       return json([{ id: staffId, name: 'Ada', active: true }]);
     }
-    if (url.pathname !== '/rest/v1/rpc/get_calendar_appointments') throw new Error(`unexpected ${url.pathname}`);
+    if (url.pathname !== '/rest/v1/rpc/get_calendar_appointments_v2') throw new Error(`unexpected ${url.pathname}`);
     calendarBody = JSON.parse(init.body);
     return json([{ appointment_id: appointmentId, staff_id: staffId, status: 'scheduled' }]);
   });
@@ -263,7 +263,7 @@ await test('calendar binds business and staff filters to the active membership',
   assert.deepEqual(paths, [
     '/rest/v1/businesses',
     '/rest/v1/staff_profiles',
-    '/rest/v1/rpc/get_calendar_appointments',
+    '/rest/v1/rpc/get_calendar_appointments_v2',
   ]);
   assert.deepEqual(calendarBody, {
     p_business_id: businessId,
