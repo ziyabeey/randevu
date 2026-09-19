@@ -279,12 +279,39 @@ test('docs-only descendants never silently make stale review receipts current', 
 
   await t.test('explicit confirmation carries review without relabeling it current', () => {
     const output = result({
-      r0: { lineage: 'descendant', change: 'docs_only_descendant', deltaConfirmation: 'confirmed' },
+      r0: {
+        reviewedHeadSha: oldHead,
+        lineage: 'descendant',
+        change: 'docs_only_descendant',
+        deltaConfirmation: 'confirmed',
+      },
       reviews,
     });
     assert.equal(output.state.reviews.r1.freshness, 'carried_forward');
     assert.equal(output.state.reviews.r1.status, 'acceptable_carried_forward');
     assert.equal(output.recommendation.suggestedAction, 'assess_current_evidence');
+  });
+
+  await t.test('confirmation carries only the exact confirmed ancestor receipt', () => {
+    const output = result({
+      r0: {
+        reviewedHeadSha: oldHead,
+        lineage: 'descendant',
+        change: 'docs_only_descendant',
+        deltaConfirmation: 'confirmed',
+      },
+      reviews: {
+        r1: {
+          requirement: 'required',
+          verdict: 'acceptable',
+          receipt: 'accessible',
+          reviewedHeadSha: sha('f'),
+        },
+      },
+    });
+    assert.equal(output.state.reviews.r1.freshness, 'stale');
+    assert.equal(output.state.reviews.r1.status, 'stale');
+    assert.equal(output.recommendation.suggestedAction, 'request_required_reviews');
   });
 });
 

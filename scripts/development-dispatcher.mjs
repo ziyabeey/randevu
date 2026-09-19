@@ -330,7 +330,9 @@ function reviewFreshness(facts, review) {
   if (review.reviewedHeadSha === facts.candidate.headSha) return 'current';
   if (facts.r0.lineage === 'descendant'
     && facts.r0.change === 'docs_only_descendant'
-    && facts.r0.deltaConfirmation === 'confirmed') return 'carried_forward';
+    && facts.r0.deltaConfirmation === 'confirmed'
+    && facts.r0.reviewedHeadSha
+    && review.reviewedHeadSha === facts.r0.reviewedHeadSha) return 'carried_forward';
   if (facts.r0.lineage === 'descendant') return 'stale';
   if (facts.r0.lineage === 'non_descendant') return 'conflict';
   return 'unknown';

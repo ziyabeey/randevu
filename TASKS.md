@@ -109,6 +109,7 @@ Bağlayıcı topology [K04](docs/plan/k04-platform-core-contract.md), paket/bağ
 | Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / kanıt / sonraki adım |
 | --- | --- | --- | --- | --- | --- |
 | [DEV-ENGINE-01](https://github.com/ziyabeey1-ai/randevu/issues/119) | Copilot talimatları, Skills ve gözlem amaçlı geliştirme kanıtı | TEMEL | Tamamlandı | Astra + bağımsız R1/R2 + koordinatör / 2026-09-18 | M / FOCUSED · [PR #120](https://github.com/ziyabeey1-ai/randevu/pull/120) · final reviewed head `be67e276` · exact-head [CI #1219](https://github.com/ziyabeey1-ai/randevu/actions/runs/35312040320) success · fresh R1/R2 PASS · main `02d0a2a` · post-main [CI #1220](https://github.com/ziyabeey1-ai/randevu/actions/runs/35312768868) success · [final closure](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5725901852) · automation sources remain governance/tooling, not product authority |
+| DEV-ENGINE-02 | Deterministik dispatcher, Haiku context compression ve Opus escalation delivery | DEV-ENGINE-01 | İncelemede | Koordinatör / 2026-09-19 | M / FOCUSED · [PR #182](https://github.com/ziyabeey1-ai/randevu/pull/182) current repair candidate · [PR #179](https://github.com/ziyabeey1-ai/randevu/pull/179) bu PR tarafından superseded · pure reducer + GitHub OIDC-attested Haiku → Opus handoff · exact-head CI ve review-thread kapanışı bekleniyor |
 
 ## Kabul kapıları
 
