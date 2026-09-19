@@ -474,7 +474,7 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
 
     await page.evaluate('(() => { const input=document.querySelector("input[name=customerEmail]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"deniz@example.test"); input.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
     await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), `${slug} confirmation did not appear`);
-    const result = await page.evaluate('(() => { const root=document.documentElement; const controls=Array.from(document.querySelectorAll("button,input,textarea,a.public-primary")); return {text:document.body.innerText,overflow:root.scrollWidth>root.clientWidth+1,targets:controls.length>0&&controls.every((node)=>node.getBoundingClientRect().height>=44),shortControls:controls.map((node)=>({tag:node.tagName,className:node.className,text:(node.textContent||node.name||"").trim(),height:node.getBoundingClientRect().height})).filter((item)=>item.height<44),planner:Boolean(document.querySelector(".public-multi-service")),href:document.querySelector("a.public-primary")?.getAttribute("href")}; })()');
+    const result = await page.evaluate('(() => { const root=document.documentElement; const controls=Array.from(document.querySelectorAll("button,input,textarea,a.public-primary")); const status=document.querySelector(".public-result-status"); return {text:document.body.innerText,overflow:root.scrollWidth>root.clientWidth+1,targets:controls.length>0&&controls.every((node)=>node.getBoundingClientRect().height>=44),shortControls:controls.map((node)=>({tag:node.tagName,className:node.className,text:(node.textContent||node.name||"").trim(),height:node.getBoundingClientRect().height})).filter((item)=>item.height<44),planner:Boolean(document.querySelector(".public-multi-service")),href:document.querySelector("a.public-primary")?.getAttribute("href"),statusClass:status?.className}; })()');
     assert.equal(result.overflow, false, `${slug} overflowed at ${width}px`);
     assert.equal(result.targets, true, `${slug} has a control below 44px at ${width}px: ${JSON.stringify(result.shortControls)}`);
     assert.equal(result.planner, false, `${slug} left the planner visible behind the result`);
@@ -485,6 +485,7 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.match(result.text, /Kayıt durumu:/);
     assert.match(result.text, /Mesaj durumu:/);
     assert.match(result.href, /^\/m#[A-Za-z0-9_-]{43}$/);
+    assert.match(result.statusClass, /\bis-active\b/, `${slug} active result did not use the active status tone`);
 
     const journeyRequests = requests.slice(start);
     assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book')).length, 1, `${slug} sent duplicate group create requests`);
@@ -614,8 +615,11 @@ async function runLifecycleStateRecovery(debugUrl, origin, slug, expectedKicker)
     await preparePlan(page, slug);
     await submitContact(page);
     await waitFor(() => page.evaluate(`document.body.innerText.includes(${JSON.stringify(expectedKicker)})`), `${slug} did not render its status-specific recovery outcome`);
-    const result = await page.evaluate('({text:document.body.innerText,neutral:Boolean(document.querySelector(".public-result-mark"))})');
+    const result = await page.evaluate('(() => { const status=document.querySelector(".public-result-status"); return {text:document.body.innerText,neutral:Boolean(document.querySelector(".public-result-mark")),statusClass:status?.className,statusBackground:status ? getComputedStyle(status).backgroundColor : null}; })()');
     assert.equal(result.neutral, true, `${slug} rendered a success mark for a terminal/partial result`);
+    assert.match(result.statusClass, /\bis-attention\b/, `${slug} did not use the attention status tone`);
+    assert.doesNotMatch(result.statusClass, /\bis-active\b/, `${slug} retained the active success status tone`);
+    assert.notEqual(result.statusBackground, 'rgb(238, 249, 242)', `${slug} retained the green active status surface`);
     assert.doesNotMatch(result.text, /RANDEVU OLUŞTURULDU/, `${slug} rendered create-success copy`);
     if (slug === 'partial-recovery-salon') {
       assert.match(result.text, /Durum: Planlandı/);

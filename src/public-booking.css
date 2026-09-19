@@ -258,12 +258,14 @@
 .public-result-status {
   padding: .8rem 1rem;
   margin-bottom: 1rem;
-  border-left: 4px solid #25824b;
+  border-left: 4px solid #697386;
   border-radius: .5rem;
-  background: #eef9f2;
-  color: #234a32;
+  background: #f3f5f8;
+  color: #303846;
   text-align: left;
 }
+.public-result-status.is-active { border-left-color: #25824b; background: #eef9f2; color: #234a32; }
+.public-result-status.is-attention { border-left-color: #b45309; background: #fff7ed; color: #713f12; }
 .public-result-status p { margin: .25rem 0; }
 
 .public-settings-page { padding: clamp(1rem, 4vw, 3rem) clamp(.85rem, 4vw, 3rem) 6rem; }

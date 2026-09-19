@@ -262,12 +262,12 @@ function groupMatchesSelection(group: GroupConfirmation, selection: PublicBookin
 function confirmationOutcome(appointment: Confirmation, group?: GroupConfirmation) {
   const status = group?.status ?? appointment.status;
   switch (status) {
-    case 'scheduled': return { active: true, symbol: '✓', kicker: 'RANDEVU OLUŞTURULDU', state: 'Randevunuz işletmenin paneline kaydedildi.', groupTail: 'kaydedildi.' };
-    case 'confirmed': return { active: true, symbol: '✓', kicker: 'RANDEVU ONAYLANDI', state: 'Randevunuz işletme tarafından onaylandı.', groupTail: 'işletme tarafından onaylandı.' };
-    case 'completed': return { active: false, symbol: '✓', kicker: 'RANDEVU TAMAMLANDI', state: 'Randevunuz tamamlandı.', groupTail: 'tamamlandı.' };
-    case 'no_show': return { active: false, symbol: '!', kicker: 'RANDEVUYA GELİNMEDİ', state: 'Randevu gelinmedi olarak işaretlendi.', groupTail: 'gelinmedi olarak işaretlendi.' };
-    case 'cancelled': return { active: false, symbol: '×', kicker: 'RANDEVU İPTAL EDİLDİ', state: 'Randevunuz iptal edilmiş.', groupTail: 'iptal edilmiş.' };
-    case 'partial': return { active: false, symbol: '!', kicker: 'RANDEVU PLANI KISMEN DEĞİŞTİ', state: 'Grup randevunuzun hizmet durumları birbirinden farklı.', groupTail: 'kısmen değişmiş.' };
+    case 'scheduled': return { active: true, tone: 'active', symbol: '✓', kicker: 'RANDEVU OLUŞTURULDU', state: 'Randevunuz işletmenin paneline kaydedildi.', groupTail: 'kaydedildi.' };
+    case 'confirmed': return { active: true, tone: 'active', symbol: '✓', kicker: 'RANDEVU ONAYLANDI', state: 'Randevunuz işletme tarafından onaylandı.', groupTail: 'işletme tarafından onaylandı.' };
+    case 'completed': return { active: false, tone: 'neutral', symbol: '✓', kicker: 'RANDEVU TAMAMLANDI', state: 'Randevunuz tamamlandı.', groupTail: 'tamamlandı.' };
+    case 'no_show': return { active: false, tone: 'attention', symbol: '!', kicker: 'RANDEVUYA GELİNMEDİ', state: 'Randevu gelinmedi olarak işaretlendi.', groupTail: 'gelinmedi olarak işaretlendi.' };
+    case 'cancelled': return { active: false, tone: 'attention', symbol: '×', kicker: 'RANDEVU İPTAL EDİLDİ', state: 'Randevunuz iptal edilmiş.', groupTail: 'iptal edilmiş.' };
+    case 'partial': return { active: false, tone: 'attention', symbol: '!', kicker: 'RANDEVU PLANI KISMEN DEĞİŞTİ', state: 'Grup randevunuzun hizmet durumları birbirinden farklı.', groupTail: 'kısmen değişmiş.' };
   }
 }
 
@@ -780,7 +780,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         <dl className="public-confirmation-list"><div><dt>Başlangıç</dt><dd>{formatDateTime(confirmation.group.startsAt, confirmation.group.timezone)}</dd></div><div><dt>Fiyat</dt><dd>{estimateMoney(confirmation.group.estimateMinMinor, confirmation.group.estimateMaxMinor, confirmation.group.currency)}</dd></div></dl>
         <p className="public-confirmation-note">Bu tutar rezervasyon tahminidir. Kesin tahsilat tutarı değildir.</p>
       </> : <dl className="public-confirmation-list"><div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div><div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div><div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div><div><dt>Ücret</dt><dd>{appointment.price_minor === null ? 'İşletmede netleşecek' : money(appointment.price_minor, appointment.currency)}</dd></div></dl>}
-      <div className="public-result-status" aria-label="Rezervasyon ve mesaj durumu"><p><strong>Kayıt durumu:</strong> {outcome.state}</p><p><strong>Mesaj durumu:</strong> Bu ekran SMS veya e-posta teslimini doğrulamaz.</p></div>
+      <div className={`public-result-status is-${outcome.tone}`} aria-label="Rezervasyon ve mesaj durumu"><p><strong>Kayıt durumu:</strong> {outcome.state}</p><p><strong>Mesaj durumu:</strong> Bu ekran SMS veya e-posta teslimini doğrulamaz.</p></div>
       <p className="public-confirmation-note">{outcome.active ? 'Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.' : 'Randevu ayrıntılarınızı yönetim bağlantısından görüntüleyebilirsiniz.'}</p>
       <a className="public-primary" href={confirmation.manageUrl}>{outcome.active ? 'Randevumu yönet' : 'Randevu ayrıntılarını aç'}</a>
       {confirmationStorageError && <div className="public-booking-notice" role="alert">{confirmationStorageError} Bu kayıt tamamlanana kadar yeni randevu başlatmayın.</div>}
