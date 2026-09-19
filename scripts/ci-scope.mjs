@@ -30,18 +30,16 @@ export function diffPaths(raw) {
   return paths;
 }
 
-export function normalizeTrustedReceipts(raw, baseSha) {
-  if (!Array.isArray(raw) || !sha.test(baseSha ?? '')) return [];
+export function normalizeTrustedReceipts(raw) {
+  if (!Array.isArray(raw)) return [];
   const seen = new Set();
   const receipts = [];
   for (const item of raw) {
     const headSha = item?.headSha;
-    const receiptBaseSha = item?.baseSha;
     const runId = Number(item?.runId);
-    if (!sha.test(headSha ?? '') || receiptBaseSha !== baseSha
-      || !Number.isSafeInteger(runId) || runId <= 0 || seen.has(headSha)) continue;
+    if (!sha.test(headSha ?? '') || !Number.isSafeInteger(runId) || runId <= 0 || seen.has(headSha)) continue;
     seen.add(headSha);
-    receipts.push({ headSha, baseSha: receiptBaseSha, runId });
+    receipts.push({ headSha, runId });
   }
   return receipts;
 }
@@ -80,16 +78,19 @@ export function selectScope({
       const fullPaths = diffPaths(run(['diff', '--name-status', '-z', '--no-renames', mergeBase, headSha, '--']));
 
       if (event.action === 'synchronize') {
-        const receipts = normalizeTrustedReceipts(trustedReceipts, baseSha);
+        const receipts = normalizeTrustedReceipts(trustedReceipts);
         for (const receipt of receipts) {
           if (receipt.headSha === headSha) continue;
+
+          let receiptBase;
           let lineageBase;
           try {
+            receiptBase = run(['merge-base', baseSha, receipt.headSha]).trim();
             lineageBase = run(['merge-base', receipt.headSha, headSha]).trim();
           } catch {
             continue;
           }
-          if (lineageBase !== receipt.headSha) continue;
+          if (receiptBase !== baseSha || lineageBase !== receipt.headSha) continue;
 
           let deltaPaths;
           try {
