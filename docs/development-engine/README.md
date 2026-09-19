@@ -20,6 +20,7 @@ coordination evidence, but they do not override TASKS.
 | Product boundary / planned sequence | [PRODUCT_SPEC](../../PRODUCT_SPEC.md), [ROADMAP](../../ROADMAP.md) and actual main ref |
 | Temporary writer claim / conflict / dispatch | open PRs and [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65); never a second durable status source |
 | Task scope / refresh | [Context Pack protocol](../plan/context-packs.md) and the assigned contract |
+| Review mode / lineage / decision-first receipts | [Review lineage kernel](../plan/agent-workflow.md#review-lineage-kernel); role prompts/Skills extend it instead of redefining it |
 | Executor wait-mode | [Shadow Validation Mode](../plan/shadow-validation-mode.md) |
 | AI/provider routing | [AI model routing](ai-model-routing.md); coordinator selects roles/routes, models remain replaceable |
 | Copilot bootstrap | [Global instructions](../../.github/copilot-instructions.md) and [path instructions](../../.github/instructions) |
@@ -196,6 +197,8 @@ synthetic PR merge commit); never substitute it for the raw head. `semantic_sha`
 identifies the semantic candidate, not an automatic equivalence assertion.
 `supersedes` preserves prior artifact/receipt references. Compare external live
 head/base again before using any snapshot.
+
+Optional provenance fields preserve distinctions that otherwise collapse during follow-up review: `candidate.base_main_sha` records the observed candidate base, `ci.base_main_sha` the base actually used by CI, and each proof may bind its own `exact_sha` plus `tested_checkout_sha`. Missing optional identities remain unknown; historical receipts are not migrated or promoted to current proof. Served-build and migration-chain identity remain in their linked role-specific artifacts.
 
 Stale review/CI SHA fields are intentionally representable: preserving an old
 receipt is better than rewriting it to look current. Flag the mismatch and ask
