@@ -81,6 +81,16 @@ function taskIdFromCell(cell) {
   return linked ? linked[1] : trimmed;
 }
 
+export function taskPrNumbersFromRow(row, repository) {
+  const matches = Array.from(String(row ?? '').matchAll(
+    /https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9][0-9]*)(?=[^0-9]|$)/g,
+  );
+  return [...new Set(matches
+    .filter((match) => match[1] === repository)
+    .map((match) => Number(match[2])))]
+    .sort((a, b) => a - b);
+}
+
 export function verifyTaskBinding(tasksText, identity, repository) {
   const rows = String(tasksText ?? '').split(/\r?\n/)
     .filter((line) => line.startsWith('|'))
@@ -88,8 +98,8 @@ export function verifyTaskBinding(tasksText, identity, repository) {
     .filter(({ cells }) => cells.length > 0 && taskIdFromCell(cells[0]) === identity.task);
 
   if (rows.length !== 1) blocked(rows.length === 0 ? 'TASK_NOT_IN_CANONICAL_TASKS' : 'TASK_BINDING_AMBIGUOUS');
-  const prNeedle = `https://github.com/${repository}/pull/${identity.pr}`;
-  if (!rows[0].line.includes(prNeedle)) blocked('TASK_PR_BINDING_MISSING');
+  const prNumbers = taskPrNumbersFromRow(rows[0].line, repository);
+  if (!prNumbers.includes(identity.pr)) blocked('TASK_PR_BINDING_MISSING');
   return rows[0].line;
 }
 
@@ -147,25 +157,40 @@ export async function verifyDevelopmentReviewLiveState(input, {
   }
 
   const canonicalTasks = tasksText ?? readFileSync(path.join(root, 'TASKS.md'), 'utf8');
-  verifyTaskBinding(canonicalTasks, identity, repository);
+  const taskRow = verifyTaskBinding(canonicalTasks, identity, repository);
+  const taskPrNumbers = taskPrNumbersFromRow(taskRow, repository);
 
   const api = `https://api.github.com/repos/${repository}`;
-  const [pr, main, run, jobs] = await Promise.all([
+  const otherTaskPrNumbers = taskPrNumbers.filter((number) => number !== identity.pr);
+  const [pr, main, run, jobs, ...otherTaskPrs] = await Promise.all([
     githubJson(fetchImpl, `${api}/pulls/${identity.pr}`, token),
     githubJson(fetchImpl, `${api}/branches/main`, token),
     githubJson(fetchImpl, `${api}/actions/runs/${identity.ci.run}`, token),
-    githubJson(fetchImpl, `${api}/actions/runs/${identity.ci.run}/jobs?filter=all&per_page=100`, token),
+    githubJson(
+      fetchImpl,
+      `${api}/actions/runs/${identity.ci.run}/attempts/${identity.ci.attempt}/jobs?per_page=100`,
+      token,
+    ),
+    ...otherTaskPrNumbers.map((number) => githubJson(fetchImpl, `${api}/pulls/${number}`, token)),
   ]);
 
   if (pr?.state !== 'open'
       || pr?.head?.sha !== identity.head
       || pr?.base?.sha !== identity.base) blocked('LIVE_PR_IDENTITY_MISMATCH');
+  if (otherTaskPrs.some((item) => item?.state === 'open')) {
+    blocked('TASK_OPEN_PR_BINDING_AMBIGUOUS');
+  }
   if (main?.commit?.sha !== identity.main) blocked('LIVE_MAIN_IDENTITY_MISMATCH');
 
+  const runPrNumbers = Array.isArray(run?.pull_requests)
+    ? run.pull_requests.map((item) => Number(item?.number)).filter(Number.isInteger)
+    : [];
   if (String(run?.id ?? '') !== identity.ci.run
       || run?.head_sha !== identity.head
       || run?.conclusion !== 'success'
       || run?.status !== 'completed'
+      || run?.event !== 'pull_request'
+      || !runPrNumbers.includes(identity.pr)
       || Number(run?.run_attempt) !== identity.ci.attempt
       || run?.path !== '.github/workflows/ci.yml') {
     blocked('LIVE_CI_RUN_MISMATCH');
@@ -174,7 +199,11 @@ export async function verifyDevelopmentReviewLiveState(input, {
   const job = Array.isArray(jobs?.jobs)
     ? jobs.jobs.find((item) => String(item?.id ?? '') === identity.ci.job)
     : null;
-  if (!job || job.name !== 'CI gate' || job.status !== 'completed' || job.conclusion !== 'success') {
+  if (!job
+      || job.name !== 'CI gate'
+      || job.status !== 'completed'
+      || job.conclusion !== 'success'
+      || (job.run_attempt !== undefined && Number(job.run_attempt) !== identity.ci.attempt)) {
     blocked('LIVE_CI_JOB_MISMATCH');
   }
 
