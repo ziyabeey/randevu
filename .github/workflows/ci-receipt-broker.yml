@@ -1,0 +1,135 @@
+name: Trusted CI Receipt Broker
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: true
+        type: number
+      base_sha:
+        required: true
+        type: string
+      current_head_sha:
+        required: true
+        type: string
+    outputs:
+      receipt_json:
+        description: Sanitized full-code CI receipt candidates for the caller.
+        value: ${{ jobs.lookup.outputs.receipt_json }}
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  lookup:
+    name: Resolve authoritative full-code receipt
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      receipt_json: ${{ steps.lookup.outputs.receipt_json }}
+    steps:
+      - name: Query authoritative CI history
+        id: lookup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          BASE_SHA: ${{ inputs.base_sha }}
+          CURRENT_HEAD_SHA: ${{ inputs.current_head_sha }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { appendFileSync } = require('node:fs');
+
+          const sha = /^[a-f0-9]{40}$/;
+          const repo = String(process.env.GITHUB_REPOSITORY ?? '');
+          const api = String(process.env.GITHUB_API_URL ?? '');
+          const token = String(process.env.GH_TOKEN ?? '');
+          const prNumber = Number(process.env.PR_NUMBER);
+          const baseSha = String(process.env.BASE_SHA ?? '');
+          const currentHeadSha = String(process.env.CURRENT_HEAD_SHA ?? '');
+
+          const emit = (value, reason) => {
+            appendFileSync(process.env.GITHUB_OUTPUT, `receipt_json=${JSON.stringify(value)}\n`, 'utf8');
+            console.log(`Trusted CI receipt broker: ${reason}`);
+          };
+
+          const validIdentity = Number.isSafeInteger(prNumber) && prNumber > 0
+            && sha.test(baseSha) && sha.test(currentHeadSha)
+            && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)
+            && /^https:\/\//.test(api) && token.length > 0;
+
+          if (!validIdentity) {
+            emit([], 'invalid or unavailable caller identity; full CI required');
+            process.exit(0);
+          }
+
+          const headers = {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${token}`,
+            'X-GitHub-Api-Version': '2022-11-28',
+          };
+
+          const readJson = async (url) => {
+            const response = await fetch(url, {
+              headers,
+              signal: AbortSignal.timeout(10_000),
+            });
+            if (!response.ok) throw new Error(`HTTP_${response.status}`);
+            return response.json();
+          };
+
+          try {
+            const runsUrl = new URL(`${api}/repos/${repo}/actions/workflows/ci.yml/runs`);
+            runsUrl.searchParams.set('event', 'pull_request');
+            runsUrl.searchParams.set('status', 'success');
+            runsUrl.searchParams.set('per_page', '100');
+
+            const payload = await readJson(runsUrl);
+            if (!Array.isArray(payload?.workflow_runs)) {
+              emit([], 'unexpected workflow history response; full CI required');
+              process.exit(0);
+            }
+
+            const candidates = payload.workflow_runs.filter((run) => {
+              if (!run || !sha.test(String(run.head_sha ?? '')) || run.head_sha === currentHeadSha) return false;
+              if (!Number.isSafeInteger(Number(run.id)) || Number(run.id) <= 0) return false;
+              const prs = Array.isArray(run.pull_requests) ? run.pull_requests : [];
+              return prs.some((pr) => Number(pr?.number) === prNumber && String(pr?.base?.sha ?? '') === baseSha);
+            });
+
+            for (const run of candidates) {
+              let jobsPayload;
+              try {
+                jobsPayload = await readJson(`${api}/repos/${repo}/actions/runs/${run.id}/jobs?per_page=100`);
+              } catch {
+                continue;
+              }
+              if (!Array.isArray(jobsPayload?.jobs)) continue;
+
+              const gate = jobsPayload.jobs.find((job) => job?.name === 'CI gate'
+                && job?.conclusion === 'success'
+                && Number.isSafeInteger(Number(job?.id))
+                && Number(job.id) > 0);
+              if (!gate || !Array.isArray(gate.steps)) continue;
+
+              const codeStep = gate.steps.find((step) => step?.name === 'Run all required code checks');
+              const aggregateStep = gate.steps.find((step) => step?.name === 'Require the selected checks to complete');
+              if (codeStep?.conclusion !== 'success' || aggregateStep?.conclusion !== 'success') continue;
+
+              emit([{
+                headSha: run.head_sha,
+                baseSha,
+                runId: Number(run.id),
+                jobId: Number(gate.id),
+                fullCode: true,
+              }], `authoritative full-code receipt found on run ${run.id}`);
+              process.exit(0);
+            }
+
+            emit([], 'no same-PR same-base full-code success found; full CI required');
+          } catch {
+            emit([], 'lookup unavailable; full CI required');
+          }
+          NODE
