@@ -32,7 +32,7 @@ function taskMarkdown(change = () => {}) {
   return `# Tasks\n\n## Teknik düzeltmeler\n\n| Kimlik | İş | Önkoşullar | Durum | Sahip | Kanıt |\n| --- | --- | --- | --- | --- | --- |\n${rows(technical)}\n\n## Korunan MVP işleri\n\n| Kimlik | İş | Önkoşullar | Durum | Sahip | Kanıt |\n| --- | --- | --- | --- | --- | --- |\n${rows(features)}\n\n## Kabul kapıları\n\n| Kapı | Kapsam | Durum / kanıt |\n| --- | --- | --- |\n${gates.join('\n')}\n`;
 }
 
-function fixture({ change, extra = {}, projectState = '# State\n\nS01…S05 tamamlandı; S06…S08 açıktır.\n' } = {}) {
+function fixture({ change, extra = {}, projectState = '# PROJECT_STATE.md — EMEKLİYE AYRILDI\n\n> **Bu dosya canlı durum kaynağı değildir ve güncellenmez.**\n' } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'ci-docs-'));
   execFileSync('git', ['init', '-q'], { cwd: root });
   const files = {
@@ -130,16 +130,21 @@ test('accepts all stabilization tasks completed with GS closed', () => {
     change: (tasks) => {
       for (const task of tasks.filter(({ id }) => id.startsWith('S'))) task.state = 'Tamamlandı';
     },
-    projectState: '# State\n\nS01…S08 tamamlandı; GS kapalıdır.\n',
+    projectState: '# PROJECT_STATE.md — EMEKLİYE AYRILDI\n\n> **Bu dosya canlı durum kaynağı değildir ve güncellenmez.**\n',
   });
   const tasksPath = path.join(root, 'TASKS.md');
   writeFileSync(tasksPath, readFileSync(tasksPath, 'utf8').replace('| GS | S01…S08 | Açık |', '| GS | S01…S08 | Kapalı |'));
   assert.deepEqual(validate(root), []);
 });
 
-test('does not require a fixed PROJECT_STATE summary sentence', () => {
-  const root = fixture({ projectState: '# State\n\nGüncel görev durumu TASKS belgesindedir.\n' });
-  assert.deepEqual(validate(root), []);
+test('keeps PROJECT_STATE retired instead of accepting a second tracker', () => {
+  const root = fixture({ projectState: '# State\n\nS01…S08 tamamlandı; G11 kapalıdır.\n' });
+  const errors = validate(root);
+  assert.ok(errors.includes('PROJECT_STATE.md is retired; live status belongs only in TASKS.md'));
+});
+
+test('accepts the retired PROJECT_STATE tombstone', () => {
+  assert.deepEqual(validate(fixture()), []);
 });
 
 for (const state of ['Çalışılıyor', 'İncelemede', "Main'de / kabul açık", 'Tamamlandı']) {

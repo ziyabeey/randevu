@@ -26,35 +26,53 @@ type Customer = {
   created_at: string;
   updated_at: string;
 };
-type CustomerAppointment = {
-  appointment_id: string;
+type CustomerBookingLine = {
+  appointmentId: string;
+  lineOrdinal: number;
+  serviceName: string;
+  staffName: string;
   status: string;
-  starts_at: string;
-  ends_at: string;
+  startsAt: string;
+  endsAt: string;
+  priceType: 'fixed' | 'range';
+  priceMinMinor: number;
+  priceMaxMinor: number;
+  priceMinor: number | null;
+  currency: string;
+};
+type CustomerBookingGroup = {
+  groupId: string;
+  status: string;
+  version: number;
+  startsAt: string;
+  endsAt: string;
   timezone: string;
-  customer_name_snapshot: string;
-  customer_phone_snapshot: string | null;
-  customer_email_snapshot: string | null;
-  service_name_snapshot: string;
-  staff_name_snapshot: string;
-  price_minor_snapshot: number;
-  currency_snapshot: string;
+  currency: string;
+  estimateMinMinor: number;
+  estimateMaxMinor: number;
+  lines: CustomerBookingLine[];
+  legacyAppointmentId: string | null;
+  managementMode: 'legacy_single' | 'group';
+  lineCount: number;
+  customerName: string;
+  customerPhone: string | null;
+  customerEmail: string | null;
   notes: string | null;
-  cancellation_reason: string | null;
 };
 type PageInfo = { limit: number; hasMore: boolean; nextCursor: string | null };
 type CustomerListResponse = { membership: Membership; customers: Customer[]; page: PageInfo };
-type HistoryResponse = { appointments: CustomerAppointment[]; page: PageInfo };
+type HistoryResponse = { bookings: CustomerBookingGroup[]; page: PageInfo };
 type LoadState = 'idle' | 'loading' | 'success' | 'error';
 
 function message(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-function localDateTime(value: string) {
+function localDateTime(value: string, timezone?: string) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return value;
   return new Intl.DateTimeFormat('tr-TR', {
+    ...(timezone ? { timeZone: timezone } : {}),
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
@@ -64,12 +82,18 @@ function tryAmount(minor: number, currency: string) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
 }
 
+function bookingEstimate(booking: CustomerBookingGroup) {
+  return booking.estimateMinMinor === booking.estimateMaxMinor
+    ? tryAmount(booking.estimateMinMinor, booking.currency)
+    : `${tryAmount(booking.estimateMinMinor, booking.currency)} – ${tryAmount(booking.estimateMaxMinor, booking.currency)}`;
+}
+
 export default function CustomersPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerPage, setCustomerPage] = useState<PageInfo | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [history, setHistory] = useState<CustomerAppointment[]>([]);
+  const [history, setHistory] = useState<CustomerBookingGroup[]>([]);
   const [historyPage, setHistoryPage] = useState<PageInfo | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -166,9 +190,9 @@ export default function CustomersPage() {
       setHistoryError('');
     }
     try {
-      const result = await api<HistoryResponse>(`/api/customers/${customerId}/history?${params}`, { signal: controller.signal });
+      const result = await api<HistoryResponse>(`/api/customers/${customerId}/group-history?${params}`, { signal: controller.signal });
       if (controller.signal.aborted || generation !== historyGeneration.current || tenant !== tenantGeneration.current) return;
-      setHistory((current) => append ? [...current, ...result.appointments] : result.appointments);
+      setHistory((current) => append ? [...current, ...result.bookings] : result.bookings);
       setHistoryPage(result.page);
       if (!append) setHistoryState('success');
     } catch (error) {
@@ -334,7 +358,7 @@ export default function CustomersPage() {
   return (
     <main className="customers-shell">
       <header className="customers-hero">
-        <div><p className="customers-eyebrow">MÜŞTERİLER</p><h1>İşletme müşteri kayıtları</h1><p>İletişim bilgilerini yönetin, geçmiş randevuları snapshotlarıyla inceleyin.</p></div>
+        <div><p className="customers-eyebrow">MÜŞTERİLER</p><h1>İşletme müşteri kayıtları</h1><p>İletişim bilgilerini yönetin, geçmiş rezervasyonları grup snapshotlarıyla inceleyin.</p></div>
         <a href="/">Çalışma alanına dön</a>
       </header>
 
@@ -400,7 +424,7 @@ export default function CustomersPage() {
                   <label>Not<textarea name="notes" maxLength={1000} defaultValue={selected.notes ?? ''} /></label>
                   <button disabled={busy}>Bilgileri güncelle</button>
                 </form>
-                <div className="customers-history-head"><h3>Randevu geçmişi</h3><span>Geçmiş bilgiler randevu anındaki snapshotlardan gelir.</span></div>
+                <div className="customers-history-head"><h3>Rezervasyon geçmişi</h3><span>Bir rezervasyon tek kayıt, hizmetleri sıralı satırlardır.</span></div>
                 <div aria-busy={historyState === 'loading'}>
                   {historyState === 'loading' ? (
                     <p className="customers-muted" role="status">Randevu geçmişi yükleniyor…</p>
@@ -408,10 +432,14 @@ export default function CustomersPage() {
                     <p className="customers-error" role="alert">{historyError}</p>
                   ) : history.length ? (
                     <ol className="customers-history">
-                      {history.map((appointment) => (
-                        <li key={appointment.appointment_id}>
-                          <div><strong>{appointment.service_name_snapshot}</strong><span>{localDateTime(appointment.starts_at)} · {appointment.staff_name_snapshot}</span></div>
-                          <div className="customers-history-meta"><span>{appointment.customer_name_snapshot}</span><span>{tryAmount(appointment.price_minor_snapshot, appointment.currency_snapshot)}</span><span>{appointment.status}</span></div>
+                      {history.map((booking) => (
+                        <li key={booking.groupId}>
+                          <div>
+                            <strong>{booking.lines.map((line) => line.serviceName).join(' + ')}</strong>
+                            <span>{localDateTime(booking.startsAt, booking.timezone)} · {booking.lineCount} hizmet</span>
+                            {booking.lines.map((line) => <small key={line.appointmentId}>{line.lineOrdinal}. {line.serviceName} · {line.staffName} · {line.status}</small>)}
+                          </div>
+                          <div className="customers-history-meta"><span>{booking.customerName}</span><span>{bookingEstimate(booking)}</span><span>{booking.status}</span></div>
                         </li>
                       ))}
                     </ol>
@@ -420,7 +448,7 @@ export default function CustomersPage() {
                   ) : null}
                 </div>
                 {historyState === 'success' && historyPage?.hasMore && historyPage.nextCursor && (
-                  <button className="customers-more" type="button" disabled={busy} onClick={() => void loadHistory(selected.customer_id, historyPage.nextCursor, true)}>Daha eski randevuları göster</button>
+                  <button className="customers-more" type="button" disabled={busy} onClick={() => void loadHistory(selected.customer_id, historyPage.nextCursor, true)}>Daha eski rezervasyonları göster</button>
                 )}
               </>
             ) : (

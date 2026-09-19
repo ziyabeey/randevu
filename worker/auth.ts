@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import { base64UrlToText, bytesToBase64Url, randomBase64Url, textToBase64Url } from '../shared/base64.ts';
 import { fetchTextWithTimeout } from './outbound-request.ts';
 
 export type AuthEnv = {
@@ -296,11 +297,30 @@ export async function activeMembership<E extends AuthEnv>(
   return membership;
 }
 
+function workspaceExpectationMismatch<E extends AuthEnv>(context: AppContext<E>, auth: AuthSession) {
+  const expectedUser = context.req.header('X-YZT-Expected-User');
+  const expectedBusinessRaw = context.req.header('X-YZT-Expected-Business');
+  if (expectedUser === undefined && expectedBusinessRaw === undefined) return false;
+  if (!expectedUser || expectedBusinessRaw === undefined) return true;
+  const expectedBusiness = expectedBusinessRaw === 'none' ? null : expectedBusinessRaw;
+  return auth.user.id !== expectedUser || getActiveBusinessId(context) !== expectedBusiness;
+}
+
 export async function requireAuth<E extends AuthEnv>(context: AppContext<E>): Promise<AuthAccess> {
   try {
     const auth = await resolveAuth(context);
     if (!auth) {
       return { error: context.json({ error: { code: 'AUTH_REQUIRED', message: 'Önce giriş yapın.' } }, 401) };
+    }
+    if (workspaceExpectationMismatch(context, auth)) {
+      return {
+        error: context.json({
+          error: {
+            code: 'WORKSPACE_CONTEXT_CHANGED',
+            message: 'Başka bir sekmede oturum veya işletme değişti. Sayfayı yenileyip tekrar deneyin.',
+          },
+        }, 409),
+      };
     }
     return { auth };
   } catch (error) {
@@ -340,30 +360,6 @@ export async function requireMember<E extends AuthEnv>(context: AppContext<E>): 
 
 export function canManage(membership: Membership | null): membership is Membership {
   return membership?.role === 'owner' || membership?.role === 'manager';
-}
-
-function randomBase64Url(byteLength = 32) {
-  const bytes = crypto.getRandomValues(new Uint8Array(byteLength));
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-
-function bytesToBase64Url(bytes: Uint8Array) {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-
-function textToBase64Url(value: string) {
-  return bytesToBase64Url(new TextEncoder().encode(value));
-}
-
-function base64UrlToText(value: string) {
-  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-  const binary = atob(padded);
-  return new TextDecoder().decode(Uint8Array.from(binary, (character) => character.charCodeAt(0)));
 }
 
 async function codeChallenge(verifier: string) {

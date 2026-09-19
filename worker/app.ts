@@ -3,6 +3,9 @@ import coreApp from './index.ts';
 import availability from './availability.ts';
 import bookings from './bookings.ts';
 import f11Groups from './f11-group-http.ts';
+import f11GroupManagement from './f11-group-management-http.ts';
+import f11GroupLineManagement from './f11-group-line-management-http.ts';
+import f11GroupConsumerReads from './f11-group-consumer-reads.ts';
 import publicBookingRecovery from './public-booking-recovery.ts';
 import publicBooking from './public-booking.ts';
 import publicProfile from './public-profile.ts';
@@ -82,13 +85,20 @@ app.use('/api/*', async (context, next) => {
 });
 
 app.get('/api/deployment-health', (context) => deploymentHealth(context.req.raw, context.env));
+// F11-03 exact live group-rooted reads are registered before the older snapshot
+// handlers. Legacy physical-line reads remain available for old clients.
+app.route('/api', f11GroupConsumerReads);
 // C2b exact read routes preserve existing response shapes while probing max+1.
 // They are registered before the legacy handlers so overflow can never become a
 // partial successful snapshot. Mutations continue through their existing routers.
 app.route('/', snapshotReads);
 app.route('/', coreApp);
-// F11-02 exact group routes are registered before provisional handlers so the
-// final 503/error semantics and the public gate are the authoritative surface.
+// F11-03 native group mutation surfaces. Line-local writes share the same group
+// optimistic version and are still protected by the default cookie mutation
+// guard above.
+app.route('/api', f11GroupLineManagement);
+app.route('/api', f11GroupManagement);
+// F11-02 exact group create/availability routes stay isolated behind management.
 app.route('/api', f11Groups);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);

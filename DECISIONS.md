@@ -1,6 +1,6 @@
 # YZT Randevu — Teknik Kararlar
 
-Güncel dosya/route/test haritası için önce [PROJECT_STATE.md](PROJECT_STATE.md) oku. Ürün hedefi [PRODUCT_SPEC.md](PRODUCT_SPEC.md), faz ve kabul sırası [ROADMAP.md](ROADMAP.md) içindedir. Bu dosya mevcut teknik temeli ve kabul edilmiş yeni teknik yönü ayırır.
+Güncel görev/main kabul durumu için önce [TASKS.md](TASKS.md) oku. Ürün hedefi [PRODUCT_SPEC.md](PRODUCT_SPEC.md), faz ve kabul sırası [ROADMAP.md](ROADMAP.md) içindedir. Bu dosya yalnız kalıcı teknik kararları tutar; canlı durum tablosu değildir.
 
 ## 12 Eylül 2026 — Plan v3 teknik revizyonu
 

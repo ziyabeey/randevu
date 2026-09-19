@@ -253,7 +253,7 @@ await test('F10-05 customer history is paginated from appointment snapshots, not
     const url = new URL(String(input));
     if (url.pathname === '/auth/v1/user') return json(user);
     if (url.pathname === '/rest/v1/memberships') return json([membership()]);
-    assert.equal(url.pathname, '/rest/v1/rpc/list_business_customer_appointments_page');
+    assert.equal(url.pathname, '/rest/v1/rpc/list_business_customer_appointments_page_v2');
     rpcBody = JSON.parse(init.body);
     return json(appointments);
   };

@@ -1,6 +1,8 @@
-# YZT Randevu — Görev takip tablosu
+# YZT Randevu — Tek canlı görev ve durum kaynağı
 
-**Plan v3 · güncel ana tablo 16 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 24 `Tamamlandı`, 30 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
+> **SOURCE OF TRUTH:** Projenin canlı görev durumu, sahiplik, bağımlılık, kabul kapıları, main kabulü ve açık engeller için **tek otorite bu dosyadır**. Başka bir dosya veya Issue gövdesi paralel durum tablosu tutamaz.
+
+**Plan v3 · güncel ana tablo 19 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 27 `Tamamlandı`, 27 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
 
 **GS stabilization kapısı kapalıdır.** S01…S08 kabul edildi; GS artık yeni özellikleri engelleyen bir önkoşul değildir. [GS kapanış devri](docs/handoffs/GS.md) tarihsel kanıt kaynağıdır.
 
@@ -13,7 +15,7 @@ Kepenk Core platform çalışması ayrı track'tir: **KC-00…KC-07**, 54 MVP g�
 - [CONTRIBUTING](CONTRIBUTING.md) sahip/PR, [ajan çalışma düzeni](docs/plan/agent-workflow.md) görev başına beceri/kanıt/devir kuralıdır.
 - `TEMEL`: main'de mevcut temel. `Sxx` / `Fxx-yy`: kabulü tamamlanacak görev. `Gxx`: ilgili F fazının bütünü. `GS`: tamamlanmış S01…S08 kapısı. K01…K03 [bağlayıcı sözleşmelerdir](docs/plan/architecture-contracts.md), görev değildir.
 - Durumlar: Planlandı, Üstlenildi, Çalışılıyor, Engelli, İncelemede, Main'de / kabul açık, Tamamlandı. **Tamamlandı = kabul + main merge**; yalnız branch/PR açılması değildir.
-- Ajan kendi branch'inde yalnız kendi görev satırını değiştirir. Açık branch/PR sahipliği ve shared-file sırası canlı olarak [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) üzerinden koordine edilir.
+- Ajan kendi branch'inde yalnız kendi görev satırını değiştirir. [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) yalnız geçici claim/conflict/shared-writer koordinasyonu içindir; durum orada değişirse merge/kapanışta bu dosyaya işlenir ve Issue metni kalıcı ikinci tabloya dönüşmez.
 - Ortak migration zinciri, router/entry, ortak stiller, lockfile ve CI planında tek-yazıcı kuralı geçerlidir.
 - Büyük görev somut incelemeden sonra ana kapsam korunarak `.a/.b` alt işlerine ayrılabilir; görev/bağımlılık/kanıt birlikte güncellenir.
 
@@ -46,13 +48,13 @@ Kepenk Core platform çalışması ayrı track'tir: **KC-00…KC-07**, 54 MVP g�
 | [F10-05](docs/plan/phase-10.md#f10-05) | İşletmenin müşteri kayıtları | F10-03 | Tamamlandı | Ajan A + R1/R2 + koordinatör kabul / 2026-09-15 | `f10-05-customer-authority-repair` · [PR #87](https://github.com/ziyabeey1-ai/randevu/pull/87) · [Repair devir](docs/handoffs/F10-05-repair.md) · semantic head `0f503e6` · final test head `08be229` · [CI #938](https://github.com/ziyabeey1-ai/randevu/actions/runs/34878556411) success · R1 `5667991719` **ACCEPTABLE** · R2 `5673736447` **ACCEPTABLE** · main `56ef3be` · [main CI #948](https://github.com/ziyabeey1-ai/randevu/actions/runs/34921413177) success |
 | [F10-06](docs/plan/phase-10.md#f10-06) | Gerçek hesaplarla ortak yönetim kabulü | F10-04, F10-05, F17-01 | Planlandı | — | — |
 | [F11-01](docs/plan/phase-11.md#f11-01) | Grup/satır sözleşmesi ve ileri migration | F10-02, F12-03 | Tamamlandı | Ajan D + R1/R2 + koordinatör kabul / 2026-09-16 | `f11-01-group-line-contract` · [PR #105](https://github.com/ziyabeey1-ai/randevu/pull/105) · [Devir](docs/handoffs/F11-01.md) · saha receipt [`5693460041`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5693460041) · semantic `40a476ec` · [CI #1075](https://github.com/ziyabeey1-ai/randevu/actions/runs/35070566754) success · latest-main descendant `d9960e6c` · [CI #1078](https://github.com/ziyabeey1-ai/randevu/actions/runs/35087659257) success · R1 [`5694499571`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5694499571) **ACCEPTABLE** · R2 [`5694834956`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5694834956) **ACCEPTABLE** · main `83d61f4` · [main CI #1079](https://github.com/ziyabeey1-ai/randevu/actions/runs/35087924580) success · hosted-only residual olmadığı için staging açılmadı |
-| [F11-02](docs/plan/phase-11.md#f11-02) | Çok hizmetli müsaitlik ve atomik oluşturma | F11-01 | İncelemede | Ajan D2 + Astra destek devamı / 2026-09-17 | `f11-02-multi-service-availability` · [PR #112](https://github.com/ziyabeey1-ai/randevu/pull/112) · [Devir](docs/handoffs/F11-02.md) · STRICT · binding repair [5709812296](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5709812296) · group recovery + RELEASE saatleri + replay/binding SQL candidate · yerel 628/628 HTTP + build/typecheck PASS · son exact-head CI sonucu PR receipt’inde; R1/R2 kabulü açık |
-| [F11-03](docs/plan/phase-11.md#f11-03) | Grup yönetimi ve mevcut ekranlarla uyum | F11-02 | Planlandı | — | — |
-| [F11-04](docs/plan/phase-11.md#f11-04) | Çakışma, timezone ve yükseltme kabulü | F11-03, F17-02 | Planlandı | — | — |
+| [F11-02](docs/plan/phase-11.md#f11-02) | Çok hizmetli müsaitlik ve atomik oluşturma | F11-01 | Tamamlandı | Ajan D2 + R1/R2 + koordinatör kabul / 2026-09-17 | `f11-02-multi-service-availability` · [PR #112](https://github.com/ziyabeey1-ai/randevu/pull/112) · [Devir](docs/handoffs/F11-02.md) · final head `f79de904` · [CI #1123](https://github.com/ziyabeey1-ai/randevu/actions/runs/35199510142) success · R1 [`5711517514`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5711517514) **ACCEPTABLE** · R2 [`5711650732`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5711650732) **ACCEPTABLE** · main `6ddb489b` · main CI #1124 success · koordinatör kapanışı [`5711713871`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5711713871) |
+| [F11-03](docs/plan/phase-11.md#f11-03) | Grup yönetimi ve mevcut ekranlarla uyum | F11-02 | Tamamlandı | Ajan D3 + R1/R2 + koordinatör / 2026-09-17 | `f11-03-group-management-compat` · [PR #115](https://github.com/ziyabeey1-ai/randevu/pull/115) · [Devir](docs/handoffs/F11-03.md) · final reviewed `5ae74a21` · latest-main sync `ffb08765` · [CI #1182](https://github.com/ziyabeey1-ai/randevu/actions/runs/35245615411) success · R1 `5717263393` **ACCEPTABLE** · R2 `5717349914` **ACCEPTABLE** · main `65b12e0d` · post-main [CI #1183](https://github.com/ziyabeey1-ai/randevu/actions/runs/35245968810) success · [closure `5717770847`](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5717770847) |
+| [F11-04](docs/plan/phase-11.md#f11-04) | Çakışma, timezone ve yükseltme kabulü | F11-03, F17-02 | Tamamlandı | YAZAR + R1/R2 + koordinatör kabul / 2026-09-18 | [PR #117](https://github.com/ziyabeey1-ai/randevu/pull/117) · final head `4f1ae834` · CI #1366 success · R1/R2 **ACCEPTABLE** · main `c51297bc` · post-main CI #1377 success · post-merge R0 kanıt-sırası düzeltmesi [PR #166](https://github.com/ziyabeey1-ai/randevu/pull/166) ile merge edildi: final migration sonrası 100-request fanout yine **1 winner / 99 conflict / 0 orphan**, E/F/final-binding tekrarları ve [CI #1380](https://github.com/ziyabeey1-ai/randevu/actions/runs/35390907512) success · G11 kapalı |
 | [F12-01](docs/plan/phase-12.md#f12-01) | Görsel yön ve akış sözleşmesi | TEMEL | Tamamlandı | Ajan B / 2026-09-14 | `f12-01-visual-flow-contract` · base `364d006` · [PR #61](https://github.com/ziyabeey1-ai/randevu/pull/61) · [Sözleşme](docs/plan/f12-01-visual-flow-contract.md) · [Devir](docs/handoffs/F12-01.md) · koordinatör final ürün/tasarım kabulü verildi |
 | [F12-02](docs/plan/phase-12.md#f12-02) | Salon profili ve public fotoğraflar | F12-01, F10-03 | Tamamlandı | Ajan B + R1/R2 + koordinatör kabul / 2026-09-15 | `f12-02-salon-profile-public-media` · [PR #76](https://github.com/ziyabeey1-ai/randevu/pull/76) · [Devir](docs/handoffs/F12-02.md) · exact head `a889b077` · [CI #967](https://github.com/ziyabeey1-ai/randevu/actions/runs/34936411282) success · R1 `5676070062` **ACCEPTABLE** · R2 final **ACCEPTABLE** · main `eb4d741` · [main CI #984](https://github.com/ziyabeey1-ai/randevu/actions/runs/34943929715) success · hosted-only residual bulunmadığı için staging açılmadı |
 | [F12-03](docs/plan/phase-12.md#f12-03) | Hizmet kategorileri ve fiyat aralığı | F10-04 | Tamamlandı | Ajan C + R1/R2 + koordinatör kabul / 2026-09-15 | `f12-03-service-price-range` · [PR #103](https://github.com/ziyabeey1-ai/randevu/pull/103) · [Devir](docs/handoffs/F12-03.md) · semantic head `b0bb330c` · [CI #1039](https://github.com/ziyabeey1-ai/randevu/actions/runs/34994167963) success · final review head `cd4599b2` · [marker CI #1041](https://github.com/ziyabeey1-ai/randevu/actions/runs/34994931971) success · R1 `5684303886` **ACCEPTABLE** · R2 `5684769289` **ACCEPTABLE** · main `d0a9ec9` · [main CI #1042](https://github.com/ziyabeey1-ai/randevu/actions/runs/35000917517) success · hosted-only residual olmadığı için staging açılmadı |
-| [F12-04](docs/plan/phase-12.md#f12-04) | Çoklu hizmet, personel ve saat seçimi | F12-02, F12-03, F11-02 | Planlandı | — | — |
+| [F12-04](docs/plan/phase-12.md#f12-04) | Çoklu hizmet, personel ve saat seçimi | F12-02, F12-03, F11-02 | Engelli | Ajan B2 / 2026-09-19 | `f12-04-public-multi-service-selection` · [PR #114](https://github.com/ziyabeey1-ai/randevu/pull/114) (draft) · frontend candidate `e18e1ca4` · CI #1131 success · F11-04/G11 kapandı; kalan tek backend gate additive range-aware public catalog support [Issue #162](https://github.com/ziyabeey1-ai/randevu/issues/162). Support merge olunca #114 current main'e taşınıp range/category + device-local favorite/share + 360/390 browser acceptance ile kapanır |
 | [F12-05](docs/plan/phase-12.md#f12-05) | Özet, sonuç ve müşteri yönetimi | F12-04, F09-02, F11-03 | Planlandı | — | — |
 | [F13-01](docs/plan/phase-13.md#f13-01) | Takvim güncelliği ve istek yarışı | F11-03 | Planlandı | — | — |
 | [F13-02](docs/plan/phase-13.md#f13-02) | Gün, hafta ve liste görünümleri | F13-01, F12-01 | Planlandı | — | — |
@@ -102,6 +104,12 @@ Bağlayıcı topology [K04](docs/plan/k04-platform-core-contract.md), paket/bağ
 | [KC-06](docs/plan/kepenk-core-migration-plan.md) | `auth.kepenk.ai` broker | KC-05 | Planlandı | — | İkinci uygulamada gerçek kullanıcı ihtiyacı doğmadan açılmaz |
 | [KC-07](docs/plan/kepenk-core-migration-plan.md) | Platform admin read RPC ve audit | KC-05 | Planlandı | — | Salt-okunur auditli admin sınırı; impersonation ayrı karar/R1 ister |
 
+## Development tooling track — 54 MVP görevinin dışında
+
+| Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / kanıt / sonraki adım |
+| --- | --- | --- | --- | --- | --- |
+| [DEV-ENGINE-01](https://github.com/ziyabeey1-ai/randevu/issues/119) | Copilot talimatları, Skills ve gözlem amaçlı geliştirme kanıtı | TEMEL | Tamamlandı | Astra + bağımsız R1/R2 + koordinatör / 2026-09-18 | M / FOCUSED · [PR #120](https://github.com/ziyabeey1-ai/randevu/pull/120) · final reviewed head `be67e276` · exact-head [CI #1219](https://github.com/ziyabeey1-ai/randevu/actions/runs/35312040320) success · fresh R1/R2 PASS · main `02d0a2a` · post-main [CI #1220](https://github.com/ziyabeey1-ai/randevu/actions/runs/35312768868) success · [final closure](https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-5725901852) · automation sources remain governance/tooling, not product authority |
+
 ## Kabul kapıları
 
 | Kapı | Kapsam | Durum / kanıt |
@@ -109,12 +117,12 @@ Bağlayıcı topology [K04](docs/plan/k04-platform-core-contract.md), paket/bağ
 | GS | S01…S08 | **Kapalı** — S01…S08 tamamlandı; [GS kapanış devri](docs/handoffs/GS.md) |
 | G09 | F09-01…F09-05 | **Kapalı** — PR #30 / staging `34681540142`; stabilization takipleri GS içinde kapatıldı |
 | G10 | F10-01…F10-06 | Açık — F10-01/02/03/04/05 tamamlandı; yalnız F10-06 kaldı |
-| G11 | F11-01…F11-04 | Açık — F11-01 tamamlandı; F11-02 sıradaki aktif zincirdir |
-| G12 | F12-01…F12-05 | Açık — F12-01/02/03 tamamlandı; F12-04 F11-02'yi bekliyor |
+| G11 | F11-01…F11-04 | **Kapalı** — F11-01/02/03/04 tamamlandı; #117 main `c51297bc`, post-main CI #1377 success |
+| G12 | F12-01…F12-05 | Açık — F12-01/02/03 tamamlandı; F12-04 frontend candidate green, kalan backend gate additive range-aware public catalog support / Issue #162 |
 | G13 | F13-01…F13-04 | Açık |
 | G14 | F14-01…F14-05 | Açık |
 | G15 | F15-01…F15-04 | Açık |
 | G16 | F16-01…F16-08 | Açık |
 | G17 | F17-01…F17-05 | Açık — F17-01/02 tamam; kalan ürün kapıları + F17-03/04/05 ve M23 pilot kanıtı bekleniyor |
 
-Kapanmış/superseded branch veya eski PR metni güncel görev durumu oluşturmaz. Güncel durum için main `TASKS.md` + `PROJECT_STATE.md`, aktif claim/conflict için Issue #65 kullanılır.
+Kapanmış/superseded branch, eski PR metni, handoff özeti veya Issue gövdesi güncel görev durumu oluşturmaz. **Güncel durum için yalnız main `TASKS.md` kullanılır.** Issue #65 sadece anlık claim/conflict/shared-writer koordinasyonudur.

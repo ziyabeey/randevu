@@ -1,6 +1,6 @@
 # Ajan çalışma akışı
 
-Bu belge, görevlerin farklı oturumlar ve uygulayıcılar arasında aynı kapsam ve kanıtla sürdürülebilmesi için kısa çalışma protokolüdür. Ürün kapsamı [PRODUCT_SPEC.md](../../PRODUCT_SPEC.md) ve [ROADMAP.md](../../ROADMAP.md), canlı durum ve bağımlılıklar [TASKS.md](../../TASKS.md), kodun doğrulanmış mevcut hali [PROJECT_STATE.md](../../PROJECT_STATE.md) içindedir. Burada teknik görev planları tekrarlanmaz.
+Bu belge, görevlerin farklı oturumlar ve uygulayıcılar arasında aynı kapsam ve kanıtla sürdürülebilmesi için kısa çalışma protokolüdür. Ürün kapsamı [PRODUCT_SPEC.md](../../PRODUCT_SPEC.md) ve planlanan sıra [ROADMAP.md](../../ROADMAP.md) içindedir. **Canlı görev/main kabul durumu ve bağımlılıklar için tek kaynak [TASKS.md](../../TASKS.md)'dir.** Burada teknik görev planları veya ikinci durum özeti tekrarlanmaz.
 
 ## Teknik kapılar
 
@@ -32,15 +32,30 @@ Kurallar:
 2. **Uygulayıcı başlangıcı doğrular.** Güncel kaynak sırasını ve yalnız ilgili kod/testleri okur. Atanmış alan ya da önkoşul çakışıyorsa kod yazmadan kaydeder. Uygun beceriyi yükler ve sabit adını not eder.
 3. **En küçük kabul dilimi uygulanır.** Değişiklik, görev paketindeki kontratı korur. Yeni API, route, migration veya ekran önerisi mevcutmuş gibi tüketilmez; bağımlı çalışma önce kalıcı kontratı bekler.
 4. **Risk kadar kanıt üretilir.** LIGHT işte hafif, FOCUSED işte hedefli, STRICT işte yüksek güvenli kanıt üretilir. Başarısızlıklar hipotez ve gözlenen sonuçla kaydedilir.
-5. **Yalnız gerekli bağımsız inceleme yapılır.** Validation bütçesi ve gerçek risk alanı hangi reviewer'ı gerektiriyorsa yalnız o kapı açılır. Auth/DB/access için R1; browser/integration/a11y için R2. İki reviewer ancak iki risk alanı gerçekten kesişiyorsa gerekir. Kabul eksikse durum `İncelemede` veya `Main'de / kabul açık` kalır.
+5. **R0 gerekiyorsa bounded çalışır; yalnız gerekli bağımsız inceleme açılır.** İlk R0 adayında confirmed blocker'lar stable ID ile dondurulur. Repair sonrası R0 bütün sistemi yeniden keşfetmez; yalnız frozen blocker kapanışı ve repair-caused regression kontrol eder. Validation bütçesi ve gerçek risk alanı hangi bağımsız reviewer'ı gerektiriyorsa yalnız o kapı açılır. Auth/DB/access için R1; browser/integration/a11y için R2. İki reviewer ancak iki risk alanı gerçekten kesişiyorsa gerekir.
 6. **Kalıcı devir yazılır.** [CONTRIBUTING şablonu](../../CONTRIBUTING.md#oturum-sonu-devri) doldurulur; TASKS ve PR aynı gerçek durumu gösterir. Sonraki oturumun ilk adımı tek ve çalıştırılabilir olur.
+
+### R0 review yaşam döngüsü
+
+R0 acceptance authority değildir; deterministic CI/verifier kanıtı ve coordinator kararı arasında bounded bir sensördür.
+
+1. **DISCOVERY:** İlk candidate üzerinde changed surface + en fazla bir direct dependency hop incelenir. Confirmed blocker'lar `R0-B1...` olarak kimliklenir.
+2. **FREEZE:** Discovery sonunda durable PR review/comment receipt'e discovery exact head ve blocker seti yazılır; temiz review'da bile açıkça `NONE` kaydedilir. Bu receipt olmadan yeni-push verification zinciri tamamlanmış sayılmaz. Hipotez, nit ve öneriler acceptance'a eklenmez.
+3. **REPAIR:** Mevcut PR'ın atanmış tek yazarı aynı branch üzerinde yalnız frozen blocker/counterexample yüzeyini düzeltir; unrelated refactor veya yeni ürün scope'u açmaz. Mevcut `@qwencoder /implement` akışı yeni task branch/PR açtığı için in-place repair değildir; ayrı bir repair mode uygulanıp doğrulanana kadar bu adımda kullanılmaz.
+4. **VERIFICATION:** Sonraki R0 turu eski blocker'ları ve repair'in doğrudan regression'ını doğrular. Normal invariant `next_blockers ⊆ frozen_blockers`'dır.
+5. **ESCAPE:** Yalnız somut secret/credential exposure, auth privilege escalation, cross-tenant breach, destructive data loss/migration corruption, financial double-effect veya mevcut hard safety invariant ihlali yeni blocker olarak mevcut PR'ı tekrar durdurabilir. Diğer yeni bulgular backlog adayıdır.
+
+Bu yaşam döngüsü CEGIS/counterexample-guided repair fikrini korur: iterasyon devam edebilir, fakat her tur problem alanını daraltır. Yeni push, otomatik olarak yeni acceptance keşfi yetkisi vermez.
 
 ## Rol sınırları
 
 | Rol | Sorumluluk |
 | --- | --- |
-| Koordinatör — ana ajan | Kontratları, validation bütçesini, dosya sahipliğini, kapsam dışını, bağımlılıkları, kabulü ve merge sırasını belirler; yalnız gerekli review/staging kapılarını açar. |
-| Uygulayıcı — varsayılan GPT-5.6 Sol | İlgili beceriyi okur, atanmış dosyalarda kontrata göre uygular, validation bütçesine uygun test ve devir kanıtı üretir. |
+| Koordinatör — atanmış koordinatör veya insan operatör | Kontratları, validation bütçesini, dosya sahipliğini, kapsam dışını, bağımlılıkları, ajan routing'ini, kabulü ve merge sırasını belirler; yalnız gerekli review/staging kapılarını açar. |
+| Scout — Gemini | Yalnız belirsiz scope/dependency/repo keşfinde read-only context pack üretir; scope açıksa atlanır. |
+| Uygulayıcı otomasyon route'u — Qwen | Koordinatör açıkça seçtiğinde dondurulmuş kontrattan yeni task branch/PR üretir; model rolün otoritesi değildir. Mevcut workflow in-place repair yapmaz. |
+| R0 — Copilot | İlk candidate'da bounded discovery, repair descendant'ta frozen-blocker verification yapar; acceptance/merge authority değildir. |
+| Provider fallback — Cloudflare Workers AI | Yalnız desteklenen inference route'unda tercih edilen provider unavailable/quota olduğunda aynı rolü devralır; ekstra review katmanı oluşturmaz. |
 | R1 — security/DB reviewer | Yalnız DB/auth/access/security veya STRICT finans/migration riski gerektirdiğinde bağımsız inceleme yapar; feature implementeri değildir. |
 | R2 — browser/integration reviewer | Yalnız browser/integration/a11y/user-flow riski gerektirdiğinde bağımsız inceleme yapar; feature implementeri değildir. |
 | Ürün sahibi/kullanıcı | Ürün kararı veya gerçek kullanıcı girdisi gereken noktayı çözer; zaten verilmiş uygulama ya da merge yetkisi yeniden istenmez. |

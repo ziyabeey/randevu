@@ -102,7 +102,7 @@ Staging run'ı başarısızsa code head değiştirilmeden yeniden deneme yalnız
 - [ ] CI required gate exact head üzerinde yeşil.
 - [ ] Review konuşmaları kapalı ve ruleset bypass edilmedi.
 - [ ] Staging gerekiyorsa exact head ile çalıştı.
-- [ ] TASKS / PROJECT_STATE / S07 handoff yalnız kanıt alındıktan sonra güncellendi.
+- [ ] Canlı durum yalnız TASKS'ta kanıt alındıktan sonra güncellendi; S07 handoff tarihsel kanıt olarak eşlendi.
 
 ## Bir sonraki somut adım
 
