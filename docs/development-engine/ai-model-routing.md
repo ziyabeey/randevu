@@ -78,6 +78,27 @@ stable.
 - **Independent specialist review:** open only the R1/R2 gate justified by the
   validation budget and actual risk.
 
+## API-dispatched independent review roles
+
+The model behind R1 or R2 is a replaceable implementation detail of that role.
+The repository never hardcodes a provider/model name into review routing. When
+the deterministic Dispatcher returns `request_required_reviews`, only
+`recommendation.eligibleRoles` may be fired:
+
+- `r1` uses the configured R1 Routine endpoint and the canonical
+  `r1-db-security-review` contract.
+- `r2` uses the configured R2 Routine endpoint and the canonical
+  `r2-browser-integration-review` contract.
+- a role absent from `eligibleRoles` must not consume Routine credit.
+- both roles may run independently when both canonical risk classes are present.
+
+Review delivery is separate from review acceptance. Provider launch success only
+proves that a session was created. It does not prove that the task-level review
+succeeded, and it never substitutes for a SHA-bound
+`ACCEPTABLE | BLOCKER | INCOMPLETE` receipt. Duplicate launch suppression is
+keyed by role and Dispatcher case fingerprint because the Routine API itself has
+no idempotency key.
+
 ## Cost and loop controls
 
 - AI count must not increase review count.
