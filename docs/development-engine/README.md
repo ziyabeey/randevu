@@ -267,8 +267,10 @@ second status surface is introduced.
 ## Independent R1/R2 Routine delivery
 
 When the pure Development Dispatcher reaches `request_required_reviews`, the
-existing Development Escalation Router may dispatch the dedicated
-`Development Review Router` on canonical `main`. The review router recomputes
+existing Development Escalation Router may call the dedicated reusable
+`Development Review Router`. The review router has no direct `workflow_dispatch`
+entry point; its Routine credentials are reachable only through the checked-in
+parent workflow call. The reusable review router recomputes
 the Dispatcher result from the same observation/evidence, requires the same case
 fingerprint and exact current CI provenance, then fires only the roles listed in
 `eligibleRoles`.
