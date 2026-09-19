@@ -94,4 +94,4 @@ S07 ancak aşağıdakiler birlikte mevcutsa `Tamamlandı` yapılır:
 - pending transition readback temiz, fixture sayısı beklenen, aktif deployment exact head;
 - açık review thread yok;
 - merge sonrası main CI yeşil;
-- TASKS, PROJECT_STATE ve `docs/handoffs/S07.md` gerçek run/commit/metric kanıtıyla güncel.
+- Canlı durum TASKS'ta gerçek run/commit/metric kanıtıyla güncel; `docs/handoffs/S07.md` tarihsel kabul kanıtını taşır.
