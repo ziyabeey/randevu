@@ -87,18 +87,32 @@ function sendJson(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-const server = createServer((request, response) => {
+const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? '/', 'http://localhost');
   requests.push(`${request.method} ${url.pathname}`);
   if (url.pathname === '/test.js') { response.writeHead(200, { 'Content-Type': 'text/javascript' }); response.end(testJs); return; }
   if (url.pathname === '/style.css') { response.writeHead(200, { 'Content-Type': 'text/css' }); response.end(testCss); return; }
-  if (url.pathname.startsWith('/harness/')) {
+  if (url.pathname.startsWith('/harness/') || url.pathname.startsWith('/r/')) {
     response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     response.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/test.js"></script></body></html>');
     return;
   }
+  const body = request.method === 'POST' ? await readJson(request) : {};
+  requestDetails.push({ method: request.method, path: url.pathname, search: url.search, body });
   const profileMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/profile$/);
   if (request.method === 'GET' && profileMatch) return sendJson(response, 200, { profile: profile(decodeURIComponent(profileMatch[1])) });
+  if (request.method === 'GET' && url.pathname === '/api/public/business/multi-salon/services-v2') return sendJson(response, 200, multiCatalog());
+  if (request.method === 'GET' && url.pathname === '/api/public/business/multi-salon/staff') {
+    const serviceId = url.searchParams.get('serviceId');
+    return sendJson(response, 200, { staff: serviceId === serviceA
+      ? [{ staff_id: staffA, staff_name: 'Ada' }]
+      : serviceId === serviceB ? [{ staff_id: staffB, staff_name: 'Bora' }] : [] });
+  }
+  if (request.method === 'POST' && url.pathname === '/api/public/business/multi-salon/group-slots') {
+    const payload = groupSlots(body);
+    if (body.date === '2026-09-20') await sleep(900);
+    return sendJson(response, 200, payload);
+  }
   const bookingMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)$/);
   if (request.method === 'GET' && bookingMatch) return sendJson(response, 200, bookingPayload(decodeURIComponent(bookingMatch[1])));
   if (request.method === 'GET' && url.pathname === `/api/public/media/${brokenMediaId}`) return sendJson(response, 404, { error: { code: 'PUBLIC_MEDIA_NOT_FOUND' } });
