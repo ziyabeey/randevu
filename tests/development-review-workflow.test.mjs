@@ -41,6 +41,17 @@ test('review delivery rechecks live GitHub PR and main identity before role cred
   assert.match(review, /pull-requests: read/);
 });
 
+test('authoritative live fence runs before role exposure, reservation and API fire', () => {
+  assert.match(review, /verify-development-review-live-state\.mjs/);
+  assert.ok((review.match(/verify-development-review-live-state\.mjs/g) ?? []).length >= 5);
+  assert.match(review, /actions: read/);
+  assert.match(review, /r1-review-request\.json/);
+  assert.match(review, /r2-review-request\.json/);
+  assert.match(review, /r1-fire-aborted-stale/);
+  assert.match(review, /r2-fire-aborted-stale/);
+  assert.match(review, /LAUNCH_ABORTED_STALE/);
+});
+
 test('role-specific reservation plus exact-head concurrency prevents duplicate Routine spend', () => {
   assert.match(review, /development-review-launch:r1:\$\{REQUEST_FINGERPRINT\}/);
   assert.match(review, /development-review-launch:r2:\$\{REQUEST_FINGERPRINT\}/);
