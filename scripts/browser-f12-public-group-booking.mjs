@@ -215,7 +215,7 @@ const server = createServer(async (request, response) => {
   const bookMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/group-book$/);
   if (request.method === 'POST' && bookMatch) {
     const group = createdGroup(body.lines);
-    if (bookMatch[1] === 'reassign-salon') {
+    if (bookMatch[1] === 'reassign-salon' || bookMatch[1] === 'invalid-pinned-salon') {
       group.lines[0].staffId = staffC;
       group.lines[0].staffName = 'Ece';
     }
@@ -230,7 +230,7 @@ const server = createServer(async (request, response) => {
     }
     const saved = { group, managementToken: body.managementToken, slug: bookMatch[1] };
     recoveries.set(body.recoveryId, saved);
-    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon') {
+    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon' || bookMatch[1] === 'manual-invalid-salon') {
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon sonucu şu anda doğrulanamıyor.' } });
     }
     return sendJson(response, 201, {
@@ -242,8 +242,9 @@ const server = createServer(async (request, response) => {
   }
   if (request.method === 'POST' && url.pathname === '/api/public/booking/resolve') {
     const saved = recoveries.get(body.recoveryId);
-    if (saved?.slug === 'reload-salon' && !failedResolveOnce.has(body.recoveryId)) {
+    if ((saved?.slug === 'reload-salon' || saved?.slug === 'manual-invalid-salon') && !failedResolveOnce.has(body.recoveryId)) {
       failedResolveOnce.add(body.recoveryId);
+      if (saved.slug === 'manual-invalid-salon') saved.group.lines[1].startsAt = '2026-09-20T08:15:00.000Z';
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Randevu sonucu henüz doğrulanamıyor.' } });
     }
     return saved
@@ -347,7 +348,7 @@ async function pressTab(page) {
   return page.evaluate('(() => { const node=document.activeElement; const style=getComputedStyle(node); return {name:node?.getAttribute?.("name")||"",className:node?.className||"",focusVisible:Boolean(node?.matches?.(":focus-visible")),outlineStyle:style.outlineStyle,outlineWidth:style.outlineWidth}; })()');
 }
 
-async function preparePlan(page, slug) {
+async function preparePlan(page, slug, pinFirstStaff = false) {
   await waitFor(() => page.evaluate('document.querySelectorAll(".public-service-choice").length === 2'), `${slug} catalog did not load`);
   await page.evaluate('document.activeElement instanceof HTMLElement && document.activeElement.blur()');
   let serviceFocus = null;
@@ -358,6 +359,10 @@ async function preparePlan(page, slug) {
   assert.ok(serviceFocus?.focusVisible && serviceFocus.outlineStyle !== 'none' && serviceFocus.outlineWidth !== '0px', `${slug} service choice did not receive visible keyboard focus: ${JSON.stringify(serviceFocus)}`);
   await page.evaluate('Array.from(document.querySelectorAll(".public-service-choice")).forEach((button) => button.click())');
   await waitFor(() => page.evaluate('document.querySelectorAll(".public-selected-line").length === 2'), `${slug} services were not selected`);
+  if (pinFirstStaff) {
+    await waitFor(() => page.evaluate(`Boolean(document.querySelector('.public-selected-line select option[value="${staffA}"]'))`), `${slug} pinned staff option did not load`);
+    await page.evaluate(`(() => { const select=document.querySelector('.public-selected-line select'); select.value='${staffA}'; select.dispatchEvent(new Event('change',{bubbles:true})); })()`);
+  }
   await page.evaluate('Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
   await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-slot"))'), `${slug} group slot did not load`);
   await page.evaluate('document.querySelector(".public-group-slot")?.click()');
@@ -501,6 +506,45 @@ async function runRejectedTimezone(debugUrl, origin) {
   }
 }
 
+async function runRejectedPinnedReassignment(debugUrl, origin) {
+  const slug = 'invalid-pinned-salon';
+  const start = requests.length;
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(page, slug, true);
+    await submitContact(page);
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 1, 'pinned reassignment was not checked through one-shot recovery');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("Randevu sonucu doğrulanamadı")'), 'pinned reassignment did not remain fail closed');
+    assert.equal(await page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), false, 'pinned reassignment reached the result screen');
+    const journeyRequests = requests.slice(start);
+    assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book')).length, 1, 'pinned reassignment sent duplicate group create requests');
+    assert.deepEqual(journeyRequests.find((item) => item.path.endsWith('/group-book')).body.lines, [{ serviceId: serviceA, staffId: staffA }, { serviceId: serviceB, staffId: null }]);
+    assert.deepEqual(page.diagnostics, []);
+  } finally {
+    page.close();
+  }
+}
+
+async function runRejectedManualRecoveryMutation(debugUrl, origin) {
+  const slug = 'manual-invalid-salon';
+  const start = requests.length;
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(page, slug);
+    await submitContact(page);
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 1, 'manual-invalid automatic resolve did not fail once');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("henüz doğrulanamıyor")'), 'manual-invalid did not retain the unresolved result');
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Sonucu tekrar kontrol et"))?.click()');
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 2, 'manual-invalid retry did not resolve again');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("Randevu sonucu doğrulanamadı")'), 'manual-invalid recovery did not compare the selected plan');
+    assert.equal(await page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), false, 'manual-invalid recovery reached the result screen');
+    assert.equal(requests.slice(start).filter((item) => item.path.endsWith('/group-book')).length, 1, 'manual-invalid recovery sent duplicate group create requests');
+    assert.deepEqual(page.diagnostics, []);
+  } finally {
+    page.close();
+  }
+}
+
 try {
   await build({ configFile: false, root, publicDir: false, logLevel: 'error', define: { 'process.env.NODE_ENV': JSON.stringify('production') }, build: { outDir: bundleDir, emptyOutDir: true, minify: false, lib: { entry: path.join(root, 'tests/browser/f12-public-group-booking.tsx'), formats: ['es'] }, rollupOptions: { output: { entryFileNames: 'test.js', chunkFileNames: '[name]-[hash].js' } } } });
   testJs = readFileSync(path.join(bundleDir, 'test.js'));
@@ -529,9 +573,11 @@ try {
   await runReloadRecovery(debugUrl, origin);
   await runRejectedLineMutation(debugUrl, origin);
   await runRejectedTimezone(debugUrl, origin);
+  await runRejectedPinnedReassignment(debugUrl, origin);
+  await runRejectedManualRecoveryMutation(debugUrl, origin);
   assert.ok([...servedChunks].some((name) => /PublicSalonPage-.*\.js$/.test(name)), `production public route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
   assert.ok([...servedChunks].some((name) => /ManageAppointmentPage-.*\.js$/.test(name)), `production management route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
-  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, unpinned reassignment, line/timezone-integrity rejection, closed_absent, reload recovery and /m management.');
+  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, unpinned/pinned staff validation, automatic/manual recovery integrity, line/timezone rejection, closed_absent, reload recovery and /m management.');
 } catch (error) {
   let diagnostics = '';
   try { diagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }

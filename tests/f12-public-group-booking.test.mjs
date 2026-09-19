@@ -46,6 +46,7 @@ test('F12-05 resolves uncertain submissions without issuing a second create', ()
   assert.match(booking, /markPublicBookingUnresolved/);
   assert.match(booking, /\/api\/public\/booking\/resolve/);
   assert.match(booking, /await resolveStoredResult\(unresolved, true, isGroupMode \? multiServiceSelection! : undefined\)/);
+  assert.match(booking, /resolveStoredResult\(blockingRecord, false, multiServiceSelection \?\? undefined\)/);
   assert.match(booking, /expectedGroupSelection !== undefined/);
   assert.match(booking, /resolution === 'closed_absent'/);
   assert.match(booking, /if \(isGroupMode\) onPlanNeedsRefresh\?\.\(\)/);
