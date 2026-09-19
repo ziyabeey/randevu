@@ -26,6 +26,7 @@ on:
         required: true
 
 permissions:
+  actions: write
   contents: read
   id-token: write
 
@@ -129,3 +130,41 @@ jobs:
           set -euo pipefail
           node scripts/fire-claude-routine.mjs \
             --body "${RUNNER_TEMP}/haiku-fire-body.json"
+
+      - name: Dispatch independent R1/R2 delivery
+        if: ${{ steps.route.outputs.disposition == 'DETERMINISTIC_ACTION' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          action="$(jq -r '.envelope.dispatcher.recommendation.suggestedAction // empty' "${RUNNER_TEMP}/escalation-route.json")"
+          if [ "${action}" != "request_required_reviews" ]; then
+            echo "Deterministic action ${action:-unknown} does not require independent Routine delivery."
+            exit 0
+          fi
+
+          fingerprint="$(jq -r '.envelope.caseFingerprint' "${RUNNER_TEMP}/escalation-route.json")"
+          [[ "${fingerprint}" =~ ^[a-f0-9]{64}$ ]]
+
+          payload="${RUNNER_TEMP}/review-workflow-dispatch.json"
+          CASE_FINGERPRINT="${fingerprint}" node <<'NODE'
+          const { writeFileSync } = require('node:fs');
+          const payload = {
+            ref: 'main',
+            inputs: {
+              observation_json: process.env.OBSERVATION_JSON,
+              evidence_json: process.env.EVIDENCE_JSON || '{}',
+              expected_case_fingerprint: process.env.CASE_FINGERPRINT,
+            },
+          };
+          writeFileSync(process.env.RUNNER_TEMP + '/review-workflow-dispatch.json', JSON.stringify(payload));
+          NODE
+
+          gh api --method POST             "repos/${GITHUB_REPOSITORY}/actions/workflows/development-review-router.yml/dispatches"             --input "${payload}"
+
+          {
+            printf '\n## Independent review delivery\n\n'
+            printf -- '- dispatcher action: `request_required_reviews`\n'
+            printf -- '- case fingerprint: `%s`\n' "${fingerprint}"
+            printf -- '- delivery workflow: `Development Review Router` on `main`\n'
+          } >> "${GITHUB_STEP_SUMMARY}"
