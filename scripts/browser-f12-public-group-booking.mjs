@@ -118,6 +118,22 @@ function createdGroup(lines) {
   };
 }
 
+const mutationKinds = ['service', 'end', 'price-type', 'price-min', 'price-max'];
+
+function mutationScenario(slug) {
+  const match = slug.match(/^(create|automatic|manual)-invalid-(service|end|price-type|price-min|price-max)-salon$/);
+  return match ? { phase: match[1], kind: match[2] } : null;
+}
+
+function mutateGroupLine(group, kind) {
+  const line = group.lines[1];
+  if (kind === 'service') line.serviceId = serviceA;
+  if (kind === 'end') line.endsAt = '2026-09-20T08:45:00.000Z';
+  if (kind === 'price-type') line.priceType = 'range';
+  if (kind === 'price-min') line.priceMinMinor = 9999;
+  if (kind === 'price-max') line.priceMaxMinor = 10001;
+}
+
 function recoveryResponse(saved, recoveryId) {
   const anchor = saved.group.lines[0];
   return {
@@ -248,11 +264,14 @@ const server = createServer(async (request, response) => {
   const body = request.method === 'POST' ? await readJson(request) : {};
   requests.push({ method: request.method, path: url.pathname, body, idempotencyKey: request.headers['idempotency-key'] ?? null });
   const profileMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/profile$/);
-  if (request.method === 'GET' && profileMatch) return sendJson(response, 200, { profile: {
+  if (request.method === 'GET' && profileMatch) {
+    if (profileMatch[1] === 'loading-salon') await sleep(500);
+    return sendJson(response, 200, { profile: {
     public_name: 'F12 Salon', short_description: 'Çoklu hizmet rezervasyonu', long_description: null,
     public_phone: null, public_email: null, public_website: null, public_whatsapp: null,
     address_text: 'İstanbul', show_work_hours: false, cover_media_id: null, work_hours: [], media: [],
-  } });
+    } });
+  }
   const catalogMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/services-v2$/);
   if (request.method === 'GET' && catalogMatch) {
     if (catalogMatch[1] === 'legacy-salon') return sendJson(response, 503, { error: { code: 'PUBLIC_SERVICE_UNAVAILABLE', message: 'Çoklu hizmet planı hazırlanamadı.' } });
@@ -273,6 +292,7 @@ const server = createServer(async (request, response) => {
   const bookMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/group-book$/);
   if (request.method === 'POST' && bookMatch) {
     const group = createdGroup(body.lines);
+    const mutation = mutationScenario(bookMatch[1]);
     if (bookMatch[1] === 'reassign-salon' || bookMatch[1] === 'invalid-pinned-salon') {
       group.lines[0].staffId = staffC;
       group.lines[0].staffName = 'Ece';
@@ -283,12 +303,13 @@ const server = createServer(async (request, response) => {
     if (bookMatch[1] === 'invalid-timezone-salon') {
       group.timezone = 'Mars/Olympus';
     }
+    if (mutation?.phase === 'create') mutateGroupLine(group, mutation.kind);
     if (bookMatch[1] === 'closed-salon') {
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon sonucu şu anda doğrulanamıyor.' } });
     }
-    const saved = { group, managementToken: body.managementToken, slug: bookMatch[1] };
+    const saved = { group, managementToken: body.managementToken, slug: bookMatch[1], mutation };
     recoveries.set(body.recoveryId, saved);
-    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon' || bookMatch[1] === 'scalar-reload-salon' || bookMatch[1] === 'changed-plan-salon' || bookMatch[1] === 'completed-recovery-salon' || bookMatch[1] === 'cancelled-recovery-salon' || bookMatch[1] === 'partial-recovery-salon' || bookMatch[1] === 'manual-invalid-salon') {
+    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon' || bookMatch[1] === 'scalar-reload-salon' || bookMatch[1] === 'changed-plan-salon' || bookMatch[1] === 'confirmed-recovery-salon' || bookMatch[1] === 'completed-recovery-salon' || bookMatch[1] === 'no-show-recovery-salon' || bookMatch[1] === 'cancelled-recovery-salon' || bookMatch[1] === 'partial-recovery-salon' || bookMatch[1] === 'manual-invalid-salon' || mutation?.phase === 'automatic' || mutation?.phase === 'manual') {
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon sonucu şu anda doğrulanamıyor.' } });
     }
     return sendJson(response, 201, {
@@ -301,10 +322,17 @@ const server = createServer(async (request, response) => {
   if (request.method === 'POST' && url.pathname === '/api/public/booking/resolve') {
     if (body.recoveryId === preF12SingleRecoveryId) return sendJson(response, 200, preF12SingleRecoveryResponse());
     const saved = recoveries.get(body.recoveryId);
-    if ((saved?.slug === 'reload-salon' || saved?.slug === 'changed-plan-salon' || saved?.slug === 'manual-invalid-salon') && !failedResolveOnce.has(body.recoveryId)) {
+    if ((saved?.slug === 'reload-salon' || saved?.slug === 'changed-plan-salon' || saved?.slug === 'manual-invalid-salon' || saved?.mutation?.phase === 'manual') && !failedResolveOnce.has(body.recoveryId)) {
       failedResolveOnce.add(body.recoveryId);
       if (saved.slug === 'manual-invalid-salon') saved.group.lines[1].startsAt = '2026-09-20T08:15:00.000Z';
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Randevu sonucu henüz doğrulanamıyor.' } });
+    }
+    if (saved?.mutation?.phase === 'automatic' || saved?.mutation?.phase === 'manual') {
+      mutateGroupLine(saved.group, saved.mutation.kind);
+    }
+    if (saved?.slug === 'confirmed-recovery-salon') {
+      saved.group.status = 'confirmed';
+      for (const line of saved.group.lines) line.status = 'confirmed';
     }
     if (saved?.slug === 'cancelled-recovery-salon') {
       saved.group.status = 'cancelled';
@@ -313,6 +341,10 @@ const server = createServer(async (request, response) => {
     if (saved?.slug === 'completed-recovery-salon') {
       saved.group.status = 'completed';
       for (const line of saved.group.lines) line.status = 'completed';
+    }
+    if (saved?.slug === 'no-show-recovery-salon') {
+      saved.group.status = 'no_show';
+      for (const line of saved.group.lines) line.status = 'no_show';
     }
     if (saved?.slug === 'partial-recovery-salon') {
       saved.group.status = 'partial';
@@ -349,13 +381,16 @@ const server = createServer(async (request, response) => {
     });
   }
   const businessMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)$/);
-  if (request.method === 'GET' && businessMatch) return sendJson(response, 200, {
+  if (request.method === 'GET' && businessMatch) {
+    if (businessMatch[1] === 'loading-salon') await sleep(500);
+    return sendJson(response, 200, {
     business: { name: 'F12 Salon', slug: businessMatch[1], timezone: 'Europe/Istanbul', local_date: '2026-09-20', max_date: '2026-11-19', step_minutes: 15, min_notice_minutes: 60, horizon_days: 60 },
     services: businessMatch[1] === 'legacy-salon'
       ? [{ service_id: serviceB, name: 'Kesim', duration_minutes: 30, price_minor: 10000, currency: 'TRY' }]
       : [],
     bookingClock: { serverNowEpochSeconds: Math.floor(Date.now() / 1000), submitWindowSeconds: 300 },
-  });
+    });
+  }
   return sendJson(response, 404, { error: { code: 'NOT_FOUND', message: 'Fixture route missing.' } });
 });
 server.on('connection', (socket) => { sockets.add(socket); socket.on('close', () => sockets.delete(socket)); });
@@ -368,6 +403,17 @@ async function waitFor(read, message, timeoutMs = 12_000) {
     await sleep(60);
   }
   throw new Error(`${message}${lastError ? `: ${lastError.message}` : ''}`);
+}
+
+async function runScenario(name, run) {
+  console.log(`[F12-05 scenario: ${name}] START`);
+  try {
+    await run();
+    console.log(`[F12-05 scenario: ${name}] PASS`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`[F12-05 scenario: ${name}] ${message}`, { cause: error });
+  }
 }
 
 class Cdp {
@@ -613,6 +659,26 @@ async function runChangedPlanRecovery(debugUrl, origin) {
   }
 }
 
+async function runProductionLoadingState(debugUrl, origin) {
+  const page = await openRoute(debugUrl, origin, '/r/loading-salon', 390);
+  try {
+    await waitFor(() => page.evaluate(`Boolean(
+      document.querySelector('.public-salon-hero-loading[aria-busy="true"]')
+      && document.body.innerText.includes('Uygun saatler hazırlanıyor…')
+    )`), 'production loading state did not render');
+    const loading = await page.evaluate(`(() => ({
+      hero: Boolean(document.querySelector('.public-salon-hero-loading[aria-busy="true"]')),
+      booking: document.body.innerText.includes('Uygun saatler hazırlanıyor…'),
+    }))()`);
+    assert.deepEqual(loading, { hero: true, booking: true }, 'production route did not expose both salon and booking loading states');
+    await waitFor(() => page.evaluate('document.querySelectorAll(".public-service-choice").length === 2'), 'production loading route did not settle into the service catalog');
+    assert.equal(await page.evaluate('document.body.innerText.includes("Uygun saatler hazırlanıyor…")'), false, 'production booking loading state did not clear');
+    assert.deepEqual(page.diagnostics, [], 'production loading route emitted browser diagnostics');
+  } finally {
+    page.close();
+  }
+}
+
 async function runLifecycleStateRecovery(debugUrl, origin, slug, expectedKicker, expectedTone) {
   const start = requests.length;
   const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
@@ -623,10 +689,15 @@ async function runLifecycleStateRecovery(debugUrl, origin, slug, expectedKicker,
     const result = await page.evaluate('(() => { const status=document.querySelector(".public-result-status"); const marker=document.querySelector(".public-result-mark"); return {text:document.body.innerText,statusClass:status?.className,statusBackground:status ? getComputedStyle(status).backgroundColor : null,markerClass:marker?.className,markerBackground:marker ? getComputedStyle(marker).backgroundColor : null}; })()');
     assert.match(result.statusClass, new RegExp(`\\bis-${expectedTone}\\b`), `${slug} did not use the ${expectedTone} status tone`);
     assert.match(result.markerClass, new RegExp(`\\bis-${expectedTone}\\b`), `${slug} did not use the ${expectedTone} marker tone`);
-    assert.doesNotMatch(result.statusClass, /\bis-active\b/, `${slug} retained the active success status tone`);
-    assert.doesNotMatch(result.markerClass, /\bis-active\b/, `${slug} retained the active success marker tone`);
-    assert.notEqual(result.statusBackground, 'rgb(238, 249, 242)', `${slug} retained the green active status surface`);
-    assert.notEqual(result.markerBackground, 'rgb(230, 247, 237)', `${slug} retained the green active marker surface`);
+    if (expectedTone === 'active') {
+      assert.equal(result.statusBackground, 'rgb(238, 249, 242)', `${slug} did not use the green active status surface`);
+      assert.equal(result.markerBackground, 'rgb(230, 247, 237)', `${slug} did not use the green active marker surface`);
+    } else {
+      assert.doesNotMatch(result.statusClass, /\bis-active\b/, `${slug} retained the active success status tone`);
+      assert.doesNotMatch(result.markerClass, /\bis-active\b/, `${slug} retained the active success marker tone`);
+      assert.notEqual(result.statusBackground, 'rgb(238, 249, 242)', `${slug} retained the green active status surface`);
+      assert.notEqual(result.markerBackground, 'rgb(230, 247, 237)', `${slug} retained the green active marker surface`);
+    }
     assert.doesNotMatch(result.text, /RANDEVU OLUŞTURULDU/, `${slug} rendered create-success copy`);
     if (slug === 'partial-recovery-salon') {
       assert.match(result.text, /Durum: Planlandı/);
@@ -783,6 +854,37 @@ async function runRejectedManualRecoveryMutation(debugUrl, origin) {
   }
 }
 
+async function runRejectedPlanMutation(debugUrl, origin, phase, kind) {
+  const slug = `${phase}-invalid-${kind}-salon`;
+  const start = requests.length;
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(page, slug, false, false);
+    await submitContact(page);
+    const expectedResolveCount = phase === 'manual' ? 2 : 1;
+    await waitFor(
+      () => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length >= 1,
+      `${slug} did not run automatic recovery`,
+    );
+    if (phase === 'manual') {
+      await waitFor(() => page.evaluate('document.body.innerText.includes("henüz doğrulanamıyor")'), `${slug} did not retain the unresolved result before manual retry`);
+      await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Sonucu tekrar kontrol et"))?.click()');
+      await waitFor(
+        () => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === expectedResolveCount,
+        `${slug} manual retry did not resolve again`,
+      );
+    }
+    await waitFor(() => page.evaluate('document.body.innerText.includes("Randevu sonucu doğrulanamadı")'), `${slug} did not reject the mutated group result`);
+    assert.equal(await page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), false, `${slug} reached the result screen`);
+    const journeyRequests = requests.slice(start);
+    assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book')).length, 1, `${slug} sent duplicate group create requests`);
+    assert.equal(journeyRequests.filter((item) => item.path === '/api/public/booking/resolve').length, expectedResolveCount, `${slug} resolve count mismatch`);
+    assert.deepEqual(page.diagnostics, [], `${slug} emitted browser diagnostics`);
+  } finally {
+    page.close();
+  }
+}
+
 try {
   await build({ configFile: false, root, publicDir: false, logLevel: 'error', define: { 'process.env.NODE_ENV': JSON.stringify('production') }, build: { outDir: bundleDir, emptyOutDir: true, minify: false, lib: { entry: path.join(root, 'tests/browser/f12-public-group-booking.tsx'), formats: ['es'] }, rollupOptions: { output: { entryFileNames: 'test.js', chunkFileNames: '[name]-[hash].js' } } } });
   testJs = readFileSync(path.join(bundleDir, 'test.js'));
@@ -804,25 +906,35 @@ try {
   const port = await waitFor(() => { try { return readFileSync(activePort, 'utf8').split(/\r?\n/)[0] || false; } catch { return false; } }, 'F12-05 Chrome did not expose a debugging port');
   const debugUrl = `http://127.0.0.1:${port}`;
 
-  await runJourney(debugUrl, origin, 'success-salon', 360, false);
-  await runJourney(debugUrl, origin, 'recovery-salon', 390, true);
-  await runJourney(debugUrl, origin, 'reassign-salon', 390, false);
-  await runClosedAbsent(debugUrl, origin);
-  await runReloadRecovery(debugUrl, origin);
-  await runRejectedScalarReloadRecovery(debugUrl, origin);
-  await runChangedPlanRecovery(debugUrl, origin);
-  await runLifecycleStateRecovery(debugUrl, origin, 'completed-recovery-salon', 'RANDEVU TAMAMLANDI', 'neutral');
-  await runLifecycleStateRecovery(debugUrl, origin, 'cancelled-recovery-salon', 'RANDEVU İPTAL EDİLDİ', 'attention');
-  await runLifecycleStateRecovery(debugUrl, origin, 'partial-recovery-salon', 'RANDEVU PLANI KISMEN DEĞİŞTİ', 'attention');
-  await runPreF12SingleRecoveryWithGroupSelection(debugUrl, origin);
-  await runLegacyFallback(debugUrl, origin);
-  await runRejectedLineMutation(debugUrl, origin);
-  await runRejectedTimezone(debugUrl, origin);
-  await runRejectedPinnedReassignment(debugUrl, origin);
-  await runRejectedManualRecoveryMutation(debugUrl, origin);
-  assert.ok([...servedChunks].some((name) => /PublicSalonPage-.*\.js$/.test(name)), `production public route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
-  assert.ok([...servedChunks].some((name) => /ManageAppointmentPage-.*\.js$/.test(name)), `production management route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
-  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, populated legacy /book fallback, pre-F12 single plus immutable automatic/manual/reload group recovery, cancelled/partial status-specific outcomes, scalar/line/timezone/staff rejection, closed_absent and /m management.');
+  await runScenario('production loading state', () => runProductionLoadingState(debugUrl, origin));
+  await runScenario('360px create and management journey', () => runJourney(debugUrl, origin, 'success-salon', 360, false));
+  await runScenario('390px lost-response recovery journey', () => runJourney(debugUrl, origin, 'recovery-salon', 390, true));
+  await runScenario('unpinned staff reassignment', () => runJourney(debugUrl, origin, 'reassign-salon', 390, false));
+  await runScenario('closed_absent availability refresh', () => runClosedAbsent(debugUrl, origin));
+  await runScenario('reload recovery', () => runReloadRecovery(debugUrl, origin));
+  await runScenario('scalar group recovery rejection', () => runRejectedScalarReloadRecovery(debugUrl, origin));
+  await runScenario('immutable changed-plan recovery', () => runChangedPlanRecovery(debugUrl, origin));
+  await runScenario('confirmed active lifecycle outcome', () => runLifecycleStateRecovery(debugUrl, origin, 'confirmed-recovery-salon', 'RANDEVU ONAYLANDI', 'active'));
+  await runScenario('completed neutral lifecycle outcome', () => runLifecycleStateRecovery(debugUrl, origin, 'completed-recovery-salon', 'RANDEVU TAMAMLANDI', 'neutral'));
+  await runScenario('no-show attention lifecycle outcome', () => runLifecycleStateRecovery(debugUrl, origin, 'no-show-recovery-salon', 'RANDEVUYA GELİNMEDİ', 'attention'));
+  await runScenario('cancelled attention lifecycle outcome', () => runLifecycleStateRecovery(debugUrl, origin, 'cancelled-recovery-salon', 'RANDEVU İPTAL EDİLDİ', 'attention'));
+  await runScenario('partial attention lifecycle outcome', () => runLifecycleStateRecovery(debugUrl, origin, 'partial-recovery-salon', 'RANDEVU PLANI KISMEN DEĞİŞTİ', 'attention'));
+  await runScenario('pre-F12 single recovery with group selection', () => runPreF12SingleRecoveryWithGroupSelection(debugUrl, origin));
+  await runScenario('populated legacy single-service fallback', () => runLegacyFallback(debugUrl, origin));
+  await runScenario('start-time mutation rejection', () => runRejectedLineMutation(debugUrl, origin));
+  await runScenario('timezone mutation rejection', () => runRejectedTimezone(debugUrl, origin));
+  await runScenario('pinned staff reassignment rejection', () => runRejectedPinnedReassignment(debugUrl, origin));
+  await runScenario('legacy manual recovery mutation rejection', () => runRejectedManualRecoveryMutation(debugUrl, origin));
+  for (const phase of ['create', 'automatic', 'manual']) {
+    for (const kind of mutationKinds) {
+      await runScenario(`${phase} ${kind} mutation rejection`, () => runRejectedPlanMutation(debugUrl, origin, phase, kind));
+    }
+  }
+  await runScenario('production lazy chunk boundaries', async () => {
+    assert.ok([...servedChunks].some((name) => /PublicSalonPage-.*\.js$/.test(name)), `production public route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
+    assert.ok([...servedChunks].some((name) => /ManageAppointmentPage-.*\.js$/.test(name)), `production management route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
+  });
+  console.log('F12-05 public group browser passed: named production-route loading/lazy chunks, 360/390 create, legacy /book fallback, immutable recovery, all lifecycle tones, create/automatic/manual service/end/price mutation rejection, closed_absent and /m management.');
 } catch (error) {
   let diagnostics = '';
   try { diagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }

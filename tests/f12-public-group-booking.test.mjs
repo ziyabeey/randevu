@@ -101,3 +101,13 @@ test('F12-05 keeps one booking-state owner and lazy-loads private/operator page 
   assert.match(browserRunner, /PublicSalonPage-\.\*\\\.js/);
   assert.match(browserRunner, /ManageAppointmentPage-\.\*\\\.js/);
 });
+
+test('F12-05 browser acceptance names scenarios and exercises the full recovery matrix', () => {
+  assert.match(browserRunner, /async function runScenario/);
+  assert.match(browserRunner, /production loading state/);
+  assert.match(browserRunner, /confirmed active lifecycle outcome/);
+  assert.match(browserRunner, /no-show attention lifecycle outcome/);
+  assert.match(browserRunner, /const mutationKinds = \['service', 'end', 'price-type', 'price-min', 'price-max'\]/);
+  assert.match(browserRunner, /for \(const phase of \['create', 'automatic', 'manual'\]\)/);
+  assert.match(browserRunner, /runRejectedPlanMutation/);
+});
