@@ -1,158 +1,157 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
+import {
+  generateKeyPairSync,
+  sign,
+} from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import {
+  assertPackageBinding,
+  prepareOpusHandoff,
+  verifyGithubOidcAttestation,
+} from '../scripts/fire-opus-escalation.mjs';
 
-const script = path.resolve('scripts/fire-opus-escalation.mjs');
+const nowMs = Date.parse('2026-09-19T10:00:00Z');
+const workflowSha = 'c'.repeat(40);
+const fingerprint = 'a'.repeat(64);
+const sourceEnvelopeBytes = 1000;
 
-function writePackage(dir, value) {
-  const file = path.join(dir, 'package.json');
-  writeFileSync(file, JSON.stringify(value));
-  return file;
+const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+});
+const publicJwk = publicKey.export({ format: 'jwk' });
+publicJwk.kid = 'test-key';
+publicJwk.use = 'sig';
+publicJwk.alg = 'RS256';
+const jwks = { keys: [publicJwk] };
+
+function encodeJson(value) {
+  return Buffer.from(JSON.stringify(value)).toString('base64url');
 }
 
-test('Opus handoff dry-run accepts only a reasoning package and never requires credentials', () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'opus-handoff-'));
-  try {
-    const file = writePackage(dir, {
-      DISPOSITION: 'REASONING_REQUIRED',
-      CASE_FINGERPRINT: 'a'.repeat(64),
-      SOURCE_ENVELOPE_BYTES: 1000,
-      OPUS_ESCALATION_PACKAGE: {
-        TASK: 'F12-04C',
-        PR: 176,
-        QUESTION: 'Resolve bounded ambiguity.',
-      },
-    });
-    const run = spawnSync(process.execPath, [script, '--package', file, '--expected-fingerprint', 'a'.repeat(64), '--expected-source-bytes', '1000', '--dry-run'], {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-    });
-    assert.equal(run.status, 0, run.stdout + run.stderr);
-    const parsed = JSON.parse(run.stdout);
-    assert.equal(parsed.dryRun, true);
-    assert.equal(parsed.caseFingerprint, 'a'.repeat(64));
-    assert.equal(parsed.sourceEnvelopeBytes, 1000);
-    assert.ok(parsed.compressedPackageBytes > 0);
-    assert.equal(parsed.compressionRatio, Number((parsed.compressedPackageBytes / 1000).toFixed(4)));
-    assert.ok(parsed.textBytes > 0);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+function makeToken(overrides = {}) {
+  const now = Math.floor(nowMs / 1000);
+  const header = encodeJson({ alg: 'RS256', typ: 'JWT', kid: 'test-key' });
+  const payload = encodeJson({
+    iss: 'https://token.actions.githubusercontent.com',
+    aud: `kepenk-escalation:v1:${fingerprint}:${sourceEnvelopeBytes}:${workflowSha}`,
+    repository: 'ziyabeey1-ai/randevu',
+    repository_id: '1363775739',
+    runner_environment: 'github-hosted',
+    workflow_ref: 'ziyabeey1-ai/randevu/.github/workflows/development-escalation-router.yml@refs/heads/main',
+    sha: workflowSha,
+    run_id: '12345',
+    nbf: now - 30,
+    iat: now - 10,
+    exp: now + 300,
+    ...overrides,
+  });
+  const input = `${header}.${payload}`;
+  const signature = sign('RSA-SHA256', Buffer.from(input), privateKey).toString('base64url');
+  return `${input}.${signature}`;
+}
+
+function packageFor(token, overrides = {}) {
+  return {
+    DISPOSITION: 'REASONING_REQUIRED',
+    CASE_FINGERPRINT: fingerprint,
+    SOURCE_ENVELOPE_BYTES: sourceEnvelopeBytes,
+    TRUSTED_ATTESTATION: token,
+    OPUS_ESCALATION_PACKAGE: {
+      TASK: 'F12-04C',
+      PR: 176,
+      QUESTION: 'Resolve bounded ambiguity.',
+    },
+    ...overrides,
+  };
+}
+
+test('GitHub OIDC attestation binds fingerprint, source bytes, repository and workflow', async () => {
+  const binding = await verifyGithubOidcAttestation(makeToken(), { jwks, nowMs });
+  assert.equal(binding.caseFingerprint, fingerprint);
+  assert.equal(binding.sourceEnvelopeBytes, sourceEnvelopeBytes);
+  assert.equal(binding.workflowSha, workflowSha);
+  assert.equal(binding.runId, '12345');
 });
 
-test('Opus handoff fails closed when Haiku sends a non-reasoning disposition', () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'opus-handoff-'));
-  try {
-    const file = writePackage(dir, {
-      DISPOSITION: 'NO_ACTION',
-      CASE_FINGERPRINT: 'b'.repeat(64),
-      SOURCE_ENVELOPE_BYTES: 1000,
-      OPUS_ESCALATION_PACKAGE: { QUESTION: 'none' },
-    });
-    const run = spawnSync(process.execPath, [script, '--package', file, '--expected-fingerprint', 'b'.repeat(64), '--expected-source-bytes', '1000', '--dry-run'], {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-    });
-    assert.notEqual(run.status, 0);
-    assert.match(run.stderr, /OPUS_HANDOFF_BLOCKED: DISPOSITION_NO_ACTION/);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+test('Opus preparation accepts a valid attested reasoning package', async () => {
+  const prepared = await prepareOpusHandoff(packageFor(makeToken()), { jwks, nowMs });
+  assert.equal(prepared.pkg.caseFingerprint, fingerprint);
+  assert.equal(prepared.binding.runId, '12345');
+  assert.ok(prepared.compressedPackageBytes > 0);
+  assert.equal(
+    prepared.compressionRatio,
+    Number((prepared.compressedPackageBytes / sourceEnvelopeBytes).toFixed(4)),
+  );
+  assert.ok(prepared.textBytes > 0);
 });
 
-test('Opus handoff rejects malformed case fingerprints before any network call', () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'opus-handoff-'));
-  try {
-    const file = writePackage(dir, {
-      DISPOSITION: 'REASONING_REQUIRED',
-      CASE_FINGERPRINT: 'not-a-fingerprint',
-      SOURCE_ENVELOPE_BYTES: 1000,
-      OPUS_ESCALATION_PACKAGE: { QUESTION: 'bounded' },
-    });
-    const run = spawnSync(process.execPath, [script, '--package', file, '--expected-fingerprint', 'c'.repeat(64), '--expected-source-bytes', '1000', '--dry-run'], {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-    });
-    assert.notEqual(run.status, 0);
-    assert.match(run.stderr, /OPUS_HANDOFF_BLOCKED: CASE_FINGERPRINT_INVALID/);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+test('altering both package binding fields cannot bypass the signed audience', async () => {
+  const pkg = packageFor(makeToken(), {
+    CASE_FINGERPRINT: 'b'.repeat(64),
+    SOURCE_ENVELOPE_BYTES: 999,
+  });
+  await assert.rejects(
+    prepareOpusHandoff(pkg, { jwks, nowMs }),
+    /OPUS_HANDOFF_BLOCKED: CASE_FINGERPRINT_MISMATCH/,
+  );
 });
 
+test('tampered OIDC payload is rejected before Opus network access', async () => {
+  const token = makeToken();
+  const [header, payload, signature] = token.split('.');
+  const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+  claims.aud = `kepenk-escalation:v1:${'f'.repeat(64)}:${sourceEnvelopeBytes}:${workflowSha}`;
+  const tampered = `${header}.${encodeJson(claims)}.${signature}`;
+  await assert.rejects(
+    verifyGithubOidcAttestation(tampered, { jwks, nowMs }),
+    /OPUS_HANDOFF_BLOCKED: ATTESTATION_SIGNATURE_INVALID/,
+  );
+});
 
-test('GitHub escalation router can fire Haiku but has no Opus credential path', () => {
+test('wrong repository or workflow claims are rejected', async () => {
+  await assert.rejects(
+    verifyGithubOidcAttestation(makeToken({ repository: 'attacker/repo' }), { jwks, nowMs }),
+    /OPUS_HANDOFF_BLOCKED: ATTESTATION_REPOSITORY_INVALID/,
+  );
+  await assert.rejects(
+    verifyGithubOidcAttestation(makeToken({ workflow_ref: 'ziyabeey1-ai/randevu/.github/workflows/other.yml@refs/heads/main' }), { jwks, nowMs }),
+    /OPUS_HANDOFF_BLOCKED: ATTESTATION_WORKFLOW_INVALID/,
+  );
+});
+
+test('package binding helper rejects source-byte drift', () => {
+  assert.throws(
+    () => assertPackageBinding(
+      { caseFingerprint: fingerprint, sourceEnvelopeBytes: 999 },
+      { caseFingerprint: fingerprint, sourceEnvelopeBytes },
+    ),
+    /OPUS_HANDOFF_BLOCKED: SOURCE_ENVELOPE_BYTES_MISMATCH/,
+  );
+});
+
+test('GitHub router can fire Haiku but has no Opus credential path', () => {
   const workflow = readFileSync(path.resolve('.github/workflows/development-escalation-router.yml'), 'utf8');
   assert.match(workflow, /CLAUDE_HAIKU_ROUTINE_URL/);
   assert.match(workflow, /CLAUDE_HAIKU_ROUTINE_TOKEN/);
+  assert.match(workflow, /id-token: write/);
   assert.doesNotMatch(workflow, /CLAUDE_OPUS_ROUTINE_URL/);
   assert.doesNotMatch(workflow, /CLAUDE_OPUS_ROUTINE_TOKEN/);
 });
 
-
-test('Claude repository instructions make Haiku the exclusive Opus caller only for marked compressor runs', () => {
+test('Claude instructions use a fixed command with no payload interpolation', () => {
   const guidance = readFileSync(path.resolve('CLAUDE.md'), 'utf8');
   assert.match(guidance, /EVIDENCE_COMPRESSION_REQUEST/);
-  assert.match(guidance, /trigger Opus exactly once/);
-  assert.match(guidance, /node scripts\/fire-opus-escalation\.mjs --package .* --expected-fingerprint .* --expected-source-bytes/);
-  assert.match(guidance, /GitHub Actions, the Dispatcher, and the caller are not Opus callers/);
+  assert.match(guidance, /node scripts\/fire-opus-escalation\.mjs --package \/tmp\/kepenk-opus-handoff\.json/);
+  assert.doesNotMatch(guidance, /--expected-fingerprint|--expected-source-bytes/);
+  assert.match(guidance, /GitHub-signed OIDC attestation/);
   assert.match(guidance, /OPUS_HANDOFF_BLOCKED/);
-  assert.match(guidance, /Outside an `EVIDENCE_COMPRESSION_REQUEST` session, this section grants no new\s+authority/);
 });
 
-
-test('Opus handoff rejects a compressed package whose fingerprint differs from the Dispatcher fingerprint', () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'opus-handoff-'));
-  try {
-    const file = writePackage(dir, {
-      DISPOSITION: 'REASONING_REQUIRED',
-      CASE_FINGERPRINT: 'd'.repeat(64),
-      SOURCE_ENVELOPE_BYTES: 1000,
-      OPUS_ESCALATION_PACKAGE: { QUESTION: 'bounded' },
-    });
-    const run = spawnSync(process.execPath, [
-      script,
-      '--package', file,
-      '--expected-fingerprint', 'e'.repeat(64),
-      '--expected-source-bytes', '1000',
-      '--dry-run',
-    ], {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-    });
-    assert.notEqual(run.status, 0);
-    assert.match(run.stderr, /OPUS_HANDOFF_BLOCKED: CASE_FINGERPRINT_MISMATCH/);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-
-test('Opus handoff rejects Haiku source-byte drift before network access', () => {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'opus-handoff-'));
-  try {
-    const file = writePackage(dir, {
-      DISPOSITION: 'REASONING_REQUIRED',
-      CASE_FINGERPRINT: 'f'.repeat(64),
-      SOURCE_ENVELOPE_BYTES: 999,
-      OPUS_ESCALATION_PACKAGE: { QUESTION: 'bounded' },
-    });
-    const run = spawnSync(process.execPath, [
-      script,
-      '--package', file,
-      '--expected-fingerprint', 'f'.repeat(64),
-      '--expected-source-bytes', '1000',
-      '--dry-run',
-    ], {
-      cwd: process.cwd(),
-      encoding: 'utf8',
-    });
-    assert.notEqual(run.status, 0);
-    assert.match(run.stderr, /OPUS_HANDOFF_BLOCKED: SOURCE_ENVELOPE_BYTES_MISMATCH/);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+test('generic Routine adapter never echoes request or response bodies on failure paths', () => {
+  const adapter = readFileSync(path.resolve('scripts/fire-claude-routine.mjs'), 'utf8');
+  assert.doesNotMatch(adapter, /responseText\.slice|raw\.slice/);
+  assert.doesNotMatch(adapter, /dryRun[^\n]+body/);
+  assert.match(adapter, /CLAUDE_ROUTINE_FIRE_BLOCKED: TRANSPORT_UNAVAILABLE/);
 });
