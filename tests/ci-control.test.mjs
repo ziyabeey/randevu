@@ -30,7 +30,7 @@ test('missing, unknown or unreadable event data always falls back to full checks
   const base = 'a'.repeat(40), head = 'b'.repeat(40);
   const event = { pull_request: { base: { sha: base }, head: { sha: head } } };
   const git = (args) => args[0] === 'merge-base' ? base : 'M\0README.md\0';
-  assert.equal(selectScope({ eventName: 'pull_request', event, git }).mode, 'docs');
+  assert.equal(selectScope({ eventName: 'pull_request', event, git }).mode, 'code');
   assert.equal(selectScope({ eventName: 'push', event: { before: base, after: head }, git }).mode, 'docs');
   for (const options of [{}, { eventName: 'workflow_dispatch', event },
     { eventName: 'push', event: { before: '0'.repeat(40), after: head } },
@@ -55,6 +55,24 @@ test('trusted receipt normalization accepts only validated same-base run identit
   ], base), [good]);
   assert.deepEqual(normalizeTrustedReceipts({}, base), []);
   assert.deepEqual(normalizeTrustedReceipts([good], 'bad-base'), []);
+});
+
+test('an unproven docs-only PR still runs full code checks', () => {
+  const base = 'a'.repeat(40);
+  const head = 'b'.repeat(40);
+  const event = {
+    action: 'opened',
+    number: 187,
+    pull_request: { number: 187, base: { sha: base }, head: { sha: head } },
+  };
+  const git = (args) => {
+    if (args[0] === 'merge-base') return base;
+    if (args[0] === 'diff') return 'M\0TASKS.md\0M\0docs/handoffs/F12-05.md\0';
+    throw new Error(`unexpected git call: ${args.join(' ')}`);
+  };
+  const result = selectScope({ eventName: 'pull_request', event, git });
+  assert.equal(result.mode, 'code');
+  assert.equal(result.reason, 'git-diff');
 });
 
 test('docs-only descendant of a same-base green PR head reuses full-code evidence', () => {
@@ -158,12 +176,17 @@ test('actual Git history classifies multi-file pushes, rename and deletion conse
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('CI workflow keeps GitHub token out of PR-controlled scope code and queries the authoritative workflow path', () => {
+test('CI receipt lookup is anonymous, authoritative and requires prior full-code completion', () => {
   const workflow = readFileSync(path.resolve('.github/workflows/ci.yml'), 'utf8');
   assert.match(workflow, /actions\/workflows\/ci\.yml\/runs/);
-  assert.match(workflow, /Resolve trusted prior CI receipts/);
+  assert.match(workflow, /actions\/runs\/\$\{run_id\}\/jobs/);
+  assert.match(workflow, /Run all required code checks/);
+  assert.match(workflow, /Require the selected checks to complete/);
+  assert.match(workflow, /Resolve trusted prior full-code CI receipts/);
+  assert.doesNotMatch(workflow, /Authorization: Bearer|github\.token|GH_TOKEN|GITHUB_TOKEN/);
+  assert.match(workflow, /unexpected shape; full code checks remain required/);
+  assert.match(workflow, /candidate parsing failed; full code checks remain required/);
   const scopeSection = workflow.split('- name: Select required checks')[1]?.split('- name: Check documentation')[0] ?? '';
-  assert.doesNotMatch(scopeSection, /GITHUB_TOKEN|github\.token|GH_TOKEN/);
   assert.match(scopeSection, /TRUSTED_CI_RECEIPTS_FILE/);
 });
 
