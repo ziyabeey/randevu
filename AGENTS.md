@@ -2,10 +2,10 @@
 
 ## Kaynak sırası
 
-1. [PROJECT_STATE.md](PROJECT_STATE.md): `main` üzerinde doğrulanmış mevcut durum.
-2. [PRODUCT_SPEC.md](PRODUCT_SPEC.md) ve [ROADMAP.md](ROADMAP.md): üç yüzeyli MVP'nin ürün sınırı ve Faz 17'ye kadar sırası.
-3. [TASKS.md](TASKS.md), [CONTRIBUTING.md](CONTRIBUTING.md), [ajan çalışma akışı](docs/plan/agent-workflow.md), [Context Pack protokolü](docs/plan/context-packs.md) ve [Shadow Validation Mode](docs/plan/shadow-validation-mode.md): görev, sahiplik, bağımlılık, context bütçesi, validation bekleme modu ve devir.
-4. Yalnız görevin ilgili faz/kontrat belgesi, kodu ve testleri. Teknik karar gerekiyorsa [DECISIONS.md](DECISIONS.md); onaylı bir UI referansı varsa [referans matrisi](docs/references/README.md) okunur.
+1. [TASKS.md](TASKS.md): **tek canlı görev/durum otoritesi**; sahiplik, bağımlılık, kabul kapıları, main kabulü ve açık engeller burada okunur.
+2. [PRODUCT_SPEC.md](PRODUCT_SPEC.md) ve [ROADMAP.md](ROADMAP.md): ürün sınırı ile Faz 17'ye kadar planlanan sıra; canlı statü tutmaz.
+3. [CONTRIBUTING.md](CONTRIBUTING.md), [ajan çalışma akışı](docs/plan/agent-workflow.md), [Context Pack protokolü](docs/plan/context-packs.md) ve [Shadow Validation Mode](docs/plan/shadow-validation-mode.md): çalışma, context, validation ve devir kuralları.
+4. Yalnız görevin ilgili faz/kontrat belgesi, kodu ve testleri. Teknik karar gerekiyorsa [DECISIONS.md](DECISIONS.md); onaylı bir UI referansı varsa [referans matrisi](docs/references/README.md) okunur. Handoff/PR/CI kayıtları tarihsel kanıttır, canlı durum kaynağı değildir.
 
 Kullanıcının açık ve güncel talebi önceliklidir. Planlanan durum, uygulanmış kod ve doğrulanmış sonuç ayrı raporlanır. Sohbet tek kalıcı talimat veya devir kaynağı olamaz.
 
