@@ -198,6 +198,7 @@ test('CI receipt lookup is anonymous, authoritative and requires prior full-code
   assert.match(workflow, /Resolve trusted prior full-code CI receipts/);
   assert.doesNotMatch(workflow, /pull_requests\[\]\?; \.number == \$pr and \.base\.sha == \$base/);
   assert.doesNotMatch(workflow, /Authorization: Bearer|github\.token|GH_TOKEN|GITHUB_TOKEN/);
+  assert.ok((workflow.match(/--connect-timeout 3 --max-time 10/g) ?? []).length >= 2);
   assert.match(workflow, /unexpected shape; full code checks remain required/);
   assert.match(workflow, /candidate parsing failed; full code checks remain required/);
   const scopeSection = workflow.split('- name: Select required checks')[1]?.split('- name: Check documentation')[0] ?? '';
