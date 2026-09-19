@@ -241,6 +241,20 @@ prevented escaped-defect evidence before recommending change. Unknown is not zer
 small samples do not justify broad percentages. No control registry database,
 optional triage, optimizer or policy engine is introduced.
 
+## Dispatcher v0 experiment
+
+`scripts/development-dispatcher.mjs` adds a small deterministic dispatcher for
+repo-native routing experiments. The pure `deriveEffectiveState(snapshot)` core
+works only from normalized in-memory observations and returns the next safe
+role/action, routing mode, reason codes, provenance gaps and coordinator flag
+without writing state or launching agents. `scripts/run-development-dispatcher.mjs`
+is a thin CLI adapter that reads JSON from a file or stdin and prints the
+derived decision for dry-run use.
+
+The snapshot stays observation-only: TASKS remains the live task/status source,
+Issue #65 remains temporary coordination, receipts stay evidence, and the
+dispatcher never computes merge authority or creates a durable state surface.
+
 ## Validation
 
 ```bash
