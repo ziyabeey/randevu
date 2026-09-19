@@ -32,12 +32,38 @@ type BookingRecordBase = {
   updatedAtEpochMs: number;
 };
 
+export type PublicBookingGroupPlan = {
+  date: string;
+  lines: Array<{ serviceId: string; staffId: string | null }>;
+  slot: {
+    startsAt: string;
+    endsAt: string;
+    timezone: string;
+    currency: string;
+    estimateMinMinor: number;
+    estimateMaxMinor: number;
+    lines: Array<{
+      lineOrdinal: number;
+      serviceId: string;
+      serviceName: string;
+      staffId: string;
+      staffName: string;
+      startsAt: string;
+      endsAt: string;
+      priceType: 'fixed' | 'range';
+      priceMinMinor: number;
+      priceMaxMinor: number;
+    }>;
+  };
+};
+
 export type V2PendingRecord = BookingRecordBase & {
   version: 2;
   source: 'v2';
   status: 'submitting' | 'unresolved';
   /** Missing only on pre-F12-05 records, which were necessarily single-service. */
   bookingKind?: 'single' | 'group';
+  groupPlan?: PublicBookingGroupPlan;
   idempotencyKey: string;
   recoveryId: string;
   recoverySecret: string;
@@ -70,6 +96,7 @@ export type PublicBookingRecord = V2PendingRecord | LegacyPendingRecord | Termin
 export type NewPublicBookingIntent = {
   slug: string;
   bookingKind?: 'single' | 'group';
+  groupPlan?: PublicBookingGroupPlan;
   idempotencyKey: string;
   recoveryId: string;
   recoverySecret: string;
@@ -107,6 +134,89 @@ function storageSlug(value: string) {
 
 function validEpoch(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function validUuid(value: unknown): value is string {
+  return typeof value === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function validAmount(value: unknown): value is number {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 1_000_000_000;
+}
+
+function validTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value));
+}
+
+function validTimeZone(value: unknown): value is string {
+  if (typeof value !== 'string' || !value) return false;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: value }).format(0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validCurrency(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^[A-Z]{3}$/.test(value)) return false;
+  try {
+    new Intl.NumberFormat('en', { style: 'currency', currency: value }).format(0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function validGroupPlan(value: unknown): value is PublicBookingGroupPlan {
+  if (!value || typeof value !== 'object') return false;
+  const plan = value as Partial<PublicBookingGroupPlan>;
+  if (typeof plan.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(plan.date)
+      || !Array.isArray(plan.lines) || plan.lines.length < 1 || plan.lines.length > 10
+      || !plan.slot || typeof plan.slot !== 'object') return false;
+  const slot = plan.slot as Partial<PublicBookingGroupPlan['slot']>;
+  if (!validTimestamp(slot.startsAt) || !validTimestamp(slot.endsAt)
+      || Date.parse(slot.endsAt) <= Date.parse(slot.startsAt)
+      || !validTimeZone(slot.timezone) || !validCurrency(slot.currency)
+      || !validAmount(slot.estimateMinMinor) || !validAmount(slot.estimateMaxMinor)
+      || (slot.estimateMaxMinor as number) < (slot.estimateMinMinor as number)
+      || !Array.isArray(slot.lines) || slot.lines.length !== plan.lines.length) return false;
+  let estimateMin = 0;
+  let estimateMax = 0;
+  for (let index = 0; index < plan.lines.length; index += 1) {
+    const selected = plan.lines[index];
+    const planned = slot.lines[index];
+    if (!selected || typeof selected !== 'object' || !planned || typeof planned !== 'object'
+        || !validUuid(selected.serviceId)
+        || (selected.staffId !== null && !validUuid(selected.staffId))
+        || planned.lineOrdinal !== index + 1
+        || planned.serviceId !== selected.serviceId
+        || typeof planned.serviceName !== 'string' || !planned.serviceName
+        || !validUuid(planned.staffId)
+        || (selected.staffId !== null && planned.staffId !== selected.staffId)
+        || typeof planned.staffName !== 'string' || !planned.staffName
+        || !validTimestamp(planned.startsAt) || !validTimestamp(planned.endsAt)
+        || Date.parse(planned.endsAt) <= Date.parse(planned.startsAt)
+        || (planned.priceType !== 'fixed' && planned.priceType !== 'range')
+        || !validAmount(planned.priceMinMinor) || !validAmount(planned.priceMaxMinor)
+        || planned.priceMaxMinor < planned.priceMinMinor) return false;
+    if (planned.priceType === 'fixed' && planned.priceMinMinor !== planned.priceMaxMinor) return false;
+    estimateMin += planned.priceMinMinor;
+    estimateMax += planned.priceMaxMinor;
+  }
+  return slot.startsAt === slot.lines[0]!.startsAt
+    && slot.endsAt === slot.lines.at(-1)!.endsAt
+    && slot.estimateMinMinor === estimateMin
+    && slot.estimateMaxMinor === estimateMax;
+}
+
+function copyGroupPlan(plan: PublicBookingGroupPlan): PublicBookingGroupPlan {
+  return {
+    date: plan.date,
+    lines: plan.lines.map((line) => ({ ...line })),
+    slot: { ...plan.slot, lines: plan.slot.lines.map((line) => ({ ...line })) },
+  };
 }
 
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
@@ -210,6 +320,7 @@ function isStoredRecord(value: unknown, slug: string): value is PublicBookingRec
     const pending = record as Partial<V2PendingRecord>;
     return pending.version === 2 && pending.source === 'v2'
       && (pending.bookingKind === undefined || pending.bookingKind === 'single' || pending.bookingKind === 'group')
+      && (pending.bookingKind === 'group' ? validGroupPlan(pending.groupPlan) : pending.groupPlan === undefined)
       && typeof pending.idempotencyKey === 'string'
       && isCanonicalPublicBookingRecoveryId(pending.recoveryId)
       && isCanonicalPublicBookingSecret(pending.recoverySecret)
@@ -414,12 +525,14 @@ export function blockingPublicBookingRecord(records: PublicBookingRecord[]): Pub
 export async function acquirePublicBookingIntent(
   candidate: NewPublicBookingIntent,
 ): Promise<AcquirePublicBookingIntentResult> {
+  const bookingKind = candidate.bookingKind ?? 'single';
   const proof = await verifyPublicBookingIntentV2(
     candidate.idempotencyKey,
     candidate.recoveryId,
     candidate.recoverySecret,
   );
   if (!validSlug(candidate.slug) || !proof
+      || (bookingKind === 'group' ? !validGroupPlan(candidate.groupPlan) : candidate.groupPlan !== undefined)
       || proof.deadlineEpochSeconds !== candidate.submitDeadlineEpochSeconds
       || !/^[0-9a-f]{64}$/.test(candidate.requestFingerprint)
       || !validEpoch(candidate.sampledAtEpochMs)
@@ -438,7 +551,8 @@ export async function acquirePublicBookingIntent(
     version: 2,
     source: 'v2',
     status: 'submitting',
-    bookingKind: candidate.bookingKind ?? 'single',
+    bookingKind,
+    ...(bookingKind === 'group' ? { groupPlan: copyGroupPlan(candidate.groupPlan!) } : {}),
     idempotencyKey: candidate.idempotencyKey,
     recoveryId: candidate.recoveryId,
     recoverySecret: candidate.recoverySecret,

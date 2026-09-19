@@ -31,6 +31,8 @@ const appointmentA = '81000000-0000-4000-8000-000000000011';
 const appointmentB = '81000000-0000-4000-8000-000000000012';
 const groupId = '61000000-0000-4000-8000-000000000011';
 const customerId = '91000000-0000-4000-8000-000000000011';
+const preF12SingleRecoveryId = '71000000-0000-4000-8000-000000000011';
+const preF12SingleManagementToken = 'P'.repeat(43);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function sendJson(response, status, body) {
@@ -161,6 +163,27 @@ function scalarRecoveryResponse(saved, recoveryId) {
   };
 }
 
+function preF12SingleRecoveryResponse() {
+  return {
+    resolution: 'committed',
+    recoveryId: preF12SingleRecoveryId,
+    appointment: {
+      appointment_id: appointmentB,
+      business_name: 'F12 Salon',
+      status: 'scheduled',
+      starts_at: '2026-09-20T07:00:00.000Z',
+      ends_at: '2026-09-20T07:30:00.000Z',
+      timezone: 'Europe/Istanbul',
+      service_name: 'Kesim',
+      staff_name: 'Deniz',
+      price_minor: 10000,
+      currency: 'TRY',
+    },
+    management: { url: `/m#${preF12SingleManagementToken}` },
+    recovery: { expiresAt: '2026-09-23T07:00:00.000Z' },
+  };
+}
+
 function managedProjection(group) {
   return {
     groupId: group.groupId,
@@ -216,6 +239,11 @@ const server = createServer(async (request, response) => {
     response.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/style.css"></head><body><div id="root"></div><script type="module" src="/test.js"></script></body></html>');
     return;
   }
+  if (url.pathname === '/seed') {
+    response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    response.end('<!doctype html><html><body>seed</body></html>');
+    return;
+  }
 
   const body = request.method === 'POST' ? await readJson(request) : {};
   requests.push({ method: request.method, path: url.pathname, body, idempotencyKey: request.headers['idempotency-key'] ?? null });
@@ -226,7 +254,10 @@ const server = createServer(async (request, response) => {
     address_text: 'İstanbul', show_work_hours: false, cover_media_id: null, work_hours: [], media: [],
   } });
   const catalogMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/services-v2$/);
-  if (request.method === 'GET' && catalogMatch) return sendJson(response, 200, catalog());
+  if (request.method === 'GET' && catalogMatch) {
+    if (catalogMatch[1] === 'legacy-salon') return sendJson(response, 503, { error: { code: 'PUBLIC_SERVICE_UNAVAILABLE', message: 'Çoklu hizmet planı hazırlanamadı.' } });
+    return sendJson(response, 200, catalog());
+  }
   const staffMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/staff$/);
   if (request.method === 'GET' && staffMatch) {
     const range = url.searchParams.get('serviceId') === serviceA;
@@ -234,6 +265,11 @@ const server = createServer(async (request, response) => {
   }
   const slotMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/group-slots$/);
   if (request.method === 'POST' && slotMatch) return sendJson(response, 200, { slots: [availability(body.lines)] });
+  const singleSlotMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/slots$/);
+  if (request.method === 'GET' && singleSlotMatch) return sendJson(response, 200, { slots: [{
+    staff_id: staffB, staff_name: 'Deniz', starts_at: '2026-09-20T07:00:00.000Z',
+    ends_at: '2026-09-20T07:30:00.000Z', timezone: 'Europe/Istanbul',
+  }] });
   const bookMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/group-book$/);
   if (request.method === 'POST' && bookMatch) {
     const group = createdGroup(body.lines);
@@ -252,7 +288,7 @@ const server = createServer(async (request, response) => {
     }
     const saved = { group, managementToken: body.managementToken, slug: bookMatch[1] };
     recoveries.set(body.recoveryId, saved);
-    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon' || bookMatch[1] === 'scalar-reload-salon' || bookMatch[1] === 'manual-invalid-salon') {
+    if (bookMatch[1] === 'recovery-salon' || bookMatch[1] === 'reload-salon' || bookMatch[1] === 'scalar-reload-salon' || bookMatch[1] === 'changed-plan-salon' || bookMatch[1] === 'manual-invalid-salon') {
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon sonucu şu anda doğrulanamıyor.' } });
     }
     return sendJson(response, 201, {
@@ -263,8 +299,9 @@ const server = createServer(async (request, response) => {
     });
   }
   if (request.method === 'POST' && url.pathname === '/api/public/booking/resolve') {
+    if (body.recoveryId === preF12SingleRecoveryId) return sendJson(response, 200, preF12SingleRecoveryResponse());
     const saved = recoveries.get(body.recoveryId);
-    if ((saved?.slug === 'reload-salon' || saved?.slug === 'manual-invalid-salon') && !failedResolveOnce.has(body.recoveryId)) {
+    if ((saved?.slug === 'reload-salon' || saved?.slug === 'changed-plan-salon' || saved?.slug === 'manual-invalid-salon') && !failedResolveOnce.has(body.recoveryId)) {
       failedResolveOnce.add(body.recoveryId);
       if (saved.slug === 'manual-invalid-salon') saved.group.lines[1].startsAt = '2026-09-20T08:15:00.000Z';
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Randevu sonucu henüz doğrulanamıyor.' } });
@@ -274,6 +311,16 @@ const server = createServer(async (request, response) => {
       ? sendJson(response, 200, recoveryResponse(saved, body.recoveryId))
       : sendJson(response, 200, { resolution: 'closed_absent', recoveryId: body.recoveryId });
   }
+  const singleBookMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/book$/);
+  if (request.method === 'POST' && singleBookMatch) return sendJson(response, 201, {
+    appointment: {
+      appointment_id: appointmentB, business_name: 'F12 Salon', status: 'scheduled',
+      starts_at: body.startsAt, ends_at: '2026-09-20T07:30:00.000Z', timezone: 'Europe/Istanbul',
+      service_name: 'Kesim', staff_name: 'Deniz', price_minor: 10000, currency: 'TRY',
+    },
+    management: { url: `/m#${body.managementToken}` },
+    recovery: { expiresAt: '2026-09-23T07:00:00.000Z' },
+  });
   if (request.method === 'POST' && url.pathname === '/api/manage/view') {
     const saved = [...recoveries.values()].find((item) => item.managementToken === body.token);
     if (!saved) return sendJson(response, 404, { error: { code: 'MANAGEMENT_LINK_INVALID', message: 'Bağlantı geçerli değil.' } });
@@ -292,7 +339,10 @@ const server = createServer(async (request, response) => {
   const businessMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)$/);
   if (request.method === 'GET' && businessMatch) return sendJson(response, 200, {
     business: { name: 'F12 Salon', slug: businessMatch[1], timezone: 'Europe/Istanbul', local_date: '2026-09-20', max_date: '2026-11-19', step_minutes: 15, min_notice_minutes: 60, horizon_days: 60 },
-    services: [], bookingClock: { serverNowEpochSeconds: Math.floor(Date.now() / 1000), submitWindowSeconds: 300 },
+    services: businessMatch[1] === 'legacy-salon'
+      ? [{ service_id: serviceB, name: 'Kesim', duration_minutes: 30, price_minor: 10000, currency: 'TRY' }]
+      : [],
+    bookingClock: { serverNowEpochSeconds: Math.floor(Date.now() / 1000), submitWindowSeconds: 300 },
   });
   return sendJson(response, 404, { error: { code: 'NOT_FOUND', message: 'Fixture route missing.' } });
 });
@@ -371,15 +421,17 @@ async function pressTab(page) {
   return page.evaluate('(() => { const node=document.activeElement; const style=getComputedStyle(node); return {name:node?.getAttribute?.("name")||"",className:node?.className||"",focusVisible:Boolean(node?.matches?.(":focus-visible")),outlineStyle:style.outlineStyle,outlineWidth:style.outlineWidth}; })()');
 }
 
-async function preparePlan(page, slug, pinFirstStaff = false) {
+async function preparePlan(page, slug, pinFirstStaff = false, checkKeyboard = true) {
   await waitFor(() => page.evaluate('document.querySelectorAll(".public-service-choice").length === 2'), `${slug} catalog did not load`);
-  await page.evaluate('document.activeElement instanceof HTMLElement && document.activeElement.blur()');
-  let serviceFocus = null;
-  for (let index = 0; index < 8; index += 1) {
-    const focus = await pressTab(page);
-    if (String(focus.className).includes('public-service-choice')) { serviceFocus = focus; break; }
+  if (checkKeyboard) {
+    await page.evaluate('document.activeElement instanceof HTMLElement && document.activeElement.blur()');
+    let serviceFocus = null;
+    for (let index = 0; index < 8; index += 1) {
+      const focus = await pressTab(page);
+      if (String(focus.className).includes('public-service-choice')) { serviceFocus = focus; break; }
+    }
+    assert.ok(serviceFocus?.focusVisible && serviceFocus.outlineStyle !== 'none' && serviceFocus.outlineWidth !== '0px', `${slug} service choice did not receive visible keyboard focus: ${JSON.stringify(serviceFocus)}`);
   }
-  assert.ok(serviceFocus?.focusVisible && serviceFocus.outlineStyle !== 'none' && serviceFocus.outlineWidth !== '0px', `${slug} service choice did not receive visible keyboard focus: ${JSON.stringify(serviceFocus)}`);
   await page.evaluate('Array.from(document.querySelectorAll(".public-service-choice")).forEach((button) => button.click())');
   await waitFor(() => page.evaluate('document.querySelectorAll(".public-selected-line").length === 2'), `${slug} services were not selected`);
   if (pinFirstStaff) {
@@ -521,6 +573,99 @@ async function runRejectedScalarReloadRecovery(debugUrl, origin) {
   }
 }
 
+async function runChangedPlanRecovery(debugUrl, origin) {
+  const slug = 'changed-plan-salon';
+  const start = requests.length;
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(page, slug);
+    await submitContact(page);
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 1, 'changed-plan automatic resolve did not fail once');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("henüz doğrulanamıyor")'), 'changed-plan intent did not remain unresolved');
+
+    await page.evaluate('document.querySelector(\'button[aria-label="Renk Bakımı hizmetini aşağı taşı"]\')?.click()');
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
+    await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-slot"))'), 'changed-plan replacement slot did not load');
+    await page.evaluate('document.querySelector(".public-group-slot")?.click()');
+    await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-summary"))'), 'changed-plan replacement selection was not committed');
+
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Sonucu tekrar kontrol et"))?.click()');
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 2, 'changed-plan manual retry did not resolve again');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), 'recovery did not use the immutable original group plan');
+    assert.equal(requests.slice(start).filter((item) => item.path.endsWith('/group-book')).length, 1, 'changed-plan recovery sent duplicate group create requests');
+    assert.deepEqual(page.diagnostics, []);
+  } finally {
+    page.close();
+  }
+}
+
+async function runPreF12SingleRecoveryWithGroupSelection(debugUrl, origin) {
+  const slug = 'pre-f12-single-salon';
+  const start = requests.length;
+  const seedPage = await openRoute(debugUrl, origin, '/seed', 390);
+  try {
+    await seedPage.evaluate(`new Promise((resolve, reject) => {
+      const request = indexedDB.open('yzt-public-booking-pending-v2', 1);
+      request.onupgradeneeded = () => {
+        const store = request.result.createObjectStore('booking-intents', { keyPath: 'id' });
+        store.createIndex('by-slug', 'slug', { unique: false });
+      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction('booking-intents', 'readwrite');
+        transaction.oncomplete = () => { database.close(); resolve(true); };
+        transaction.onerror = () => reject(transaction.error);
+        transaction.objectStore('booking-intents').put({
+          id: 'v2:pre-f12-single', slug: '${slug}', version: 2, source: 'v2', status: 'unresolved',
+          idempotencyKey: 'pre-f12-single-key', recoveryId: '${preF12SingleRecoveryId}', recoverySecret: '${'A'.repeat(43)}',
+          requestFingerprint: '${'f'.repeat(64)}', sampledAtEpochMs: Date.now() - 1000,
+          expiresAtEpochMs: Date.now() + 7200000, submitDeadlineEpochSeconds: Math.floor(Date.now() / 1000) + 300,
+          settleAfterEpochMs: Date.now() - 1, ownerId: 'pre-f12-owner',
+          createdAtEpochMs: Date.now() - 1000, updatedAtEpochMs: Date.now() - 1000,
+        });
+      };
+    })`);
+  } finally {
+    seedPage.close();
+  }
+
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(page, slug, false, false);
+    await waitFor(() => page.evaluate('document.body.innerText.includes("Önceki randevu işleminizin sonucu")'), 'pre-F12 single pending record did not block group create');
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Sonucu tekrar kontrol et"))?.click()');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), 'pre-F12 single recovery was poisoned by the current group selection');
+    const journeyRequests = requests.slice(start);
+    assert.equal(journeyRequests.filter((item) => item.path === '/api/public/booking/resolve').length, 1, 'pre-F12 single recovery did not resolve exactly once');
+    assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book') || item.path.endsWith('/book')).length, 0, 'pre-F12 single recovery issued a new create');
+    assert.deepEqual(page.diagnostics, []);
+  } finally {
+    page.close();
+  }
+}
+
+async function runLegacyFallback(debugUrl, origin) {
+  const slug = 'legacy-salon';
+  const start = requests.length;
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await waitFor(() => page.evaluate(`Boolean(document.querySelector('.public-picker-form select option[value="${serviceB}"]'))`), 'legacy populated catalog did not remain available');
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes("Uygun saatleri göster"))?.click()');
+    await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-slot"))'), 'legacy slot did not load');
+    await page.evaluate('document.querySelector(".public-slot")?.click()');
+    await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-customer-card input[name=customerName]"))'), 'legacy contact form did not open');
+    await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const email=document.querySelector("input[name=customerEmail]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(email,"deniz@example.test"); email.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Randevuyu oluştur"))?.click(); })()');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), 'legacy /book fallback did not complete');
+    const journeyRequests = requests.slice(start);
+    assert.equal(journeyRequests.filter((item) => item.path.endsWith('/book')).length, 1, 'legacy fallback did not issue one /book create');
+    assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book')).length, 0, 'legacy fallback issued group-book');
+    assert.deepEqual(page.diagnostics, []);
+  } finally {
+    page.close();
+  }
+}
+
 async function runRejectedLineMutation(debugUrl, origin) {
   const slug = 'invalid-line-salon';
   const start = requests.length;
@@ -623,13 +768,16 @@ try {
   await runClosedAbsent(debugUrl, origin);
   await runReloadRecovery(debugUrl, origin);
   await runRejectedScalarReloadRecovery(debugUrl, origin);
+  await runChangedPlanRecovery(debugUrl, origin);
+  await runPreF12SingleRecoveryWithGroupSelection(debugUrl, origin);
+  await runLegacyFallback(debugUrl, origin);
   await runRejectedLineMutation(debugUrl, origin);
   await runRejectedTimezone(debugUrl, origin);
   await runRejectedPinnedReassignment(debugUrl, origin);
   await runRejectedManualRecoveryMutation(debugUrl, origin);
   assert.ok([...servedChunks].some((name) => /PublicSalonPage-.*\.js$/.test(name)), `production public route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
   assert.ok([...servedChunks].some((name) => /ManageAppointmentPage-.*\.js$/.test(name)), `production management route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
-  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, unpinned/pinned staff validation, automatic/manual/reload group recovery integrity, scalar/line/timezone rejection, closed_absent and /m management.');
+  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, populated legacy /book fallback, pre-F12 single plus immutable automatic/manual/reload group recovery, scalar/line/timezone/staff rejection, closed_absent and /m management.');
 } catch (error) {
   let diagnostics = '';
   try { diagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }

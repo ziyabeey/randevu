@@ -13,7 +13,7 @@ import {
   markPublicBookingUnresolved,
   watchPublicBookingRecords,
 } from './public-booking-pending';
-import type { LegacyPendingRecord, PublicBookingRecord, V2PendingRecord } from './public-booking-pending';
+import type { LegacyPendingRecord, PublicBookingGroupPlan, PublicBookingRecord, V2PendingRecord } from './public-booking-pending';
 import { randomBase64Url } from '../shared/base64.ts';
 import { derivePublicBookingIntentV2, sha256Hex } from '../shared/public-booking-intent';
 import type { PublicMultiServiceSelectionState } from './PublicMultiServiceSelection';
@@ -221,7 +221,7 @@ function validGroupConfirmation(value: unknown, appointment?: Confirmation): val
   return true;
 }
 
-function groupMatchesSelection(group: GroupConfirmation, selection: PublicMultiServiceSelectionState) {
+function groupMatchesSelection(group: GroupConfirmation, selection: PublicBookingGroupPlan) {
   if (group.lines.length !== selection.lines.length
       || group.startsAt !== selection.slot.startsAt
       || group.endsAt !== selection.slot.endsAt
@@ -508,7 +508,6 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
   async function resolveStoredResult(
     record: V2PendingRecord | LegacyPendingRecord,
     automatic = false,
-    expectedGroupSelection?: PublicMultiServiceSelectionState,
   ) {
     if (automatic) {
       if (automaticResolveIds.current.has(record.id)) return;
@@ -538,6 +537,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         setNotice('');
       } else {
         const expectsGroup = record.bookingKind === 'group';
+        const expectedGroupPlan = expectsGroup ? record.groupPlan : undefined;
         const result = await api<ResolveResponse>('/api/public/booking/resolve', {
           method: 'POST', csrf: 'skip', timeoutMs: HTTP_TIMEOUT_MS,
           body: JSON.stringify({ recoveryId: record.recoveryId, idempotencyKey: record.idempotencyKey, recoverySecret: record.recoverySecret }),
@@ -547,8 +547,8 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
             && (expectsGroup !== (result.group !== undefined)
               || !validConfirmation(result.appointment, expectsGroup)
               || (result.group !== undefined && !validGroupConfirmation(result.group, result.appointment))
-              || (expectedGroupSelection !== undefined
-                && (result.group === undefined || !groupMatchesSelection(result.group, expectedGroupSelection)))
+              || (expectsGroup
+                && (expectedGroupPlan === undefined || result.group === undefined || !groupMatchesSelection(result.group, expectedGroupPlan)))
               || (result.group === undefined && result.appointment?.price_minor === null)
               || !validManagementUrl(result.management?.url)
               || typeof result.recovery?.expiresAt !== 'string'
@@ -633,7 +633,8 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       if (!intent) throw new Error('Rezervasyon işlemi güvenli olarak hazırlanamadı.');
       const sampledAtEpochMs = Date.now();
       const acquired = await acquirePublicBookingIntent({
-        slug, bookingKind: isGroupMode ? 'group' : 'single', idempotencyKey: intent.idempotencyKey, recoveryId, recoverySecret,
+        slug, bookingKind: isGroupMode ? 'group' : 'single', groupPlan: isGroupMode ? multiServiceSelection! : undefined,
+        idempotencyKey: intent.idempotencyKey, recoveryId, recoverySecret,
         requestFingerprint: await sha256Hex(JSON.stringify(payload)), sampledAtEpochMs,
         expiresAtEpochMs: sampledAtEpochMs + PUBLIC_BOOKING_RECOVERY_TTL_MS,
         submitDeadlineEpochSeconds: deadline, settleAfterEpochMs: Date.now() + PUBLIC_BOOKING_SETTLE_MS,
@@ -697,7 +698,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         } else {
           setNotice('Randevu isteğinin sonucu belirsiz kaldı. Aynı işlemin sonucunu bir kez kontrol ediyoruz…');
           if (unresolved && isRecoverableRecord(unresolved)) {
-            await resolveStoredResult(unresolved, true, isGroupMode ? multiServiceSelection! : undefined);
+            await resolveStoredResult(unresolved, true);
           }
         }
       }
@@ -781,7 +782,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     {closedReceipt && !blockingRecord && <div className="public-booking-notice" role="status">Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Hizmet seçiminiz korundu; yeni uygunluk getiriliyor.</div>}
     {blockingRecord && isRecoverableRecord(blockingRecord) && <div className="public-booking-notice" role="status">
       <span>Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.</span>{' '}
-      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord, false, multiServiceSelection ?? undefined)}>{recoveryBusy ? 'Kontrol ediliyor…' : waitingForCreate ? 'İlk istek tamamlanıyor…' : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : 'Sonucu tekrar kontrol et'}</button>
+      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Kontrol ediliyor…' : waitingForCreate ? 'İlk istek tamamlanıyor…' : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : 'Sonucu tekrar kontrol et'}</button>
       {blockingRecord.source === 'legacy_v1' && <><span>Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.</span> <button className="public-secondary" type="button" disabled={recoveryBusy} onClick={() => void removeReminder(blockingRecord)}>Cihazdaki hatırlatıcıyı kaldır</button></>}
     </div>}
     <section className={`public-booking-card public-customer-card public-group-customer-card ${multiServiceSelection ? 'is-ready' : ''}`} aria-labelledby="public-group-customer-title">

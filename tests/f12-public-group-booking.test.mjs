@@ -45,12 +45,14 @@ test('F12-05 validates ordered group results, range estimates and the exact mana
 test('F12-05 resolves uncertain submissions without issuing a second create', () => {
   assert.match(booking, /markPublicBookingUnresolved/);
   assert.match(booking, /\/api\/public\/booking\/resolve/);
-  assert.match(booking, /await resolveStoredResult\(unresolved, true, isGroupMode \? multiServiceSelection! : undefined\)/);
-  assert.match(booking, /resolveStoredResult\(blockingRecord, false, multiServiceSelection \?\? undefined\)/);
+  assert.match(booking, /groupPlan: isGroupMode \? multiServiceSelection! : undefined/);
+  assert.match(booking, /await resolveStoredResult\(unresolved, true\)/);
+  assert.match(booking, /resolveStoredResult\(blockingRecord\)/);
   assert.match(booking, /bookingKind: isGroupMode \? 'group' : 'single'/);
   assert.match(booking, /const expectsGroup = record\.bookingKind === 'group'/);
+  assert.match(booking, /const expectedGroupPlan = expectsGroup \? record\.groupPlan : undefined/);
   assert.match(booking, /expectsGroup !== \(result\.group !== undefined\)/);
-  assert.match(booking, /expectedGroupSelection !== undefined/);
+  assert.match(booking, /!groupMatchesSelection\(result\.group, expectedGroupPlan\)/);
   assert.match(booking, /resolution === 'closed_absent'/);
   assert.match(booking, /if \(expectsGroup\) onPlanNeedsRefresh\?\.\(\)/);
   assert.match(selection, /availabilityRefreshToken/);
