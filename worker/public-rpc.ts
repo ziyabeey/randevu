@@ -8,6 +8,10 @@ type Operation = 'business' | 'services' | 'staff' | 'profile' | 'media' | 'slot
 type Result<T> = { ok: true; data: T; status: number }
   | { ok: false; data: { message: string }; status: number };
 
+/**
+ * Calls a guarded RPC with a strict result envelope so an HTTP 200 error envelope
+ * is not mistaken for a successful operation. Used by both public and authenticated flows.
+ */
 // SQL errors are returned normally so the quota transaction can commit. Never
 // interpret an HTTP 200 error envelope (or legacy array) as successful booking.
 export async function boundedRpc<T extends unknown[]>(
@@ -32,6 +36,10 @@ export async function boundedRpc<T extends unknown[]>(
   return { ok: false, data: { message: 'PUBLIC_OPERATION_UNAVAILABLE' }, status: result.status };
 }
 
+/**
+ * Wraps a named externally reachable operation with the abuse-gate identity used by
+ * booking, public profile/media, and management-capability surfaces.
+ */
 export function publicOperation<T extends unknown[]>(
   env: AuthEnv, action: Operation, args: Record<string, unknown>, identity: PublicAbuseIdentity,
 ) {
