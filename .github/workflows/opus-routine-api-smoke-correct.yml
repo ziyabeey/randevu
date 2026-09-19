@@ -1,0 +1,41 @@
+name: Opus Routine API Smoke Correct
+
+on:
+  push:
+    branches:
+      - experiment/escalation-context-delivery
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Opus Routine fire smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Verify configured Opus Routine credentials
+        env:
+          CLAUDE_ROUTINE_URL: ${{ vars.CLAUDE_OPUS_ROUTINE_URL }}
+          CLAUDE_ROUTINE_TOKEN: ${{ secrets.CLAUDE_OPUS_ROUTINE_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${CLAUDE_ROUTINE_URL}"
+          test -n "${CLAUDE_ROUTINE_TOKEN}"
+
+      - name: Fire minimal Opus Routine smoke
+        env:
+          CLAUDE_ROUTINE_URL: ${{ vars.CLAUDE_OPUS_ROUTINE_URL }}
+          CLAUDE_ROUTINE_TOKEN: ${{ secrets.CLAUDE_OPUS_ROUTINE_TOKEN }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' '{"text":"API_SMOKE_TEST_ONLY. Do not modify any repository state. Confirm receipt and return NO_ACTION."}' > "${RUNNER_TEMP}/opus-smoke.json"
+          node scripts/fire-claude-routine.mjs --body "${RUNNER_TEMP}/opus-smoke.json"
