@@ -1,0 +1,72 @@
+name: One-shot escalation main sync
+
+on:
+  push:
+    branches:
+      - experiment/escalation-context-delivery
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync current main and preserve TASKS authority
+    if: ${{ contains(github.event.head_commit.message, 'trigger one-shot escalation main sync') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experiment/escalation-context-delivery
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Merge current main with bounded conflict policy
+        run: |
+          set -euo pipefail
+          git config user.name 'Kepenk Coordinator'
+          git config user.email 'actions@users.noreply.github.com'
+          git fetch origin main
+
+          set +e
+          git merge --no-commit --no-ff origin/main
+          merge_status=$?
+          set -e
+
+          conflicts="$(git diff --name-only --diff-filter=U || true)"
+          unexpected="$(printf '%s\n' "${conflicts}" | sed '/^$/d' | grep -v '^TASKS.md$' || true)"
+          if [ -n "${unexpected}" ]; then
+            printf 'Unexpected merge conflicts:\n%s\n' "${unexpected}"
+            exit 1
+          fi
+
+          if printf '%s\n' "${conflicts}" | grep -qx 'TASKS.md'; then
+            git checkout --theirs TASKS.md
+          fi
+
+          python <<'PY'
+          from pathlib import Path
+          tasks = Path('TASKS.md')
+          text = tasks.read_text()
+          if '| DEV-ENGINE-02 |' not in text:
+              lines = text.splitlines()
+              index = next((i for i, line in enumerate(lines) if line.startswith('| [DEV-ENGINE-01]')), None)
+              if index is None:
+                  raise SystemExit('DEV-ENGINE-01 TASKS row not found on current main')
+              row = ('| DEV-ENGINE-02 | Deterministik dispatcher, Haiku context compression ve Opus escalation delivery | '
+                     'DEV-ENGINE-01 | İncelemede | Koordinatör / 2026-09-19 | M / FOCUSED · '
+                     '[PR #182](https://github.com/ziyabeey1-ai/randevu/pull/182) current repair candidate · '
+                     '[PR #179](https://github.com/ziyabeey1-ai/randevu/pull/179) bu PR tarafından superseded · '
+                     'pure reducer + GitHub OIDC-attested Haiku → Opus handoff · exact-head CI ve review-thread kapanışı bekleniyor |')
+              lines.insert(index + 1, row)
+              tasks.write_text('\n'.join(lines) + '\n')
+          Path('.github/workflows/one-shot-escalation-main-sync.yml').unlink()
+          PY
+
+          git add TASKS.md .github/workflows/one-shot-escalation-main-sync.yml
+          if [ "${merge_status}" -ne 0 ] && [ -n "${conflicts}" ]; then
+            git add -u
+          fi
+          git diff --check
+          git commit -m 'merge: sync current main before escalation activation'
+          git push origin HEAD:experiment/escalation-context-delivery
