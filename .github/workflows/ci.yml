@@ -26,7 +26,6 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           CURRENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
@@ -51,11 +50,10 @@ jobs:
           fi
 
           if ! jq -r --argjson pr "${PR_NUMBER}" \
-            --arg base "${BASE_SHA}" \
             --arg head "${CURRENT_HEAD_SHA}" \
             '[.workflow_runs[]
               | select(.head_sha != $head)
-              | select(any(.pull_requests[]?; .number == $pr and .base.sha == $base))
+              | select(any(.pull_requests[]?; .number == $pr))
               | [.id, .head_sha]]
              | .[:20][]
              | @tsv' "${runs_raw}" > "${candidates}"; then
@@ -91,8 +89,8 @@ jobs:
               continue
             fi
 
-            jq --arg head "${head_sha}" --arg base "${BASE_SHA}" --argjson run "${run_id}" \
-              '. + [{headSha: $head, baseSha: $base, runId: $run}]' \
+            jq --arg head "${head_sha}" --argjson run "${run_id}" \
+              '. + [{headSha: $head, runId: $run}]' \
               "${receipts}" > "${receipts}.next"
             mv "${receipts}.next" "${receipts}"
           done < "${candidates}"
