@@ -86,8 +86,14 @@ test('fingerprint is stable across ordering noise and changes on material eviden
   const first = buildCaseFingerprint(input, { sourceRefs: ['z', 'a'], materialFacts: { b: 2, a: 1 } });
   const second = buildCaseFingerprint({ ...input, contradictions: ['A', 'B'], unknowns: ['X', 'Y'] }, { sourceRefs: ['a', 'z'], materialFacts: { a: 1, b: 2 } });
   const changed = buildCaseFingerprint(input, { sourceRefs: ['z', 'a'], materialFacts: { b: 3, a: 1 } });
+  const changedScope = buildCaseFingerprint(input, { sourceRefs: ['z', 'a'], materialFacts: { b: 2, a: 1 }, forbiddenScope: ['merge'] });
+  const changedActions = buildCaseFingerprint(input, { sourceRefs: ['z', 'a'], materialFacts: { b: 2, a: 1 }, actionsAlreadyTaken: ['rerun-ci'] });
+  const timestampOnly = buildCaseFingerprint(input, { sourceRefs: ['z', 'a'], materialFacts: { b: 2, a: 1 }, observedAt: '2026-09-19T10:00:00Z' });
   assert.equal(first, second);
+  assert.equal(first, timestampOnly);
   assert.notEqual(first, changed);
+  assert.notEqual(first, changedScope);
+  assert.notEqual(first, changedActions);
 });
 
 test('Haiku request is refused for non-reasoning dispositions', () => {
