@@ -1,7 +1,7 @@
 import { supabaseRequest, type AuthEnv } from './auth.ts';
 import type { PublicAbuseIdentity } from './public-abuse.ts';
 
-type Operation = 'business' | 'services' | 'staff' | 'profile' | 'media' | 'slots' | 'book'
+type Operation = 'business' | 'services' | 'services_v2' | 'staff' | 'profile' | 'media' | 'slots' | 'book'
   | 'group_slots' | 'group_book' | 'recover' | 'resolve'
   | 'manage_view' | 'manage_slots' | 'manage_reschedule' | 'manage_cancel'
   | 'manage_group_slots' | 'manage_group_reschedule' | 'manage_group_cancel';
