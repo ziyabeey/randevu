@@ -129,6 +129,8 @@ function materialFingerprintInput(dispatcherResult, evidence, classification) {
       .sort((a, b) => stableJson(a).localeCompare(stableJson(b), 'en')),
     escalationType: evidence.escalationType,
     question: evidence.question,
+    actionsAlreadyTaken: evidence.actionsAlreadyTaken,
+    forbiddenScope: evidence.forbiddenScope,
     materialFacts: evidence.materialFacts,
     sourceRefs: evidence.sourceRefs,
   };
