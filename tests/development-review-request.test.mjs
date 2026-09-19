@@ -34,6 +34,7 @@ function dispatcher(roles = ['r1', 'r2'], overrides = {}) {
         status: 'pass',
         exactHeadSha: head,
         testedCheckoutSha: checkout,
+        explicitlyBoundToHead: true,
         baseMainSha: main,
         run: '10',
         job: '20',
