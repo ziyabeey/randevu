@@ -25,7 +25,7 @@ test('Opus handoff dry-run accepts only a reasoning package and never requires c
         QUESTION: 'Resolve bounded ambiguity.',
       },
     });
-    const run = spawnSync(process.execPath, [script, '--package', file, '--dry-run'], {
+    const run = spawnSync(process.execPath, [script, '--package', file, '--expected-fingerprint', 'a'.repeat(64), '--dry-run'], {
       cwd: process.cwd(),
       encoding: 'utf8',
     });
@@ -47,7 +47,7 @@ test('Opus handoff fails closed when Haiku sends a non-reasoning disposition', (
       CASE_FINGERPRINT: 'b'.repeat(64),
       OPUS_ESCALATION_PACKAGE: { QUESTION: 'none' },
     });
-    const run = spawnSync(process.execPath, [script, '--package', file, '--dry-run'], {
+    const run = spawnSync(process.execPath, [script, '--package', file, '--expected-fingerprint', 'b'.repeat(64), '--dry-run'], {
       cwd: process.cwd(),
       encoding: 'utf8',
     });
@@ -66,7 +66,7 @@ test('Opus handoff rejects malformed case fingerprints before any network call',
       CASE_FINGERPRINT: 'not-a-fingerprint',
       OPUS_ESCALATION_PACKAGE: { QUESTION: 'bounded' },
     });
-    const run = spawnSync(process.execPath, [script, '--package', file, '--dry-run'], {
+    const run = spawnSync(process.execPath, [script, '--package', file, '--expected-fingerprint', 'c'.repeat(64), '--dry-run'], {
       cwd: process.cwd(),
       encoding: 'utf8',
     });
@@ -91,8 +91,33 @@ test('Claude repository instructions make Haiku the exclusive Opus caller only f
   const guidance = readFileSync(path.resolve('CLAUDE.md'), 'utf8');
   assert.match(guidance, /EVIDENCE_COMPRESSION_REQUEST/);
   assert.match(guidance, /trigger Opus exactly once/);
-  assert.match(guidance, /node scripts\/fire-opus-escalation\.mjs --package/);
+  assert.match(guidance, /node scripts\/fire-opus-escalation\.mjs --package .* --expected-fingerprint/);
   assert.match(guidance, /GitHub Actions, the Dispatcher, and the caller are not Opus callers/);
   assert.match(guidance, /OPUS_HANDOFF_BLOCKED/);
   assert.match(guidance, /Outside an `EVIDENCE_COMPRESSION_REQUEST` session, this section grants no new authority/);
+});
+
+
+test('Opus handoff rejects a compressed package whose fingerprint differs from the Dispatcher fingerprint', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'opus-handoff-'));
+  try {
+    const file = writePackage(dir, {
+      DISPOSITION: 'REASONING_REQUIRED',
+      CASE_FINGERPRINT: 'd'.repeat(64),
+      OPUS_ESCALATION_PACKAGE: { QUESTION: 'bounded' },
+    });
+    const run = spawnSync(process.execPath, [
+      script,
+      '--package', file,
+      '--expected-fingerprint', 'e'.repeat(64),
+      '--dry-run',
+    ], {
+      cwd: process.cwd(),
+      encoding: 'utf8',
+    });
+    assert.notEqual(run.status, 0);
+    assert.match(run.stderr, /OPUS_HANDOFF_BLOCKED: CASE_FINGERPRINT_MISMATCH/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
