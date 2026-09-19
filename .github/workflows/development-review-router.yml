@@ -23,6 +23,7 @@ on:
         required: false
 
 permissions:
+  actions: read
   contents: read
   pull-requests: read
 
@@ -113,6 +114,8 @@ jobs:
           test "${live_main}" = "${expected_main}"
           test "${expected_base}" = "${expected_main}"
 
+          node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             > "${RUNNER_TEMP}/live-review-state.json"
+
           printf 'case_fingerprint=%s\n' "${fingerprint}" >> "${GITHUB_OUTPUT}"
           printf 'pr_number=%s\n' "${pr_number}" >> "${GITHUB_OUTPUT}"
           printf 'head_sha=%s\n' "${head_sha}" >> "${GITHUB_OUTPUT}"
@@ -138,8 +141,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: read
       contents: read
       issues: write
+      pull-requests: read
     env:
       ROLE: r1
       CASE_FINGERPRINT: ${{ needs.route.outputs.case_fingerprint }}
@@ -172,7 +177,7 @@ jobs:
           writeFileSync(`${process.env.RUNNER_TEMP}/review-evidence.json`, JSON.stringify(JSON.parse(process.env.EVIDENCE_JSON || '{}')));
           NODE
           node scripts/run-development-dispatcher.mjs             "${RUNNER_TEMP}/dispatcher-observation.json"             > "${RUNNER_TEMP}/dispatcher-result.json"
-          node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r1 "${CASE_FINGERPRINT}"             > "${RUNNER_TEMP}/r1-fire-body.json"
+          node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r1 "${CASE_FINGERPRINT}"             "${RUNNER_TEMP}/r1-review-request.json"             > "${RUNNER_TEMP}/r1-fire-body.json"
           request_fingerprint="$(jq -r '.text' "${RUNNER_TEMP}/r1-fire-body.json" | sed -n 's/^REQUEST_FINGERPRINT: \([a-f0-9]\{64\}\)$/\1/p')"
           [[ "${request_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
           printf 'request_fingerprint=%s\n' "${request_fingerprint}" >> "${GITHUB_OUTPUT}"
@@ -183,6 +188,7 @@ jobs:
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
         run: |
           set -euo pipefail
+          node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r1-review-request.json"             > "${RUNNER_TEMP}/r1-live-reservation-state.json"
           marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
           existing_id="$(
             gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
@@ -210,6 +216,11 @@ jobs:
         if: ${{ steps.reserve.outputs.should_fire == 'true' }}
         run: |
           set -euo pipefail
+          if ! node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r1-review-request.json"             > "${RUNNER_TEMP}/r1-live-prefire-state.json"; then
+            touch "${RUNNER_TEMP}/r1-fire-aborted-stale"
+            exit 1
+          fi
+          touch "${RUNNER_TEMP}/r1-fire-attempted"
           node scripts/fire-claude-routine.mjs             --body "${RUNNER_TEMP}/r1-fire-body.json"             > "${RUNNER_TEMP}/r1-launch-receipt.json"
 
       - name: Publish R1 launch receipt
@@ -240,7 +251,17 @@ jobs:
         run: |
           set -euo pipefail
           marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
-          body="${marker}
+          if [ -f "${RUNNER_TEMP}/r1-fire-aborted-stale" ] && [ ! -f "${RUNNER_TEMP}/r1-fire-attempted" ]; then
+            body="${marker}
+          ## Development R1 Routine launch
+          - status: LAUNCH_ABORTED_STALE
+          - exact head: ${HEAD_SHA}
+          - dispatcher case: ${CASE_FINGERPRINT}
+          - role request: ${REQUEST_FINGERPRINT}
+          - live identity changed before the API call; no Routine fire was attempted
+          - no R1 verdict is implied"
+          else
+            body="${marker}
           ## Development R1 Routine launch
           - status: LAUNCH_UNCERTAIN
           - exact head: ${HEAD_SHA}
@@ -248,6 +269,7 @@ jobs:
           - role request: ${REQUEST_FINGERPRINT}
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
           - no R1 verdict is implied"
+          fi
 
           jq -n --arg body "${body}" '{body:$body}'             | gh api --method PATCH               "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}"               --input -
 
@@ -261,8 +283,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: read
       contents: read
       issues: write
+      pull-requests: read
     env:
       ROLE: r2
       CASE_FINGERPRINT: ${{ needs.route.outputs.case_fingerprint }}
@@ -295,7 +319,7 @@ jobs:
           writeFileSync(`${process.env.RUNNER_TEMP}/review-evidence.json`, JSON.stringify(JSON.parse(process.env.EVIDENCE_JSON || '{}')));
           NODE
           node scripts/run-development-dispatcher.mjs             "${RUNNER_TEMP}/dispatcher-observation.json"             > "${RUNNER_TEMP}/dispatcher-result.json"
-          node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r2 "${CASE_FINGERPRINT}"             > "${RUNNER_TEMP}/r2-fire-body.json"
+          node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r2 "${CASE_FINGERPRINT}"             "${RUNNER_TEMP}/r2-review-request.json"             > "${RUNNER_TEMP}/r2-fire-body.json"
           request_fingerprint="$(jq -r '.text' "${RUNNER_TEMP}/r2-fire-body.json" | sed -n 's/^REQUEST_FINGERPRINT: \([a-f0-9]\{64\}\)$/\1/p')"
           [[ "${request_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
           printf 'request_fingerprint=%s\n' "${request_fingerprint}" >> "${GITHUB_OUTPUT}"
@@ -306,6 +330,7 @@ jobs:
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
         run: |
           set -euo pipefail
+          node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r2-review-request.json"             > "${RUNNER_TEMP}/r2-live-reservation-state.json"
           marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
           existing_id="$(
             gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
@@ -333,6 +358,11 @@ jobs:
         if: ${{ steps.reserve.outputs.should_fire == 'true' }}
         run: |
           set -euo pipefail
+          if ! node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r2-review-request.json"             > "${RUNNER_TEMP}/r2-live-prefire-state.json"; then
+            touch "${RUNNER_TEMP}/r2-fire-aborted-stale"
+            exit 1
+          fi
+          touch "${RUNNER_TEMP}/r2-fire-attempted"
           node scripts/fire-claude-routine.mjs             --body "${RUNNER_TEMP}/r2-fire-body.json"             > "${RUNNER_TEMP}/r2-launch-receipt.json"
 
       - name: Publish R2 launch receipt
@@ -363,7 +393,17 @@ jobs:
         run: |
           set -euo pipefail
           marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
-          body="${marker}
+          if [ -f "${RUNNER_TEMP}/r2-fire-aborted-stale" ] && [ ! -f "${RUNNER_TEMP}/r2-fire-attempted" ]; then
+            body="${marker}
+          ## Development R2 Routine launch
+          - status: LAUNCH_ABORTED_STALE
+          - exact head: ${HEAD_SHA}
+          - dispatcher case: ${CASE_FINGERPRINT}
+          - role request: ${REQUEST_FINGERPRINT}
+          - live identity changed before the API call; no Routine fire was attempted
+          - no R2 verdict is implied"
+          else
+            body="${marker}
           ## Development R2 Routine launch
           - status: LAUNCH_UNCERTAIN
           - exact head: ${HEAD_SHA}
@@ -371,5 +411,6 @@ jobs:
           - role request: ${REQUEST_FINGERPRINT}
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
           - no R2 verdict is implied"
+          fi
 
           jq -n --arg body "${body}" '{body:$body}'             | gh api --method PATCH               "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}"               --input -
