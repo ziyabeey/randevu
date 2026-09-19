@@ -14,6 +14,7 @@ import {
   watchPublicBookingRecords,
 } from './public-booking-pending';
 import type { LegacyPendingRecord, PublicBookingRecord, V2PendingRecord } from './public-booking-pending';
+import { randomBase64Url } from '../shared/base64.ts';
 import { derivePublicBookingIntentV2, sha256Hex } from '../shared/public-booking-intent';
 
 type PublicBusiness = { name: string; slug: string; timezone: string; local_date: string; max_date: string; step_minutes: number; min_notice_minutes: number; horizon_days: number };
@@ -43,11 +44,7 @@ function money(minor: number, currency: string) {
 }
 
 function createSecret() {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  return randomBase64Url(32);
 }
 
 function validClock(value: unknown): value is BookingClock {

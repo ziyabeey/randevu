@@ -1,5 +1,6 @@
 import { getCookie, setCookie } from 'hono/cookie';
 import type { Context } from 'hono';
+import { bytesToBase64Url } from '../shared/base64.ts';
 
 export type PublicAbuseEnv = {
   PUBLIC_BOOKING_GATE_SECRET?: string;
@@ -16,12 +17,6 @@ export type PublicAbuseIdentity = {
 
 const COOKIE_NAME = 'yzt_public_client_v2';
 const COOKIE_TTL_SECONDS = 60 * 60 * 24;
-
-function base64Url(bytes: Uint8Array) {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
 
 function hex(bytes: Uint8Array) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -90,7 +85,7 @@ function networkKey(ipRaw: string | undefined) {
 
 async function signClient(secret: string, clientId: string, expiresAt: number) {
   const payload = `v1.${clientId}.${expiresAt}`;
-  const signature = base64Url(await hmacBytes(secret, `public-booking-client|${payload}`));
+  const signature = bytesToBase64Url(await hmacBytes(secret, `public-booking-client|${payload}`));
   return `${payload}.${signature}`;
 }
 
@@ -110,7 +105,7 @@ async function verifyClient(secret: string, value: string | undefined) {
 }
 
 async function issueClient(context: AbuseContext, secret: string) {
-  const clientId = base64Url(crypto.getRandomValues(new Uint8Array(16)));
+  const clientId = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(16)));
   const expiresAt = Math.floor(Date.now() / 1000) + COOKIE_TTL_SECONDS;
   const value = await signClient(secret, clientId, expiresAt);
   setCookie(context, COOKIE_NAME, value, {

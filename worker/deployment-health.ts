@@ -1,3 +1,5 @@
+import { base64UrlToBytes, bytesToBase64Url } from '../shared/base64.ts';
+
 // Staging control plane: authenticated by the private DB verifier, never a session.
 // A verifier is a deployment credential and must not appear in logs or responses.
 export type DeploymentEnv = {
@@ -12,8 +14,6 @@ export type DeploymentEnv = {
 const encoder = new TextEncoder();
 const hex = (bytes: ArrayBuffer) => Array.from(new Uint8Array(bytes), (n) => n.toString(16).padStart(2, '0')).join('');
 const unhex = (value: string) => Uint8Array.from(value.match(/../g) ?? [], (n) => Number.parseInt(n, 16));
-const base64 = (value: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(value))).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
-const unbase64 = (value: string) => Uint8Array.from(atob(value.replaceAll('-', '+').replaceAll('_', '/')), (n) => n.charCodeAt(0));
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 async function hmacKey(secret: string) {
   const digest = await crypto.subtle.digest('SHA-256', encoder.encode(secret));
@@ -29,7 +29,7 @@ export async function deploymentHealth(request: Request, env: DeploymentEnv): Pr
     const raw = request.headers.get('X-Deployment-Challenge') ?? '';
     const signature = (request.headers.get('Authorization') ?? '').replace(/^Deployment /, '');
     if (raw.length > 2048 || !/^[0-9a-f]{64}$/.test(signature)) throw new Error();
-    const challenge = JSON.parse(new TextDecoder().decode(unbase64(raw))) as {
+    const challenge = JSON.parse(new TextDecoder().decode(base64UrlToBytes(raw))) as {
       nonce: string; expires: number; version: string; canary?: { iv: string; ciphertext: string };
     };
     const now = Math.floor(Date.now() / 1000);
@@ -42,19 +42,19 @@ export async function deploymentHealth(request: Request, env: DeploymentEnv): Pr
     const gateKey = await hmacKey(gate);
     if (!await crypto.subtle.verify('HMAC', gateKey, unhex(signature), encoder.encode(`s05:request:${raw}`))) throw new Error();
     const management = env.MANAGEMENT_LINK_ENCRYPTION_KEY_V1 ?? '';
-    const master = unbase64(management);
+    const master = base64UrlToBytes(management);
     if (master.length !== 32) throw new Error();
     const aes = await crypto.subtle.importKey('raw', master, 'AES-GCM', false, ['encrypt', 'decrypt']);
     const additionalData = encoder.encode('s05:management-canary:v1');
     let canary = challenge.canary;
     if (canary) {
       if (!/^[A-Za-z0-9_-]{16}$/.test(canary.iv) || !/^[A-Za-z0-9_-]{107}$/.test(canary.ciphertext)) throw new Error();
-      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unbase64(canary.iv), additionalData }, aes, unbase64(canary.ciphertext));
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: base64UrlToBytes(canary.iv), additionalData }, aes, base64UrlToBytes(canary.ciphertext));
       if (new TextDecoder().decode(decrypted) !== challenge.nonce) throw new Error();
     } else {
       const iv = crypto.getRandomValues(new Uint8Array(12));
       const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData }, aes, encoder.encode(challenge.nonce));
-      canary = { iv: base64(iv.buffer), ciphertext: base64(ciphertext) };
+      canary = { iv: bytesToBase64Url(iv), ciphertext: bytesToBase64Url(new Uint8Array(ciphertext)) };
     }
     const payload = {
       version: challenge.version,
