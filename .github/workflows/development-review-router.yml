@@ -136,6 +136,7 @@ jobs:
           node-version: 24
 
       - name: Prepare exact R1 request and preflight configuration
+        id: prepare
         run: |
           set -euo pipefail
           test -n "${CLAUDE_ROUTINE_URL}"
@@ -150,9 +151,11 @@ jobs:
 
       - name: Reserve exact-case R1 launch receipt
         id: reserve
+        env:
+          REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
         run: |
           set -euo pipefail
-          marker="<!-- development-review-launch:r1:${CASE_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
           existing_id="$(
             gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
           )"
@@ -167,6 +170,7 @@ jobs:
           - status: `RESERVED`
           - exact head: `${HEAD_SHA}`
           - dispatcher case: `${CASE_FINGERPRINT}`
+          - role request: `${REQUEST_FINGERPRINT}`
           - this reservation is not an R1 verdict and grants no merge authority"
 
           payload="${RUNNER_TEMP}/r1-reservation.json"
@@ -184,15 +188,17 @@ jobs:
         if: ${{ steps.reserve.outputs.should_fire == 'true' && success() }}
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
+          REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
         run: |
           set -euo pipefail
           session_url="$(jq -er '.claudeCodeSessionUrl' "${RUNNER_TEMP}/r1-launch-receipt.json")"
-          marker="<!-- development-review-launch:r1:${CASE_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R1 Routine launch
           - status: `ROUTINE_TRIGGERED`
           - exact head: `${HEAD_SHA}`
           - dispatcher case: `${CASE_FINGERPRINT}`
+          - role request: `${REQUEST_FINGERPRINT}`
           - Claude session: ${session_url}
           - launch receipt only; R1 remains open until a SHA-bound `ACCEPTABLE | BLOCKER | INCOMPLETE` receipt is published"
 
@@ -202,14 +208,16 @@ jobs:
         if: ${{ failure() && steps.reserve.outputs.should_fire == 'true' }}
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
+          REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
         run: |
           set -euo pipefail
-          marker="<!-- development-review-launch:r1:${CASE_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R1 Routine launch
           - status: `LAUNCH_UNCERTAIN`
           - exact head: `${HEAD_SHA}`
           - dispatcher case: `${CASE_FINGERPRINT}`
+          - role request: `${REQUEST_FINGERPRINT}`
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
           - no R1 verdict is implied"
 
@@ -245,6 +253,7 @@ jobs:
           node-version: 24
 
       - name: Prepare exact R2 request and preflight configuration
+        id: prepare
         run: |
           set -euo pipefail
           test -n "${CLAUDE_ROUTINE_URL}"
@@ -259,9 +268,11 @@ jobs:
 
       - name: Reserve exact-case R2 launch receipt
         id: reserve
+        env:
+          REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
         run: |
           set -euo pipefail
-          marker="<!-- development-review-launch:r2:${CASE_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
           existing_id="$(
             gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
           )"
@@ -276,6 +287,7 @@ jobs:
           - status: `RESERVED`
           - exact head: `${HEAD_SHA}`
           - dispatcher case: `${CASE_FINGERPRINT}`
+          - role request: `${REQUEST_FINGERPRINT}`
           - this reservation is not an R2 verdict and grants no merge authority"
 
           payload="${RUNNER_TEMP}/r2-reservation.json"
@@ -293,15 +305,17 @@ jobs:
         if: ${{ steps.reserve.outputs.should_fire == 'true' && success() }}
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
+          REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
         run: |
           set -euo pipefail
           session_url="$(jq -er '.claudeCodeSessionUrl' "${RUNNER_TEMP}/r2-launch-receipt.json")"
-          marker="<!-- development-review-launch:r2:${CASE_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R2 Routine launch
           - status: `ROUTINE_TRIGGERED`
           - exact head: `${HEAD_SHA}`
           - dispatcher case: `${CASE_FINGERPRINT}`
+          - role request: `${REQUEST_FINGERPRINT}`
           - Claude session: ${session_url}
           - launch receipt only; R2 remains open until a SHA-bound `ACCEPTABLE | BLOCKER | INCOMPLETE` receipt is published"
 
@@ -311,14 +325,16 @@ jobs:
         if: ${{ failure() && steps.reserve.outputs.should_fire == 'true' }}
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
+          REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
         run: |
           set -euo pipefail
-          marker="<!-- development-review-launch:r2:${CASE_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R2 Routine launch
           - status: `LAUNCH_UNCERTAIN`
           - exact head: `${HEAD_SHA}`
           - dispatcher case: `${CASE_FINGERPRINT}`
+          - role request: `${REQUEST_FINGERPRINT}`
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
           - no R2 verdict is implied"
 
