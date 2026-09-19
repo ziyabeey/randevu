@@ -1,4 +1,5 @@
 import { appendFileSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,9 +55,10 @@ export function exactRunAssociation(run, identity) {
 export function fullCodeGate(jobsPayload) {
   const jobs = Array.isArray(jobsPayload?.jobs) ? jobsPayload.jobs : null;
   if (!jobs) return null;
-  const gates = jobs.filter((job) => job?.name === 'CI gate' && job?.conclusion === 'success');
+  const gates = jobs.filter((job) => job?.name === 'CI gate');
   if (gates.length !== 1) return null;
   const gate = gates[0];
+  if (gate?.conclusion !== 'success') return null;
   if (!Number.isSafeInteger(Number(gate?.id)) || Number(gate.id) <= 0 || !Array.isArray(gate.steps)) return null;
   const codeSteps = gate.steps.filter((step) => step?.name === 'Run all required code checks');
   const aggregateSteps = gate.steps.filter((step) => step?.name === 'Require the selected checks to complete');
@@ -103,22 +105,24 @@ export async function lookupTrustedFullCodeReceipt({
   repo,
   api,
   fetchJson,
+  trustedControlRef,
   maxPages = MAX_PAGES,
 } = {}) {
   const identity = eventIdentity(event);
   if (!identity || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(String(repo ?? ''))
-    || typeof fetchJson !== 'function' || !Number.isInteger(maxPages) || maxPages < 1) {
+    || typeof fetchJson !== 'function' || !SHA.test(String(trustedControlRef ?? ''))
+    || !Number.isInteger(maxPages) || maxPages < 1) {
     return { receipts: [], reason: 'invalid_identity' };
   }
 
   const trustedBaseManifest = await readControlManifest({
     api,
     repo,
-    ref: identity.baseSha,
+    ref: trustedControlRef,
     fetchJson,
   });
   if (!trustedBaseManifest) {
-    return { receipts: [], reason: 'base_control_plane_unverifiable' };
+    return { receipts: [], reason: 'trusted_control_plane_unverifiable' };
   }
 
   for (let page = 1; page <= maxPages; page += 1) {
@@ -166,7 +170,6 @@ export async function lookupTrustedFullCodeReceipt({
           runId: association.runId,
           jobId: gate.jobId,
           fullCode: true,
-          controlPlaneSha: trustedBaseManifest['.github/workflows/ci.yml'],
         }],
         reason: 'trusted_full_code_receipt',
       };
@@ -204,14 +207,24 @@ async function main() {
   const repo = String(process.env.GITHUB_REPOSITORY ?? '');
   const api = String(process.env.GITHUB_API_URL ?? '');
   const token = String(process.env.GH_TOKEN ?? '');
+  let trustedControlRef = '';
+  try {
+    trustedControlRef = execFileSync('git', ['rev-parse', 'HEAD'], {
+      encoding: 'utf8',
+      timeout: 5_000,
+    }).trim();
+  } catch {
+    trustedControlRef = '';
+  }
   let result = { receipts: [], reason: 'runtime_unavailable' };
 
-  if (token && /^https:\/\//.test(api)) {
+  if (token && /^https:\/\//.test(api) && SHA.test(trustedControlRef)) {
     try {
       result = await lookupTrustedFullCodeReceipt({
         event,
         repo,
         api,
+        trustedControlRef,
         fetchJson: (url) => defaultFetchJson(url, token),
       });
     } catch {
