@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { api } from './api';
+import { api, ApiRequestError } from './api';
 
 type Business = { id: string; name: string; slug: string; timezone: string };
 type Membership = {
@@ -47,12 +47,18 @@ function roleLabel(role: Membership['role']) {
   return 'Çalışan';
 }
 
+function isRetryableApiError(error: unknown) {
+  return error instanceof ApiRequestError
+    && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
+}
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string>('');
+  const [sessionUnavailable, setSessionUnavailable] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [showPasswordChange, setShowPasswordChange] = useState(false);
 
@@ -61,6 +67,7 @@ export default function App() {
     try {
       const nextSession = await api<Session>('/api/session');
       setSession(nextSession);
+      setSessionUnavailable(false);
       if (nextSession.user && nextSession.activeBusinessId && !nextSession.passwordRecovery) {
         try {
           setCatalog(await api<Catalog>('/api/catalog'));
@@ -71,6 +78,13 @@ export default function App() {
         setCatalog(null);
       }
     } catch (error) {
+      if (isRetryableApiError(error)) {
+        setSessionUnavailable(true);
+      } else {
+        setSession(null);
+        setCatalog(null);
+        setSessionUnavailable(false);
+      }
       setNotice(error instanceof Error ? error.message : 'Bağlantı kurulamadı.');
     } finally {
       setLoading(false);
@@ -266,10 +280,16 @@ export default function App() {
 
   async function logout() {
     setBusy(true);
+    setShowPasswordChange(false);
+    setSession(null);
+    setCatalog(null);
+    setSessionUnavailable(false);
+    setNotice('');
     try {
       await api('/api/auth/logout', { method: 'POST' });
-      setShowPasswordChange(false);
       await load();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Çıkış işlemi sunucuda doğrulanamadı. Yeniden giriş yapmadan önce tekrar deneyin.');
     } finally {
       setBusy(false);
     }
@@ -301,7 +321,14 @@ export default function App() {
       <main className="workspace">
         {notice && <div className="notice" role="status">{notice}</div>}
 
-        {!session?.user ? (
+        {sessionUnavailable && !session?.user ? (
+          <section className="panel setup-panel">
+            <p className="eyebrow">OTURUM DOĞRULANIYOR</p>
+            <h1>Oturum durumu şu anda doğrulanamıyor</h1>
+            <p className="muted">Geçici bağlantı hatası girişinizi sonlandırmaz. Oturum servisine yeniden ulaştığımızda çalışma alanınız kaldığı yerden devam eder.</p>
+            <button className="primary-button" type="button" onClick={() => void load()} disabled={busy}>Tekrar dene</button>
+          </section>
+        ) : !session?.user ? (
           <section className="panel auth-panel">
             <p className="eyebrow">GÜVENLİ HESAP ERİŞİMİ</p>
             <h1>

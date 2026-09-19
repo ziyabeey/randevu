@@ -4,9 +4,10 @@ Follow [AGENTS](../AGENTS.md), [CONTRIBUTING](../CONTRIBUTING.md),
 [agent workflow](../docs/plan/agent-workflow.md), the
 [AI model routing contract](../docs/development-engine/ai-model-routing.md) and the
 task's current Context Pack.
-Verified runtime is recorded in PROJECT_STATE; product/dependencies in PRODUCT_SPEC
-and ROADMAP; ownership in TASKS plus open PRs and the latest binding
-[Issue #65 receipt](https://github.com/ziyabeey1-ai/randevu/issues/65).
+Live task, accepted-main and blocker status is recorded only in TASKS. PRODUCT_SPEC
+defines the product boundary and ROADMAP the planned sequence. Open PRs and
+[Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) carry temporary
+candidate/coordination evidence only and never override TASKS.
 Derived manifests/audits are observation-only, never replacement authority.
 
 - Never self-ready or self-merge. Only the coordinator authorizes readiness,
