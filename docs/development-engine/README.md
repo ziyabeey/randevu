@@ -284,8 +284,7 @@ not change R1/R2 scope, acceptance semantics or Dispatcher policy.
 
 The Claude Code Routine fire API creates a new session for every successful call
 and has no idempotency key. The review router therefore reserves a PR comment
-using `role + dispatcher case fingerprint` before firing. An existing reservation,
-successful launch receipt or uncertain launch blocks automatic duplicate spend.
+using a role-specific request fingerprint before firing. The request fingerprint excludes unrelated reviewer state and observation timestamp, so one reviewer finishing cannot accidentally re-fire the other. An existing reservation, successful launch receipt or uncertain launch blocks automatic duplicate spend.
 A launch receipt records only the exact head, case fingerprint and Claude session
 URL. It is **not** an `ACCEPTABLE | BLOCKER | INCOMPLETE` review receipt and never
 grants merge authority.
