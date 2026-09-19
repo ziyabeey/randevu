@@ -24,6 +24,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   route:
@@ -40,6 +41,7 @@ jobs:
       OBSERVATION_JSON: ${{ inputs.observation_json }}
       EVIDENCE_JSON: ${{ inputs.evidence_json }}
       EXPECTED_CASE_FINGERPRINT: ${{ inputs.expected_case_fingerprint }}
+      GH_TOKEN: ${{ github.token }}
 
     steps:
       - name: Require canonical main workflow ref
@@ -95,6 +97,21 @@ jobs:
             echo "Dispatcher requested reviews without an eligible independent role." >&2
             exit 1
           fi
+
+          expected_base="$(jq -r '.envelope.dispatcher.facts.candidate.baseMainSha // empty' "${RUNNER_TEMP}/review-route.json")"
+          expected_main="$(jq -r '.envelope.dispatcher.facts.observation.liveMainSha // empty' "${RUNNER_TEMP}/review-route.json")"
+          [[ "${expected_base}" =~ ^[a-f0-9]{40}$ ]]
+          [[ "${expected_main}" =~ ^[a-f0-9]{40}$ ]]
+
+          live_pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}")"
+          live_head="$(jq -r '.head.sha // empty' <<<"${live_pr}")"
+          live_base="$(jq -r '.base.sha // empty' <<<"${live_pr}")"
+          live_main="$(gh api "repos/${GITHUB_REPOSITORY}/branches/main" --jq '.commit.sha')"
+
+          test "${live_head}" = "${head_sha}"
+          test "${live_base}" = "${expected_base}"
+          test "${live_main}" = "${expected_main}"
+          test "${expected_base}" = "${expected_main}"
 
           printf 'case_fingerprint=%s\n' "${fingerprint}" >> "${GITHUB_OUTPUT}"
           printf 'pr_number=%s\n' "${pr_number}" >> "${GITHUB_OUTPUT}"
