@@ -63,6 +63,7 @@ export type PublicMultiServiceSelectionState = {
 
 type Props = {
   slug: string;
+  availabilityRefreshToken?: number;
   onSelectionChange?: (state: PublicMultiServiceSelectionState | null) => void;
 };
 
@@ -144,7 +145,7 @@ function matchesRequestedLines(slot: PublicGroupSlot, expected: PublicMultiServi
   });
 }
 
-export default function PublicMultiServiceSelection({ slug, onSelectionChange }: Props) {
+export default function PublicMultiServiceSelection({ slug, availabilityRefreshToken = 0, onSelectionChange }: Props) {
   const [page, setPage] = useState<PagePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
@@ -163,6 +164,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
   const staffGeneration = useRef(0);
   const slotGeneration = useRef(0);
   const slotController = useRef<AbortController | null>(null);
+  const lastRefreshToken = useRef(availabilityRefreshToken);
 
   useEffect(() => {
     const generation = ++catalogGeneration.current;
@@ -328,6 +330,12 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     }
   }
 
+  useEffect(() => {
+    if (availabilityRefreshToken === lastRefreshToken.current) return;
+    lastRefreshToken.current = availabilityRefreshToken;
+    if (date && lines.length) void loadSlots();
+  }, [availabilityRefreshToken]);
+
   function chooseSlot(slot: PublicGroupSlot) {
     setSelectedSlot(slot);
     setNotice('');
@@ -348,7 +356,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
 
   return <section className="public-booking-card public-multi-service" aria-labelledby="public-multi-service-title">
     <span className="public-step">A</span>
-    <div className="public-multi-heading"><div><h2 id="public-multi-service-title">Birden fazla hizmet planla</h2><p className="public-muted">Hizmetleri sırayla seçin. Personeli her hizmet için ayrı belirleyebilirsiniz. Tek hizmetli randevu oluşturma akışı aşağıda kullanılmaya devam eder.</p></div><strong>{selectedIds.length}/{MAX_LINES}</strong></div>
+    <div className="public-multi-heading"><div><h2 id="public-multi-service-title">Hizmet planınızı oluşturun</h2><p className="public-muted">Bir veya daha fazla hizmeti sırayla seçin. Personeli her hizmet için ayrı belirleyebilirsiniz.</p></div><strong>{selectedIds.length}/{MAX_LINES}</strong></div>
     {notice && <div className="public-inline-notice" role="status">{notice}</div>}
     {staffRetryable && <button className="public-retry" type="button" onClick={() => { setNotice(''); setStaffRetryable(false); setStaffAttempt((current) => current + 1); }}>Personeli tekrar yükle</button>}
 

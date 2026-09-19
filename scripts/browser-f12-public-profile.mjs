@@ -115,6 +115,9 @@ const server = createServer(async (request, response) => {
       ? sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Hizmetler geçici olarak yüklenemedi.' } })
       : sendJson(response, 200, multiCatalog());
   }
+  if (request.method === 'GET' && /^\/api\/public\/business\/[^/]+\/services-v2$/.test(url.pathname)) {
+    return sendJson(response, 200, { services: [] });
+  }
   if (request.method === 'GET' && ['/api/public/business/multi-salon/staff', '/api/public/business/retry-salon/staff'].includes(url.pathname)) {
     if (url.pathname.includes('retry-salon')) {
       retryStaffCalls += 1;
@@ -383,7 +386,7 @@ function assertCommon(result, width) {
   assert.deepEqual(result.diagnostics, []);
   assert.match(result.html, />Hizmetler</);
   assert.match(result.html, />Bilgiler</);
-  assert.match(result.html, /Şu anda online randevuya açık hizmet bulunmuyor\./);
+  assert.match(result.html, /Şu anda seçilebilecek hizmet bulunmuyor\./);
   assert.doesNotMatch(result.html, />Yorumlar</);
   assert.doesNotMatch(result.html, /\btenant\b|\bRPC\b|\bFAZ\b/i);
 }

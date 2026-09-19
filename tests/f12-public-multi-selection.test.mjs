@@ -53,10 +53,12 @@ test('F12-04 exposes an explicit handoff state and server-authoritative estimate
   assert.doesNotMatch(component, /F12-0[1-9]|\bfaz\b|\btenant\b|\bRPC\b/i);
 });
 
-test('F12-04 is mounted only on the public salon surface and preserves the legacy booking engine', () => {
+test('F12-04 is mounted only on the public salon surface and hands its state to the single booking owner', () => {
   assert.match(salon, /import PublicMultiServiceSelection from '\.\/PublicMultiServiceSelection';/);
-  assert.match(salon, /<PublicMultiServiceSelection slug=\{slug\} \/>/);
-  assert.match(salon, /<PublicBookingPage slug=\{slug\} \/>/);
+  assert.match(salon, /<PublicMultiServiceSelection/);
+  assert.match(salon, /onSelectionChange=\{setBookingSelection\}/);
+  assert.match(salon, /<PublicBookingPage/);
+  assert.match(salon, /multiServiceSelection=\{bookingSelection\}/);
 });
 
 test('F12-04 mobile controls retain 44px touch targets and narrow layouts', () => {
