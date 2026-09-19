@@ -129,10 +129,13 @@ test('full-code gate requires one successful CI gate and an actually executed co
   assert.equal(fullCodeGate(jobs({ code: 'skipped' })), null);
   assert.equal(fullCodeGate(jobs({ aggregate: 'failure' })), null);
   assert.equal(fullCodeGate(jobs({ gateCount: 2 })), null);
+  const mixed = jobs();
+  mixed.jobs.push({ ...mixed.jobs[0], id: 78, conclusion: 'failure' });
+  assert.equal(fullCodeGate(mixed), null);
   assert.equal(fullCodeGate({ jobs: [] }), null);
 });
 
-test('trusted control plane requires every gate-defining blob to equal the exact base blob', () => {
+test('trusted control plane requires every gate-defining blob to equal the canonical trust-root blob', () => {
   const baseManifest = manifest();
   assert.equal(sameTrustedControlPlane(baseManifest, manifest()), true);
 
@@ -171,6 +174,7 @@ test('lookup returns a sanitized receipt only for same-PR/base full-code success
     event: event(),
     repo: 'ziyabeey1-ai/randevu',
     api: 'https://api.github.com',
+    trustedControlRef: base,
     fetchJson: async (url) => {
       calls.push(url);
       return baseFetch(url);
@@ -184,7 +188,6 @@ test('lookup returns a sanitized receipt only for same-PR/base full-code success
     runId: 11,
     jobId: 77,
     fullCode: true,
-    controlPlaneSha: trustedBlob,
   }]);
   assert.ok(calls.some((url) => url.includes('actions/workflows/ci.yml/runs')));
 });
@@ -212,6 +215,7 @@ test('lookup fails closed for docs-only success, ambiguous association and any c
       event: event(),
       repo: 'ziyabeey1-ai/randevu',
       api: 'https://api.github.com',
+      trustedControlRef: base,
       fetchJson: makeFetch(scenario),
     });
     assert.deepEqual(result.receipts, []);
@@ -238,6 +242,7 @@ test('lookup follows bounded pagination and can find an older valid full-code re
     event: event(),
     repo: 'ziyabeey1-ai/randevu',
     api: 'https://api.github.com',
+    trustedControlRef: base,
     fetchJson,
     maxPages: 2,
   });
@@ -251,6 +256,7 @@ test('malformed or unavailable history/control manifests produce no receipt inst
       event: event(),
       repo: 'ziyabeey1-ai/randevu',
       api: 'https://api.github.com',
+      trustedControlRef: base,
       fetchJson: makeFetch({ history }),
     });
     assert.deepEqual(result.receipts, []);
@@ -262,6 +268,7 @@ test('malformed or unavailable history/control manifests produce no receipt inst
     event: event(),
     repo: 'ziyabeey1-ai/randevu',
     api: 'https://api.github.com',
+    trustedControlRef: base,
     fetchJson: makeFetch({ baseManifest: missingBase }),
   });
   assert.deepEqual(noBase.receipts, []);
@@ -270,15 +277,17 @@ test('malformed or unavailable history/control manifests produce no receipt inst
     event: event(),
     repo: 'ziyabeey1-ai/randevu',
     api: 'https://api.github.com',
+    trustedControlRef: base,
     fetchJson: async () => { throw new Error('network'); },
   });
   assert.deepEqual(failed.receipts, []);
 });
 
-test('reusable broker workflow has no caller identity inputs and executes only base-pinned trusted code', () => {
+test('reusable broker workflow has no caller identity inputs and executes token-bearing code only from canonical main', () => {
   const workflow = readFileSync(path.resolve('.github/workflows/ci-receipt-broker.yml'), 'utf8');
   assert.doesNotMatch(workflow, /pr_number:|base_sha:|current_head_sha:/);
-  assert.match(workflow, /github\.event\.pull_request\.base\.sha/);
+  assert.match(workflow, /ref: main/);
+  assert.doesNotMatch(workflow, /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
   assert.match(workflow, /node scripts\/ci-receipt-broker\.mjs/);
   assert.match(workflow, /GH_TOKEN: \$\{\{ github\.token \}\}/);
 });
