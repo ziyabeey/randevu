@@ -186,4 +186,47 @@ end
 $$;
 
 reset role;
+
+-- Overflow stays a first-class bounded public error through the dispatcher.
+insert into public.services(
+  id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,
+  category,sort_order,price_minor,price_type,price_min_minor,price_max_minor,currency,active
+)
+select
+  ('f27'||lpad(i::text,5,'0')||'-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,
+  'f2100000-0000-4000-8000-000000000001'::uuid,
+  'Overflow '||i::text,30,0,0,'Overflow',1000+i,1000+i,'fixed',1000+i,1000+i,'TRY',true
+from generate_series(1,99) as g(i);
+
+insert into public.staff_services(business_id,staff_id,service_id,active)
+select
+  'f2100000-0000-4000-8000-000000000001'::uuid,
+  'f2400000-0000-4000-8000-000000000001'::uuid,
+  ('f27'||lpad(i::text,5,'0')||'-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,
+  true
+from generate_series(1,99) as g(i);
+
+delete from public.public_booking_rate_counters;
+set local role anon;
+
+do $$
+declare
+  v_result jsonb;
+begin
+  v_result:=public.execute_public_operation(
+    'services_v2',
+    '{"p_slug":"f12-catalog-v2"}'::jsonb,
+    repeat('G',48),
+    repeat('c',64),
+    repeat('d',64)
+  );
+
+  if v_result->>'ok'<>'false'
+     or v_result#>>'{error,message}'<>'PUBLIC_SERVICES_LIMIT_EXCEEDED' then
+    raise exception 'services_v2 overflow was masked: %',v_result;
+  end if;
+end
+$$;
+
+reset role;
 rollback;
