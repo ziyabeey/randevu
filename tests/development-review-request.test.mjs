@@ -106,6 +106,13 @@ test('R1 and R2 requests are independent and preserve exact candidate provenance
   assert.notEqual(r1.requestFingerprint, r2.requestFingerprint);
 });
 
+test('role request fingerprint stays stable when only the other reviewer state changes', () => {
+  const both = buildIndependentReviewRequest(dispatcher(['r1', 'r2']), {}, 'r2');
+  const onlyR2 = buildIndependentReviewRequest(dispatcher(['r2']), {}, 'r2');
+  assert.notEqual(both.dispatcherCaseFingerprint, onlyR2.dispatcherCaseFingerprint);
+  assert.equal(both.requestFingerprint, onlyR2.requestFingerprint);
+});
+
 test('a role that Dispatcher did not require cannot spend Routine credit', () => {
   assert.throws(
     () => buildIndependentReviewRequest(dispatcher(['r1']), {}, 'r2'),
