@@ -6,12 +6,13 @@ S06 uygulaması; güncel kabul ve açık erişim işi [S06 devrinde](../handoffs
 
 CI her kaynak/hedef branch'teki PR ve main push için çalışır. Böylece üst üste kurulan PR'lar da main'e alınmadan test edilebilir. Workflow düzeyinde dosya filtresi yoktur; tek ve koşulsuz job olan `CI gate` sabit sonuçtur. Aynı PR'a yeni commit eski run'ı iptal eder; farklı PR ve staging koşularına dokunmaz. CI secrets/deploy/admin yetkisi kullanmaz; checkout credential'ı saklanmaz.
 
-`ci-scope.mjs` PR merge-base/head veya push before/after arasındaki bütün yolları NUL ayrımlı Git diff ile okur. Yalnız izinli kök Markdown dosyaları ve `docs/**/*.md` belge kolunu seçer. Silinen dosya ve rename'in iki tarafı dahildir. Bilinmeyen, karma, bozuk veya eksik diff tam kod kontrolüne düşer. Yeni bir dosya türü kendiliğinden hafif sayılmaz.
+`ci-scope.mjs` PR merge-base/head veya push before/after arasındaki bütün yolları NUL ayrımlı Git diff ile okur. Yalnız izinli kök Markdown dosyaları ve `docs/**/*.md` belge kolunu seçer. Silinen dosya ve rename'in iki tarafı dahildir. PR `synchronize` olayında önceki head aynı PR ve aynı base SHA üzerinde exact-head `CI` workflow SUCCESS taşıyorsa, önceki green head → current head deltası ayrıca incelenir; bu delta yalnız izinli Markdown ise tam kod kanıtı önceki head'den taşınır ve current head yalnız belge/görev grafiği kapısını çalıştırır. Önceki success, aynı-base bağı, descendant lineage veya GitHub Actions receipt doğrulanamazsa tam kod kontrolüne fail-closed düşer. Yeni bir dosya türü kendiliğinden hafif sayılmaz.
 
 | Yol | Çalışan işler | Kurulum / typecheck / PG17 |
 | --- | --- | --- |
 | Yalnız izinli belge | CI gate: belge kontrolü ve sonuç | 0 / 0 / 0 |
-| Kod, migration, CI, karma veya belirsiz | CI gate: belge + tam kod kontrolleri ve sonuç | 1 / 1 / 1 |
+| Aynı-base exact-head green candidate'ın yalnız belge descendant'ı | Önceki tam kod receipt'i carry-forward + current belge/görev grafiği kontrolü | 0 / 0 / 0 |
+| Kod, migration, CI, karma, receipt/lineage belirsizliği | CI gate: belge + tam kod kontrolleri ve sonuç | 1 / 1 / 1 |
 
 Belge doğrulayıcı Git'te izlenen Markdown'ın yerel linklerini, TASKS bağımlılıklarını/döngülerini/durumlarını, faz kapılarını ve mevcut durumdaki açık S-görev beyanlarını denetler. Tarihsel devir metni güncel durum gibi yorumlanmaz. Harici URL erişilebilirliği ve bölüm anchor'ları ağ taramasıyla doğrulanmaz.
 
