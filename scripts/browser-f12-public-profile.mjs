@@ -223,6 +223,74 @@ async function inspectViewport(debugUrl, origin, slug, width) {
   } finally { page.close(); }
 }
 
+
+async function inspectMultiSelection(debugUrl, origin, width) {
+  const targetUrl = origin + '/r/multi-salon?customer=secret#private';
+  const target = await (await fetch(debugUrl + '/json/new?' + encodeURIComponent(targetUrl), { method: 'PUT', signal: AbortSignal.timeout(5_000) })).json();
+  const page = await Cdp.connect(target.webSocketDebuggerUrl);
+  try {
+    await page.send('Runtime.enable');
+    await page.send('Page.enable');
+    await page.send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: true });
+    await waitFor(() => page.evaluate('document.querySelectorAll(".public-service-choice").length === 2'), 'F12-04 catalog did not become ready');
+
+    const viewport = await page.evaluate('(() => { const root=document.documentElement; const controls=Array.from(document.querySelectorAll(".public-multi-service button, .public-multi-service select, .public-multi-service input, .public-salon-actions button")); return { width:root.clientWidth, overflow:root.scrollWidth>root.clientWidth+1, targets:controls.length>0&&controls.every((node)=>node.getBoundingClientRect().height>=44), body:document.body.innerText }; })()');
+    assert.equal(viewport.width, width);
+    assert.equal(viewport.overflow, false, 'F12-04 planner overflowed at ' + width + 'px');
+    assert.equal(viewport.targets, true, 'F12-04 planner has a sub-44px control at ' + width + 'px');
+    assert.match(viewport.body, /Renk Paketi/);
+    assert.match(viewport.body, /Kesim/);
+
+    await page.evaluate('(() => { const buttons=Array.from(document.querySelectorAll(".public-salon-actions button")); buttons.find((button)=>button.textContent.includes("Favoriye"))?.click(); buttons.find((button)=>button.textContent.includes("Paylaş"))?.click(); })()');
+    await waitFor(() => page.evaluate('document.documentElement.dataset.f12SharedUrl || false'), 'F12-04 share did not execute');
+    const actions = await page.evaluate('(() => ({ favorite:localStorage.getItem("randevu-kolay:favorite-salon:multi-salon"), shared:document.documentElement.dataset.f12SharedUrl }))()');
+    assert.equal(actions.favorite, '1');
+    assert.equal(actions.shared, origin + '/r/multi-salon');
+
+    await page.evaluate('Array.from(document.querySelectorAll(".public-service-choice")).forEach((button)=>button.click())');
+    await waitFor(() => page.evaluate('document.querySelectorAll(".public-selected-line").length === 2'), 'F12-04 did not select two services');
+
+    await page.evaluate('(() => { const firstSelect=document.querySelector(".public-selected-line select"); firstSelect.value="' + staffA + '"; firstSelect.dispatchEvent(new Event("change",{bubbles:true})); const up=Array.from(document.querySelectorAll(".public-line-actions button")).find((button)=>button.getAttribute("aria-label")?.includes("Kesim hizmetini yukarı")); up?.click(); })()');
+    await waitFor(() => page.evaluate('document.querySelector(".public-selected-line strong")?.textContent === "Kesim"'), 'F12-04 reorder did not persist');
+
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
+    await waitFor(() => requestDetails.some((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-20'), 'F12-04 old-date request missing');
+
+    await page.evaluate('(() => { const input=document.querySelector(".public-multi-date-row input[type=date]"); input.value="2026-09-21"; input.dispatchEvent(new Event("change",{bubbles:true})); })()');
+    await waitFor(() => page.evaluate('document.querySelector(".public-multi-date-row input")?.value === "2026-09-21"'), 'F12-04 date change did not apply');
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
+    await waitFor(() => requestDetails.some((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-21'), 'F12-04 new-date request missing');
+    await waitFor(() => page.evaluate('document.querySelectorAll(".public-group-slot").length === 1'), 'F12-04 new-date slot missing');
+
+    const latest = [...requestDetails].reverse().find((item) => item.path.endsWith('/group-slots') && item.body.date === '2026-09-21');
+    assert.deepEqual(latest.body.lines, [
+      { serviceId: serviceB, staffId: null },
+      { serviceId: serviceA, staffId: staffA },
+    ]);
+
+    await page.evaluate('document.querySelector(".public-group-slot")?.click()');
+    await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-summary"))'), 'F12-04 summary missing');
+    await sleep(1000);
+    const summary = await page.evaluate('document.querySelector(".public-group-summary")?.innerText ?? ""');
+    assert.match(summary, /Kesim/);
+    assert.match(summary, /Renk Paketi/);
+    assert.match(summary, /10:00/);
+    assert.doesNotMatch(summary, /09:00/);
+
+    let keyboardReached = false;
+    for (let index = 0; index < 30; index += 1) {
+      await page.tab();
+      keyboardReached = await page.evaluate('(() => { const node=document.activeElement; return Boolean(node?.classList?.contains("public-service-choice") && node.matches(":focus-visible")); })()');
+      if (keyboardReached) break;
+    }
+    assert.equal(keyboardReached, true, 'F12-04 keyboard focus never reached a service choice');
+    assert.deepEqual(page.diagnostics, []);
+    return { favorite: actions.favorite };
+  } finally {
+    page.close();
+  }
+}
+
 function assertCommon(result, width) {
   assert.equal(result.layoutWidth, width, `requested ${width}px layout viewport rendered as ${result.layoutWidth}px (innerWidth ${result.innerWidth}px)`);
   assert.equal(result.overflow, false, `${width}px salon page overflowed horizontally: layout=${result.layoutWidth}, scroll=${result.scrollWidth}, offenders=${JSON.stringify(result.offenders)}`);
