@@ -16,12 +16,24 @@ const sockets = new Set();
 let testJs = Buffer.alloc(0);
 let testCss = Buffer.alloc(0);
 const brokenMediaId = 'e1000000-0000-4000-8000-000000000001';
+const serviceA = 'fa300000-0000-4000-8000-000000000001';
+const serviceB = 'fa300000-0000-4000-8000-000000000002';
+const staffA = 'fa400000-0000-4000-8000-000000000001';
+const staffB = 'fa400000-0000-4000-8000-000000000002';
+const requestDetails = [];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function readJson(request) {
+  const chunks = [];
+  for await (const chunk of request) chunks.push(chunk);
+  return chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {};
+}
 
 function profile(slug) {
   const broken = slug === 'broken-salon';
+  const multi = slug === 'multi-salon';
   return {
-    public_name: broken ? 'Kırık Görsel Salon' : 'Fotoğrafsız Salon',
+    public_name: multi ? 'Çoklu Salon' : broken ? 'Kırık Görsel Salon' : 'Fotoğrafsız Salon',
     short_description: 'Gerçek salon bilgileriyle sade online randevu.',
     long_description: 'Bahçeşehir’de hizmet veren salonun gerçek profil açıklaması.',
     public_phone: '+905551112233', public_email: 'salon@example.invalid', public_website: null, public_whatsapp: null,
@@ -33,9 +45,42 @@ function profile(slug) {
 }
 function bookingPayload(slug) {
   return {
-    business: { name: slug === 'broken-salon' ? 'Kırık Görsel Salon' : 'Fotoğrafsız Salon', slug, timezone: 'Europe/Istanbul', local_date: '2026-09-14', max_date: '2026-11-13', step_minutes: 15, min_notice_minutes: 60, horizon_days: 60 },
+    business: { name: slug === 'multi-salon' ? 'Çoklu Salon' : slug === 'broken-salon' ? 'Kırık Görsel Salon' : 'Fotoğrafsız Salon', slug, timezone: 'Europe/Istanbul', local_date: slug === 'multi-salon' ? '2026-09-20' : '2026-09-14', max_date: '2026-11-13', step_minutes: 15, min_notice_minutes: 60, horizon_days: 60 },
     services: [], bookingClock: { serverNowEpochSeconds: 1789360000, submitWindowSeconds: 300 },
   };
+}
+
+function multiCatalog() {
+  return { services: [
+    { service_id: serviceA, name: 'Renk Paketi', category: 'Renk', sort_order: 20, duration_minutes: 60, price_type: 'range', price_min_minor: 12000, price_max_minor: 18000, currency: 'TRY', price_policy_version: 2 },
+    { service_id: serviceB, name: 'Kesim', category: 'Saç', sort_order: 10, duration_minutes: 30, price_type: 'fixed', price_min_minor: 5000, price_max_minor: 5000, currency: 'TRY', price_policy_version: 1 },
+  ] };
+}
+
+function groupSlots(body) {
+  const newer = body.date === '2026-09-21';
+  const startsAt = newer ? '2026-09-21T07:00:00Z' : '2026-09-20T06:00:00Z';
+  const catalog = new Map(multiCatalog().services.map((service) => [service.service_id, service]));
+  let cursor = Date.parse(startsAt);
+  const lines = body.lines.map((line, index) => {
+    const service = catalog.get(line.serviceId);
+    const person = line.staffId
+      ? { id: line.staffId, name: line.staffId === staffA ? 'Ada' : 'Bora' }
+      : line.serviceId === serviceA ? { id: staffA, name: 'Ada' } : { id: staffB, name: 'Bora' };
+    const lineStart = new Date(cursor).toISOString();
+    cursor += service.duration_minutes * 60_000;
+    return {
+      lineOrdinal: index + 1, serviceId: service.service_id, serviceName: service.name,
+      staffId: person.id, staffName: person.name, startsAt: lineStart, endsAt: new Date(cursor).toISOString(),
+      priceType: service.price_type, priceMinMinor: service.price_min_minor, priceMaxMinor: service.price_max_minor,
+    };
+  });
+  return { slots: [{
+    startsAt, endsAt: new Date(cursor).toISOString(), timezone: 'Europe/Istanbul', currency: 'TRY',
+    estimateMinMinor: lines.reduce((sum, line) => sum + line.priceMinMinor, 0),
+    estimateMaxMinor: lines.reduce((sum, line) => sum + line.priceMaxMinor, 0),
+    lines,
+  }] };
 }
 function sendJson(response, status, body) {
   response.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
