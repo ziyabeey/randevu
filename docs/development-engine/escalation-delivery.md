@@ -82,3 +82,11 @@ canonical observation -> Dispatcher -> disposition -> Haiku -> attested Opus han
 ```
 
 `TASKS.md` remains the sole durable live task/status authority.
+
+## Activation gates
+
+The delivery layer may enter main only when the current exact head has required CI
+green, all material review threads resolved, current main integrated, and the
+DEV-ENGINE-02 TASKS row present. Activation does not add an automatic PR-event
+collector; the router remains manual/reusable until its event budget and dedupe
+contract are separately accepted.
