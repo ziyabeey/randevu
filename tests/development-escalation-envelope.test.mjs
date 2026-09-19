@@ -101,13 +101,17 @@ test('Haiku request is refused for non-reasoning dispositions', () => {
   assert.throws(() => renderHaikuCompressionRequest(envelope), /REASONING_REQUIRED/);
 });
 
-test('Haiku request contains the deterministic envelope and does not ask Haiku for a verdict', () => {
+test('Haiku request owns the Opus handoff without doing the Opus reasoning', () => {
   const envelope = buildEscalationEnvelope(dispatcher('investigate_current_ci_failure'), {
     question: 'Classify the ambiguous failure cause.',
   });
   const text = renderHaikuCompressionRequest(envelope);
   assert.match(text, /^EVIDENCE_COMPRESSION_REQUEST/);
-  assert.match(text, /Do not answer the technical question/);
+  assert.match(text, /sole model layer authorized to trigger the Opus Escalation Governor/);
+  assert.match(text, /Do not answer the technical question yourself/);
+  assert.match(text, /node scripts\/fire-opus-escalation\.mjs --package/);
+  assert.match(text, /Do not ask GitHub Actions, the dispatcher, or the caller to trigger Opus/);
+  assert.match(text, /OPUS_HANDOFF_BLOCKED/);
   assert.match(text, new RegExp(head));
   assert.match(text, /investigate_current_ci_failure/);
 });
