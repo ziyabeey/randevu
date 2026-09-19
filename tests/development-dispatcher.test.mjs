@@ -144,6 +144,33 @@ test('implementation eligibility requires explicit ready dependency, assignment 
   });
 });
 
+
+test('malformed SHA identity and candidate/snapshot disagreement refuse deterministic routing', async (t) => {
+  await t.test('malformed SHA', () => {
+    const output = result({ candidate: { headSha: 'not-a-sha' }, observation: { observedHeadSha: 'not-a-sha', liveHeadSha: 'not-a-sha' } });
+    assert.ok(output.contradictions.includes('CANDIDATE_HEAD_SHA_INVALID'));
+    assert.equal(output.recommendation.kind, 'refuse');
+  });
+  await t.test('candidate differs from observed head', () => {
+    const output = result({ observation: { observedHeadSha: oldHead, liveHeadSha: oldHead } });
+    assert.ok(output.contradictions.includes('CANDIDATE_OBSERVED_HEAD_MISMATCH'));
+    assert.equal(output.recommendation.suggestedAction, 'resolve_contradictory_evidence');
+  });
+});
+
+test('live main movement is visible even when head-bound observations are unchanged', () => {
+  const output = result({ observation: { liveMainSha: oldHead } });
+  assert.equal(output.state.snapshotFreshness, 'current');
+  assert.equal(output.state.mainFreshness, 'stale');
+  assert.equal(output.recommendation.suggestedAction, 'refresh_integration_base');
+});
+
+test('active candidate does not route past a blocked dependency', () => {
+  const output = result({ task: { dependencyState: 'blocked' } });
+  assert.equal(output.recommendation.kind, 'wait');
+  assert.equal(output.recommendation.suggestedAction, 'wait_for_dependency');
+});
+
 test('head freshness invalidates every head-bound routing conclusion', () => {
   const output = result({ observation: { observedHeadSha: oldHead, liveHeadSha: head } });
   assert.equal(output.state.snapshotFreshness, 'stale');
@@ -192,7 +219,7 @@ test('R0 discovery, verification and frozen-blocker closure are distinct conditi
   await t.test('descendant repair means bounded verification', () => {
     const output = result({
       r0: {
-        requirement: 'required', receipt: 'accessible', freeze: 'none', lineage: 'descendant',
+        requirement: 'required', receipt: 'accessible', reviewedHeadSha: oldHead, freeze: 'none', lineage: 'descendant',
         change: 'semantic_descendant',
       },
     });
@@ -203,7 +230,7 @@ test('R0 discovery, verification and frozen-blocker closure are distinct conditi
   await t.test('same-head open frozen blocker is repair-eligible only with assignment', () => {
     const output = result({
       r0: {
-        requirement: 'required', receipt: 'accessible', freeze: 'blockers', lineage: 'same_head',
+        requirement: 'required', receipt: 'accessible', reviewedHeadSha: head, freeze: 'blockers', lineage: 'same_head',
         frozenBlockers: ['R0-B1'], blockerClosures: [{ id: 'R0-B1', status: 'open' }],
       },
     });
@@ -215,7 +242,7 @@ test('R0 discovery, verification and frozen-blocker closure are distinct conditi
   await t.test('same-head unverified frozen blocker requires R0 verification', () => {
     const output = result({
       r0: {
-        requirement: 'required', receipt: 'accessible', freeze: 'blockers', lineage: 'same_head',
+        requirement: 'required', receipt: 'accessible', reviewedHeadSha: head, freeze: 'blockers', lineage: 'same_head',
         frozenBlockers: ['R0-B1'], blockerClosures: [{ id: 'R0-B1', status: 'unverified' }],
       },
     });
@@ -226,7 +253,7 @@ test('R0 discovery, verification and frozen-blocker closure are distinct conditi
   await t.test('all same-head frozen blockers closed is satisfied', () => {
     const output = result({
       r0: {
-        requirement: 'required', receipt: 'accessible', freeze: 'blockers', lineage: 'same_head',
+        requirement: 'required', receipt: 'accessible', reviewedHeadSha: head, freeze: 'blockers', lineage: 'same_head',
         frozenBlockers: ['R0-B1'], blockerClosures: [{ id: 'R0-B1', status: 'closed' }],
       },
     });
@@ -274,6 +301,14 @@ test('R1 and R2 remain independent obligations while recommendation can request 
   assert.equal(output.recommendation.suggestedAction, 'request_required_reviews');
 });
 
+
+test('required non-pass proof without exact candidate SHA remains an explicit provenance gap', () => {
+  const output = result({ proofs: [{ key: 'browser', status: 'fail', exactHeadSha: null, required: true }] });
+  assert.ok(output.obligations.some((item) => item.code === 'UNBOUND_NON_PASS_PROOF:browser'));
+  assert.equal(output.recommendation.kind, 'refuse');
+  assert.equal(output.recommendation.suggestedAction, 'resolve_proof_provenance');
+});
+
 test('mixed current PASS/non-PASS proof is a first-class contradiction and cannot be masked', () => {
   const output = result({
     proofs: [
@@ -318,6 +353,14 @@ test('merged candidate never becomes self-authorized closure', async (t) => {
     const output = result({ candidate, ci, postMain: { status: 'pending', mergeSha } });
     assert.equal(output.recommendation.kind, 'wait');
     assert.equal(output.recommendation.suggestedAction, 'obtain_post_main_verification');
+  });
+
+
+  await t.test('pass without merge-SHA binding cannot support closure assessment', () => {
+    const output = result({ candidate, ci, postMain: { status: 'pass', mergeSha: null } });
+    assert.ok(output.obligations.some((item) => item.code === 'POST_MAIN_MERGE_BINDING_REQUIRED'));
+    assert.equal(output.recommendation.kind, 'refuse');
+    assert.equal(output.recommendation.suggestedAction, 'confirm_post_main_evidence');
   });
 
   await t.test('post-main pass only allows coordinator closure assessment', () => {

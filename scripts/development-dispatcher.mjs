@@ -1,3 +1,5 @@
+const SHA_RE = /^[a-f0-9]{40}$/;
+
 function stableList(values) {
   return [...new Set(Array.from(values ?? [])
     .filter((value) => typeof value === 'string' && value.length > 0))]
@@ -19,6 +21,11 @@ function stableObjects(values, key = 'code') {
       const b = `${right[key]}:${right.role ?? ''}:${right.source ?? ''}`;
       return a.localeCompare(b, 'en');
     });
+}
+
+function addShaContradiction(contradictions, code, value) {
+  if (value === null || value === undefined) return;
+  if (typeof value !== 'string' || !SHA_RE.test(value)) contradictions.add(code);
 }
 
 function pick(value, allowed, fallback = 'unknown') {
@@ -390,6 +397,10 @@ function deriveProofs(facts, contradictions, obligations) {
   const currentByKey = new Map();
   for (const proof of facts.proofs) {
     if (!proof.required) continue;
+    if (!proof.exactHeadSha) {
+      if (proof.status !== 'pass') addObligation(obligations, 'UNBOUND_NON_PASS_PROOF:' + proof.key, { role: 'coordinator', source: 'proof' });
+      continue;
+    }
     if (!facts.candidate.headSha || proof.exactHeadSha !== facts.candidate.headSha) continue;
     if (!currentByKey.has(proof.key)) currentByKey.set(proof.key, new Set());
     currentByKey.get(proof.key).add(proof.status);
@@ -409,7 +420,12 @@ function deriveProofs(facts, contradictions, obligations) {
 function derivePostMain(facts, unknowns, obligations) {
   if (facts.candidate.presence !== 'merged') return { applicability: 'not_applicable', status: 'not_applicable' };
   if (!facts.candidate.mergeSha) unknowns.add('MERGE_SHA_UNKNOWN');
-  if (facts.postMain.mergeSha && facts.candidate.mergeSha && facts.postMain.mergeSha !== facts.candidate.mergeSha) {
+  if (!facts.postMain.mergeSha) {
+    unknowns.add('POST_MAIN_MERGE_SHA_UNKNOWN');
+    addObligation(obligations, 'POST_MAIN_MERGE_BINDING_REQUIRED', { role: 'coordinator', source: 'post_main' });
+    return { applicability: 'required', status: 'unknown' };
+  }
+  if (facts.candidate.mergeSha && facts.postMain.mergeSha !== facts.candidate.mergeSha) {
     return { applicability: 'required', status: 'mismatched_merge' };
   }
   if (facts.postMain.status === 'pass') return { applicability: 'required', status: 'pass' };
@@ -435,6 +451,29 @@ export function deriveConditions(inputFacts) {
   const contradictions = new Set();
   const unknowns = new Set();
   const obligations = [];
+
+  addShaContradiction(contradictions, 'CANDIDATE_HEAD_SHA_INVALID', facts.candidate.headSha);
+  addShaContradiction(contradictions, 'CANDIDATE_BASE_SHA_INVALID', facts.candidate.baseMainSha);
+  addShaContradiction(contradictions, 'CANDIDATE_MERGE_SHA_INVALID', facts.candidate.mergeSha);
+  addShaContradiction(contradictions, 'OBSERVED_HEAD_SHA_INVALID', facts.observation.observedHeadSha);
+  addShaContradiction(contradictions, 'LIVE_HEAD_SHA_INVALID', facts.observation.liveHeadSha);
+  addShaContradiction(contradictions, 'OBSERVED_MAIN_SHA_INVALID', facts.observation.observedMainSha);
+  addShaContradiction(contradictions, 'LIVE_MAIN_SHA_INVALID', facts.observation.liveMainSha);
+  addShaContradiction(contradictions, 'CI_EXACT_SHA_INVALID', facts.ci.exactHeadSha);
+  addShaContradiction(contradictions, 'CI_TESTED_CHECKOUT_SHA_INVALID', facts.ci.testedCheckoutSha);
+  addShaContradiction(contradictions, 'CI_BASE_SHA_INVALID', facts.ci.baseMainSha);
+  addShaContradiction(contradictions, 'R0_REVIEW_SHA_INVALID', facts.r0.reviewedHeadSha);
+  addShaContradiction(contradictions, 'R1_REVIEW_SHA_INVALID', facts.reviews.r1.reviewedHeadSha);
+  addShaContradiction(contradictions, 'R2_REVIEW_SHA_INVALID', facts.reviews.r2.reviewedHeadSha);
+  addShaContradiction(contradictions, 'POST_MAIN_MERGE_SHA_INVALID', facts.postMain.mergeSha);
+  for (const proof of facts.proofs) addShaContradiction(contradictions, 'PROOF_EXACT_SHA_INVALID:' + proof.key, proof.exactHeadSha);
+
+  if (facts.candidate.presence === 'active'
+    && facts.candidate.headSha
+    && facts.observation.observedHeadSha
+    && facts.candidate.headSha !== facts.observation.observedHeadSha) {
+    contradictions.add('CANDIDATE_OBSERVED_HEAD_MISMATCH');
+  }
 
   const snapshotFreshness = headFreshness(facts, unknowns);
   const currentMainFreshness = mainFreshness(facts, unknowns);
@@ -572,6 +611,36 @@ export function recommendNextAction(conditions) {
     });
   }
 
+  if (state.mainFreshness === 'stale') {
+    return recommendation('unique', 'coordinator', 'refresh_integration_base', ['LIVE_MAIN_MOVED'], {
+      blockedBy: ['main_freshness'],
+      rule: 'R4A_LIVE_MAIN_MOVE_DEGRADES_INTEGRATION_ROUTING',
+      conditions: ['state.mainFreshness'],
+    });
+  }
+  if (state.mainFreshness === 'unknown') {
+    return recommendation('refuse', 'coordinator', 'establish_main_freshness', ['MAIN_FRESHNESS_UNKNOWN'], {
+      blockedBy: ['main_freshness_unknown'],
+      rule: 'R4B_UNKNOWN_MAIN_FRESHNESS_REFUSES_INTEGRATION_ROUTING',
+      conditions: ['state.mainFreshness'],
+    });
+  }
+
+  if (state.candidatePresence === 'active' && state.task.dependencyState === 'blocked') {
+    return recommendation('wait', 'coordinator', 'wait_for_dependency', ['DEPENDENCY_BLOCKED'], {
+      blockedBy: ['dependency'],
+      rule: 'R4C_ACTIVE_CANDIDATE_DOES_NOT_OVERRIDE_BLOCKED_DEPENDENCY',
+      conditions: ['state.task.dependencyState'],
+    });
+  }
+  if (state.candidatePresence === 'active' && state.task.dependencyState === 'unknown') {
+    return recommendation('refuse', 'coordinator', 'confirm_dependency_state', ['DEPENDENCY_STATE_UNKNOWN'], {
+      blockedBy: ['dependency_unknown'],
+      rule: 'R4D_UNKNOWN_DEPENDENCY_REFUSES_DOWNSTREAM_ROUTING',
+      conditions: ['state.task.dependencyState'],
+    });
+  }
+
   if (state.candidatePresence === 'absent') {
     if (state.task.dependencyState === 'blocked') {
       return recommendation('wait', 'coordinator', 'wait_for_dependency', ['DEPENDENCY_BLOCKED'], {
@@ -664,6 +733,15 @@ export function recommendNextAction(conditions) {
       blockedBy: [`ci_result:${state.ci.result}`],
       rule: 'R16_INCOMPLETE_CI_REFUSES_DOWNSTREAM_ROUTING',
       conditions: ['state.ci.result'],
+    });
+  }
+
+  const unboundProofs = obligationPrefix(conditions, 'UNBOUND_NON_PASS_PROOF:');
+  if (unboundProofs.length > 0) {
+    return recommendation('refuse', 'coordinator', 'resolve_proof_provenance', ['NON_PASS_PROOF_PROVENANCE_UNKNOWN'], {
+      blockedBy: unboundProofs.map((item) => item.code),
+      rule: 'R16A_NON_PASS_PROOF_MUST_BIND_TO_A_CANDIDATE',
+      conditions: ['obligations'],
     });
   }
 
