@@ -30,7 +30,7 @@ For that marked flow:
    - `CASE_FINGERPRINT`: the unchanged 64-hex case fingerprint
    - `OPUS_ESCALATION_PACKAGE`: the compact evidence package
 5. From this Haiku session, trigger Opus exactly once by running:
-   `node scripts/fire-opus-escalation.mjs --package <temporary-json-file>`
+   `node scripts/fire-opus-escalation.mjs --package <temporary-json-file> --expected-fingerprint <unchanged-case-fingerprint>`
 6. Never reveal, print, copy into the package, commit, or expose
    `CLAUDE_OPUS_ROUTINE_URL` or `CLAUDE_OPUS_ROUTINE_TOKEN`.
 7. GitHub Actions, the Dispatcher, and the caller are not Opus callers. Do not ask
