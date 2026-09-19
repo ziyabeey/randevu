@@ -243,30 +243,15 @@ function checkTasks(root, tracked, errors) {
     }
   }
 
-  if (!tracked.has('PROJECT_STATE.md') || !existsSync(path.join(root, 'PROJECT_STATE.md'))) {
-    errors.push('PROJECT_STATE.md must exist and be tracked');
-    return;
-  }
-  const stateSymlink = firstSymlink(root, 'PROJECT_STATE.md');
-  if (stateSymlink) {
-    errors.push(`PROJECT_STATE.md: tracked Markdown source traverses symlink ${stateSymlink}`);
-    return;
-  }
-  const summary = readFileSync(path.join(root, 'PROJECT_STATE.md'), 'utf8').split('\n## ', 1)[0].replaceAll('...', '…');
-  for (const clause of summary.split(/[;.\n]+/)) {
-    const claimedState = /tamamlandı/i.test(clause) ? 'completed' : /açık/i.test(clause) ? 'open' : undefined;
-    if (!claimedState) continue;
-    const claimed = new Set();
-    for (const match of clause.matchAll(/\bS(\d{2})(?:\s*(?:…|\.\.\.)\s*S(\d{2}))?\b/g)) {
-      const first = Number(match[1]);
-      const last = Number(match[2] ?? match[1]);
-      if (first > last) continue;
-      for (let number = first; number <= last; number += 1) claimed.add(`S${String(number).padStart(2, '0')}`);
+  // PROJECT_STATE.md is a legacy tombstone only. It may exist for old links,
+  // but it must never become a second live status source.
+  if (tracked.has('PROJECT_STATE.md') && existsSync(path.join(root, 'PROJECT_STATE.md'))) {
+    const legacy = readFileSync(path.join(root, 'PROJECT_STATE.md'), 'utf8');
+    if (!legacy.includes('Bu dosya canlı durum kaynağı değildir')) {
+      errors.push('PROJECT_STATE.md is retired; live status belongs only in TASKS.md');
     }
-    for (const id of claimed) {
-      if (!tasks.has(id)) errors.push(`PROJECT_STATE.md: summary names unknown task ${id}`);
-      else if (claimedState === 'completed' && tasks.get(id).state !== 'Tamamlandı') errors.push(`PROJECT_STATE.md: summary marks ${id} completed but TASKS.md does not`);
-      else if (claimedState === 'open' && tasks.get(id).state === 'Tamamlandı') errors.push(`PROJECT_STATE.md: summary marks ${id} open but TASKS.md marks it completed`);
+    if (/^##\s+(?:Main|Aktif|Faz|Kabul|Durum)/m.test(legacy) || /^\s*\|.*Durum.*\|/m.test(legacy)) {
+      errors.push('PROJECT_STATE.md must remain a tombstone, not a second status tracker');
     }
   }
 }
