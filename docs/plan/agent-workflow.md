@@ -1,6 +1,6 @@
 # Ajan çalışma akışı
 
-Bu belge, görevlerin farklı oturumlar ve uygulayıcılar arasında aynı kapsam ve kanıtla sürdürülebilmesi için kısa çalışma protokolüdür. Ürün kapsamı [PRODUCT_SPEC.md](../../PRODUCT_SPEC.md) ve [ROADMAP.md](../../ROADMAP.md), canlı durum ve bağımlılıklar [TASKS.md](../../TASKS.md), kodun doğrulanmış mevcut hali [PROJECT_STATE.md](../../PROJECT_STATE.md) içindedir. Burada teknik görev planları tekrarlanmaz.
+Bu belge, görevlerin farklı oturumlar ve uygulayıcılar arasında aynı kapsam ve kanıtla sürdürülebilmesi için kısa çalışma protokolüdür. Ürün kapsamı [PRODUCT_SPEC.md](../../PRODUCT_SPEC.md) ve planlanan sıra [ROADMAP.md](../../ROADMAP.md) içindedir. **Canlı görev/main kabul durumu ve bağımlılıklar için tek kaynak [TASKS.md](../../TASKS.md)'dir.** Burada teknik görev planları veya ikinci durum özeti tekrarlanmaz.
 
 ## Teknik kapılar
 

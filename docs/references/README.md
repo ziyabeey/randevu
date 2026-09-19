@@ -31,6 +31,6 @@ Adisyon listesinin içeriği, ödeme formu, rapor hesaplama kuralları ve stok/p
 1. İlgili ekran dosyasını aç; ürün kolunu ve satırdaki işlevleri belirle.
 2. Müşteri yüzeyinde işlev koruması + estetik kaliteyi; işletme yüzeylerinde işlem/alan sırası + küçük fark sınırını kontrol et.
 3. Gerçek uygulama görüntüsünü ve API/işlem sonucunu birlikte doğrula; statik benzerlik işlev kanıtı değildir.
-4. Tamamlanan işlevin durumunu bu matriste ve `PROJECT_STATE.md` içinde kanıtıyla güncelle. Sonraki faza bağlı öğeleri eksik olarak tut.
+4. Tamamlanan işlevin canlı durumunu yalnız `TASKS.md` içinde kanıtıyla güncelle. Bu matris görsel/işlev referansıdır; ikinci görev durum tablosu tutmaz.
 
 Plan v3 sıra notu: F12-03 fiyat/kategori veri desteği F11-01 grup snapshot’ından önce tamamlanır. Bu değişiklik referans işlevlerini kaldırmaz. Yeni estetik yön/UX fikri ayrı çalışmadır; mevcut 11 görsel aynen korunur.

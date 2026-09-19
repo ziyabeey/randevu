@@ -271,7 +271,7 @@ Bu bölüm F13/F14 uygulaması değildir; F12-01'in üç kol için görsel dil s
 | `mobil-diger-2.png` | Salon/mesai/çalışan/hizmet/fiyat/ürün/stok/fotoğraf/promosyon ayarları | SalonApp `Diğer > Kurulum` | Ayar listesi ve bölümleme dili; görev sahipliği F10/F12/F15/F16 |
 | `mobil-diger-3.png` | Üyelik; işletme/şube; dil; şifre; çıkış | Ortak hesap menüsü | Hesap menüsü görsel dili; tam davranış F10/F16-08'e bağlı |
 
-Bu tablo alan eşdeğerliğidir, çalışan özellik matrisi değildir. Uygulanmışlık [PROJECT_STATE](../../PROJECT_STATE.md) ve [TASKS](../../TASKS.md) üzerinden ayrıca doğrulanır.
+Bu tablo alan eşdeğerliğidir, çalışan özellik matrisi değildir. Uygulanmışlık ve kabul durumu yalnız [TASKS](../../TASKS.md) üzerinden doğrulanır.
 
 ## 9. K01-K03 uyum kuralları
 
