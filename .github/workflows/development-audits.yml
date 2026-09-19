@@ -247,8 +247,7 @@ jobs:
 
           const canonicalPrompt = readText('docs/development-engine/automations/effective-state-audit.md', 16000);
           const mainContext = [
-            ['TASKS.md', readText('TASKS.md', 18000)],
-            ['PROJECT_STATE.md', readText('PROJECT_STATE.md', 16000)],
+            ['TASKS.md', readText('TASKS.md', 22000)],
             ['PRODUCT_SPEC.md', readText('PRODUCT_SPEC.md', 9000)],
             ['ROADMAP.md', readText('ROADMAP.md', 9000)],
             ['docs/development-engine/README.md', readText('docs/development-engine/README.md', 14000)],

@@ -42,7 +42,7 @@ Her paket CONTRIBUTING görev paketi şablonuna göre yazılmıştır. Süre ver
 
 - **Görev / yüzey:** K04 ve bu planın main'e alınması; Kepenk envanteri.
 - **Sahip:** DANIŞMA 3 (Randevu docs) + Kepenk ajanı (envanter).
-- **Yazılabilir dosyalar:** `docs/plan/k04-platform-core-contract.md`, `docs/plan/kepenk-core-migration-plan.md`; TASKS/ROADMAP/PROJECT_STATE kaydı koordinatör state-sync'iyle.
+- **Yazılabilir dosyalar:** `docs/plan/k04-platform-core-contract.md`, `docs/plan/kepenk-core-migration-plan.md`; canlı durum gerekiyorsa yalnız TASKS koordinatör güncellemesiyle değişir. ROADMAP plan belgesidir, PROJECT_STATE emekli tombstone'dur.
 - **Envanter (Kepenk, sayılarla):** gerçek kullanıcı sayısı ve giriş yöntemi dağılımı (parola / OTP / diğer); esnaf sayısı ve `esnaflar/{id}` alan haritası; slug/domain alanları; identity/tenant okuyan Firestore koleksiyonları ve security rule'ları; `/api/randevu` tüketicileri; `packages/booking-schema` kullanan kod; metered/kredi sayaçları var mı; P0-05 Credential Envelope'un secret taşıma arayüzü.
 - **Karar çıktısı:** kullanıcı taşıma modu (bkz. KC-02), ilk üç plan anahtarı ve ilk üç entitlement anahtarı (Ziya), esnaf slug politikası (DOMAIN-01 ile uyumlu).
 - **Kabul:** envanter sayıları PR/issue'da; K04 main'de; TASKS'ta KC satırları açıldı.
