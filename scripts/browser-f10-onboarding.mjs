@@ -409,5 +409,13 @@ try {
   await new Promise((resolve) => server.close(resolve));
   if (chrome && chrome.exitCode === null) chrome.kill('SIGTERM');
   if (chromeFd !== undefined) closeSync(chromeFd);
-  rmSync(work, { recursive: true, force: true });
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      rmSync(work, { recursive: true, force: true });
+      break;
+    } catch (error) {
+      if (error?.code !== 'ENOTEMPTY' || attempt === 5) throw error;
+      await sleep(100 * (attempt + 1));
+    }
+  }
 }

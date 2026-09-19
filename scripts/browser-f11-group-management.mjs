@@ -470,5 +470,13 @@ try {
     if (chrome.exitCode === null) chrome.kill('SIGKILL');
   }
   if (chromeFd !== undefined) closeSync(chromeFd);
-  rmSync(work, { recursive: true, force: true });
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      rmSync(work, { recursive: true, force: true });
+      break;
+    } catch (error) {
+      if (error?.code !== 'ENOTEMPTY' || attempt === 5) throw error;
+      await sleep(100 * (attempt + 1));
+    }
+  }
 }
