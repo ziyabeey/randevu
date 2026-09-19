@@ -28,58 +28,23 @@ Tek repo/backend ve ortak veriler korunur. İlk mobil teslim responsive/PWA'dır
 
 Çevrimiçi kart çekimi, otomatik abonelik tahsilatı, native mağaza dağıtımı, tam muhasebe/e-fatura/bordro/ERP, marketplace, AI ve gelişmiş şube hiyerarşisi MVP dışıdır. Manuel tahsilat, temel stok, paket/promosyon ve prim MVP içindedir.
 
-## Tamamlanan temel
-
-- Faz 1–8 React/Worker, Auth/tenant, katalog, müsaitlik, tek hizmetli booking, public/manage ve takvim temeli main'de.
-- **G09 / F09-01…05** tamamlandı.
-- **GS / S01…S08** tamamlandı ve kapalı. Recovery, ortak auth guard, notification consistency, quota/resource budget, deploy consistency, CI gate ve future-object ACL kabul edildi.
-- **F10-01, F10-02, F10-03, F10-05** tamamlandı. Oturum/parola, davet/üyelik/rol, ikinci işletme + onboarding + fail-closed publish readiness ve customer authority/CRM main'de.
-- **F12-01** görsel yön/akış sözleşmesi tamamlandı.
-- **F17-01/02** staging ve CI temeli tamamlandı.
-- **PR #69 brand/motion docs** main'e girdi; ayrı **MKT-01** marketing track'i aktif ama production renderer/cutover kararı bekliyor.
-
-GS artık yeni feature kodunu engelleyen bir kapı değildir; aşağıdaki dependency'ler geçerlidir.
-
-## Şu anki dalga
-
-F10-05 kabul+merge sonrası shared writer kuyruğu sadeleşti:
-
-1. **F12-02 — salon profili/public fotoğraflar / Ajan B / PR #76**
-   - profil + public medya,
-   - upload type/size/count,
-   - public/private ayrımı,
-   - interrupted `pending/deleting` media için bounded grace + race-safe reclaim + idempotent Storage cleanup,
-   - F12-01 responsive/a11y sözleşmesi.
-2. **F10-04 — hizmet/personel/çalışma ayarları / Ajan C / PR #75**
-   - guarded service/staff/assignment yönetimi,
-   - mesai/kapanış ayarları,
-   - stale write ve archive davranışı,
-   - F10-03 readiness sözleşmesini genişletme.
-
-MKT-01 ayrı ve izole lane'dir; current video + WebP/canvas experiment green olsa da production renderer gerçek Kling binary/perf + real-phone/cellular kanıtını bekler. Shared `/`→marketing ve `/app`→workspace cutover, entry writer sırası açılmadan yapılmaz.
-
-### Shared-file entegrasyon sırası
-
-1. F12-02 / PR #76 latest main'e taşınır ve lifecycle blocker'ı kapatılır.
-2. F10-04 / PR #75 #76 merge sonrası latest main'e taşınır; `scripts/ci-postgres-plan.json` ve shared entry alanında yalnız kendi eklerini uygular.
-3. MKT-01 production route/entry + gerçek binary kabulü shared entry sırası açıldığında yapılır.
-
-Bu sıra ürün önceliği değil Git/CI conflict önleme sırasıdır. Canlı override ve writer token otoritesi Issue #65'tir.
-
 ## Fazlar ve bağımlılık sırası
 
-| Faz | Görevler | Güncel kapanış / sonraki kapı |
+Bu tablo **durum göstermez**. Yalnız işlerin hangi sırayla açılabileceğini özetler; bir satırın tamamlanıp tamamlanmadığı yalnız [TASKS.md](TASKS.md) üzerinden okunur.
+
+| Faz / dilim | Görevler | Bağımlılık yönü |
 | --- | --- | --- |
-| [9 — Güvenilir rezervasyon/bildirim](docs/plan/phase-09.md) | F09-01…05 | **Tamamlandı**; kalan operasyon takipleri F17-03'te |
-| [10 — Hesap ve işletme](docs/plan/phase-10.md) | F10-01…06 | F10-01/02/03/05 **tamam**; F10-04 → F10-06 |
-| [12 — Fiyat veri desteği](docs/plan/phase-12.md#f12-03) | F12-03 | F10-04 sonrası; F11-01'den önce |
-| [11 — Çok hizmetli çekirdek](docs/plan/phase-11.md) | F11-01…04 | F12-03 → F11-01 → F11-02 → F11-03 → F11-04 |
-| [12 — Müşteri yüzeyi](docs/plan/phase-12.md) | F12-01…05 | F12-01 tamam; F12-02 PR #76 sıradaki implementation lane'i; F12-04 F12-02 + F12-03 + F11-02 bekler |
-| [13 — Randevu Paneli](docs/plan/phase-13.md) | F13-01…04 | F11/F10/F12 bağımlılıkları sonrası |
-| [14 — SalonApp ve mali çekirdek](docs/plan/phase-14.md) | F14-01…05 | F13/F11/F12 sonrasında mobil kabuk + adisyon/tahsilat |
-| [15 — Ürün ve kasa](docs/plan/phase-15.md) | F15-01…04 | F14 mali model sonrası stok, satış/iade, masraf ve rapor |
-| [16 — Referans eşdeğerliği](docs/plan/phase-16.md) | F16-01…08 | Tekrar, bildirim/SMS, fotoğraf/yorum, paket/promosyon/prim ve hesap/dil |
-| [17 — Yayın adayı ve pilot](docs/plan/phase-17.md) | F17-01…05 | F17-01/02 tamam; F17-03 → F17-04 → F17-05 gerçek pilot |
+| Stabilization | S01…S08 → GS | Teknik kapı; ayrıntı [stabilization planında](docs/plan/stabilization.md) |
+| [9 — Güvenilir rezervasyon/bildirim](docs/plan/phase-09.md) | F09-01…05 | recovery → notifications/abuse → integration; F09-05 ayrıca F17-01/02 altyapısını tüketir |
+| [10 — Hesap ve işletme](docs/plan/phase-10.md) | F10-01…06 | session → roles → business/onboarding → catalog + customer → real-account acceptance |
+| [12 — Fiyat veri desteği](docs/plan/phase-12.md#f12-03) | F12-03 | F10-04 sonrası; F11-01 group snapshot sözleşmesinden önce |
+| [11 — Çok hizmetli çekirdek](docs/plan/phase-11.md) | F11-01…04 | F12-03 → group contract → atomic availability/create → group management → conflict/timezone/upgrade acceptance |
+| [12 — Müşteri yüzeyi](docs/plan/phase-12.md) | F12-01…05 | visual/profile + pricing support + F11 group motoru → selection → result/manage |
+| [13 — Randevu Paneli](docs/plan/phase-13.md) | F13-01…04 | freshness → day/week/list → create/close/detail → navigation/usage acceptance |
+| [14 — SalonApp ve mali çekirdek](docs/plan/phase-14.md) | F14-01…05 | panel readiness + group/customer/price contracts → mobile shell + adisyon/tahsilat → financial/PWA acceptance |
+| [15 — Ürün ve kasa](docs/plan/phase-15.md) | F15-01…04 | financial core → stock/product sale/refund → expense → till/day-end/report |
+| [16 — Referans eşdeğerliği](docs/plan/phase-16.md) | F16-01…08 | booking/panel/customer/finance foundations üzerine recurring, notifications, media, feedback, package/promo/commission/account-language |
+| [17 — Yayın adayı ve pilot](docs/plan/phase-17.md) | F17-01…05 | staging/CI foundation → operational hardening → integrated acceptance → controlled pilot |
 
 **54 MVP ürün/teknik görev = korunan 46 görev + 8 stabilization görevi.** MKT-01 marketing/site işi bu sayıya dahil değildir. Görev sayısı ürün tamamlanma yüzdesi değildir.
 
@@ -94,20 +59,9 @@ Bu sıra ürün önceliği değil Git/CI conflict önleme sırasıdır. Canlı o
 
 ## Marketing / site track
 
-**MKT-01 / Issue #70** ürün sahibi kontrollü ayrı track'tir ve 54 MVP görevine eklenmez. PR #69 ile bağlayıcı brand/motion belgeleri main'e girdi. İzole implementation **PR #77 / `mkt-01-scroll-motion-homepage`** üzerinde draft/park durumundadır.
+MKT-01, 54 MVP ürün/teknik görevinden ayrı marketing/site track'idir. Bağlayıcı görsel yön [docs/brand/README.md](docs/brand/README.md) ve ilgili brand belgelerindedir. ROADMAP burada aktif PR, branch, renderer seçimi veya deployment durumu tutmaz; bunların canlı durumu gerekiyorsa TASKS/ilgili track kaydından okunur.
 
-Güncel production yönü:
-
-- sticky/pinned scrollytelling,
-- gerçek React/HTML/CSS overlay,
-- repaired deterministic video scrub kontrol renderer'ı,
-- ayrı WebP kareleri + tek canvas eşit renderer adayı,
-- bounded fetch/decode cache,
-- mobile + reduced-motion fail-closed davranışı,
-- tamamlanmamış özellik veya kilitlenmemiş fiyatı gerçekmiş gibi göstermeme,
-- renderer seçimini synthetic CI değil gerçek binary byte/perf + gerçek telefon/hücresel davranışla verme.
-
-PR #77 izole `src/marketing/**` lane'inde kalır; `src/main.tsx` / `src/App.tsx` route entegrasyonu #76/shared entry işi kapanınca coordinator sırasıyla yapılır.
+Ürün track'i ile ortak route/entry, domain veya runtime alanına girecek marketing değişiklikleri shared-writer kuralına uyar ve ürün kabulünü varsayarak ilerlemez.
 
 ## Bitti sayılma kuralı
 
