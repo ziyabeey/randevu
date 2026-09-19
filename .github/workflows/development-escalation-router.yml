@@ -143,6 +143,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      pull-requests: read
     uses: ./.github/workflows/development-review-router.yml
     with:
       observation_json: ${{ inputs.observation_json }}
