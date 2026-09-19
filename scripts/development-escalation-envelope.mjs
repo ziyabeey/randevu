@@ -191,6 +191,9 @@ export function renderHaikuCompressionRequest(envelope = {}) {
     throw new Error(`Haiku compression is only valid for REASONING_REQUIRED; received ${envelope.disposition ?? 'unknown'}.`);
   }
 
+  const sourceEnvelopeJson = stableJson(envelope);
+  const sourceEnvelopeBytes = Buffer.byteLength(sourceEnvelopeJson, 'utf8');
+
   return [
     'EVIDENCE_COMPRESSION_REQUEST',
     '',
@@ -202,17 +205,18 @@ export function renderHaikuCompressionRequest(envelope = {}) {
     'When compression is complete, write one JSON object to a temporary file with exactly these top-level fields:',
     'DISPOSITION = "REASONING_REQUIRED"',
     'CASE_FINGERPRINT = the unchanged dispatcher case fingerprint',
+    `SOURCE_ENVELOPE_BYTES = ${sourceEnvelopeBytes}`,
     'OPUS_ESCALATION_PACKAGE = the compact package defined by your routine instructions',
     '',
     'Then trigger Opus exactly once from THIS Haiku routine session by executing this fingerprint-bound command:',
-    `node scripts/fire-opus-escalation.mjs --package <temporary-json-file> --expected-fingerprint ${envelope.caseFingerprint}`,
+    `node scripts/fire-opus-escalation.mjs --package <temporary-json-file> --expected-fingerprint ${envelope.caseFingerprint} --expected-source-bytes ${sourceEnvelopeBytes}`,
     '',
     'Do not ask GitHub Actions, the dispatcher, or the caller to trigger Opus for you.',
     'Do not expose CLAUDE_OPUS_ROUTINE_URL or CLAUDE_OPUS_ROUTINE_TOKEN.',
     'If the handoff command cannot run or does not return OPUS_TRIGGERED, stop with OPUS_HANDOFF_BLOCKED and the exact non-secret reason.',
-    'After a successful handoff, report only OPUS_TRIGGERED, CASE_FINGERPRINT and the returned Claude session URL. Do not perform Opus-level reasoning yourself.',
+    'After a successful handoff, report only OPUS_TRIGGERED, CASE_FINGERPRINT, SOURCE_ENVELOPE_BYTES, COMPRESSED_PACKAGE_BYTES, COMPRESSION_RATIO and the returned Claude session URL. Do not perform Opus-level reasoning yourself.',
     '',
-    stableJson(envelope),
+    sourceEnvelopeJson,
   ].join('\n');
 }
 
