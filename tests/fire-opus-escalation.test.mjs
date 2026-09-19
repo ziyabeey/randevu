@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -75,4 +75,13 @@ test('Opus handoff rejects malformed case fingerprints before any network call',
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+
+test('GitHub escalation router can fire Haiku but has no Opus credential path', () => {
+  const workflow = readFileSync(path.resolve('.github/workflows/development-escalation-router.yml'), 'utf8');
+  assert.match(workflow, /CLAUDE_HAIKU_ROUTINE_URL/);
+  assert.match(workflow, /CLAUDE_HAIKU_ROUTINE_TOKEN/);
+  assert.doesNotMatch(workflow, /CLAUDE_OPUS_ROUTINE_URL/);
+  assert.doesNotMatch(workflow, /CLAUDE_OPUS_ROUTINE_TOKEN/);
 });
