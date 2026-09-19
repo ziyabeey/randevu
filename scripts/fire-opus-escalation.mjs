@@ -54,6 +54,11 @@ function normalizePackage(input) {
     throw new Error('OPUS_HANDOFF_BLOCKED: CASE_FINGERPRINT_INVALID');
   }
 
+  const sourceEnvelopeBytes = input.SOURCE_ENVELOPE_BYTES ?? input.sourceEnvelopeBytes;
+  if (!Number.isInteger(sourceEnvelopeBytes) || sourceEnvelopeBytes <= 0) {
+    throw new Error('OPUS_HANDOFF_BLOCKED: SOURCE_ENVELOPE_BYTES_INVALID');
+  }
+
   const opusPackage = input.OPUS_ESCALATION_PACKAGE ?? input.opusEscalationPackage;
   if (!opusPackage || typeof opusPackage !== 'object' || Array.isArray(opusPackage)) {
     throw new Error('OPUS_HANDOFF_BLOCKED: OPUS_ESCALATION_PACKAGE_MISSING');
@@ -62,6 +67,7 @@ function normalizePackage(input) {
   return {
     disposition,
     caseFingerprint,
+    sourceEnvelopeBytes,
     opusEscalationPackage: opusPackage,
   };
 }
@@ -82,6 +88,7 @@ function buildText(pkg) {
 
 const target = argValue('--package') ?? process.argv[2] ?? '-';
 const expectedFingerprint = argValue('--expected-fingerprint');
+const expectedSourceBytesRaw = argValue('--expected-source-bytes');
 const dryRun = process.argv.includes('--dry-run');
 const pkg = normalizePackage(readJson(target));
 
@@ -92,6 +99,16 @@ if (pkg.caseFingerprint.toLowerCase() !== expectedFingerprint.toLowerCase()) {
   throw new Error('OPUS_HANDOFF_BLOCKED: CASE_FINGERPRINT_MISMATCH');
 }
 
+const expectedSourceBytes = Number(expectedSourceBytesRaw);
+if (!Number.isInteger(expectedSourceBytes) || expectedSourceBytes <= 0) {
+  throw new Error('OPUS_HANDOFF_BLOCKED: EXPECTED_SOURCE_BYTES_INVALID');
+}
+if (pkg.sourceEnvelopeBytes !== expectedSourceBytes) {
+  throw new Error('OPUS_HANDOFF_BLOCKED: SOURCE_ENVELOPE_BYTES_MISMATCH');
+}
+
+const compressedPackageBytes = Buffer.byteLength(JSON.stringify(pkg.opusEscalationPackage), 'utf8');
+const compressionRatio = Number((compressedPackageBytes / pkg.sourceEnvelopeBytes).toFixed(4));
 const text = buildText(pkg);
 
 if (Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) {
@@ -102,6 +119,9 @@ if (dryRun) {
   console.log(JSON.stringify({
     dryRun: true,
     caseFingerprint: pkg.caseFingerprint,
+    sourceEnvelopeBytes: pkg.sourceEnvelopeBytes,
+    compressedPackageBytes,
+    compressionRatio,
     textBytes: Buffer.byteLength(text, 'utf8'),
   }, null, 2));
   process.exit(0);
@@ -151,6 +171,9 @@ if (receipt?.type !== 'routine_fire'
 console.log(JSON.stringify({
   status: 'OPUS_TRIGGERED',
   caseFingerprint: pkg.caseFingerprint,
+  sourceEnvelopeBytes: pkg.sourceEnvelopeBytes,
+  compressedPackageBytes,
+  compressionRatio,
   claudeCodeSessionId: receipt.claude_code_session_id,
   claudeCodeSessionUrl: receipt.claude_code_session_url,
 }, null, 2));
