@@ -174,8 +174,24 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
     },
   };
 
+  const requestFingerprintMaterial = {
+    schemaVersion: request.schemaVersion,
+    role: request.role,
+    reviewMode: request.reviewMode,
+    case: {
+      task: request.case.task,
+      pr: request.case.pr,
+      branch: request.case.branch,
+      currentHead: request.case.currentHead,
+      baseMain: request.case.baseMain,
+      currentMain: request.case.currentMain,
+    },
+    currentEvidence: request.currentEvidence,
+    assignment: request.assignment,
+    materialEvidence: request.materialEvidence,
+  };
   const requestFingerprint = createHash('sha256')
-    .update(stableJson(request))
+    .update(stableJson(requestFingerprintMaterial))
     .digest('hex');
 
   return {
