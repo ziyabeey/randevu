@@ -1,14 +1,14 @@
 # YZT Randevu — MVP yol haritası
 
-**Plan v3 · güncel durum 15 Eylül 2026.** Ürün üç kolu ve F09–F17 görev kimlikleri korunur. Canlı durum `TASKS.md`, doğrulanmış main `PROJECT_STATE.md`, detay kabul ölçütleri ilgili faz dosyalarındadır.
+**Plan v3.** Bu dosya yalnız faz sırası ve bağımlılık planıdır; **canlı statü tutmaz**. Güncel görev/main kabul durumu yalnız `TASKS.md` içindedir. Detay kabul ölçütleri ilgili faz dosyalarındadır.
 
 ## Kaynak sırası
 
 | Soru | Kaynak |
 | --- | --- |
 | Ürün kapsamı nedir? | [PRODUCT_SPEC](PRODUCT_SPEC.md) |
-| Main'de gerçekten ne var? | [PROJECT_STATE](PROJECT_STATE.md) |
-| Hangi görev kimin ve hangi durumda? | [TASKS](TASKS.md) |
+| Main'de kabul edilmiş ve açık olan işler neler? | [TASKS](TASKS.md) |
+| Faz sırası ve bağımlılık planı nedir? | Bu ROADMAP |
 | Faz/dependency sırası nedir? | Bu dosya + `docs/plan/phase-*.md` |
 | Ortak teknik kurallar nedir? | [K01/K02/K03](docs/plan/architecture-contracts.md), [DECISIONS](DECISIONS.md) |
 | Release/pilot ne zaman kabul edilir? | [MVP_ACCEPTANCE](MVP_ACCEPTANCE.md), F17-04/05 |
