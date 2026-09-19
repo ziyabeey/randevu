@@ -9,8 +9,8 @@ type Result<T> = { ok: true; data: T; status: number }
   | { ok: false; data: { message: string }; status: number };
 
 /**
- * Calls a public RPC with a strict result envelope so a committed transaction is not
- * mistaken for a successful booking just because the HTTP transport returned 200.
+ * Calls a guarded RPC with a strict result envelope so an HTTP 200 error envelope
+ * is not mistaken for a successful operation. Used by both public and authenticated flows.
  */
 // SQL errors are returned normally so the quota transaction can commit. Never
 // interpret an HTTP 200 error envelope (or legacy array) as successful booking.
@@ -37,7 +37,8 @@ export async function boundedRpc<T extends unknown[]>(
 }
 
 /**
- * Wraps a named public operation with the abuse-gate identity required by the booking surface.
+ * Wraps a named externally reachable operation with the abuse-gate identity used by
+ * booking, public profile/media, and management-capability surfaces.
  */
 export function publicOperation<T extends unknown[]>(
   env: AuthEnv, action: Operation, args: Record<string, unknown>, identity: PublicAbuseIdentity,
