@@ -1,99 +1,84 @@
-# Escalation delivery experiment
+# Escalation delivery
 
-This follow-up is deliberately stacked on the Development Dispatcher v0 experiment.
-It does not change the reducer's authority or turn the reducer into an agent runtime.
+This delivery layer sits after the pure Development Dispatcher. It does not turn
+the reducer into a workflow-state authority and does not replace R0, R1, R2, CI,
+TASKS or coordinator acceptance.
 
-## Boundary
+## Routing boundary
 
-The delivery layer starts only after `deriveDispatcherResult()` has produced a
-candidate-bound result. It classifies the advisory recommendation into one of four
-external delivery dispositions:
+The deterministic result is classified into exactly one external disposition:
 
 - `NO_ACTION`
 - `DETERMINISTIC_ACTION`
 - `HUMAN_REQUIRED`
 - `REASONING_REQUIRED`
 
-Unknown future dispatcher actions fail closed to `HUMAN_REQUIRED`; they never
-silently spend model credit.
+Unknown future dispatcher actions fail closed to `HUMAN_REQUIRED`. Only
+`REASONING_REQUIRED` may launch the Haiku Evidence Context Compressor.
 
-Only `REASONING_REQUIRED` may create a Haiku compression request. Haiku is an
-Evidence Context Compressor, not a reviewer or technical judge. Its job is to
-preserve exact identities, contradictions, unknowns, obligations and provenance
-while removing duplicated or irrelevant historical material before a higher-cost
-reasoning tier is considered.
+Haiku is not a reviewer and does not answer the escalated technical question. It
+removes duplicate and historical noise while preserving candidate-bound facts,
+contradictions, unknowns, obligations and source provenance. Haiku then initiates
+the bounded Opus handoff exactly once.
 
-The reducer remains pure and restart-safe. The delivery layer owns no task state,
-queue, scheduler, merge authority or acceptance authority. `TASKS.md` remains the
-sole durable live task/status source.
+## Trusted case binding
 
-## Case fingerprint
+The GitHub router requests a short-lived GitHub Actions OIDC token with a custom
+`aud` value binding:
 
-`development-escalation-envelope.mjs` creates a SHA-256 case fingerprint from the
-material deterministic state: task/PR/head/main identity, dispatcher disposition,
-recommendation, contradiction/unknown/obligation set and explicitly supplied
-material evidence. Ordering noise is normalized before hashing.
+- case fingerprint,
+- source-envelope byte count,
+- workflow SHA.
 
-The fingerprint is a dedupe key, not a new status database. A caller may use it to
-avoid firing the same expensive reasoning case twice, but no committed registry is
-introduced by this experiment.
+The token is signed by GitHub and also carries repository, repository ID, workflow
+reference and runner claims. The Haiku session copies that attestation unchanged
+into `/tmp/kepenk-opus-handoff.json` and runs the fixed command:
 
-## Routine adapter
+```text
+node scripts/fire-opus-escalation.mjs --package /tmp/kepenk-opus-handoff.json
+```
 
-`fire-claude-routine.mjs` is a generic thin HTTP adapter for a Claude Code Routine
-`/fire` endpoint. It reads these runtime-only environment variables:
+`fire-opus-escalation.mjs` verifies the GitHub signature and claims against the
+public GitHub OIDC JWKS before it compares the package fingerprint and byte count.
+The model cannot make an altered case pass by changing both a package value and a
+command-line expectation. No payload-derived value is interpolated into shell
+syntax.
 
-- `CLAUDE_ROUTINE_URL`
-- `CLAUDE_ROUTINE_TOKEN`
+The GitHub router receives only Haiku Routine credentials. Opus credentials remain
+inside the Haiku Routine environment and are read only by the validated adapter.
+If signature, provenance, transport or Routine validation fails, the handoff stops
+with a non-secret `OPUS_HANDOFF_BLOCKED` reason.
 
-The token must live in a secret store and must never be committed. The adapter does
-not print the token. `--dry-run` validates the request body without network access.
+## Provenance and compression receipt
 
-For the Haiku compressor wiring, the intended repository names are:
+The escalation envelope includes the normalized Dispatcher facts as well as
+conditions, obligations and recommendation. This preserves exact CI run/job/
+attempt identities, reviewed SHAs and proof source references for compression.
+The case fingerprint hashes the same merged source-reference set emitted in the
+envelope.
 
-- repository variable: `CLAUDE_HAIKU_ROUTINE_URL`
-- repository secret: `CLAUDE_HAIKU_ROUTINE_TOKEN`
+The successful Opus launch receipt reports:
 
-The GitHub router never receives or uses Opus credentials. It may trigger Haiku,
-but Opus is deliberately downstream of Haiku.
+- case fingerprint,
+- source-envelope bytes,
+- compressed-package bytes,
+- compression ratio,
+- attested GitHub run ID,
+- Claude session ID and URL.
 
-The Haiku Routine environment owns these runtime-only variables:
+These fields measure compression behavior without treating Haiku prose as project
+or acceptance authority. The fingerprint remains a dedupe key, not a status store.
 
-- `CLAUDE_OPUS_ROUTINE_URL`
-- `CLAUDE_OPUS_ROUTINE_TOKEN`
+## Triggering
 
-After Haiku compresses a `REASONING_REQUIRED` case, Haiku writes the compact
-`OPUS_ESCALATION_PACKAGE` to a temporary JSON file and executes
-`node scripts/fire-opus-escalation.mjs --package <file> --expected-fingerprint <dispatcher-fingerprint> --expected-source-bytes <dispatcher-envelope-bytes>` from its own Routine
-session. That adapter validates the reasoning disposition and requires the compressed
-package fingerprint and source byte count to match the original Dispatcher request,
-restricts the destination to the Anthropic Routine fire endpoint, never prints the
-token and treats the returned session ID/URL only as a launch receipt. The same
-receipt exposes `sourceEnvelopeBytes`, `compressedPackageBytes` and
-`compressionRatio` so Haiku compression can be evaluated empirically without
-turning Haiku's own prose into authority.
+`.github/workflows/development-escalation-router.yml` remains manual/reusable. A
+future event collector may call it only after producing the same normalized
+observation contract. Model calls must never move ahead of the Dispatcher.
 
-If that handoff is unavailable, Haiku must stop with `OPUS_HANDOFF_BLOCKED`.
-It must not perform Opus-level reasoning as a fallback, and GitHub Actions must not
-silently bypass Haiku by firing Opus directly.
+The resulting chain is:
 
-The same conditional handoff contract is committed in root `CLAUDE.md`. Claude
-Code loads that repository instruction automatically, so the marked
-`EVIDENCE_COMPRESSION_REQUEST` flow does not depend on repeatedly patching the
-saved Routine prompt. The rule is inert for sessions without that marker.
+```text
+canonical observation -> Dispatcher -> disposition -> Haiku -> attested Opus handoff
+```
 
-## Manual/reusable router
-
-`.github/workflows/development-escalation-router.yml` is intentionally not bound to
-high-volume GitHub events. It accepts a normalized dispatcher observation plus
-optional material evidence, runs the deterministic Dispatcher first, creates the
-case envelope, and fires the Haiku Routine only when the disposition is
-`REASONING_REQUIRED`.
-
-This preserves the cost boundary:
-
-`canonical observation -> Dispatcher -> delivery disposition -> Haiku only if needed -> Opus only when Haiku hands off`
-
-A later event collector may call the reusable workflow, but it must produce the
-same normalized observation contract and must not move model calls ahead of the
-Dispatcher.
+`TASKS.md` remains the sole durable live task/status authority.
