@@ -96,8 +96,8 @@ Review delivery is separate from review acceptance. Provider launch success only
 proves that a session was created. It does not prove that the task-level review
 succeeded, and it never substitutes for a SHA-bound
 `ACCEPTABLE | BLOCKER | INCOMPLETE` receipt. Duplicate launch suppression is
-keyed by role and Dispatcher case fingerprint because the Routine API itself has
-no idempotency key.
+keyed by a role-specific request fingerprint because the Routine API itself has
+no idempotency key. Unrelated reviewer state is excluded from that fingerprint.
 
 ## Cost and loop controls
 
