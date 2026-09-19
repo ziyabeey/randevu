@@ -1,0 +1,53 @@
+name: One-shot hourly TASKS sync
+
+on:
+  push:
+    branches:
+      - chore/tasks-f12-05-state-sync-20260919-1500
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Reconcile F12-05 factual state
+    if: ${{ contains(github.event.head_commit.message, 'trigger hourly TASKS sync') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/tasks-f12-05-state-sync-20260919-1500
+          persist-credentials: true
+
+      - name: Update only TASKS.md and remove one-shot workflow
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('TASKS.md')
+          text = path.read_text()
+
+          old_row = "| [F12-05](docs/plan/phase-12.md#f12-05) | Özet, sonuç ve müşteri yönetimi | F12-04, F09-02, F11-03 | Planlandı | — | — |"
+          new_row = "| [F12-05](docs/plan/phase-12.md#f12-05) | Özet, sonuç ve müşteri yönetimi | F12-04, F09-02, F11-03 | İncelemede | Codex + R2 / 2026-09-19 | [PR #187](https://github.com/ziyabeey1-ai/randevu/pull/187) exact head `0ce7b6eb` · [CI #1534](https://github.com/ziyabeey1-ai/randevu/actions/runs/35440956721) success · 4 açık material review thread: unpinned staff reassignment, legacy single-service fallback, line-level time/price validation ve production route/chunk acceptance · R2 exact-head dispatch `5741605807`; fresh R2 verdict + blocker repair closure bekleniyor |"
+
+          old_gate = "| G12 | F12-01…F12-05 | Açık — F12-01/02/03/04 tamamlandı; seçim/plan yüzeyi #176 + #114 ile kabul edildi. F12-05 müşteri/contact, `group-book`, create/result/recovery/manage kapsamıyla Planlandı ve G12'nin tek açık ürün görevidir |"
+          new_gate = "| G12 | F12-01…F12-05 | Açık — F12-01/02/03/04 tamamlandı; seçim/plan yüzeyi #176 + #114 ile kabul edildi. F12-05 [PR #187](https://github.com/ziyabeey1-ai/randevu/pull/187) exact-head CI #1534 success; 4 açık material review thread + fresh exact-head R2 kapanışı bekliyor ve G12'nin tek açık ürün görevidir |"
+
+          if text.count(old_row) != 1:
+              raise SystemExit('F12-05 row anchor mismatch')
+          if text.count(old_gate) != 1:
+              raise SystemExit('G12 gate anchor mismatch')
+
+          text = text.replace(old_row, new_row, 1).replace(old_gate, new_gate, 1)
+          path.write_text(text)
+          Path('.github/workflows/one-shot-hourly-tasks-sync.yml').unlink()
+          PY
+
+          git diff --check
+          git config user.name 'Hourly Repo State Maintainer'
+          git config user.email 'actions@users.noreply.github.com'
+          git add TASKS.md .github/workflows/one-shot-hourly-tasks-sync.yml
+          git commit -m 'chore: reconcile F12-05 TASKS state'
+          git push origin HEAD:chore/tasks-f12-05-state-sync-20260919-1500
