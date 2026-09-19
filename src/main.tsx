@@ -1,16 +1,16 @@
-import { StrictMode } from 'react';
+import { lazy, StrictMode, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import AvailabilityPage from './AvailabilityPage';
-import BookingPage from './BookingPage';
-import CalendarPage from './CalendarPage';
-import CustomersPage from './CustomersPage';
-import InvitePage from './InvitePage';
-import OnboardingPage from './OnboardingPage';
-import PublicSalonPage from './PublicSalonPage';
-import PublicBookingSettingsPage from './PublicBookingSettingsPage';
-import ManageAppointmentPage from './ManageAppointmentPage';
-import TeamPage from './TeamPage';
+const AvailabilityPage = lazy(() => import('./AvailabilityPage'));
+const BookingPage = lazy(() => import('./BookingPage'));
+const CalendarPage = lazy(() => import('./CalendarPage'));
+const CustomersPage = lazy(() => import('./CustomersPage'));
+const InvitePage = lazy(() => import('./InvitePage'));
+const OnboardingPage = lazy(() => import('./OnboardingPage'));
+const PublicSalonPage = lazy(() => import('./PublicSalonPage'));
+const PublicBookingSettingsPage = lazy(() => import('./PublicBookingSettingsPage'));
+const ManageAppointmentPage = lazy(() => import('./ManageAppointmentPage'));
+const TeamPage = lazy(() => import('./TeamPage'));
 import { captureTeamInviteFromLocation, readPendingTeamInvite } from './teamInvite';
 import { setWorkspaceGuard } from './api';
 import { installWorkspaceCoherence, workspaceGuard } from './workspace-coherence';
@@ -58,6 +58,7 @@ if (!isManagementPage && !isPublicPage && !isInviteFlow) {
 
 createRoot(root).render(
   <StrictMode>
+    <Suspense fallback={<main className="page-shell" aria-busy="true">Yükleniyor…</main>}>
     {isManagementPage
       ? <ManageAppointmentPage token={managementToken ?? ''} />
       : isPublicPage && publicSlug
@@ -79,6 +80,7 @@ createRoot(root).render(
                       : isTeam
                         ? <TeamPage />
                         : <App />}
+    </Suspense>
     {!isPublicPage && !isManagementPage && !isInviteFlow && (
       <nav className="phase-nav" aria-label="Çalışma alanları">
         <a href="/calendar" aria-current={isCalendar ? 'page' : undefined}>Takvim</a>

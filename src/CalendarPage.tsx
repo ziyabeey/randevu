@@ -76,12 +76,8 @@ function formatDate(date: string, options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat('tr-TR', { timeZone: 'UTC', ...options }).format(new Date(`${date}T12:00:00Z`));
 }
 
-function instantParts(value: string, timezone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-  }).formatToParts(new Date(value));
+function instantParts(value: string, formatter: Intl.DateTimeFormat) {
+  const parts = formatter.formatToParts(new Date(value));
   const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return {
     date: `${map.year}-${map.month}-${map.day}`,
@@ -126,6 +122,7 @@ export default function CalendarPage() {
   const [notice, setNotice] = useState('');
   const mutationKeys = useRef(new Map<string, string>());
   const selectionGeneration = useRef(0);
+  const loadController = useRef<AbortController | null>(null);
 
   const load = useCallback(async (requestedDate?: string, requestedView?: ViewMode, requestedStaff?: string) => {
     const nextView = requestedView ?? view;
@@ -135,22 +132,36 @@ export default function CalendarPage() {
     if (nextDate) params.set('date', nextView === 'week' ? mondayOf(nextDate) : nextDate);
     if (nextStaff !== 'all') params.set('staffId', nextStaff);
 
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
     setLoading(true);
     setNotice('');
     try {
-      const result = await api<CalendarPayload>(`/api/calendar?${params}`);
+      const result = await api<CalendarPayload>(`/api/calendar?${params}`, { signal: controller.signal });
+      if (controller.signal.aborted || loadController.current !== controller) return;
       setPayload(result);
       setDate((current) => current || result.date);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Takvim yüklenemedi.');
+      if (!controller.signal.aborted && loadController.current === controller) {
+        setNotice(error instanceof Error ? error.message : 'Takvim yüklenemedi.');
+      }
     } finally {
-      setLoading(false);
+      if (loadController.current === controller) setLoading(false);
     }
   }, [date, staffId, view]);
 
-  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    void load();
+    return () => loadController.current?.abort();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const timezone = payload?.business.timezone ?? 'Europe/Istanbul';
+  const instantFormatter = useMemo(() => new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }), [timezone]);
   const visibleAppointments = useMemo(
     () => (payload?.appointments ?? []).filter((appointment) => showCancelled || appointment.group_status !== 'cancelled'),
     [payload, showCancelled],
@@ -169,23 +180,37 @@ export default function CalendarPage() {
     [selectedGroupId, visibleAppointments],
   );
   const selected = selectedLines[0] ?? null;
+  const appointmentParts = useMemo(() => {
+    const parts = new Map<string, ReturnType<typeof instantParts>>();
+    for (const appointment of visibleAppointments) {
+      parts.set(`${appointment.appointment_id}:start`, instantParts(appointment.starts_at, instantFormatter));
+      parts.set(`${appointment.appointment_id}:end`, instantParts(appointment.ends_at, instantFormatter));
+    }
+    return parts;
+  }, [instantFormatter, visibleAppointments]);
+  const partsFor = (appointment: CalendarAppointment, edge: 'start' | 'end') =>
+    appointmentParts.get(`${appointment.appointment_id}:${edge}`)!;
 
+  const appointmentStaffIds = useMemo(
+    () => new Set(visibleAppointments.map((appointment) => appointment.staff_id)),
+    [visibleAppointments],
+  );
   const calendarStaff = useMemo(() => {
     const map = new Map<string, Staff>();
     for (const person of payload?.staff ?? []) {
-      if (person.active || visibleAppointments.some((appointment) => appointment.staff_id === person.id)) map.set(person.id, person);
+      if (person.active || appointmentStaffIds.has(person.id)) map.set(person.id, person);
     }
     for (const appointment of visibleAppointments) {
       if (!map.has(appointment.staff_id)) map.set(appointment.staff_id, { id: appointment.staff_id, name: appointment.staff_name, active: false });
     }
     return [...map.values()];
-  }, [payload, visibleAppointments]);
+  }, [appointmentStaffIds, payload, visibleAppointments]);
 
   const dayStaff = staffId === 'all' ? calendarStaff : calendarStaff.filter((person) => person.id === staffId);
-  const dayAppointments = visibleAppointments.filter((appointment) => instantParts(appointment.starts_at, timezone).date === (payload?.date ?? date));
+  const dayAppointments = visibleAppointments.filter((appointment) => partsFor(appointment, 'start').date === (payload?.date ?? date));
   const appointmentMinutes = dayAppointments.flatMap((appointment) => {
-    const start = instantParts(appointment.starts_at, timezone).minutes;
-    const end = instantParts(appointment.ends_at, timezone).minutes;
+    const start = partsFor(appointment, 'start').minutes;
+    const end = partsFor(appointment, 'end').minutes;
     return [start, end];
   });
   const startHour = appointmentMinutes.length ? Math.max(0, Math.min(8, Math.floor(Math.min(...appointmentMinutes) / 60))) : 8;
@@ -392,8 +417,8 @@ export default function CalendarPage() {
                 <div className="calendar-staff-column" key={person.id} style={{ height: gridHeight }}>
                   {hours.map((hour) => <i className="calendar-hour-line" key={hour} style={{ top: (hour - startHour) * hourHeight }} />)}
                   {dayAppointments.filter((appointment) => appointment.staff_id === person.id).map((appointment) => {
-                    const start = instantParts(appointment.starts_at, timezone).minutes;
-                    const end = instantParts(appointment.ends_at, timezone).minutes;
+                    const start = partsFor(appointment, 'start').minutes;
+                    const end = partsFor(appointment, 'end').minutes;
                     const top = ((start - startHour * 60) / 60) * hourHeight;
                     const height = Math.max(42, ((end - start) / 60) * hourHeight);
                     return (
@@ -404,7 +429,7 @@ export default function CalendarPage() {
                         type="button"
                         onClick={() => selectAppointment(appointment)}
                       >
-                        <strong>{instantParts(appointment.starts_at, timezone).time} · {appointment.customer_name}</strong>
+                        <strong>{partsFor(appointment, 'start').time} · {appointment.customer_name}</strong>
                         <span>{appointment.service_name}{appointment.group_line_count > 1 ? ` · ${appointment.line_ordinal}/${appointment.group_line_count}` : ''}</span>
                         <small>{statusLabel(appointment.group_status)}</small>
                       </button>
@@ -418,7 +443,7 @@ export default function CalendarPage() {
       ) : (
         <section className="calendar-week-grid">
           {weekDates.map((day) => {
-            const items = visibleAppointments.filter((appointment) => instantParts(appointment.starts_at, timezone).date === day);
+            const items = visibleAppointments.filter((appointment) => partsFor(appointment, 'start').date === day);
             const isToday = day === payload.localDate;
             return (
               <div className={`calendar-week-day ${isToday ? 'is-today' : ''}`} key={day}>
@@ -426,7 +451,7 @@ export default function CalendarPage() {
                 <div className="calendar-week-list">
                   {items.length ? items.map((appointment) => (
                     <button type="button" className={`calendar-week-event status-${appointment.status}`} key={appointment.appointment_id} onClick={() => selectAppointment(appointment)}>
-                      <strong>{instantParts(appointment.starts_at, timezone).time}</strong>
+                      <strong>{partsFor(appointment, 'start').time}</strong>
                       <span>{appointment.customer_name}</span>
                       <small>{appointment.staff_name} · {appointment.service_name}{appointment.group_line_count > 1 ? ` · ${appointment.line_ordinal}/${appointment.group_line_count}` : ''}</small>
                     </button>
