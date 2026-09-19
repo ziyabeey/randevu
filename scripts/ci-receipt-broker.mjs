@@ -6,6 +6,23 @@ const SHA = /^[a-f0-9]{40}$/;
 const BLOB_SHA = /^[a-f0-9]{40}$/;
 const MAX_PAGES = 10;
 const PAGE_SIZE = 100;
+export const TRUSTED_CONTROL_FILES = Object.freeze([
+  '.github/workflows/ci.yml',
+  'package.json',
+  'package-lock.json',
+  'scripts/ci-scope.mjs',
+  'scripts/ci-docs.mjs',
+  'scripts/ci-result.mjs',
+  'scripts/ci-code.mjs',
+  'scripts/ci-files.mjs',
+  'scripts/ci-postgres.mjs',
+  'scripts/ci-postgres-plan.json',
+  'scripts/run-http-tests.mjs',
+  'scripts/verify-ci-coverage.mjs',
+  'scripts/report-npm-audit.mjs',
+  'scripts/test-staging-control-db.mjs',
+  'scripts/browser-smoke.sh',
+]);
 
 export function eventIdentity(event = {}) {
   if (event?.action !== 'synchronize') return null;
@@ -48,10 +65,33 @@ export function fullCodeGate(jobsPayload) {
   return { jobId: Number(gate.id) };
 }
 
-export function sameTrustedCiDefinition(baseFile, candidateFile) {
-  const baseBlob = String(baseFile?.sha ?? '');
-  const candidateBlob = String(candidateFile?.sha ?? '');
-  return BLOB_SHA.test(baseBlob) && candidateBlob === baseBlob;
+export function sameTrustedControlPlane(baseManifest, candidateManifest) {
+  if (!baseManifest || !candidateManifest) return false;
+  return TRUSTED_CONTROL_FILES.every((file) => {
+    const baseBlob = String(baseManifest[file] ?? '');
+    const candidateBlob = String(candidateManifest[file] ?? '');
+    return BLOB_SHA.test(baseBlob) && candidateBlob === baseBlob;
+  });
+}
+
+async function readControlManifest({ api, repo, ref, fetchJson }) {
+  const manifest = {};
+  for (const file of TRUSTED_CONTROL_FILES) {
+    let payload;
+    try {
+      payload = await fetchJson(apiUrl(
+        api,
+        repo,
+        `contents/${encodeURIComponent(file).replace(/%2F/g, '/')}?ref=${encodeURIComponent(ref)}`,
+      ));
+    } catch {
+      return null;
+    }
+    const blob = String(payload?.sha ?? '');
+    if (!BLOB_SHA.test(blob)) return null;
+    manifest[file] = blob;
+  }
+  return manifest;
 }
 
 function apiUrl(api, repo, suffix) {
@@ -71,18 +111,14 @@ export async function lookupTrustedFullCodeReceipt({
     return { receipts: [], reason: 'invalid_identity' };
   }
 
-  let trustedBaseCi;
-  try {
-    trustedBaseCi = await fetchJson(apiUrl(
-      api,
-      repo,
-      `contents/.github/workflows/ci.yml?ref=${encodeURIComponent(identity.baseSha)}`,
-    ));
-  } catch {
-    return { receipts: [], reason: 'base_ci_unavailable' };
-  }
-  if (!BLOB_SHA.test(String(trustedBaseCi?.sha ?? ''))) {
-    return { receipts: [], reason: 'base_ci_unverifiable' };
+  const trustedBaseManifest = await readControlManifest({
+    api,
+    repo,
+    ref: identity.baseSha,
+    fetchJson,
+  });
+  if (!trustedBaseManifest) {
+    return { receipts: [], reason: 'base_control_plane_unverifiable' };
   }
 
   for (let page = 1; page <= maxPages; page += 1) {
@@ -115,17 +151,13 @@ export async function lookupTrustedFullCodeReceipt({
       const gate = fullCodeGate(jobsPayload);
       if (!gate) continue;
 
-      let candidateCi;
-      try {
-        candidateCi = await fetchJson(apiUrl(
-          api,
-          repo,
-          `contents/.github/workflows/ci.yml?ref=${encodeURIComponent(association.sourceHeadSha)}`,
-        ));
-      } catch {
-        continue;
-      }
-      if (!sameTrustedCiDefinition(trustedBaseCi, candidateCi)) continue;
+      const candidateManifest = await readControlManifest({
+        api,
+        repo,
+        ref: association.sourceHeadSha,
+        fetchJson,
+      });
+      if (!sameTrustedControlPlane(trustedBaseManifest, candidateManifest)) continue;
 
       return {
         receipts: [{
@@ -134,7 +166,7 @@ export async function lookupTrustedFullCodeReceipt({
           runId: association.runId,
           jobId: gate.jobId,
           fullCode: true,
-          ciDefinitionSha: trustedBaseCi.sha,
+          controlPlaneSha: trustedBaseManifest['.github/workflows/ci.yml'],
         }],
         reason: 'trusted_full_code_receipt',
       };
