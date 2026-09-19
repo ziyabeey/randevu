@@ -1,10 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  buildEscalationEnvelope,
-  buildRoutineFireBody,
-  renderHaikuCompressionRequest,
-} from './development-escalation-envelope.mjs';
+import { buildEscalationEnvelope } from './development-escalation-envelope.mjs';
 
 function readJson(target) {
   if (!target || target === '-') return JSON.parse(readFileSync(0, 'utf8'));
@@ -16,10 +12,5 @@ const evidenceTarget = process.argv[3] ?? null;
 const dispatcherResult = readJson(dispatcherTarget);
 const evidence = evidenceTarget ? readJson(evidenceTarget) : {};
 const envelope = buildEscalationEnvelope(dispatcherResult, evidence);
-const output = { envelope, haikuFireBody: null };
 
-if (envelope.disposition === 'REASONING_REQUIRED') {
-  output.haikuFireBody = buildRoutineFireBody(renderHaikuCompressionRequest(envelope));
-}
-
-console.log(JSON.stringify(output, null, 2));
+console.log(JSON.stringify({ envelope }, null, 2));
