@@ -108,13 +108,26 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+// Every offered slot is rendered through Intl with its own zone; a zone Intl
+// rejects would throw during render, so it is dropped here like any other
+// malformed slot rather than reaching the page.
+function validTimeZone(value: unknown): value is string {
+  if (typeof value !== 'string' || !value) return false;
+  try {
+    new Intl.DateTimeFormat('tr-TR', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function validGroupSlot(value: unknown): value is PublicGroupSlot {
   if (!value || typeof value !== 'object') return false;
   const slot = value as Partial<PublicGroupSlot>;
   if (typeof slot.startsAt !== 'string' || !Number.isFinite(Date.parse(slot.startsAt))
       || typeof slot.endsAt !== 'string' || !Number.isFinite(Date.parse(slot.endsAt))
       || Date.parse(slot.endsAt) <= Date.parse(slot.startsAt)
-      || typeof slot.timezone !== 'string' || !slot.timezone
+      || !validTimeZone(slot.timezone)
       || typeof slot.currency !== 'string' || !/^[A-Z]{3}$/.test(slot.currency)
       || typeof slot.estimateMinMinor !== 'number' || !Number.isInteger(slot.estimateMinMinor) || slot.estimateMinMinor < 0
       || typeof slot.estimateMaxMinor !== 'number' || !Number.isInteger(slot.estimateMaxMinor) || slot.estimateMaxMinor < slot.estimateMinMinor

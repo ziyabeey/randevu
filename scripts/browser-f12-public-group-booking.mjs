@@ -283,7 +283,11 @@ const server = createServer(async (request, response) => {
     return sendJson(response, 200, { staff: [{ staff_id: range ? staffA : staffB, staff_name: range ? 'Ayşe' : 'Deniz' }] });
   }
   const slotMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/group-slots$/);
-  if (request.method === 'POST' && slotMatch) return sendJson(response, 200, { slots: [availability(body.lines)] });
+  if (request.method === 'POST' && slotMatch) {
+    const slot = availability(body.lines);
+    if (slotMatch[1] === 'invalid-slot-timezone-salon') slot.timezone = 'Mars/Olympus';
+    return sendJson(response, 200, { slots: [slot] });
+  }
   const singleSlotMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/slots$/);
   if (request.method === 'GET' && singleSlotMatch) return sendJson(response, 200, { slots: [{
     staff_id: staffB, staff_name: 'Deniz', starts_at: '2026-09-20T07:00:00.000Z',
@@ -797,6 +801,29 @@ async function runRejectedLineMutation(debugUrl, origin) {
   }
 }
 
+// Availability is formatted with the slot's own zone before anything is
+// booked, so a malformed zone there must be dropped, not rendered: rendering it
+// throws a RangeError inside Intl and takes the whole public page down.
+async function runRejectedSlotTimezone(debugUrl, origin) {
+  const slug = 'invalid-slot-timezone-salon';
+  const start = requests.length;
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await waitFor(() => page.evaluate('document.querySelectorAll(".public-service-choice").length === 2'), `${slug} catalog did not load`);
+    await page.evaluate('Array.from(document.querySelectorAll(".public-service-choice")).forEach((button) => button.click())');
+    await waitFor(() => page.evaluate('document.querySelectorAll(".public-selected-line").length === 2'), `${slug} services were not selected`);
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button) => button.textContent.includes("Birlikte uygun saatleri bul"))?.click()');
+    await waitFor(() => requests.slice(start).some((item) => item.path.endsWith('/group-slots')), `${slug} group availability was not requested`);
+    await waitFor(() => page.evaluate('document.body.innerText.includes("Uygunluk yanıtı doğrulanamadı")'), `${slug} malformed slot was not rejected as an unverifiable response`);
+    assert.equal(await page.evaluate('Array.from(document.querySelectorAll("button")).some((button) => button.textContent.includes("Uygun saatleri tekrar dene"))'), true, 'the rejected availability offered no retry');
+    assert.equal(await page.evaluate('Boolean(document.querySelector(".public-group-slot"))'), false, 'a slot with a malformed timezone was offered');
+    assert.deepEqual(page.diagnostics, [], 'a malformed slot timezone threw in the public page');
+    assert.equal(requests.slice(start).filter((item) => item.path.endsWith('/group-book')).length, 0, 'a malformed slot reached group create');
+  } finally {
+    page.close();
+  }
+}
+
 async function runRejectedTimezone(debugUrl, origin) {
   const slug = 'invalid-timezone-salon';
   const start = requests.length;
@@ -923,6 +950,7 @@ try {
   await runScenario('populated legacy single-service fallback', () => runLegacyFallback(debugUrl, origin));
   await runScenario('start-time mutation rejection', () => runRejectedLineMutation(debugUrl, origin));
   await runScenario('timezone mutation rejection', () => runRejectedTimezone(debugUrl, origin));
+  await runScenario('malformed slot timezone rejection', () => runRejectedSlotTimezone(debugUrl, origin));
   await runScenario('pinned staff reassignment rejection', () => runRejectedPinnedReassignment(debugUrl, origin));
   await runScenario('legacy manual recovery mutation rejection', () => runRejectedManualRecoveryMutation(debugUrl, origin));
   for (const phase of ['create', 'automatic', 'manual']) {
@@ -934,7 +962,7 @@ try {
     assert.ok([...servedChunks].some((name) => /PublicSalonPage-.*\.js$/.test(name)), `production public route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
     assert.ok([...servedChunks].some((name) => /ManageAppointmentPage-.*\.js$/.test(name)), `production management route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
   });
-  console.log('F12-05 public group browser passed: named production-route loading/lazy chunks, 360/390 create, legacy /book fallback, immutable recovery, all lifecycle tones, create/automatic/manual service/end/price mutation rejection, closed_absent and /m management.');
+  console.log('F12-05 public group browser passed: named production-route loading/lazy chunks, 360/390 create, legacy /book fallback, immutable recovery, all lifecycle tones, create/automatic/manual service/end/price mutation rejection, malformed slot timezone, closed_absent and /m management.');
 } catch (error) {
   let diagnostics = '';
   try { diagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }
