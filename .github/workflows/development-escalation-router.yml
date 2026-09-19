@@ -24,6 +24,10 @@ on:
     secrets:
       CLAUDE_HAIKU_ROUTINE_TOKEN:
         required: true
+      CLAUDE_R1_ROUTINE_TOKEN:
+        required: false
+      CLAUDE_R2_ROUTINE_TOKEN:
+        required: false
 
 permissions:
   contents: read
