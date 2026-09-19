@@ -41,6 +41,21 @@ function positiveInteger(value, label) {
   return value;
 }
 
+function requireTaskId(value) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: TASK_ID_MISSING');
+  }
+  return value.trim();
+}
+
+function requireRunIdentity(value, label) {
+  const text = typeof value === 'number' ? String(value) : value;
+  if (typeof text !== 'string' || !/^[1-9][0-9]*$/.test(text)) {
+    throw new Error(`DEVELOPMENT_REVIEW_REQUEST_BLOCKED: ${label}_INVALID`);
+  }
+  return text;
+}
+
 function normalizeEvidence(raw = {}) {
   return {
     observedAt: typeof raw.observedAt === 'string' ? raw.observedAt : null,
@@ -111,6 +126,15 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
     'CURRENT_MAIN',
   );
   const prNumber = positiveInteger(candidate.prNumber, 'PR_NUMBER');
+  const taskId = requireTaskId(facts.task?.id ?? candidate.taskId);
+  const testedCheckoutSha = exactSha(ci.testedCheckoutSha, 'TESTED_CHECKOUT');
+  const ciRun = requireRunIdentity(ci.run, 'CI_RUN');
+  const ciJob = requireRunIdentity(ci.job, 'CI_JOB');
+  const ciAttempt = positiveInteger(ci.attempt, 'CI_ATTEMPT');
+
+  if (testedCheckoutSha !== currentHead && ci.explicitlyBoundToHead !== true) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: TESTED_CHECKOUT_UNBOUND');
+  }
 
   if (ci.status !== 'pass'
       || ci.exactHeadSha !== currentHead
@@ -132,7 +156,7 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
     dispatcherCaseFingerprint: envelope.caseFingerprint,
     reviewMode,
     case: {
-      task: facts.task?.id ?? candidate.taskId ?? null,
+      task: taskId,
       pr: prNumber,
       branch: candidate.branch ?? null,
       currentHead,
@@ -144,11 +168,12 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
       ci: {
         status: ci.status,
         exactHeadSha: ci.exactHeadSha,
-        testedCheckoutSha: ci.testedCheckoutSha ?? null,
+        testedCheckoutSha,
+        explicitlyBoundToHead: ci.explicitlyBoundToHead === true,
         baseMainSha: ci.baseMainSha,
-        run: ci.run ?? null,
-        job: ci.job ?? null,
-        attempt: ci.attempt ?? null,
+        run: ciRun,
+        job: ciJob,
+        attempt: ciAttempt,
       },
       review: {
         requirement: review.requirement ?? null,
