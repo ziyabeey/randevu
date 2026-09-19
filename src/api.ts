@@ -46,10 +46,15 @@ function validCsrf(value: unknown): value is string {
   return typeof value === 'string' && /^[A-Za-z0-9_-]{43,128}$/.test(value);
 }
 
+/**
+ * Stores a shape-validated CSRF token supplied by the caller for reuse by guarded requests.
+ * This validates only token format; provenance remains the caller's responsibility.
+ */
 export function seedCsrfToken(value: unknown) {
   if (validCsrf(value)) csrfToken = value;
 }
 
+/** Clears cached CSRF state so the next guarded write re-fetches it. */
 export function clearCsrfToken() {
   csrfToken = null;
   csrfRequest = null;
@@ -157,6 +162,11 @@ function retryAfterSeconds(response: Response) {
   return Number.isFinite(deadline) ? Math.max(0, Math.ceil((deadline - Date.now()) / 1000)) : undefined;
 }
 
+/**
+ * Sends a JSON request through the browser-facing API wrapper.
+ * Default guarded writes attach CSRF; `csrf: 'skip'` omits it. CSRF_INVALID retries once.
+ * A request timeout is enforced only when `timeoutMs` is supplied.
+ */
 export async function api<T = unknown>(path: string, init: ApiInit = {}): Promise<T> {
   const { csrf = 'required', skipCsrfRetry = false, timeoutMs, ...requestInit } = init;
   const headers = new Headers(init.headers);
