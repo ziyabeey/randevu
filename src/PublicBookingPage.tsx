@@ -106,6 +106,16 @@ function validClock(value: unknown): value is BookingClock {
     && clock.submitWindowSeconds === 300;
 }
 
+function validTimeZone(value: unknown): value is string {
+  if (typeof value !== 'string' || !value) return false;
+  try {
+    new Intl.DateTimeFormat('tr-TR', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function validConfirmation(value: unknown, allowNullPrice = false): value is Confirmation {
   if (!value || typeof value !== 'object') return false;
   const appointment = value as Partial<Confirmation>;
@@ -114,7 +124,7 @@ function validConfirmation(value: unknown, allowNullPrice = false): value is Con
       || typeof appointment.status !== 'string' || !appointment.status
       || typeof appointment.starts_at !== 'string'
       || typeof appointment.ends_at !== 'string'
-      || typeof appointment.timezone !== 'string'
+      || !validTimeZone(appointment.timezone)
       || typeof appointment.service_name !== 'string' || !appointment.service_name
       || typeof appointment.staff_name !== 'string' || !appointment.staff_name
       || (appointment.price_minor === null ? !allowNullPrice
@@ -126,7 +136,6 @@ function validConfirmation(value: unknown, allowNullPrice = false): value is Con
   const endsAt = Date.parse(appointment.ends_at);
   if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt) || endsAt <= startsAt) return false;
   try {
-    new Intl.DateTimeFormat('tr-TR', { timeZone: appointment.timezone }).format(new Date(startsAt));
     new Intl.NumberFormat('tr-TR', { style: 'currency', currency: appointment.currency }).format(0);
     return true;
   } catch {
@@ -161,7 +170,7 @@ function validGroupConfirmation(value: unknown, appointment?: Confirmation): val
       || !validTimestamp(value.startsAt)
       || !validTimestamp(value.endsAt)
       || Date.parse(value.endsAt) <= Date.parse(value.startsAt)
-      || typeof value.timezone !== 'string' || !value.timezone
+      || !validTimeZone(value.timezone)
       || typeof value.currency !== 'string' || !/^[A-Z]{3}$/.test(value.currency)
       || !validAmount(value.estimateMinMinor)
       || !validAmount(value.estimateMaxMinor)

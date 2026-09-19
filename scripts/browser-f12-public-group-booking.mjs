@@ -222,6 +222,9 @@ const server = createServer(async (request, response) => {
     if (bookMatch[1] === 'invalid-line-salon') {
       group.lines[1].startsAt = '2026-09-20T08:15:00.000Z';
     }
+    if (bookMatch[1] === 'invalid-timezone-salon') {
+      group.timezone = 'Mars/Olympus';
+    }
     if (bookMatch[1] === 'closed-salon') {
       return sendJson(response, 503, { error: { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: 'Rezervasyon sonucu şu anda doğrulanamıyor.' } });
     }
@@ -480,6 +483,24 @@ async function runRejectedLineMutation(debugUrl, origin) {
   }
 }
 
+async function runRejectedTimezone(debugUrl, origin) {
+  const slug = 'invalid-timezone-salon';
+  const start = requests.length;
+  const page = await openRoute(debugUrl, origin, `/r/${slug}`, 390);
+  try {
+    await preparePlan(page, slug);
+    await submitContact(page);
+    await waitFor(() => requests.slice(start).filter((item) => item.path === '/api/public/booking/resolve').length === 1, 'invalid-timezone response was not checked through one-shot recovery');
+    await waitFor(() => page.evaluate('document.body.innerText.includes("Randevu sonucu doğrulanamadı")'), 'invalid-timezone response did not remain fail closed');
+    assert.equal(await page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), false, 'invalid-timezone response reached the result screen');
+    const journeyRequests = requests.slice(start);
+    assert.equal(journeyRequests.filter((item) => item.path.endsWith('/group-book')).length, 1, 'invalid-timezone response sent duplicate group create requests');
+    assert.deepEqual(page.diagnostics, []);
+  } finally {
+    page.close();
+  }
+}
+
 try {
   await build({ configFile: false, root, publicDir: false, logLevel: 'error', define: { 'process.env.NODE_ENV': JSON.stringify('production') }, build: { outDir: bundleDir, emptyOutDir: true, minify: false, lib: { entry: path.join(root, 'tests/browser/f12-public-group-booking.tsx'), formats: ['es'] }, rollupOptions: { output: { entryFileNames: 'test.js', chunkFileNames: '[name]-[hash].js' } } } });
   testJs = readFileSync(path.join(bundleDir, 'test.js'));
@@ -507,9 +528,10 @@ try {
   await runClosedAbsent(debugUrl, origin);
   await runReloadRecovery(debugUrl, origin);
   await runRejectedLineMutation(debugUrl, origin);
+  await runRejectedTimezone(debugUrl, origin);
   assert.ok([...servedChunks].some((name) => /PublicSalonPage-.*\.js$/.test(name)), `production public route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
   assert.ok([...servedChunks].some((name) => /ManageAppointmentPage-.*\.js$/.test(name)), `production management route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
-  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, unpinned reassignment, line-integrity rejection, closed_absent, reload recovery and /m management.');
+  console.log('F12-05 public group browser passed: production routes/lazy chunks, 360/390 create, unpinned reassignment, line/timezone-integrity rejection, closed_absent, reload recovery and /m management.');
 } catch (error) {
   let diagnostics = '';
   try { diagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }

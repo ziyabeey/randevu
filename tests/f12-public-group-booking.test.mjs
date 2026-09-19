@@ -24,6 +24,8 @@ test('F12-05 consumes the accepted group create contract with the durable v2 int
 
 test('F12-05 validates ordered group results, range estimates and the exact management capability', () => {
   assert.match(booking, /validGroupConfirmation/);
+  assert.match(booking, /function validTimeZone/);
+  assert.match(booking, /!validTimeZone\(value\.timezone\)/);
   assert.match(booking, /groupMatchesSelection/);
   assert.match(booking, /created\.startsAt !== planned\.startsAt/);
   assert.match(booking, /created\.endsAt !== planned\.endsAt/);
