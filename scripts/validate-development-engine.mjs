@@ -186,6 +186,9 @@ export function inspectProjections(task, evidence) {
     }
   }
   for (const proof of evidence.proofs) {
+    if (head && proof.exact_sha === head && proof.status !== 'pass') {
+      warnings.push(`${proof.obligation}: ${proof.kind} current proof result is ${proof.status}; inspect obligation coverage (${proof.ref ?? 'no reference'}).`);
+    }
     if (['pass', 'fail'].includes(proof.status) && !proof.ref) warnings.push(`${proof.obligation}: proof result has no evidence reference.`);
     if (['pass', 'fail'].includes(proof.status)) {
       if (!proof.exact_sha || !proof.tested_checkout_sha) warnings.push(`${proof.obligation}: proof identity is incomplete.`);

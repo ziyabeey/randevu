@@ -359,6 +359,20 @@ test('failed, missing and unknown evidence never looks like a clean current proj
   }
 });
 
+test('a passing proof never masks failed or unfinished current proof for the same obligation', () => {
+  for (const status of ['fail', 'pending', 'skipped', 'unknown']) {
+    const { task, evidence } = candidateProjection();
+    evidence.proofs.push({ ...evidence.proofs[0], kind: 'browser', status, ref: 'fixture:browser-result' });
+    assert.deepEqual(validateManifest(evidenceSchema, evidence), []);
+    const before = JSON.stringify(evidence);
+    assert.ok(inspectProjections(task, evidence).some((warning) => warning.includes(`current proof result is ${status}`)));
+    assert.equal(JSON.stringify(evidence), before);
+  }
+  const { task, evidence } = candidateProjection();
+  evidence.proofs.push({ ...evidence.proofs[0], kind: 'browser' });
+  assert.deepEqual(inspectProjections(task, evidence), []);
+});
+
 test('missing artifacts and symlinked discovery fail visibly without following outside data', async () => {
   const fixture = mkdtempSync(path.join(tmpdir(), 'randevu-engine-'));
   try {
