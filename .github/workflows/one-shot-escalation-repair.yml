@@ -1,4 +1,4 @@
-# trigger one-shot escalation repair
+# trigger one-shot escalation repair v2
 name: One-shot escalation repair
 
 on:
@@ -43,7 +43,8 @@ jobs:
           tests = Path('tests/development-dispatcher.test.mjs')
           text = tests.read_text()
           anchor = """  await t.test('explicit confirmation carries review without relabeling it current', () => {\n    const output = result({\n      r0: { lineage: 'descendant', change: 'docs_only_descendant', deltaConfirmation: 'confirmed' },\n      reviews,\n    });\n    assert.equal(output.state.reviews.r1.freshness, 'carried_forward');\n    assert.equal(output.state.reviews.r1.status, 'acceptable_carried_forward');\n    assert.equal(output.recommendation.suggestedAction, 'assess_current_evidence');\n  });\n"""
-          addition = anchor + """\n  await t.test('confirmation carries only the exact confirmed ancestor receipt', () => {\n    const output = result({\n      r0: {\n        reviewedHeadSha: oldHead,\n        lineage: 'descendant',\n        change: 'docs_only_descendant',\n        deltaConfirmation: 'confirmed',\n      },\n      reviews: {\n        r1: {\n          requirement: 'required',\n          verdict: 'acceptable',\n          receipt: 'accessible',\n          reviewedHeadSha: sha('f'),\n        },\n      },\n    });\n    assert.equal(output.state.reviews.r1.freshness, 'stale');\n    assert.equal(output.state.reviews.r1.status, 'stale');\n    assert.equal(output.recommendation.suggestedAction, 'request_required_reviews');\n  });\n"""
+          corrected = """  await t.test('explicit confirmation carries review without relabeling it current', () => {\n    const output = result({\n      r0: {\n        reviewedHeadSha: oldHead,\n        lineage: 'descendant',\n        change: 'docs_only_descendant',\n        deltaConfirmation: 'confirmed',\n      },\n      reviews,\n    });\n    assert.equal(output.state.reviews.r1.freshness, 'carried_forward');\n    assert.equal(output.state.reviews.r1.status, 'acceptable_carried_forward');\n    assert.equal(output.recommendation.suggestedAction, 'assess_current_evidence');\n  });\n"""
+          addition = corrected + """\n  await t.test('confirmation carries only the exact confirmed ancestor receipt', () => {\n    const output = result({\n      r0: {\n        reviewedHeadSha: oldHead,\n        lineage: 'descendant',\n        change: 'docs_only_descendant',\n        deltaConfirmation: 'confirmed',\n      },\n      reviews: {\n        r1: {\n          requirement: 'required',\n          verdict: 'acceptable',\n          receipt: 'accessible',\n          reviewedHeadSha: sha('f'),\n        },\n      },\n    });\n    assert.equal(output.state.reviews.r1.freshness, 'stale');\n    assert.equal(output.state.reviews.r1.status, 'stale');\n    assert.equal(output.recommendation.suggestedAction, 'request_required_reviews');\n  });\n"""
           if anchor not in text:
               raise SystemExit('dispatcher test anchor not found')
           tests.write_text(text.replace(anchor, addition, 1))
