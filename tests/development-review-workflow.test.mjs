@@ -32,6 +32,15 @@ test('R1 and R2 have separate role endpoints and secrets without model names in 
   assert.doesNotMatch(review, /Sonnet|Opus/);
 });
 
+test('review delivery rechecks live GitHub PR and main identity before role credentials are used', () => {
+  assert.match(review, /repos\/\$\{GITHUB_REPOSITORY\}\/pulls\/\$\{pr_number\}/);
+  assert.match(review, /repos\/\$\{GITHUB_REPOSITORY\}\/branches\/main/);
+  assert.match(review, /test "\$\{live_head\}" = "\$\{head_sha\}"/);
+  assert.match(review, /test "\$\{live_base\}" = "\$\{expected_base\}"/);
+  assert.match(review, /test "\$\{live_main\}" = "\$\{expected_main\}"/);
+  assert.match(review, /pull-requests: read/);
+});
+
 test('role-specific reservation plus exact-head concurrency prevents duplicate Routine spend', () => {
   assert.match(review, /development-review-launch:r1:\$\{REQUEST_FINGERPRINT\}/);
   assert.match(review, /development-review-launch:r2:\$\{REQUEST_FINGERPRINT\}/);
