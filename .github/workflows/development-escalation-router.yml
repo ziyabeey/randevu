@@ -141,6 +141,7 @@ jobs:
     needs: route
     if: ${{ needs.route.outputs.disposition == 'DETERMINISTIC_ACTION' && needs.route.outputs.suggested_action == 'request_required_reviews' }}
     permissions:
+      actions: read
       contents: read
       issues: write
       pull-requests: read
