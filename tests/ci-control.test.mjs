@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { classifyPaths, diffPaths, selectScope } from '../scripts/ci-scope.mjs';
+import { classifyPaths, diffPaths, findTrustedPreviousHead, selectScope } from '../scripts/ci-scope.mjs';
 import { gateResult } from '../scripts/ci-result.mjs';
 import { stages, runCode } from '../scripts/ci-code.mjs';
 
@@ -37,6 +37,91 @@ test('missing, unknown or unreadable event data always falls back to full checks
     { eventName: 'pull_request', event, git: () => { throw new Error('missing object'); } }]) {
     assert.equal(selectScope(options).mode, 'code');
   }
+});
+
+
+
+test('green exact-head CI on the same PR and base is the only trusted carry-forward source', () => {
+  const previous = 'c'.repeat(40);
+  const base = 'a'.repeat(40);
+  const current = 'd'.repeat(40);
+  const event = {
+    action: 'synchronize',
+    number: 187,
+    before: previous,
+    pull_request: { number: 187, base: { sha: base }, head: { sha: current } },
+  };
+  const good = {
+    id: 1234,
+    name: 'CI',
+    conclusion: 'success',
+    head_sha: previous,
+    pull_requests: [{ number: 187, base: { sha: base } }],
+  };
+  assert.deepEqual(findTrustedPreviousHead({ event, runs: [good], complete: true }),
+    { sha: previous, baseSha: base, runId: 1234 });
+
+  for (const runs of [
+    [{ ...good, conclusion: 'failure' }],
+    [{ ...good, name: 'Other workflow' }],
+    [{ ...good, head_sha: 'e'.repeat(40) }],
+    [{ ...good, pull_requests: [{ number: 188, base: { sha: base } }] }],
+    [{ ...good, pull_requests: [{ number: 187, base: { sha: 'f'.repeat(40) } }] }],
+  ]) assert.equal(findTrustedPreviousHead({ event, runs, complete: true }), null);
+
+  assert.equal(findTrustedPreviousHead({ event, runs: [good], complete: false }), null);
+});
+
+test('docs-only descendant of a same-base green PR head reuses full-code evidence', () => {
+  const base = 'a'.repeat(40);
+  const previous = 'b'.repeat(40);
+  const head = 'c'.repeat(40);
+  const event = {
+    action: 'synchronize',
+    number: 187,
+    before: previous,
+    pull_request: { number: 187, base: { sha: base }, head: { sha: head } },
+  };
+  const git = (args) => {
+    if (args[0] === 'merge-base' && args[1] === base && args[2] === head) return base;
+    if (args[0] === 'merge-base' && args[1] === previous && args[2] === head) return previous;
+    if (args[0] === 'diff' && args.includes(base) && args.includes(head))
+      return 'M\0src/PublicBookingPage.tsx\0M\0TASKS.md\0';
+    if (args[0] === 'diff' && args.includes(previous) && args.includes(head))
+      return 'M\0TASKS.md\0M\0docs/handoffs/F12-05.md\0';
+    throw new Error(`unexpected git call: ${args.join(' ')}`);
+  };
+  const trustedPreviousHead = { sha: previous, baseSha: base, runId: 35443459168 };
+  const result = selectScope({ eventName: 'pull_request', event, git, trustedPreviousHead });
+  assert.equal(result.mode, 'docs');
+  assert.equal(result.reason, 'green-descendant-docs-only');
+  assert.equal(result.inheritedFrom, previous);
+  assert.equal(result.inheritedRunId, 35443459168);
+});
+
+test('docs-only latest commit still falls back to full code checks without trusted same-base green lineage', () => {
+  const base = 'a'.repeat(40);
+  const previous = 'b'.repeat(40);
+  const head = 'c'.repeat(40);
+  const event = {
+    action: 'synchronize',
+    number: 187,
+    before: previous,
+    pull_request: { number: 187, base: { sha: base }, head: { sha: head } },
+  };
+  const git = (args) => {
+    if (args[0] === 'merge-base' && args[1] === base && args[2] === head) return base;
+    if (args[0] === 'diff' && args.includes(base) && args.includes(head))
+      return 'M\0src/PublicBookingPage.tsx\0M\0TASKS.md\0';
+    throw new Error('no descendant proof should be requested without trusted previous CI');
+  };
+  assert.equal(selectScope({ eventName: 'pull_request', event, git }).mode, 'code');
+  assert.equal(selectScope({
+    eventName: 'pull_request',
+    event,
+    git,
+    trustedPreviousHead: { sha: previous, baseSha: 'd'.repeat(40), runId: 1 },
+  }).mode, 'code');
 });
 
 test('actual Git history classifies multi-file pushes, rename and deletion conservatively', () => {
