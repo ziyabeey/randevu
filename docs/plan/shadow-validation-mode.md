@@ -2,7 +2,7 @@
 
 Bu belge, uzun süren CI/validation pencerelerinde uygulayıcı ajanın boşta beklemeden fakat henüz doğrulanmamış head üzerinde yeni semantic write üretmeden çalışmaya devam etmesini tanımlar. Mevcut görev, reviewer, CI ve merge protokollerini değiştirmez; onların arasındaki bekleme boşluğunu güvenli read-only çalışma ile doldurur.
 
-`TASKS.md`, açık PR, `PROJECT_STATE.md`, faz/kontrat belgeleri, Context Pack ve Issue #65 authoritative kalır. Shadow Mode ikinci görev sistemi, ikinci ajan veya yeni reviewer değildir.
+Canlı görev/durum için yalnız `TASKS.md` authoritative kalır. Açık PR, faz/kontrat belgeleri, Context Pack ve Issue #65 yalnız çalışma/koordinasyon kanıtı sağlar; TASKS ile paralel durum kaynağı oluşturmaz. Shadow Mode ikinci görev sistemi, ikinci ajan veya yeni reviewer değildir.
 
 ## 1. State machine
 

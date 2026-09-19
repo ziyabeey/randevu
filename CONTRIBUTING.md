@@ -4,9 +4,9 @@ Bu rehber, insan ve ajan katkılarının aynı `main` üzerinde görev sınırla
 
 ## Başlamadan önce
 
-Sırayla [AGENTS.md](AGENTS.md), [PROJECT_STATE.md](PROJECT_STATE.md), [PRODUCT_SPEC.md](PRODUCT_SPEC.md), [ROADMAP.md](ROADMAP.md), [TASKS.md](TASKS.md) ve [ajan çalışma akışını](docs/plan/agent-workflow.md) oku. Ardından yalnız seçilen görevin faz/kontrat belgesini, kodunu, testlerini ve gerekiyorsa UI referansını aç.
+Sırayla [AGENTS.md](AGENTS.md), [TASKS.md](TASKS.md), [PRODUCT_SPEC.md](PRODUCT_SPEC.md), [ROADMAP.md](ROADMAP.md) ve [ajan çalışma akışını](docs/plan/agent-workflow.md) oku. Ardından yalnız seçilen görevin faz/kontrat belgesini, kodunu, testlerini ve gerekiyorsa UI referansını aç.
 
-Görev durumunun kaynağı TASKS, sahipliğin canlı ek kaynağı açık PR'lardır. Branch adı veya sohbet mesajı tek başına sahiplik ya da tamamlanma kanıtı değildir. Tarihsel kanıt ve aktif PR sahipliği PROJECT_STATE/TASKS'tan doğrulanır; aynı kapsam yeniden sahiplenilmez. `S01…S08` teknik onarımları [stabilizasyon planında](docs/plan/stabilization.md), görev olmayan `K01…K03` [mimari sözleşmelerde](docs/plan/architecture-contracts.md) tanımlıdır. Planlama PR'ı uygulamayı başlatmaz.
+**Canlı görev/durum kaynağı yalnız TASKS'tır.** Açık PR'lar çalışma kanıtı ve branch sahipliği gösterebilir ama TASKS ile çelişen PR/Issue/handoff metni güncel durum sayılmaz. Branch adı veya sohbet mesajı tek başına sahiplik ya da tamamlanma kanıtı değildir; aynı kapsam yeniden sahiplenilmez. `S01…S08` teknik onarımları [stabilizasyon planında](docs/plan/stabilization.md), görev olmayan `K01…K03` [mimari sözleşmelerde](docs/plan/architecture-contracts.md) tanımlıdır. Planlama PR'ı uygulamayı başlatmaz.
 
 ## Görev paketi ve roller
 
