@@ -90,3 +90,27 @@ await test('F12-04C invalid slug and missing gate fail before catalog RPC', asyn
     globalThis.fetch = realFetch;
   }
 });
+
+
+await test('F12-04C services-v2 overflow stays a bounded 409 public error', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(String(input));
+    assert.equal(url.pathname, '/rest/v1/rpc/execute_public_operation');
+    const body = JSON.parse(String(init.body ?? '{}'));
+    assert.equal(body.p_action, 'services_v2');
+    return json({ ok: false, error: { message: 'PUBLIC_SERVICES_LIMIT_EXCEEDED' } });
+  };
+
+  try {
+    const response = await app.request(
+      'http://localhost/api/public/business/test-salon/services-v2',
+      { headers: { 'CF-Connecting-IP': '203.0.113.15' } },
+      env,
+    );
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error?.code, 'PUBLIC_SERVICES_LIMIT_EXCEEDED');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
