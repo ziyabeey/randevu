@@ -5,21 +5,23 @@ import test from 'node:test';
 const escalation = await readFile(new URL('../.github/workflows/development-escalation-router.yml', import.meta.url), 'utf8');
 const review = await readFile(new URL('../.github/workflows/development-review-router.yml', import.meta.url), 'utf8');
 
-test('Development Escalation Router dispatches review delivery only for deterministic required-review work', () => {
-  assert.match(escalation, /actions: write/);
-  assert.match(escalation, /steps\.route\.outputs\.disposition == 'DETERMINISTIC_ACTION'/);
-  assert.match(escalation, /request_required_reviews/);
-  assert.match(escalation, /development-review-router\.yml\/dispatches/);
-  assert.match(escalation, /ref: 'main'/);
-  assert.doesNotMatch(escalation, /CLAUDE_R1_ROUTINE_TOKEN|CLAUDE_R2_ROUTINE_TOKEN/);
+test('Development Escalation Router calls review delivery only for deterministic required-review work', () => {
+  assert.doesNotMatch(escalation, /actions: write/);
+  assert.match(escalation, /needs\.route\.outputs\.disposition == 'DETERMINISTIC_ACTION'/);
+  assert.match(escalation, /needs\.route\.outputs\.suggested_action == 'request_required_reviews'/);
+  assert.match(escalation, /uses: \.\/\.github\/workflows\/development-review-router\.yml/);
+  assert.match(escalation, /expected_case_fingerprint: \$\{\{ needs\.route\.outputs\.case_fingerprint \}\}/);
+  assert.match(escalation, /CLAUDE_R1_ROUTINE_TOKEN/);
+  assert.match(escalation, /CLAUDE_R2_ROUTINE_TOKEN/);
 });
 
-test('independent review delivery is API-dispatched from canonical main, never PR-event triggered', () => {
-  assert.match(review, /workflow_dispatch:/);
-  assert.doesNotMatch(review, /pull_request(?:_target)?:|push:|schedule:/);
-  assert.match(review, /test "\$\{GITHUB_REF\}" = "refs\/heads\/main"/);
+test('independent review delivery is reusable-only and cannot be directly Actions-dispatched', () => {
+  assert.match(review, /workflow_call:/);
+  assert.doesNotMatch(review, /workflow_dispatch:|pull_request(?:_target)?:|push:|schedule:/);
   assert.match(review, /expected_case_fingerprint/);
   assert.match(review, /request_required_reviews/);
+  assert.match(review, /secrets:\n\s+CLAUDE_R1_ROUTINE_TOKEN:/);
+  assert.match(review, /CLAUDE_R2_ROUTINE_TOKEN:/);
 });
 
 test('R1 and R2 have separate role endpoints and secrets without model names in repository routing', () => {
