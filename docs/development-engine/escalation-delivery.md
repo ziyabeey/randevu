@@ -73,6 +73,11 @@ If that handoff is unavailable, Haiku must stop with `OPUS_HANDOFF_BLOCKED`.
 It must not perform Opus-level reasoning as a fallback, and GitHub Actions must not
 silently bypass Haiku by firing Opus directly.
 
+The same conditional handoff contract is committed in root `CLAUDE.md`. Claude
+Code loads that repository instruction automatically, so the marked
+`EVIDENCE_COMPRESSION_REQUEST` flow does not depend on repeatedly patching the
+saved Routine prompt. The rule is inert for sessions without that marker.
+
 ## Manual/reusable router
 
 `.github/workflows/development-escalation-router.yml` is intentionally not bound to
