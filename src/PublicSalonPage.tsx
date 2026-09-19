@@ -28,6 +28,18 @@ type PublicProfile = {
 };
 
 const dayLabels = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+const FAVORITE_KEY_PREFIX = 'randevu-kolay:favorite-salon:';
+
+function favoriteKey(slug: string) {
+  return `${FAVORITE_KEY_PREFIX}${slug}`;
+}
+
+function safePublicSalonUrl() {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.hash = '';
+  return url.toString();
+}
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -73,6 +85,8 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [inactive, setInactive] = useState(false);
   const [notice, setNotice] = useState('');
+  const [favorite, setFavorite] = useState(false);
+  const [actionNotice, setActionNotice] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +109,47 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [slug]);
+
+  useEffect(() => {
+    setActionNotice('');
+    try {
+      setFavorite(window.localStorage.getItem(favoriteKey(slug)) === '1');
+    } catch {
+      setFavorite(false);
+    }
+  }, [slug]);
+
+  function toggleFavorite() {
+    const next = !favorite;
+    try {
+      if (next) window.localStorage.setItem(favoriteKey(slug), '1');
+      else window.localStorage.removeItem(favoriteKey(slug));
+      setFavorite(next);
+      setActionNotice(next ? 'Salon bu cihazda favorilere eklendi.' : 'Salon bu cihazdaki favorilerden çıkarıldı.');
+    } catch {
+      setActionNotice('Favori tercihi bu cihazda kaydedilemedi.');
+    }
+  }
+
+  async function shareSalon() {
+    const url = safePublicSalonUrl();
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({ title: profile?.public_name ?? 'Salon', url });
+        setActionNotice('Salon bağlantısı paylaşıldı.');
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        setActionNotice('Salon bağlantısı kopyalandı.');
+        return;
+      }
+      setActionNotice('Paylaşım bu tarayıcıda kullanılamıyor.');
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setActionNotice('Salon bağlantısı paylaşılamadı.');
+    }
+  }
 
   const cover = useMemo(() => {
     if (!profile?.cover_media_id) return null;
@@ -136,6 +191,13 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
             <a href="#randevu">Hizmetler</a>
             <a href="#salon-bilgileri">Bilgiler</a>
           </nav>
+          <div className="public-salon-actions" aria-label="Salon işlemleri">
+            <button type="button" aria-pressed={favorite} onClick={toggleFavorite}>
+              {favorite ? 'Favorilerde' : 'Favoriye ekle'}
+            </button>
+            <button type="button" onClick={() => void shareSalon()}>Paylaş</button>
+          </div>
+          {actionNotice && <p className="public-salon-action-notice" role="status">{actionNotice}</p>}
         </div>
       </header>
 
