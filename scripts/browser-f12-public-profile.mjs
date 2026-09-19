@@ -83,6 +83,7 @@ function groupSlots(body) {
   }] };
 }
 function sendJson(response, status, body) {
+  if (response.destroyed || response.writableEnded) return;
   response.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   response.end(JSON.stringify(body));
 }
