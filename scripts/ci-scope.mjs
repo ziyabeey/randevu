@@ -78,9 +78,6 @@ export function selectScope({
       const mergeBase = run(['merge-base', baseSha, headSha]).trim();
       if (!sha.test(mergeBase)) throw new Error('Missing merge base');
       const fullPaths = diffPaths(run(['diff', '--name-status', '-z', '--no-renames', mergeBase, headSha, '--']));
-      if (classifyPaths(fullPaths) === 'docs') {
-        return { mode: 'docs', reason: 'git-diff', count: fullPaths.length };
-      }
 
       if (event.action === 'synchronize') {
         const receipts = normalizeTrustedReceipts(trustedReceipts, baseSha);
