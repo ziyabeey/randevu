@@ -22,7 +22,9 @@ type PublicBusiness = { name: string; slug: string; timezone: string; local_date
 type PublicService = { service_id: string; name: string; duration_minutes: number; price_minor: number; currency: string };
 type PublicStaff = { staff_id: string; staff_name: string };
 type PublicSlot = { staff_id: string; staff_name: string; starts_at: string; ends_at: string; timezone: string };
-type Confirmation = { appointment_id: string; business_name?: string; status: string; starts_at: string; ends_at: string; timezone: string; service_name: string; staff_name: string; price_minor: number | null; currency: string };
+type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'no_show' | 'cancelled';
+type GroupStatus = AppointmentStatus | 'partial';
+type Confirmation = { appointment_id: string; business_name?: string; status: AppointmentStatus; starts_at: string; ends_at: string; timezone: string; service_name: string; staff_name: string; price_minor: number | null; currency: string };
 type GroupLine = {
   appointmentId: string;
   lineOrdinal: number;
@@ -30,7 +32,7 @@ type GroupLine = {
   serviceName: string;
   staffId: string;
   staffName: string;
-  status: string;
+  status: AppointmentStatus;
   startsAt: string;
   endsAt: string;
   occupiedStartsAt: string;
@@ -47,7 +49,7 @@ type GroupLine = {
 };
 type GroupConfirmation = {
   groupId: string;
-  status: string;
+  status: GroupStatus;
   source: 'public';
   version: number;
   customerId: string;
@@ -116,12 +118,21 @@ function validTimeZone(value: unknown): value is string {
   }
 }
 
+function validAppointmentStatus(value: unknown): value is AppointmentStatus {
+  return value === 'scheduled' || value === 'confirmed' || value === 'completed'
+    || value === 'no_show' || value === 'cancelled';
+}
+
+function validGroupStatus(value: unknown): value is GroupStatus {
+  return validAppointmentStatus(value) || value === 'partial';
+}
+
 function validConfirmation(value: unknown, allowNullPrice = false): value is Confirmation {
   if (!value || typeof value !== 'object') return false;
   const appointment = value as Partial<Confirmation>;
   if (typeof appointment.appointment_id !== 'string'
       || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(appointment.appointment_id)
-      || typeof appointment.status !== 'string' || !appointment.status
+      || !validAppointmentStatus(appointment.status)
       || typeof appointment.starts_at !== 'string'
       || typeof appointment.ends_at !== 'string'
       || !validTimeZone(appointment.timezone)
@@ -163,7 +174,7 @@ function validAmount(value: unknown): value is number {
 function validGroupConfirmation(value: unknown, appointment?: Confirmation): value is GroupConfirmation {
   if (!isRecord(value)
       || !validUuid(value.groupId)
-      || typeof value.status !== 'string' || !value.status
+      || !validGroupStatus(value.status)
       || value.source !== 'public'
       || !Number.isInteger(value.version)
       || !validUuid(value.customerId)
@@ -187,7 +198,7 @@ function validGroupConfirmation(value: unknown, appointment?: Confirmation): val
         || typeof line.serviceName !== 'string' || !line.serviceName
         || !validUuid(line.staffId)
         || typeof line.staffName !== 'string' || !line.staffName
-        || typeof line.status !== 'string' || !line.status
+        || !validAppointmentStatus(line.status)
         || !validTimestamp(line.startsAt) || !validTimestamp(line.endsAt)
         || Date.parse(line.endsAt) <= Date.parse(line.startsAt)
         || !validTimestamp(line.occupiedStartsAt) || !validTimestamp(line.occupiedEndsAt)
@@ -205,6 +216,9 @@ function validGroupConfirmation(value: unknown, appointment?: Confirmation): val
     estimateMin += line.priceMinMinor as number;
     estimateMax += line.priceMaxMinor as number;
   }
+  const statuses = new Set(value.lines.map((line) => line.status));
+  const aggregateStatus = statuses.size === 1 ? value.lines[0]!.status : 'partial';
+  if (value.status !== aggregateStatus) return false;
   if (estimateMin !== value.estimateMinMinor || estimateMax !== value.estimateMaxMinor) return false;
   if (appointment) {
     const anchor = value.lines[0] as Record<string, unknown>;
@@ -243,6 +257,26 @@ function groupMatchesSelection(group: GroupConfirmation, selection: PublicBookin
     return line.staffId === null
       || (planned.staffId === line.staffId && created.staffId === line.staffId);
   });
+}
+
+function confirmationOutcome(appointment: Confirmation, group?: GroupConfirmation) {
+  const status = group?.status ?? appointment.status;
+  switch (status) {
+    case 'scheduled': return { active: true, symbol: '✓', kicker: 'RANDEVU OLUŞTURULDU', state: 'Randevunuz işletmenin paneline kaydedildi.', groupTail: 'kaydedildi.' };
+    case 'confirmed': return { active: true, symbol: '✓', kicker: 'RANDEVU ONAYLANDI', state: 'Randevunuz işletme tarafından onaylandı.', groupTail: 'işletme tarafından onaylandı.' };
+    case 'completed': return { active: false, symbol: '✓', kicker: 'RANDEVU TAMAMLANDI', state: 'Randevunuz tamamlandı.', groupTail: 'tamamlandı.' };
+    case 'no_show': return { active: false, symbol: '!', kicker: 'RANDEVUYA GELİNMEDİ', state: 'Randevu gelinmedi olarak işaretlendi.', groupTail: 'gelinmedi olarak işaretlendi.' };
+    case 'cancelled': return { active: false, symbol: '×', kicker: 'RANDEVU İPTAL EDİLDİ', state: 'Randevunuz iptal edilmiş.', groupTail: 'iptal edilmiş.' };
+    case 'partial': return { active: false, symbol: '!', kicker: 'RANDEVU PLANI KISMEN DEĞİŞTİ', state: 'Grup randevunuzun hizmet durumları birbirinden farklı.', groupTail: 'kısmen değişmiş.' };
+  }
+}
+
+function appointmentStatusLabel(status: AppointmentStatus) {
+  const labels: Record<AppointmentStatus, string> = {
+    scheduled: 'Planlandı', confirmed: 'Onaylandı', completed: 'Tamamlandı',
+    no_show: 'Gelinmedi', cancelled: 'İptal edildi',
+  };
+  return labels[status];
 }
 
 function validManagementUrl(value: unknown, legacy = false) {
@@ -733,21 +767,22 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
   if (confirmation) {
     const receipt = confirmationRecordId ? bookingRecords.find((record) => record.id === confirmationRecordId) ?? null : null;
     const appointment = confirmation.appointment;
+    const outcome = confirmationOutcome(appointment, confirmation.group);
     return <main className="public-booking-shell"><section className="public-booking-card public-confirmation">
-      <div className="public-success-mark">✓</div><p className="public-kicker">RANDEVU OLUŞTURULDU</p>
+      <div className={outcome.active ? 'public-success-mark' : 'public-result-mark'}>{outcome.symbol}</div><p className="public-kicker">{outcome.kicker}</p>
       <h1>{appointment.business_name ?? page?.business.name ?? 'Randevu'}</h1>
       {confirmation.group ? <>
-        <p className="public-confirmation-lead">{confirmation.group.lines.length} hizmetlik planınız kaydedildi.</p>
+        <p className="public-confirmation-lead">{confirmation.group.lines.length} hizmetlik planınız {outcome.groupTail}</p>
         <ol className="public-confirmation-services">{confirmation.group.lines.map((line) => <li key={line.appointmentId}>
-          <span><strong>{line.serviceName}</strong><small>{line.staffName} · {formatTime(line.startsAt, confirmation.group!.timezone)}–{formatTime(line.endsAt, confirmation.group!.timezone)}</small></span>
+          <span><strong>{line.serviceName}</strong><small>{line.staffName} · {formatTime(line.startsAt, confirmation.group!.timezone)}–{formatTime(line.endsAt, confirmation.group!.timezone)}</small><small>Durum: {appointmentStatusLabel(line.status)}</small></span>
           <span>{line.priceMinMinor === line.priceMaxMinor ? money(line.priceMinMinor, line.currency) : `${money(line.priceMinMinor, line.currency)} – ${money(line.priceMaxMinor, line.currency)}`}</span>
         </li>)}</ol>
         <dl className="public-confirmation-list"><div><dt>Başlangıç</dt><dd>{formatDateTime(confirmation.group.startsAt, confirmation.group.timezone)}</dd></div><div><dt>Fiyat</dt><dd>{estimateMoney(confirmation.group.estimateMinMinor, confirmation.group.estimateMaxMinor, confirmation.group.currency)}</dd></div></dl>
         <p className="public-confirmation-note">Bu tutar rezervasyon tahminidir. Kesin tahsilat tutarı değildir.</p>
       </> : <dl className="public-confirmation-list"><div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div><div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div><div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div><div><dt>Ücret</dt><dd>{appointment.price_minor === null ? 'İşletmede netleşecek' : money(appointment.price_minor, appointment.currency)}</dd></div></dl>}
-      <div className="public-result-status" aria-label="Rezervasyon ve mesaj durumu"><p><strong>Kayıt durumu:</strong> Randevunuz işletmenin paneline kaydedildi.</p><p><strong>Mesaj durumu:</strong> Bu ekran SMS veya e-posta teslimini doğrulamaz.</p></div>
-      <p className="public-confirmation-note">Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.</p>
-      <a className="public-primary" href={confirmation.manageUrl}>Randevumu yönet</a>
+      <div className="public-result-status" aria-label="Rezervasyon ve mesaj durumu"><p><strong>Kayıt durumu:</strong> {outcome.state}</p><p><strong>Mesaj durumu:</strong> Bu ekran SMS veya e-posta teslimini doğrulamaz.</p></div>
+      <p className="public-confirmation-note">{outcome.active ? 'Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.' : 'Randevu ayrıntılarınızı yönetim bağlantısından görüntüleyebilirsiniz.'}</p>
+      <a className="public-primary" href={confirmation.manageUrl}>{outcome.active ? 'Randevumu yönet' : 'Randevu ayrıntılarını aç'}</a>
       {confirmationStorageError && <div className="public-booking-notice" role="alert">{confirmationStorageError} Bu kayıt tamamlanana kadar yeni randevu başlatmayın.</div>}
       {unpersistedConfirmation && <button className="public-secondary" type="button" onClick={() => void retryConfirmationPersistence()}>Güvenli kaydı yeniden dene</button>}
       <button className="public-secondary" type="button" disabled={!receipt} onClick={() => { if (receipt) void removeReminder(receipt); }}>Yeni randevu oluştur</button>

@@ -229,6 +229,7 @@
 .public-empty-state,
 .public-confirmation { width: min(100%, 34rem); margin: 8vh auto 0; text-align: center; }
 .public-success-mark { display: grid; place-items: center; width: 3.2rem; height: 3.2rem; margin: 0 auto 1rem; border-radius: 999px; background: #e6f7ed; color: #14733d; font-size: 1.5rem; font-weight: 900; }
+.public-result-mark { display: grid; place-items: center; width: 3.2rem; height: 3.2rem; margin: 0 auto 1rem; border-radius: 999px; background: #fff0bf; color: #6f4a00; font-size: 1.5rem; font-weight: 900; }
 .public-confirmation-list { display: grid; gap: .65rem; margin: 1.4rem 0; text-align: left; }
 .public-confirmation-list > div { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid #edf0f5; }
 .public-confirmation-list dt { color: #6b768c; }

@@ -24,6 +24,9 @@ test('F12-05 consumes the accepted group create contract with the durable v2 int
 
 test('F12-05 validates ordered group results, range estimates and the exact management capability', () => {
   assert.match(booking, /validGroupConfirmation/);
+  assert.match(booking, /validAppointmentStatus/);
+  assert.match(booking, /validGroupStatus/);
+  assert.match(booking, /const aggregateStatus = statuses\.size === 1/);
   assert.match(booking, /function validTimeZone/);
   assert.match(booking, /!validTimeZone\(value\.timezone\)/);
   assert.match(booking, /groupMatchesSelection/);
@@ -40,6 +43,10 @@ test('F12-05 validates ordered group results, range estimates and the exact mana
   assert.match(booking, /Kayıt durumu:/);
   assert.match(booking, /Mesaj durumu:/);
   assert.match(booking, /Bu ekran SMS veya e-posta teslimini doğrulamaz\./);
+  assert.match(booking, /RANDEVU İPTAL EDİLDİ/);
+  assert.match(booking, /RANDEVU PLANI KISMEN DEĞİŞTİ/);
+  assert.match(booking, /Randevu ayrıntılarını aç/);
+  assert.match(booking, /Durum: \{appointmentStatusLabel\(line\.status\)\}/);
 });
 
 test('F12-05 resolves uncertain submissions without issuing a second create', () => {
