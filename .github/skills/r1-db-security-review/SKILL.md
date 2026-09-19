@@ -15,7 +15,9 @@ Follow [workflow](../../../docs/plan/agent-workflow.md) and the current task con
 
 Coordinator assignment and review budget; canonical contract/Context Pack;
 candidate PR/base/semantic/exact head, diff and file scope; exact CI/proof refs;
-prior findings/receipts and explicit delta boundaries, if any.
+prior findings/receipts and explicit delta boundaries, if any. Use the canonical
+[review lineage contract](../../../docs/plan/agent-workflow.md#review-lineage-kernel)
+for mode, freshness, blocker identity and follow-up scope.
 
 ## Allowed actions
 
@@ -43,22 +45,24 @@ Check stronger proof obligations and any explicit `narrows`/`supersedes` rationa
 
 ## Exact SHA
 
-Re-read live PR head before review and before publishing. If it changed, mark
-head-specific results stale and return for refreshed assignment. Semantic changes
-reset affected prior review. A docs-only descendant may use coordinator-requested
-delta confirmation, never silent receipt reuse. Identify tested merge-tree SHA
-separately from candidate/semantic SHA.
+Apply the canonical lineage/freshness routing before review and before publishing.
+For DB proof, also identify the tested migration chain in the linked artifact;
+green CI alone does not establish the access/concurrency invariant.
 
 ## Output
 
 ```text
+VERDICT: ACCEPTABLE | BLOCKER | INCOMPLETE
+BLOCKERS: open carried findings or new confirmed blockers, or NONE
+EVIDENCE GAPS: missing / failed / skipped obligations, or NONE
+REVIEWED SHA: exact candidate head reviewed for this receipt
+NEXT ACTION: coordinator's next concrete step
 R1 / reviewer context / task / PR:
+Brief reference / previous receipt / previous reviewed SHA / approved delta:
 Base / semantic SHA / exact candidate / tested checkout:
-Verdict: ACCEPTABLE | BLOCKER | INCOMPLETE
 Reviewed scope and obligation -> evidence refs:
 Findings: severity / file:lines / invariant / repro / confidence
 Prior findings closed/open; untested residuals:
-Next coordinator action:
 ```
 
 `ACCEPTABLE` is an advisory, SHA-bound R1 receipt, not GitHub APPROVE or merge
