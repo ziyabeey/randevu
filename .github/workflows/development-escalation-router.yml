@@ -26,7 +26,6 @@ on:
         required: true
 
 permissions:
-  actions: write
   contents: read
   id-token: write
 
@@ -39,6 +38,7 @@ jobs:
       disposition: ${{ steps.route.outputs.disposition }}
       case_fingerprint: ${{ steps.route.outputs.case_fingerprint }}
       source_envelope_bytes: ${{ steps.route.outputs.source_envelope_bytes }}
+      suggested_action: ${{ steps.route.outputs.suggested_action }}
     env:
       OBSERVATION_JSON: ${{ inputs.observation_json }}
       EVIDENCE_JSON: ${{ inputs.evidence_json }}
@@ -87,6 +87,7 @@ jobs:
           printf 'disposition=%s\n' "${disposition}" >> "${GITHUB_OUTPUT}"
           printf 'case_fingerprint=%s\n' "${fingerprint}" >> "${GITHUB_OUTPUT}"
           printf 'source_envelope_bytes=%s\n' "${source_bytes}" >> "${GITHUB_OUTPUT}"
+          printf 'suggested_action=%s\n' "$(jq -r '.envelope.dispatcher.recommendation.suggestedAction // "unknown"' "${RUNNER_TEMP}/escalation-route.json")" >> "${GITHUB_OUTPUT}"
 
           {
             printf '## Development Escalation Router\n\n'
@@ -131,40 +132,18 @@ jobs:
           node scripts/fire-claude-routine.mjs \
             --body "${RUNNER_TEMP}/haiku-fire-body.json"
 
-      - name: Dispatch independent R1/R2 delivery
-        if: ${{ steps.route.outputs.disposition == 'DETERMINISTIC_ACTION' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          action="$(jq -r '.envelope.dispatcher.recommendation.suggestedAction // empty' "${RUNNER_TEMP}/escalation-route.json")"
-          if [ "${action}" != "request_required_reviews" ]; then
-            echo "Deterministic action ${action:-unknown} does not require independent Routine delivery."
-            exit 0
-          fi
-
-          fingerprint="$(jq -r '.envelope.caseFingerprint' "${RUNNER_TEMP}/escalation-route.json")"
-          [[ "${fingerprint}" =~ ^[a-f0-9]{64}$ ]]
-
-          payload="${RUNNER_TEMP}/review-workflow-dispatch.json"
-          CASE_FINGERPRINT="${fingerprint}" node <<'NODE'
-          const { writeFileSync } = require('node:fs');
-          const payload = {
-            ref: 'main',
-            inputs: {
-              observation_json: process.env.OBSERVATION_JSON,
-              evidence_json: process.env.EVIDENCE_JSON || '{}',
-              expected_case_fingerprint: process.env.CASE_FINGERPRINT,
-            },
-          };
-          writeFileSync(process.env.RUNNER_TEMP + '/review-workflow-dispatch.json', JSON.stringify(payload));
-          NODE
-
-          gh api --method POST             "repos/${GITHUB_REPOSITORY}/actions/workflows/development-review-router.yml/dispatches"             --input "${payload}"
-
-          {
-            printf '\n## Independent review delivery\n\n'
-            printf -- '- dispatcher action: `request_required_reviews`\n'
-            printf -- '- case fingerprint: `%s`\n' "${fingerprint}"
-            printf -- '- delivery workflow: `Development Review Router` on `main`\n'
-          } >> "${GITHUB_STEP_SUMMARY}"
+  independent_reviews:
+    name: Independent R1/R2 Routine delivery
+    needs: route
+    if: ${{ needs.route.outputs.disposition == 'DETERMINISTIC_ACTION' && needs.route.outputs.suggested_action == 'request_required_reviews' }}
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/development-review-router.yml
+    with:
+      observation_json: ${{ inputs.observation_json }}
+      evidence_json: ${{ inputs.evidence_json }}
+      expected_case_fingerprint: ${{ needs.route.outputs.case_fingerprint }}
+    secrets:
+      CLAUDE_R1_ROUTINE_TOKEN: ${{ secrets.CLAUDE_R1_ROUTINE_TOKEN }}
+      CLAUDE_R2_ROUTINE_TOKEN: ${{ secrets.CLAUDE_R2_ROUTINE_TOKEN }}
