@@ -243,16 +243,18 @@ function checkTasks(root, tracked, errors) {
     }
   }
 
-  // PROJECT_STATE.md is a legacy tombstone only. It may exist for old links,
-  // but it must never become a second live status source.
-  if (tracked.has('PROJECT_STATE.md') && existsSync(path.join(root, 'PROJECT_STATE.md'))) {
-    const legacy = readFileSync(path.join(root, 'PROJECT_STATE.md'), 'utf8');
-    if (!legacy.includes('Bu dosya canlı durum kaynağı değildir')) {
-      errors.push('PROJECT_STATE.md is retired; live status belongs only in TASKS.md');
-    }
-    if (/^##\s+(?:Main|Aktif|Faz|Kabul|Durum)/m.test(legacy) || /^\s*\|.*Durum.*\|/m.test(legacy)) {
-      errors.push('PROJECT_STATE.md must remain a tombstone, not a second status tracker');
-    }
+  // PROJECT_STATE.md is a required legacy tombstone so old historical links do
+  // not break, but it must never become a second live status source.
+  if (!tracked.has('PROJECT_STATE.md') || !existsSync(path.join(root, 'PROJECT_STATE.md'))) {
+    errors.push('PROJECT_STATE.md legacy tombstone must exist and be tracked');
+    return;
+  }
+  const legacy = readFileSync(path.join(root, 'PROJECT_STATE.md'), 'utf8');
+  if (!legacy.includes('Bu dosya canlı durum kaynağı değildir')) {
+    errors.push('PROJECT_STATE.md is retired; live status belongs only in TASKS.md');
+  }
+  if (/^##\s+(?:Main|Aktif|Faz|Kabul|Durum)/m.test(legacy) || /^\s*\|.*Durum.*\|/m.test(legacy)) {
+    errors.push('PROJECT_STATE.md must remain a tombstone, not a second status tracker');
   }
 }
 
