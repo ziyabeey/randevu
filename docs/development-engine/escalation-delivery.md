@@ -54,11 +54,24 @@ For the Haiku compressor wiring, the intended repository names are:
 - repository variable: `CLAUDE_HAIKU_ROUTINE_URL`
 - repository secret: `CLAUDE_HAIKU_ROUTINE_TOKEN`
 
-Opus credentials are intentionally not consumed by this first delivery adapter.
-The `/fire` response is treated only as a launch receipt; this repository does not
-assume an undocumented result-polling or callback contract. Chaining compressed
-Haiku output into the Opus Escalation Governor remains a separate integration seam
-until that result handoff is explicitly available and tested.
+The GitHub router never receives or uses Opus credentials. It may trigger Haiku,
+but Opus is deliberately downstream of Haiku.
+
+The Haiku Routine environment owns these runtime-only variables:
+
+- `CLAUDE_OPUS_ROUTINE_URL`
+- `CLAUDE_OPUS_ROUTINE_TOKEN`
+
+After Haiku compresses a `REASONING_REQUIRED` case, Haiku writes the compact
+`OPUS_ESCALATION_PACKAGE` to a temporary JSON file and executes
+`node scripts/fire-opus-escalation.mjs --package <file>` from its own Routine
+session. That adapter validates the reasoning disposition and case fingerprint,
+restricts the destination to the Anthropic Routine fire endpoint, never prints the
+token and treats the returned session ID/URL only as a launch receipt.
+
+If that handoff is unavailable, Haiku must stop with `OPUS_HANDOFF_BLOCKED`.
+It must not perform Opus-level reasoning as a fallback, and GitHub Actions must not
+silently bypass Haiku by firing Opus directly.
 
 ## Manual/reusable router
 
@@ -70,7 +83,7 @@ case envelope, and fires the Haiku Routine only when the disposition is
 
 This preserves the cost boundary:
 
-`canonical observation -> Dispatcher -> delivery disposition -> Haiku only if needed`
+`canonical observation -> Dispatcher -> delivery disposition -> Haiku only if needed -> Opus only when Haiku hands off`
 
 A later event collector may call the reusable workflow, but it must produce the
 same normalized observation contract and must not move model calls ahead of the
