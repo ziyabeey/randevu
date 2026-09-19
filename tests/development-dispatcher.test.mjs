@@ -5,343 +5,347 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { deriveEffectiveState, normalizeDispatcherSnapshot } from '../scripts/development-dispatcher.mjs';
+import {
+  deriveConditions,
+  deriveDispatcherResult,
+  normalizeFacts,
+  recommendNextAction,
+} from '../scripts/development-dispatcher.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sha = (value) => value.repeat(40);
-const mainA = sha('a');
-const headA = sha('b');
-const mergeA = sha('c');
+const main = sha('a');
+const head = sha('b');
+const mergeRef = sha('c');
 const oldHead = sha('d');
-const mergeB = sha('e');
-const mergeSha = sha('f');
+const mergeSha = sha('e');
 
-function baseSnapshot(overrides = {}) {
+function base(overrides = {}) {
   const input = {
+    task: {
+      id: 'DEV-ENGINE-EXPERIMENT',
+      liveStatus: 'review',
+      dependencyState: 'ready',
+      assignmentState: 'assigned',
+      writerStatus: 'clear',
+    },
     candidate: {
       taskId: 'DEV-ENGINE-EXPERIMENT',
-      prNumber: 177,
+      prNumber: 179,
       branch: 'copilot/experimentdev-dispatcher-copilot',
-      state: 'pr',
-      headSha: headA,
-      baseMainSha: mainA,
+      presence: 'active',
+      headSha: head,
+      baseMainSha: main,
+      mergeSha: null,
     },
-    freshness: {
-      observedHeadSha: headA,
-      liveHeadSha: headA,
+    observation: {
+      observedHeadSha: head,
+      liveHeadSha: head,
+      observedMainSha: main,
+      liveMainSha: main,
     },
     ci: {
-      status: 'success',
-      exactHeadSha: headA,
-      testedCheckoutSha: mergeA,
-      baseMainSha: mainA,
+      status: 'pass',
+      exactHeadSha: head,
+      testedCheckoutSha: mergeRef,
+      baseMainSha: main,
       explicitlyBoundToHead: true,
+      run: '1',
+      job: '2',
+      attempt: 1,
+    },
+    r0: {
+      requirement: 'not_required',
+      receipt: 'missing',
+      freeze: 'unknown',
+      frozenBlockers: [],
+      blockerClosures: [],
+      lineage: 'same_head',
+      change: 'same',
+      deltaConfirmation: 'unknown',
     },
     reviews: {
-      r1: { required: false, verdict: 'not_required', receipt: 'missing' },
-      r2: { required: false, verdict: 'not_required', receipt: 'missing' },
+      r1: { requirement: 'not_required', verdict: 'not_required', receipt: 'missing', reviewedHeadSha: null },
+      r2: { requirement: 'not_required', verdict: 'not_required', receipt: 'missing', reviewedHeadSha: null },
     },
-    sourceRefs: ['TASKS.md#dev-engine', 'docs/plan/agent-workflow.md#review-lineage-kernel'],
+    proofs: [],
+    postMain: { status: 'not_applicable', mergeSha: null },
+    sourceRefs: ['TASKS.md#development-tooling-track', 'docs/plan/agent-workflow.md#review-lineage-kernel'],
   };
+
   return {
     ...input,
     ...overrides,
+    task: { ...input.task, ...(overrides.task ?? {}) },
     candidate: { ...input.candidate, ...(overrides.candidate ?? {}) },
-    task: { dependencyState: 'ready', sharedWriter: 'clear', ...(overrides.task ?? {}) },
-    freshness: { ...input.freshness, ...(overrides.freshness ?? {}) },
+    observation: { ...input.observation, ...(overrides.observation ?? {}) },
     ci: { ...input.ci, ...(overrides.ci ?? {}) },
-    r0: { applies: false, receipt: 'missing', freeze: 'unknown', frozenBlockers: [], lineage: 'same_head', change: 'same', ...(overrides.r0 ?? {}) },
+    r0: { ...input.r0, ...(overrides.r0 ?? {}) },
     reviews: {
       r1: { ...input.reviews.r1, ...(overrides.reviews?.r1 ?? {}) },
       r2: { ...input.reviews.r2, ...(overrides.reviews?.r2 ?? {}) },
     },
-    proofs: overrides.proofs ?? [],
-    postMain: { status: 'none', mergeSha: null, ...(overrides.postMain ?? {}) },
+    proofs: overrides.proofs ?? input.proofs,
+    postMain: { ...input.postMain, ...(overrides.postMain ?? {}) },
     sourceRefs: overrides.sourceRefs ?? input.sourceRefs,
   };
 }
 
-test('normalization is stable and deduplicates deterministic lists', () => {
-  const normalized = normalizeDispatcherSnapshot({
-    r0: { frozenBlockers: ['R0-B2', 'R0-B1', 'R0-B2'] },
-    sourceRefs: ['b', 'a', 'b'],
-  });
-  assert.deepEqual(normalized.r0.frozenBlockers, ['R0-B1', 'R0-B2']);
-  assert.deepEqual(normalized.sourceRefs, ['a', 'b']);
+function result(overrides) {
+  return deriveDispatcherResult(base(overrides));
+}
+
+test('normalization keeps missing authority facts UNKNOWN instead of optimistic defaults', () => {
+  const facts = normalizeFacts({});
+  assert.equal(facts.task.dependencyState, 'unknown');
+  assert.equal(facts.task.assignmentState, 'unknown');
+  assert.equal(facts.task.writerStatus, 'unknown');
+  assert.equal(facts.r0.requirement, 'unknown');
+  assert.equal(facts.reviews.r1.requirement, 'unknown');
+  assert.equal(facts.reviews.r2.requirement, 'unknown');
+  assert.equal(facts.candidate.presence, 'unknown');
 });
 
-test('no active candidate routes to implementation or dependency wait', async (t) => {
-  await t.test('implementation ready', () => {
-    const result = deriveEffectiveState(baseSnapshot({
-      candidate: { state: 'none', prNumber: null, headSha: null, baseMainSha: null },
-      freshness: { observedHeadSha: null, liveHeadSha: null },
+test('the three layers are independently inspectable and deterministic', () => {
+  const facts = normalizeFacts(base());
+  const conditions = deriveConditions(facts);
+  const recommendation = recommendNextAction(conditions);
+  assert.equal(conditions.state.ci.headApplicability, 'current');
+  assert.equal(recommendation.suggestedAction, 'assess_current_evidence');
+  assert.deepEqual(deriveDispatcherResult(base()), deriveDispatcherResult(base()));
+});
+
+test('implementation eligibility requires explicit ready dependency, assignment and clear writer', async (t) => {
+  const absent = {
+    presence: 'absent', prNumber: null, branch: null, headSha: null, baseMainSha: null,
+  };
+  const observation = { observedHeadSha: null, liveHeadSha: null };
+
+  await t.test('eligible only when explicit', () => {
+    const output = result({
+      task: { liveStatus: 'planned', dependencyState: 'ready', assignmentState: 'assigned', writerStatus: 'clear' },
+      candidate: absent,
+      observation,
       ci: { status: 'missing', exactHeadSha: null, testedCheckoutSha: null, baseMainSha: null },
-    }));
-    assert.equal(result.lifecycle, 'IMPLEMENTATION_READY');
-    assert.equal(result.nextRole, 'implementer');
-    assert.ok(result.reasonCodes.includes('NO_ACTIVE_CANDIDATE'));
+    });
+    assert.equal(output.recommendation.suggestedAction, 'implementation_eligible');
+    assert.equal(output.recommendation.nextActor, 'implementer');
   });
 
-  await t.test('dependency wait', () => {
-    const result = deriveEffectiveState(baseSnapshot({
-      candidate: { state: 'none', prNumber: null, headSha: null, baseMainSha: null },
-      task: { dependencyState: 'blocked' },
-      freshness: { observedHeadSha: null, liveHeadSha: null },
+  await t.test('unknown assignment refuses', () => {
+    const output = result({
+      task: { liveStatus: 'planned', dependencyState: 'ready', assignmentState: 'unknown', writerStatus: 'clear' },
+      candidate: absent,
+      observation,
       ci: { status: 'missing', exactHeadSha: null, testedCheckoutSha: null, baseMainSha: null },
-    }));
-    assert.equal(result.lifecycle, 'DEPENDENCY_WAIT');
-    assert.equal(result.nextRole, 'coordinator');
-    assert.ok(result.evidenceGaps.includes('DEPENDENCY_BLOCKED'));
+    });
+    assert.equal(output.recommendation.kind, 'refuse');
+    assert.equal(output.recommendation.nextActor, 'coordinator');
   });
 });
 
-test('PR candidate with pending exact-head CI waits for CI', () => {
-  const result = deriveEffectiveState(baseSnapshot({
-    ci: { status: 'pending' },
-  }));
-  assert.equal(result.lifecycle, 'WAIT_CI');
-  assert.equal(result.nextAction, 'WAIT_FOR_CI');
-  assert.ok(result.reasonCodes.includes('CI_PENDING'));
+test('head freshness invalidates every head-bound routing conclusion', () => {
+  const output = result({ observation: { observedHeadSha: oldHead, liveHeadSha: head } });
+  assert.equal(output.state.snapshotFreshness, 'stale');
+  assert.equal(output.recommendation.kind, 'refuse');
+  assert.equal(output.recommendation.suggestedAction, 'refresh_snapshot');
+  assert.equal(output.recommendation.provenance[0].rule, 'R1_FRESHNESS_INVALIDATES_HEAD_BOUND_ROUTING');
 });
 
-test('exact-head CI failure blocks reviewer dispatch', () => {
-  const result = deriveEffectiveState(baseSnapshot({
-    ci: { status: 'failure' },
-    r0: { applies: true },
-  }));
-  assert.equal(result.lifecycle, 'CI_FAILED');
-  assert.equal(result.nextRole, 'implementer');
-  assert.equal(result.mode, null);
-  assert.ok(result.reasonCodes.includes('CI_FAILED'));
+test('writer conflict overrides otherwise green evidence without hiding other state', () => {
+  const output = result({ task: { writerStatus: 'conflict' } });
+  assert.equal(output.state.ci.result, 'pass');
+  assert.equal(output.state.writer, 'conflict');
+  assert.equal(output.recommendation.suggestedAction, 'resolve_writer_scope');
 });
 
-test('exact-head CI success with no R0 freeze routes to R0 discovery', () => {
-  const result = deriveEffectiveState(baseSnapshot({
-    r0: { applies: true, receipt: 'missing' },
-  }));
-  assert.equal(result.lifecycle, 'R0_REVIEW');
-  assert.equal(result.nextRole, 'r0');
-  assert.equal(result.mode, 'DISCOVERY');
-  assert.ok(result.reasonCodes.includes('R0_DISCOVERY_REQUIRED'));
+test('current CI failure is neutral investigation, never automatic candidate repair', () => {
+  const output = result({ ci: { status: 'fail' } });
+  assert.equal(output.state.ci.result, 'fail');
+  assert.ok(output.obligations.some((item) => item.code === 'CI_FAILURE_INVESTIGATION_REQUIRED'));
+  assert.equal(output.recommendation.nextActor, 'coordinator');
+  assert.equal(output.recommendation.suggestedAction, 'investigate_current_ci_failure');
+  assert.notEqual(output.recommendation.suggestedAction, 'repair_candidate');
 });
 
-test('durable R0 freeze with descendant repair routes to verification and preserves NONE', async (t) => {
-  await t.test('frozen blockers descendant', () => {
-    const result = deriveEffectiveState(baseSnapshot({
+test('main/base drift degrades integration evidence without marking the head stale', () => {
+  const output = result({ ci: { baseMainSha: oldHead } });
+  assert.equal(output.state.snapshotFreshness, 'current');
+  assert.equal(output.state.ci.baseApplicability, 'stale');
+  assert.equal(output.recommendation.suggestedAction, 'refresh_candidate_bound_ci_evidence');
+});
+
+test('an explicitly bound merge-ref is valid candidate evidence', () => {
+  const output = result({ ci: { testedCheckoutSha: mergeRef, explicitlyBoundToHead: true } });
+  assert.equal(output.state.ci.checkoutBinding, 'bound_merge_ref');
+  assert.equal(output.recommendation.suggestedAction, 'assess_current_evidence');
+});
+
+test('R0 discovery, verification and frozen-blocker closure are distinct conditions', async (t) => {
+  await t.test('missing durable receipt means discovery', () => {
+    const output = result({ r0: { requirement: 'required', receipt: 'missing' } });
+    assert.equal(output.state.r0.mode, 'discovery_needed');
+    assert.equal(output.recommendation.nextActor, 'r0');
+    assert.equal(output.recommendation.suggestedAction, 'run_r0_discovery');
+  });
+
+  await t.test('descendant repair means bounded verification', () => {
+    const output = result({
       r0: {
-        applies: true,
-        receipt: 'accessible',
-        freeze: 'blockers',
-        frozenBlockers: ['R0-B2', 'R0-B1'],
-        lineage: 'descendant',
+        requirement: 'required', receipt: 'accessible', freeze: 'none', lineage: 'descendant',
         change: 'semantic_descendant',
       },
-    }));
-    assert.equal(result.lifecycle, 'R0_REVIEW');
-    assert.equal(result.mode, 'VERIFICATION');
-    assert.deepEqual(result.review.r0.frozenBlockers, ['R0-B1', 'R0-B2']);
-    assert.ok(result.reasonCodes.includes('SEMANTIC_ACCEPTANCE_STALE'));
+    });
+    assert.equal(output.state.r0.mode, 'verification_needed');
+    assert.equal(output.recommendation.suggestedAction, 'run_r0_verification');
   });
 
-  await t.test('explicit NONE remains known-empty', () => {
-    const result = deriveEffectiveState(baseSnapshot({
+  await t.test('same-head open frozen blocker is repair-eligible only with assignment', () => {
+    const output = result({
       r0: {
-        applies: true,
-        receipt: 'accessible',
-        freeze: 'none',
-        lineage: 'descendant',
-        change: 'docs_only_descendant',
+        requirement: 'required', receipt: 'accessible', freeze: 'blockers', lineage: 'same_head',
+        frozenBlockers: ['R0-B1'], blockerClosures: [{ id: 'R0-B1', status: 'open' }],
       },
-    }));
-    assert.equal(result.lifecycle, 'R0_REVIEW');
-    assert.equal(result.mode, 'VERIFICATION');
-    assert.equal(result.review.r0.freeze, 'none');
-    assert.deepEqual(result.review.r0.frozenBlockers, []);
-    assert.ok(result.reasonCodes.includes('R0_FROZEN_NONE'));
+    });
+    assert.equal(output.state.r0.mode, 'blocked');
+    assert.deepEqual(output.state.r0.openBlockers, ['R0-B1']);
+    assert.equal(output.recommendation.suggestedAction, 'repair_frozen_r0_blockers');
+  });
+
+  await t.test('same-head unverified frozen blocker requires R0 verification', () => {
+    const output = result({
+      r0: {
+        requirement: 'required', receipt: 'accessible', freeze: 'blockers', lineage: 'same_head',
+        frozenBlockers: ['R0-B1'], blockerClosures: [{ id: 'R0-B1', status: 'unverified' }],
+      },
+    });
+    assert.equal(output.state.r0.mode, 'verification_needed');
+    assert.equal(output.recommendation.nextActor, 'r0');
+  });
+
+  await t.test('all same-head frozen blockers closed is satisfied', () => {
+    const output = result({
+      r0: {
+        requirement: 'required', receipt: 'accessible', freeze: 'blockers', lineage: 'same_head',
+        frozenBlockers: ['R0-B1'], blockerClosures: [{ id: 'R0-B1', status: 'closed' }],
+      },
+    });
+    assert.equal(output.state.r0.mode, 'satisfied_blockers');
+    assert.equal(output.recommendation.suggestedAction, 'assess_current_evidence');
   });
 });
 
-test('missing or inaccessible prior R0 receipt stays unknown and never becomes NONE', () => {
-  const result = deriveEffectiveState(baseSnapshot({
-    r0: {
-      applies: true,
-      receipt: 'inaccessible',
-      freeze: 'none',
-      lineage: 'unknown',
-      change: 'unknown',
-    },
-  }));
-  assert.equal(result.lifecycle, 'UNKNOWN');
-  assert.equal(result.nextRole, 'coordinator');
-  assert.equal(result.review.r0.receipt, 'inaccessible');
-  assert.ok(result.evidenceGaps.includes('R0_RECEIPT_UNKNOWN'));
-});
+test('docs-only descendants never silently make stale review receipts current', async (t) => {
+  const reviews = {
+    r1: { requirement: 'required', verdict: 'acceptable', receipt: 'accessible', reviewedHeadSha: oldHead },
+  };
 
-test('non-descendant lineage becomes a provenance conflict', () => {
-  const result = deriveEffectiveState(baseSnapshot({
-    r0: {
-      applies: true,
-      receipt: 'accessible',
-      freeze: 'blockers',
-      lineage: 'non_descendant',
-      change: 'non_descendant',
-    },
-  }));
-  assert.equal(result.lifecycle, 'PROVENANCE_CONFLICT');
-  assert.equal(result.nextRole, 'coordinator');
-  assert.ok(result.reasonCodes.includes('R0_PROVENANCE_CONFLICT'));
-});
-
-test('docs-only descendants keep current acceptable reviews while semantic descendants invalidate them', async (t) => {
-  await t.test('semantic descendant invalidates acceptance', () => {
-    const result = deriveEffectiveState(baseSnapshot({
-      r0: { change: 'semantic_descendant', lineage: 'descendant' },
-      reviews: {
-        r1: { required: true, verdict: 'acceptable', reviewedHeadSha: oldHead, receipt: 'accessible' },
-      },
-    }));
-    assert.equal(result.lifecycle, 'REVIEW_DISPATCH');
-    assert.deepEqual(result.pendingReviews, ['r1']);
-    assert.ok(result.reasonCodes.includes('SEMANTIC_ACCEPTANCE_STALE'));
-    assert.ok(result.evidenceGaps.includes('R1_STALE'));
+  await t.test('unconfirmed delta requires coordinator confirmation', () => {
+    const output = result({
+      r0: { lineage: 'descendant', change: 'docs_only_descendant', deltaConfirmation: 'unconfirmed' },
+      reviews,
+    });
+    assert.equal(output.state.reviews.r1.status, 'stale');
+    assert.ok(output.obligations.some((item) => item.code === 'DOCS_ONLY_DELTA_CONFIRMATION_REQUIRED'));
+    assert.equal(output.recommendation.suggestedAction, 'confirm_docs_only_delta');
   });
 
-  await t.test('docs-only descendant does not force full semantic review', () => {
-    const result = deriveEffectiveState(baseSnapshot({
-      r0: { change: 'docs_only_descendant', lineage: 'descendant' },
-      reviews: {
-        r1: { required: true, verdict: 'acceptable', reviewedHeadSha: oldHead, receipt: 'accessible' },
-      },
-    }));
-    assert.equal(result.lifecycle, 'COORDINATOR_REVIEW');
-    assert.deepEqual(result.pendingReviews, []);
-    assert.ok(result.reasonCodes.includes('DOCS_ONLY_DESCENDANT'));
+  await t.test('explicit confirmation carries review without relabeling it current', () => {
+    const output = result({
+      r0: { lineage: 'descendant', change: 'docs_only_descendant', deltaConfirmation: 'confirmed' },
+      reviews,
+    });
+    assert.equal(output.state.reviews.r1.freshness, 'carried_forward');
+    assert.equal(output.state.reviews.r1.status, 'acceptable_carried_forward');
+    assert.equal(output.recommendation.suggestedAction, 'assess_current_evidence');
   });
 });
 
-test('required R1 and R2 pending/blocker/incomplete states remain visible', async (t) => {
-  for (const role of ['r1', 'r2']) {
-    for (const verdict of ['pending', 'blocker', 'incomplete']) {
-      await t.test(`${role}:${verdict}`, () => {
-        const result = deriveEffectiveState(baseSnapshot({
-          reviews: {
-            [role]: { required: true, verdict, receipt: 'accessible' },
-          },
-        }));
-        assert.equal(result.lifecycle, 'REVIEW_DISPATCH');
-        assert.deepEqual(result.pendingReviews, [role]);
-        assert.ok(result.reasonCodes.includes(`${role.toUpperCase()}_${verdict.toUpperCase()}`));
-      });
-    }
-  }
-});
-
-test('required R1 and R2 states remain distinct and block merge-ready inference', () => {
-  const result = deriveEffectiveState(baseSnapshot({
+test('R1 and R2 remain independent obligations while recommendation can request both', () => {
+  const output = result({
     reviews: {
-      r1: { required: true, verdict: 'pending', receipt: 'accessible' },
-      r2: { required: true, verdict: 'blocker', receipt: 'accessible' },
+      r1: { requirement: 'required', verdict: 'pending', receipt: 'missing' },
+      r2: { requirement: 'required', verdict: 'pending', receipt: 'missing' },
     },
-  }));
-  assert.equal(result.lifecycle, 'REVIEW_DISPATCH');
-  assert.deepEqual(result.pendingReviews, ['r1', 'r2']);
-  assert.ok(result.reasonCodes.includes('R1_PENDING'));
-  assert.ok(result.reasonCodes.includes('R2_BLOCKER'));
+  });
+  assert.ok(output.obligations.some((item) => item.code === 'R1_REVIEW_REQUIRED'));
+  assert.ok(output.obligations.some((item) => item.code === 'R2_REVIEW_REQUIRED'));
+  assert.deepEqual(output.recommendation.eligibleRoles, ['r1', 'r2']);
+  assert.equal(output.recommendation.suggestedAction, 'request_required_reviews');
 });
 
-test('same raw head tested against stale or unknown base stays an integration evidence gap', async (t) => {
-  for (const ci of [
-    { baseMainSha: null },
-    { baseMainSha: oldHead },
-  ]) {
-    await t.test(JSON.stringify(ci), () => {
-      const result = deriveEffectiveState(baseSnapshot({ ci }));
-      assert.equal(result.lifecycle, 'WAIT_CI');
-      assert.ok(result.evidenceGaps.some((gap) => gap.startsWith('CI_BASE_')));
-    });
-  }
+test('mixed current PASS/non-PASS proof is a first-class contradiction and cannot be masked', () => {
+  const output = result({
+    proofs: [
+      { key: 'browser', status: 'pass', exactHeadSha: head, required: true },
+      { key: 'browser', status: 'fail', exactHeadSha: head, required: true },
+      { key: 'browser', status: 'fail', exactHeadSha: oldHead, required: true },
+    ],
+  });
+  assert.ok(output.contradictions.includes('MIXED_CURRENT_PROOF_STATUS:browser'));
+  assert.ok(output.obligations.some((item) => item.code === 'CURRENT_PROOF_NOT_PASS:browser'));
+  assert.equal(output.recommendation.kind, 'refuse');
+  assert.equal(output.recommendation.suggestedAction, 'resolve_contradictory_evidence');
 });
 
-test('explicitly bound merge-ref differs from raw head without becoming stale', () => {
-  const result = deriveEffectiveState(baseSnapshot({
-    ci: { testedCheckoutSha: mergeB, explicitlyBoundToHead: true },
-  }));
-  assert.equal(result.lifecycle, 'COORDINATOR_REVIEW');
-  assert.deepEqual(result.evidenceGaps, []);
+test('historical non-pass proof does not poison a current pass', () => {
+  const output = result({
+    proofs: [
+      { key: 'browser', status: 'pass', exactHeadSha: head, required: true },
+      { key: 'browser', status: 'fail', exactHeadSha: oldHead, required: true },
+    ],
+  });
+  assert.deepEqual(output.contradictions, []);
+  assert.equal(output.recommendation.suggestedAction, 'assess_current_evidence');
 });
 
-test('current fail/pending/skipped proof cannot be masked by another pass', async (t) => {
-  for (const status of ['fail', 'pending', 'skipped']) {
-    await t.test(status, () => {
-      const result = deriveEffectiveState(baseSnapshot({
-        proofs: [
-          { key: 'browser', status: 'pass', exactHeadSha: headA, required: true },
-          { key: 'browser', status, exactHeadSha: headA, required: true },
-          { key: 'docs', status: 'pass', exactHeadSha: oldHead, required: true },
-        ],
-      }));
-      assert.equal(result.lifecycle, 'WAIT_PROOF');
-      assert.ok(result.reasonCodes.includes('CURRENT_PROOF_NOT_PASS'));
-      assert.ok(result.evidenceGaps.includes(`PROOF_BROWSER_${status.toUpperCase()}`));
-    });
-  }
+test('structurally contradictory R0 freeze refuses routing', () => {
+  const output = result({
+    r0: {
+      requirement: 'required', receipt: 'accessible', freeze: 'none', lineage: 'same_head',
+      frozenBlockers: ['R0-B1'],
+    },
+  });
+  assert.ok(output.contradictions.includes('R0_FREEZE_NONE_WITH_BLOCKERS'));
+  assert.equal(output.recommendation.suggestedAction, 'resolve_contradictory_evidence');
 });
 
-test('shared-writer overlap requires coordinator intervention', () => {
-  const result = deriveEffectiveState(baseSnapshot({
-    task: { sharedWriter: 'conflict' },
-  }));
-  assert.equal(result.lifecycle, 'PROVENANCE_CONFLICT');
-  assert.equal(result.nextAction, 'RESOLVE_WRITER_SCOPE');
-  assert.equal(result.coordinatorInterventionRequired, true);
-});
+test('merged candidate never becomes self-authorized closure', async (t) => {
+  const candidate = { presence: 'merged', mergeSha, headSha: head };
+  const ci = { status: 'missing', exactHeadSha: null, testedCheckoutSha: null, baseMainSha: null };
 
-test('head changes make the snapshot stale instead of current routing', () => {
-  const result = deriveEffectiveState(baseSnapshot({
-    freshness: { observedHeadSha: oldHead, liveHeadSha: headA },
-  }));
-  assert.equal(result.lifecycle, 'SNAPSHOT_STALE');
-  assert.equal(result.nextAction, 'REFRESH_SNAPSHOT');
-  assert.ok(result.evidenceGaps.includes('HEAD_CHANGED'));
-});
-
-test('merged candidate uses post-main verification and closure states', async (t) => {
-  await t.test('post-main pending', () => {
-    const result = deriveEffectiveState(baseSnapshot({
-      candidate: { state: 'merged', mergeSha },
-      postMain: { status: 'pending', mergeSha },
-    }));
-    assert.equal(result.lifecycle, 'POST_MAIN_VERIFY');
-    assert.equal(result.nextRole, 'coordinator');
-    assert.ok(result.reasonCodes.includes('POST_MAIN_PENDING'));
+  await t.test('pending post-main waits', () => {
+    const output = result({ candidate, ci, postMain: { status: 'pending', mergeSha } });
+    assert.equal(output.recommendation.kind, 'wait');
+    assert.equal(output.recommendation.suggestedAction, 'obtain_post_main_verification');
   });
 
-  await t.test('post-main success', () => {
-    const result = deriveEffectiveState(baseSnapshot({
-      candidate: { state: 'merged', mergeSha },
-      postMain: { status: 'success', mergeSha },
-    }));
-    assert.equal(result.lifecycle, 'CLOSURE_CANDIDATE');
-    assert.equal(result.nextAction, 'ASSESS_CLOSURE');
-    assert.ok(result.reasonCodes.includes('POST_MAIN_SUCCESS'));
+  await t.test('post-main pass only allows coordinator closure assessment', () => {
+    const output = result({ candidate, ci, postMain: { status: 'pass', mergeSha } });
+    assert.equal(output.recommendation.nextActor, 'coordinator');
+    assert.equal(output.recommendation.suggestedAction, 'assess_closure_candidate');
+    assert.notEqual(output.recommendation.suggestedAction, 'close_task');
   });
 });
 
-test('CLI prints the deterministic dispatcher decision as JSON', () => {
-  const fixture = mkdtempSync(path.join(tmpdir(), 'dispatcher-cli-'));
+test('CLI prints the layered deterministic result', () => {
+  const fixture = mkdtempSync(path.join(tmpdir(), 'dispatcher-c-'));
   try {
-    const file = path.join(fixture, 'snapshot.json');
-    writeFileSync(file, JSON.stringify(baseSnapshot({ ci: { status: 'pending' } })));
-    const result = spawnSync(process.execPath, ['scripts/run-development-dispatcher.mjs', file], {
+    const inputFile = path.join(fixture, 'snapshot.json');
+    const cliFile = path.join(root, 'scripts/run-development-dispatcher.mjs');
+    writeFileSync(inputFile, JSON.stringify(base({ ci: { status: 'pending' } })));
+    const completed = spawnSync(process.execPath, [cliFile, inputFile], {
       cwd: root,
       encoding: 'utf8',
       timeout: 30_000,
     });
-    assert.ifError(result.error);
-    assert.equal(result.status, 0, result.stdout + result.stderr);
-    const parsed = JSON.parse(result.stdout);
-    assert.equal(parsed.lifecycle, 'WAIT_CI');
-    assert.equal(parsed.nextAction, 'WAIT_FOR_CI');
+    assert.ifError(completed.error);
+    assert.equal(completed.status, 0, completed.stdout + completed.stderr);
+    const parsed = JSON.parse(completed.stdout);
+    assert.ok(parsed.facts);
+    assert.ok(parsed.state);
+    assert.ok(parsed.obligations);
+    assert.equal(parsed.recommendation.suggestedAction, 'wait_for_ci');
   } finally {
     rmSync(fixture, { recursive: true, force: true });
   }

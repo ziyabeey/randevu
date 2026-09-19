@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { deriveEffectiveState } from './development-dispatcher.mjs';
+import { deriveDispatcherResult } from './development-dispatcher.mjs';
 
 function readInput(target) {
   if (!target || target === '-') return readFileSync(0, 'utf8');
@@ -8,5 +8,5 @@ function readInput(target) {
 }
 
 const target = process.argv[2] ?? '-';
-const snapshot = JSON.parse(readInput(target));
-console.log(JSON.stringify(deriveEffectiveState(snapshot), null, 2));
+const observation = JSON.parse(readInput(target));
+console.log(JSON.stringify(deriveDispatcherResult(observation), null, 2));

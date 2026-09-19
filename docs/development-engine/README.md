@@ -243,17 +243,26 @@ optional triage, optimizer or policy engine is introduced.
 
 ## Dispatcher v0 experiment
 
-`scripts/development-dispatcher.mjs` adds a small deterministic dispatcher for
-repo-native routing experiments. The pure `deriveEffectiveState(snapshot)` core
-works only from normalized in-memory observations and returns the next safe
-role/action, routing mode, reason codes, provenance gaps and coordinator flag
-without writing state or launching agents. `scripts/run-development-dispatcher.mjs`
-is a thin CLI adapter that reads JSON from a file or stdin and prints the
-derived decision for dry-run use.
+`scripts/development-dispatcher.mjs` is a small read-only deterministic
+coordination reducer behind the existing effective-state audit. Its architecture
+is three pure layers: `normalizeFacts()` preserves observed UNKNOWNs without
+optimistic defaults, `deriveConditions()` exposes orthogonal freshness,
+provenance, contradictions and independent obligations, and
+`recommendNextAction()` emits only an advisory/refusal-capable recommendation
+with reason codes and decision provenance. `deriveDispatcherResult()` is a
+convenience facade; it is not a workflow-state authority.
 
-The snapshot stays observation-only: TASKS remains the live task/status source,
-Issue #65 remains temporary coordination, receipts stay evidence, and the
-dispatcher never computes merge authority or creates a durable state surface.
+`scripts/run-development-dispatcher.mjs` reads observation JSON from a file or
+stdin and prints facts, conditions/state, contradictions, unknowns, obligations
+and the advisory recommendation. It does not launch agents or write GitHub
+state. CI failure is evidence to investigate, not automatic candidate
+causality; docs-only carry-forward requires explicit confirmation; R1/R2 remain
+independent obligations; the reducer never computes merge-ready or acceptance.
+
+The observation remains disposable: TASKS is the sole durable live task/status
+source, Issue #65 remains temporary coordination, and PR/CI/receipts remain
+candidate-bound evidence. No dispatcher DB, queue, scheduler, workflow DSL or
+second status surface is introduced.
 
 ## Validation
 
