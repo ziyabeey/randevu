@@ -28,15 +28,17 @@ For that marked flow:
 4. Write one temporary JSON object with these exact top-level fields:
    - `DISPOSITION`: `"REASONING_REQUIRED"`
    - `CASE_FINGERPRINT`: the unchanged 64-hex case fingerprint
+   - `SOURCE_ENVELOPE_BYTES`: the exact byte count supplied by the marked request
    - `OPUS_ESCALATION_PACKAGE`: the compact evidence package
 5. From this Haiku session, trigger Opus exactly once by running:
-   `node scripts/fire-opus-escalation.mjs --package <temporary-json-file> --expected-fingerprint <unchanged-case-fingerprint>`
+   `node scripts/fire-opus-escalation.mjs --package <temporary-json-file> --expected-fingerprint <unchanged-case-fingerprint> --expected-source-bytes <unchanged-source-envelope-bytes>`
 6. Never reveal, print, copy into the package, commit, or expose
    `CLAUDE_OPUS_ROUTINE_URL` or `CLAUDE_OPUS_ROUTINE_TOKEN`.
 7. GitHub Actions, the Dispatcher, and the caller are not Opus callers. Do not ask
    them to perform the handoff.
-8. If the command returns `OPUS_TRIGGERED`, report only the case fingerprint and
-   returned Claude session URL. Do not continue into Opus-level reasoning.
+8. If the command returns `OPUS_TRIGGERED`, report only the case fingerprint,
+   source-envelope bytes, compressed-package bytes, compression ratio and returned
+   Claude session URL. Do not continue into Opus-level reasoning.
 9. If credentials, network access, package validation, or the Routine API is
    unavailable, stop with `OPUS_HANDOFF_BLOCKED: <non-secret reason>`. Do not
    substitute Haiku reasoning for the missing Opus run.
