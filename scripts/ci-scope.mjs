@@ -30,55 +30,85 @@ export function diffPaths(raw) {
   return paths;
 }
 
-export function findTrustedPreviousHead({ event, runs, complete = true } = {}) {
-  if (!complete || event?.action !== 'synchronize' || !Array.isArray(runs)) return null;
-  const previousHead = event.before;
-  const baseSha = event.pull_request?.base?.sha;
-  const prNumber = event.number ?? event.pull_request?.number;
-  if (!sha.test(previousHead ?? '') || !sha.test(baseSha ?? '') || !Number.isInteger(prNumber)) return null;
-
-  const match = runs.find((run) => run?.name === 'CI'
-    && run?.conclusion === 'success'
-    && run?.head_sha === previousHead
-    && Array.isArray(run?.pull_requests)
-    && run.pull_requests.some((pr) => pr?.number === prNumber && pr?.base?.sha === baseSha));
-
-  return match ? { sha: previousHead, baseSha, runId: match.id ?? null } : null;
+export function normalizeTrustedReceipts(raw, baseSha) {
+  if (!Array.isArray(raw) || !sha.test(baseSha ?? '')) return [];
+  const seen = new Set();
+  const receipts = [];
+  for (const item of raw) {
+    const headSha = item?.headSha;
+    const receiptBaseSha = item?.baseSha;
+    const runId = Number(item?.runId);
+    if (!sha.test(headSha ?? '') || receiptBaseSha !== baseSha
+      || !Number.isSafeInteger(runId) || runId <= 0 || seen.has(headSha)) continue;
+    seen.add(headSha);
+    receipts.push({ headSha, baseSha: receiptBaseSha, runId });
+  }
+  return receipts;
 }
 
-export function selectScope({ root = process.cwd(), eventName, event, git, trustedPreviousHead = null } = {}) {
-  const run = git ?? ((args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }));
+function readTrustedReceipts(target) {
+  if (!target) return [];
   try {
-    let base;
-    let head;
+    const parsed = JSON.parse(readFileSync(target, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function selectScope({
+  root = process.cwd(),
+  eventName,
+  event,
+  git,
+  trustedReceipts = [],
+} = {}) {
+  const run = git ?? ((args) => execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    maxBuffer: 16 * 1024 * 1024,
+  }));
+
+  try {
     if (eventName === 'pull_request') {
       const baseSha = event.pull_request?.base?.sha;
-      head = event.pull_request?.head?.sha;
-      if (!sha.test(baseSha ?? '') || !sha.test(head ?? '')) throw new Error('Missing PR revisions');
-      base = run(['merge-base', baseSha, head]).trim();
-      if (!sha.test(base)) throw new Error('Missing merge base');
+      const headSha = event.pull_request?.head?.sha;
+      if (!sha.test(baseSha ?? '') || !sha.test(headSha ?? '')) throw new Error('Missing PR revisions');
 
-      const fullPaths = diffPaths(run(['diff', '--name-status', '-z', '--no-renames', base, head, '--']));
-      const fullMode = classifyPaths(fullPaths);
-      if (fullMode === 'docs') return { mode: 'docs', reason: 'git-diff', count: fullPaths.length };
+      const mergeBase = run(['merge-base', baseSha, headSha]).trim();
+      if (!sha.test(mergeBase)) throw new Error('Missing merge base');
+      const fullPaths = diffPaths(run(['diff', '--name-status', '-z', '--no-renames', mergeBase, headSha, '--']));
+      if (classifyPaths(fullPaths) === 'docs') {
+        return { mode: 'docs', reason: 'git-diff', count: fullPaths.length };
+      }
 
-      const previousHead = event.before;
-      const trusted = event.action === 'synchronize'
-        && sha.test(previousHead ?? '')
-        && trustedPreviousHead?.sha === previousHead
-        && trustedPreviousHead?.baseSha === baseSha;
+      if (event.action === 'synchronize') {
+        const receipts = normalizeTrustedReceipts(trustedReceipts, baseSha);
+        for (const receipt of receipts) {
+          if (receipt.headSha === headSha) continue;
+          let lineageBase;
+          try {
+            lineageBase = run(['merge-base', receipt.headSha, headSha]).trim();
+          } catch {
+            continue;
+          }
+          if (lineageBase !== receipt.headSha) continue;
 
-      if (trusted) {
-        const lineageBase = run(['merge-base', previousHead, head]).trim();
-        if (lineageBase === previousHead) {
-          const deltaPaths = diffPaths(run(['diff', '--name-status', '-z', '--no-renames', previousHead, head, '--']));
+          let deltaPaths;
+          try {
+            deltaPaths = diffPaths(run([
+              'diff', '--name-status', '-z', '--no-renames', receipt.headSha, headSha, '--',
+            ]));
+          } catch {
+            continue;
+          }
           if (classifyPaths(deltaPaths) === 'docs') {
             return {
               mode: 'docs',
               reason: 'green-descendant-docs-only',
               count: deltaPaths.length,
-              inheritedFrom: previousHead,
-              inheritedRunId: trustedPreviousHead.runId ?? null,
+              inheritedFrom: receipt.headSha,
+              inheritedRunId: receipt.runId,
             };
           }
         }
@@ -88,9 +118,11 @@ export function selectScope({ root = process.cwd(), eventName, event, git, trust
     }
 
     if (eventName === 'push') {
-      base = event.before;
-      head = event.after;
-      if (!sha.test(base ?? '') || !sha.test(head ?? '') || /^0+$/.test(base) || /^0+$/.test(head)) throw new Error('Missing revisions');
+      const base = event.before;
+      const head = event.after;
+      if (!sha.test(base ?? '') || !sha.test(head ?? '') || /^0+$/.test(base) || /^0+$/.test(head)) {
+        throw new Error('Missing revisions');
+      }
       const paths = diffPaths(run(['diff', '--name-status', '-z', '--no-renames', base, head, '--']));
       return { mode: classifyPaths(paths), reason: 'git-diff', count: paths.length };
     }
@@ -101,50 +133,26 @@ export function selectScope({ root = process.cwd(), eventName, event, git, trust
   }
 }
 
-async function fetchPreviousHeadRuns(event) {
-  if (event?.action !== 'synchronize') return { runs: [], complete: false };
-  const previousHead = event.before;
-  const repository = process.env.GITHUB_REPOSITORY;
-  const api = process.env.GITHUB_API_URL;
-  const token = process.env.GITHUB_TOKEN;
-  if (!sha.test(previousHead ?? '') || !repository || !api || !token) return { runs: [], complete: false };
-
-  try {
-    const url = new URL(`${api}/repos/${repository}/actions/runs`);
-    url.searchParams.set('head_sha', previousHead);
-    url.searchParams.set('event', 'pull_request');
-    url.searchParams.set('status', 'completed');
-    url.searchParams.set('per_page', '100');
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!response.ok) return { runs: [], complete: false };
-    const body = await response.json();
-    const runs = Array.isArray(body?.workflow_runs) ? body.workflow_runs : [];
-    const total = Number(body?.total_count);
-    return { runs, complete: Number.isInteger(total) && total <= runs.length };
-  } catch {
-    return { runs: [], complete: false };
-  }
-}
-
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   let event = {};
   try { event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')); } catch { /* full fallback */ }
-  const previous = await fetchPreviousHeadRuns(event);
-  const trustedPreviousHead = findTrustedPreviousHead({ event, ...previous });
-  const result = selectScope({ eventName: process.env.GITHUB_EVENT_NAME, event, trustedPreviousHead });
+
+  const trustedReceipts = readTrustedReceipts(process.env.TRUSTED_CI_RECEIPTS_FILE);
+  const result = selectScope({
+    eventName: process.env.GITHUB_EVENT_NAME,
+    event,
+    trustedReceipts,
+  });
+
   console.log(`CI scope: ${result.mode}; ${result.reason}; ${result.count} changed paths.`);
   if (result.inheritedFrom) {
-    console.log(`Reusing full-code evidence from green ancestor ${result.inheritedFrom}${result.inheritedRunId ? ` (run ${result.inheritedRunId})` : ''}.`);
+    console.log(`Reusing full-code evidence from green ancestor ${result.inheritedFrom} (run ${result.inheritedRunId}).`);
   }
   if (process.env.GITHUB_OUTPUT) {
     appendFileSync(process.env.GITHUB_OUTPUT, `mode=${result.mode}\nreason=${result.reason}\n`);
-    if (result.inheritedFrom) appendFileSync(process.env.GITHUB_OUTPUT, `inherited_from=${result.inheritedFrom}\n`);
+    if (result.inheritedFrom) {
+      appendFileSync(process.env.GITHUB_OUTPUT,
+        `inherited_from=${result.inheritedFrom}\ninherited_run_id=${result.inheritedRunId}\n`);
+    }
   }
 }
