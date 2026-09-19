@@ -21,10 +21,10 @@ jobs:
     outputs:
       receipt_json: ${{ steps.lookup.outputs.receipt_json }}
     steps:
-      - name: Checkout trusted PR base
+      - name: Checkout canonical trusted main
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: main
           fetch-depth: 1
           persist-credentials: false
 
