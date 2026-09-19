@@ -78,11 +78,11 @@ stable.
 - **Independent specialist review:** open only the R1/R2 gate justified by the
   validation budget and actual risk.
 
-## API-dispatched independent review roles
+## API-fired independent review roles
 
 The model behind R1 or R2 is a replaceable implementation detail of that role.
-The repository never hardcodes a provider/model name into review routing. When
-the deterministic Dispatcher returns `request_required_reviews`, only
+The repository never hardcodes a provider/model name into review routing. The GitHub review workflow itself is reusable-only; the Claude Routine remains an
+API call. When the deterministic Dispatcher returns `request_required_reviews`, only
 `recommendation.eligibleRoles` may be fired:
 
 - `r1` uses the configured R1 Routine endpoint and the canonical
