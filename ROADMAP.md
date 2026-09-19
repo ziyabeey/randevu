@@ -8,8 +8,7 @@
 | --- | --- |
 | Ürün kapsamı nedir? | [PRODUCT_SPEC](PRODUCT_SPEC.md) |
 | Main'de kabul edilmiş ve açık olan işler neler? | [TASKS](TASKS.md) |
-| Faz sırası ve bağımlılık planı nedir? | Bu ROADMAP |
-| Faz/dependency sırası nedir? | Bu dosya + `docs/plan/phase-*.md` |
+| Faz sırası ve bağımlılık planı nedir? | Bu ROADMAP + `docs/plan/phase-*.md` |
 | Ortak teknik kurallar nedir? | [K01/K02/K03](docs/plan/architecture-contracts.md), [DECISIONS](DECISIONS.md) |
 | Release/pilot ne zaman kabul edilir? | [MVP_ACCEPTANCE](MVP_ACCEPTANCE.md), F17-04/05 |
 | Marketing homepage yönü nedir? | [docs/brand/README.md](docs/brand/README.md), MKT-01 / Issue #70 |
@@ -59,7 +58,7 @@ Bu tablo **durum göstermez**. Yalnız işlerin hangi sırayla açılabileceğin
 
 ## Marketing / site track
 
-MKT-01, 54 MVP ürün/teknik görevinden ayrı marketing/site track'idir. Bağlayıcı görsel yön [docs/brand/README.md](docs/brand/README.md) ve ilgili brand belgelerindedir. ROADMAP burada aktif PR, branch, renderer seçimi veya deployment durumu tutmaz; bunların canlı durumu gerekiyorsa TASKS/ilgili track kaydından okunur.
+MKT-01, 54 MVP ürün/teknik görevinden ayrı marketing/site track'idir. Bağlayıcı görsel yön [docs/brand/README.md](docs/brand/README.md) ve ilgili brand belgelerindedir. ROADMAP burada aktif PR, branch, renderer seçimi veya deployment durumu tutmaz; bunların canlı durumu yalnız TASKS üzerinden okunur.
 
 Ürün track'i ile ortak route/entry, domain veya runtime alanına girecek marketing değişiklikleri shared-writer kuralına uyar ve ürün kabulünü varsayarak ilerlemez.
 
