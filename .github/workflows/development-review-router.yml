@@ -1,7 +1,7 @@
 name: Development Review Router
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       observation_json:
         description: 'Normalized Development Dispatcher observation JSON'
@@ -16,6 +16,11 @@ on:
         description: 'Dispatcher case fingerprint produced by Development Escalation Router'
         required: true
         type: string
+    secrets:
+      CLAUDE_R1_ROUTINE_TOKEN:
+        required: false
+      CLAUDE_R2_ROUTINE_TOKEN:
+        required: false
 
 permissions:
   contents: read
