@@ -211,7 +211,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
       const source = candidates.find((item) => item.id === entry.id && item.sourceRef === entry.url);
       return source ? {
         ...entry,
-        verdict: verdictFromBody(source.body),
+        verdict: String(entry.verdict ?? '').toLowerCase(),
         sourceRef: entry.url,
       } : null;
     })
