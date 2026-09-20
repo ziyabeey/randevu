@@ -91,6 +91,14 @@ stable.
      or merge. Only the coordinator may promote an R&D issue into normal task work.
    - R&D stage labels are research workflow state, not product/task status.
 
+11. **P1/D1/B1: optional support team**
+   - P1 finds approved-scope product gaps without turning them into tasks.
+   - D1 repairs only unambiguous factual drift in non-authoritative docs.
+   - B1 surfaces one factually ready, unowned TASKS item without assigning priority.
+   - All three follow the [support-team contract](automations/support-teams.md).
+     They do not dispatch workers/reviewers, change TASKS authority, create new
+     product scope, bypass CI/review, mark ready or merge.
+
 ## Routing rules
 
 - **Clear, bounded implementation:** coordinator → selected implementer (Qwen when
@@ -123,6 +131,11 @@ stable.
 - **Research opportunity:** A1 may open a non-duplicate R&D proposal; A2 validates
   it; A3 designs a reversible experiment. Promotion into TASKS/implementation is a
   separate coordinator decision under the [R&D Lab contract](automations/rnd-lab.md).
+
+- **Support maintenance:** P1 may surface an approved-scope product gap, D1 may
+  repair unambiguous non-authoritative documentation drift, and B1 may surface one
+  dependency-ready unowned task. These are advisory/support lanes under the
+  [support-team contract](automations/support-teams.md), not new acceptance gates.
 
 ## API-fired independent review roles
 
