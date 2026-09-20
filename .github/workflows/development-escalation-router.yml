@@ -24,6 +24,10 @@ on:
     secrets:
       CLAUDE_HAIKU_ROUTINE_TOKEN:
         required: true
+      CLAUDE_R1_ROUTINE_TOKEN:
+        required: false
+      CLAUDE_R2_ROUTINE_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -38,6 +42,7 @@ jobs:
       disposition: ${{ steps.route.outputs.disposition }}
       case_fingerprint: ${{ steps.route.outputs.case_fingerprint }}
       source_envelope_bytes: ${{ steps.route.outputs.source_envelope_bytes }}
+      suggested_action: ${{ steps.route.outputs.suggested_action }}
     env:
       OBSERVATION_JSON: ${{ inputs.observation_json }}
       EVIDENCE_JSON: ${{ inputs.evidence_json }}
@@ -45,6 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           persist-credentials: false
 
       - uses: actions/setup-node@v4
@@ -86,6 +92,7 @@ jobs:
           printf 'disposition=%s\n' "${disposition}" >> "${GITHUB_OUTPUT}"
           printf 'case_fingerprint=%s\n' "${fingerprint}" >> "${GITHUB_OUTPUT}"
           printf 'source_envelope_bytes=%s\n' "${source_bytes}" >> "${GITHUB_OUTPUT}"
+          printf 'suggested_action=%s\n' "$(jq -r '.envelope.dispatcher.recommendation.suggestedAction // "unknown"' "${RUNNER_TEMP}/escalation-route.json")" >> "${GITHUB_OUTPUT}"
 
           {
             printf '## Development Escalation Router\n\n'
@@ -129,3 +136,21 @@ jobs:
           set -euo pipefail
           node scripts/fire-claude-routine.mjs \
             --body "${RUNNER_TEMP}/haiku-fire-body.json"
+
+  independent_reviews:
+    name: Independent R1/R2 Routine delivery
+    needs: route
+    if: ${{ needs.route.outputs.disposition == 'DETERMINISTIC_ACTION' && needs.route.outputs.suggested_action == 'request_required_reviews' }}
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      pull-requests: read
+    uses: ./.github/workflows/development-review-router.yml
+    with:
+      observation_json: ${{ inputs.observation_json }}
+      evidence_json: ${{ inputs.evidence_json }}
+      expected_case_fingerprint: ${{ needs.route.outputs.case_fingerprint }}
+    secrets:
+      CLAUDE_R1_ROUTINE_TOKEN: ${{ secrets.CLAUDE_R1_ROUTINE_TOKEN }}
+      CLAUDE_R2_ROUTINE_TOKEN: ${{ secrets.CLAUDE_R2_ROUTINE_TOKEN }}
