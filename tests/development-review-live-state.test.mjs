@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import {
   checkoutShaFromJobLogs,
@@ -14,6 +15,8 @@ const main = sha('b');
 const merge = sha('c');
 const caseFp = 'd'.repeat(64);
 const requestFp = 'e'.repeat(64);
+const challenge = 'f'.repeat(64);
+const challengeHash = createHash('sha256').update(challenge).digest('hex');
 
 function request(overrides = {}) {
   return {
@@ -48,6 +51,7 @@ function reviewReceipt({
   verdict = 'ACCEPTABLE',
   requestFingerprint = requestFp,
   dispatcherCaseFingerprint = caseFp,
+  receiptChallenge = challenge,
   url = 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-300',
   timestamp = '2026-09-20T00:03:00Z',
   review = false,
@@ -56,7 +60,7 @@ function reviewReceipt({
     id,
     html_url: url,
     ...(review ? { submitted_at: timestamp, commit_id: head } : { created_at: timestamp }),
-    user: { login: 'kepenk-r2-reviewer[bot]' },
+    user: { login: 'claude[bot]' },
     body: `<!-- development-review-receipt ${JSON.stringify({
       schemaVersion: 'development-review-receipt.v1',
       role: 'R2',
@@ -65,6 +69,7 @@ function reviewReceipt({
       baseSha: main,
       dispatcherCaseFingerprint,
       requestFingerprint,
+      receiptChallenge,
       verdict,
     })} -->`,
   };
@@ -89,6 +94,7 @@ function reviewLaunch({
       `- base main: ${main}`,
       `- dispatcher case: ${dispatcherCaseFingerprint}`,
       `- role request: ${requestFingerprint}`,
+      `- receipt challenge hash: ${receiptChallengeHash}`,
     ].join('\n'),
   };
 }
@@ -328,7 +334,7 @@ test('a current authenticated same-role receipt stops Routine spend before reser
       repository: 'ziyabeey1-ai/randevu',
       token: 'test-token',
       tasksText: tasks(),
-      reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+      reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
       fetchImpl: liveFetch({ comments: [reviewLaunch(), receipt] }),
     }),
     /R2_REVIEW_ALREADY_RECEIVED/,
@@ -350,7 +356,7 @@ test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but n
     repository: 'ziyabeey1-ai/randevu',
     token: 'test-token',
     tasksText: tasks(),
-    reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+    reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
     fetchImpl: liveFetch({ comments: [reviewLaunch(), represented] }),
     git() { throw new Error('raw-head proof must not fetch merge ref'); },
   });
@@ -369,7 +375,7 @@ test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but n
       repository: 'ziyabeey1-ai/randevu',
       token: 'test-token',
       tasksText: tasks(),
-      reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+      reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
       fetchImpl: liveFetch({ comments: [
         reviewLaunch(),
         represented,
@@ -391,7 +397,7 @@ test('coordination Issue #65 cannot satisfy the v1 final review authority', asyn
     repository: 'ziyabeey1-ai/randevu',
     token: 'test-token',
     tasksText: tasks(),
-    reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+    reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
     fetchImpl: liveFetch({ comments: [reviewLaunch()], coordinationComments: [receipt] }),
     git() { throw new Error('raw-head proof must not fetch merge ref'); },
   });
@@ -428,7 +434,7 @@ test('equal-time additional current receipt blocks follow-up without comparing c
       repository: 'ziyabeey1-ai/randevu',
       token: 'test-token',
       tasksText: tasks(),
-      reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+      reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
       fetchImpl: liveFetch({
         comments: [
           reviewLaunch(),
@@ -447,8 +453,25 @@ test('receipt without a matching triggered launch never stops spend', async () =
     repository: 'ziyabeey1-ai/randevu',
     token: 'test-token',
     tasksText: tasks(),
-    reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+    reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
     fetchImpl: liveFetch({ comments: [reviewReceipt()] }),
+    git() { throw new Error('raw-head proof must not fetch merge ref'); },
+  });
+  assert.equal(result.status, 'LIVE_REVIEW_STATE_VERIFIED');
+});
+
+test('receipt with the wrong hidden challenge cannot stop spend', async () => {
+  const result = await verifyDevelopmentReviewLiveState(request(), {
+    repository: 'ziyabeey1-ai/randevu',
+    token: 'test-token',
+    tasksText: tasks(),
+    reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
+    fetchImpl: liveFetch({
+      comments: [
+        reviewLaunch(),
+        reviewReceipt({ receiptChallenge: '1'.repeat(64) }),
+      ],
+    }),
     git() { throw new Error('raw-head proof must not fetch merge ref'); },
   });
   assert.equal(result.status, 'LIVE_REVIEW_STATE_VERIFIED');
