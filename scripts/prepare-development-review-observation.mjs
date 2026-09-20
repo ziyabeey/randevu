@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deriveDispatcherResult } from './development-dispatcher.mjs';
-import { parseReviewerAllowlist, verifiedReceipts } from './development-audit-gate.mjs';
+import { authenticatedReceipts, parseReviewerAllowlist } from './development-audit-gate.mjs';
 
 const SHA_RE = /^[a-f0-9]{40}$/;
 const modulePath = fileURLToPath(import.meta.url);
@@ -185,6 +185,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
       reviewedHeadSha: null,
       reviewedBaseSha: null,
       sourceRef: null,
+      reviewedAt: null,
     };
   }
   if (requirement === 'unknown') {
@@ -195,6 +196,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
       reviewedHeadSha: null,
       reviewedBaseSha: null,
       sourceRef: null,
+      reviewedAt: null,
     };
   }
 
@@ -225,6 +227,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
       reviewedHeadSha: null,
       reviewedBaseSha: null,
       sourceRef: null,
+      reviewedAt: null,
     };
   }
   return {
@@ -234,6 +237,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
     reviewedHeadSha: prior.headSha,
     reviewedBaseSha: prior.baseSha,
     sourceRef: prior.sourceRef,
+    reviewedAt: prior.observedAt,
   };
 }
 
@@ -342,7 +346,7 @@ export function buildDevelopmentReviewObservation({
     prComments,
     coordinationComments,
   });
-  const authenticated = verifiedReceipts(candidates.map((item) => ({
+  const authenticated = authenticatedReceipts(candidates.map((item) => ({
     ...item,
     html_url: item.sourceRef,
     user: { login: item.author },
@@ -409,6 +413,8 @@ export function buildDevelopmentReviewObservation({
         receipt: reviews.r1.receipt,
         reviewedHeadSha: reviews.r1.reviewedHeadSha,
         reviewedBaseSha: reviews.r1.reviewedBaseSha,
+        sourceRef: reviews.r1.sourceRef,
+        reviewedAt: reviews.r1.reviewedAt,
       },
       r2: {
         requirement: reviews.r2.requirement,
@@ -416,6 +422,8 @@ export function buildDevelopmentReviewObservation({
         receipt: reviews.r2.receipt,
         reviewedHeadSha: reviews.r2.reviewedHeadSha,
         reviewedBaseSha: reviews.r2.reviewedBaseSha,
+        sourceRef: reviews.r2.sourceRef,
+        reviewedAt: reviews.r2.reviewedAt,
       },
     },
     proofs: [],
