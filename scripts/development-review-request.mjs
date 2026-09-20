@@ -156,6 +156,9 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
   const previousReceiptObservedAt = Number.isFinite(Number(review.reviewedAt))
     ? Number(review.reviewedAt)
     : null;
+  const previousReceiptId = Number.isSafeInteger(Number(review.receiptId))
+    ? Number(review.receiptId)
+    : null;
   const reviewMode = review.receipt === 'accessible' && previousReviewedHead && previousReviewedBase
     ? 'FOLLOW_UP'
     : 'FIRST_REVIEW';
@@ -193,6 +196,7 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
         previousReviewedBaseSha: previousReviewedBase,
         previousReceiptSourceRef,
         previousReceiptObservedAt,
+        previousReceiptId,
       },
       r0: stableValue(facts.r0 ?? {}),
       obligations: roleObligations(dispatcherResult, role),
