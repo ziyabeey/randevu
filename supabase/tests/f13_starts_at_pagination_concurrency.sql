@@ -336,6 +336,60 @@ begin
 end
 $$;
 
+-- D3: a rolled-back schedule mutation must not advance the durable revision.
+truncate pg_temp.f13_page_cursor;
+insert into f13_page_cursor(starts_at,id,revision)
+select p.starts_at,p.id,p.page_revision
+from public.list_appointments_page_v2('f1310000-0000-4000-8000-000000000001',2,null,null,null) p
+order by p.starts_at desc,p.id desc limit 1;
+
+do $
+declare
+  v_at timestamptz;
+  v_id uuid;
+  v_revision uuid;
+  v_store_revision uuid;
+  v_writer text := 'f13_rollback_writer';
+  v_conn text := 'host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f13_rollback_writer';
+  v_result jsonb;
+  v_second uuid[];
+begin
+  select starts_at,id,revision into v_at,v_id,v_revision from pg_temp.f13_page_cursor;
+  perform dblink_connect(v_writer,v_conn);
+  perform dblink_exec(v_writer,'begin');
+  perform dblink_exec(v_writer,'set local role authenticated');
+  perform dblink_exec(v_writer,$q$set local "request.jwt.claim.sub" = 'f1300000-0000-4000-8000-000000000001'$q$);
+  perform dblink_exec(v_writer,$q$set local "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  select t.result into v_result from dblink(v_writer,$q$
+    select public.reschedule_appointment_group(
+      'f1310000-0000-4000-8000-000000000001'::uuid,
+      'f1360000-0000-4000-8000-000000000004'::uuid,
+      'f13-rollback-writer',1,'2027-03-01 12:30+00'::timestamptz)
+  $q$) as t(result jsonb);
+  if v_result->>'groupId' is distinct from 'f1360000-0000-4000-8000-000000000004' then
+    raise exception 'F13 rollback writer returned unexpected group result: %',v_result;
+  end if;
+  perform dblink_exec(v_writer,'rollback');
+  perform dblink_disconnect(v_writer);
+
+  select revision into v_store_revision
+  from private.appointment_page_revisions
+  where business_id='f1310000-0000-4000-8000-000000000001';
+  if v_store_revision is distinct from v_revision then
+    raise exception 'F13 rolled-back mutation advanced durable revision: bound %, stored %',v_revision,v_store_revision;
+  end if;
+
+  select array_agg(p.id order by p.starts_at,p.id) into v_second
+  from public.list_appointments_page_v2('f1310000-0000-4000-8000-000000000001',10,v_at,v_id,v_revision) p;
+  if v_second is distinct from array['f1370000-0000-4000-8000-000000000003'::uuid,'f1370000-0000-4000-8000-000000000004'::uuid] then
+    raise exception 'F13 rollback changed continuation despite durable revision rollback: %',v_second;
+  end if;
+exception when others then
+  begin perform dblink_disconnect(v_writer); exception when others then null; end;
+  raise;
+end
+$;
+
 -- E: another business mutates its own ordering key; A's continuation is valid.
 truncate pg_temp.f13_page_cursor;
 insert into f13_page_cursor(starts_at,id,revision)
