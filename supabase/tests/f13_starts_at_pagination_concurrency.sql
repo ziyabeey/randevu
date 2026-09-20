@@ -109,6 +109,7 @@ declare
   v_writer text := 'f13_starts_writer';
   v_conn text := 'host=127.0.0.1 port=5432 dbname='||current_database()
     ||' user=postgres password=postgres application_name=f13_starts_writer';
+  v_result jsonb;
 begin
   -- Baseline: without an external writer, the two-page traversal is exact.
   select array_agg(p.id order by p.starts_at,p.id)
@@ -132,16 +133,26 @@ begin
     raise exception 'F13 baseline keyset traversal was not stable: first %, second %',v_first,v_second;
   end if;
 
-  -- SKIP: move unseen row 3 behind the stale cursor, and commit from another
-  -- physical session between page requests.
+  -- SKIP: reschedule unseen group 3 behind the stale cursor through the real
+  -- authenticated mutation RPC, committed from another physical session.
   perform dblink_connect(v_writer,v_conn);
   perform dblink_exec(v_writer,'begin');
-  perform dblink_exec(v_writer,$q$
-    update public.appointments
-    set starts_at='2027-03-01 09:30+00',ends_at='2027-03-01 10:00+00',
-        occupied_starts_at='2027-03-01 09:30+00',occupied_ends_at='2027-03-01 10:00+00'
-    where id='f1370000-0000-4000-8000-000000000003'
-  $q$);
+  perform dblink_exec(v_writer,'set local role authenticated');
+  perform dblink_exec(v_writer,$q$set local "request.jwt.claim.sub" = 'f1300000-0000-4000-8000-000000000001'$q$);
+  perform dblink_exec(v_writer,$q$set local "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  select t.result into v_result
+  from dblink(v_writer,$q$
+    select public.reschedule_appointment_group(
+      'f1310000-0000-4000-8000-000000000001'::uuid,
+      'f1360000-0000-4000-8000-000000000003'::uuid,
+      'f13-skip-writer',
+      1,
+      '2027-03-01 09:30+00'::timestamptz
+    )
+  $q$) as t(result jsonb);
+  if v_result->>'groupId' is distinct from 'f1360000-0000-4000-8000-000000000003' then
+    raise exception 'F13 skip writer returned unexpected group result: %',v_result;
+  end if;
   perform dblink_exec(v_writer,'commit');
   perform dblink_disconnect(v_writer);
 
@@ -160,11 +171,19 @@ begin
     raise exception 'F13 skip writer did not commit the moved row';
   end if;
 
-  -- Reset row 3, then take a fresh first page for the repeat scenario.
-  update public.appointments
-  set starts_at='2027-03-01 11:00+00',ends_at='2027-03-01 11:30+00',
-      occupied_starts_at='2027-03-01 11:00+00',occupied_ends_at='2027-03-01 11:30+00'
-  where id='f1370000-0000-4000-8000-000000000003';
+  -- Reset group 3 through the same canonical mutation authority, then take a
+  -- fresh first page for the repeat scenario. The first reschedule advanced
+  -- its optimistic version from 1 to 2.
+  v_result := public.reschedule_appointment_group(
+    v_business,
+    'f1360000-0000-4000-8000-000000000003'::uuid,
+    'f13-reset-after-skip',
+    2,
+    '2027-03-01 11:00+00'::timestamptz
+  );
+  if v_result->>'groupId' is distinct from 'f1360000-0000-4000-8000-000000000003' then
+    raise exception 'F13 skip reset returned unexpected group result: %',v_result;
+  end if;
 
   select array_agg(p.id order by p.starts_at,p.id)
     into v_first
@@ -173,15 +192,26 @@ begin
   from public.list_appointments_page(v_business,2,null,null) p
   order by p.starts_at desc,p.id desc limit 1;
 
-  -- REPEAT: move already-seen row 1 after the stale cursor. Page 2 sees it again.
+  -- REPEAT: reschedule already-seen group 1 after the stale cursor through the
+  -- real authenticated mutation RPC. Page 2 can then see row 1 a second time.
   perform dblink_connect(v_writer,v_conn);
   perform dblink_exec(v_writer,'begin');
-  perform dblink_exec(v_writer,$q$
-    update public.appointments
-    set starts_at='2027-03-01 11:30+00',ends_at='2027-03-01 12:00+00',
-        occupied_starts_at='2027-03-01 11:30+00',occupied_ends_at='2027-03-01 12:00+00'
-    where id='f1370000-0000-4000-8000-000000000001'
-  $q$);
+  perform dblink_exec(v_writer,'set local role authenticated');
+  perform dblink_exec(v_writer,$q$set local "request.jwt.claim.sub" = 'f1300000-0000-4000-8000-000000000001'$q$);
+  perform dblink_exec(v_writer,$q$set local "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  select t.result into v_result
+  from dblink(v_writer,$q$
+    select public.reschedule_appointment_group(
+      'f1310000-0000-4000-8000-000000000001'::uuid,
+      'f1360000-0000-4000-8000-000000000001'::uuid,
+      'f13-repeat-writer',
+      1,
+      '2027-03-01 11:30+00'::timestamptz
+    )
+  $q$) as t(result jsonb);
+  if v_result->>'groupId' is distinct from 'f1360000-0000-4000-8000-000000000001' then
+    raise exception 'F13 repeat writer returned unexpected group result: %',v_result;
+  end if;
   perform dblink_exec(v_writer,'commit');
   perform dblink_disconnect(v_writer);
 
