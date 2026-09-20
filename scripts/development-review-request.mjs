@@ -225,6 +225,22 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
   };
 }
 
+export function reviewReceiptMarker(request = {}) {
+  const role = request.role?.toUpperCase();
+  if (role !== 'R1' && role !== 'R2') {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: ROLE_INVALID');
+  }
+  const prNumber = positiveInteger(request.case?.pr, 'PR_NUMBER');
+  const headSha = exactSha(request.case?.currentHead, 'CURRENT_HEAD');
+  const baseSha = exactSha(request.case?.baseMain, 'BASE_MAIN');
+  return `<!-- development-review-receipt ${JSON.stringify({
+    role,
+    prNumber,
+    headSha,
+    baseSha,
+  })} -->`;
+}
+
 export function renderIndependentReviewRequest(request = {}) {
   const role = request.role?.toUpperCase();
   if (role !== 'R1' && role !== 'R2') {
@@ -241,6 +257,9 @@ export function renderIndependentReviewRequest(request = {}) {
     'The saved Routine instructions remain authoritative for role, forbidden actions, verdicts and output format.',
     'Do not implement repairs, broaden scope, approve, merge, or claim merge readiness.',
     'If live repository identity or required evidence disagrees with this package, return INCOMPLETE.',
+    'When publishing the final SHA-bound receipt to the assigned review/comment destination, include exactly one provenance marker line:',
+    reviewReceiptMarker(request),
+    'The provenance marker is machine-readable identity metadata only; it is not a verdict, approval, or merge authority.',
     '',
     'REVIEW_PACKAGE_JSON',
     stableJson(request),

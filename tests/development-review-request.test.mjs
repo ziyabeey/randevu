@@ -4,6 +4,7 @@ import {
   buildIndependentReviewFireBody,
   buildIndependentReviewRequest,
   renderIndependentReviewRequest,
+  reviewReceiptMarker,
   requiredReviewRoles,
 } from '../scripts/development-review-request.mjs';
 
@@ -183,6 +184,18 @@ test('an accessible previous same-role receipt turns the request into follow-up 
   const request = buildIndependentReviewRequest(input, {}, 'r1');
   assert.equal(request.reviewMode, 'FOLLOW_UP');
   assert.equal(request.currentEvidence.review.previousReviewedHeadSha, sha('d'));
+});
+
+test('review output contract carries one exact machine-readable role/head/base receipt marker', () => {
+  const request = buildIndependentReviewRequest(dispatcher(['r1']), {}, 'r1');
+  const marker = reviewReceiptMarker(request);
+  assert.equal(
+    marker,
+    `<!-- development-review-receipt {"role":"R1","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->`,
+  );
+  const text = renderIndependentReviewRequest(request);
+  assert.equal(text.split(marker).length - 1, 1);
+  assert.match(text, /machine-readable identity metadata only/);
 });
 
 test('rendered API text treats evidence as data and never hardcodes a provider model', () => {
