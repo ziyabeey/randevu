@@ -204,13 +204,15 @@ test('actual Git history classifies multi-file pushes, rename and deletion conse
 test('CI receipt lookup is anonymous, authoritative and requires prior full-code completion', () => {
   const workflow = readFileSync(path.resolve('.github/workflows/ci.yml'), 'utf8');
   assert.match(workflow, /actions\/workflows\/ci\.yml\/runs/);
+  assert.match(workflow, /event=push&branch=main&head_sha=\$\{CURRENT_BASE_SHA\}&status=success/);
+  assert.match(workflow, /unique_by\(\.id\)/);
   assert.match(workflow, /actions\/runs\/\$\{run_id\}\/jobs/);
   assert.match(workflow, /Run all required code checks/);
   assert.match(workflow, /Require the selected checks to complete/);
   assert.match(workflow, /Resolve trusted prior full-code CI receipts/);
   assert.doesNotMatch(workflow, /pull_requests\[\]\?; \.number == \$pr and \.base\.sha == \$base/);
   assert.doesNotMatch(workflow, /Authorization: Bearer|github\.token|GH_TOKEN|GITHUB_TOKEN/);
-  assert.ok((workflow.match(/--connect-timeout 3 --max-time 10/g) ?? []).length >= 2);
+  assert.ok((workflow.match(/--connect-timeout 3 --max-time 10/g) ?? []).length >= 3);
   assert.match(workflow, /unexpected shape; full code checks remain required/);
   assert.match(workflow, /candidate parsing failed; full code checks remain required/);
   const scopeSection = workflow.split('- name: Select required checks')[1]?.split('- name: Check documentation')[0] ?? '';
