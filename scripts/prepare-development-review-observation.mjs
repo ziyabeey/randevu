@@ -38,9 +38,11 @@ function timestamp(value) {
 }
 
 function latest(values) {
+  const observed = (value) => Number.isFinite(Number(value?.observedAt))
+    ? Number(value.observedAt)
+    : timestamp(value?.updated_at ?? value?.submitted_at ?? value?.created_at);
   return [...values].sort((left, right) => {
-    const date = timestamp(right.submitted_at ?? right.created_at ?? right.updated_at)
-      - timestamp(left.submitted_at ?? left.created_at ?? left.updated_at);
+    const date = observed(right) - observed(left);
     if (date !== 0) return date;
     return Number(right.id ?? 0) - Number(left.id ?? 0);
   })[0] ?? null;
@@ -186,6 +188,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
       reviewedBaseSha: null,
       sourceRef: null,
       reviewedAt: null,
+      receiptId: null,
     };
   }
   if (requirement === 'unknown') {
@@ -197,6 +200,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
       reviewedBaseSha: null,
       sourceRef: null,
       reviewedAt: null,
+      receiptId: null,
     };
   }
 
@@ -228,6 +232,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
       reviewedBaseSha: null,
       sourceRef: null,
       reviewedAt: null,
+      receiptId: null,
     };
   }
   return {
@@ -238,6 +243,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
     reviewedBaseSha: prior.baseSha,
     sourceRef: prior.sourceRef,
     reviewedAt: prior.observedAt,
+    receiptId: prior.id,
   };
 }
 
@@ -415,6 +421,7 @@ export function buildDevelopmentReviewObservation({
         reviewedBaseSha: reviews.r1.reviewedBaseSha,
         sourceRef: reviews.r1.sourceRef,
         reviewedAt: reviews.r1.reviewedAt,
+        receiptId: reviews.r1.receiptId,
       },
       r2: {
         requirement: reviews.r2.requirement,
@@ -424,6 +431,7 @@ export function buildDevelopmentReviewObservation({
         reviewedBaseSha: reviews.r2.reviewedBaseSha,
         sourceRef: reviews.r2.sourceRef,
         reviewedAt: reviews.r2.reviewedAt,
+        receiptId: reviews.r2.receiptId,
       },
     },
     proofs: [],
