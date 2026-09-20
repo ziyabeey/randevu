@@ -4,8 +4,11 @@ import {
   automaticActionAllowed,
   canonicalTaskBinding,
   classifyPull,
+  compactReviewEvidence,
+  dispatchNotificationEvents,
   githubPollIntervalSeconds,
   notificationEvent,
+  notificationEvents,
   parseTasksSnapshot,
   parseTasksText,
   receiptEvidenceBody,
@@ -175,6 +178,59 @@ test('notification identity ignores unrelated report fingerprints', () => {
     ...report,
     decisions: [{ ...report.decisions[0], choice: 'D', label: 'MERGE' }],
   }).key, first.key);
+});
+
+test('notificationEvents emits all urgent decisions and dispatchNotificationEvents deduplicates', () => {
+  const report = {
+    decisions: [
+      { prNumber: 7, headSha: head, choice: 'B', label: 'REPAIR' },
+      { prNumber: 8, headSha: '3'.repeat(40), choice: 'A', label: 'WAIT' },
+      { prNumber: 9, headSha: '4'.repeat(40), choice: 'D', label: 'MERGE' },
+    ],
+  };
+  const events = notificationEvents(report);
+  assert.equal(events.length, 2);
+  assert.equal(events[0].key, `decision:7:${head}:B`);
+  assert.equal(events[1].key, `decision:9:${'4'.repeat(40)}:D`);
+
+  const delivered = [];
+  const initial = dispatchNotificationEvents(report, {}, (event) => {
+    delivered.push(event.key);
+    return true;
+  }, () => '2026-09-20T20:00:00Z');
+  assert.equal(delivered.length, 2);
+  assert.equal(Object.keys(initial.ledger).length, 2);
+
+  // Subsequent dispatch with existing ledger should not deliver duplicates
+  const secondDelivered = [];
+  const next = dispatchNotificationEvents(report, initial.ledger, (event) => {
+    secondDelivered.push(event.key);
+    return true;
+  });
+  assert.equal(secondDelivered.length, 0);
+  assert.equal(next.delivered.length, 0);
+});
+
+test('compactReviewEvidence normalizes review nodes and preserves timestamps and author', () => {
+  const node = {
+    databaseId: 4056636809,
+    author: { login: 'copilot-pull-request-reviewer' },
+    state: 'CHANGES_REQUESTED',
+    commit: { oid: head },
+    body: 'Please fix concurrency limit.',
+    submittedAt: '2026-09-20T10:00:00Z',
+    updatedAt: '2026-09-20T10:05:00Z',
+    url: 'https://github.com/pr/208#review',
+  };
+  const compact = compactReviewEvidence(node);
+  assert.equal(compact.id, 4056636809);
+  assert.equal(compact.author, 'copilot-pull-request-reviewer');
+  assert.equal(compact.state, 'CHANGES_REQUESTED');
+  assert.equal(compact.commitOid, head);
+  assert.equal(compact.body, 'Please fix concurrency limit.');
+  assert.equal(compact.submittedAt, '2026-09-20T10:00:00Z');
+  assert.equal(compact.updatedAt, '2026-09-20T10:05:00Z');
+  assert.equal(compact.url, 'https://github.com/pr/208#review');
 });
 
 test('deterministic failures and conflicts can never become merge advice', () => {

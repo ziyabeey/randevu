@@ -14,6 +14,8 @@ import {
   canonicalTaskBinding,
   ciForPull,
   classifyPull,
+  compactReviewEvidence,
+  dispatchNotificationEvents,
   githubPollIntervalSeconds,
   notificationEvent,
   parseTasksSnapshot,
@@ -261,18 +263,6 @@ function compactComment(node) {
   };
 }
 
-function compactReview(node) {
-  return {
-    id: node.databaseId ?? null,
-    author: node.author?.login ?? null,
-    state: node.state ?? null,
-    commitOid: node.commit?.oid ?? null,
-    body: receiptEvidenceBody(node.body),
-    submittedAt: node.submittedAt ?? null,
-    url: node.url ?? null,
-  };
-}
-
 function compactCheck(node) {
   if (node.__typename === 'StatusContext') {
     return {
@@ -324,7 +314,7 @@ function compactPull(node) {
     })),
     filesTruncated: node.files?.pageInfo?.hasNextPage === true,
     fileCount: node.files?.totalCount ?? 0,
-    reviews: (node.reviews?.nodes ?? []).map(compactReview),
+    reviews: (node.reviews?.nodes ?? []).map(compactReviewEvidence),
     reviewsTruncated: node.reviews?.pageInfo?.hasPreviousPage === true,
     comments: (node.comments?.nodes ?? []).map(compactComment),
     commentsTruncated: node.comments?.pageInfo?.hasPreviousPage === true,
@@ -699,7 +689,6 @@ async function reconcileDepot(config, remote, decisions, state) {
     const baseDecision = decisions.find((decision) => decision.prNumber === run.prNumber);
     const structurallyInvalid = baseDecision?.choice === 'B'
       || (baseDecision?.gaps ?? []).some((gap) => [
-        'REMOTE_EVIDENCE_INCOMPLETE',
         'TASK_NOT_MAPPED',
         'FILES_TRUNCATED',
         'THREADS_TRUNCATED',
@@ -725,7 +714,10 @@ async function reconcileDepot(config, remote, decisions, state) {
   }
 
   const active = Object.values(state.depotRuns).filter((run) => !isDepotTerminal(run.status) && run.status !== 'start-error').length;
-  if (active >= config.depotMaxConcurrentRuns) return;
+  const maxRuns = Number.isInteger(config.depotMaxConcurrentRuns) && config.depotMaxConcurrentRuns > 0
+    ? config.depotMaxConcurrentRuns
+    : 1;
+  if (active >= maxRuns) return;
   const candidates = decisions
     .map((decision) => ({ decision, pr: remote.pulls.find((item) => item.number === decision.prNumber) }))
     .filter(({ decision, pr }) => depotEligible(pr, decision, config))
@@ -1139,16 +1131,12 @@ function markdownReport(report) {
 }
 
 function notifyIfNeeded(state, report) {
-  const event = notificationEvent(report);
-  if (!event) return;
   state.notificationLedger ??= {};
-  if (state.notificationLedger[event.key]) return;
-  command('/usr/bin/osascript', ['-e', `display notification "${event.message}" with title "Qwen Koordinatör"`], { timeout: 5_000 });
-  state.notificationLedger[event.key] = nowIso();
-  const entries = Object.entries(state.notificationLedger)
-    .sort((left, right) => String(right[1]).localeCompare(String(left[1])))
-    .slice(0, 200);
-  state.notificationLedger = Object.fromEntries(entries);
+  const { ledger } = dispatchNotificationEvents(report, state.notificationLedger, (event) => {
+    command('/usr/bin/osascript', ['-e', `display notification "${event.message}" with title "Qwen Koordinatör"`], { timeout: 5_000 });
+    return true;
+  }, nowIso);
+  state.notificationLedger = ledger;
 }
 
 function observationFingerprint(config, remote, decisions) {

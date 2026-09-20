@@ -252,6 +252,11 @@ export function depotCommentBody(run, workflowName) {
     ? `[\`${run.runId}\`](${run.viewUrl})`
     : `\`${run.runId}\``;
   const failed = run.failedJobs?.length ? run.failedJobs.map((item) => `\`${item}\``).join(', ') : '—';
+  const reportedObservedSha = (run.observedHeadSha === run.headSha)
+    ? run.observedHeadSha
+    : (run.observedSha === run.headSha)
+      ? run.observedSha
+      : (run.observedSha ?? run.observedHeadSha ?? 'unavailable');
   return [
     '<!-- qwen-local-coordinator:depot-shadow-ci -->',
     `## Depot shadow CI — ${status}`,
@@ -259,7 +264,7 @@ export function depotCommentBody(run, workflowName) {
     `- Exact head: \`${run.headSha}\``,
     `- Base SHA: \`${run.baseSha}\``,
     `- Tree SHA: \`${run.treeSha ?? 'unavailable'}\``,
-    `- Observed Depot SHA: \`${run.observedSha ?? run.observedHeadSha ?? 'unavailable'}\``,
+    `- Observed Depot SHA: \`${reportedObservedSha}\``,
     `- Run: ${runLine}`,
     `- Workflow: \`${workflowName}\` · SHA-256 \`${run.workflowHash}\``,
     `- Failed jobs: ${failed}`,

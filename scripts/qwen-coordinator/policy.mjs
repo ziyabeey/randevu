@@ -127,21 +127,43 @@ export function githubPollIntervalSeconds(previousState, config) {
   return Math.max(15, seconds);
 }
 
-export function notificationEvent(report) {
+export function notificationEvents(report) {
   const action = report?.executedAction;
   if (action) {
-    return {
+    return [{
       key: ['action', action.type, action.prNumber ?? 'none', action.headSha ?? 'none', action.role ?? 'none'].join(':'),
       message: `PR #${action.prNumber}: ${action.type} tamamlandı.`,
-    };
+    }];
   }
-  const urgent = report?.decisions?.find((item) => item.choice === 'B')
-    ?? report?.decisions?.find((item) => item.choice === 'D');
-  if (!urgent) return null;
-  return {
+  return (report?.decisions ?? []).filter((item) => item.choice === 'B' || item.choice === 'D').map((urgent) => ({
     key: ['decision', urgent.prNumber, urgent.headSha ?? 'none', urgent.choice].join(':'),
     message: `PR #${urgent.prNumber}: ${urgent.label} gerekiyor.`,
-  };
+  }));
+}
+
+export function notificationEvent(report) {
+  return notificationEvents(report)[0] ?? null;
+}
+
+export function dispatchNotificationEvents(report, ledger, deliver, deliveredAt = () => new Date().toISOString()) {
+  const next = { ...(ledger ?? {}) };
+  const delivered = [];
+  for (const event of notificationEvents(report)) {
+    if (next[event.key]) continue;
+    let succeeded = false;
+    try {
+      succeeded = deliver(event) === true;
+    } catch {
+      succeeded = false;
+    }
+    if (!succeeded) continue;
+    next[event.key] = deliveredAt();
+    delivered.push(event);
+  }
+  const entries = Object.entries(next)
+    .sort((left, right) => String(right[1]).localeCompare(String(left[1])))
+    .slice(0, 200);
+  return { ledger: Object.fromEntries(entries), delivered };
 }
 
 export function parseTasksSnapshot(source, maxRows = 200) {
@@ -183,6 +205,19 @@ export function parseTasksText(source, maxRows = 200) {
 
 export function receiptEvidenceBody(value) {
   return String(value ?? '');
+}
+
+export function compactReviewEvidence(node) {
+  return {
+    id: node?.databaseId ?? null,
+    author: node?.author?.login ?? null,
+    state: node?.state ?? null,
+    commitOid: node?.commit?.oid ?? null,
+    body: receiptEvidenceBody(node?.body),
+    submittedAt: node?.submittedAt ?? null,
+    updatedAt: node?.updatedAt ?? null,
+    url: node?.url ?? null,
+  };
 }
 
 export function canonicalTaskBinding(tasks, pulls, prNumber) {

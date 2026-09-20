@@ -208,4 +208,16 @@ test('Qwen sees only dual-green review/merge candidates', () => {
     failedJobs: [],
   }, 'shadow-v1');
   assert.ok(headFallbackComment.includes(`Observed Depot SHA: \`${headSha}\``));
+
+  const headMatchComment = depotCommentBody({
+    status: 'pass',
+    headSha,
+    baseSha,
+    runId: '39ccx70t42',
+    workflowHash: 'a'.repeat(64),
+    observedSha: '3'.repeat(40),
+    observedHeadSha: headSha,
+    failedJobs: [],
+  }, 'shadow-v1');
+  assert.ok(headMatchComment.includes(`Observed Depot SHA: \`${headSha}\``));
 });
