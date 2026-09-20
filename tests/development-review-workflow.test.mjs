@@ -74,6 +74,15 @@ test('launch lifecycle records exact base for receipt-chain verification', () =>
   assert.ok((review.match(/- base main: \$\{BASE_SHA\}/g) ?? []).length >= 6);
 });
 
+test('each role gets a hidden one-time challenge while only its SHA-256 hash is published', () => {
+  assert.ok((review.match(/receipt_challenge="\$\(openssl rand -hex 32\)"/g) ?? []).length >= 2);
+  assert.ok((review.match(/receipt_challenge_hash=/g) ?? []).length >= 2);
+  assert.ok((review.match(/receipt_challenge_hash=%s/g) ?? []).length >= 2);
+  assert.ok((review.match(/RECEIPT_CHALLENGE_HASH: \$\{\{ steps\.prepare\.outputs\.receipt_challenge_hash \}\}/g) ?? []).length >= 6);
+  assert.ok((review.match(/- receipt challenge hash: \$\{RECEIPT_CHALLENGE_HASH\}/g) ?? []).length >= 6);
+  assert.doesNotMatch(review, /printf 'receipt_challenge=%s/);
+});
+
 test('review automation and role jobs receive the same trusted reviewer allowlist', () => {
   assert.match(automation, /DEVELOPMENT_REVIEWER_ALLOWLIST: \$\{\{ vars\.DEVELOPMENT_REVIEWER_ALLOWLIST \}\}/);
   assert.ok((review.match(/DEVELOPMENT_REVIEWER_ALLOWLIST: \$\{\{ vars\.DEVELOPMENT_REVIEWER_ALLOWLIST \}\}/g) ?? []).length >= 3);
