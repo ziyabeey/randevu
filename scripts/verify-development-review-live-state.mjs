@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseReviewerAllowlist, verifiedReceipts } from './development-audit-gate.mjs';
+import { authenticatedReceipts, parseReviewerAllowlist } from './development-audit-gate.mjs';
 
 const SHA_RE = /^[a-f0-9]{40}$/;
 const POSITIVE_INT_RE = /^[1-9][0-9]*$/;
@@ -272,9 +272,27 @@ export async function verifyDevelopmentReviewLiveState(input, {
       githubCollection(fetchImpl, `${api}/issues/${identity.pr}/comments`, token),
       githubCollection(fetchImpl, `${api}/pulls/${identity.pr}/reviews`, token),
     ]);
-    const currentReceipt = verifiedReceipts([...comments, ...reviews], pr, reviewerAllowlist)
-      .find((entry) => entry.role === requestedRole && entry.freshness === 'current');
-    if (currentReceipt) blocked(`${requestedRole}_REVIEW_ALREADY_RECEIVED`);
+    const currentReceipts = authenticatedReceipts([...comments, ...reviews], pr, reviewerAllowlist)
+      .filter((entry) => entry.role === requestedRole && entry.freshness === 'current');
+
+    const reviewMode = input?.reviewMode;
+    if (reviewMode === 'FOLLOW_UP') {
+      const previous = input?.currentEvidence?.review ?? {};
+      const previousSourceRef = typeof previous.previousReceiptSourceRef === 'string'
+        ? previous.previousReceiptSourceRef
+        : null;
+      const previousObservedAt = Number(previous.previousReceiptObservedAt);
+      const previousId = Number(previous.previousReceiptId);
+      if (!previousSourceRef || !Number.isFinite(previousObservedAt) || !Number.isSafeInteger(previousId)) {
+        blocked('FOLLOW_UP_RECEIPT_SNAPSHOT_MISSING');
+      }
+      const newerCurrent = currentReceipts.find((entry) =>
+        entry.observedAt > previousObservedAt
+        || (entry.observedAt === previousObservedAt && entry.id > previousId));
+      if (newerCurrent) blocked(`${requestedRole}_REVIEW_ALREADY_RECEIVED`);
+    } else if (currentReceipts.length > 0) {
+      blocked(`${requestedRole}_REVIEW_ALREADY_RECEIVED`);
+    }
   }
 
   const loggedCheckoutSha = checkoutShaFromJobLogs(jobLogs);
