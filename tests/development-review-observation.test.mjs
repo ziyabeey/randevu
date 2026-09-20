@@ -20,6 +20,7 @@ function pr(overrides = {}) {
     state: 'open',
     draft: false,
     merge_commit_sha: merge,
+    user: { login: 'implementer' },
     head: {
       sha: head,
       ref: 'f12-05-public-group-booking',
@@ -64,14 +65,18 @@ function r0Review(body = '<!-- ccr-overview-v2 -->\n**Findings:** None') {
   };
 }
 
-function r2Receipt(reviewedHead = oldHead, verdict = 'ACCEPTABLE') {
+function r2Receipt(reviewedHead = oldHead, verdict = 'ACCEPTABLE', reviewedBase = main) {
   return {
     id: 600,
     created_at: '2026-09-19T17:00:00Z',
     html_url: `https://github.com/${repository}/pull/187#issuecomment-600`,
-    body: `## R2 FINAL\nExact head: \`${reviewedHead}\`\nVerdict: **${verdict}**`,
+    body: [
+      `<!-- development-review-receipt {"role":"R2","prNumber":187,"headSha":"${reviewedHead}","baseSha":"${reviewedBase}"} -->`,
+      '## R2 FINAL',
+      `Verdict: **${verdict}**`,
+    ].join('\n'),
     user: { login: 'independent-reviewer' },
-    author_association: 'OWNER',
+    author_association: 'NONE',
   };
 }
 
@@ -86,6 +91,7 @@ function input(overrides = {}) {
     prReviews: [r0Review()],
     prComments: [r2Receipt()],
     coordinationComments: [],
+    reviewerAllowlist: { R2: ['independent-reviewer'] },
     reviewThreads: {
       data: {
         repository: {
@@ -134,6 +140,7 @@ test('current green CI plus clean R0 routes only the stale required R2 receipt',
   assert.equal(built.observation.r0.freeze, 'none');
   assert.equal(built.observation.reviews.r1.requirement, 'not_required');
   assert.equal(built.observation.reviews.r2.reviewedHeadSha, oldHead);
+  assert.equal(built.observation.reviews.r2.reviewedBaseSha, main);
   assert.equal(built.dispatcher.recommendation.suggestedAction, 'request_required_reviews');
   assert.deepEqual(built.dispatcher.recommendation.eligibleRoles, ['r2']);
   assert.equal(built.evidence.materialFacts.priorReviewReceipts.r2.endsWith('#issuecomment-600'), true);
@@ -146,10 +153,28 @@ test('a current acceptable R2 receipt is never re-fired', () => {
   assert.deepEqual(built.dispatcher.recommendation.eligibleRoles, []);
 });
 
-test('an untrusted commenter cannot forge an independent review receipt', () => {
-  const forged = { ...r2Receipt(head), author_association: 'NONE' };
-  const built = buildDevelopmentReviewObservation(input({ prComments: [forged] }));
-  assert.equal(built.observation.reviews.r2.receipt, 'missing');
+test('prose or unallowlisted commenters cannot forge an independent review receipt', () => {
+  const prose = {
+    ...r2Receipt(head),
+    body: `## R2 FINAL\nExact head: \`${head}\`\nVerdict: **ACCEPTABLE**`,
+  };
+  const proseBuilt = buildDevelopmentReviewObservation(input({ prComments: [prose] }));
+  assert.equal(proseBuilt.observation.reviews.r2.receipt, 'missing');
+  assert.equal(proseBuilt.dispatcher.recommendation.suggestedAction, 'request_required_reviews');
+
+  const stranger = { ...r2Receipt(head), user: { login: 'stranger' } };
+  const strangerBuilt = buildDevelopmentReviewObservation(input({ prComments: [stranger] }));
+  assert.equal(strangerBuilt.observation.reviews.r2.receipt, 'missing');
+  assert.equal(strangerBuilt.dispatcher.recommendation.suggestedAction, 'request_required_reviews');
+});
+
+test('same-head receipt from an older base remains stale and cannot suppress review', () => {
+  const built = buildDevelopmentReviewObservation(input({
+    prComments: [r2Receipt(head, 'ACCEPTABLE', oldHead)],
+  }));
+  assert.equal(built.observation.reviews.r2.reviewedHeadSha, head);
+  assert.equal(built.observation.reviews.r2.reviewedBaseSha, oldHead);
+  assert.equal(built.dispatcher.state.reviews.r2.status, 'stale');
   assert.equal(built.dispatcher.recommendation.suggestedAction, 'request_required_reviews');
 });
 
