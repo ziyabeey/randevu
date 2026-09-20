@@ -42,7 +42,7 @@ The workflow no longer invokes Gemini for freshness or role identity. `scripts/d
 
 `DEVELOPMENT_REVIEWER_ALLOWLIST` is a repository variable shaped as `{"R1":["kepenk-r1-reviewer[bot]"],"R2":["kepenk-r2-reviewer[bot]"]}`. Each role must have exactly one dedicated publisher identity and the two identities must differ. Missing or broad configuration means no verified receipts. The PR author, `github-actions[bot]`, generic Copilot/Codex reviewers, and any identity shared by both roles are never independent review publishers.
 
-The final source comment/review must contain exactly one v1 structured marker:
+The final source must be a comment or review on the exact reviewed PR; Issue #65 remains coordination-only and cannot satisfy R1/R2. That PR source must contain exactly one v1 structured marker:
 
 ```text
 <!-- development-review-receipt {"schemaVersion":"development-review-receipt.v1","role":"R1","prNumber":123,"headSha":"FULL_40_CHAR_SHA","baseSha":"FULL_40_CHAR_SHA","dispatcherCaseFingerprint":"64_HEX","requestFingerprint":"64_HEX","verdict":"ACCEPTABLE"} -->
