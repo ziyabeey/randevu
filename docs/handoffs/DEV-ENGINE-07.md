@@ -7,8 +7,7 @@
 - Başlangıç main / task claim: `86d1bfdd729577ebd9ab3f47d1273219b1afe8f0`
 - Branch: `chore/dev-engine-07-qwen-coordinator`
 - PR / current integrated code candidate: [#208](https://github.com/ziyabeey1-ai/randevu/pull/208)
-  · head `edaaff6964491d256a89cd338e3d7262116a81ef`
-  · semantic repair ancestor `66f734a59777ac4d0e13167be2fb006ba84453e4`
+  · head `14918815cfe98b885e430f068bcc797f47504385`
   · base `f5b5d9f6a3ff1dad235e008248cda28619cb55e4`.
 - Yazım alanı: `scripts/qwen-coordinator/**`,
   `tests/qwen-coordinator-*.test.mjs`, `docs/runbooks/qwen-coordinator.md`, bu
@@ -34,8 +33,9 @@
 - `depot.mjs`: exact-SHA eligibility, status normalize, identity/conflict ve Qwen
   çağrı eligibility kuralları.
 - `lease.mjs`: PID yaşam kanıtlı stale recovery ve owner-token bağlı release.
-  Stale takeover/release önce atomic ownership claim ile eski lease'i quarantine
-  eder; eşzamanlı iki recovery yalnız tek kazanan üretir.
+  Lease metadata geçici dizinde tamamlanıp atomik yayımlanır; stale
+  takeover/release ownership claim ile eski lease'i quarantine eder ve eşzamanlı
+  iki recovery yalnız tek kazanan üretir.
 - `run-once.mjs`: GitHub snapshot, Depot tek-koşu yönetimi, Qwen danışma, guarded
   action planı ve disposable rapor.
 - Qwen sonuçları positional sıraya değil exact PR numarası anahtarına bağlıdır;
@@ -44,6 +44,9 @@
 - TASKS evidence tam uzunlukta tutulur; R1/R2 bütçesi evidence alanından değil
   owner/assignment dahil full canonical satırdan okunur. Review-kaynaklı
   specialist receipt native commit OID olmadan kabul edilmez.
+- Latest exact-head native R0 review temiz/bloker olarak birlikte değerlendirilir;
+  actual findings veya çelişkili unresolved metin eski clean receipt'i geçersiz
+  kılar. Review-kaynaklı negatif R1/R2 de native commit OID ister.
 - Depot dış çağrısından önce durable launch reservation yazılır; belirsiz çağrı
   sonucu aktif kalır ve otomatik tekrar koşusu başlatmaz.
 - R1/R2 launch yetkisi local daemon'dan kaldırılmıştır; configured rol endpoint'i
@@ -63,8 +66,8 @@
 
 ## Güncel doğrulama
 
-- `node --test tests/qwen-coordinator-*.test.mjs`: 29/29 başarılı.
-- Güncel main entegrasyonu sonrası repo HTTP testleri 72 dosyada 878/878
+- `node --test tests/qwen-coordinator-*.test.mjs`: 32/32 başarılı.
+- Güncel main entegrasyonu sonrası repo HTTP testleri 72 dosyada 881/881
   başarılı.
 - CI coverage, docs, typecheck ve build başarılı.
 - İnceleme onarımları: exact-head-only Depot checkout, non-empty workflow/job/
@@ -77,7 +80,7 @@
   exact-head CI run `35500844512`, job `106052216068`, attempt `1`, tested
   checkout aynı full SHA ve Depot `h9n2mpjxxj` aynı head/base üzerinde PASS.
 - Exact-head GitHub CI, Depot shadow CI ve fresh bağımsız CI/governance incelemesi
-  `edaaff6964491d256a89cd338e3d7262116a81ef` integrated kod adayı üzerinde yeniden alınacak.
+  `14918815cfe98b885e430f068bcc797f47504385` integrated kod adayı üzerinde yeniden alınacak.
 
 ## Sonraki tek adım
 
