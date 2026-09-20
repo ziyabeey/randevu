@@ -54,8 +54,8 @@
   attempt başarı kanıtı, tüm non-pass Depot durumlarında fail-closed merge,
   shell-safe wrapper quoting, owner-token lease ve incomplete remote snapshot'ta
   koşu iptal etmeme.
-- macOS zsh wrapper testi darwin'de gerçek shebang, Linux CI'da aynı shell quote
-  ve `pipefail` sözleşmesi `/bin/bash` üzerinden çalıştırılarak doğrulanır.
+- macOS zsh wrapper testi darwin'de gerçek shebang, Linux CI'da aynı POSIX shell
+  quote sözleşmesi `/bin/sh` üzerinden çalıştırılarak doğrulanır.
 - Exact-head GitHub CI, Depot shadow CI ve fresh bağımsız CI/governance incelemesi
   güncel commit üzerinde yeniden alınacak.
 
