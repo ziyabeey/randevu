@@ -162,3 +162,11 @@ test('docs-only delta avoids model calls but still publishes deterministic stale
   assert.equal(diverged.status, 0, diverged.stderr);
   assert.equal(diverged.calls.filter((c) => c.method === 'POST').length, 1);
 });
+
+
+test('effective-state audit follows code synchronize events through the deterministic classifier', () => {
+  const workflow = readFileSync(path.resolve('.github/workflows/development-audits.yml'), 'utf8');
+  const section = workflow.split('  effective_state:')[1]?.split('  effective_state_report:')[0] ?? '';
+  assert.match(section, /needs\.classify\.outputs\.code == 'true'/);
+  assert.match(section, /github\.event\.action == 'synchronize'/);
+});
