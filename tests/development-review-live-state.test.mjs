@@ -87,7 +87,7 @@ function reviewLaunch({
     created_at: '2026-09-20T00:02:00Z',
     user: { login: 'github-actions[bot]' },
     body: [
-      `<!-- development-review-launch:r2:${requestFingerprint} -->`,
+      `<!-- development-review-launch:v1:r2:${requestFingerprint} -->`,
       '## Development R2 Routine launch',
       '- status: ROUTINE_TRIGGERED',
       `- exact head: ${head}`,
