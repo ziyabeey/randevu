@@ -95,9 +95,13 @@ Hiçbir verdict GitHub APPROVE, self-ready veya merge yetkisi vermez.
 | Provider fallback — Cloudflare Workers AI | Yalnız desteklenen inference route'unda tercih edilen provider unavailable/quota olduğunda aynı rolü devralır; ekstra review katmanı oluşturmaz. |
 | R1 — security/DB reviewer | Yalnız DB/auth/access/security veya STRICT finans/migration riski gerektirdiğinde bağımsız inceleme yapar; feature implementeri değildir. |
 | R2 — browser/integration reviewer | Yalnız browser/integration/a11y/user-flow riski gerektirdiğinde bağımsız inceleme yapar; feature implementeri değildir. |
+| R3: mimari/sözleşme incelemecisi | Yalnız atanmış modüller arası sözleşme, ortak iş kuralı ve bağımlılık sınırı sorusunu inceler; `dev-review-r3` etiketi ve geçerli koordinatör ataması gerekir. [R3/R4 sözleşmesi](../development-engine/automations/r3-r4-review.md). |
+| R4: test kanıtı/regresyon incelemecisi | Yalnız atanmış kabul iddiası ile gerçek test/CI kanıtının eşleşmesini ve eksik gerileme senaryosunu inceler; `dev-review-r4` etiketi ve geçerli koordinatör ataması gerekir. [R3/R4 sözleşmesi](../development-engine/automations/r3-r4-review.md). |
 | Ürün sahibi/kullanıcı | Ürün kararı veya gerçek kullanıcı girdisi gereken noktayı çözer; zaten verilmiş uygulama ya da merge yetkisi yeniden istenmez. |
 
 Bir görevde rol veya dosya alanı çatışırsa önce sahiplik ayrılır. Araç, ortam ya da gerçek kullanıcı onayı zorunluysa sınır ve devam koşulu kaydedilir. Protokol kendi başına yeni bir onay kapısı oluşturmaz.
+
+R3/R4 saatlik görevleri yalnız kendilerine etiketlenmiş ve exact head/base ile atanmış işi alır; her PR'a uygulanmaz. Koordinatör somut katkı gerekçesine göre yalnız ilgili etiketi ekler, implementer yalnız önerir. Sonuçları ek danışman kanıtıdır; R1/R2 yerine geçmez, yeni zorunlu kabul kapısı veya otomatik merge yetkisi yaratmaz. Etiket/atama/sonuç yaşam döngüsünün tek tanımı [R3/R4 sözleşmesidir](../development-engine/automations/r3-r4-review.md).
 
 ## Beceri yönlendirmesi
 
