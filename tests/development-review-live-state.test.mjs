@@ -288,6 +288,52 @@ test('a current authenticated same-role receipt stops Routine spend before reser
   );
 });
 
+test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but newer current evidence does', async () => {
+  const represented = {
+    id: 300,
+    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-300',
+    created_at: '2026-09-20T00:03:00Z',
+    user: { login: 'integration-reviewer' },
+    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: INCOMPLETE`,
+  };
+  const followUp = request();
+  followUp.reviewMode = 'FOLLOW_UP';
+  followUp.currentEvidence.review = {
+    previousReviewedHeadSha: head,
+    previousReviewedBaseSha: main,
+    previousReceiptSourceRef: represented.html_url,
+    previousReceiptObservedAt: Date.parse(represented.created_at),
+    previousReceiptId: represented.id,
+  };
+  const result = await verifyDevelopmentReviewLiveState(followUp, {
+    repository: 'ziyabeey1-ai/randevu',
+    token: 'test-token',
+    tasksText: tasks(),
+    reviewerAllowlist: { R2: ['integration-reviewer'] },
+    fetchImpl: liveFetch({ comments: [represented] }),
+    git() { throw new Error('raw-head proof must not fetch merge ref'); },
+  });
+  assert.equal(result.status, 'LIVE_REVIEW_STATE_VERIFIED');
+
+  const newer = {
+    ...represented,
+    id: 301,
+    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-301',
+    created_at: '2026-09-20T00:04:00Z',
+    body: represented.body.replace('INCOMPLETE', 'ACCEPTABLE'),
+  };
+  await assert.rejects(
+    verifyDevelopmentReviewLiveState(followUp, {
+      repository: 'ziyabeey1-ai/randevu',
+      token: 'test-token',
+      tasksText: tasks(),
+      reviewerAllowlist: { R2: ['integration-reviewer'] },
+      fetchImpl: liveFetch({ comments: [represented, newer] }),
+    }),
+    /R2_REVIEW_ALREADY_RECEIVED/,
+  );
+});
+
 test('merge-ref mismatch fails closed before model spend', async () => {
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request({
