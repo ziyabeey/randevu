@@ -160,9 +160,9 @@ jobs:
       actions: read
       contents: read
       id-token: write
-      issues: write
-      pull-requests: read
-    uses: ./.github/workflows/development-escalation-router.yml
+      issues: read
+      pull-requests: write
+    uses: ziyabeey1-ai/randevu/.github/workflows/development-escalation-router.yml@main
     with:
       observation_json: ${{ needs.prepare.outputs.observation_json }}
       evidence_json: ${{ needs.prepare.outputs.evidence_json }}
