@@ -43,6 +43,7 @@ jobs:
       EVIDENCE_JSON: ${{ inputs.evidence_json }}
       EXPECTED_CASE_FINGERPRINT: ${{ inputs.expected_case_fingerprint }}
       GH_TOKEN: ${{ github.token }}
+      DEVELOPMENT_REVIEWER_ALLOWLIST: ${{ vars.DEVELOPMENT_REVIEWER_ALLOWLIST }}
 
     steps:
       - uses: actions/checkout@v4
@@ -151,6 +152,7 @@ jobs:
       CLAUDE_ROUTINE_URL: ${{ vars.CLAUDE_R1_ROUTINE_URL }}
       CLAUDE_ROUTINE_TOKEN: ${{ secrets.CLAUDE_R1_ROUTINE_TOKEN }}
       GH_TOKEN: ${{ github.token }}
+      DEVELOPMENT_REVIEWER_ALLOWLIST: ${{ vars.DEVELOPMENT_REVIEWER_ALLOWLIST }}
 
     steps:
       - uses: actions/checkout@v4
@@ -294,6 +296,7 @@ jobs:
       CLAUDE_ROUTINE_URL: ${{ vars.CLAUDE_R2_ROUTINE_URL }}
       CLAUDE_ROUTINE_TOKEN: ${{ secrets.CLAUDE_R2_ROUTINE_TOKEN }}
       GH_TOKEN: ${{ github.token }}
+      DEVELOPMENT_REVIEWER_ALLOWLIST: ${{ vars.DEVELOPMENT_REVIEWER_ALLOWLIST }}
 
     steps:
       - uses: actions/checkout@v4
