@@ -57,6 +57,17 @@ stable.
    - It inherits the role of the route it replaces. It does not create an extra
      scout, implementation or review turn.
 
+8. **R3/R4: optional, assignment-only ChatGPT reviews**
+   - R3 answers architectural/cross-module contract questions; discovery label
+     `dev-review-r3`.
+   - R4 maps acceptance claims to actual test/CI evidence and targeted regression
+     gaps; discovery label `dev-review-r4`.
+   - Both hourly tasks follow the single [R3/R4 contract](automations/r3-r4-review.md).
+     Only the coordinator supplies a bounded, exact-head/base assignment and its
+     relevant label. A label or hourly tick alone is not work authorization.
+   - They do not replace R1/R2, introduce mandatory sequential gates, classify
+     every PR, repeat general engine telemetry, or gain approval/merge authority.
+
 ## Routing rules
 
 - **Clear, bounded implementation:** coordinator → selected implementer (Qwen when
@@ -77,6 +88,10 @@ stable.
   Do not turn fallback into an additional opinion.
 - **Independent specialist review:** open only the R1/R2 gate justified by the
   validation budget and actual risk.
+- **Supplementary contract/proof question:** selectively assign R3 or R4 under
+  the [R3/R4 label and assignment contract](automations/r3-r4-review.md). Separate
+  questions are necessary to assign both. Their ordinary advisory results do not
+  enter the R1/R2 API receipt validator or reopen completed work on an hourly tick.
 
 ## API-fired independent review roles
 
