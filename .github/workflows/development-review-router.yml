@@ -202,7 +202,7 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r1-review-request.json"             > "${RUNNER_TEMP}/r1-live-reservation-state.json"
-          marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r1:${REQUEST_FINGERPRINT} -->"
           existing_id="$(
             gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
           )"
@@ -247,7 +247,7 @@ jobs:
         run: |
           set -euo pipefail
           session_url="$(jq -er '.claudeCodeSessionUrl' "${RUNNER_TEMP}/r1-launch-receipt.json")"
-          marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r1:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R1 Routine launch
           - status: ROUTINE_TRIGGERED
@@ -269,7 +269,7 @@ jobs:
           RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
-          marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r1:${REQUEST_FINGERPRINT} -->"
           if [ -f "${RUNNER_TEMP}/r1-fire-aborted-stale" ] && [ ! -f "${RUNNER_TEMP}/r1-fire-attempted" ]; then
             body="${marker}
           ## Development R1 Routine launch
@@ -362,7 +362,7 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r2-review-request.json"             > "${RUNNER_TEMP}/r2-live-reservation-state.json"
-          marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r2:${REQUEST_FINGERPRINT} -->"
           existing_id="$(
             gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
           )"
@@ -407,7 +407,7 @@ jobs:
         run: |
           set -euo pipefail
           session_url="$(jq -er '.claudeCodeSessionUrl' "${RUNNER_TEMP}/r2-launch-receipt.json")"
-          marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r2:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R2 Routine launch
           - status: ROUTINE_TRIGGERED
@@ -429,7 +429,7 @@ jobs:
           RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
-          marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r2:${REQUEST_FINGERPRINT} -->"
           if [ -f "${RUNNER_TEMP}/r2-fire-aborted-stale" ] && [ ! -f "${RUNNER_TEMP}/r2-fire-attempted" ]; then
             body="${marker}
           ## Development R2 Routine launch
