@@ -206,6 +206,35 @@ test('a newer stale receipt cannot shadow an existing current receipt', () => {
   assert.equal(built.dispatcher.recommendation.suggestedAction, 'assess_current_evidence');
 });
 
+test('equal-time conflicting current receipts fail closed instead of using cross-endpoint IDs', () => {
+  const secondRequest = '2'.repeat(64);
+  const first = {
+    ...r2Receipt(head, 'INCOMPLETE', main, requestFp),
+    id: 900,
+    created_at: '2026-09-19T20:00:00Z',
+    html_url: `https://github.com/${repository}/pull/187#issuecomment-900`,
+  };
+  const second = {
+    ...r2Receipt(head, 'ACCEPTABLE', main, secondRequest),
+    id: 2,
+    created_at: undefined,
+    submitted_at: '2026-09-19T20:00:00Z',
+    commit_id: head,
+    html_url: `https://github.com/${repository}/pull/187#pullrequestreview-2`,
+  };
+  const built = buildDevelopmentReviewObservation(input({
+    prComments: [
+      r2Launch(head, main, requestFp),
+      first,
+      r2Launch(head, main, secondRequest),
+    ],
+    prReviews: [r0Review(), second],
+  }));
+  assert.equal(built.observation.reviews.r2.receipt, 'unknown');
+  assert.equal(built.observation.reviews.r2.verdict, 'unknown');
+  assert.notEqual(built.dispatcher.recommendation.suggestedAction, 'assess_current_evidence');
+});
+
 test('prose or unallowlisted commenters cannot forge an independent review receipt', () => {
   const prose = {
     ...r2Receipt(head),
