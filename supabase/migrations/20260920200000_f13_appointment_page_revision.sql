@@ -131,7 +131,7 @@ begin
   -- well-defined without granting browser access to the store.
   insert into private.appointment_page_revisions(business_id)
   values (p_business_id)
-  on conflict (business_id) do nothing;
+  on conflict on constraint appointment_page_revisions_pkey do nothing;
 
   -- SHARE conflicts with the trigger's revision UPDATE. A reader therefore
   -- binds one revision/data state while a writer waits, or waits for the writer
