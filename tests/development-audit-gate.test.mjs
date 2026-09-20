@@ -42,7 +42,7 @@ function launch(change = {}, itemChange = {}) {
     user: { login: 'github-actions[bot]' },
     html_url: 'https://github.com/example/repo/pull/201#issuecomment-7',
     body: [
-      `<!-- development-review-launch:${role.toLowerCase()}:${requestFingerprint} -->`,
+      `<!-- development-review-launch:v1:${role.toLowerCase()}:${requestFingerprint} -->`,
       '## Development Routine launch',
       '- status: ROUTINE_TRIGGERED',
       `- exact head: ${headSha}`,
@@ -108,6 +108,11 @@ test('receipt identity, launch binding and head/base freshness are deterministic
   ]) assert.deepEqual(verifiedReceipts([launch(delta), receipt(delta)], pr, allowlist), []);
 
   assert.deepEqual(verifiedReceipts([receipt()], pr, allowlist), []);
+  const legacyLaunch = {
+    ...launch(),
+    body: launch().body.replace('development-review-launch:v1:', 'development-review-launch:'),
+  };
+  assert.deepEqual(verifiedReceipts([legacyLaunch, receipt()], pr, allowlist), []);
   assert.deepEqual(verifiedReceipts([
     launch({ receiptChallengeHash: 'f'.repeat(64) }),
     receipt(),
