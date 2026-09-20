@@ -37,9 +37,12 @@ export function normalizeTrustedReceipts(raw) {
   for (const item of raw) {
     const headSha = item?.headSha;
     const runId = Number(item?.runId);
-    if (!sha.test(headSha ?? '') || !Number.isSafeInteger(runId) || runId <= 0 || seen.has(headSha)) continue;
-    seen.add(headSha);
-    receipts.push({ headSha, runId });
+    const origin = item?.origin === 'main-push' ? 'main-push'
+      : item?.origin === 'pr-full' ? 'pr-full' : null;
+    const identity = `${origin ?? 'legacy'}:${headSha}`;
+    if (!sha.test(headSha ?? '') || !Number.isSafeInteger(runId) || runId <= 0 || seen.has(identity)) continue;
+    seen.add(identity);
+    receipts.push({ headSha, runId, ...(origin ? { origin } : {}) });
   }
   return receipts;
 }
@@ -77,10 +80,18 @@ export function selectScope({
       if (!sha.test(mergeBase)) throw new Error('Missing merge base');
       const fullPaths = diffPaths(run(['diff', '--name-status', '-z', '--no-renames', mergeBase, headSha, '--']));
 
+      const mainReceipt = normalizeTrustedReceipts(trustedReceipts).find((receipt) =>
+        receipt.origin === 'main-push' && receipt.headSha === baseSha);
+      if (event.pull_request?.base?.ref === 'main' && mergeBase === baseSha
+          && mainReceipt && classifyPaths(fullPaths) === 'docs') {
+        return { mode: 'docs', reason: 'green-main-docs-only', count: fullPaths.length,
+          inheritedFrom: baseSha, inheritedRunId: mainReceipt.runId };
+      }
+
       if (event.action === 'synchronize') {
         const receipts = normalizeTrustedReceipts(trustedReceipts);
         for (const receipt of receipts) {
-          if (receipt.headSha === headSha) continue;
+          if (receipt.origin === 'main-push' || receipt.headSha === headSha) continue;
 
           let receiptBase;
           let lineageBase;
