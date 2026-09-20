@@ -9,6 +9,7 @@ export const stages = [
   { id: 'audit' },
   { id: 'typecheck', command: 'npm', args: ['run', 'typecheck'] },
   { id: 'build', command: 'npm', args: ['run', 'build:ci'] },
+  { id: 'public-bundle', command: 'npm', args: ['run', 'test:public-bundle'] },
   { id: 'browser', command: 'npm', args: ['run', 'test:browser-smoke'] },
   { id: 'worker', command: 'npx', args: ['wrangler', 'deploy', '--dry-run', '--outdir', '/tmp/randevu-worker'] },
   { id: 'http', command: 'npm', args: ['run', 'test:http'] },

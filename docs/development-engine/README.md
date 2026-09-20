@@ -264,6 +264,48 @@ source, Issue #65 remains temporary coordination, and PR/CI/receipts remain
 candidate-bound evidence. No dispatcher DB, queue, scheduler, workflow DSL or
 second status surface is introduced.
 
+## Independent R1/R2 Routine delivery
+
+When the pure Development Dispatcher reaches `request_required_reviews`, the
+existing Development Escalation Router may call the dedicated reusable
+`Development Review Router`. The review router has no direct `workflow_dispatch`
+entry point; its Routine credentials are reachable only through the checked-in
+parent workflow call. The reusable review router recomputes
+the Dispatcher result from the same observation/evidence, requires the same case
+fingerprint and exact current CI provenance, then fires only the roles listed in
+`eligibleRoles`.
+
+`Development Review Automation` rebuilds that observation from canonical `main`
+and live GitHub evidence after either successful PR CI or a later submitted R0
+review. This second trigger closes the normal race where CI finishes before the
+native R0 receipt. Drafts, forks, stale heads, base/main drift, non-PR CI, missing
+TASKS binding, open R0 findings and review budgets not stated in the bound TASKS
+row all fail closed before a Routine secret is used. A TASKS row that explicitly
+names only R2 makes R1 not required for that candidate; if neither role is named,
+the requirement remains unknown and no independent Routine is fired.
+
+R1 and R2 remain independent role contracts. The repository routes to role
+endpoints rather than model names:
+
+- `CLAUDE_R1_ROUTINE_URL` + `CLAUDE_R1_ROUTINE_TOKEN`
+- `CLAUDE_R2_ROUTINE_URL` + `CLAUDE_R2_ROUTINE_TOKEN`
+
+The Routine configuration owns the provider/model choice. Changing a model must
+not change R1/R2 scope, acceptance semantics or Dispatcher policy.
+
+The Claude Code Routine fire API creates a new session for every successful call
+and has no idempotency key. The review router therefore reserves a PR comment
+using a role-specific request fingerprint before firing. The request fingerprint excludes unrelated reviewer state and observation timestamp, so one reviewer finishing cannot accidentally re-fire the other. An existing reservation, successful launch receipt or uncertain launch blocks automatic duplicate spend.
+A launch receipt records only the exact head, case fingerprint and Claude session
+URL. It is **not** an `ACCEPTABLE | BLOCKER | INCOMPLETE` review receipt and never
+grants merge authority.
+
+Routine requests are bounded data packages. Exact task/PR/base/head/main identity,
+current CI checkout/run/job/attempt, same-role prior receipt state, obligations and
+source refs are preserved. Evidence strings are explicitly treated as data rather
+than instructions. Missing/mismatched candidate identity, current-pass CI or case
+fingerprint fails closed before a Routine is fired.
+
 ## Validation
 
 ```bash

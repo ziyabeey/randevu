@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiRequestError, api } from './api';
 import PublicBookingPage from './PublicBookingPage';
 import PublicMultiServiceSelection from './PublicMultiServiceSelection';
+import type { PublicMultiServiceSelectionState } from './PublicMultiServiceSelection';
 import './public-multi-service.css';
 
 type PublicMedia = {
@@ -85,8 +86,18 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [inactive, setInactive] = useState(false);
   const [notice, setNotice] = useState('');
+  const [bookingSelection, setBookingSelection] = useState<PublicMultiServiceSelectionState | null>(null);
+  const [bookingResultVisible, setBookingResultVisible] = useState(false);
+  const [groupPlannerAvailable, setGroupPlannerAvailable] = useState(true);
+  const [availabilityRefreshToken, setAvailabilityRefreshToken] = useState(0);
+  const refreshBookingAvailability = useCallback(() => setAvailabilityRefreshToken((value) => value + 1), []);
   const [favorite, setFavorite] = useState(false);
   const [actionNotice, setActionNotice] = useState('');
+
+  useEffect(() => {
+    setGroupPlannerAvailable(true);
+    setBookingSelection(null);
+  }, [slug]);
 
   useEffect(() => {
     let cancelled = false;
@@ -245,10 +256,21 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
     </div>}
 
     <div id="randevu" className="public-salon-booking">
-      <div className="public-booking-shell public-multi-service-shell">
-        <PublicMultiServiceSelection slug={slug} />
-      </div>
-      <PublicBookingPage slug={slug} />
+      {!bookingResultVisible && <div className="public-booking-shell public-multi-service-shell">
+        <PublicMultiServiceSelection
+          slug={slug}
+          availabilityRefreshToken={availabilityRefreshToken}
+          onAvailabilityChange={setGroupPlannerAvailable}
+          onSelectionChange={setBookingSelection}
+        />
+      </div>}
+      <PublicBookingPage
+        slug={slug}
+        groupMode={groupPlannerAvailable}
+        multiServiceSelection={bookingSelection}
+        onPlanNeedsRefresh={refreshBookingAvailability}
+        onResultVisibilityChange={setBookingResultVisible}
+      />
     </div>
   </div>;
 }

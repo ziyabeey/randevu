@@ -139,7 +139,7 @@ Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value:
 const pending = await import('../src/public-booking-pending.ts');
 
 let intentSequence = 0;
-async function candidate(slug, now = Date.now()) {
+async function candidate(slug, now = Date.now(), bookingKind, groupPlan) {
   intentSequence += 1;
   const suffix = String(intentSequence).padStart(12, '0');
   const recoveryId = `8c000000-0000-4000-8000-${suffix}`;
@@ -149,6 +149,8 @@ async function candidate(slug, now = Date.now()) {
   assert.ok(intent);
   return {
     slug,
+    ...(bookingKind ? { bookingKind } : {}),
+    ...(groupPlan ? { groupPlan } : {}),
     idempotencyKey: intent.idempotencyKey,
     recoveryId,
     recoverySecret,
@@ -162,10 +164,29 @@ async function candidate(slug, now = Date.now()) {
 }
 
 await test('S07 pending: per-slug acquire, owner transition and terminal replacement use exact intent CAS', async () => {
-  const firstCandidate = await candidate('Case-Salon');
+  const groupPlan = {
+    date: '2026-09-20',
+    lines: [{ serviceId: '41000000-0000-4000-8000-000000000011', staffId: null }],
+    slot: {
+      startsAt: '2026-09-20T07:00:00.000Z', endsAt: '2026-09-20T08:00:00.000Z',
+      timezone: 'Europe/Istanbul', currency: 'TRY', estimateMinMinor: 20000, estimateMaxMinor: 35000,
+      lines: [{
+        lineOrdinal: 1, serviceId: '41000000-0000-4000-8000-000000000011', serviceName: 'Renk Bakımı',
+        staffId: '51000000-0000-4000-8000-000000000011', staffName: 'Ayşe',
+        startsAt: '2026-09-20T07:00:00.000Z', endsAt: '2026-09-20T08:00:00.000Z',
+        priceType: 'range', priceMinMinor: 20000, priceMaxMinor: 35000,
+      }],
+    },
+  };
+  const expectedGroupPlan = structuredClone(groupPlan);
+  const firstCandidate = await candidate('Case-Salon', Date.now(), 'group', groupPlan);
   const first = await pending.acquirePublicBookingIntent(firstCandidate);
+  groupPlan.lines[0].staffId = '51000000-0000-4000-8000-000000000099';
+  groupPlan.slot.lines[0].serviceName = 'Çağıran nesne değişti';
   assert.equal(first.created, true);
   assert.equal(first.record.slug, 'case-salon');
+  assert.equal(first.record.bookingKind, 'group');
+  assert.deepEqual(first.record.groupPlan, expectedGroupPlan, 'persisted recovery plan is an immutable snapshot');
 
   const competing = await pending.acquirePublicBookingIntent(await candidate('case-salon'));
   assert.equal(competing.created, false);
@@ -175,12 +196,15 @@ await test('S07 pending: per-slug acquire, owner transition and terminal replace
   assert.equal(wrongOwner.status, 'submitting');
   const unresolved = await pending.markPublicBookingUnresolved(first.record.id, first.record.ownerId);
   assert.equal(unresolved.status, 'unresolved');
+  assert.equal(unresolved.bookingKind, 'group');
+  assert.deepEqual(unresolved.groupPlan, expectedGroupPlan);
   const terminal = await pending.completePublicBookingIntent(first.record.id, ['unresolved'], 'closed_absent');
   assert.equal(terminal.applied, true);
   assert.equal('recoverySecret' in terminal.record, false);
 
   const next = await pending.acquirePublicBookingIntent(await candidate('CASE-SALON'));
   assert.equal(next.created, true, 'closed_absent only permits a new key after this explicit acquire');
+  assert.equal(next.record.bookingKind, 'single', 'new callers default to the deployed single-service contract');
   const late = await pending.completePublicBookingIntent(first.record.id, ['unresolved'], 'committed');
   assert.equal(late.applied, false);
   assert.equal((await pending.loadPublicBookingRecords('case-salon')).find((record) => record.id === next.record.id).status, 'submitting');
