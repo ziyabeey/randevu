@@ -51,7 +51,7 @@ export function authenticatedReceipts(items, pr, allowlist = {}) {
   for (const item of items) {
     if (item?.user?.login !== 'github-actions[bot]') continue;
     const body = String(item.body ?? '');
-    const marker = body.match(/<!-- development-review-launch:(r1|r2):([a-f0-9]{64}) -->/i);
+    const marker = body.match(/<!-- development-review-launch:v1:(r1|r2):([a-f0-9]{64}) -->/i);
     if (!marker || !/status:\s*ROUTINE_TRIGGERED/i.test(body)) continue;
     if (typeof item.html_url !== 'string' || !item.html_url.includes(`/pull/${pr.number}#`)) continue;
     const role = marker[1].toUpperCase();
