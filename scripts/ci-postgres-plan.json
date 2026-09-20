@@ -1219,8 +1219,12 @@
       ]
     },
     {
-      "name": "Verify F13-01 mutable starts_at pagination concurrency evidence",
+      "name": "Verify F13-01 mutable starts_at pagination revision repair",
       "steps": [
+        {
+          "database": "yzt_test",
+          "file": "supabase/migrations/20260920200000_f13_appointment_page_revision.sql"
+        },
         {
           "database": "yzt_test",
           "file": "supabase/tests/f13_starts_at_pagination_concurrency.sql"

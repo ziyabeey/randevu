@@ -8,6 +8,9 @@ import {
   type AuthEnv,
 } from './auth.ts';
 import {
+  BOOKING_CURSOR_RESTART_REQUIRED,
+  bookingPageResult,
+  decodeBookingPageCursor,
   decodePageCursor,
   pageResult,
   parsePageLimit,
@@ -36,6 +39,10 @@ type Appointment = {
   currency_snapshot: string;
   notes: string | null;
   cancellation_reason: string | null;
+};
+
+type AppointmentPageRow = Appointment & {
+  page_revision: string;
 };
 
 type AppointmentEvent = {
@@ -113,15 +120,27 @@ function rpcMessage(data: unknown, fallback: string) {
   return { code: 'BOOKING_FAILED', message: fallback, status: 400 as const };
 }
 
-function readPage(context: BaseContext, kind: 'bookings' | 'events') {
+function readPage(context: BaseContext, kind: 'events') {
   const limit = parsePageLimit(context.req.query('limit'));
   const cursor = decodePageCursor(context.req.query('cursor'), kind);
   if (limit === null || cursor === undefined) return null;
   return { limit, cursor };
 }
 
+function bookingPageRestart(context: BaseContext) {
+  return context.json({
+    error: {
+      code: 'BOOKINGS_PAGE_RESTART_REQUIRED',
+      message: 'Randevu listesi değişti. Güncel listeyi ilk sayfadan yeniden açın.',
+    },
+  }, 409);
+}
+
 function readFailure(context: BaseContext, data: unknown, status: number, code: string, fallback: string) {
   const message = typeof data === 'object' && data !== null ? String((data as SupabaseError).message ?? '') : '';
+  if (message.includes('STALE_APPOINTMENT_PAGE')) {
+    return bookingPageRestart(context);
+  }
   if (message.includes('NOT_ALLOWED')) {
     return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bu işletme için işlem yetkiniz yok.' } }, 403);
   }
@@ -140,22 +159,42 @@ function readFailure(context: BaseContext, data: unknown, status: number, code: 
 bookings.get('/', async (context) => {
   const access = await requireMember(context);
   if ('error' in access) return access.error;
-  const page = readPage(context, 'bookings');
-  if (!page) return context.json({ error: { code: 'INVALID_PAGE', message: 'Sayfa boyutu veya devam anahtarı geçerli değil.' } }, 400);
+  const limit = parsePageLimit(context.req.query('limit'));
+  const cursor = decodeBookingPageCursor(context.req.query('cursor'));
+  if (limit === null || cursor === undefined) {
+    return context.json({ error: { code: 'INVALID_PAGE', message: 'Sayfa boyutu veya devam anahtarı geçerli değil.' } }, 400);
+  }
+  if (cursor === BOOKING_CURSOR_RESTART_REQUIRED) return bookingPageRestart(context);
 
-  const result = await supabaseRequest<Appointment[]>(context.env, 'rest/v1/rpc/list_appointments_page', {
+  const result = await supabaseRequest<AppointmentPageRow[]>(context.env, 'rest/v1/rpc/list_appointments_page_v2', {
     method: 'POST',
     body: JSON.stringify({
       p_business_id: access.membership.business_id,
-      p_limit: page.limit + 1,
-      p_after_starts_at: page.cursor?.at ?? null,
-      p_after_id: page.cursor?.id ?? null,
+      p_limit: limit + 1,
+      p_after_starts_at: cursor?.at ?? null,
+      p_after_id: cursor?.id ?? null,
+      p_expected_revision: cursor?.revision ?? null,
     }),
   }, access.auth.accessToken);
   if (!result.ok) return readFailure(context, result.data, result.status, 'BOOKINGS_READ', 'Randevular okunamadı.');
 
-  const paged = pageResult(result.data ?? [], page.limit, 'bookings', (row) => ({ at: row.starts_at, id: row.id }));
-  return context.json({ membership: access.membership, appointments: paged.items, page: paged.page });
+  const rows = result.data ?? [];
+  const revision = rows[0]?.page_revision ?? null;
+  if (rows.length > 0 && (!isUuid(revision) || rows.some((row) => row.page_revision !== revision))) {
+    return context.json({ error: { code: 'BOOKINGS_READ_FAILED', message: 'Randevular okunamadı.' } }, 502);
+  }
+
+  const paged = bookingPageResult(rows, limit, (row) => ({
+    at: row.starts_at,
+    id: row.id,
+    revision: row.page_revision,
+  }));
+  const appointments = paged.items.map((row) => {
+    const { page_revision, ...appointment } = row;
+    void page_revision;
+    return appointment;
+  });
+  return context.json({ membership: access.membership, appointments, page: paged.page });
 });
 
 bookings.post('/', async (context) => {
