@@ -55,8 +55,8 @@ test('authoritative live fence runs before role exposure, reservation and API fi
 });
 
 test('role-specific reservation plus exact-head concurrency prevents duplicate Routine spend', () => {
-  assert.match(review, /development-review-launch:r1:\$\{REQUEST_FINGERPRINT\}/);
-  assert.match(review, /development-review-launch:r2:\$\{REQUEST_FINGERPRINT\}/);
+  assert.match(review, /development-review-launch:v1:r1:\$\{REQUEST_FINGERPRINT\}/);
+  assert.match(review, /development-review-launch:v1:r2:\$\{REQUEST_FINGERPRINT\}/);
   assert.match(review, /group: development-review-r1-/);
   assert.match(review, /group: development-review-r2-/);
   assert.match(review, /cancel-in-progress: false/);
