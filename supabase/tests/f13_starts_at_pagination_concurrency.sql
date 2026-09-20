@@ -347,7 +347,7 @@ select p.starts_at,p.id,p.page_revision
 from public.list_appointments_page_v2('f1310000-0000-4000-8000-000000000001',2,null,null,null) p
 order by p.starts_at desc,p.id desc limit 1;
 
-do $
+do $f13rollback$
 declare
   v_at timestamptz;
   v_id uuid;
@@ -392,7 +392,7 @@ exception when others then
   begin perform dblink_disconnect(v_writer); exception when others then null; end;
   raise;
 end
-$;
+$f13rollback$;
 
 -- E: another business mutates its own ordering key; A's continuation is valid.
 truncate pg_temp.f13_page_cursor;
