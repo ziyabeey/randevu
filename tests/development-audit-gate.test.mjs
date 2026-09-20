@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyFileRecords, freshnessReport, parseReviewerAllowlist, sameIdentity, verifiedReceipts } from '../scripts/development-audit-gate.mjs';
+import { authenticatedReceipts, classifyFileRecords, freshnessReport, parseReviewerAllowlist, sameIdentity, verifiedReceipts } from '../scripts/development-audit-gate.mjs';
 const head = 'a'.repeat(40), base = 'b'.repeat(40);
 const pr = { number: 201, state: 'open', head: { sha: head }, base: { sha: base }, user: { login: 'author' } };
 const allowlist = { R1: ['security'], R2: ['integration'] };
@@ -44,6 +44,20 @@ test('receipt identity and head/base freshness are deterministic', () => {
   assert.deepEqual(verifiedReceipts([{ ...source(), commit_id: 'c'.repeat(40) }], pr, allowlist), []);
   assert.deepEqual(verifiedReceipts([{ ...source(), body: source().body.repeat(2) }], pr, allowlist), []);
   assert.match(freshnessReport(pr, verifiedReceipts([source()], pr, allowlist)), /R2: unknown/);
+});
+
+test('authenticated receipt collection preserves current and stale evidence before advisory reduction', () => {
+  const current = { ...source(), id: 41, created_at: '2026-09-20T00:00:00Z' };
+  const stale = {
+    ...source({ headSha: 'c'.repeat(40) }),
+    id: 99,
+    created_at: '2026-09-20T00:01:00Z',
+    html_url: 'https://github.com/example/repo/pull/201#issuecomment-99',
+  };
+  const all = authenticatedReceipts([current, stale], pr, allowlist);
+  assert.equal(all.length, 2);
+  assert.equal(all.some((r) => r.freshness === 'current'), true);
+  assert.equal(all.some((r) => r.freshness === 'stale'), true);
 });
 
 test('cross-endpoint receipt selection uses timestamps before unrelated numeric IDs', () => {
