@@ -125,6 +125,7 @@ function normalizeReview(review = {}) {
     verdict: pick(review.verdict, ['pending', 'acceptable', 'blocker', 'incomplete', 'not_required', 'unknown']),
     receipt: pick(review.receipt, ['missing', 'accessible', 'inaccessible', 'unknown']),
     reviewedHeadSha: review.reviewedHeadSha ?? review.sha ?? null,
+    reviewedBaseSha: review.reviewedBaseSha ?? null,
   };
 }
 
@@ -326,8 +327,11 @@ function deriveR0(facts, contradictions, unknowns, obligations) {
   return { mode: 'satisfied_blockers', receiptFreshness, openBlockers: [], unverifiedBlockers: [] };
 }
 function reviewFreshness(facts, review) {
-  if (!facts.candidate.headSha || !review.reviewedHeadSha) return 'unknown';
-  if (review.reviewedHeadSha === facts.candidate.headSha) return 'current';
+  if (!facts.candidate.headSha || !facts.candidate.baseMainSha
+      || !review.reviewedHeadSha || !review.reviewedBaseSha) return 'unknown';
+  if (review.reviewedHeadSha === facts.candidate.headSha
+      && review.reviewedBaseSha === facts.candidate.baseMainSha) return 'current';
+  if (review.reviewedBaseSha !== facts.candidate.baseMainSha) return 'stale';
   if (facts.r0.lineage === 'descendant'
     && facts.r0.change === 'docs_only_descendant'
     && facts.r0.deltaConfirmation === 'confirmed'
@@ -466,7 +470,9 @@ export function deriveConditions(inputFacts) {
   addShaContradiction(contradictions, 'CI_BASE_SHA_INVALID', facts.ci.baseMainSha);
   addShaContradiction(contradictions, 'R0_REVIEW_SHA_INVALID', facts.r0.reviewedHeadSha);
   addShaContradiction(contradictions, 'R1_REVIEW_SHA_INVALID', facts.reviews.r1.reviewedHeadSha);
+  addShaContradiction(contradictions, 'R1_REVIEW_BASE_SHA_INVALID', facts.reviews.r1.reviewedBaseSha);
   addShaContradiction(contradictions, 'R2_REVIEW_SHA_INVALID', facts.reviews.r2.reviewedHeadSha);
+  addShaContradiction(contradictions, 'R2_REVIEW_BASE_SHA_INVALID', facts.reviews.r2.reviewedBaseSha);
   addShaContradiction(contradictions, 'POST_MAIN_MERGE_SHA_INVALID', facts.postMain.mergeSha);
   for (const proof of facts.proofs) addShaContradiction(contradictions, 'PROOF_EXACT_SHA_INVALID:' + proof.key, proof.exactHeadSha);
 
