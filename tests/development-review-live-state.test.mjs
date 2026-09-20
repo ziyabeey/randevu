@@ -12,6 +12,8 @@ const sha = (char) => char.repeat(40);
 const head = sha('a');
 const main = sha('b');
 const merge = sha('c');
+const caseFp = 'd'.repeat(64);
+const requestFp = 'e'.repeat(64);
 
 function request(overrides = {}) {
   return {
@@ -38,6 +40,56 @@ function request(overrides = {}) {
         ...(overrides.ci ?? {}),
       },
     },
+  };
+}
+
+function reviewReceipt({
+  id = 300,
+  verdict = 'ACCEPTABLE',
+  requestFingerprint = requestFp,
+  dispatcherCaseFingerprint = caseFp,
+  url = 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-300',
+  timestamp = '2026-09-20T00:03:00Z',
+  review = false,
+} = {}) {
+  return {
+    id,
+    html_url: url,
+    ...(review ? { submitted_at: timestamp, commit_id: head } : { created_at: timestamp }),
+    user: { login: 'kepenk-r2-reviewer[bot]' },
+    body: `<!-- development-review-receipt ${JSON.stringify({
+      schemaVersion: 'development-review-receipt.v1',
+      role: 'R2',
+      prNumber: 183,
+      headSha: head,
+      baseSha: main,
+      dispatcherCaseFingerprint,
+      requestFingerprint,
+      verdict,
+    })} -->`,
+  };
+}
+
+function reviewLaunch({
+  id = 250,
+  requestFingerprint = requestFp,
+  dispatcherCaseFingerprint = caseFp,
+  url = 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-250',
+} = {}) {
+  return {
+    id,
+    html_url: url,
+    created_at: '2026-09-20T00:02:00Z',
+    user: { login: 'github-actions[bot]' },
+    body: [
+      `<!-- development-review-launch:r2:${requestFingerprint} -->`,
+      '## Development R2 Routine launch',
+      '- status: ROUTINE_TRIGGERED',
+      `- exact head: ${head}`,
+      `- base main: ${main}`,
+      `- dispatcher case: ${dispatcherCaseFingerprint}`,
+      `- role request: ${requestFingerprint}`,
+    ].join('\n'),
   };
 }
 
@@ -270,33 +322,21 @@ test('claimed tested checkout must equal the checkout recorded by the cited CI j
 });
 
 test('a current authenticated same-role receipt stops Routine spend before reservation or fire', async () => {
-  const receipt = {
-    id: 300,
-    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-300',
-    created_at: '2026-09-20T00:03:00Z',
-    user: { login: 'integration-reviewer' },
-    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: ACCEPTABLE`,
-  };
+  const receipt = reviewReceipt();
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request(), {
       repository: 'ziyabeey1-ai/randevu',
       token: 'test-token',
       tasksText: tasks(),
-      reviewerAllowlist: { R2: ['integration-reviewer'] },
-      fetchImpl: liveFetch({ comments: [receipt] }),
+      reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+      fetchImpl: liveFetch({ comments: [reviewLaunch(), receipt] }),
     }),
     /R2_REVIEW_ALREADY_RECEIVED/,
   );
 });
 
 test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but newer current evidence does', async () => {
-  const represented = {
-    id: 300,
-    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-300',
-    created_at: '2026-09-20T00:03:00Z',
-    user: { login: 'integration-reviewer' },
-    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: INCOMPLETE`,
-  };
+  const represented = reviewReceipt({ verdict: 'INCOMPLETE' });
   const followUp = request();
   followUp.reviewMode = 'FOLLOW_UP';
   followUp.currentEvidence.review = {
@@ -310,67 +350,71 @@ test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but n
     repository: 'ziyabeey1-ai/randevu',
     token: 'test-token',
     tasksText: tasks(),
-    reviewerAllowlist: { R2: ['integration-reviewer'] },
-    fetchImpl: liveFetch({ comments: [represented] }),
+    reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+    fetchImpl: liveFetch({ comments: [reviewLaunch(), represented] }),
     git() { throw new Error('raw-head proof must not fetch merge ref'); },
   });
   assert.equal(result.status, 'LIVE_REVIEW_STATE_VERIFIED');
 
-  const newer = {
-    ...represented,
+  const newerRequest = 'f'.repeat(64);
+  const newer = reviewReceipt({
     id: 301,
-    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-301',
-    created_at: '2026-09-20T00:04:00Z',
-    body: represented.body.replace('INCOMPLETE', 'ACCEPTABLE'),
-  };
+    verdict: 'ACCEPTABLE',
+    requestFingerprint: newerRequest,
+    timestamp: '2026-09-20T00:04:00Z',
+    url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-301',
+  });
   await assert.rejects(
     verifyDevelopmentReviewLiveState(followUp, {
       repository: 'ziyabeey1-ai/randevu',
       token: 'test-token',
       tasksText: tasks(),
-      reviewerAllowlist: { R2: ['integration-reviewer'] },
-      fetchImpl: liveFetch({ comments: [represented, newer] }),
+      reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+      fetchImpl: liveFetch({ comments: [
+        reviewLaunch(),
+        represented,
+        reviewLaunch({ id: 251, requestFingerprint: newerRequest }),
+        newer,
+      ] }),
     }),
     /R2_REVIEW_ALREADY_RECEIVED/,
   );
 });
 
 test('coordination Issue #65 current receipt is included in the live spend fence', async () => {
-  const receipt = {
+  const receipt = reviewReceipt({
     id: 400,
-    html_url: 'https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-400',
-    created_at: '2026-09-20T00:05:00Z',
-    user: { login: 'integration-reviewer' },
-    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: ACCEPTABLE`,
-  };
+    url: 'https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-400',
+    timestamp: '2026-09-20T00:05:00Z',
+  });
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request(), {
       repository: 'ziyabeey1-ai/randevu',
       token: 'test-token',
       tasksText: tasks(),
-      reviewerAllowlist: { R2: ['integration-reviewer'] },
-      fetchImpl: liveFetch({ coordinationComments: [receipt] }),
+      reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+      fetchImpl: liveFetch({ comments: [reviewLaunch()], coordinationComments: [receipt] }),
     }),
     /R2_REVIEW_ALREADY_RECEIVED/,
   );
 });
 
 test('equal-time additional current receipt blocks follow-up without comparing cross-endpoint IDs', async () => {
-  const represented = {
+  const represented = reviewReceipt({
     id: 900,
-    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-900',
-    created_at: '2026-09-20T00:06:00Z',
-    user: { login: 'integration-reviewer' },
-    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: INCOMPLETE`,
-  };
-  const sameSecondReview = {
+    verdict: 'INCOMPLETE',
+    url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-900',
+    timestamp: '2026-09-20T00:06:00Z',
+  });
+  const secondRequest = '1'.repeat(64);
+  const sameSecondReview = reviewReceipt({
     id: 2,
-    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#pullrequestreview-2',
-    submitted_at: represented.created_at,
-    commit_id: head,
-    user: { login: 'integration-reviewer' },
-    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: ACCEPTABLE`,
-  };
+    verdict: 'ACCEPTABLE',
+    requestFingerprint: secondRequest,
+    url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#pullrequestreview-2',
+    timestamp: represented.created_at,
+    review: true,
+  });
   const followUp = request();
   followUp.reviewMode = 'FOLLOW_UP';
   followUp.currentEvidence.review = {
@@ -385,11 +429,30 @@ test('equal-time additional current receipt blocks follow-up without comparing c
       repository: 'ziyabeey1-ai/randevu',
       token: 'test-token',
       tasksText: tasks(),
-      reviewerAllowlist: { R2: ['integration-reviewer'] },
-      fetchImpl: liveFetch({ comments: [represented], reviews: [sameSecondReview] }),
+      reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+      fetchImpl: liveFetch({
+        comments: [
+          reviewLaunch(),
+          represented,
+          reviewLaunch({ id: 251, requestFingerprint: secondRequest }),
+        ],
+        reviews: [sameSecondReview],
+      }),
     }),
     /R2_REVIEW_ALREADY_RECEIVED/,
   );
+});
+
+test('receipt without a matching triggered launch never stops spend', async () => {
+  const result = await verifyDevelopmentReviewLiveState(request(), {
+    repository: 'ziyabeey1-ai/randevu',
+    token: 'test-token',
+    tasksText: tasks(),
+    reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+    fetchImpl: liveFetch({ comments: [reviewReceipt()] }),
+    git() { throw new Error('raw-head proof must not fetch merge ref'); },
+  });
+  assert.equal(result.status, 'LIVE_REVIEW_STATE_VERIFIED');
 });
 
 test('merge-ref mismatch fails closed before model spend', async () => {
