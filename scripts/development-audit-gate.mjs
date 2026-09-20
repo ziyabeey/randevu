@@ -24,6 +24,16 @@ export function classifyFileRecords(files, expectedCount) {
   return classifyPaths(paths);
 }
 
+export function parseReviewerAllowlist(raw) {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 // Roles come only from configured identities AND an explicit structured receipt.
 // Arbitrary prose, GitHub approvals and generic code-review bots are never role evidence.
 export function verifiedReceipts(items, pr, allowlist = {}) {
