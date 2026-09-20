@@ -381,22 +381,21 @@ test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but n
   );
 });
 
-test('coordination Issue #65 current receipt is included in the live spend fence', async () => {
+test('coordination Issue #65 cannot satisfy the v1 final review authority', async () => {
   const receipt = reviewReceipt({
     id: 400,
     url: 'https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-400',
     timestamp: '2026-09-20T00:05:00Z',
   });
-  await assert.rejects(
-    verifyDevelopmentReviewLiveState(request(), {
-      repository: 'ziyabeey1-ai/randevu',
-      token: 'test-token',
-      tasksText: tasks(),
-      reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
-      fetchImpl: liveFetch({ comments: [reviewLaunch()], coordinationComments: [receipt] }),
-    }),
-    /R2_REVIEW_ALREADY_RECEIVED/,
-  );
+  const result = await verifyDevelopmentReviewLiveState(request(), {
+    repository: 'ziyabeey1-ai/randevu',
+    token: 'test-token',
+    tasksText: tasks(),
+    reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+    fetchImpl: liveFetch({ comments: [reviewLaunch()], coordinationComments: [receipt] }),
+    git() { throw new Error('raw-head proof must not fetch merge ref'); },
+  });
+  assert.equal(result.status, 'LIVE_REVIEW_STATE_VERIFIED');
 });
 
 test('equal-time additional current receipt blocks follow-up without comparing cross-endpoint IDs', async () => {
