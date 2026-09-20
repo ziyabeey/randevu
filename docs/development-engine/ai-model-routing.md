@@ -68,6 +68,18 @@ stable.
    - They do not replace R1/R2, introduce mandatory sequential gates, classify
      every PR, repeat general engine telemetry, or gain approval/merge authority.
 
+9. **Y1/Y2: optional, assignment-only ChatGPT writers**
+   - Y1 delivers a scoped new S/M task in one draft PR; label `dev-write-y1`.
+   - Y2 repairs frozen findings on an explicitly handed-over existing PR/branch;
+     label `dev-write-y2`. It does not invoke Qwen's new-task route for repairs.
+   - Both hourly tasks follow the [writer contract](automations/hourly-writers.md)
+     and the existing kepenk-implementer Skill. A tick/label is not an assignment.
+   - They replace the selected implementer only after explicit single-writer
+     assignment/handoff, never run alongside that implementer on the same scope,
+     and never self-review, approve, mark ready, merge or touch live data/settings.
+   - Task creation does not prove coding/test runtime capability. The first real
+     assignment must establish actual delivery and available execution evidence.
+
 ## Routing rules
 
 - **Clear, bounded implementation:** coordinator → selected implementer (Qwen when
@@ -92,6 +104,10 @@ stable.
   the [R3/R4 label and assignment contract](automations/r3-r4-review.md). Separate
   questions are necessary to assign both. Their ordinary advisory results do not
   enter the R1/R2 API receipt validator or reopen completed work on an hourly tick.
+- **Hourly implementation:** choose Y1 for an approved new task slice or explicitly
+  hand the current PR to Y2 for bounded repair. Follow the [writer contract](automations/hourly-writers.md).
+  No valid assignment means no work; delivery returns to the normal CI/reviewer/
+  coordinator chain. This does not change the deterministic Dispatcher's role enum.
 
 ## API-fired independent review roles
 
