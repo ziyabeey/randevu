@@ -36,7 +36,7 @@ export function parseReviewerAllowlist(raw) {
 
 // Roles come only from configured identities AND an explicit structured receipt.
 // Arbitrary prose, GitHub approvals and generic code-review bots are never role evidence.
-export function verifiedReceipts(items, pr, allowlist = {}) {
+export function authenticatedReceipts(items, pr, allowlist = {}) {
   if (!allowlist || typeof allowlist !== 'object' || Array.isArray(allowlist)
       || roles.some((role) => allowlist[role] !== undefined && !Array.isArray(allowlist[role]))) {
     return [];
@@ -59,7 +59,7 @@ export function verifiedReceipts(items, pr, allowlist = {}) {
       || prNumber !== pr.number || !sha.test(headSha ?? '') || !sha.test(baseSha ?? '')
       || (item.commit_id && item.commit_id !== headSha)
       || !Number.isSafeInteger(item.id) || !item.html_url) continue;
-    const receiptTime = Date.parse(item.submitted_at ?? item.created_at ?? item.updated_at ?? '');
+    const receiptTime = Date.parse(item.updated_at ?? item.submitted_at ?? item.created_at ?? '');
     found.push({
       role, author, headSha, baseSha, id: item.id,
       observedAt: Number.isFinite(receiptTime) ? receiptTime : 0,
@@ -67,6 +67,13 @@ export function verifiedReceipts(items, pr, allowlist = {}) {
       freshness: headSha === pr.head.sha && baseSha === pr.base.sha ? 'current' : 'stale',
     });
   }
+  // Preserve every authenticated receipt. Callers that need current candidate evidence
+  // must select exact head+base before considering chronology.
+  return found.sort((a, b) => b.observedAt - a.observedAt || b.id - a.id);
+}
+
+export function verifiedReceipts(items, pr, allowlist = {}) {
+  const found = authenticatedReceipts(items, pr, allowlist);
   // Comment IDs and review IDs are unrelated namespaces. Use GitHub timestamps for chronology;
   // numeric ID is only a deterministic tie-breaker within equal/missing timestamps.
   return roles.flatMap((role) => found.filter((r) => r.role === role)
