@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 import {
   buildDevelopmentReviewObservation,
@@ -15,6 +16,8 @@ const oldHead = sha('c');
 const merge = sha('d');
 const caseFp = 'e'.repeat(64);
 const requestFp = 'f'.repeat(64);
+const challenge = '1'.repeat(64);
+const challengeHash = createHash('sha256').update(challenge).digest('hex');
 
 function pr(overrides = {}) {
   return {
@@ -67,7 +70,7 @@ function r0Review(body = '<!-- ccr-overview-v2 -->\n**Findings:** None') {
   };
 }
 
-function r2Receipt(reviewedHead = oldHead, verdict = 'ACCEPTABLE', reviewedBase = main, requestFingerprint = requestFp) {
+function r2Receipt(reviewedHead = oldHead, verdict = 'ACCEPTABLE', reviewedBase = main, requestFingerprint = requestFp, receiptChallenge = challenge) {
   return {
     id: 600,
     created_at: '2026-09-19T17:00:00Z',
@@ -80,14 +83,15 @@ function r2Receipt(reviewedHead = oldHead, verdict = 'ACCEPTABLE', reviewedBase 
       baseSha: reviewedBase,
       dispatcherCaseFingerprint: caseFp,
       requestFingerprint,
+      receiptChallenge,
       verdict,
     })} -->`,
-    user: { login: 'kepenk-r2-reviewer[bot]' },
+    user: { login: 'claude[bot]' },
     author_association: 'NONE',
   };
 }
 
-function r2Launch(reviewedHead = oldHead, reviewedBase = main, requestFingerprint = requestFp) {
+function r2Launch(reviewedHead = oldHead, reviewedBase = main, requestFingerprint = requestFp, receiptChallengeHash = challengeHash) {
   return {
     id: 590,
     created_at: '2026-09-19T16:59:00Z',
@@ -101,6 +105,7 @@ function r2Launch(reviewedHead = oldHead, reviewedBase = main, requestFingerprin
       `- base main: ${reviewedBase}`,
       `- dispatcher case: ${caseFp}`,
       `- role request: ${requestFingerprint}`,
+      `- receipt challenge hash: ${receiptChallengeHash}`,
     ].join('\n'),
   };
 }
@@ -116,7 +121,7 @@ function input(overrides = {}) {
     prReviews: [r0Review()],
     prComments: [r2Launch(), r2Receipt()],
     coordinationComments: [],
-    reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
+    reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
     reviewThreads: {
       data: {
         repository: {
