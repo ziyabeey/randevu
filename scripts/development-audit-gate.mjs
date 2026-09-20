@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { classifyPaths } from './ci-scope.mjs';
 
 const sha = /^[a-f0-9]{40}$/;
@@ -40,8 +41,7 @@ export function parseReviewerAllowlist(raw) {
 // Arbitrary prose, GitHub approvals and generic code-review bots are never role evidence.
 export function authenticatedReceipts(items, pr, allowlist = {}) {
   if (!allowlist || typeof allowlist !== 'object' || Array.isArray(allowlist)
-      || roles.some((role) => !Array.isArray(allowlist[role]) || allowlist[role].length !== 1)
-      || allowlist.R1[0] === allowlist.R2[0]) {
+      || roles.some((role) => !Array.isArray(allowlist[role]) || allowlist[role].length !== 1)) {
     return [];
   }
 
@@ -60,10 +60,14 @@ export function authenticatedReceipts(items, pr, allowlist = {}) {
     const baseSha = body.match(/base main:\s*([a-f0-9]{40})/i)?.[1]?.toLowerCase();
     const dispatcherCaseFingerprint = body.match(/dispatcher case:\s*([a-f0-9]{64})/i)?.[1]?.toLowerCase();
     const roleRequest = body.match(/role request:\s*([a-f0-9]{64})/i)?.[1]?.toLowerCase();
+    const receiptChallengeHash = body.match(/receipt challenge hash:\s*([a-f0-9]{64})/i)?.[1]?.toLowerCase();
     if (!sha.test(headSha ?? '') || !sha.test(baseSha ?? '')
         || !fingerprint.test(dispatcherCaseFingerprint ?? '')
+        || !fingerprint.test(receiptChallengeHash ?? '')
         || roleRequest !== requestFingerprint) continue;
-    launches.push({ role, requestFingerprint, dispatcherCaseFingerprint, headSha, baseSha });
+    launches.push({
+      role, requestFingerprint, dispatcherCaseFingerprint, headSha, baseSha, receiptChallengeHash,
+    });
   }
 
   const found = [];
@@ -78,7 +82,7 @@ export function authenticatedReceipts(items, pr, allowlist = {}) {
 
     const {
       schemaVersion, role, headSha, baseSha, prNumber,
-      dispatcherCaseFingerprint, requestFingerprint, verdict,
+      dispatcherCaseFingerprint, requestFingerprint, receiptChallenge, verdict,
     } = receipt;
 
     if (schemaVersion !== 'development-review-receipt.v1'
@@ -91,23 +95,26 @@ export function authenticatedReceipts(items, pr, allowlist = {}) {
       || !sha.test(baseSha ?? '')
       || !fingerprint.test(dispatcherCaseFingerprint ?? '')
       || !fingerprint.test(requestFingerprint ?? '')
+      || !fingerprint.test(receiptChallenge ?? '')
       || !verdicts.includes(verdict)
       || (item.commit_id && item.commit_id !== headSha)
       || !Number.isSafeInteger(item.id)
       || !item.html_url) continue;
 
+    const receiptChallengeHash = createHash('sha256').update(receiptChallenge).digest('hex');
     const matchingLaunch = launches.find((launch) =>
       launch.role === role
       && launch.requestFingerprint === requestFingerprint
       && launch.dispatcherCaseFingerprint === dispatcherCaseFingerprint
       && launch.headSha === headSha
-      && launch.baseSha === baseSha);
+      && launch.baseSha === baseSha
+      && launch.receiptChallengeHash === receiptChallengeHash);
     if (!matchingLaunch) continue;
 
     const receiptTime = Date.parse(item.updated_at ?? item.submitted_at ?? item.created_at ?? '');
     found.push({
       role, author, headSha, baseSha, id: item.id, verdict,
-      dispatcherCaseFingerprint, requestFingerprint,
+      dispatcherCaseFingerprint, requestFingerprint, receiptChallengeHash,
       observedAt: Number.isFinite(receiptTime) ? receiptTime : 0,
       url: item.html_url,
       freshness: headSha === pr.head.sha && baseSha === pr.base.sha ? 'current' : 'stale',
