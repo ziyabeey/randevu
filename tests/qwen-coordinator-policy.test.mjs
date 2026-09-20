@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   automaticActionAllowed,
+  canonicalTaskBinding,
   classifyPull,
   githubPollIntervalSeconds,
   notificationEvent,
@@ -61,6 +62,19 @@ const task = { id: 'F00-01', status: 'İncelemede', evidence: 'PR #7' };
 test('TASKS parser recognizes product and DEV-ENGINE rows', () => {
   assert.equal(parseTasksText('| [F00-01](x) | Test | X | İncelemede | A | PR #7 |')[0].id, 'F00-01');
   assert.equal(parseTasksText('| DEV-ENGINE-07 | Test | X | Çalışılıyor | A | PR #207 |')[0].id, 'DEV-ENGINE-07');
+});
+
+test('TASKS binding requires one row owned by one open pull request', () => {
+  const canonical = { id: 'F00-01', prNumbers: [7, 6] };
+  assert.equal(canonicalTaskBinding([canonical], [{ number: 7 }], 7).task, canonical);
+  assert.equal(canonicalTaskBinding([], [{ number: 7 }], 7).reason, 'TASK_NOT_MAPPED');
+  assert.equal(canonicalTaskBinding([
+    canonical,
+    { id: 'F00-02', prNumbers: [7] },
+  ], [{ number: 7 }], 7).reason, 'TASK_BINDING_AMBIGUOUS');
+  assert.equal(canonicalTaskBinding([
+    canonical,
+  ], [{ number: 7 }, { number: 6 }], 7).reason, 'TASK_ROW_SHARED_BY_OPEN_PULLS');
 });
 
 test('automatic action allowlist is explicit and fail-closed', () => {

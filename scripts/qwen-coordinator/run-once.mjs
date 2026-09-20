@@ -11,6 +11,7 @@ import path from 'node:path';
 import {
   CHOICES,
   automaticActionAllowed,
+  canonicalTaskBinding,
   ciForPull,
   classifyPull,
   githubPollIntervalSeconds,
@@ -411,8 +412,9 @@ async function gatherRemote(config, previousState, options = {}) {
 }
 
 function taskForPull(pr, remote, state) {
-  const canonical = (remote.tasks ?? []).find((task) => task.prNumbers.includes(pr.number));
-  if (canonical) return canonical;
+  const binding = canonicalTaskBinding(remote.tasks, remote.pulls, pr.number);
+  if (binding.task) return binding.task;
+  if (binding.reason !== 'TASK_NOT_MAPPED') return null;
   const closure = state.closurePulls?.[String(pr.number)];
   if (!closure) return null;
   return {
@@ -935,8 +937,11 @@ function reviewDispatchBody(config, action, pr, decision, remote) {
 }
 
 function updateTaskForCloseout(remote, pending, config) {
-  const task = remote.tasks.find((item) => item.id === pending.taskId && item.prNumbers.includes(pending.prNumber));
-  if (!task) throw new Error(`Closeout task ${pending.taskId} not found on current main`);
+  const binding = canonicalTaskBinding(remote.tasks, remote.pulls, pending.prNumber);
+  const task = binding.task;
+  if (!task || task.id !== pending.taskId) {
+    throw new Error(`Closeout task ${pending.taskId} binding invalid on current main: ${binding.reason ?? 'TASK_ID_MISMATCH'}`);
+  }
   if (task.status !== 'İncelemede' && task.status !== "Main'de / kabul açık") {
     throw new Error(`Closeout refused for task status ${task.status}`);
   }
