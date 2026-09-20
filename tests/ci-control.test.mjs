@@ -226,3 +226,23 @@ test('full runner propagates a real failed child and cannot emit its success rec
     assert.equal(readFileSync(output, 'utf8'), '');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
+
+test('standalone docs PR inherits only its exact green main push baseline', () => {
+  const base = 'a'.repeat(40), head = 'b'.repeat(40);
+  const event = { action: 'opened', pull_request: { base: { sha: base, ref: 'main' }, head: { sha: head } } };
+  const git = (args) => args[0] === 'merge-base' ? base : 'M\0TASKS.md\0';
+  const receipt = { headSha: base, runId: 42, origin: 'main-push' };
+  const opts = { eventName: 'pull_request', event, git, trustedReceipts: [receipt] };
+  assert.equal(selectScope(opts).reason, 'green-main-docs-only');
+  for (const change of [
+    { trustedReceipts: [{ ...receipt, origin: 'pr-full' }] },
+    { trustedReceipts: [{ ...receipt, headSha: 'c'.repeat(40) }] },
+    { trustedReceipts: [] },
+    { event: { ...event, pull_request: { ...event.pull_request, base: { sha: base, ref: 'stacked' } } } },
+    { git: (args) => args[0] === 'merge-base' ? 'c'.repeat(40) : 'M\0TASKS.md\0' },
+    { git: (args) => args[0] === 'merge-base' ? base : 'M\0TASKS.md\0M\0worker/app.ts\0' },
+  ]) assert.equal(selectScope({ ...opts, ...change }).mode, 'code');
+  // A docs-only main gate is not a full-code receipt for a code descendant.
+  assert.equal(selectScope({ ...opts, event: { ...event, action: 'synchronize' },
+    git: (args) => args[0] === 'merge-base' ? base : 'M\0worker/app.ts\0' }).mode, 'code');
+});
