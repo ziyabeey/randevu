@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  checkoutShaFromJobLogs,
   normalizeLiveReviewIdentity,
   taskPrNumbersFromRow,
   verifyDevelopmentReviewLiveState,
@@ -53,6 +54,7 @@ function response(body, status = 200) {
     ok: status >= 200 && status < 300,
     status,
     async json() { return body; },
+    async text() { return typeof body === 'string' ? body : JSON.stringify(body); },
   };
 }
 
@@ -91,9 +93,25 @@ function liveFetch(overrides = {}) {
         }],
       });
     }
+    if (url.endsWith('/actions/jobs/200/logs')) {
+      const checkoutSha = overrides.checkoutSha ?? head;
+      return response([
+        '2026-09-20T00:00:00.0000000Z [command]/usr/bin/git log -1 --format=%H',
+        `2026-09-20T00:00:00.0000001Z ${checkoutSha}`,
+      ].join('\n'));
+    }
     throw new Error(`unexpected URL: ${url}`);
   };
 }
+
+test('checkout log parser returns one exact checkout SHA and rejects ambiguity', () => {
+  const log = [
+    '2026-09-20T00:00:00.0000000Z [command]/usr/bin/git log -1 --format=%H',
+    `2026-09-20T00:00:00.0000001Z ${merge}`,
+  ].join('\n');
+  assert.equal(checkoutShaFromJobLogs(log), merge);
+  assert.equal(checkoutShaFromJobLogs(`${log}\n2026-09-20T00:00:01Z [command]/usr/bin/git log -1 --format=%H\n2026-09-20T00:00:02Z ${head}`), null);
+});
 
 test('normalization keeps exact task candidate and CI identity', () => {
   const identity = normalizeLiveReviewIdentity(request());
@@ -220,7 +238,7 @@ test('bound merge-ref checkout is revalidated against the live PR merge ref', as
     repository: 'ziyabeey1-ai/randevu',
     token: 'test-token',
     tasksText: tasks(),
-    fetchImpl: liveFetch(),
+    fetchImpl: liveFetch({ checkoutSha: merge }),
     git(args) {
       calls.push(args);
       if (args[0] === 'fetch') return { status: 0, stdout: '', stderr: '' };
@@ -232,6 +250,20 @@ test('bound merge-ref checkout is revalidated against the live PR merge ref', as
   assert.deepEqual(calls[0].slice(-2), ['origin', 'refs/pull/183/merge']);
 });
 
+test('claimed tested checkout must equal the checkout recorded by the cited CI job', async () => {
+  await assert.rejects(
+    verifyDevelopmentReviewLiveState(request({
+      ci: { testedCheckoutSha: merge, explicitlyBoundToHead: true },
+    }), {
+      repository: 'ziyabeey1-ai/randevu',
+      token: 'test-token',
+      tasksText: tasks(),
+      fetchImpl: liveFetch({ checkoutSha: head }),
+    }),
+    /LIVE_CI_TESTED_CHECKOUT_MISMATCH/,
+  );
+});
+
 test('merge-ref mismatch fails closed before model spend', async () => {
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request({
@@ -240,7 +272,7 @@ test('merge-ref mismatch fails closed before model spend', async () => {
       repository: 'ziyabeey1-ai/randevu',
       token: 'test-token',
       tasksText: tasks(),
-      fetchImpl: liveFetch(),
+      fetchImpl: liveFetch({ checkoutSha: merge }),
       git(args) {
         if (args[0] === 'fetch') return { status: 0, stdout: '', stderr: '' };
         if (args[0] === 'rev-parse') return { status: 0, stdout: sha('d') + '\n', stderr: '' };
