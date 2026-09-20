@@ -54,7 +54,7 @@ function atomicWrite(file, content, mode = 0o600) {
 }
 
 function commandScript(content) {
-  return `#!/bin/zsh\nset -euo pipefail\n${content}\n`;
+  return `#!/bin/zsh\nset -eu\n${content}\n`;
 }
 
 function shellQuote(value) {
