@@ -50,6 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           persist-credentials: false
 
       - uses: actions/setup-node@v4

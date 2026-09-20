@@ -84,7 +84,7 @@ function taskIdFromCell(cell) {
 export function taskPrNumbersFromRow(row, repository) {
   const matches = Array.from(String(row ?? '').matchAll(
     /https:\/\/github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/pull\/([1-9][0-9]*)(?=[^0-9]|$)/g,
-  );
+  ));
   return [...new Set(matches
     .filter((match) => match[1] === repository)
     .map((match) => Number(match[2])))]

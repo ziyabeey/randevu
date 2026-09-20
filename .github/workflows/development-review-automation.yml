@@ -1,0 +1,171 @@
+name: Development Review Automation
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  pull_request_review:
+    types: [submitted]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: development-review-automation-${{ github.event.workflow_run.pull_requests[0].number || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Build trusted Dispatcher observation
+    if: >-
+      ${{
+        (
+          github.event_name == 'workflow_run' &&
+          github.event.workflow_run.event == 'pull_request' &&
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.pull_requests[0].number != null
+        ) ||
+        (
+          github.event_name == 'pull_request_review' &&
+          github.event.action == 'submitted' &&
+          github.event.pull_request.number != null
+        )
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      should_route: ${{ steps.route.outputs.should_route }}
+      observation_json: ${{ steps.route.outputs.observation_json }}
+      evidence_json: ${{ steps.route.outputs.evidence_json }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number || github.event.pull_request.number }}
+      EVENT_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+
+    steps:
+      - name: Checkout canonical main automation
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Gather authoritative live evidence
+        id: gather
+        run: |
+          set -euo pipefail
+          evidence="${RUNNER_TEMP}/development-review-evidence"
+          mkdir -p "${evidence}"
+
+          gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" > "${evidence}/pr.json"
+          gh api "repos/${REPOSITORY}/branches/main" > "${evidence}/main.json"
+
+          if [ -n "${EVENT_RUN_ID}" ]; then
+            gh api "repos/${REPOSITORY}/actions/runs/${EVENT_RUN_ID}" > "${evidence}/runs.json"
+          else
+            head_sha="$(node -e 'const p=require(process.argv[1]); process.stdout.write(p.head.sha)' "${evidence}/pr.json")"
+            gh api "repos/${REPOSITORY}/actions/runs?head_sha=${head_sha}&event=pull_request&status=success&per_page=100" \
+              > "${evidence}/runs.json"
+          fi
+
+          if ! node scripts/prepare-development-review-observation.mjs select-run \
+              "${evidence}/runs.json" "${evidence}/pr.json" > "${evidence}/run-id.txt"; then
+            printf 'ready=false\n' >> "${GITHUB_OUTPUT}"
+            printf 'No successful current-head PR CI run is eligible for independent review delivery.\n' >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          run_id="$(tr -d '[:space:]' < "${evidence}/run-id.txt")"
+          run_attempt="$(node -e 'const r=require(process.argv[1]); const xs=r.workflow_runs || [r]; const x=xs.flat(Infinity).find(v=>String(v.id)===process.argv[2]); process.stdout.write(String(x.run_attempt))' "${evidence}/runs.json" "${run_id}")"
+          gh api "repos/${REPOSITORY}/actions/runs/${run_id}/attempts/${run_attempt}/jobs?per_page=100" \
+            > "${evidence}/jobs.json"
+          gh api --paginate --slurp "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews?per_page=100" \
+            > "${evidence}/pr-reviews.json"
+          gh api --paginate --slurp "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
+            > "${evidence}/pr-comments.json"
+          gh api --paginate --slurp "repos/${REPOSITORY}/issues/65/comments?per_page=100" \
+            > "${evidence}/coordination-comments.json"
+          owner="${REPOSITORY%%/*}"
+          name="${REPOSITORY#*/}"
+          gh api graphql \
+            -F owner="${owner}" \
+            -F name="${name}" \
+            -F number="${PR_NUMBER}" \
+            -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated} pageInfo{hasNextPage}}}}}' \
+            > "${evidence}/review-threads.json"
+
+          printf 'ready=true\n' >> "${GITHUB_OUTPUT}"
+          printf 'evidence_dir=%s\n' "${evidence}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run pure Dispatcher and authorize only required reviews
+        id: route
+        if: ${{ steps.gather.outputs.ready == 'true' }}
+        env:
+          EVIDENCE_DIR: ${{ steps.gather.outputs.evidence_dir }}
+        run: |
+          set -euo pipefail
+          package="${RUNNER_TEMP}/development-review-package.json"
+          blocked="${RUNNER_TEMP}/development-review-blocked.txt"
+          if ! node scripts/prepare-development-review-observation.mjs build \
+              "${EVIDENCE_DIR}" "${REPOSITORY}" TASKS.md > "${package}" 2> "${blocked}"; then
+            printf 'should_route=false\n' >> "${GITHUB_OUTPUT}"
+            {
+              printf '## Independent review automation\n\n'
+              printf 'No Routine was fired: `%s`\n' "$(tr '\n' ' ' < "${blocked}")"
+            } >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          node - "${package}" "${GITHUB_OUTPUT}" "${GITHUB_STEP_SUMMARY}" <<'NODE'
+          const { appendFileSync, readFileSync } = require('node:fs');
+          const [packageFile, outputFile, summaryFile] = process.argv.slice(2);
+          const prepared = JSON.parse(readFileSync(packageFile, 'utf8'));
+          const action = prepared.dispatcher?.recommendation?.suggestedAction ?? 'unknown';
+          const roles = prepared.dispatcher?.recommendation?.eligibleRoles ?? [];
+          const shouldRoute = action === 'request_required_reviews' && roles.length > 0;
+          appendFileSync(outputFile, `should_route=${shouldRoute}\n`);
+          appendFileSync(outputFile, `observation_json=${JSON.stringify(prepared.observation)}\n`);
+          appendFileSync(outputFile, `evidence_json=${JSON.stringify(prepared.evidence)}\n`);
+          appendFileSync(summaryFile, [
+            '## Independent review automation',
+            '',
+            `- task: \`${prepared.observation.task.id}\``,
+            `- PR: #${prepared.observation.candidate.prNumber}`,
+            `- exact head: \`${prepared.observation.candidate.headSha}\``,
+            `- CI run/job/attempt: \`${prepared.observation.ci.run}/${prepared.observation.ci.job}/${prepared.observation.ci.attempt}\``,
+            `- Dispatcher action: \`${action}\``,
+            `- eligible roles: \`${roles.join(',') || 'none'}\``,
+            `- Routine delivery authorized: \`${shouldRoute}\``,
+            '',
+          ].join('\n'));
+          NODE
+
+  dispatch:
+    name: Deliver Dispatcher-required independent reviews
+    needs: prepare
+    if: ${{ needs.prepare.outputs.should_route == 'true' }}
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: read
+    uses: ./.github/workflows/development-escalation-router.yml
+    with:
+      observation_json: ${{ needs.prepare.outputs.observation_json }}
+      evidence_json: ${{ needs.prepare.outputs.evidence_json }}
+    secrets:
+      CLAUDE_HAIKU_ROUTINE_TOKEN: ${{ secrets.CLAUDE_HAIKU_ROUTINE_TOKEN }}
+      CLAUDE_R1_ROUTINE_TOKEN: ${{ secrets.CLAUDE_R1_ROUTINE_TOKEN }}
+      CLAUDE_R2_ROUTINE_TOKEN: ${{ secrets.CLAUDE_R2_ROUTINE_TOKEN }}

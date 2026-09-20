@@ -275,6 +275,15 @@ the Dispatcher result from the same observation/evidence, requires the same case
 fingerprint and exact current CI provenance, then fires only the roles listed in
 `eligibleRoles`.
 
+`Development Review Automation` rebuilds that observation from canonical `main`
+and live GitHub evidence after either successful PR CI or a later submitted R0
+review. This second trigger closes the normal race where CI finishes before the
+native R0 receipt. Drafts, forks, stale heads, base/main drift, non-PR CI, missing
+TASKS binding, open R0 findings and review budgets not stated in the bound TASKS
+row all fail closed before a Routine secret is used. A TASKS row that explicitly
+names only R2 makes R1 not required for that candidate; if neither role is named,
+the requirement remains unknown and no independent Routine is fired.
+
 R1 and R2 remain independent role contracts. The repository routes to role
 endpoints rather than model names:
 

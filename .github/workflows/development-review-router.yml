@@ -45,13 +45,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Require canonical main workflow ref
-        run: |
-          set -euo pipefail
-          test "${GITHUB_REF}" = "refs/heads/main"
-
       - uses: actions/checkout@v4
         with:
+          ref: main
           persist-credentials: false
 
       - uses: actions/setup-node@v4
@@ -159,6 +155,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           persist-credentials: false
 
       - uses: actions/setup-node@v4
@@ -301,6 +298,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           persist-credentials: false
 
       - uses: actions/setup-node@v4

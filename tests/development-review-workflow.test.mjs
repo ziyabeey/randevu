@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const escalation = await readFile(new URL('../.github/workflows/development-escalation-router.yml', import.meta.url), 'utf8');
 const review = await readFile(new URL('../.github/workflows/development-review-router.yml', import.meta.url), 'utf8');
+const automation = await readFile(new URL('../.github/workflows/development-review-automation.yml', import.meta.url), 'utf8');
 
 test('Development Escalation Router calls review delivery only for deterministic required-review work', () => {
   assert.doesNotMatch(escalation, /actions: write/);
@@ -64,4 +65,25 @@ test('role-specific reservation plus exact-head concurrency prevents duplicate R
   assert.match(review, /launch receipt only; R1 remains open/);
   assert.match(review, /launch receipt only; R2 remains open/);
   assert.doesNotMatch(review, /- status: \`RESERVED\`/);
+});
+
+test('green CI and a later R0 receipt both re-evaluate the trusted Dispatcher route', () => {
+  assert.match(automation, /workflow_run:/);
+  assert.match(automation, /workflows: \[CI\]/);
+  assert.match(automation, /pull_request_review:/);
+  assert.match(automation, /types: \[submitted\]/);
+  assert.match(automation, /prepare-development-review-observation\.mjs build/);
+  assert.match(automation, /suggestedAction/);
+  assert.match(automation, /action === 'request_required_reviews'/);
+  assert.match(automation, /uses: \.\/\.github\/workflows\/development-escalation-router\.yml/);
+});
+
+test('automatic review delivery uses canonical main code and fails closed before secrets', () => {
+  assert.match(automation, /Checkout canonical main automation[\s\S]*ref: main/);
+  assert.match(automation, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(automation, /pulls\/\$\{PR_NUMBER\}/);
+  assert.match(automation, /actions\/runs\/\$\{run_id\}\/attempts\/\$\{run_attempt\}\/jobs/);
+  assert.match(automation, /needs\.prepare\.outputs\.should_route == 'true'/);
+  assert.match(escalation, /actions\/checkout@v4[\s\S]*ref: main/);
+  assert.ok((review.match(/ref: main/g) ?? []).length >= 3);
 });
