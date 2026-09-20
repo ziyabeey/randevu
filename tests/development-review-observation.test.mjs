@@ -153,6 +153,27 @@ test('a current acceptable R2 receipt is never re-fired', () => {
   assert.deepEqual(built.dispatcher.recommendation.eligibleRoles, []);
 });
 
+test('a newer stale receipt cannot shadow an existing current receipt', () => {
+  const current = {
+    ...r2Receipt(head, 'ACCEPTABLE', main),
+    id: 601,
+    created_at: '2026-09-19T17:00:00Z',
+    html_url: `https://github.com/${repository}/pull/187#issuecomment-601`,
+  };
+  const delayedStale = {
+    ...r2Receipt(oldHead, 'INCOMPLETE', oldHead),
+    id: 999,
+    created_at: '2026-09-19T19:00:00Z',
+    html_url: `https://github.com/${repository}/pull/187#issuecomment-999`,
+  };
+  const built = buildDevelopmentReviewObservation(input({ prComments: [current, delayedStale] }));
+  assert.equal(built.observation.reviews.r2.reviewedHeadSha, head);
+  assert.equal(built.observation.reviews.r2.reviewedBaseSha, main);
+  assert.equal(built.observation.reviews.r2.sourceRef.endsWith('#issuecomment-601'), true);
+  assert.equal(built.dispatcher.state.reviews.r2.status, 'acceptable_current');
+  assert.equal(built.dispatcher.recommendation.suggestedAction, 'assess_current_evidence');
+});
+
 test('prose or unallowlisted commenters cannot forge an independent review receipt', () => {
   const prose = {
     ...r2Receipt(head),
