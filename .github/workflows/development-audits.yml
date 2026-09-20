@@ -387,7 +387,7 @@ jobs:
 
   effective_state_report:
     name: Publish Effective State advisory
-    needs: effective_state
+    needs: [classify, effective_state]
     if: ${{ needs.effective_state.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
@@ -398,11 +398,21 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       REPOSITORY: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+      CLASSIFIED_HEAD: ${{ needs.classify.outputs.head }}
+      CLASSIFIED_BASE: ${{ needs.classify.outputs.base }}
       SUMMARY: ${{ needs.effective_state.outputs.summary }}
     steps:
       - name: Upsert advisory PR comment
         run: |
           set -euo pipefail
+          live_pr="$(gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}")"
+          live_head="$(jq -r '.head.sha // empty' <<<"${live_pr}")"
+          live_base="$(jq -r '.base.sha // empty' <<<"${live_pr}")"
+          if [ "${live_head}" != "${CLASSIFIED_HEAD}" ] || [ "${live_base}" != "${CLASSIFIED_BASE}" ]; then
+            echo "Discard Effective State advisory: PR identity moved during audit."
+            exit 0
+          fi
+
           marker='<!-- development-effective-state -->'
           body="${RUNNER_TEMP}/effective-state.md"
           {
