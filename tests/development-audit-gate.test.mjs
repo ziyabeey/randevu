@@ -1,14 +1,60 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { authenticatedReceipts, classifyFileRecords, freshnessReport, parseReviewerAllowlist, sameIdentity, verifiedReceipts } from '../scripts/development-audit-gate.mjs';
+
 const head = 'a'.repeat(40), base = 'b'.repeat(40);
+const caseFp = 'c'.repeat(64), requestFp = 'd'.repeat(64);
 const pr = { number: 201, state: 'open', head: { sha: head }, base: { sha: base }, user: { login: 'author' } };
-const allowlist = { R1: ['security'], R2: ['integration'] };
-function source(change = {}) {
-  const r = { role: 'R1', prNumber: 201, headSha: head, baseSha: base, ...change };
-  return { id: 42, user: { login: 'security' }, html_url: 'https://github.com/example/repo/pull/201#issuecomment-42',
-    body: `<!-- development-review-receipt ${JSON.stringify(r)} -->` };
+const allowlist = { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] };
+
+function receipt(change = {}, itemChange = {}) {
+  const marker = {
+    schemaVersion: 'development-review-receipt.v1',
+    role: 'R1',
+    prNumber: 201,
+    headSha: head,
+    baseSha: base,
+    dispatcherCaseFingerprint: caseFp,
+    requestFingerprint: requestFp,
+    verdict: 'ACCEPTABLE',
+    ...change,
+  };
+  return {
+    id: 42,
+    user: { login: 'kepenk-r1-reviewer[bot]' },
+    html_url: 'https://github.com/example/repo/pull/201#issuecomment-42',
+    body: `<!-- development-review-receipt ${JSON.stringify(marker)} -->`,
+    ...itemChange,
+  };
 }
+
+function launch(change = {}, itemChange = {}) {
+  const role = change.role ?? 'R1';
+  const requestFingerprint = change.requestFingerprint ?? requestFp;
+  const dispatcherCaseFingerprint = change.dispatcherCaseFingerprint ?? caseFp;
+  const headSha = change.headSha ?? head;
+  const baseSha = change.baseSha ?? base;
+  return {
+    id: 7,
+    user: { login: 'github-actions[bot]' },
+    html_url: 'https://github.com/example/repo/pull/201#issuecomment-7',
+    body: [
+      `<!-- development-review-launch:${role.toLowerCase()}:${requestFingerprint} -->`,
+      '## Development Routine launch',
+      '- status: ROUTINE_TRIGGERED',
+      `- exact head: ${headSha}`,
+      `- base main: ${baseSha}`,
+      `- dispatcher case: ${dispatcherCaseFingerprint}`,
+      `- role request: ${requestFingerprint}`,
+    ].join('\n'),
+    ...itemChange,
+  };
+}
+
+function evidence(change = {}, itemChange = {}) {
+  return [launch(change), receipt(change, itemChange)];
+}
+
 test('docs classifier includes rename origin and refuses incomplete evidence', () => {
   assert.equal(classifyFileRecords([{ filename: 'TASKS.md' }], 1), 'docs');
   assert.equal(classifyFileRecords([{ filename: 'TASKS.md' }], 2), 'unknown');
@@ -16,6 +62,7 @@ test('docs classifier includes rename origin and refuses incomplete evidence', (
   assert.equal(classifyFileRecords([{ filename: 'docs/a.md', status: 'renamed' }], 1), 'unknown');
   assert.equal(classifyFileRecords([], 0), 'code');
 });
+
 test('malformed reviewer allowlist fails closed to no trusted roles', () => {
   assert.deepEqual(parseReviewerAllowlist('{not-json'), {});
   assert.deepEqual(parseReviewerAllowlist('[]'), {});
@@ -23,52 +70,72 @@ test('malformed reviewer allowlist fails closed to no trusted roles', () => {
   assert.deepEqual(parseReviewerAllowlist(JSON.stringify(allowlist)), allowlist);
 });
 
-test('Copilot/Codex generic reviews and prose approval never become independent roles', () => {
-  for (const login of ['copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]', 'author', 'stranger']) {
-    assert.deepEqual(verifiedReceipts([{ ...source(), user: { login } }], pr, allowlist), []);
+test('only one dedicated disjoint publisher per role can produce independent receipts', () => {
+  for (const login of ['copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]', 'github-actions[bot]', 'author', 'stranger']) {
+    assert.deepEqual(verifiedReceipts([launch(), { ...receipt(), user: { login } }], pr, allowlist), []);
   }
-  for (const login of ['copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]', 'author']) {
-    assert.deepEqual(verifiedReceipts([{ ...source(), user: { login } }], pr, { R1: [login] }), []);
-  }
-  assert.deepEqual(verifiedReceipts([{ ...source(), body: 'R1 ACCEPTABLE current head approved' }], pr, allowlist), []);
-  assert.deepEqual(verifiedReceipts([source()], pr), []);
-  assert.deepEqual(verifiedReceipts([source()], pr, { R1: ['security'], R2: ['security'] }), []);
-  assert.deepEqual(verifiedReceipts([source()], pr, { R1: ['security'], R2: 'integration' }), []);
-});
-test('receipt identity and head/base freshness are deterministic', () => {
-  assert.equal(verifiedReceipts([source()], pr, allowlist)[0].freshness, 'current');
-  for (const delta of [{ headSha: 'c'.repeat(40) }, { baseSha: 'c'.repeat(40) }])
-    assert.equal(verifiedReceipts([source(delta)], pr, allowlist)[0].freshness, 'stale');
-  for (const delta of [{ headSha: 'abc' }, { role: 'R2' }, { prNumber: 200 }])
-    assert.deepEqual(verifiedReceipts([source(delta)], pr, allowlist), []);
-  assert.deepEqual(verifiedReceipts([{ ...source(), commit_id: 'c'.repeat(40) }], pr, allowlist), []);
-  assert.deepEqual(verifiedReceipts([{ ...source(), body: source().body.repeat(2) }], pr, allowlist), []);
-  assert.match(freshnessReport(pr, verifiedReceipts([source()], pr, allowlist)), /R2: unknown/);
+  assert.deepEqual(verifiedReceipts([launch(), { ...receipt(), body: 'R1 ACCEPTABLE current head approved' }], pr, allowlist), []);
+  assert.deepEqual(verifiedReceipts(evidence(), pr), []);
+  assert.deepEqual(verifiedReceipts(evidence(), pr, { R1: ['same[bot]'], R2: ['same[bot]'] }), []);
+  assert.deepEqual(verifiedReceipts(evidence(), pr, { R1: ['a[bot]', 'b[bot]'], R2: ['c[bot]'] }), []);
+  assert.deepEqual(verifiedReceipts(evidence(), pr, { R1: ['a[bot]'], R2: 'c[bot]' }), []);
 });
 
-test('authenticated receipt collection preserves current and stale evidence before advisory reduction', () => {
-  const current = { ...source(), id: 41, created_at: '2026-09-20T00:00:00Z' };
+test('receipt identity, launch binding and head/base freshness are deterministic', () => {
+  const current = verifiedReceipts(evidence(), pr, allowlist)[0];
+  assert.equal(current.freshness, 'current');
+  assert.equal(current.requestFingerprint, requestFp);
+  assert.equal(current.dispatcherCaseFingerprint, caseFp);
+  assert.equal(current.verdict, 'ACCEPTABLE');
+
+  for (const [index, delta] of [{ headSha: 'e'.repeat(40) }, { baseSha: 'f'.repeat(40) }].entries()) {
+    const changed = { ...delta, requestFingerprint: String(index + 1).repeat(64) };
+    assert.equal(verifiedReceipts([launch(changed), receipt(changed)], pr, allowlist)[0].freshness, 'stale');
+  }
+
+  for (const delta of [
+    { headSha: 'abc' },
+    { prNumber: 200 },
+    { requestFingerprint: 'bad' },
+    { dispatcherCaseFingerprint: 'bad' },
+    { verdict: 'APPROVED' },
+    { schemaVersion: 'development-review-receipt.v0' },
+  ]) assert.deepEqual(verifiedReceipts([launch(delta), receipt(delta)], pr, allowlist), []);
+
+  assert.deepEqual(verifiedReceipts([receipt()], pr, allowlist), []);
+  assert.deepEqual(verifiedReceipts([launch({ requestFingerprint: 'e'.repeat(64) }), receipt()], pr, allowlist), []);
+  assert.deepEqual(verifiedReceipts([launch(), { ...receipt(), commit_id: 'e'.repeat(40) }], pr, allowlist), []);
+  assert.deepEqual(verifiedReceipts([launch(), { ...receipt(), body: receipt().body.repeat(2) }], pr, allowlist), []);
+  const report = freshnessReport(pr, verifiedReceipts(evidence(), pr, allowlist));
+  assert.match(report, /request/);
+  assert.match(report, /R2: unknown/);
+});
+
+test('authenticated receipt collection preserves current and stale launch-bound evidence before advisory reduction', () => {
+  const staleChange = { headSha: 'e'.repeat(40), requestFingerprint: 'f'.repeat(64) };
+  const current = { ...receipt(), id: 41, created_at: '2026-09-20T00:00:00Z' };
   const stale = {
-    ...source({ headSha: 'c'.repeat(40) }),
+    ...receipt(staleChange),
     id: 99,
     created_at: '2026-09-20T00:01:00Z',
     html_url: 'https://github.com/example/repo/pull/201#issuecomment-99',
   };
-  const all = authenticatedReceipts([current, stale], pr, allowlist);
+  const all = authenticatedReceipts([launch(), current, launch(staleChange, { id: 8 }), stale], pr, allowlist);
   assert.equal(all.length, 2);
   assert.equal(all.some((r) => r.freshness === 'current'), true);
   assert.equal(all.some((r) => r.freshness === 'stale'), true);
 });
 
 test('cross-endpoint receipt selection uses timestamps before unrelated numeric IDs', () => {
-  const older = { ...source(), id: 999, created_at: '2026-09-20T00:00:00Z' };
+  const staleChange = { headSha: 'e'.repeat(40), requestFingerprint: 'f'.repeat(64) };
+  const older = { ...receipt(), id: 999, created_at: '2026-09-20T00:00:00Z' };
   const newer = {
-    ...source({ headSha: 'c'.repeat(40) }),
+    ...receipt(staleChange),
     id: 1,
     submitted_at: '2026-09-20T00:01:00Z',
     html_url: 'https://github.com/example/repo/pull/201#pullrequestreview-1',
   };
-  const selected = verifiedReceipts([older, newer], pr, allowlist);
+  const selected = verifiedReceipts([launch(), older, launch(staleChange, { id: 8 }), newer], pr, allowlist);
   assert.equal(selected[0].id, 1);
   assert.equal(selected[0].freshness, 'stale');
 });
@@ -82,7 +149,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-function runAdapter({ mode = 'stale', files = [{ filename: 'src/a.ts' }], comments = [source()], commentsSequence = null,
+function runAdapter({ mode = 'stale', files = [{ filename: 'src/a.ts' }], comments = evidence(), commentsSequence = null,
   moveAt = 0, event = {}, compare = null } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), 'audit-adapter-'));
   try {
@@ -127,7 +194,7 @@ function runAdapter({ mode = 'stale', files = [{ filename: 'src/a.ts' }], commen
 }
 test('adapter makes zero provider calls; metadata/no receipts creates no advisory', () => {
   for (const opts of [{ files: [{ filename: 'TASKS.md' }], comments: [] }, { comments: [] },
-    { comments: [{ ...source(), user: { login: 'copilot-pull-request-reviewer[bot]' } }] }]) {
+    { comments: [launch(), { ...receipt(), user: { login: 'copilot-pull-request-reviewer[bot]' } }] }]) {
     const r = runAdapter(opts);
     assert.equal(r.status, 0, r.stderr);
     assert.ok(r.calls.every((c) => c.method === 'GET' && c.url.startsWith('https://api.github.com/')));
@@ -147,8 +214,8 @@ test('adapter refuses to publish after late base drift and replaces legacy false
 });
 test('adapter refreshes receipt collections immediately before publishing', () => {
   const old = { id: 99, user: { login: 'github-actions[bot]' }, body: '<!-- development-stale-review -->\nold advisory' };
-  const arriving = { ...source(), created_at: '2026-09-20T00:02:00Z' };
-  const r = runAdapter({ comments: [old], commentsSequence: [[old], [old, arriving]] });
+  const arriving = { ...receipt(), created_at: '2026-09-20T00:02:00Z' };
+  const r = runAdapter({ comments: [old], commentsSequence: [[old], [old, launch(), arriving]] });
   assert.equal(r.status, 0, r.stderr);
   const writes = r.calls.filter((c) => c.method === 'PATCH');
   assert.equal(writes.length, 1);
@@ -161,11 +228,12 @@ test('adapter refreshes receipt collections immediately before publishing', () =
 test('docs-only delta avoids model calls but still publishes deterministic stale receipt freshness', () => {
   const event = { action: 'synchronize', before: 'd'.repeat(40), pull_request: { head: { sha: head } } };
   const compare = { status: 'ahead', merge_base_commit: { sha: event.before }, files: [{ filename: 'TASKS.md' }] };
+  const staleChange = { headSha: event.before, requestFingerprint: 'e'.repeat(64) };
   const staleReceipt = {
-    ...source({ headSha: event.before }),
+    ...receipt(staleChange),
     created_at: '2026-09-20T00:00:00Z',
   };
-  const docs = runAdapter({ event, compare, comments: [staleReceipt] });
+  const docs = runAdapter({ event, compare, comments: [launch(staleChange), staleReceipt] });
   assert.equal(docs.status, 0, docs.stderr);
   const docsWrites = docs.calls.filter((c) => c.method === 'POST');
   assert.equal(docsWrites.length, 1);
