@@ -285,9 +285,11 @@ function positiveReceipt(item, role, pr, config) {
   if (explicitNegative(body, role)) return false;
 
   if (role === 'R0') {
+    const claimsUnresolved = /unresolved[^\n]*(?:issue|finding|remain)|(?:issue|finding)[^\n]*remain[^\n]*unresolved/i.test(body);
     const nativeCopilot = /copilot-pull-request-reviewer/i.test(author)
       && text(item.commitOid).toLowerCase() === text(pr.headSha).toLowerCase()
-      && /\*\*Findings:\*\*\s*None\b/i.test(body);
+      && /\*\*Findings:\*\*\s*None\b/i.test(body)
+      && !claimsUnresolved;
     return nativeCopilot;
   }
   return independentReceipt(item, role, pr, config.trustedReceiptActorsByRole);
@@ -307,17 +309,24 @@ function independentNegative(item, role, pr, allowlist) {
     || author === text(pr.author)) return false;
   if (INDEPENDENT_ROLES.some((other) => other !== role && (allowlist[other] ?? []).includes(author))) return false;
   const body = text(item.body);
-  const exactHead = text(item.commitOid).toLowerCase() === text(pr.headSha).toLowerCase()
-    || body.toLowerCase().includes(text(pr.headSha).toLowerCase());
+  const exactHead = item.source === 'review'
+    ? text(item.commitOid).toLowerCase() === text(pr.headSha).toLowerCase()
+    : text(item.commitOid).toLowerCase() === text(pr.headSha).toLowerCase()
+      || body.toLowerCase().includes(text(pr.headSha).toLowerCase());
   return exactHead && new RegExp(`\\b${role}\\b`, 'i').test(body);
 }
 
 function negativeReceipt(item, role, pr, config) {
-  if (!explicitNegative(item.body, role)) return false;
   if (role === 'R0') {
-    return /copilot-pull-request-reviewer/i.test(text(item.author))
+    const body = text(item.body);
+    const nativeCopilot = /copilot-pull-request-reviewer/i.test(text(item.author))
       && text(item.commitOid).toLowerCase() === text(pr.headSha).toLowerCase();
+    if (!nativeCopilot) return false;
+    const nativeNoFindings = /\*\*Findings:\*\*\s*None\b/i.test(body);
+    const claimsUnresolved = /unresolved[^\n]*(?:issue|finding|remain)|(?:issue|finding)[^\n]*remain[^\n]*unresolved/i.test(body);
+    return !nativeNoFindings || claimsUnresolved;
   }
+  if (!explicitNegative(item.body, role)) return false;
   return independentNegative(item, role, pr, config.trustedReceiptActorsByRole);
 }
 

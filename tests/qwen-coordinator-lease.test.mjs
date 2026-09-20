@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -23,6 +24,23 @@ test('directory lease can only be released by its owner', async (context) => {
   assert.equal(acquireDirectoryLease(lockDir, { token: 'owner-b' }), null);
   assert.equal(releaseDirectoryLease(lockDir, 'owner-b'), false);
   assert.equal(releaseDirectoryLease(lockDir, 'owner-a'), true);
+});
+
+test('lease metadata is complete before the lock directory is atomically published', async (context) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'qwen-coordinator-publish-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const lockDir = path.join(root, 'run.lock');
+  assert.throws(() => acquireDirectoryLease(lockDir, {
+    token: 'interrupted',
+    beforePublish: (candidateDir) => {
+      assert.equal(existsSync(lockDir), false);
+      assert.equal(existsSync(path.join(candidateDir, 'owner.json')), true);
+      throw new Error('simulated interruption');
+    },
+  }), /simulated interruption/);
+  assert.equal(existsSync(lockDir), false);
+  assert.equal(acquireDirectoryLease(lockDir, { token: 'next-owner' }), 'next-owner');
+  assert.equal(releaseDirectoryLease(lockDir, 'next-owner'), true);
 });
 
 test('stale lease recovery requires proof that the owner process is gone', async (context) => {

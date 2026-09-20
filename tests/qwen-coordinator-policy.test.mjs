@@ -290,6 +290,50 @@ test('a newer exact-head blocker supersedes an older independent acceptance', ()
   assert.equal(reviewReceipts(reviewed, [], config).r2.status, 'accepted');
 });
 
+test('latest exact-head native R0 findings supersede an older clean review', () => {
+  const reviewed = pull({ reviews: [{
+    id: 10,
+    author: 'copilot-pull-request-reviewer[bot]',
+    commitOid: head,
+    body: '**Findings:** None',
+    submittedAt: '2026-01-01T00:00:00Z',
+  }, {
+    id: 11,
+    author: 'copilot-pull-request-reviewer[bot]',
+    commitOid: head,
+    body: '**Findings:** 1 high',
+    submittedAt: '2026-01-02T00:00:00Z',
+  }] });
+  assert.equal(reviewReceipts(reviewed, [], config).r0.status, 'missing');
+  reviewed.reviews[1].body = 'Three unresolved findings remain.\n**Findings:** None';
+  assert.equal(reviewReceipts(reviewed, [], config).r0.status, 'missing');
+  reviewed.reviews[1].body = '**Findings:** None';
+  assert.equal(reviewReceipts(reviewed, [], config).r0.status, 'accepted');
+});
+
+test('review-sourced independent blocker requires native commit identity', () => {
+  const reviewed = pull({ files: [{ path: 'scripts/browser-flow.mjs' }] });
+  reviewed.comments.push({
+    id: 12,
+    author: 'integration-reviewer',
+    body: `<!-- development-review-receipt ${JSON.stringify({
+      role: 'R2', prNumber: 7, headSha: head, baseSha: main,
+    })} -->`,
+    createdAt: '2026-01-01T00:00:00Z',
+    url: 'https://github.com/example/repo/pull/7#issuecomment-12',
+  });
+  reviewed.reviews.push({
+    id: 13,
+    author: 'integration-reviewer',
+    body: `VERDICT: R2 = BLOCKER\nREVIEWED SHA: ${head}`,
+    submittedAt: '2026-01-02T00:00:00Z',
+    url: 'https://github.com/example/repo/pull/7#pullrequestreview-13',
+  });
+  assert.equal(reviewReceipts(reviewed, [], config).r2.status, 'accepted');
+  reviewed.reviews.at(-1).commitOid = head;
+  assert.equal(reviewReceipts(reviewed, [], config).r2.status, 'missing');
+});
+
 test('truncated remote evidence blocks an otherwise merge-eligible pull', () => {
   const result = classifyPull(pull(), {
     config,

@@ -19,14 +19,22 @@ function defaultProcessAlive(pid) {
   }
 }
 
-function createLease(lockDir, owner) {
-  mkdirSync(lockDir);
-  writeFileSync(path.join(lockDir, 'owner.json'), `${JSON.stringify(owner)}\n`, {
-    encoding: 'utf8',
-    flag: 'wx',
-    mode: 0o600,
-  });
-  return owner.token;
+function createLease(lockDir, owner, beforePublish = () => {}) {
+  const candidateDir = `${lockDir}.candidate-${process.pid}-${randomUUID()}`;
+  mkdirSync(candidateDir, { mode: 0o700 });
+  try {
+    writeFileSync(path.join(candidateDir, 'owner.json'), `${JSON.stringify(owner)}\n`, {
+      encoding: 'utf8',
+      flag: 'wx',
+      mode: 0o600,
+    });
+    beforePublish(candidateDir);
+    renameSync(candidateDir, lockDir);
+    return owner.token;
+  } catch (error) {
+    rmSync(candidateDir, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 function quarantineOwnedLease(lockDir, expectedOwner) {
@@ -57,12 +65,13 @@ export function acquireDirectoryLease(lockDir, options = {}) {
   const token = options.token ?? randomUUID();
   const staleMs = options.staleMs ?? 10 * 60 * 1000;
   const processAlive = options.processAlive ?? defaultProcessAlive;
+  const beforePublish = options.beforePublish ?? (() => {});
   const owner = { schemaVersion: 1, pid, token, acquiredAt: new Date(now).toISOString() };
 
   try {
-    return createLease(lockDir, owner);
+    return createLease(lockDir, owner, beforePublish);
   } catch (error) {
-    if (error?.code !== 'EEXIST') throw error;
+    if (!['EEXIST', 'ENOTEMPTY'].includes(error?.code)) throw error;
   }
 
   let existing;
@@ -78,9 +87,9 @@ export function acquireDirectoryLease(lockDir, options = {}) {
   const quarantineDir = quarantineOwnedLease(lockDir, existing);
   if (!quarantineDir) return null;
   try {
-    return createLease(lockDir, owner);
+    return createLease(lockDir, owner, beforePublish);
   } catch (error) {
-    if (error?.code === 'EEXIST') return null;
+    if (['EEXIST', 'ENOTEMPTY'].includes(error?.code)) return null;
     throw error;
   } finally {
     rmSync(quarantineDir, { recursive: true, force: true });
