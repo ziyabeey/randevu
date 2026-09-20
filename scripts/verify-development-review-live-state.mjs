@@ -268,12 +268,16 @@ export async function verifyDevelopmentReviewLiveState(input, {
     ? String(input?.role ?? '').toUpperCase()
     : null;
   if (requestedRole === 'R1' || requestedRole === 'R2') {
-    const [comments, reviews] = await Promise.all([
+    const [comments, reviews, coordinationComments] = await Promise.all([
       githubCollection(fetchImpl, `${api}/issues/${identity.pr}/comments`, token),
       githubCollection(fetchImpl, `${api}/pulls/${identity.pr}/reviews`, token),
+      githubCollection(fetchImpl, `${api}/issues/65/comments`, token),
     ]);
-    const currentReceipts = authenticatedReceipts([...comments, ...reviews], pr, reviewerAllowlist)
-      .filter((entry) => entry.role === requestedRole && entry.freshness === 'current');
+    const currentReceipts = authenticatedReceipts(
+      [...comments, ...reviews, ...coordinationComments],
+      pr,
+      reviewerAllowlist,
+    ).filter((entry) => entry.role === requestedRole && entry.freshness === 'current');
 
     const reviewMode = input?.reviewMode;
     if (reviewMode === 'FOLLOW_UP') {
@@ -286,9 +290,12 @@ export async function verifyDevelopmentReviewLiveState(input, {
       if (!previousSourceRef || !Number.isFinite(previousObservedAt) || !Number.isSafeInteger(previousId)) {
         blocked('FOLLOW_UP_RECEIPT_SNAPSHOT_MISSING');
       }
-      const newerCurrent = currentReceipts.find((entry) =>
-        entry.observedAt > previousObservedAt
-        || (entry.observedAt === previousObservedAt && entry.id > previousId));
+      const newerCurrent = currentReceipts.find((entry) => {
+        const represented = entry.url === previousSourceRef
+          && entry.observedAt === previousObservedAt;
+        if (represented) return false;
+        return entry.observedAt >= previousObservedAt;
+      });
       if (newerCurrent) blocked(`${requestedRole}_REVIEW_ALREADY_RECEIVED`);
     } else if (currentReceipts.length > 0) {
       blocked(`${requestedRole}_REVIEW_ALREADY_RECEIVED`);
