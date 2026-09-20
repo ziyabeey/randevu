@@ -82,8 +82,13 @@ test('generated wrapper paths are shell-quoted literally', async (context) => {
   ]);
   const report = '# literal path works\n';
   await writeFile(path.join(coordinatorHome, 'reports', 'latest.md'), report);
-  const result = await execFileAsync(path.join(binRoot, 'qwen-coordinator-status'), [], { cwd: root });
+  const wrapper = path.join(binRoot, 'qwen-coordinator-status');
+  const result = await execFileAsync('/bin/sh', [wrapper], { cwd: root });
   assert.equal(result.stdout, report);
+  if (process.platform === 'darwin') {
+    const nativeResult = await execFileAsync(wrapper, [], { cwd: root });
+    assert.equal(nativeResult.stdout, report);
+  }
   await assert.rejects(readFile(path.join(root, 'injected')), /ENOENT/);
   await assert.rejects(readFile(path.join(root, 'injected-too')), /ENOENT/);
 });
