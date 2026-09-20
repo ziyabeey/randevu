@@ -1,0 +1,92 @@
+# Escalation delivery
+
+This delivery layer sits after the pure Development Dispatcher. It does not turn
+the reducer into a workflow-state authority and does not replace R0, R1, R2, CI,
+TASKS or coordinator acceptance.
+
+## Routing boundary
+
+The deterministic result is classified into exactly one external disposition:
+
+- `NO_ACTION`
+- `DETERMINISTIC_ACTION`
+- `HUMAN_REQUIRED`
+- `REASONING_REQUIRED`
+
+Unknown future dispatcher actions fail closed to `HUMAN_REQUIRED`. Only
+`REASONING_REQUIRED` may launch the Haiku Evidence Context Compressor.
+
+Haiku is not a reviewer and does not answer the escalated technical question. It
+removes duplicate and historical noise while preserving candidate-bound facts,
+contradictions, unknowns, obligations and source provenance. Haiku then initiates
+the bounded Opus handoff exactly once.
+
+## Trusted case binding
+
+The GitHub router requests a short-lived GitHub Actions OIDC token with a custom
+`aud` value binding:
+
+- case fingerprint,
+- source-envelope byte count,
+- workflow SHA.
+
+The token is signed by GitHub and also carries repository, repository ID, workflow
+reference and runner claims. The Haiku session copies that attestation unchanged
+into `/tmp/kepenk-opus-handoff.json` and runs the fixed command:
+
+```text
+node scripts/fire-opus-escalation.mjs --package /tmp/kepenk-opus-handoff.json
+```
+
+`fire-opus-escalation.mjs` verifies the GitHub signature and claims against the
+public GitHub OIDC JWKS before it compares the package fingerprint and byte count.
+The model cannot make an altered case pass by changing both a package value and a
+command-line expectation. No payload-derived value is interpolated into shell
+syntax.
+
+The GitHub router receives only Haiku Routine credentials. Opus credentials remain
+inside the Haiku Routine environment and are read only by the validated adapter.
+If signature, provenance, transport or Routine validation fails, the handoff stops
+with a non-secret `OPUS_HANDOFF_BLOCKED` reason.
+
+## Provenance and compression receipt
+
+The escalation envelope includes the normalized Dispatcher facts as well as
+conditions, obligations and recommendation. This preserves exact CI run/job/
+attempt identities, reviewed SHAs and proof source references for compression.
+The case fingerprint hashes the same merged source-reference set emitted in the
+envelope.
+
+The successful Opus launch receipt reports:
+
+- case fingerprint,
+- source-envelope bytes,
+- compressed-package bytes,
+- compression ratio,
+- attested GitHub run ID,
+- Claude session ID and URL.
+
+These fields measure compression behavior without treating Haiku prose as project
+or acceptance authority. The fingerprint remains a dedupe key, not a status store.
+
+## Triggering
+
+`.github/workflows/development-escalation-router.yml` remains manual/reusable. A
+future event collector may call it only after producing the same normalized
+observation contract. Model calls must never move ahead of the Dispatcher.
+
+The resulting chain is:
+
+```text
+canonical observation -> Dispatcher -> disposition -> Haiku -> attested Opus handoff
+```
+
+`TASKS.md` remains the sole durable live task/status authority.
+
+## Activation gates
+
+The delivery layer may enter main only when the current exact head has required CI
+green, all material review threads resolved, current main integrated, and the
+DEV-ENGINE-02 TASKS row present. Activation does not add an automatic PR-event
+collector; the router remains manual/reusable until its event budget and dedupe
+contract are separately accepted.

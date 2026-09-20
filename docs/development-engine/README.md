@@ -241,6 +241,29 @@ prevented escaped-defect evidence before recommending change. Unknown is not zer
 small samples do not justify broad percentages. No control registry database,
 optional triage, optimizer or policy engine is introduced.
 
+## Dispatcher v0 experiment
+
+`scripts/development-dispatcher.mjs` is a small read-only deterministic
+coordination reducer behind the existing effective-state audit. Its architecture
+is three pure layers: `normalizeFacts()` preserves observed UNKNOWNs without
+optimistic defaults, `deriveConditions()` exposes orthogonal freshness,
+provenance, contradictions and independent obligations, and
+`recommendNextAction()` emits only an advisory/refusal-capable recommendation
+with reason codes and decision provenance. `deriveDispatcherResult()` is a
+convenience facade; it is not a workflow-state authority.
+
+`scripts/run-development-dispatcher.mjs` reads observation JSON from a file or
+stdin and prints facts, conditions/state, contradictions, unknowns, obligations
+and the advisory recommendation. It does not launch agents or write GitHub
+state. CI failure is evidence to investigate, not automatic candidate
+causality; docs-only carry-forward requires explicit confirmation; R1/R2 remain
+independent obligations; the reducer never computes merge-ready or acceptance.
+
+The observation remains disposable: TASKS is the sole durable live task/status
+source, Issue #65 remains temporary coordination, and PR/CI/receipts remain
+candidate-bound evidence. No dispatcher DB, queue, scheduler, workflow DSL or
+second status surface is introduced.
+
 ## Validation
 
 ```bash

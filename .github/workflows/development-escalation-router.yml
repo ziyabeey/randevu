@@ -1,0 +1,131 @@
+name: Development Escalation Router
+
+on:
+  workflow_dispatch:
+    inputs:
+      observation_json:
+        description: 'Normalized Development Dispatcher observation JSON'
+        required: true
+        type: string
+      evidence_json:
+        description: 'Optional material evidence JSON for the escalation envelope'
+        required: false
+        default: '{}'
+        type: string
+  workflow_call:
+    inputs:
+      observation_json:
+        required: true
+        type: string
+      evidence_json:
+        required: false
+        default: '{}'
+        type: string
+    secrets:
+      CLAUDE_HAIKU_ROUTINE_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  route:
+    name: Deterministic escalation routing
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      disposition: ${{ steps.route.outputs.disposition }}
+      case_fingerprint: ${{ steps.route.outputs.case_fingerprint }}
+      source_envelope_bytes: ${{ steps.route.outputs.source_envelope_bytes }}
+    env:
+      OBSERVATION_JSON: ${{ inputs.observation_json }}
+      EVIDENCE_JSON: ${{ inputs.evidence_json }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Materialize validated inputs
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { writeFileSync } = require('node:fs');
+          const observation = JSON.parse(process.env.OBSERVATION_JSON);
+          const evidence = JSON.parse(process.env.EVIDENCE_JSON || '{}');
+          writeFileSync(`${process.env.RUNNER_TEMP}/dispatcher-observation.json`, JSON.stringify(observation));
+          writeFileSync(`${process.env.RUNNER_TEMP}/escalation-evidence.json`, JSON.stringify(evidence));
+          NODE
+
+      - name: Run pure Development Dispatcher
+        run: |
+          set -euo pipefail
+          node scripts/run-development-dispatcher.mjs \
+            "${RUNNER_TEMP}/dispatcher-observation.json" \
+            > "${RUNNER_TEMP}/dispatcher-result.json"
+
+      - name: Build escalation envelope
+        id: route
+        run: |
+          set -euo pipefail
+          node scripts/run-development-escalation-envelope.mjs \
+            "${RUNNER_TEMP}/dispatcher-result.json" \
+            "${RUNNER_TEMP}/escalation-evidence.json" \
+            > "${RUNNER_TEMP}/escalation-route.json"
+
+          disposition="$(jq -r '.envelope.disposition' "${RUNNER_TEMP}/escalation-route.json")"
+          fingerprint="$(jq -r '.envelope.caseFingerprint' "${RUNNER_TEMP}/escalation-route.json")"
+          source_bytes="$(jq -r '.envelope.sourceEnvelopeBytes' "${RUNNER_TEMP}/escalation-route.json")"
+          [[ "${fingerprint}" =~ ^[a-f0-9]{64}$ ]]
+          [[ "${source_bytes}" =~ ^[1-9][0-9]*$ ]]
+          printf 'disposition=%s\n' "${disposition}" >> "${GITHUB_OUTPUT}"
+          printf 'case_fingerprint=%s\n' "${fingerprint}" >> "${GITHUB_OUTPUT}"
+          printf 'source_envelope_bytes=%s\n' "${source_bytes}" >> "${GITHUB_OUTPUT}"
+
+          {
+            printf '## Development Escalation Router\n\n'
+            printf -- '- disposition: `%s`\n' "${disposition}"
+            printf -- '- case fingerprint: `%s`\n' "${fingerprint}"
+            printf -- '- source envelope bytes: `%s`\n' "${source_bytes}"
+            printf -- '- dispatcher action: `%s`\n' "$(jq -r '.envelope.dispatcher.recommendation.suggestedAction // "unknown"' "${RUNNER_TEMP}/escalation-route.json")"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Request GitHub OIDC case attestation
+        if: ${{ steps.route.outputs.disposition == 'REASONING_REQUIRED' }}
+        env:
+          CASE_FINGERPRINT: ${{ steps.route.outputs.case_fingerprint }}
+          SOURCE_ENVELOPE_BYTES: ${{ steps.route.outputs.source_envelope_bytes }}
+        run: |
+          set -euo pipefail
+          audience="kepenk-escalation:v1:${CASE_FINGERPRINT}:${SOURCE_ENVELOPE_BYTES}:${GITHUB_SHA}"
+          encoded_audience="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "${audience}")"
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${encoded_audience}" \
+            | jq -er '.value' > "${RUNNER_TEMP}/github-oidc-attestation.jwt"
+          test -s "${RUNNER_TEMP}/github-oidc-attestation.jwt"
+
+      - name: Prepare attested Haiku Routine request
+        if: ${{ steps.route.outputs.disposition == 'REASONING_REQUIRED' }}
+        run: |
+          set -euo pipefail
+          node scripts/prepare-haiku-escalation-request.mjs \
+            "${RUNNER_TEMP}/escalation-route.json" \
+            "${RUNNER_TEMP}/github-oidc-attestation.jwt" \
+            > "${RUNNER_TEMP}/haiku-fire-body.json"
+          test "$(jq -r '.text | length' "${RUNNER_TEMP}/haiku-fire-body.json")" -gt 0
+
+      - name: Fire Haiku Evidence Compressor
+        if: ${{ steps.route.outputs.disposition == 'REASONING_REQUIRED' }}
+        env:
+          CLAUDE_ROUTINE_URL: ${{ vars.CLAUDE_HAIKU_ROUTINE_URL }}
+          CLAUDE_ROUTINE_TOKEN: ${{ secrets.CLAUDE_HAIKU_ROUTINE_TOKEN }}
+        run: |
+          set -euo pipefail
+          node scripts/fire-claude-routine.mjs \
+            --body "${RUNNER_TEMP}/haiku-fire-body.json"

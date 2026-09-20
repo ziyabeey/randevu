@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import { classifyPaths, diffPaths, selectScope } from '../scripts/ci-scope.mjs';
+import { classifyPaths, diffPaths, normalizeTrustedReceipts, selectScope } from '../scripts/ci-scope.mjs';
 import { gateResult } from '../scripts/ci-result.mjs';
 import { stages, runCode } from '../scripts/ci-code.mjs';
 
@@ -30,13 +30,145 @@ test('missing, unknown or unreadable event data always falls back to full checks
   const base = 'a'.repeat(40), head = 'b'.repeat(40);
   const event = { pull_request: { base: { sha: base }, head: { sha: head } } };
   const git = (args) => args[0] === 'merge-base' ? base : 'M\0README.md\0';
-  assert.equal(selectScope({ eventName: 'pull_request', event, git }).mode, 'docs');
+  assert.equal(selectScope({ eventName: 'pull_request', event, git }).mode, 'code');
   assert.equal(selectScope({ eventName: 'push', event: { before: base, after: head }, git }).mode, 'docs');
   for (const options of [{}, { eventName: 'workflow_dispatch', event },
     { eventName: 'push', event: { before: '0'.repeat(40), after: head } },
     { eventName: 'pull_request', event, git: () => { throw new Error('missing object'); } }]) {
     assert.equal(selectScope(options).mode, 'code');
   }
+});
+
+
+
+test('trusted receipt normalization accepts only valid unique run identities', () => {
+  const good = { headSha: 'b'.repeat(40), runId: 1234 };
+  assert.deepEqual(normalizeTrustedReceipts([good]), [good]);
+  assert.deepEqual(normalizeTrustedReceipts([
+    good,
+    { ...good, runId: 9999 },
+    { headSha: 'not-a-sha', runId: 3 },
+    { headSha: 'e'.repeat(40), runId: 0 },
+  ]), [good]);
+  assert.deepEqual(normalizeTrustedReceipts({}), []);
+});
+
+test('an unproven docs-only PR still runs full code checks', () => {
+  const base = 'a'.repeat(40);
+  const head = 'b'.repeat(40);
+  const event = {
+    action: 'opened',
+    number: 187,
+    pull_request: { number: 187, base: { sha: base }, head: { sha: head } },
+  };
+  const git = (args) => {
+    if (args[0] === 'merge-base') return base;
+    if (args[0] === 'diff') return 'M\0TASKS.md\0M\0docs/handoffs/F12-05.md\0';
+    throw new Error(`unexpected git call: ${args.join(' ')}`);
+  };
+  const result = selectScope({ eventName: 'pull_request', event, git });
+  assert.equal(result.mode, 'code');
+  assert.equal(result.reason, 'git-diff');
+});
+
+test('docs-only descendant reuses a full-code receipt only when current base is already in that green head', () => {
+  const base = 'a'.repeat(40);
+  const previous = 'b'.repeat(40);
+  const head = 'c'.repeat(40);
+  const event = {
+    action: 'synchronize',
+    number: 187,
+    pull_request: { number: 187, base: { sha: base }, head: { sha: head } },
+  };
+  const git = (args) => {
+    if (args[0] === 'merge-base' && args[1] === base && args[2] === head) return base;
+    if (args[0] === 'merge-base' && args[1] === base && args[2] === previous) return base;
+    if (args[0] === 'merge-base' && args[1] === previous && args[2] === head) return previous;
+    if (args[0] === 'diff' && args.includes(base) && args.includes(head))
+      return 'M\0src/PublicBookingPage.tsx\0M\0TASKS.md\0';
+    if (args[0] === 'diff' && args.includes(previous) && args.includes(head))
+      return 'M\0TASKS.md\0M\0docs/handoffs/F12-05.md\0';
+    throw new Error(`unexpected git call: ${args.join(' ')}`);
+  };
+  const result = selectScope({
+    eventName: 'pull_request',
+    event,
+    git,
+    trustedReceipts: [{ headSha: previous, runId: 35443459168 }],
+  });
+  assert.equal(result.mode, 'docs');
+  assert.equal(result.reason, 'green-descendant-docs-only');
+  assert.equal(result.inheritedFrom, previous);
+  assert.equal(result.inheritedRunId, 35443459168);
+});
+
+test('base drift invalidates an older green receipt even when the latest commit is docs-only', () => {
+  const currentBase = 'd'.repeat(40);
+  const oldBase = 'a'.repeat(40);
+  const previous = 'b'.repeat(40);
+  const head = 'c'.repeat(40);
+  const event = {
+    action: 'synchronize',
+    number: 187,
+    pull_request: { number: 187, base: { sha: currentBase }, head: { sha: head } },
+  };
+  const git = (args) => {
+    if (args[0] === 'merge-base' && args[1] === currentBase && args[2] === head) return currentBase;
+    if (args[0] === 'merge-base' && args[1] === currentBase && args[2] === previous) return oldBase;
+    if (args[0] === 'merge-base' && args[1] === previous && args[2] === head) return previous;
+    if (args[0] === 'diff' && args.includes(currentBase) && args.includes(head))
+      return 'M\0src/PublicBookingPage.tsx\0M\0TASKS.md\0';
+    throw new Error(`unexpected git call: ${args.join(' ')}`);
+  };
+  const result = selectScope({
+    eventName: 'pull_request',
+    event,
+    git,
+    trustedReceipts: [{ headSha: previous, runId: 7 }],
+  });
+  assert.equal(result.mode, 'code');
+});
+
+test('non-ancestor or code-changing descendants cannot inherit a green receipt', () => {
+  const base = 'a'.repeat(40);
+  const previous = 'b'.repeat(40);
+  const head = 'c'.repeat(40);
+  const event = {
+    action: 'synchronize',
+    number: 187,
+    pull_request: { number: 187, base: { sha: base }, head: { sha: head } },
+  };
+  const fullDiff = 'M\0src/PublicBookingPage.tsx\0M\0TASKS.md\0';
+
+  const nonAncestorGit = (args) => {
+    if (args[0] === 'merge-base' && args[1] === base && args[2] === head) return base;
+    if (args[0] === 'merge-base' && args[1] === base && args[2] === previous) return base;
+    if (args[0] === 'merge-base' && args[1] === previous && args[2] === head) return 'd'.repeat(40);
+    if (args[0] === 'diff') return fullDiff;
+    throw new Error(`unexpected git call: ${args.join(' ')}`);
+  };
+  assert.equal(selectScope({
+    eventName: 'pull_request',
+    event,
+    git: nonAncestorGit,
+    trustedReceipts: [{ headSha: previous, runId: 8 }],
+  }).mode, 'code');
+
+  const codeDeltaGit = (args) => {
+    if (args[0] === 'merge-base' && args[1] === base && args[2] === head) return base;
+    if (args[0] === 'merge-base' && args[1] === base && args[2] === previous) return base;
+    if (args[0] === 'merge-base' && args[1] === previous && args[2] === head) return previous;
+    if (args[0] === 'diff' && args.includes(base) && args.includes(head)) return fullDiff;
+    if (args[0] === 'diff' && args.includes(previous) && args.includes(head))
+      return 'M\0src/PublicBookingPage.tsx\0';
+    throw new Error(`unexpected git call: ${args.join(' ')}`);
+  };
+  assert.equal(selectScope({
+    eventName: 'pull_request',
+    event,
+    git: codeDeltaGit,
+    trustedReceipts: [{ headSha: previous, runId: 9 }],
+  }).mode, 'code');
 });
 
 test('actual Git history classifies multi-file pushes, rename and deletion conservatively', () => {
@@ -55,6 +187,22 @@ test('actual Git history classifies multi-file pushes, rename and deletion conse
     git(['rm', 'source.ts']); git(['commit', '-qm', 'remove code']); const head = git(['rev-parse', 'HEAD']);
     assert.equal(selectScope({ root, eventName: 'push', event: { before: base, after: head } }).mode, 'code');
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('CI receipt lookup is anonymous, authoritative and requires prior full-code completion', () => {
+  const workflow = readFileSync(path.resolve('.github/workflows/ci.yml'), 'utf8');
+  assert.match(workflow, /actions\/workflows\/ci\.yml\/runs/);
+  assert.match(workflow, /actions\/runs\/\$\{run_id\}\/jobs/);
+  assert.match(workflow, /Run all required code checks/);
+  assert.match(workflow, /Require the selected checks to complete/);
+  assert.match(workflow, /Resolve trusted prior full-code CI receipts/);
+  assert.doesNotMatch(workflow, /pull_requests\[\]\?; \.number == \$pr and \.base\.sha == \$base/);
+  assert.doesNotMatch(workflow, /Authorization: Bearer|github\.token|GH_TOKEN|GITHUB_TOKEN/);
+  assert.ok((workflow.match(/--connect-timeout 3 --max-time 10/g) ?? []).length >= 2);
+  assert.match(workflow, /unexpected shape; full code checks remain required/);
+  assert.match(workflow, /candidate parsing failed; full code checks remain required/);
+  const scopeSection = workflow.split('- name: Select required checks')[1]?.split('- name: Check documentation')[0] ?? '';
+  assert.match(scopeSection, /TRUSTED_CI_RECEIPTS_FILE/);
 });
 
 test('aggregate gate rejects every failed/cancelled/missing/unexpectedly skipped required result', () => {
