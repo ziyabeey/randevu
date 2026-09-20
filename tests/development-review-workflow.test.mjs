@@ -67,6 +67,11 @@ test('role-specific reservation plus exact-head concurrency prevents duplicate R
   assert.doesNotMatch(review, /- status: \`RESERVED\`/);
 });
 
+test('review automation and role jobs receive the same trusted reviewer allowlist', () => {
+  assert.match(automation, /DEVELOPMENT_REVIEWER_ALLOWLIST: \$\{\{ vars\.DEVELOPMENT_REVIEWER_ALLOWLIST \}\}/);
+  assert.ok((review.match(/DEVELOPMENT_REVIEWER_ALLOWLIST: \$\{\{ vars\.DEVELOPMENT_REVIEWER_ALLOWLIST \}\}/g) ?? []).length >= 3);
+});
+
 test('green CI and a later R0 receipt both re-evaluate the trusted Dispatcher route', () => {
   assert.match(automation, /workflow_run:/);
   assert.match(automation, /workflows: \[CI\]/);
