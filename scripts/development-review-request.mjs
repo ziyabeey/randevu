@@ -90,6 +90,7 @@ function roleObligations(dispatcherResult, role) {
 
 export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence = {}, role, {
   expectedCaseFingerprint,
+  receiptChallenge,
 } = {}) {
   if (!REVIEW_ROLES.has(role)) {
     throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: ROLE_INVALID');
@@ -110,6 +111,9 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
   if (expectedCaseFingerprint !== undefined
       && envelope.caseFingerprint !== expectedCaseFingerprint) {
     throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: CASE_FINGERPRINT_MISMATCH');
+  }
+  if (!FINGERPRINT_RE.test(receiptChallenge ?? '')) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: RECEIPT_CHALLENGE_INVALID');
   }
 
   const facts = dispatcherResult?.facts ?? {};
@@ -174,6 +178,7 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
     schemaVersion: 'development-independent-review-request.v0',
     role,
     dispatcherCaseFingerprint: envelope.caseFingerprint,
+    receiptChallenge,
     reviewMode,
     case: {
       task: taskId,
@@ -226,6 +231,7 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
   const requestFingerprintMaterial = {
     schemaVersion: request.schemaVersion,
     role: request.role,
+    receiptChallenge: request.receiptChallenge,
     reviewMode: request.reviewMode,
     case: {
       task: request.case.task,
@@ -267,6 +273,9 @@ export function reviewReceiptMarker(request = {}, verdict) {
   if (!FINGERPRINT_RE.test(request.requestFingerprint ?? '')) {
     throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: REQUEST_FINGERPRINT_INVALID');
   }
+  if (!FINGERPRINT_RE.test(request.receiptChallenge ?? '')) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: RECEIPT_CHALLENGE_INVALID');
+  }
   return `<!-- development-review-receipt ${JSON.stringify({
     schemaVersion: 'development-review-receipt.v1',
     role,
@@ -275,6 +284,7 @@ export function reviewReceiptMarker(request = {}, verdict) {
     baseSha,
     dispatcherCaseFingerprint: request.dispatcherCaseFingerprint,
     requestFingerprint: request.requestFingerprint,
+    receiptChallenge: request.receiptChallenge,
     verdict: normalizedVerdict,
   })} -->`;
 }
@@ -299,7 +309,7 @@ export function renderIndependentReviewRequest(request = {}) {
     `ACCEPTABLE: ${reviewReceiptMarker(request, 'ACCEPTABLE')}`,
     `BLOCKER: ${reviewReceiptMarker(request, 'BLOCKER')}`,
     `INCOMPLETE: ${reviewReceiptMarker(request, 'INCOMPLETE')}`,
-    'The marker binds this result to the exact Dispatcher case and exact paid role request. Never reuse or edit either fingerprint.',
+    'The marker binds this result to the exact Dispatcher case, exact paid role request, and one-time hidden receipt challenge. Never reuse or edit these values.',
     'The provenance marker is machine-readable identity metadata only; it grants no merge authority.',
     '',
     'REVIEW_PACKAGE_JSON',
