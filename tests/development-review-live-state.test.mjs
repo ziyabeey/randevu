@@ -104,6 +104,7 @@ function liveFetch(overrides = {}) {
     }
     if (url.includes('/issues/183/comments?')) return response(overrides.comments ?? []);
     if (url.includes('/pulls/183/reviews?')) return response(overrides.reviews ?? []);
+    if (url.includes('/issues/65/comments?')) return response(overrides.coordinationComments ?? []);
     throw new Error(`unexpected URL: ${url}`);
   };
 }
@@ -329,6 +330,63 @@ test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but n
       tasksText: tasks(),
       reviewerAllowlist: { R2: ['integration-reviewer'] },
       fetchImpl: liveFetch({ comments: [represented, newer] }),
+    }),
+    /R2_REVIEW_ALREADY_RECEIVED/,
+  );
+});
+
+test('coordination Issue #65 current receipt is included in the live spend fence', async () => {
+  const receipt = {
+    id: 400,
+    html_url: 'https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-400',
+    created_at: '2026-09-20T00:05:00Z',
+    user: { login: 'integration-reviewer' },
+    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: ACCEPTABLE`,
+  };
+  await assert.rejects(
+    verifyDevelopmentReviewLiveState(request(), {
+      repository: 'ziyabeey1-ai/randevu',
+      token: 'test-token',
+      tasksText: tasks(),
+      reviewerAllowlist: { R2: ['integration-reviewer'] },
+      fetchImpl: liveFetch({ coordinationComments: [receipt] }),
+    }),
+    /R2_REVIEW_ALREADY_RECEIVED/,
+  );
+});
+
+test('equal-time additional current receipt blocks follow-up without comparing cross-endpoint IDs', async () => {
+  const represented = {
+    id: 900,
+    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-900',
+    created_at: '2026-09-20T00:06:00Z',
+    user: { login: 'integration-reviewer' },
+    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: INCOMPLETE`,
+  };
+  const sameSecondReview = {
+    id: 2,
+    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#pullrequestreview-2',
+    submitted_at: represented.created_at,
+    commit_id: head,
+    user: { login: 'integration-reviewer' },
+    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: ACCEPTABLE`,
+  };
+  const followUp = request();
+  followUp.reviewMode = 'FOLLOW_UP';
+  followUp.currentEvidence.review = {
+    previousReviewedHeadSha: head,
+    previousReviewedBaseSha: main,
+    previousReceiptSourceRef: represented.html_url,
+    previousReceiptObservedAt: Date.parse(represented.created_at),
+    previousReceiptId: represented.id,
+  };
+  await assert.rejects(
+    verifyDevelopmentReviewLiveState(followUp, {
+      repository: 'ziyabeey1-ai/randevu',
+      token: 'test-token',
+      tasksText: tasks(),
+      reviewerAllowlist: { R2: ['integration-reviewer'] },
+      fetchImpl: liveFetch({ comments: [represented], reviews: [sameSecondReview] }),
     }),
     /R2_REVIEW_ALREADY_RECEIVED/,
   );
