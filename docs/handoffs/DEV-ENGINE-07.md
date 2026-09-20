@@ -6,9 +6,9 @@
 - Boyut / mod: M / FOCUSED
 - Başlangıç main / task claim: `86d1bfdd729577ebd9ab3f47d1273219b1afe8f0`
 - Branch: `chore/dev-engine-07-qwen-coordinator`
-- PR / current integrated code candidate: [#208](https://github.com/ziyabeey1-ai/randevu/pull/208)
-  · head `14918815cfe98b885e430f068bcc797f47504385`
-  · base `f5b5d9f6a3ff1dad235e008248cda28619cb55e4`.
+- Merged implementation: [#208](https://github.com/ziyabeey1-ai/randevu/pull/208)
+  · accepted head `ba0a5072524c54c5b59cec0267a7bbbc36c80d66`
+  · main merge `dfbf7bc4762c85f1accd3d42961d4257ee08174c`.
 - Yazım alanı: `scripts/qwen-coordinator/**`,
   `tests/qwen-coordinator-*.test.mjs`, `docs/runbooks/qwen-coordinator.md`, bu
   devir, `.gitignore` ve görev satırı.
@@ -79,11 +79,12 @@
 - Predecessor reviewed head `305c904a0cceb89b8f2bd16f1e9a081b0dfe391c`:
   exact-head CI run `35500844512`, job `106052216068`, attempt `1`, tested
   checkout aynı full SHA ve Depot `h9n2mpjxxj` aynı head/base üzerinde PASS.
-- Exact-head GitHub CI, Depot shadow CI ve fresh bağımsız CI/governance incelemesi
-  `14918815cfe98b885e430f068bcc797f47504385` integrated kod adayı üzerinde yeniden alınacak.
+- Accepted head `ba0a5072524c54c5b59cec0267a7bbbc36c80d66`: exact-head GitHub CI
+  `35531961280` başarılı; Depot shadow `rnxfw1f42r` PASS; merge commit
+  `dfbf7bc4762c85f1accd3d42961d4257ee08174c` sonrası CI `35532954959`
+  başarılı.
 
-## Sonraki tek adım
+## Kapanış
 
-Kod adayını ve bu receipt-only belge descendant'ını pushla; exact-head GitHub CI
-ve Depot shadow CI başarılarından sonra fresh R0 verification alıp açık thread'leri
-kapat.
+PR #208 main'e merge edildi ve DEV-ENGINE-07 kapanış kanıtı #231 ile kaydedildi.
+Bu handoff'ta bekleyen push, yeniden doğrulama veya thread kapatma adımı kalmadı.
