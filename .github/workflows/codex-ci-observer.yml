@@ -8,8 +8,7 @@ on:
 permissions:
   contents: read
   actions: read
-  issues: write
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
   group: codex-ci-observer-${{ github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.id }}
@@ -17,193 +16,47 @@ concurrency:
 
 jobs:
   observe:
-    name: Exact-head CI receipt
+    name: CI evidence through canonical Dispatcher
     if: >-
-      ${{
-        github.event.workflow_run.event == 'pull_request' &&
-        github.event.workflow_run.pull_requests[0].number != null
-      }}
+      ${{ github.event.workflow_run.event == 'pull_request' &&
+          github.event.workflow_run.head_repository.full_name == github.repository &&
+          github.event.workflow_run.pull_requests[0].number != null }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     env:
-      GH_TOKEN: ${{ github.token }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       REPOSITORY: ${{ github.repository }}
       RUN_ID: ${{ github.event.workflow_run.id }}
-      RUN_URL: ${{ github.event.workflow_run.html_url }}
-      RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-      RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
       PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
-
     steps:
-      - name: Checkout canonical workflow source
-        uses: actions/checkout@v5
+      - name: Checkout trusted adapter only
+        uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 1
           persist-credentials: false
-
-      - name: Gather deterministic CI evidence
-        id: evidence
-        shell: bash
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Gather exact run and attempt evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p .ci-observer
-
           gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" > .ci-observer/pr.json
-          gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}/jobs?per_page=100" > .ci-observer/jobs.json
-
-          current_head="$(jq -r '.head.sha' .ci-observer/pr.json)"
-          if [ "${current_head}" = "${RUN_HEAD_SHA}" ]; then
-            fresh=true
-            freshness=CURRENT
-          else
-            fresh=false
-            freshness=STALE
-          fi
-
-          {
-            echo "# CI Observer Evidence"
-            echo
-            echo "- repository: `${REPOSITORY}`"
-            echo "- PR: #${PR_NUMBER}"
-            echo "- workflow run: ${RUN_URL}"
-            echo "- run id: `${RUN_ID}`"
-            echo "- tested head SHA: `${RUN_HEAD_SHA}`"
-            echo "- current PR head SHA: `${current_head}`"
-            echo "- freshness: **${freshness}**"
-            echo "- conclusion: **${RUN_CONCLUSION}**"
-            echo
-            echo "## Jobs"
-            jq -r '.jobs[] | "- " + .name + ": " + (.conclusion // .status // "unknown")' .ci-observer/jobs.json
-          } > .ci-observer/evidence.md
-
-          if [ "${RUN_CONCLUSION}" = "failure" ]; then
-            {
-              echo
-              echo "## Failed log excerpt"
-              echo '~~~text'
-              gh run view "${RUN_ID}" --repo "${REPOSITORY}" --log-failed 2>&1                 | tail -c 50000 || true
-              echo
-              echo '~~~'
-            } >> .ci-observer/evidence.md
-          fi
-
-          {
-            echo "fresh=${fresh}"
-            echo "freshness=${freshness}"
-            echo "current_head=${current_head}"
-          } >> "${GITHUB_OUTPUT}"
-
-      - name: Compress current CI failure with Luna
-        id: luna
-        if: >-
-          ${{
-            steps.evidence.outputs.fresh == 'true' &&
-            env.RUN_CONCLUSION == 'failure' &&
-            env.OPENAI_API_KEY != ''
-          }}
-        uses: openai/codex-action@v1
+          gh api "repos/${REPOSITORY}/branches/main" > .ci-observer/main.json
+          gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}" > .ci-observer/run.json
+          gh api --paginate "repos/${REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}/jobs?per_page=100" \
+            | jq -s '[.[].jobs[]]' > .ci-observer/jobs.json
+          gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" > .ci-observer/final-pr.json
+          gh api "repos/${REPOSITORY}/branches/main" > .ci-observer/final-main.json
+      - name: Derive recommendation with existing Dispatcher
+        run: node scripts/run-ci-observer.mjs .ci-observer
+      - name: Preserve bounded observation
+        uses: actions/upload-artifact@v4
         with:
-          openai-api-key: ${{ env.OPENAI_API_KEY }}
-          model: gpt-5.6-luna
-          effort: low
-          permission-profile: ":read-only"
-          prompt-file: .github/codex/prompts/ci-observer.md
-          output-file: .ci-observer/luna.md
-
-      - name: Record missing Luna credential
-        if: >-
-          ${{
-            steps.evidence.outputs.fresh == 'true' &&
-            env.RUN_CONCLUSION == 'failure' &&
-            env.OPENAI_API_KEY == ''
-          }}
-        shell: bash
-        run: |
-          cat > .ci-observer/luna.md <<'EOF'
-          Luna analysis was skipped because the repository secret `OPENAI_API_KEY` is not configured.
-          The deterministic CI receipt is still valid; inspect the linked failed run manually.
-          EOF
-
-      - name: Build exact-head receipt
-        shell: bash
-        env:
-          FRESHNESS: ${{ steps.evidence.outputs.freshness }}
-          CURRENT_HEAD: ${{ steps.evidence.outputs.current_head }}
-        run: |
-          set -euo pipefail
-
-          if [ "${FRESHNESS}" = "STALE" ]; then
-            route="IGNORE_STALE"
-          elif [ "${RUN_CONCLUSION}" = "success" ]; then
-            route="R0_ELIGIBLE"
-          else
-            route="REPAIR_REQUIRED"
-          fi
-
-          {
-            echo '<!-- codex-ci-observer -->'
-            echo '## 🤖 Codex CI Observer'
-            echo
-            echo "- CI: **${RUN_CONCLUSION}**"
-            echo "- Freshness: **${FRESHNESS}**"
-            echo "- Route: **${route}**"
-            echo "- Tested HEAD: `${RUN_HEAD_SHA}`"
-            echo "- Current PR HEAD: `${CURRENT_HEAD}`"
-            echo "- Run: ${RUN_URL}"
-            echo
-            if [ "${RUN_CONCLUSION}" = "failure" ] && [ "${FRESHNESS}" = "CURRENT" ]; then
-              echo '### Luna failure compression'
-              echo
-              if [ -s .ci-observer/luna.md ]; then
-                cat .ci-observer/luna.md
-              else
-                echo 'Luna returned no usable summary. Use the linked CI logs as authority.'
-              fi
-              echo
-            fi
-            echo '> Authority rule: the GitHub CI result bound to the exact tested SHA is authoritative. This comment is only a routing receipt.'
-          } > .ci-observer/receipt.md
-
-      - name: Upsert PR observer receipt
-        uses: actions/github-script@v7
-        env:
-          PR_NUMBER: ${{ env.PR_NUMBER }}
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- codex-ci-observer -->';
-            const body = fs.readFileSync('.ci-observer/receipt.md', 'utf8');
-            const issue_number = Number(process.env.PR_NUMBER);
-
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number,
-              per_page: 100,
-            });
-
-            const existing = comments.find(
-              (comment) =>
-                comment.user?.login === 'github-actions[bot]' &&
-                typeof comment.body === 'string' &&
-                comment.body.includes(marker),
-            );
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number,
-                body,
-              });
-            }
+          name: ci-observation-${{ env.RUN_ID }}-${{ env.RUN_ATTEMPT }}
+          path: .ci-observer/observation.json
+          if-no-files-found: error
+          retention-days: 7
