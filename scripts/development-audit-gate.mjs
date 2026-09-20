@@ -53,6 +53,7 @@ export function authenticatedReceipts(items, pr, allowlist = {}) {
     const body = String(item.body ?? '');
     const marker = body.match(/<!-- development-review-launch:(r1|r2):([a-f0-9]{64}) -->/i);
     if (!marker || !/status:\s*ROUTINE_TRIGGERED/i.test(body)) continue;
+    if (typeof item.html_url !== 'string' || !item.html_url.includes(`/pull/${pr.number}#`)) continue;
     const role = marker[1].toUpperCase();
     const requestFingerprint = marker[2].toLowerCase();
     const headSha = body.match(/exact head:\s*([a-f0-9]{40})/i)?.[1]?.toLowerCase();
@@ -81,6 +82,8 @@ export function authenticatedReceipts(items, pr, allowlist = {}) {
     } = receipt;
 
     if (schemaVersion !== 'development-review-receipt.v1'
+      || typeof item.html_url !== 'string'
+      || !item.html_url.includes(`/pull/${pr.number}#`)
       || !roles.includes(role)
       || author !== configured[role]
       || prNumber !== pr.number
