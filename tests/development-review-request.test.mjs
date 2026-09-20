@@ -210,14 +210,24 @@ test('follow-up request fails closed when prior receipt snapshot identity is inc
 
 test('review output contract carries one exact machine-readable role/head/base receipt marker', () => {
   const request = buildIndependentReviewRequest(dispatcher(['r1']), {}, 'r1');
-  const marker = reviewReceiptMarker(request);
+  const marker = reviewReceiptMarker(request, 'ACCEPTABLE');
   assert.equal(
     marker,
-    `<!-- development-review-receipt {"role":"R1","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->`,
+    `<!-- development-review-receipt {"schemaVersion":"development-review-receipt.v1","role":"R1","prNumber":183,"headSha":"${head}","baseSha":"${main}","dispatcherCaseFingerprint":"${request.dispatcherCaseFingerprint}","requestFingerprint":"${request.requestFingerprint}","verdict":"ACCEPTABLE"} -->`,
   );
   const text = renderIndependentReviewRequest(request);
-  assert.equal(text.split(marker).length - 1, 1);
-  assert.match(text, /machine-readable identity metadata only/);
+  assert.match(text, /ACCEPTABLE: <!-- development-review-receipt/);
+  assert.match(text, /BLOCKER: <!-- development-review-receipt/);
+  assert.match(text, /INCOMPLETE: <!-- development-review-receipt/);
+  assert.match(text, new RegExp(request.requestFingerprint));
+  assert.match(text, new RegExp(request.dispatcherCaseFingerprint));
+  assert.match(text, /grants no merge authority/);
+});
+
+test('receipt marker rejects missing or invalid verdict', () => {
+  const request = buildIndependentReviewRequest(dispatcher(['r1']), {}, 'r1');
+  assert.throws(() => reviewReceiptMarker(request), /VERDICT_INVALID/);
+  assert.throws(() => reviewReceiptMarker(request, 'approved'), /VERDICT_INVALID/);
 });
 
 test('rendered API text treats evidence as data and never hardcodes a provider model', () => {
