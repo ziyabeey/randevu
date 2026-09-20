@@ -10,6 +10,7 @@ import {
   parseTasksText,
   receiptEvidenceBody,
   reviewReceipts,
+  taskReviewRequirements,
   validateQwenChoices,
 } from '../scripts/qwen-coordinator/policy.mjs';
 
@@ -77,6 +78,13 @@ test('TASKS parser exposes row-cap truncation instead of accepting partial autho
   assert.equal(parsed.truncated, true);
 });
 
+test('TASKS parser preserves authoritative evidence beyond 5,000 characters', () => {
+  const suffix = 'R2 required';
+  const parsed = parseTasksText(`| F00-01 | One | X | İncelemede | A | ${'x'.repeat(5_100)} ${suffix} |`)[0];
+  assert.ok(parsed.evidence.endsWith(suffix));
+  assert.equal(taskReviewRequirements(parsed).r2, 'required');
+});
+
 test('receipt evidence bodies are preserved beyond the former local cutoff', () => {
   const body = `${'x'.repeat(9_000)}\nVERDICT: R2 = BLOCKER`;
   assert.equal(receiptEvidenceBody(body), body);
@@ -93,6 +101,23 @@ test('TASKS binding requires one row owned by one open pull request', () => {
   assert.equal(canonicalTaskBinding([
     canonical,
   ], [{ number: 7 }, { number: 6 }], 7).reason, 'TASK_ROW_SHARED_BY_OPEN_PULLS');
+});
+
+test('full TASKS row controls the explicit independent review budget', () => {
+  const both = {
+    owner: 'Ajan C + R1/R2 + koordinatör kabul',
+    evidence: 'PR #7',
+    rawLine: '| F00-01 | Test | X | İncelemede | Ajan C + R1/R2 + koordinatör kabul | PR #7 |',
+  };
+  assert.deepEqual(taskReviewRequirements(both), { r1: 'required', r2: 'required' });
+  const r2Only = { ...both, owner: 'Ajan C + R2', rawLine: both.rawLine.replace('R1/R2', 'R2') };
+  assert.deepEqual(taskReviewRequirements(r2Only), { r1: 'not_required', r2: 'required' });
+  const result = classifyPull(pull({ files: [{ path: 'src/worker/security.ts' }] }), {
+    config,
+    mainSha: main,
+    task: { ...task, ...r2Only },
+  });
+  assert.deepEqual(result.missingReviews, ['R2']);
 });
 
 test('automatic action allowlist is explicit and fail-closed', () => {
@@ -182,6 +207,24 @@ test('exact structured role receipt can close only its allowlisted role', () => 
     url: 'https://github.com/example/repo/pull/7#issuecomment-2',
   });
   assert.equal(classifyPull(r2Pull, { config, mainSha: main, task }).choice, 'D');
+});
+
+test('review-sourced independent receipt requires native commit identity', () => {
+  const r2Pull = pull({
+    files: [{ path: 'scripts/browser-flow.mjs' }],
+    reviews: [{
+      id: 2,
+      author: 'integration-reviewer',
+      body: `<!-- development-review-receipt ${JSON.stringify({
+        role: 'R2', prNumber: 7, headSha: head, baseSha: main,
+      })} -->`,
+      submittedAt: '2026-01-02',
+      url: 'https://github.com/example/repo/pull/7#pullrequestreview-2',
+    }],
+  });
+  assert.equal(reviewReceipts(r2Pull, [], config).r2.status, 'missing');
+  r2Pull.reviews[0].commitOid = head;
+  assert.equal(reviewReceipts(r2Pull, [], config).r2.status, 'accepted');
 });
 
 test('stale, prose-only and generic-bot specialist receipts fail closed', () => {

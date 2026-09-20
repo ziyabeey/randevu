@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import {
   mkdirSync,
   readFileSync,
+  renameSync,
+  rmdirSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -25,6 +27,28 @@ function createLease(lockDir, owner) {
     mode: 0o600,
   });
   return owner.token;
+}
+
+function quarantineOwnedLease(lockDir, expectedOwner) {
+  const claimDir = path.join(lockDir, '.ownership-claim');
+  try {
+    mkdirSync(claimDir, { mode: 0o700 });
+  } catch {
+    return null;
+  }
+  try {
+    const current = JSON.parse(readFileSync(path.join(lockDir, 'owner.json'), 'utf8'));
+    if (current?.token !== expectedOwner?.token || current?.pid !== expectedOwner?.pid) {
+      rmdirSync(claimDir);
+      return null;
+    }
+    const quarantineDir = `${lockDir}.quarantine-${randomUUID()}`;
+    renameSync(lockDir, quarantineDir);
+    return quarantineDir;
+  } catch {
+    try { rmdirSync(claimDir); } catch { /* The lease changed while it was being claimed. */ }
+    return null;
+  }
 }
 
 export function acquireDirectoryLease(lockDir, options = {}) {
@@ -51,12 +75,15 @@ export function acquireDirectoryLease(lockDir, options = {}) {
   }
   if (!Number.isSafeInteger(existing?.pid) || existing.pid < 1 || processAlive(existing.pid)) return null;
 
-  rmSync(lockDir, { recursive: true, force: true });
+  const quarantineDir = quarantineOwnedLease(lockDir, existing);
+  if (!quarantineDir) return null;
   try {
     return createLease(lockDir, owner);
   } catch (error) {
     if (error?.code === 'EEXIST') return null;
     throw error;
+  } finally {
+    rmSync(quarantineDir, { recursive: true, force: true });
   }
 }
 
@@ -69,6 +96,8 @@ export function releaseDirectoryLease(lockDir, token) {
     return false;
   }
   if (owner?.token !== token) return false;
-  rmSync(lockDir, { recursive: true, force: true });
+  const quarantineDir = quarantineOwnedLease(lockDir, owner);
+  if (!quarantineDir) return false;
+  rmSync(quarantineDir, { recursive: true, force: true });
   return true;
 }

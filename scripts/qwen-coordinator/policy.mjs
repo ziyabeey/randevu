@@ -170,7 +170,7 @@ export function parseTasksSnapshot(source, maxRows = 200) {
       status,
       owner,
       prNumbers,
-      evidence: evidence.slice(0, 5000),
+      evidence,
       rawLine: line,
     });
   }
@@ -273,7 +273,8 @@ function independentReceipt(item, role, pr, allowlist) {
   if (!receipt || receipt.role !== role || receipt.prNumber !== pr.number
     || !SHA.test(text(receipt.headSha)) || !SHA.test(text(receipt.baseSha))
     || receipt.headSha !== pr.headSha || receipt.baseSha !== pr.baseSha
-    || (item.commitOid && item.commitOid !== receipt.headSha)
+    || (item.source === 'review' && item.commitOid !== receipt.headSha)
+    || (item.source !== 'review' && item.commitOid && item.commitOid !== receipt.headSha)
     || !Number.isSafeInteger(item.id) || !item.url) return false;
   return true;
 }
@@ -356,11 +357,28 @@ export function reviewReceipts(pr, coordinationComments, config) {
   return result;
 }
 
-function explicitRequirement(evidence, role) {
-  const value = text(evidence);
-  const required = new RegExp(`(?:fresh|güncel|exact(?:-SHA|-head)?|bağımsız|zorunlu|required)[^\\n|]{0,90}\\b${role}\\b|\\b${role}\\b[^\\n|]{0,90}(?:beklen|zorunlu|required|fresh|güncel|exact)`, 'i').test(value);
-  const notRequired = new RegExp(`\\b${role}\\b[^\\n|]{0,50}(?:gerekmez|gerekli değil|not required)`, 'i').test(value);
-  return required && !notRequired;
+function negativeRoleRequirement(value, role) {
+  return [
+    `${role} gerekmez`,
+    `${role} gerekmiyor`,
+    `${role} beklenmiyor`,
+    `${role} not required`,
+    `no ${role}`,
+  ].some((phrase) => value.includes(phrase));
+}
+
+export function taskReviewRequirements(task) {
+  const value = lower(task?.rawLine ?? `${text(task?.owner)} | ${text(task?.evidence)}`);
+  const mentions = {
+    r1: /(?:^|[^a-z0-9])r1(?:[^a-z0-9]|$)/i.test(value),
+    r2: /(?:^|[^a-z0-9])r2(?:[^a-z0-9]|$)/i.test(value),
+  };
+  const hasReviewBudget = mentions.r1 || mentions.r2;
+  return Object.fromEntries(['r1', 'r2'].map((role) => {
+    if (negativeRoleRequirement(value, role)) return [role, 'not_required'];
+    if (mentions[role]) return [role, 'required'];
+    return [role, hasReviewBudget ? 'not_required' : 'unknown'];
+  }));
 }
 
 function hasUnclosedExternalGate(evidence) {
@@ -381,10 +399,13 @@ export function classifyPull(pr, context) {
   const ci = ciForPull(pr, config.requiredCheckName);
   const surface = changedSurface(pr, config);
   const receipts = reviewReceipts(pr, coordinationComments, config);
+  const taskRequirements = taskReviewRequirements(task);
   const required = {
     r0: !surface.docsOnly,
-    r1: (!surface.docsOnly && surface.r1ByPath) || explicitRequirement(task?.evidence, 'R1'),
-    r2: (!surface.docsOnly && surface.r2ByPath) || explicitRequirement(task?.evidence, 'R2'),
+    r1: !surface.docsOnly && (taskRequirements.r1 === 'required'
+      || (taskRequirements.r1 === 'unknown' && surface.r1ByPath)),
+    r2: !surface.docsOnly && (taskRequirements.r2 === 'required'
+      || (taskRequirements.r2 === 'unknown' && surface.r2ByPath)),
   };
   const missingReviews = Object.entries(required)
     .filter(([role, needed]) => needed && receipts[role].status !== 'accepted')
@@ -400,7 +421,8 @@ export function classifyPull(pr, context) {
   if (ci.status === 'missing') gaps.push('CI_GATE_MISSING');
   if (pr.baseSha !== mainSha) gaps.push('BASE_NOT_CURRENT_MAIN');
   if (pr.fromFork) gaps.push('CROSS_REPOSITORY_HEAD');
-  if (hasUnclosedExternalGate(task?.evidence)) gaps.push('EXTERNAL_ACCEPTANCE_PENDING');
+  const taskAuthority = task?.rawLine ?? `${text(task?.owner)} | ${text(task?.evidence)}`;
+  if (hasUnclosedExternalGate(taskAuthority)) gaps.push('EXTERNAL_ACCEPTANCE_PENDING');
   for (const role of missingReviews) gaps.push(`${role}_RECEIPT_MISSING_OR_STALE`);
 
   const baseCurrent = Boolean(mainSha) && pr.baseSha === mainSha;
@@ -431,7 +453,7 @@ export function classifyPull(pr, context) {
         : ci.status === 'pending'
           ? 'Exact-head CI gate tamamlanmayı bekliyor.'
           : 'Merge için gerekli kanıt eksik veya kesilmiş.';
-  } else if (pr.draft || missingReviews.length > 0 || hasUnclosedExternalGate(task?.evidence)) {
+  } else if (pr.draft || missingReviews.length > 0 || hasUnclosedExternalGate(taskAuthority)) {
     choice = 'C';
     reason = pr.draft
       ? 'CI ve taban uygun; PR review/ready aşamasına taşınmalı.'
