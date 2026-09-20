@@ -63,6 +63,8 @@ export type PublicMultiServiceSelectionState = {
 
 type Props = {
   slug: string;
+  availabilityRefreshToken?: number;
+  onAvailabilityChange?: (available: boolean) => void;
   onSelectionChange?: (state: PublicMultiServiceSelectionState | null) => void;
 };
 
@@ -106,13 +108,26 @@ function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+// Every offered slot is rendered through Intl with its own zone; a zone Intl
+// rejects would throw during render, so it is dropped here like any other
+// malformed slot rather than reaching the page.
+function validTimeZone(value: unknown): value is string {
+  if (typeof value !== 'string' || !value) return false;
+  try {
+    new Intl.DateTimeFormat('tr-TR', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function validGroupSlot(value: unknown): value is PublicGroupSlot {
   if (!value || typeof value !== 'object') return false;
   const slot = value as Partial<PublicGroupSlot>;
   if (typeof slot.startsAt !== 'string' || !Number.isFinite(Date.parse(slot.startsAt))
       || typeof slot.endsAt !== 'string' || !Number.isFinite(Date.parse(slot.endsAt))
       || Date.parse(slot.endsAt) <= Date.parse(slot.startsAt)
-      || typeof slot.timezone !== 'string' || !slot.timezone
+      || !validTimeZone(slot.timezone)
       || typeof slot.currency !== 'string' || !/^[A-Z]{3}$/.test(slot.currency)
       || typeof slot.estimateMinMinor !== 'number' || !Number.isInteger(slot.estimateMinMinor) || slot.estimateMinMinor < 0
       || typeof slot.estimateMaxMinor !== 'number' || !Number.isInteger(slot.estimateMaxMinor) || slot.estimateMaxMinor < slot.estimateMinMinor
@@ -144,7 +159,7 @@ function matchesRequestedLines(slot: PublicGroupSlot, expected: PublicMultiServi
   });
 }
 
-export default function PublicMultiServiceSelection({ slug, onSelectionChange }: Props) {
+export default function PublicMultiServiceSelection({ slug, availabilityRefreshToken = 0, onAvailabilityChange, onSelectionChange }: Props) {
   const [page, setPage] = useState<PagePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
@@ -163,6 +178,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
   const staffGeneration = useRef(0);
   const slotGeneration = useRef(0);
   const slotController = useRef<AbortController | null>(null);
+  const lastRefreshToken = useRef(availabilityRefreshToken);
 
   useEffect(() => {
     const generation = ++catalogGeneration.current;
@@ -195,15 +211,17 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
         const next: PagePayload = { business: business.business, services: catalog.services };
         setPage(next);
         setDate(next.business.local_date);
+        onAvailabilityChange?.(true);
       } catch (error) {
         if (generation !== catalogGeneration.current || abortError(error)) return;
+        onAvailabilityChange?.(false);
         setNotice(errorMessage(error, 'Hizmet listesi yüklenemedi.'));
       } finally {
         if (generation === catalogGeneration.current) setLoading(false);
       }
     })();
     return () => controller.abort();
-  }, [slug, catalogAttempt]);
+  }, [slug, catalogAttempt, onAvailabilityChange, onSelectionChange]);
 
   const services = useMemo(() => {
     const copy = [...(page?.services ?? [])];
@@ -328,6 +346,12 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
     }
   }
 
+  useEffect(() => {
+    if (availabilityRefreshToken === lastRefreshToken.current) return;
+    lastRefreshToken.current = availabilityRefreshToken;
+    if (date && lines.length) void loadSlots();
+  }, [availabilityRefreshToken]);
+
   function chooseSlot(slot: PublicGroupSlot) {
     setSelectedSlot(slot);
     setNotice('');
@@ -348,7 +372,7 @@ export default function PublicMultiServiceSelection({ slug, onSelectionChange }:
 
   return <section className="public-booking-card public-multi-service" aria-labelledby="public-multi-service-title">
     <span className="public-step">A</span>
-    <div className="public-multi-heading"><div><h2 id="public-multi-service-title">Birden fazla hizmet planla</h2><p className="public-muted">Hizmetleri sırayla seçin. Personeli her hizmet için ayrı belirleyebilirsiniz. Tek hizmetli randevu oluşturma akışı aşağıda kullanılmaya devam eder.</p></div><strong>{selectedIds.length}/{MAX_LINES}</strong></div>
+    <div className="public-multi-heading"><div><h2 id="public-multi-service-title">Hizmet planınızı oluşturun</h2><p className="public-muted">Bir veya daha fazla hizmeti sırayla seçin. Personeli her hizmet için ayrı belirleyebilirsiniz.</p></div><strong>{selectedIds.length}/{MAX_LINES}</strong></div>
     {notice && <div className="public-inline-notice" role="status">{notice}</div>}
     {staffRetryable && <button className="public-retry" type="button" onClick={() => { setNotice(''); setStaffRetryable(false); setStaffAttempt((current) => current + 1); }}>Personeli tekrar yükle</button>}
 
