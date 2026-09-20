@@ -61,12 +61,12 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-function runAdapter({ mode = 'stale', files = [{ filename: 'src/a.ts' }], comments = [source()], moveAt = 0,
-  event = {}, compare = null } = {}) {
+function runAdapter({ mode = 'stale', files = [{ filename: 'src/a.ts' }], comments = [source()], commentsSequence = null,
+  moveAt = 0, event = {}, compare = null } = {}) {
   const dir = mkdtempSync(path.join(tmpdir(), 'audit-adapter-'));
   try {
     const fixture = { pr: { ...pr, changed_files: files.length, head: { ...pr.head, repo: { full_name: 'owner/repo' } } },
-      files, comments, moveAt, compare };
+      files, comments, commentsSequence, moveAt, compare };
     const fixtureFile = path.join(dir, 'fixture.json'), log = path.join(dir, 'calls.jsonl');
     writeFileSync(fixtureFile, JSON.stringify(fixture));
     writeFileSync(path.join(dir, 'event.json'), JSON.stringify(event));
@@ -74,7 +74,7 @@ function runAdapter({ mode = 'stale', files = [{ filename: 'src/a.ts' }], commen
     const mock = path.join(dir, 'mock.mjs');
     writeFileSync(mock, `
       import {readFileSync, appendFileSync} from 'node:fs';
-      const f = JSON.parse(readFileSync(process.env.FIXTURE)); let reads = 0;
+      const f = JSON.parse(readFileSync(process.env.FIXTURE)); let reads = 0, commentReads = 0;
       globalThis.fetch = async (url, options = {}) => {
         const u = new URL(url), method = options.method || 'GET';
         appendFileSync(process.env.CALLS, JSON.stringify({url, method, body: options.body})+'\\n');
@@ -84,7 +84,11 @@ function runAdapter({ mode = 'stale', files = [{ filename: 'src/a.ts' }], commen
           result = structuredClone(f.pr);
           if (++reads >= f.moveAt && f.moveAt) result.base.sha = 'c'.repeat(40);
         } else if (u.pathname.endsWith('/files')) result = f.files;
-        else if (u.pathname.endsWith('/comments')) result = f.comments;
+        else if (u.pathname.endsWith('/comments')) {
+          result = Array.isArray(f.commentsSequence)
+            ? f.commentsSequence[Math.min(commentReads++, f.commentsSequence.length - 1)]
+            : f.comments;
+        }
         else if (u.pathname.endsWith('/reviews')) result = [];
         else if (u.pathname.includes('/compare/')) result = f.compare;
         else throw new Error('Unexpected API '+url);
@@ -120,6 +124,19 @@ test('adapter refuses to publish after late base drift and replaces legacy false
   assert.equal(writes.length, 1);
   assert.match(JSON.parse(writes[0].body).body, /Withdrawn/);
 });
+test('adapter refreshes receipt collections immediately before publishing', () => {
+  const old = { id: 99, user: { login: 'github-actions[bot]' }, body: '<!-- development-stale-review -->\nold advisory' };
+  const arriving = { ...source(), created_at: '2026-09-20T00:02:00Z' };
+  const r = runAdapter({ comments: [old], commentsSequence: [[old], [old, arriving]] });
+  assert.equal(r.status, 0, r.stderr);
+  const writes = r.calls.filter((c) => c.method === 'PATCH');
+  assert.equal(writes.length, 1);
+  const body = JSON.parse(writes[0].body).body;
+  assert.match(body, /R1:/);
+  assert.match(body, /freshness current/);
+  assert.doesNotMatch(body, /Withdrawn/);
+});
+
 test('docs-only delta avoids model calls but still publishes deterministic stale receipt freshness', () => {
   const event = { action: 'synchronize', before: 'd'.repeat(40), pull_request: { head: { sha: head } } };
   const compare = { status: 'ahead', merge_base_commit: { sha: event.before }, files: [{ filename: 'TASKS.md' }] };
