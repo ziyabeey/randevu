@@ -37,9 +37,12 @@ export function normalizeTrustedReceipts(raw) {
   for (const item of raw) {
     const headSha = item?.headSha;
     const runId = Number(item?.runId);
-    if (!sha.test(headSha ?? '') || !Number.isSafeInteger(runId) || runId <= 0 || seen.has(headSha)) continue;
-    seen.add(headSha);
-    receipts.push({ headSha, runId, ...(item.origin === 'main-push' ? { origin: 'main-push' } : {}) });
+    const origin = item?.origin === 'main-push' ? 'main-push'
+      : item?.origin === 'pr-full' ? 'pr-full' : null;
+    const identity = `${origin ?? 'legacy'}:${headSha}`;
+    if (!sha.test(headSha ?? '') || !Number.isSafeInteger(runId) || runId <= 0 || seen.has(identity)) continue;
+    seen.add(identity);
+    receipts.push({ headSha, runId, ...(origin ? { origin } : {}) });
   }
   return receipts;
 }
