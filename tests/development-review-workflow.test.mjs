@@ -68,6 +68,12 @@ test('role-specific reservation plus exact-head concurrency prevents duplicate R
   assert.doesNotMatch(review, /- status: \`RESERVED\`/);
 });
 
+test('launch lifecycle records exact base for receipt-chain verification', () => {
+  assert.match(review, /base_sha: \$\{\{ steps\.route\.outputs\.base_sha \}\}/);
+  assert.ok((review.match(/BASE_SHA: \$\{\{ needs\.route\.outputs\.base_sha \}\}/g) ?? []).length >= 2);
+  assert.ok((review.match(/- base main: \$\{BASE_SHA\}/g) ?? []).length >= 6);
+});
+
 test('review automation and role jobs receive the same trusted reviewer allowlist', () => {
   assert.match(automation, /DEVELOPMENT_REVIEWER_ALLOWLIST: \$\{\{ vars\.DEVELOPMENT_REVIEWER_ALLOWLIST \}\}/);
   assert.ok((review.match(/DEVELOPMENT_REVIEWER_ALLOWLIST: \$\{\{ vars\.DEVELOPMENT_REVIEWER_ALLOWLIST \}\}/g) ?? []).length >= 3);
