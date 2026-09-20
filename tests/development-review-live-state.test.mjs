@@ -62,6 +62,7 @@ function liveFetch(overrides = {}) {
   return async (url) => {
     if (url.endsWith('/pulls/183')) {
       return response({
+        number: 183,
         state: 'open',
         user: { login: 'implementer' },
         head: { sha: overrides.liveHead ?? head },
