@@ -94,7 +94,7 @@ function reviewLaunch({
       `- base main: ${main}`,
       `- dispatcher case: ${dispatcherCaseFingerprint}`,
       `- role request: ${requestFingerprint}`,
-      `- receipt challenge hash: ${receiptChallengeHash}`,
+      `- receipt challenge hash: ${challengeHash}`,
     ].join('\n'),
   };
 }
