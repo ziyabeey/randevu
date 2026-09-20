@@ -53,6 +53,18 @@ test('trusted receipt normalization accepts only valid unique run identities', (
   assert.deepEqual(normalizeTrustedReceipts({}), []);
 });
 
+test('trusted receipt normalization preserves distinct origins for the same head', () => {
+  const headSha = 'b'.repeat(40);
+  assert.deepEqual(normalizeTrustedReceipts([
+    { headSha, runId: 10, origin: 'main-push' },
+    { headSha, runId: 20, origin: 'pr-full' },
+    { headSha, runId: 30, origin: 'main-push' },
+  ]), [
+    { headSha, runId: 10, origin: 'main-push' },
+    { headSha, runId: 20, origin: 'pr-full' },
+  ]);
+});
+
 test('an unproven docs-only PR still runs full code checks', () => {
   const base = 'a'.repeat(40);
   const head = 'b'.repeat(40);
