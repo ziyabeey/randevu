@@ -48,7 +48,8 @@
 ## Güncel doğrulama
 
 - 20/20 coordinator unit testi başarılı.
-- Repo HTTP testleri 68 dosyada 818/818 başarılı.
+- Güncel main entegrasyonu sonrası repo HTTP testleri 72 dosyada 868/868
+  başarılı.
 - CI coverage, docs, typecheck ve build başarılı.
 - İnceleme onarımları: exact-head-only Depot checkout, non-empty workflow/job/
   attempt başarı kanıtı, tüm non-pass Depot durumlarında fail-closed merge,
