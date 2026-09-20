@@ -83,7 +83,7 @@ npm run dev
 | `/availability` | Mesai, kapanış ve müsaitlik |
 | `/public-booking` | Public rezervasyon ayarları |
 | `/r/:slug` | Müşteri rezervasyonu |
-| `/m#<token>` | Tek randevuyu güvenli bağlantıyla yönetme |
+| `/m#<token>` | Tek randevuyu veya rezervasyon grubunu güvenli bağlantıyla yönetme |
 
 `/customers` F10-05 PR #74 içindedir; main'e merge edilmeden çalışan main route'u sayılmaz. Marketing homepage runtime'ı da PR #77 merge edilmeden main işlevi sayılmaz. SalonApp/adisyon yolları F14 ile gelir.
 
