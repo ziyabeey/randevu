@@ -273,11 +273,12 @@ export async function verifyDevelopmentReviewLiveState(input, {
       githubCollection(fetchImpl, `${api}/pulls/${identity.pr}/reviews`, token),
       githubCollection(fetchImpl, `${api}/issues/65/comments`, token),
     ]);
-    const currentReceipts = authenticatedReceipts(
+    const roleReceipts = authenticatedReceipts(
       [...comments, ...reviews, ...coordinationComments],
       pr,
       reviewerAllowlist,
-    ).filter((entry) => entry.role === requestedRole && entry.freshness === 'current');
+    ).filter((entry) => entry.role === requestedRole);
+    const currentReceipts = roleReceipts.filter((entry) => entry.freshness === 'current');
 
     const reviewMode = input?.reviewMode;
     if (reviewMode === 'FOLLOW_UP') {
@@ -285,18 +286,34 @@ export async function verifyDevelopmentReviewLiveState(input, {
       const previousSourceRef = typeof previous.previousReceiptSourceRef === 'string'
         ? previous.previousReceiptSourceRef
         : null;
-      const previousObservedAt = Number(previous.previousReceiptObservedAt);
-      const previousId = Number(previous.previousReceiptId);
-      if (!previousSourceRef || !Number.isFinite(previousObservedAt) || !Number.isSafeInteger(previousId)) {
+      const previousObservedAt = previous.previousReceiptObservedAt;
+      const previousId = previous.previousReceiptId;
+      const previousHead = previous.previousReviewedHeadSha;
+      const previousBase = previous.previousReviewedBaseSha;
+      const sourcePrefix = `https://github.com/${repository}/pull/${identity.pr}#`;
+      if (!Number.isSafeInteger(previousId) || previousId <= 0
+          || typeof previousObservedAt !== 'number' || !Number.isFinite(previousObservedAt)
+          || previousObservedAt <= 0
+          || !SHA_RE.test(previousHead ?? '') || !SHA_RE.test(previousBase ?? '')
+          || ![`${sourcePrefix}issuecomment-${previousId}`, `${sourcePrefix}pullrequestreview-${previousId}`]
+            .includes(previousSourceRef)) {
         blocked('FOLLOW_UP_RECEIPT_SNAPSHOT_MISSING');
       }
-      const newerCurrent = currentReceipts.find((entry) => {
-        const represented = entry.url === previousSourceRef
-          && entry.observedAt === previousObservedAt;
-        if (represented) return false;
-        return entry.observedAt >= previousObservedAt;
-      });
-      if (newerCurrent) blocked(`${requestedRole}_REVIEW_ALREADY_RECEIVED`);
+      // A caller-supplied snapshot is not permission to open another paid lane.
+      // Re-authenticate its exact native identity, including historical receipts.
+      const represented = roleReceipts.filter((entry) => entry.url === previousSourceRef
+        && entry.id === previousId && entry.observedAt === previousObservedAt
+        && entry.headSha === previousHead && entry.baseSha === previousBase);
+      if (represented.length !== 1) blocked('FOLLOW_UP_RECEIPT_NOT_AUTHENTICATED');
+      const prior = represented[0];
+      const applicable = currentReceipts.length ? currentReceipts : roleReceipts;
+      // Match observation selection: exact-current first, then newest historical.
+      // Superseded or equal-time ambiguous evidence cannot mint another reservation.
+      if (!applicable.includes(prior)
+          || applicable.some((entry) => entry !== prior && entry.observedAt >= previousObservedAt)
+          || (prior.freshness === 'current' && prior.verdict !== 'INCOMPLETE')) {
+        blocked(`${requestedRole}_REVIEW_ALREADY_RECEIVED`);
+      }
     } else if (currentReceipts.length > 0) {
       blocked(`${requestedRole}_REVIEW_ALREADY_RECEIVED`);
     }

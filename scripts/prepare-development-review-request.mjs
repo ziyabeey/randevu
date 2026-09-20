@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { reviewReservationFingerprint } from './development-review-reservation.mjs';
 import {
   buildIndependentReviewRequest,
   renderIndependentReviewRequest,
@@ -15,17 +16,21 @@ const evidenceTarget = process.argv[3];
 const role = process.argv[4];
 const expectedCaseFingerprint = process.argv[5];
 const requestOutput = process.argv[6] ?? null;
+const receiptChallenge = process.argv[7] ?? null;
 
-if (!dispatcherTarget || !evidenceTarget || !role || !expectedCaseFingerprint) {
-  throw new Error('Usage: prepare-development-review-request <dispatcher.json> <evidence.json> <r1|r2> <case-fingerprint> [request-output.json]');
+if (!dispatcherTarget || !evidenceTarget || !role || !expectedCaseFingerprint || !receiptChallenge) {
+  throw new Error('Usage: prepare-development-review-request <dispatcher.json> <evidence.json> <r1|r2> <case-fingerprint> [request-output.json] <receipt-challenge>');
 }
 
 const request = buildIndependentReviewRequest(
   readJson(dispatcherTarget),
   readJson(evidenceTarget),
   role,
-  { expectedCaseFingerprint },
+  { expectedCaseFingerprint, receiptChallenge },
 );
+// A payload fingerprint is not a paid-work identity: CI reruns and sibling
+// receipts may change it without authorizing another launch.
+request.reservationFingerprint = reviewReservationFingerprint(request);
 if (requestOutput) {
   writeFileSync(path.resolve(process.cwd(), requestOutput), JSON.stringify(request, null, 2));
 }

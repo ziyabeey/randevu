@@ -57,6 +57,40 @@ stable.
    - It inherits the role of the route it replaces. It does not create an extra
      scout, implementation or review turn.
 
+8. **R3/R4: optional, assignment-only ChatGPT reviews**
+   - R3 answers architectural/cross-module contract questions; discovery label
+     `dev-review-r3`.
+   - R4 maps acceptance claims to actual test/CI evidence and targeted regression
+     gaps; discovery label `dev-review-r4`.
+   - Both hourly tasks follow the single [R3/R4 contract](automations/r3-r4-review.md).
+     Only the coordinator supplies a bounded, exact-head/base assignment and its
+     relevant label. A label or hourly tick alone is not work authorization.
+   - They do not replace R1/R2, introduce mandatory sequential gates, classify
+     every PR, repeat general engine telemetry, or gain approval/merge authority.
+
+9. **Y1/Y2: optional, assignment-only ChatGPT writers**
+   - Y1 delivers a scoped new S/M task in one draft PR; label `dev-write-y1`.
+   - Y2 repairs frozen findings on an explicitly handed-over existing PR/branch;
+     label `dev-write-y2`. It does not invoke Qwen's new-task route for repairs.
+   - Both hourly tasks follow the [writer contract](automations/hourly-writers.md)
+     and the existing kepenk-implementer Skill. A tick/label is not an assignment.
+   - They replace the selected implementer only after explicit single-writer
+     assignment/handoff, never run alongside that implementer on the same scope,
+     and never self-review, approve, mark ready, merge or touch live data/settings.
+   - Task creation does not prove coding/test runtime capability. The first real
+     assignment must establish actual delivery and available execution evidence.
+
+10. **A1/A2/A3: optional GitHub R&D lab**
+   - A1 scans for one materially new opportunity and opens a proposal issue only
+     when current evidence supports a non-duplicate idea.
+   - A2 independently stress-tests that proposal against current product scope,
+     architecture, duplication, cost/risk and evidence quality.
+   - A3 turns only validated ideas into a smallest reversible experiment plan.
+   - All three follow the [R&D Lab contract](automations/rnd-lab.md). They never
+     edit TASKS/code, create writer assignments, launch CI/models, deploy, approve
+     or merge. Only the coordinator may promote an R&D issue into normal task work.
+   - R&D stage labels are research workflow state, not product/task status.
+
 ## Routing rules
 
 - **Clear, bounded implementation:** coordinator → selected implementer (Qwen when
@@ -77,6 +111,18 @@ stable.
   Do not turn fallback into an additional opinion.
 - **Independent specialist review:** open only the R1/R2 gate justified by the
   validation budget and actual risk.
+- **Supplementary contract/proof question:** selectively assign R3 or R4 under
+  the [R3/R4 label and assignment contract](automations/r3-r4-review.md). Separate
+  questions are necessary to assign both. Their ordinary advisory results do not
+  enter the R1/R2 API receipt validator or reopen completed work on an hourly tick.
+- **Hourly implementation:** choose Y1 for an approved new task slice or explicitly
+  hand the current PR to Y2 for bounded repair. Follow the [writer contract](automations/hourly-writers.md).
+  No valid assignment means no work; delivery returns to the normal CI/reviewer/
+  coordinator chain. This does not change the deterministic Dispatcher's role enum.
+
+- **Research opportunity:** A1 may open a non-duplicate R&D proposal; A2 validates
+  it; A3 designs a reversible experiment. Promotion into TASKS/implementation is a
+  separate coordinator decision under the [R&D Lab contract](automations/rnd-lab.md).
 
 ## API-fired independent review roles
 
