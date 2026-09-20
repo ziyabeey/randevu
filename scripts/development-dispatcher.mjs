@@ -128,6 +128,7 @@ function normalizeReview(review = {}) {
     reviewedBaseSha: review.reviewedBaseSha ?? null,
     sourceRef: typeof review.sourceRef === 'string' ? review.sourceRef : null,
     reviewedAt: Number.isFinite(Number(review.reviewedAt)) ? Number(review.reviewedAt) : null,
+    receiptId: Number.isSafeInteger(Number(review.receiptId)) ? Number(review.receiptId) : null,
   };
 }
 
