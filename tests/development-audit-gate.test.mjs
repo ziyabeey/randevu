@@ -26,6 +26,7 @@ test('Copilot/Codex generic reviews and prose approval never become independent 
   assert.deepEqual(verifiedReceipts([{ ...source(), body: 'R1 ACCEPTABLE current head approved' }], pr, allowlist), []);
   assert.deepEqual(verifiedReceipts([source()], pr), []);
   assert.deepEqual(verifiedReceipts([source()], pr, { R1: ['security'], R2: ['security'] }), []);
+  assert.deepEqual(verifiedReceipts([source()], pr, { R1: ['security'], R2: 'integration' }), []);
 });
 test('receipt identity and head/base freshness are deterministic', () => {
   assert.equal(verifiedReceipts([source()], pr, allowlist)[0].freshness, 'current');
@@ -36,6 +37,19 @@ test('receipt identity and head/base freshness are deterministic', () => {
   assert.deepEqual(verifiedReceipts([{ ...source(), commit_id: 'c'.repeat(40) }], pr, allowlist), []);
   assert.deepEqual(verifiedReceipts([{ ...source(), body: source().body.repeat(2) }], pr, allowlist), []);
   assert.match(freshnessReport(pr, verifiedReceipts([source()], pr, allowlist)), /R2: unknown/);
+});
+
+test('cross-endpoint receipt selection uses timestamps before unrelated numeric IDs', () => {
+  const older = { ...source(), id: 999, created_at: '2026-09-20T00:00:00Z' };
+  const newer = {
+    ...source({ headSha: 'c'.repeat(40) }),
+    id: 1,
+    submitted_at: '2026-09-20T00:01:00Z',
+    html_url: 'https://github.com/example/repo/pull/201#pullrequestreview-1',
+  };
+  const selected = verifiedReceipts([older, newer], pr, allowlist);
+  assert.equal(selected[0].id, 1);
+  assert.equal(selected[0].freshness, 'stale');
 });
 test('publish fence rejects head drift, base drift, closed PR or mismatched PR', () => {
   assert.equal(sameIdentity(pr, structuredClone(pr)), true);
@@ -87,7 +101,7 @@ function runAdapter({ mode = 'stale', files = [{ filename: 'src/a.ts' }], commen
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }
 test('adapter makes zero provider calls; metadata/no receipts creates no advisory', () => {
-  for (const opts of [{ files: [{ filename: 'TASKS.md' }] }, { comments: [] },
+  for (const opts of [{ files: [{ filename: 'TASKS.md' }], comments: [] }, { comments: [] },
     { comments: [{ ...source(), user: { login: 'copilot-pull-request-reviewer[bot]' } }] }]) {
     const r = runAdapter(opts);
     assert.equal(r.status, 0, r.stderr);
@@ -106,12 +120,20 @@ test('adapter refuses to publish after late base drift and replaces legacy false
   assert.equal(writes.length, 1);
   assert.match(JSON.parse(writes[0].body).body, /Withdrawn/);
 });
-test('adapter skips docs-only delta on a code PR and rejects non-descendant comparison', () => {
+test('docs-only delta avoids model calls but still publishes deterministic stale receipt freshness', () => {
   const event = { action: 'synchronize', before: 'd'.repeat(40), pull_request: { head: { sha: head } } };
   const compare = { status: 'ahead', merge_base_commit: { sha: event.before }, files: [{ filename: 'TASKS.md' }] };
-  const docs = runAdapter({ event, compare });
+  const staleReceipt = {
+    ...source({ headSha: event.before }),
+    created_at: '2026-09-20T00:00:00Z',
+  };
+  const docs = runAdapter({ event, compare, comments: [staleReceipt] });
   assert.equal(docs.status, 0, docs.stderr);
-  assert.ok(docs.calls.every((c) => c.method === 'GET'));
+  const docsWrites = docs.calls.filter((c) => c.method === 'POST');
+  assert.equal(docsWrites.length, 1);
+  assert.match(JSON.parse(docsWrites[0].body).body, /freshness stale/);
+  assert.ok(docs.calls.every((c) => c.url.startsWith('https://api.github.com/')));
+
   const diverged = runAdapter({ event, compare: { ...compare, status: 'diverged' } });
   assert.equal(diverged.status, 0, diverged.stderr);
   assert.equal(diverged.calls.filter((c) => c.method === 'POST').length, 1);

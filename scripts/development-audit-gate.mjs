@@ -27,6 +27,14 @@ export function classifyFileRecords(files, expectedCount) {
 // Roles come only from configured identities AND an explicit structured receipt.
 // Arbitrary prose, GitHub approvals and generic code-review bots are never role evidence.
 export function verifiedReceipts(items, pr, allowlist = {}) {
+  if (!allowlist || typeof allowlist !== 'object' || Array.isArray(allowlist)
+      || roles.some((role) => allowlist[role] !== undefined && !Array.isArray(allowlist[role]))) {
+    return [];
+  }
+  const configured = Object.fromEntries(roles.map((role) => [
+    role,
+    Array.isArray(allowlist[role]) ? allowlist[role] : [],
+  ]));
   const found = [];
   for (const item of items) {
     const author = item?.user?.login;
@@ -36,16 +44,24 @@ export function verifiedReceipts(items, pr, allowlist = {}) {
     let receipt;
     try { receipt = JSON.parse(matches[0][1]); } catch { continue; }
     const { role, headSha, baseSha, prNumber } = receipt;
-    if (!roles.includes(role) || !Array.isArray(allowlist[role]) || !allowlist[role].includes(author)
-      || roles.some((other) => other !== role && allowlist[other]?.includes(author))
+    if (!roles.includes(role) || !configured[role].includes(author)
+      || roles.some((other) => other !== role && configured[other].includes(author))
       || prNumber !== pr.number || !sha.test(headSha ?? '') || !sha.test(baseSha ?? '')
       || (item.commit_id && item.commit_id !== headSha)
       || !Number.isSafeInteger(item.id) || !item.html_url) continue;
-    found.push({ role, author, headSha, baseSha, id: item.id,
-      url: item.html_url, freshness: headSha === pr.head.sha && baseSha === pr.base.sha ? 'current' : 'stale' });
+    const receiptTime = Date.parse(item.submitted_at ?? item.created_at ?? item.updated_at ?? '');
+    found.push({
+      role, author, headSha, baseSha, id: item.id,
+      observedAt: Number.isFinite(receiptTime) ? receiptTime : 0,
+      url: item.html_url,
+      freshness: headSha === pr.head.sha && baseSha === pr.base.sha ? 'current' : 'stale',
+    });
   }
-  // Keep one latest receipt per role; the API list order is not authoritative.
-  return roles.flatMap((role) => found.filter((r) => r.role === role).sort((a, b) => b.id - a.id).slice(0, 1));
+  // Comment IDs and review IDs are unrelated namespaces. Use GitHub timestamps for chronology;
+  // numeric ID is only a deterministic tie-breaker within equal/missing timestamps.
+  return roles.flatMap((role) => found.filter((r) => r.role === role)
+    .sort((a, b) => b.observedAt - a.observedAt || b.id - a.id)
+    .slice(0, 1));
 }
 
 export function freshnessReport(pr, receipts) {

@@ -46,11 +46,12 @@ if (process.argv[2] === 'classify') {
   const comments = await pages(`/issues/${number}/comments`);
   const marker = '<!-- development-stale-review -->';
   const existing = comments.filter((c) => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
-  let receipts = [];
-  if (classification !== 'docs') {
-    const allowlist = JSON.parse(process.env.DEVELOPMENT_REVIEWER_ALLOWLIST || '{}');
-    receipts = verifiedReceipts([...comments, ...await pages(`/pulls/${number}/reviews`)], pr, allowlist);
-  }
+  const allowlist = JSON.parse(process.env.DEVELOPMENT_REVIEWER_ALLOWLIST || '{}');
+  const receipts = verifiedReceipts(
+    [...comments, ...await pages(`/pulls/${number}/reviews`)],
+    pr,
+    allowlist,
+  );
   // Retire an old misleading advisory, but don't create comments for a NO_ACTION event.
   if (!receipts.length && !existing.length) { console.log('NO_ACTION: no verified receipts; model calls: 0'); }
   else {

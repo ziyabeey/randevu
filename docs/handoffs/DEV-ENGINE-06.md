@@ -12,7 +12,7 @@
 - Out of scope: product code, DB, migrations, F12-05/#187, review delivery/#197, dependency/acceptance closure and app-managed review settings.
 - Invariants: CI failure does not imply candidate causality; no model-derived reviewer identity; no stale publication; no self-approval/merge; unknown evidence stays unknown.
 - Acceptance: spoofed roles and head/base races rejected; metadata invokes zero stale-review models; initial docs-only PR can reuse exact green main baseline; mixed/code/base-drift falls back to full checks; TASKS does not chase volatile provenance.
-- Skills: personal-context checked for continuity; repo-native tooling used for CI/governance (no dedicated CI skill required).
+- Context continuity: prior project context checked; repo-native tooling used for CI/governance (no dedicated CI skill required).
 
 ## Delivery
 
