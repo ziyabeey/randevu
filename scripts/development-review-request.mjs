@@ -146,7 +146,17 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
     && SHA_RE.test(review.reviewedHeadSha)
     ? review.reviewedHeadSha
     : null;
-  const reviewMode = review.receipt === 'accessible' && previousReviewedHead
+  const previousReviewedBase = typeof review.reviewedBaseSha === 'string'
+    && SHA_RE.test(review.reviewedBaseSha)
+    ? review.reviewedBaseSha
+    : null;
+  const previousReceiptSourceRef = typeof review.sourceRef === 'string' && review.sourceRef
+    ? review.sourceRef
+    : null;
+  const previousReceiptObservedAt = Number.isFinite(Number(review.reviewedAt))
+    ? Number(review.reviewedAt)
+    : null;
+  const reviewMode = review.receipt === 'accessible' && previousReviewedHead && previousReviewedBase
     ? 'FOLLOW_UP'
     : 'FIRST_REVIEW';
 
@@ -180,6 +190,9 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
         verdict: review.verdict ?? null,
         receipt: review.receipt ?? null,
         previousReviewedHeadSha: previousReviewedHead,
+        previousReviewedBaseSha: previousReviewedBase,
+        previousReceiptSourceRef,
+        previousReceiptObservedAt,
       },
       r0: stableValue(facts.r0 ?? {}),
       obligations: roleObligations(dispatcherResult, role),
