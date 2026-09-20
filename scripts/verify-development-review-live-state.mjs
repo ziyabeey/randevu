@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseReviewerAllowlist, verifiedReceipts } from './development-audit-gate.mjs';
 
 const SHA_RE = /^[a-f0-9]{40}$/;
 const POSITIVE_INT_RE = /^[1-9][0-9]*$/;
@@ -167,6 +168,18 @@ export function checkoutShaFromJobLogs(logText) {
   return unique.length === 1 ? unique[0] : null;
 }
 
+async function githubCollection(fetchImpl, url, token) {
+  const all = [];
+  for (let page = 1; page <= 10; page += 1) {
+    const separator = url.includes('?') ? '&' : '?';
+    const items = await githubJson(fetchImpl, `${url}${separator}per_page=100&page=${page}`, token);
+    if (!Array.isArray(items)) blocked('GITHUB_COLLECTION_INVALID');
+    all.push(...items);
+    if (items.length < 100) return all;
+  }
+  blocked('GITHUB_COLLECTION_TOO_LARGE');
+}
+
 function defaultGit(args, root) {
   return spawnSync('git', args, {
     cwd: root,
@@ -183,6 +196,7 @@ export async function verifyDevelopmentReviewLiveState(input, {
   fetchImpl = fetch,
   git = defaultGit,
   tasksText = null,
+  reviewerAllowlist = parseReviewerAllowlist(process.env.DEVELOPMENT_REVIEWER_ALLOWLIST),
 } = {}) {
   if (typeof repository !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
     blocked('REPOSITORY_INVALID');
@@ -248,6 +262,19 @@ export async function verifyDevelopmentReviewLiveState(input, {
       || job.conclusion !== 'success'
       || (job.run_attempt !== undefined && Number(job.run_attempt) !== identity.ci.attempt)) {
     blocked('LIVE_CI_JOB_MISMATCH');
+  }
+
+  const requestedRole = input?.schemaVersion === 'development-independent-review-request.v0'
+    ? String(input?.role ?? '').toUpperCase()
+    : null;
+  if (requestedRole === 'R1' || requestedRole === 'R2') {
+    const [comments, reviews] = await Promise.all([
+      githubCollection(fetchImpl, `${api}/issues/${identity.pr}/comments`, token),
+      githubCollection(fetchImpl, `${api}/pulls/${identity.pr}/reviews`, token),
+    ]);
+    const currentReceipt = verifiedReceipts([...comments, ...reviews], pr, reviewerAllowlist)
+      .find((entry) => entry.role === requestedRole && entry.freshness === 'current');
+    if (currentReceipt) blocked(`${requestedRole}_REVIEW_ALREADY_RECEIVED`);
   }
 
   const loggedCheckoutSha = checkoutShaFromJobLogs(jobLogs);
