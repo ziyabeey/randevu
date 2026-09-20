@@ -125,6 +125,48 @@ async function githubJson(fetchImpl, url, token) {
   }
 }
 
+async function githubText(fetchImpl, url, token) {
+  let response;
+  try {
+    response = await fetchImpl(url, {
+      headers: {
+        accept: 'application/vnd.github+json',
+        authorization: `Bearer ${token}`,
+        'x-github-api-version': '2022-11-28',
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch {
+    blocked('GITHUB_API_UNAVAILABLE');
+  }
+  if (!response.ok) blocked(`GITHUB_API_HTTP_${response.status}`);
+  try {
+    return await response.text();
+  } catch {
+    blocked('GITHUB_API_RESPONSE_INVALID');
+  }
+}
+
+export function checkoutShaFromJobLogs(logText) {
+  const lines = String(logText ?? '').split(/\r?\n/);
+  const candidates = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index].includes('[command]/usr/bin/git log -1 --format=%H')) continue;
+    for (let offset = 1; offset <= 4 && index + offset < lines.length; offset += 1) {
+      const payload = lines[index + offset]
+        .replace(/^\d{4}-\d{2}-\d{2}T[^ ]+Z\s+/, '')
+        .trim();
+      if (SHA_RE.test(payload)) {
+        candidates.push(payload);
+        break;
+      }
+      if (payload.startsWith('[command]') || payload.startsWith('##[')) break;
+    }
+  }
+  const unique = [...new Set(candidates)];
+  return unique.length === 1 ? unique[0] : null;
+}
+
 function defaultGit(args, root) {
   return spawnSync('git', args, {
     cwd: root,
@@ -162,7 +204,7 @@ export async function verifyDevelopmentReviewLiveState(input, {
 
   const api = `https://api.github.com/repos/${repository}`;
   const otherTaskPrNumbers = taskPrNumbers.filter((number) => number !== identity.pr);
-  const [pr, main, run, jobs, ...otherTaskPrs] = await Promise.all([
+  const [pr, main, run, jobs, jobLogs, ...otherTaskPrs] = await Promise.all([
     githubJson(fetchImpl, `${api}/pulls/${identity.pr}`, token),
     githubJson(fetchImpl, `${api}/branches/main`, token),
     githubJson(fetchImpl, `${api}/actions/runs/${identity.ci.run}`, token),
@@ -171,6 +213,7 @@ export async function verifyDevelopmentReviewLiveState(input, {
       `${api}/actions/runs/${identity.ci.run}/attempts/${identity.ci.attempt}/jobs?per_page=100`,
       token,
     ),
+    githubText(fetchImpl, `${api}/actions/jobs/${identity.ci.job}/logs`, token),
     ...otherTaskPrNumbers.map((number) => githubJson(fetchImpl, `${api}/pulls/${number}`, token)),
   ]);
 
@@ -205,6 +248,12 @@ export async function verifyDevelopmentReviewLiveState(input, {
       || job.conclusion !== 'success'
       || (job.run_attempt !== undefined && Number(job.run_attempt) !== identity.ci.attempt)) {
     blocked('LIVE_CI_JOB_MISMATCH');
+  }
+
+  const loggedCheckoutSha = checkoutShaFromJobLogs(jobLogs);
+  if (!loggedCheckoutSha) blocked('LIVE_CI_CHECKOUT_LOG_UNVERIFIABLE');
+  if (loggedCheckoutSha !== identity.ci.testedCheckoutSha) {
+    blocked('LIVE_CI_TESTED_CHECKOUT_MISMATCH');
   }
 
   let checkoutBinding = 'raw_head';
