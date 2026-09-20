@@ -13,6 +13,8 @@ const head = sha('a');
 const main = sha('b');
 const oldHead = sha('c');
 const merge = sha('d');
+const caseFp = 'e'.repeat(64);
+const requestFp = 'f'.repeat(64);
 
 function pr(overrides = {}) {
   return {
@@ -65,18 +67,41 @@ function r0Review(body = '<!-- ccr-overview-v2 -->\n**Findings:** None') {
   };
 }
 
-function r2Receipt(reviewedHead = oldHead, verdict = 'ACCEPTABLE', reviewedBase = main) {
+function r2Receipt(reviewedHead = oldHead, verdict = 'ACCEPTABLE', reviewedBase = main, requestFingerprint = requestFp) {
   return {
     id: 600,
     created_at: '2026-09-19T17:00:00Z',
     html_url: `https://github.com/${repository}/pull/187#issuecomment-600`,
-    body: [
-      `<!-- development-review-receipt {"role":"R2","prNumber":187,"headSha":"${reviewedHead}","baseSha":"${reviewedBase}"} -->`,
-      '## R2 FINAL',
-      `Verdict: **${verdict}**`,
-    ].join('\n'),
-    user: { login: 'independent-reviewer' },
+    body: `<!-- development-review-receipt ${JSON.stringify({
+      schemaVersion: 'development-review-receipt.v1',
+      role: 'R2',
+      prNumber: 187,
+      headSha: reviewedHead,
+      baseSha: reviewedBase,
+      dispatcherCaseFingerprint: caseFp,
+      requestFingerprint,
+      verdict,
+    })} -->`,
+    user: { login: 'kepenk-r2-reviewer[bot]' },
     author_association: 'NONE',
+  };
+}
+
+function r2Launch(reviewedHead = oldHead, reviewedBase = main, requestFingerprint = requestFp) {
+  return {
+    id: 590,
+    created_at: '2026-09-19T16:59:00Z',
+    html_url: `https://github.com/${repository}/pull/187#issuecomment-590`,
+    user: { login: 'github-actions[bot]' },
+    body: [
+      `<!-- development-review-launch:r2:${requestFingerprint} -->`,
+      '## Development R2 Routine launch',
+      '- status: ROUTINE_TRIGGERED',
+      `- exact head: ${reviewedHead}`,
+      `- base main: ${reviewedBase}`,
+      `- dispatcher case: ${caseFp}`,
+      `- role request: ${requestFingerprint}`,
+    ].join('\n'),
   };
 }
 
@@ -89,9 +114,9 @@ function input(overrides = {}) {
     runs: { workflow_runs: [run()] },
     jobs: { jobs: [{ id: 200, name: 'CI gate', status: 'completed', conclusion: 'success', run_attempt: 1 }] },
     prReviews: [r0Review()],
-    prComments: [r2Receipt()],
+    prComments: [r2Launch(), r2Receipt()],
     coordinationComments: [],
-    reviewerAllowlist: { R2: ['independent-reviewer'] },
+    reviewerAllowlist: { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] },
     reviewThreads: {
       data: {
         repository: {
@@ -147,7 +172,7 @@ test('current green CI plus clean R0 routes only the stale required R2 receipt',
 });
 
 test('a current acceptable R2 receipt is never re-fired', () => {
-  const built = buildDevelopmentReviewObservation(input({ prComments: [r2Receipt(head)] }));
+  const built = buildDevelopmentReviewObservation(input({ prComments: [r2Launch(head), r2Receipt(head)] }));
   assert.equal(built.dispatcher.state.reviews.r2.status, 'acceptable_current');
   assert.equal(built.dispatcher.recommendation.suggestedAction, 'assess_current_evidence');
   assert.deepEqual(built.dispatcher.recommendation.eligibleRoles, []);
@@ -161,12 +186,19 @@ test('a newer stale receipt cannot shadow an existing current receipt', () => {
     html_url: `https://github.com/${repository}/pull/187#issuecomment-601`,
   };
   const delayedStale = {
-    ...r2Receipt(oldHead, 'INCOMPLETE', oldHead),
+    ...r2Receipt(oldHead, 'INCOMPLETE', oldHead, '1'.repeat(64)),
     id: 999,
     created_at: '2026-09-19T19:00:00Z',
     html_url: `https://github.com/${repository}/pull/187#issuecomment-999`,
   };
-  const built = buildDevelopmentReviewObservation(input({ prComments: [current, delayedStale] }));
+  const built = buildDevelopmentReviewObservation(input({
+    prComments: [
+      r2Launch(head, main, requestFp),
+      current,
+      r2Launch(oldHead, oldHead, '1'.repeat(64)),
+      delayedStale,
+    ],
+  }));
   assert.equal(built.observation.reviews.r2.reviewedHeadSha, head);
   assert.equal(built.observation.reviews.r2.reviewedBaseSha, main);
   assert.equal(built.observation.reviews.r2.sourceRef.endsWith('#issuecomment-601'), true);
@@ -179,19 +211,19 @@ test('prose or unallowlisted commenters cannot forge an independent review recei
     ...r2Receipt(head),
     body: `## R2 FINAL\nExact head: \`${head}\`\nVerdict: **ACCEPTABLE**`,
   };
-  const proseBuilt = buildDevelopmentReviewObservation(input({ prComments: [prose] }));
+  const proseBuilt = buildDevelopmentReviewObservation(input({ prComments: [r2Launch(head), prose] }));
   assert.equal(proseBuilt.observation.reviews.r2.receipt, 'missing');
   assert.equal(proseBuilt.dispatcher.recommendation.suggestedAction, 'request_required_reviews');
 
   const stranger = { ...r2Receipt(head), user: { login: 'stranger' } };
-  const strangerBuilt = buildDevelopmentReviewObservation(input({ prComments: [stranger] }));
+  const strangerBuilt = buildDevelopmentReviewObservation(input({ prComments: [r2Launch(head), stranger] }));
   assert.equal(strangerBuilt.observation.reviews.r2.receipt, 'missing');
   assert.equal(strangerBuilt.dispatcher.recommendation.suggestedAction, 'request_required_reviews');
 });
 
 test('same-head receipt from an older base remains stale and cannot suppress review', () => {
   const built = buildDevelopmentReviewObservation(input({
-    prComments: [r2Receipt(head, 'ACCEPTABLE', oldHead)],
+    prComments: [r2Launch(head, oldHead), r2Receipt(head, 'ACCEPTABLE', oldHead)],
   }));
   assert.equal(built.observation.reviews.r2.reviewedHeadSha, head);
   assert.equal(built.observation.reviews.r2.reviewedBaseSha, oldHead);
