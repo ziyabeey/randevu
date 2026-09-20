@@ -40,12 +40,16 @@ access failure.
 
 The workflow no longer invokes Gemini for freshness or role identity. `scripts/development-audit-gate.mjs` is the deterministic provenance layer, not a new routing authority. It does not dispatch or satisfy reviews. The existing Dispatcher remains the sole next-action authority.
 
-`DEVELOPMENT_REVIEWER_ALLOWLIST` is a repository variable shaped as `{"R1":["security-reviewer"],"R2":["integration-reviewer"]}`. Missing configuration means no verified receipts. A reviewer cannot be the PR author, appear in both role lists, or be a generic Copilot/Codex review bot. The source comment/review must contain one explicit structured marker:
+`DEVELOPMENT_REVIEWER_ALLOWLIST` is a repository variable shaped as `{"R1":["kepenk-r1-reviewer[bot]"],"R2":["kepenk-r2-reviewer[bot]"]}`. Each role must have exactly one dedicated publisher identity and the two identities must differ. Missing or broad configuration means no verified receipts. The PR author, `github-actions[bot]`, generic Copilot/Codex reviewers, and any identity shared by both roles are never independent review publishers.
+
+The final source comment/review must contain exactly one v1 structured marker:
 
 ```text
-<!-- development-review-receipt {"role":"R1","prNumber":123,"headSha":"FULL_40_CHAR_SHA","baseSha":"FULL_40_CHAR_SHA"} -->
+<!-- development-review-receipt {"schemaVersion":"development-review-receipt.v1","role":"R1","prNumber":123,"headSha":"FULL_40_CHAR_SHA","baseSha":"FULL_40_CHAR_SHA","dispatcherCaseFingerprint":"64_HEX","requestFingerprint":"64_HEX","verdict":"ACCEPTABLE"} -->
 ```
 
-The authenticated source author, marker role, PR number, exact head/base and native review commit identity must agree. Historical receipts remain stale; arbitrary prose is never upgraded into a role. Without verified receipts, no new advisory is published. An existing workflow-owned advisory is withdrawn. Before writing, head AND base are re-read; changes discard output.
+`verdict` is exactly `ACCEPTABLE | BLOCKER | INCOMPLETE`. A receipt is accepted only when an earlier workflow-owned `ROUTINE_TRIGGERED` launch comment on the same PR carries the same role, exact head/base, Dispatcher case fingerprint and request fingerprint. This makes the paid role request, not free-form prose, the provenance root. The launch publisher (`github-actions[bot]`) is intentionally distinct from the final reviewer publisher and can never satisfy R1/R2 itself.
+
+The authenticated source author, marker role, PR number, exact head/base, case fingerprint, request fingerprint, verdict, matching launch and native review commit identity must agree. Historical receipts remain stale; arbitrary prose and unmatched/replayed receipts are never upgraded into a role. Without verified receipts, no new advisory is published. An existing workflow-owned advisory is withdrawn. Before writing, head AND base are re-read; changes discard output.
 
 TASKS/docs-only PRs and proven docs-only synchronize deltas make zero model calls. Cloudflare opening/manual audits also use the deterministic changed-files gate. Rename source paths, incomplete file lists, missing ancestry and observation races cannot become a docs-only proof. GitHub Copilot/Codex/GHAS app-managed automatic reviews are outside this workflow’s trigger control; they are not independent R1/R2 acceptance evidence. Their repository/app settings must be configured separately if the provider supports path exclusions. No model fallback is enabled for ambiguous identity.
