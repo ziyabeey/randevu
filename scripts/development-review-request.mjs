@@ -159,9 +159,16 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
   const previousReceiptId = Number.isSafeInteger(Number(review.receiptId))
     ? Number(review.receiptId)
     : null;
-  const reviewMode = review.receipt === 'accessible' && previousReviewedHead && previousReviewedBase
-    ? 'FOLLOW_UP'
-    : 'FIRST_REVIEW';
+  const hasPreviousReceipt = review.receipt === 'accessible'
+    && previousReviewedHead
+    && previousReviewedBase;
+  if (hasPreviousReceipt
+      && (!previousReceiptSourceRef
+        || !Number.isFinite(previousReceiptObservedAt)
+        || !Number.isSafeInteger(previousReceiptId))) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: FOLLOW_UP_RECEIPT_IDENTITY_MISSING');
+  }
+  const reviewMode = hasPreviousReceipt ? 'FOLLOW_UP' : 'FIRST_REVIEW';
 
   const request = {
     schemaVersion: 'development-independent-review-request.v0',
