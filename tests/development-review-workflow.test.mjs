@@ -10,7 +10,8 @@ test('Development Escalation Router calls review delivery only for deterministic
   assert.doesNotMatch(escalation, /actions: write/);
   assert.match(escalation, /needs\.route\.outputs\.disposition == 'DETERMINISTIC_ACTION'/);
   assert.match(escalation, /needs\.route\.outputs\.suggested_action == 'request_required_reviews'/);
-  assert.match(escalation, /uses: \.\/\.github\/workflows\/development-review-router\.yml/);
+  assert.match(escalation, /uses: ziyabeey1-ai\/randevu\/\.github\/workflows\/development-review-router\.yml@main/);
+  assert.doesNotMatch(escalation, /uses: \.\/\.github\/workflows\/development-review-router\.yml/);
   assert.match(escalation, /expected_case_fingerprint: \$\{\{ needs\.route\.outputs\.case_fingerprint \}\}/);
   assert.match(escalation, /CLAUDE_R1_ROUTINE_TOKEN/);
   assert.match(escalation, /CLAUDE_R2_ROUTINE_TOKEN/);
@@ -72,6 +73,19 @@ test('review automation and role jobs receive the same trusted reviewer allowlis
   assert.ok((review.match(/DEVELOPMENT_REVIEWER_ALLOWLIST: \$\{\{ vars\.DEVELOPMENT_REVIEWER_ALLOWLIST \}\}/g) ?? []).length >= 3);
 });
 
+test('review mutation permissions are PR-scoped and reusable workflows are canonical-main pinned', () => {
+  assert.match(automation, /issues: read[\s\S]*pull-requests: write[\s\S]*development-escalation-router\.yml@main/);
+  assert.match(escalation, /issues: read[\s\S]*pull-requests: write[\s\S]*development-review-router\.yml@main/);
+  const roleSections = [
+    review.split('  r1:')[1]?.split('  r2:')[0] ?? '',
+    review.split('  r2:')[1] ?? '',
+  ];
+  for (const section of roleSections) {
+    assert.match(section, /issues: read/);
+    assert.match(section, /pull-requests: write/);
+  }
+});
+
 test('green CI and a later R0 receipt both re-evaluate the trusted Dispatcher route', () => {
   assert.match(automation, /workflow_run:/);
   assert.match(automation, /workflows: \[CI\]/);
@@ -80,7 +94,8 @@ test('green CI and a later R0 receipt both re-evaluate the trusted Dispatcher ro
   assert.match(automation, /prepare-development-review-observation\.mjs build/);
   assert.match(automation, /suggestedAction/);
   assert.match(automation, /action === 'request_required_reviews'/);
-  assert.match(automation, /uses: \.\/\.github\/workflows\/development-escalation-router\.yml/);
+  assert.match(automation, /uses: ziyabeey1-ai\/randevu\/\.github\/workflows\/development-escalation-router\.yml@main/);
+  assert.doesNotMatch(automation, /uses: \.\/\.github\/workflows\/development-escalation-router\.yml/);
 });
 
 test('automatic review delivery uses canonical main code and fails closed before secrets', () => {

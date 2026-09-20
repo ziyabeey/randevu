@@ -25,12 +25,18 @@ on:
 permissions:
   actions: read
   contents: read
-  pull-requests: read
+  issues: read
+  pull-requests: write
 
 jobs:
   route:
     name: Verify deterministic review route
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      issues: read
+      pull-requests: read
     timeout-minutes: 5
     outputs:
       case_fingerprint: ${{ steps.route.outputs.case_fingerprint }}
@@ -140,8 +146,8 @@ jobs:
     permissions:
       actions: read
       contents: read
-      issues: write
-      pull-requests: read
+      issues: read
+      pull-requests: write
     env:
       ROLE: r1
       CASE_FINGERPRINT: ${{ needs.route.outputs.case_fingerprint }}
@@ -284,8 +290,8 @@ jobs:
     permissions:
       actions: read
       contents: read
-      issues: write
-      pull-requests: read
+      issues: read
+      pull-requests: write
     env:
       ROLE: r2
       CASE_FINGERPRINT: ${{ needs.route.outputs.case_fingerprint }}
