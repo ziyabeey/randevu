@@ -15,12 +15,14 @@ import {
   ciForPull,
   classifyPull,
   compactReviewEvidence,
+  depotRunHardInvalidation,
   dispatchNotificationEvents,
   githubPollIntervalSeconds,
   notificationEvent,
   parseTasksSnapshot,
   policyFingerprint,
   receiptEvidenceBody,
+  safeDepotMaxConcurrentRuns,
   validateQwenChoices,
 } from './policy.mjs';
 import {
@@ -687,14 +689,7 @@ async function reconcileDepot(config, remote, decisions, state) {
       continue;
     }
     const baseDecision = decisions.find((decision) => decision.prNumber === run.prNumber);
-    const structurallyInvalid = baseDecision?.choice === 'B'
-      || (baseDecision?.gaps ?? []).some((gap) => [
-        'TASK_NOT_MAPPED',
-        'FILES_TRUNCATED',
-        'THREADS_TRUNCATED',
-        'BASE_NOT_CURRENT_MAIN',
-        'CROSS_REPOSITORY_HEAD',
-      ].includes(gap));
+    const structurallyInvalid = depotRunHardInvalidation(baseDecision);
     if (structurallyInvalid && !isDepotTerminal(run.status)) {
       const terminal = cancelDepotRun(config, run);
       if (terminal && run.status !== 'cancelled') run.status = 'superseded';
@@ -714,9 +709,7 @@ async function reconcileDepot(config, remote, decisions, state) {
   }
 
   const active = Object.values(state.depotRuns).filter((run) => !isDepotTerminal(run.status) && run.status !== 'start-error').length;
-  const maxRuns = Number.isInteger(config.depotMaxConcurrentRuns) && config.depotMaxConcurrentRuns > 0
-    ? config.depotMaxConcurrentRuns
-    : 1;
+  const maxRuns = safeDepotMaxConcurrentRuns(config.depotMaxConcurrentRuns);
   if (active >= maxRuns) return;
   const candidates = decisions
     .map((decision) => ({ decision, pr: remote.pulls.find((item) => item.number === decision.prNumber) }))

@@ -5,6 +5,7 @@ import {
   canonicalTaskBinding,
   classifyPull,
   compactReviewEvidence,
+  depotRunHardInvalidation,
   dispatchNotificationEvents,
   githubPollIntervalSeconds,
   notificationEvent,
@@ -13,6 +14,7 @@ import {
   parseTasksText,
   receiptEvidenceBody,
   reviewReceipts,
+  safeDepotMaxConcurrentRuns,
   taskReviewRequirements,
   validateQwenChoices,
 } from '../scripts/qwen-coordinator/policy.mjs';
@@ -160,6 +162,65 @@ test('polling treats only TASKS-mapped CI as active and backs off near rate limi
   assert.equal(githubPollIntervalSeconds(state, pollConfig), 300);
   state.remoteCache.rateLimitRemaining = 200;
   assert.equal(githubPollIntervalSeconds(state, pollConfig), 900);
+});
+
+test('invalid Depot concurrency config always normalizes to the safe single-run bound', () => {
+  for (const value of [undefined, null, '2', Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, 0, -1, 1.5]) {
+    assert.equal(safeDepotMaxConcurrentRuns(value), 1);
+  }
+  assert.equal(safeDepotMaxConcurrentRuns(1), 1);
+  assert.equal(safeDepotMaxConcurrentRuns(2), 2);
+});
+
+test('per-PR incomplete evidence waits without invalidating an active Depot run', () => {
+  const filesIncomplete = classifyPull(pull({ filesTruncated: true }), {
+    config,
+    mainSha: main,
+    task,
+    remoteComplete: true,
+  });
+  assert.equal(filesIncomplete.choice, 'A');
+  assert.ok(filesIncomplete.gaps.includes('FILES_TRUNCATED'));
+  assert.equal(depotRunHardInvalidation(filesIncomplete), false);
+
+  const threadsIncomplete = classifyPull(pull({
+    threadsTruncated: true,
+    unresolvedThreads: 1,
+  }), {
+    config,
+    mainSha: main,
+    task,
+    remoteComplete: true,
+  });
+  assert.equal(threadsIncomplete.choice, 'A');
+  assert.ok(threadsIncomplete.gaps.includes('THREADS_TRUNCATED'));
+  assert.equal(depotRunHardInvalidation(threadsIncomplete), false);
+
+  const remoteIncomplete = classifyPull(pull(), {
+    config,
+    mainSha: main,
+    task,
+    remoteComplete: false,
+  });
+  assert.equal(remoteIncomplete.choice, 'A');
+  assert.equal(depotRunHardInvalidation(remoteIncomplete), false);
+
+  const ciFailed = classifyPull(pull({
+    checks: [{
+      type: 'CheckRun',
+      name: 'CI gate',
+      status: 'COMPLETED',
+      conclusion: 'FAILURE',
+      completedAt: '2026-01-01',
+    }],
+  }), {
+    config,
+    mainSha: main,
+    task,
+    remoteComplete: true,
+  });
+  assert.equal(ciFailed.choice, 'B');
+  assert.equal(depotRunHardInvalidation(ciFailed), true);
 });
 
 test('notification identity ignores unrelated report fingerprints', () => {

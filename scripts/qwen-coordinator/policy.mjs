@@ -127,6 +127,19 @@ export function githubPollIntervalSeconds(previousState, config) {
   return Math.max(15, seconds);
 }
 
+export function safeDepotMaxConcurrentRuns(value) {
+  return Number.isInteger(value) && value > 0 ? value : 1;
+}
+
+export function depotRunHardInvalidation(decision) {
+  const gaps = Array.isArray(decision?.gaps) ? decision.gaps : [];
+  return decision?.choice === 'B' || gaps.some((gap) => [
+    'TASK_NOT_MAPPED',
+    'BASE_NOT_CURRENT_MAIN',
+    'CROSS_REPOSITORY_HEAD',
+  ].includes(gap));
+}
+
 export function notificationEvents(report) {
   const action = report?.executedAction;
   if (action) {
@@ -485,7 +498,7 @@ export function classifyPull(pr, context) {
   } else if (pr.mergeable === 'CONFLICTING' || pr.mergeStateStatus === 'DIRTY') {
     choice = 'B';
     reason = 'PR güncel main ile çakışıyor; history-safe entegrasyon onarımı gerekir.';
-  } else if (pr.unresolvedThreads > 0) {
+  } else if (pr.unresolvedThreads > 0 && !pr.threadsTruncated) {
     choice = 'B';
     reason = 'Açık review thread’leri kapanmadan kabul ilerleyemez.';
   } else if (!task || !evidenceComplete || !baseCurrent || ci.status !== 'pass') {
