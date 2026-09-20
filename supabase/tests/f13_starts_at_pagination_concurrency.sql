@@ -401,12 +401,32 @@ select p.starts_at,p.id,p.page_revision
 from public.list_appointments_page_v2('f1310000-0000-4000-8000-000000000001',2,null,null,null) p
 order by p.starts_at desc,p.id desc limit 1;
 
-update public.appointments
-set starts_at='2027-03-01 15:00+00',
-    ends_at='2027-03-01 15:30+00',
-    occupied_starts_at='2027-03-01 15:00+00',
-    occupied_ends_at='2027-03-01 15:30+00'
-where id='f1370000-0000-4000-8000-000000000006';
+insert into public.memberships(id,business_id,user_id,role,active)
+values (
+  'f1320000-0000-4000-8000-000000000002',
+  'f1310000-0000-4000-8000-000000000002',
+  'f1300000-0000-4000-8000-000000000001',
+  'owner',
+  true
+)
+on conflict(business_id,user_id) do update set role='owner',active=true;
+
+do $f13other$
+declare
+  v_result jsonb;
+begin
+  select public.reschedule_appointment_group(
+    'f1310000-0000-4000-8000-000000000002'::uuid,
+    'f1360000-0000-4000-8000-000000000006'::uuid,
+    'f13-other-business-writer',
+    1,
+    '2027-03-01 15:00+00'::timestamptz
+  ) into v_result;
+  if v_result->>'groupId' is distinct from 'f1360000-0000-4000-8000-000000000006' then
+    raise exception 'F13 other-business writer returned unexpected group result: %',v_result;
+  end if;
+end
+$f13other$;
 
 do $$
 declare
