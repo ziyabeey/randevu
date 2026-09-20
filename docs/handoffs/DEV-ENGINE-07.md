@@ -29,6 +29,7 @@
 - `policy.mjs`: TASKS eşleme, exact CI, surface/risk, receipt ve A/B/C/D policy.
 - `depot.mjs`: exact-SHA eligibility, status normalize, identity/conflict ve Qwen
   çağrı eligibility kuralları.
+- `lease.mjs`: PID yaşam kanıtlı stale recovery ve owner-token bağlı release.
 - `run-once.mjs`: GitHub snapshot, Depot tek-koşu yönetimi, Qwen danışma, guarded
   action planı ve disposable rapor.
 - Bildirimler PR + exact head + karar/aksiyon kimliğiyle 200 olaylık kalıcı
@@ -38,18 +39,23 @@
 - `depot-full-ci.yml`: immutable placeholder'lı full shadow CI şablonu.
 - `config.example.json`: secretsiz, makineden bağımsız, shadow varsayılan.
 - `install-local.mjs`: mevcut config'i koruyan macOS yerel kurucu.
-- `tests/qwen-coordinator-*.test.mjs`: policy, Depot ve kurulum gerileme testleri.
+- `tests/qwen-coordinator-*.test.mjs`: policy, Depot, kurulum ve lease gerileme
+  testleri.
 - `docs/runbooks/qwen-coordinator.md`: kurulum, opt-in, izleme ve rollback.
 
-## Açık kabul
+## Güncel doğrulama
 
-- Yerel syntax/unit/docs/typecheck/build doğrulaması.
-- Secret ve sabit kullanıcı yolu taraması.
-- Commit/push sonrası exact-head GitHub CI.
-- Değişiklik güvenlik/yönetişim aracı olduğu için bağımsız CI/governance incelemesi.
-- Coordinator kabulü, merge ve post-main CI.
+- 19/19 coordinator unit testi başarılı.
+- Repo HTTP testleri 68 dosyada 817/817 başarılı.
+- CI coverage, docs, typecheck ve build başarılı.
+- İnceleme onarımları: exact-head-only Depot checkout, non-empty workflow/job/
+  attempt başarı kanıtı, tüm non-pass Depot durumlarında fail-closed merge,
+  shell-safe wrapper quoting, owner-token lease ve incomplete remote snapshot'ta
+  koşu iptal etmeme.
+- Exact-head GitHub CI, Depot shadow CI ve fresh bağımsız CI/governance incelemesi
+  güncel commit üzerinde yeniden alınacak.
 
 ## Sonraki tek adım
 
-Yerel doğrulamayı çalıştır; sonuç başarılıysa exact branch head'ini commit/push
-edip draft PR aç ve TASKS satırını PR/head/CI kimliğiyle güncelle.
+Onarım commitini pushla; exact-head GitHub CI ve Depot shadow CI başarılarından
+sonra fresh bağımsız incelemeyi alıp açık thread'leri kapat.

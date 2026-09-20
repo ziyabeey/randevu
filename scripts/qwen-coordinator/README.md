@@ -59,6 +59,11 @@ Masaüstü bildirimleri PR + exact head + karar anahtarıyla kalıcı olarak
 tekilleştirilir. İlgisiz bir PR veya rapor fingerprint'i değiştiğinde aynı uyarı
 yeniden gösterilmez; head veya karar değişirse yeni olay sayılır.
 
+Depot sonucu yalnız non-empty workflow/job/attempt kanıtı terminal başarı
+gösteriyorsa `pass` olur. Exact head dışındaki checkout, base drift ve `pass`
+dışındaki her durum merge kapısını kapalı tutar. GitHub snapshot'ı eksik veya
+ulaşılamazken çalışan shadow koşular iptal edilmez.
+
 ## Güvenli etkinleştirme sırası
 
 1. Shadow raporlarını ve exact PR/head/base eşleşmesini doğrula.
@@ -77,6 +82,7 @@ etkinleştirilecek ayrı bir opt-in'dir.
 ## Test
 
 ```bash
+node --check scripts/qwen-coordinator/lease.mjs
 node --check scripts/qwen-coordinator/run-once.mjs
 node --check scripts/qwen-coordinator/install-local.mjs
 node --test tests/qwen-coordinator-*.test.mjs

@@ -31,7 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           actual_head="$(git rev-parse HEAD)"
-          test "${actual_head}" = "${EXPECTED_BASE_SHA}" || test "${actual_head}" = "${EXPECTED_HEAD_SHA}"
+          test "${actual_head}" = "${EXPECTED_HEAD_SHA}"
           git add -A
           test "$(git write-tree)" = "${EXPECTED_TREE_SHA}"
           test "$(nproc)" -eq 16

@@ -108,9 +108,11 @@ kaldığı sürece raporun başka kısmı değişse bile tekrar bildirim verilme
 `<= 250` olduğunda en az 15 dakikaya çıkar. Eşikler config ile ayarlanabilir.
 
 Qwen ulaşılamazsa deterministik gözlem sürer ve AI aksiyonu üretilmez. Depot
-identity uyuşmazsa kanıt geçersizleşir. GitHub/Depot çelişkisinde sonuç `WAIT` olur
-ve merge kapalı kalır. Stale lock 10 dakikadan sonra temizlenir; aynı anda çalışan
-ikinci tur sessizce atlanır.
+identity uyuşmazsa kanıt geçersizleşir. GitHub/Depot çelişkisinde sonuç `WAIT`
+olur ve merge kapalı kalır. Depot'un `pass` dışındaki hiçbir terminal/ara durumu
+merge kanıtı değildir. Stale lock ancak sahibi olan PID'nin artık yaşamadığı
+kanıtlanırsa devralınır; her tur yalnız kendi lease token'ına ait kilidi
+bırakabilir. Aynı anda çalışan ikinci tur sessizce atlanır.
 
 ## Acil durdurma ve geri dönüş
 
@@ -130,6 +132,7 @@ kurucunun oluşturduğu `config.json.backup-*` dosyasından ayar elle geri alın
 ```bash
 node --check scripts/qwen-coordinator/policy.mjs
 node --check scripts/qwen-coordinator/depot.mjs
+node --check scripts/qwen-coordinator/lease.mjs
 node --check scripts/qwen-coordinator/run-once.mjs
 node --check scripts/qwen-coordinator/install-local.mjs
 node --test tests/qwen-coordinator-*.test.mjs

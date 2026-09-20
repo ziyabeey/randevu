@@ -80,6 +80,16 @@ test('Depot payload normalization preserves pass/fail evidence', () => {
     status: 'failed',
     workflows: [{ jobs: [{ job_key: 'verify', status: 'failed', attempts: [] }] }],
   }).status, 'fail');
+  assert.equal(normalizeDepotStatus({
+    run_id: 'x',
+    status: 'finished',
+    workflows: [],
+  }).status, 'unknown');
+  assert.equal(normalizeDepotStatus({
+    run_id: 'x',
+    status: 'finished',
+    workflows: [{ status: 'finished', jobs: [] }],
+  }).status, 'unknown');
 });
 
 test('CI conflicts and identity errors fail closed', () => {
@@ -123,6 +133,25 @@ test('CI conflicts and identity errors fail closed', () => {
   assert.equal(staleBase.choice, 'A');
   assert.ok(staleBase.gaps.includes('DEPOT_SHADOW_MISSING'));
   assert.equal(staleBase.mergeEligible, false);
+
+  for (const status of ['start-error', 'cancelled', 'superseded', 'unknown', 'verifying']) {
+    const unavailable = applyDepotEvidence({
+      ...decision,
+      choice: 'D',
+      label: 'MERGE',
+      ci: { status: 'pass' },
+      mergeEligible: true,
+    }, {
+      headSha,
+      baseSha,
+      runId: '39ccx70t42',
+      status,
+      workflowHash: 'a'.repeat(64),
+    });
+    assert.equal(unavailable.choice, 'A', status);
+    assert.equal(unavailable.mergeEligible, false, status);
+    assert.ok(unavailable.gaps.includes('DEPOT_SHADOW_UNAVAILABLE'), status);
+  }
 });
 
 test('Qwen sees only dual-green review/merge candidates', () => {

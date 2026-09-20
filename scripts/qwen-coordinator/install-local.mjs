@@ -57,6 +57,10 @@ function commandScript(content) {
   return `#!/bin/zsh\nset -euo pipefail\n${content}\n`;
 }
 
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", `'"'"'`)}'`;
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const userHome = path.resolve(args.home ?? homedir());
@@ -79,7 +83,7 @@ function main() {
     mkdirSync(path.join(coordinatorHome, directory), { recursive: true });
   }
 
-  for (const file of ['policy.mjs', 'depot.mjs', 'run-once.mjs', 'depot-full-ci.yml']) {
+  for (const file of ['policy.mjs', 'depot.mjs', 'lease.mjs', 'run-once.mjs', 'depot-full-ci.yml']) {
     copyFileSync(path.join(sourceRoot, file), path.join(coordinatorHome, file));
   }
 
@@ -105,9 +109,9 @@ function main() {
   const reportFile = path.join(coordinatorHome, 'reports', 'latest.md');
   const queueFile = path.join(coordinatorHome, 'reports', 'action-queue.json');
   const wrappers = {
-    'qwen-coordinator-now': commandScript(`exec ${JSON.stringify(nodeBinary)} ${JSON.stringify(path.join(coordinatorHome, 'run-once.mjs'))}`),
-    'qwen-coordinator-status': commandScript(`[ -f ${JSON.stringify(reportFile)} ] || { echo "Henüz koordinatör raporu yok."; exit 1; }\nexec /bin/cat ${JSON.stringify(reportFile)}`),
-    'qwen-coordinator-actions': commandScript(`[ -f ${JSON.stringify(queueFile)} ] || { echo "Henüz aksiyon kuyruğu yok."; exit 1; }\nexec /bin/cat ${JSON.stringify(queueFile)}`),
+    'qwen-coordinator-now': commandScript(`exec ${shellQuote(nodeBinary)} ${shellQuote(path.join(coordinatorHome, 'run-once.mjs'))}`),
+    'qwen-coordinator-status': commandScript(`[ -f ${shellQuote(reportFile)} ] || { echo "Henüz koordinatör raporu yok."; exit 1; }\nexec /bin/cat ${shellQuote(reportFile)}`),
+    'qwen-coordinator-actions': commandScript(`[ -f ${shellQuote(queueFile)} ] || { echo "Henüz aksiyon kuyruğu yok."; exit 1; }\nexec /bin/cat ${shellQuote(queueFile)}`),
   };
   for (const [name, source] of Object.entries(wrappers)) {
     const target = path.join(binRoot, name);

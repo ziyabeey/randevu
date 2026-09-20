@@ -3,8 +3,6 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
-  rmSync,
-  statSync,
   writeFileSync,
 } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -30,6 +28,7 @@ import {
   qwenEligibleDecisions,
   workflowHash,
 } from './depot.mjs';
+import { acquireDirectoryLease, releaseDirectoryLease } from './lease.mjs';
 
 const root = path.resolve(
   process.env.QWEN_COORDINATOR_HOME
@@ -42,6 +41,7 @@ const reportMarkdownFile = path.join(root, 'reports/latest.md');
 const actionQueueFile = path.join(root, 'reports/action-queue.json');
 const logFile = path.join(root, 'logs/coordinator.jsonl');
 const lockDir = path.join(root, 'state/run.lock');
+let lockToken = null;
 
 for (const directory of ['state', 'reports', 'logs']) {
   mkdirSync(path.join(root, directory), { recursive: true });
@@ -87,25 +87,14 @@ function command(program, args, options = {}) {
 }
 
 function acquireLock() {
-  try {
-    mkdirSync(lockDir);
-    return true;
-  } catch {
-    try {
-      if (Date.now() - statSync(lockDir).mtimeMs > 10 * 60 * 1000) {
-        rmSync(lockDir, { recursive: true, force: true });
-        mkdirSync(lockDir);
-        return true;
-      }
-    } catch {
-      // Another run may have completed while the stale lock was checked.
-    }
-    return false;
-  }
+  lockToken = acquireDirectoryLease(lockDir);
+  return lockToken !== null;
 }
 
 function releaseLock() {
-  rmSync(lockDir, { recursive: true, force: true });
+  const released = releaseDirectoryLease(lockDir, lockToken);
+  if (!released) log('lock-release-skipped-owner-mismatch');
+  lockToken = null;
 }
 
 function git(repoRoot, args) {
@@ -662,6 +651,10 @@ async function reconcileDepot(config, remote, decisions, state) {
   state.depotRuns ??= {};
   if (config.depotShadowEnabled !== true
     || !automaticActionAllowed(config, 'RUN_DEPOT')) return;
+  if (remote.available !== true || remote.complete !== true) {
+    log('depot-reconcile-skipped-incomplete-remote');
+    return;
+  }
   const openByNumber = new Map((remote.pulls ?? []).map((pr) => [String(pr.number), pr]));
 
   for (const [number, run] of Object.entries(state.depotRuns)) {

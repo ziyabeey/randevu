@@ -51,7 +51,16 @@ export function normalizeDepotStatus(payload) {
   else if (statuses.some((value) => value === 'cancelled' || value === 'canceled')) status = 'cancelled';
   else if (statuses.some((value) => value === 'running' || value === 'in_progress')) status = 'running';
   else if (statuses.some((value) => value === 'queued' || value === 'pending')) status = 'queued';
-  else if (statuses.length > 0 && statuses.every((value) => value === 'finished' || value === 'success')) status = 'pass';
+  else {
+    const completeEvidence = workflows.length > 0
+      && workflows.every((workflow) => Array.isArray(workflow.jobs) && workflow.jobs.length > 0
+        && text(workflow.status).length > 0
+        && workflow.jobs.every((job) => Array.isArray(job.attempts) && job.attempts.length > 0
+          && text(job.status).length > 0
+          && job.attempts.every((attempt) => text(attempt.status).length > 0)));
+    if (completeEvidence
+      && statuses.every((value) => value === 'finished' || value === 'success')) status = 'pass';
+  }
 
   return {
     status,
@@ -182,6 +191,26 @@ export function applyDepotEvidence(decision, run) {
       label: 'REPAIR',
       reason: 'Exact-head Depot shadow CI erken hata verdi; GitHub CI sürerken dar onarım adayı oluştu.',
       gaps: unique([...(decision.gaps ?? []), 'DEPOT_SHADOW_FAILED']),
+      readyEligible: false,
+      mergeEligible: false,
+    };
+  }
+  if (decision.surface?.docsOnly === false && depot.status !== 'pass'
+    && decision.ci?.status === 'pass') {
+    if (decision.choice === 'B') {
+      return {
+        ...next,
+        gaps: unique([...(decision.gaps ?? []), 'DEPOT_SHADOW_UNAVAILABLE']),
+        readyEligible: false,
+        mergeEligible: false,
+      };
+    }
+    return {
+      ...next,
+      choice: 'A',
+      label: 'WAIT',
+      reason: `Depot shadow CI durumu merge kanıtı değil: ${depot.status}.`,
+      gaps: unique([...(decision.gaps ?? []), 'DEPOT_SHADOW_UNAVAILABLE']),
       readyEligible: false,
       mergeEligible: false,
     };

@@ -61,3 +61,29 @@ test('installer creates a portable shadow-default layout and preserves config', 
   const preserved = JSON.parse(await readFile(configFile, 'utf8'));
   assert.equal(preserved.projectName, 'preserve-me');
 });
+
+test('generated wrapper paths are shell-quoted literally', async (context) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'qwen-coordinator-shell-'));
+  context.after(() => rm(root, { recursive: true, force: true }));
+  const repoRoot = path.join(root, 'repo');
+  const userHome = path.join(root, 'home');
+  const coordinatorHome = path.join(root, 'coord $(touch injected) $HOME `touch injected-too`');
+  const binRoot = path.join(root, 'bin');
+  await mkdir(repoRoot, { recursive: true });
+  await mkdir(userHome, { recursive: true });
+
+  await execFileAsync(process.execPath, [
+    installer,
+    '--repo-root', repoRoot,
+    '--home', userHome,
+    '--coordinator-home', coordinatorHome,
+    '--bin-dir', binRoot,
+    '--node', process.execPath,
+  ]);
+  const report = '# literal path works\n';
+  await writeFile(path.join(coordinatorHome, 'reports', 'latest.md'), report);
+  const result = await execFileAsync(path.join(binRoot, 'qwen-coordinator-status'), [], { cwd: root });
+  assert.equal(result.stdout, report);
+  await assert.rejects(readFile(path.join(root, 'injected')), /ENOENT/);
+  await assert.rejects(readFile(path.join(root, 'injected-too')), /ENOENT/);
+});
