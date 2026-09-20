@@ -43,23 +43,31 @@ if (process.argv[2] === 'classify') {
     `code=${classification === 'code'}\nhead=${pr.head.sha}\nbase=${pr.base.sha}\n`);
   console.log(`Audit classification: ${classification}; model eligible: ${classification === 'code'}`);
 } else if (process.argv[2] === 'stale') {
-  const comments = await pages(`/issues/${number}/comments`);
   const marker = '<!-- development-stale-review -->';
-  const existing = comments.filter((c) => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker));
   const allowlist = JSON.parse(process.env.DEVELOPMENT_REVIEWER_ALLOWLIST || '{}');
-  const receipts = verifiedReceipts(
-    [...comments, ...await pages(`/pulls/${number}/reviews`)],
-    pr,
-    allowlist,
-  );
+  async function reviewSnapshot() {
+    const comments = await pages(`/issues/${number}/comments`);
+    const reviews = await pages(`/pulls/${number}/reviews`);
+    return {
+      existing: comments.filter((c) => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker)),
+      receipts: verifiedReceipts([...comments, ...reviews], pr, allowlist),
+    };
+  }
+
+  // Read once for bounded evidence, fence live PR identity, then refresh the receipt
+  // collections immediately before deciding/publishing. A receipt arriving during
+  // this job must not be overwritten by an advisory built from the older snapshot.
+  await reviewSnapshot();
+  if (!sameIdentity(pr, await api(`/pulls/${number}`))) throw new Error('Discard advisory: PR identity changed');
+  const { existing, receipts } = await reviewSnapshot();
+  if (!sameIdentity(pr, await api(`/pulls/${number}`))) throw new Error('Discard advisory: PR identity changed');
+
   // Retire an old misleading advisory, but don't create comments for a NO_ACTION event.
   if (!receipts.length && !existing.length) { console.log('NO_ACTION: no verified receipts; model calls: 0'); }
   else {
     const report = receipts.length ? freshnessReport(pr, receipts)
       : '## Stale Review Detector · Withdrawn\n\nPrevious advisory is not valid role/freshness evidence. No verified current R1/R2 assertion is made.\n\nNO_ACTION: metadata-only or no verified role receipts. Model calls: 0.';
     const body = `${marker}\n${report}`;
-    // Last API read before publication; reject head AND base drift, never relabel old output.
-    if (!sameIdentity(pr, await api(`/pulls/${number}`))) throw new Error('Discard advisory: PR identity changed');
     if (existing.length) {
       for (const comment of existing) if (comment.body !== body)
         await api(`/issues/comments/${comment.id}`, 'PATCH', { body });
