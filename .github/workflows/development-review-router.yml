@@ -42,6 +42,7 @@ jobs:
       case_fingerprint: ${{ steps.route.outputs.case_fingerprint }}
       pr_number: ${{ steps.route.outputs.pr_number }}
       head_sha: ${{ steps.route.outputs.head_sha }}
+      base_sha: ${{ steps.route.outputs.base_sha }}
       r1_required: ${{ steps.route.outputs.r1_required }}
       r2_required: ${{ steps.route.outputs.r2_required }}
     env:
@@ -122,6 +123,7 @@ jobs:
           printf 'case_fingerprint=%s\n' "${fingerprint}" >> "${GITHUB_OUTPUT}"
           printf 'pr_number=%s\n' "${pr_number}" >> "${GITHUB_OUTPUT}"
           printf 'head_sha=%s\n' "${head_sha}" >> "${GITHUB_OUTPUT}"
+          printf 'base_sha=%s\n' "${expected_base}" >> "${GITHUB_OUTPUT}"
           printf 'r1_required=%s\n' "${r1_required}" >> "${GITHUB_OUTPUT}"
           printf 'r2_required=%s\n' "${r2_required}" >> "${GITHUB_OUTPUT}"
 
@@ -153,6 +155,7 @@ jobs:
       CASE_FINGERPRINT: ${{ needs.route.outputs.case_fingerprint }}
       PR_NUMBER: ${{ needs.route.outputs.pr_number }}
       HEAD_SHA: ${{ needs.route.outputs.head_sha }}
+      BASE_SHA: ${{ needs.route.outputs.base_sha }}
       OBSERVATION_JSON: ${{ inputs.observation_json }}
       EVIDENCE_JSON: ${{ inputs.evidence_json }}
       CLAUDE_ROUTINE_URL: ${{ vars.CLAUDE_R1_ROUTINE_URL }}
@@ -208,6 +211,7 @@ jobs:
           ## Development R1 Routine launch
           - status: RESERVED
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
           - this reservation is not an R1 verdict and grants no merge authority"
@@ -241,6 +245,7 @@ jobs:
           ## Development R1 Routine launch
           - status: ROUTINE_TRIGGERED
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
           - Claude session: ${session_url}
@@ -261,6 +266,7 @@ jobs:
           ## Development R1 Routine launch
           - status: LAUNCH_ABORTED_STALE
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
           - live identity changed before the API call; no Routine fire was attempted
@@ -270,6 +276,7 @@ jobs:
           ## Development R1 Routine launch
           - status: LAUNCH_UNCERTAIN
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
@@ -297,6 +304,7 @@ jobs:
       CASE_FINGERPRINT: ${{ needs.route.outputs.case_fingerprint }}
       PR_NUMBER: ${{ needs.route.outputs.pr_number }}
       HEAD_SHA: ${{ needs.route.outputs.head_sha }}
+      BASE_SHA: ${{ needs.route.outputs.base_sha }}
       OBSERVATION_JSON: ${{ inputs.observation_json }}
       EVIDENCE_JSON: ${{ inputs.evidence_json }}
       CLAUDE_ROUTINE_URL: ${{ vars.CLAUDE_R2_ROUTINE_URL }}
@@ -352,6 +360,7 @@ jobs:
           ## Development R2 Routine launch
           - status: RESERVED
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
           - this reservation is not an R2 verdict and grants no merge authority"
@@ -385,6 +394,7 @@ jobs:
           ## Development R2 Routine launch
           - status: ROUTINE_TRIGGERED
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
           - Claude session: ${session_url}
@@ -405,6 +415,7 @@ jobs:
           ## Development R2 Routine launch
           - status: LAUNCH_ABORTED_STALE
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
           - live identity changed before the API call; no Routine fire was attempted
@@ -414,6 +425,7 @@ jobs:
           ## Development R2 Routine launch
           - status: LAUNCH_UNCERTAIN
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
