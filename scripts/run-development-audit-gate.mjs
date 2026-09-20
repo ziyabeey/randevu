@@ -1,5 +1,5 @@
 import { appendFileSync, readFileSync } from 'node:fs';
-import { classifyFileRecords, freshnessReport, sameIdentity, verifiedReceipts } from './development-audit-gate.mjs';
+import { classifyFileRecords, freshnessReport, parseReviewerAllowlist, sameIdentity, verifiedReceipts } from './development-audit-gate.mjs';
 
 const repo = process.env.REPOSITORY;
 const number = Number(process.env.PR_NUMBER);
@@ -44,7 +44,7 @@ if (process.argv[2] === 'classify') {
   console.log(`Audit classification: ${classification}; model eligible: ${classification === 'code'}`);
 } else if (process.argv[2] === 'stale') {
   const marker = '<!-- development-stale-review -->';
-  const allowlist = JSON.parse(process.env.DEVELOPMENT_REVIEWER_ALLOWLIST || '{}');
+  const allowlist = parseReviewerAllowlist(process.env.DEVELOPMENT_REVIEWER_ALLOWLIST);
   async function reviewSnapshot() {
     const comments = await pages(`/issues/${number}/comments`);
     const reviews = await pages(`/pulls/${number}/reviews`);
