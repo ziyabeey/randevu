@@ -84,9 +84,14 @@ function main() {
   }
 
   const configFile = path.join(coordinatorHome, 'config.json');
-  if (!existsSync(configFile) || args.replaceConfig === true) {
-    if (existsSync(configFile)) {
+  const configExisted = existsSync(configFile);
+  let configAction = 'preserved';
+  if (!configExisted || args.replaceConfig === true) {
+    if (configExisted) {
       copyFileSync(configFile, `${configFile}.backup-${Date.now()}`);
+      configAction = 'replaced after backup';
+    } else {
+      configAction = 'created';
     }
     const source = readFileSync(path.join(sourceRoot, 'config.example.json'), 'utf8')
       .replaceAll('__REPO_ROOT__', repoRoot)
@@ -149,10 +154,9 @@ function main() {
 
   process.stdout.write([
     `Installed coordinator sources: ${coordinatorHome}`,
-    existsSync(configFile) ? `Config preserved/created: ${configFile}` : '',
+    `Config ${configAction}: ${configFile}`,
     `LaunchAgent generated: ${plistFile}`,
-    '',
-    'The generated config is shadow/read-only by default.',
+    configAction === 'preserved' ? '' : 'The generated config is shadow/read-only by default.',
     'Validate config and run qwen-coordinator-now before loading the LaunchAgent.',
   ].filter(Boolean).join('\n') + '\n');
 }

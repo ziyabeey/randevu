@@ -31,6 +31,10 @@
   çağrı eligibility kuralları.
 - `run-once.mjs`: GitHub snapshot, Depot tek-koşu yönetimi, Qwen danışma, guarded
   action planı ve disposable rapor.
+- Bildirimler PR + exact head + karar/aksiyon kimliğiyle 200 olaylık kalıcı
+  ledger'da tekilleştirilir; ilgisiz fingerprint değişimi aynı uyarıyı tekrarlamaz.
+- GitHub polling yalnız TASKS'e bağlı aktif PR'larda hızlanır ve düşük/kritik rate
+  limit eşiklerinde sırasıyla en az 5/15 dakikaya fail-safe geri çekilir.
 - `depot-full-ci.yml`: immutable placeholder'lı full shadow CI şablonu.
 - `config.example.json`: secretsiz, makineden bağımsız, shadow varsayılan.
 - `install-local.mjs`: mevcut config'i koruyan macOS yerel kurucu.

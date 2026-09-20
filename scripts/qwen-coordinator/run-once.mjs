@@ -15,6 +15,8 @@ import {
   automaticActionAllowed,
   ciForPull,
   classifyPull,
+  githubPollIntervalSeconds,
+  notificationEvent,
   parseTasksText,
   policyFingerprint,
 } from './policy.mjs';
@@ -192,7 +194,7 @@ async function githubJson(url, token, options = {}) {
 
 const PROJECT_QUERY = `
 query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$coordinationIssue:Int!,$tasksExpression:String!){
-  rateLimit{remaining resetAt}
+  rateLimit{cost remaining resetAt}
   repository(owner:$owner,name:$name){
     defaultBranchRef{
       name
@@ -368,6 +370,7 @@ async function fetchSnapshot(config, token) {
     fetchedAt: nowIso(),
     refreshed: true,
     rateLimitRemaining: result.data?.data?.rateLimit?.remaining ?? result.metadata.rateLimitRemaining,
+    rateLimitCost: result.data?.data?.rateLimit?.cost ?? null,
     rateLimitReset: result.data?.data?.rateLimit?.resetAt ?? result.metadata.rateLimitReset,
     mainBranch: repository.defaultBranchRef.name,
     mainSha: repository.defaultBranchRef.target.oid,
@@ -386,13 +389,7 @@ async function fetchSnapshot(config, token) {
 async function gatherRemote(config, previousState, options = {}) {
   const previous = previousState.remoteCache ?? null;
   const lastFetchMs = Date.parse(previous?.fetchedAt ?? '') || 0;
-  const githubActive = (previous?.pulls ?? []).some((pr) => (pr.checks ?? [])
-    .some((check) => check.name === config.requiredCheckName && check.status !== 'COMPLETED'));
-  const depotActive = Object.values(previousState.depotRuns ?? {})
-    .some((run) => run && !isDepotTerminal(run.status) && run.status !== 'start-error');
-  const pollSeconds = githubActive || depotActive
-    ? (config.githubActivePollSeconds ?? 15)
-    : config.githubAuthenticatedPollSeconds;
+  const pollSeconds = githubPollIntervalSeconds(previousState, config);
   const due = options.force === true
     || !previous
     || previous.schemaVersion !== 2
@@ -1091,6 +1088,7 @@ function compactRemoteForReport(remote, config) {
     fetchedAt: remote.fetchedAt,
     refreshed: remote.refreshed,
     rateLimitRemaining: remote.rateLimitRemaining ?? null,
+    rateLimitCost: remote.rateLimitCost ?? null,
     mainBranch: remote.mainBranch ?? null,
     mainSha: remote.mainSha ?? null,
     mainCi: remote.mainChecks ? mainCi(remote, config).status : 'unknown',
@@ -1154,18 +1152,16 @@ function markdownReport(report) {
 }
 
 function notifyIfNeeded(state, report) {
-  const urgent = report.decisions.find((item) => item.choice === 'B')
-    ?? report.decisions.find((item) => item.choice === 'D');
-  if (!urgent && !report.executedAction) return;
-  const key = report.executedAction
-    ? `action:${actionKey(report.executedAction)}`
-    : `${report.fingerprint}:${urgent.choice}:${urgent.prNumber}`;
-  if (state.lastNotificationKey === key) return;
-  const message = report.executedAction
-    ? `PR #${report.executedAction.prNumber}: ${report.executedAction.type} tamamlandı.`
-    : `PR #${urgent.prNumber}: ${urgent.label} gerekiyor.`;
-  command('/usr/bin/osascript', ['-e', `display notification "${message}" with title "Qwen Koordinatör"`], { timeout: 5_000 });
-  state.lastNotificationKey = key;
+  const event = notificationEvent(report);
+  if (!event) return;
+  state.notificationLedger ??= {};
+  if (state.notificationLedger[event.key]) return;
+  command('/usr/bin/osascript', ['-e', `display notification "${event.message}" with title "Qwen Koordinatör"`], { timeout: 5_000 });
+  state.notificationLedger[event.key] = nowIso();
+  const entries = Object.entries(state.notificationLedger)
+    .sort((left, right) => String(right[1]).localeCompare(String(left[1])))
+    .slice(0, 200);
+  state.notificationLedger = Object.fromEntries(entries);
 }
 
 async function main() {

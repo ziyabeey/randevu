@@ -51,7 +51,13 @@ launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/ai.yzt.qwen-coord
 ```
 
 15 saniyelik LaunchAgent turu her seferinde GitHub'a istek atmaz: runner boşta
-60 saniye, aktif GitHub/Depot CI varken 15 saniye cache/poll aralığı uygular.
+60 saniye, yalnız canlı TASKS'e bağlı aktif GitHub/Depot CI varken 30 saniye
+cache/poll aralığı uygular. GraphQL rate limiti 1000'in altına inerse 5 dakika,
+250'nin altına inerse 15 dakika geri çekilir.
+
+Masaüstü bildirimleri PR + exact head + karar anahtarıyla kalıcı olarak
+tekilleştirilir. İlgisiz bir PR veya rapor fingerprint'i değiştiğinde aynı uyarı
+yeniden gösterilmez; head veya karar değişirse yeni olay sayılır.
 
 ## Güvenli etkinleştirme sırası
 

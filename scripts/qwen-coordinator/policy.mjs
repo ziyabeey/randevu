@@ -54,6 +54,50 @@ export function automaticActionAllowed(config, actionType) {
     && config.allowedAutomaticActions.includes(capability);
 }
 
+export function githubPollIntervalSeconds(previousState, config) {
+  const previous = previousState?.remoteCache ?? null;
+  const trackedPulls = new Set(
+    (previous?.tasks ?? []).flatMap((task) => Array.isArray(task.prNumbers) ? task.prNumbers : []),
+  );
+  const trackedCiActive = (previous?.pulls ?? []).some((pr) => trackedPulls.has(pr.number)
+    && (pr.checks ?? []).some((check) => check.name === config.requiredCheckName
+      && check.status !== 'COMPLETED'));
+  const depotActive = Object.values(previousState?.depotRuns ?? {})
+    .some((run) => run && !['pass', 'fail', 'cancelled', 'superseded', 'identity-error', 'start-error']
+      .includes(run.status));
+  let seconds = trackedCiActive || depotActive
+    ? (config.githubActivePollSeconds ?? 30)
+    : (config.githubAuthenticatedPollSeconds ?? 60);
+
+  const remaining = previous?.rateLimitRemaining;
+  if (remaining !== null && remaining !== undefined && Number.isFinite(Number(remaining))) {
+    const numeric = Number(remaining);
+    if (numeric <= (config.githubCriticalRateLimitThreshold ?? 250)) {
+      seconds = Math.max(seconds, config.githubCriticalRateLimitPollSeconds ?? 900);
+    } else if (numeric <= (config.githubLowRateLimitThreshold ?? 1000)) {
+      seconds = Math.max(seconds, config.githubLowRateLimitPollSeconds ?? 300);
+    }
+  }
+  return Math.max(15, seconds);
+}
+
+export function notificationEvent(report) {
+  const action = report?.executedAction;
+  if (action) {
+    return {
+      key: ['action', action.type, action.prNumber ?? 'none', action.headSha ?? 'none', action.role ?? 'none'].join(':'),
+      message: `PR #${action.prNumber}: ${action.type} tamamlandı.`,
+    };
+  }
+  const urgent = report?.decisions?.find((item) => item.choice === 'B')
+    ?? report?.decisions?.find((item) => item.choice === 'D');
+  if (!urgent) return null;
+  return {
+    key: ['decision', urgent.prNumber, urgent.headSha ?? 'none', urgent.choice].join(':'),
+    message: `PR #${urgent.prNumber}: ${urgent.label} gerekiyor.`,
+  };
+}
+
 export function parseTasksText(source, maxRows = 200) {
   const rows = [];
   for (const line of text(source).split(/\r?\n/)) {

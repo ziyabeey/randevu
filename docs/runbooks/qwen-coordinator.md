@@ -22,8 +22,9 @@ tanımlar. Bu araç bir ürün özelliği veya ikinci görev/veri otoritesi değ
 ## Veri akışı
 
 1. LaunchAgent runner'ı 15 saniyede bir uyandırır.
-2. Runner boşta en fazla dakikada bir, aktif CI varken 15 saniyede bir GitHub
-   snapshot'ını yeniler.
+2. Runner boşta en fazla dakikada bir, yalnız canlı TASKS'e bağlı aktif CI varken
+   30 saniyede bir GitHub snapshot'ını yeniler. Başka/eşleşmemiş PR'lardaki aktif
+   check'ler hızlı modu açmaz.
 3. Canlı `TASKS.md` satırıyla eşleşen, docs-only olmayan exact PR head için en
    fazla bir Depot shadow koşusu başlatılır.
 4. GitHub ve Depot terminal sonucuna gelene kadar Qwen çağrılmaz.
@@ -99,6 +100,12 @@ yanlışlıkla PR yorumu yazmaz.
 - Aksiyon kuyruğu: `qwen-coordinator-actions`
 - Olay günlüğü: `~/.local/share/qwen-coordinator/logs/coordinator.jsonl`
 - LaunchAgent stderr: `~/.local/share/qwen-coordinator/logs/coordinator.err.log`
+
+Masaüstü bildirimleri PR + exact head + karar/aksiyon anahtarıyla runtime state
+içinde en fazla 200 olaylık ledger'da tekilleştirilir. Aynı head aynı kararda
+kaldığı sürece raporun başka kısmı değişse bile tekrar bildirim verilmez.
+`rateLimitRemaining <= 1000` olduğunda GitHub poll aralığı en az 5 dakikaya,
+`<= 250` olduğunda en az 15 dakikaya çıkar. Eşikler config ile ayarlanabilir.
 
 Qwen ulaşılamazsa deterministik gözlem sürer ve AI aksiyonu üretilmez. Depot
 identity uyuşmazsa kanıt geçersizleşir. GitHub/Depot çelişkisinde sonuç `WAIT` olur

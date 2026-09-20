@@ -31,7 +31,9 @@ test('installer creates a portable shadow-default layout and preserves config', 
     '--depot', path.join(userHome, '.local', 'bin', 'depot'),
     '--depot-org', 'example-org',
   ];
-  await execFileAsync(process.execPath, args);
+  const firstRun = await execFileAsync(process.execPath, args);
+  assert.match(firstRun.stdout, /Config created:/);
+  assert.match(firstRun.stdout, /shadow\/read-only by default/);
 
   const coordinatorHome = path.join(userHome, '.local', 'share', 'qwen-coordinator');
   const configFile = path.join(coordinatorHome, 'config.json');
@@ -53,7 +55,9 @@ test('installer creates a portable shadow-default layout and preserves config', 
 
   config.projectName = 'preserve-me';
   await writeFile(configFile, `${JSON.stringify(config, null, 2)}\n`);
-  await execFileAsync(process.execPath, args);
+  const secondRun = await execFileAsync(process.execPath, args);
+  assert.match(secondRun.stdout, /Config preserved:/);
+  assert.doesNotMatch(secondRun.stdout, /shadow\/read-only by default/);
   const preserved = JSON.parse(await readFile(configFile, 'utf8'));
   assert.equal(preserved.projectName, 'preserve-me');
 });

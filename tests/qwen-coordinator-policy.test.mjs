@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   automaticActionAllowed,
   classifyPull,
+  githubPollIntervalSeconds,
+  notificationEvent,
   parseTasksText,
   reviewReceipts,
 } from '../scripts/qwen-coordinator/policy.mjs';
@@ -71,6 +73,50 @@ test('automatic action allowlist is explicit and fail-closed', () => {
   assert.equal(automaticActionAllowed({
     allowedAutomaticActions: ['unknown-capability'],
   }, 'UNKNOWN'), false);
+});
+
+test('polling treats only TASKS-mapped CI as active and backs off near rate limits', () => {
+  const state = {
+    remoteCache: {
+      rateLimitRemaining: 4000,
+      tasks: [{ prNumbers: [7] }],
+      pulls: [
+        { number: 7, checks: [{ name: 'CI gate', status: 'COMPLETED' }] },
+        { number: 99, checks: [{ name: 'CI gate', status: 'IN_PROGRESS' }] },
+      ],
+    },
+    depotRuns: {},
+  };
+  const pollConfig = {
+    requiredCheckName: 'CI gate',
+    githubAuthenticatedPollSeconds: 60,
+    githubActivePollSeconds: 30,
+  };
+  assert.equal(githubPollIntervalSeconds(state, pollConfig), 60);
+  state.remoteCache.pulls[0].checks[0].status = 'IN_PROGRESS';
+  assert.equal(githubPollIntervalSeconds(state, pollConfig), 30);
+  state.remoteCache.rateLimitRemaining = 900;
+  assert.equal(githubPollIntervalSeconds(state, pollConfig), 300);
+  state.remoteCache.rateLimitRemaining = 200;
+  assert.equal(githubPollIntervalSeconds(state, pollConfig), 900);
+});
+
+test('notification identity ignores unrelated report fingerprints', () => {
+  const report = {
+    fingerprint: 'first',
+    decisions: [{ prNumber: 7, headSha: head, choice: 'B', label: 'REPAIR' }],
+  };
+  const first = notificationEvent(report);
+  const second = notificationEvent({ ...report, fingerprint: 'unrelated-change' });
+  assert.equal(first.key, second.key);
+  assert.notEqual(notificationEvent({
+    ...report,
+    decisions: [{ ...report.decisions[0], headSha: '3'.repeat(40) }],
+  }).key, first.key);
+  assert.notEqual(notificationEvent({
+    ...report,
+    decisions: [{ ...report.decisions[0], choice: 'D', label: 'MERGE' }],
+  }).key, first.key);
 });
 
 test('deterministic failures and conflicts can never become merge advice', () => {
