@@ -233,12 +233,16 @@ test('review output contract carries one exact machine-readable role/head/base r
   assert.match(text, /grants no merge authority/);
 });
 
-test('request fingerprint is challenge-bound and missing challenge fails closed', () => {
+test('request fingerprint stays stable across one-time challenges while the receipt marker remains challenge-bound', () => {
   const first = buildReview(dispatcher(['r1']), {}, 'r1');
   const second = buildIndependentReviewRequest(dispatcher(['r1']), {}, 'r1', {
     receiptChallenge: '1'.repeat(64),
   });
-  assert.notEqual(first.requestFingerprint, second.requestFingerprint);
+  assert.equal(first.requestFingerprint, second.requestFingerprint);
+  assert.notEqual(
+    reviewReceiptMarker(first, 'ACCEPTABLE'),
+    reviewReceiptMarker(second, 'ACCEPTABLE'),
+  );
   assert.throws(
     () => buildIndependentReviewRequest(dispatcher(['r1']), {}, 'r1'),
     /RECEIPT_CHALLENGE_INVALID/,
