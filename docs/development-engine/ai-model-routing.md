@@ -80,6 +80,17 @@ stable.
    - Task creation does not prove coding/test runtime capability. The first real
      assignment must establish actual delivery and available execution evidence.
 
+10. **A1/A2/A3: optional GitHub R&D lab**
+   - A1 scans for one materially new opportunity and opens a proposal issue only
+     when current evidence supports a non-duplicate idea.
+   - A2 independently stress-tests that proposal against current product scope,
+     architecture, duplication, cost/risk and evidence quality.
+   - A3 turns only validated ideas into a smallest reversible experiment plan.
+   - All three follow the [R&D Lab contract](automations/rnd-lab.md). They never
+     edit TASKS/code, create writer assignments, launch CI/models, deploy, approve
+     or merge. Only the coordinator may promote an R&D issue into normal task work.
+   - R&D stage labels are research workflow state, not product/task status.
+
 ## Routing rules
 
 - **Clear, bounded implementation:** coordinator → selected implementer (Qwen when
@@ -108,6 +119,10 @@ stable.
   hand the current PR to Y2 for bounded repair. Follow the [writer contract](automations/hourly-writers.md).
   No valid assignment means no work; delivery returns to the normal CI/reviewer/
   coordinator chain. This does not change the deterministic Dispatcher's role enum.
+
+- **Research opportunity:** A1 may open a non-duplicate R&D proposal; A2 validates
+  it; A3 designs a reversible experiment. Promotion into TASKS/implementation is a
+  separate coordinator decision under the [R&D Lab contract](automations/rnd-lab.md).
 
 ## API-fired independent review roles
 
