@@ -90,6 +90,7 @@ function roleObligations(dispatcherResult, role) {
 
 export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence = {}, role, {
   expectedCaseFingerprint,
+  receiptChallenge,
 } = {}) {
   if (!REVIEW_ROLES.has(role)) {
     throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: ROLE_INVALID');
@@ -110,6 +111,9 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
   if (expectedCaseFingerprint !== undefined
       && envelope.caseFingerprint !== expectedCaseFingerprint) {
     throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: CASE_FINGERPRINT_MISMATCH');
+  }
+  if (!FINGERPRINT_RE.test(receiptChallenge ?? '')) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: RECEIPT_CHALLENGE_INVALID');
   }
 
   const facts = dispatcherResult?.facts ?? {};
@@ -174,6 +178,7 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
     schemaVersion: 'development-independent-review-request.v0',
     role,
     dispatcherCaseFingerprint: envelope.caseFingerprint,
+    receiptChallenge,
     reviewMode,
     case: {
       task: taskId,
@@ -226,6 +231,9 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
   const requestFingerprintMaterial = {
     schemaVersion: request.schemaVersion,
     role: request.role,
+    // The one-time receipt challenge authenticates the eventual result, but is
+    // intentionally excluded from the request fingerprint. Exact-case retries
+    // must reuse the same fingerprint so an existing reservation blocks duplicate spend.
     reviewMode: request.reviewMode,
     case: {
       task: request.case.task,
@@ -249,19 +257,37 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
   };
 }
 
-export function reviewReceiptMarker(request = {}) {
+export function reviewReceiptMarker(request = {}, verdict) {
   const role = request.role?.toUpperCase();
   if (role !== 'R1' && role !== 'R2') {
     throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: ROLE_INVALID');
   }
+  const normalizedVerdict = String(verdict ?? '').toUpperCase();
+  if (!['ACCEPTABLE', 'BLOCKER', 'INCOMPLETE'].includes(normalizedVerdict)) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: VERDICT_INVALID');
+  }
   const prNumber = positiveInteger(request.case?.pr, 'PR_NUMBER');
   const headSha = exactSha(request.case?.currentHead, 'CURRENT_HEAD');
   const baseSha = exactSha(request.case?.baseMain, 'BASE_MAIN');
+  if (!FINGERPRINT_RE.test(request.dispatcherCaseFingerprint ?? '')) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: CASE_FINGERPRINT_INVALID');
+  }
+  if (!FINGERPRINT_RE.test(request.requestFingerprint ?? '')) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: REQUEST_FINGERPRINT_INVALID');
+  }
+  if (!FINGERPRINT_RE.test(request.receiptChallenge ?? '')) {
+    throw new Error('DEVELOPMENT_REVIEW_REQUEST_BLOCKED: RECEIPT_CHALLENGE_INVALID');
+  }
   return `<!-- development-review-receipt ${JSON.stringify({
+    schemaVersion: 'development-review-receipt.v1',
     role,
     prNumber,
     headSha,
     baseSha,
+    dispatcherCaseFingerprint: request.dispatcherCaseFingerprint,
+    requestFingerprint: request.requestFingerprint,
+    receiptChallenge: request.receiptChallenge,
+    verdict: normalizedVerdict,
   })} -->`;
 }
 
@@ -281,9 +307,12 @@ export function renderIndependentReviewRequest(request = {}) {
     'The saved Routine instructions remain authoritative for role, forbidden actions, verdicts and output format.',
     'Do not implement repairs, broaden scope, approve, merge, or claim merge readiness.',
     'If live repository identity or required evidence disagrees with this package, return INCOMPLETE.',
-    'When publishing the final SHA-bound receipt to the assigned review/comment destination, include exactly one provenance marker line:',
-    reviewReceiptMarker(request),
-    'The provenance marker is machine-readable identity metadata only; it is not a verdict, approval, or merge authority.',
+    'When publishing the final SHA-bound receipt to the assigned review/comment destination, include exactly one of these provenance markers and make it match your final verdict:',
+    `ACCEPTABLE: ${reviewReceiptMarker(request, 'ACCEPTABLE')}`,
+    `BLOCKER: ${reviewReceiptMarker(request, 'BLOCKER')}`,
+    `INCOMPLETE: ${reviewReceiptMarker(request, 'INCOMPLETE')}`,
+    'The marker binds this result to the exact Dispatcher case, exact paid role request, and one-time hidden receipt challenge. Never reuse or edit these values.',
+    'The provenance marker is machine-readable identity metadata only; it grants no merge authority.',
     '',
     'REVIEW_PACKAGE_JSON',
     stableJson(request),

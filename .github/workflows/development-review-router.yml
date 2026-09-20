@@ -42,6 +42,7 @@ jobs:
       case_fingerprint: ${{ steps.route.outputs.case_fingerprint }}
       pr_number: ${{ steps.route.outputs.pr_number }}
       head_sha: ${{ steps.route.outputs.head_sha }}
+      base_sha: ${{ steps.route.outputs.base_sha }}
       r1_required: ${{ steps.route.outputs.r1_required }}
       r2_required: ${{ steps.route.outputs.r2_required }}
     env:
@@ -122,6 +123,7 @@ jobs:
           printf 'case_fingerprint=%s\n' "${fingerprint}" >> "${GITHUB_OUTPUT}"
           printf 'pr_number=%s\n' "${pr_number}" >> "${GITHUB_OUTPUT}"
           printf 'head_sha=%s\n' "${head_sha}" >> "${GITHUB_OUTPUT}"
+          printf 'base_sha=%s\n' "${expected_base}" >> "${GITHUB_OUTPUT}"
           printf 'r1_required=%s\n' "${r1_required}" >> "${GITHUB_OUTPUT}"
           printf 'r2_required=%s\n' "${r2_required}" >> "${GITHUB_OUTPUT}"
 
@@ -153,6 +155,7 @@ jobs:
       CASE_FINGERPRINT: ${{ needs.route.outputs.case_fingerprint }}
       PR_NUMBER: ${{ needs.route.outputs.pr_number }}
       HEAD_SHA: ${{ needs.route.outputs.head_sha }}
+      BASE_SHA: ${{ needs.route.outputs.base_sha }}
       OBSERVATION_JSON: ${{ inputs.observation_json }}
       EVIDENCE_JSON: ${{ inputs.evidence_json }}
       CLAUDE_ROUTINE_URL: ${{ vars.CLAUDE_R1_ROUTINE_URL }}
@@ -182,7 +185,11 @@ jobs:
           writeFileSync(`${process.env.RUNNER_TEMP}/review-evidence.json`, JSON.stringify(JSON.parse(process.env.EVIDENCE_JSON || '{}')));
           NODE
           node scripts/run-development-dispatcher.mjs             "${RUNNER_TEMP}/dispatcher-observation.json"             > "${RUNNER_TEMP}/dispatcher-result.json"
-          node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r1 "${CASE_FINGERPRINT}"             "${RUNNER_TEMP}/r1-review-request.json"             > "${RUNNER_TEMP}/r1-fire-body.json"
+          receipt_challenge="$(openssl rand -hex 32)"
+          node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r1 "${CASE_FINGERPRINT}"             "${RUNNER_TEMP}/r1-review-request.json" "${receipt_challenge}"             > "${RUNNER_TEMP}/r1-fire-body.json"
+          receipt_challenge_hash="$(printf '%s' "${receipt_challenge}" | sha256sum | awk '{print $1}')"
+          [[ "${receipt_challenge_hash}" =~ ^[a-f0-9]{64}$ ]]
+          printf 'receipt_challenge_hash=%s\n' "${receipt_challenge_hash}" >> "${GITHUB_OUTPUT}"
           request_fingerprint="$(jq -r '.text' "${RUNNER_TEMP}/r1-fire-body.json" | sed -n 's/^REQUEST_FINGERPRINT: \([a-f0-9]\{64\}\)$/\1/p')"
           [[ "${request_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
           printf 'request_fingerprint=%s\n' "${request_fingerprint}" >> "${GITHUB_OUTPUT}"
@@ -191,10 +198,11 @@ jobs:
         id: reserve
         env:
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r1-review-request.json"             > "${RUNNER_TEMP}/r1-live-reservation-state.json"
-          marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r1:${REQUEST_FINGERPRINT} -->"
           existing_id="$(
             gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
           )"
@@ -208,8 +216,10 @@ jobs:
           ## Development R1 Routine launch
           - status: RESERVED
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
+          - receipt challenge hash: ${RECEIPT_CHALLENGE_HASH}
           - this reservation is not an R1 verdict and grants no merge authority"
 
           payload="${RUNNER_TEMP}/r1-reservation.json"
@@ -233,16 +243,19 @@ jobs:
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           session_url="$(jq -er '.claudeCodeSessionUrl' "${RUNNER_TEMP}/r1-launch-receipt.json")"
-          marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r1:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R1 Routine launch
           - status: ROUTINE_TRIGGERED
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
+          - receipt challenge hash: ${RECEIPT_CHALLENGE_HASH}
           - Claude session: ${session_url}
           - launch receipt only; R1 remains open until a SHA-bound ACCEPTABLE | BLOCKER | INCOMPLETE receipt is published"
 
@@ -253,16 +266,19 @@ jobs:
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
-          marker="<!-- development-review-launch:r1:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r1:${REQUEST_FINGERPRINT} -->"
           if [ -f "${RUNNER_TEMP}/r1-fire-aborted-stale" ] && [ ! -f "${RUNNER_TEMP}/r1-fire-attempted" ]; then
             body="${marker}
           ## Development R1 Routine launch
           - status: LAUNCH_ABORTED_STALE
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
+          - receipt challenge hash: ${RECEIPT_CHALLENGE_HASH}
           - live identity changed before the API call; no Routine fire was attempted
           - no R1 verdict is implied"
           else
@@ -270,8 +286,10 @@ jobs:
           ## Development R1 Routine launch
           - status: LAUNCH_UNCERTAIN
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
+          - receipt challenge hash: ${RECEIPT_CHALLENGE_HASH}
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
           - no R1 verdict is implied"
           fi
@@ -297,6 +315,7 @@ jobs:
       CASE_FINGERPRINT: ${{ needs.route.outputs.case_fingerprint }}
       PR_NUMBER: ${{ needs.route.outputs.pr_number }}
       HEAD_SHA: ${{ needs.route.outputs.head_sha }}
+      BASE_SHA: ${{ needs.route.outputs.base_sha }}
       OBSERVATION_JSON: ${{ inputs.observation_json }}
       EVIDENCE_JSON: ${{ inputs.evidence_json }}
       CLAUDE_ROUTINE_URL: ${{ vars.CLAUDE_R2_ROUTINE_URL }}
@@ -326,7 +345,11 @@ jobs:
           writeFileSync(`${process.env.RUNNER_TEMP}/review-evidence.json`, JSON.stringify(JSON.parse(process.env.EVIDENCE_JSON || '{}')));
           NODE
           node scripts/run-development-dispatcher.mjs             "${RUNNER_TEMP}/dispatcher-observation.json"             > "${RUNNER_TEMP}/dispatcher-result.json"
-          node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r2 "${CASE_FINGERPRINT}"             "${RUNNER_TEMP}/r2-review-request.json"             > "${RUNNER_TEMP}/r2-fire-body.json"
+          receipt_challenge="$(openssl rand -hex 32)"
+          node scripts/prepare-development-review-request.mjs             "${RUNNER_TEMP}/dispatcher-result.json"             "${RUNNER_TEMP}/review-evidence.json"             r2 "${CASE_FINGERPRINT}"             "${RUNNER_TEMP}/r2-review-request.json" "${receipt_challenge}"             > "${RUNNER_TEMP}/r2-fire-body.json"
+          receipt_challenge_hash="$(printf '%s' "${receipt_challenge}" | sha256sum | awk '{print $1}')"
+          [[ "${receipt_challenge_hash}" =~ ^[a-f0-9]{64}$ ]]
+          printf 'receipt_challenge_hash=%s\n' "${receipt_challenge_hash}" >> "${GITHUB_OUTPUT}"
           request_fingerprint="$(jq -r '.text' "${RUNNER_TEMP}/r2-fire-body.json" | sed -n 's/^REQUEST_FINGERPRINT: \([a-f0-9]\{64\}\)$/\1/p')"
           [[ "${request_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
           printf 'request_fingerprint=%s\n' "${request_fingerprint}" >> "${GITHUB_OUTPUT}"
@@ -335,10 +358,11 @@ jobs:
         id: reserve
         env:
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r2-review-request.json"             > "${RUNNER_TEMP}/r2-live-reservation-state.json"
-          marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r2:${REQUEST_FINGERPRINT} -->"
           existing_id="$(
             gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
           )"
@@ -352,8 +376,10 @@ jobs:
           ## Development R2 Routine launch
           - status: RESERVED
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
+          - receipt challenge hash: ${RECEIPT_CHALLENGE_HASH}
           - this reservation is not an R2 verdict and grants no merge authority"
 
           payload="${RUNNER_TEMP}/r2-reservation.json"
@@ -377,16 +403,19 @@ jobs:
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           session_url="$(jq -er '.claudeCodeSessionUrl' "${RUNNER_TEMP}/r2-launch-receipt.json")"
-          marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r2:${REQUEST_FINGERPRINT} -->"
           body="${marker}
           ## Development R2 Routine launch
           - status: ROUTINE_TRIGGERED
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
+          - receipt challenge hash: ${RECEIPT_CHALLENGE_HASH}
           - Claude session: ${session_url}
           - launch receipt only; R2 remains open until a SHA-bound ACCEPTABLE | BLOCKER | INCOMPLETE receipt is published"
 
@@ -397,16 +426,19 @@ jobs:
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
-          marker="<!-- development-review-launch:r2:${REQUEST_FINGERPRINT} -->"
+          marker="<!-- development-review-launch:v1:r2:${REQUEST_FINGERPRINT} -->"
           if [ -f "${RUNNER_TEMP}/r2-fire-aborted-stale" ] && [ ! -f "${RUNNER_TEMP}/r2-fire-attempted" ]; then
             body="${marker}
           ## Development R2 Routine launch
           - status: LAUNCH_ABORTED_STALE
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
+          - receipt challenge hash: ${RECEIPT_CHALLENGE_HASH}
           - live identity changed before the API call; no Routine fire was attempted
           - no R2 verdict is implied"
           else
@@ -414,8 +446,10 @@ jobs:
           ## Development R2 Routine launch
           - status: LAUNCH_UNCERTAIN
           - exact head: ${HEAD_SHA}
+          - base main: ${BASE_SHA}
           - dispatcher case: ${CASE_FINGERPRINT}
           - role request: ${REQUEST_FINGERPRINT}
+          - receipt challenge hash: ${RECEIPT_CHALLENGE_HASH}
           - automatic retry is blocked to avoid duplicate Routine sessions; coordinator must inspect this workflow before retrying
           - no R2 verdict is implied"
           fi

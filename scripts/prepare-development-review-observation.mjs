@@ -178,6 +178,22 @@ function receiptCandidates({ repository, pr, prReviews, prComments, coordination
   }));
 }
 
+function unambiguousLatestReceipt(values) {
+  if (!values.length) return { receipt: null, ambiguous: false };
+  const maxObservedAt = Math.max(...values.map((item) => Number(item.observedAt ?? 0)));
+  const latestGroup = values.filter((item) => Number(item.observedAt ?? 0) === maxObservedAt);
+  const signatures = new Set(latestGroup.map((item) => JSON.stringify([
+    item.role,
+    item.headSha,
+    item.baseSha,
+    item.dispatcherCaseFingerprint,
+    item.requestFingerprint,
+    item.verdict,
+  ])));
+  if (signatures.size > 1) return { receipt: null, ambiguous: true };
+  return { receipt: latest(latestGroup), ambiguous: false };
+}
+
 function independentReceipt(candidates, authenticated, role, requirement, currentHead, currentBase) {
   if (requirement === 'not_required') {
     return {
@@ -211,7 +227,7 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
       const source = candidates.find((item) => item.id === entry.id && item.sourceRef === entry.url);
       return source ? {
         ...entry,
-        verdict: verdictFromBody(source.body),
+        verdict: String(entry.verdict ?? '').toLowerCase(),
         sourceRef: entry.url,
       } : null;
     })
@@ -220,9 +236,38 @@ function independentReceipt(candidates, authenticated, role, requirement, curren
         candidates.find((candidate) => candidate.id === item.id && candidate.sourceRef === item.sourceRef)?.body ?? '',
       )));
 
-  const current = latest(receipts.filter((item) =>
+  const currentSelection = unambiguousLatestReceipt(receipts.filter((item) =>
     item.headSha === currentHead && item.baseSha === currentBase));
-  const prior = current ?? latest(receipts);
+  if (currentSelection.ambiguous) {
+    return {
+      requirement,
+      verdict: 'unknown',
+      receipt: 'unknown',
+      reviewedHeadSha: null,
+      reviewedBaseSha: null,
+      sourceRef: null,
+      reviewedAt: null,
+      receiptId: null,
+    };
+  }
+
+  const historicalSelection = currentSelection.receipt
+    ? { receipt: currentSelection.receipt, ambiguous: false }
+    : unambiguousLatestReceipt(receipts);
+  if (historicalSelection.ambiguous) {
+    return {
+      requirement,
+      verdict: 'unknown',
+      receipt: 'unknown',
+      reviewedHeadSha: null,
+      reviewedBaseSha: null,
+      sourceRef: null,
+      reviewedAt: null,
+      receiptId: null,
+    };
+  }
+
+  const prior = historicalSelection.receipt;
   if (!prior) {
     return {
       requirement,

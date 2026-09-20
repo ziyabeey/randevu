@@ -55,8 +55,8 @@ test('authoritative live fence runs before role exposure, reservation and API fi
 });
 
 test('role-specific reservation plus exact-head concurrency prevents duplicate Routine spend', () => {
-  assert.match(review, /development-review-launch:r1:\$\{REQUEST_FINGERPRINT\}/);
-  assert.match(review, /development-review-launch:r2:\$\{REQUEST_FINGERPRINT\}/);
+  assert.match(review, /development-review-launch:v1:r1:\$\{REQUEST_FINGERPRINT\}/);
+  assert.match(review, /development-review-launch:v1:r2:\$\{REQUEST_FINGERPRINT\}/);
   assert.match(review, /group: development-review-r1-/);
   assert.match(review, /group: development-review-r2-/);
   assert.match(review, /cancel-in-progress: false/);
@@ -66,6 +66,21 @@ test('role-specific reservation plus exact-head concurrency prevents duplicate R
   assert.match(review, /launch receipt only; R1 remains open/);
   assert.match(review, /launch receipt only; R2 remains open/);
   assert.doesNotMatch(review, /- status: \`RESERVED\`/);
+});
+
+test('launch lifecycle records exact base for receipt-chain verification', () => {
+  assert.match(review, /base_sha: \$\{\{ steps\.route\.outputs\.base_sha \}\}/);
+  assert.ok((review.match(/BASE_SHA: \$\{\{ needs\.route\.outputs\.base_sha \}\}/g) ?? []).length >= 2);
+  assert.ok((review.match(/- base main: \$\{BASE_SHA\}/g) ?? []).length >= 6);
+});
+
+test('each role gets a hidden one-time challenge while only its SHA-256 hash is published', () => {
+  assert.ok((review.match(/receipt_challenge="\$\(openssl rand -hex 32\)"/g) ?? []).length >= 2);
+  assert.ok((review.match(/receipt_challenge_hash=/g) ?? []).length >= 2);
+  assert.ok((review.match(/receipt_challenge_hash=%s/g) ?? []).length >= 2);
+  assert.ok((review.match(/RECEIPT_CHALLENGE_HASH: \$\{\{ steps\.prepare\.outputs\.receipt_challenge_hash \}\}/g) ?? []).length >= 6);
+  assert.ok((review.match(/- receipt challenge hash: \$\{RECEIPT_CHALLENGE_HASH\}/g) ?? []).length >= 6);
+  assert.doesNotMatch(review, /printf 'receipt_challenge=%s/);
 });
 
 test('review automation and role jobs receive the same trusted reviewer allowlist', () => {
