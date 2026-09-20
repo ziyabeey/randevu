@@ -294,7 +294,14 @@ function hasUnclosedExternalGate(evidence) {
 }
 
 export function classifyPull(pr, context) {
-  const { config, mainSha, task, coordinationComments = [], remoteComplete = true } = context;
+  const {
+    config,
+    mainSha,
+    task,
+    coordinationComments = [],
+    coordinationCommentsComplete = true,
+    remoteComplete = true,
+  } = context;
   const ci = ciForPull(pr, config.requiredCheckName);
   const surface = changedSurface(pr, config);
   const receipts = reviewReceipts(pr, coordinationComments, config);
@@ -308,6 +315,9 @@ export function classifyPull(pr, context) {
     .map(([role]) => role.toUpperCase());
   const gaps = [];
   if (!remoteComplete) gaps.push('REMOTE_EVIDENCE_INCOMPLETE');
+  if (!coordinationCommentsComplete && (required.r1 || required.r2)) {
+    gaps.push('REMOTE_EVIDENCE_INCOMPLETE');
+  }
   if (!task) gaps.push('TASK_NOT_MAPPED');
   if (surface.incomplete) gaps.push('FILES_TRUNCATED');
   if (pr.threadsTruncated) gaps.push('THREADS_TRUNCATED');
@@ -321,7 +331,9 @@ export function classifyPull(pr, context) {
   const taskReviewState = task?.status === 'İncelemede';
   const cleanMergeState = pr.mergeable === 'MERGEABLE' && pr.mergeStateStatus === 'CLEAN';
   const threadsClear = Number.isInteger(pr.unresolvedThreads) && pr.unresolvedThreads === 0 && !pr.threadsTruncated;
-  const evidenceComplete = remoteComplete && !surface.incomplete;
+  const evidenceComplete = remoteComplete
+    && (coordinationCommentsComplete || (!required.r1 && !required.r2))
+    && !surface.incomplete;
 
   let choice = 'A';
   let reason = 'Kanıt veya beklenen dış koşul henüz tamamlanmadı.';

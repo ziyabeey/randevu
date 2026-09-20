@@ -54,6 +54,9 @@ launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/ai.yzt.qwen-coord
 60 saniye, yalnız canlı TASKS'e bağlı aktif GitHub/Depot CI varken 30 saniye
 cache/poll aralığı uygular. GraphQL rate limiti 1000'in altına inerse 5 dakika,
 250'nin altına inerse 15 dakika geri çekilir.
+Koordinasyon issue'sundaki eski yorum sayfaları kesikse bu durum yalnız R1/R2
+receipt'i gerektiren PR'ları bloke eder; R0-only PR'lar için ilgisiz geçmiş
+sayfaları her poll'da çekilmez.
 
 Masaüstü bildirimleri PR + exact head + karar anahtarıyla kalıcı olarak
 tekilleştirilir. İlgisiz bir PR veya rapor fingerprint'i değiştiğinde aynı uyarı

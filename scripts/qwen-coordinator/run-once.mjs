@@ -356,7 +356,6 @@ async function fetchSnapshot(config, token) {
     available: true,
     complete: repository.pullRequests?.pageInfo?.hasNextPage !== true
       && repository.taskBlob?.isTruncated !== true
-      && repository.issue?.comments?.pageInfo?.hasPreviousPage !== true
       && mainRollup?.contexts?.pageInfo?.hasNextPage !== true,
     auth: 'authenticated',
     fetchedAt: nowIso(),
@@ -437,6 +436,7 @@ function buildDecisions(config, remote, state) {
       mainSha: remote.mainSha,
       task,
       coordinationComments: remote.coordinationComments,
+      coordinationCommentsComplete: remote.coordinationCommentsTruncated !== true,
       remoteComplete: remote.available === true
         && remote.complete === true
         && pullEvidenceComplete,
@@ -1108,6 +1108,7 @@ function compactRemoteForReport(remote, config) {
     mainSha: remote.mainSha ?? null,
     mainCi: remote.mainChecks ? mainCi(remote, config).status : 'unknown',
     tasksCount: remote.tasks?.length ?? 0,
+    coordinationCommentsTruncated: remote.coordinationCommentsTruncated === true,
     pulls: (remote.pulls ?? []).map((pr) => ({
       number: pr.number,
       title: pr.title,

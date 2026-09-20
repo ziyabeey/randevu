@@ -225,3 +225,28 @@ test('truncated remote evidence blocks an otherwise merge-eligible pull', () => 
   assert.ok(result.gaps.includes('REMOTE_EVIDENCE_INCOMPLETE'));
   assert.equal(result.mergeEligible, false);
 });
+
+test('truncated coordination history blocks only roles that consume it', () => {
+  const r0Only = classifyPull(pull(), {
+    config,
+    mainSha: main,
+    task,
+    remoteComplete: true,
+    coordinationCommentsComplete: false,
+  });
+  assert.equal(r0Only.choice, 'D');
+  assert.ok(!r0Only.gaps.includes('REMOTE_EVIDENCE_INCOMPLETE'));
+
+  const r2Required = classifyPull(pull({
+    files: [{ path: 'scripts/browser-flow.mjs' }],
+  }), {
+    config,
+    mainSha: main,
+    task,
+    remoteComplete: true,
+    coordinationCommentsComplete: false,
+  });
+  assert.equal(r2Required.choice, 'A');
+  assert.ok(r2Required.gaps.includes('REMOTE_EVIDENCE_INCOMPLETE'));
+  assert.equal(r2Required.mergeEligible, false);
+});

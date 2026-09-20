@@ -36,6 +36,8 @@
   ledger'da tekilleştirilir; ilgisiz fingerprint değişimi aynı uyarıyı tekrarlamaz.
 - GitHub polling yalnız TASKS'e bağlı aktif PR'larda hızlanır ve düşük/kritik rate
   limit eşiklerinde sırasıyla en az 5/15 dakikaya fail-safe geri çekilir.
+- Kesik koordinasyon-issue geçmişi yalnız R1/R2 receipt'i tüketen PR'ı bloke
+  eder; R0-only PR için ilgisiz eski sayfalar yeniden çekilmez.
 - `depot-full-ci.yml`: immutable placeholder'lı full shadow CI şablonu.
 - `config.example.json`: secretsiz, makineden bağımsız, shadow varsayılan.
 - `install-local.mjs`: mevcut config'i koruyan macOS yerel kurucu.
@@ -45,8 +47,8 @@
 
 ## Güncel doğrulama
 
-- 19/19 coordinator unit testi başarılı.
-- Repo HTTP testleri 68 dosyada 817/817 başarılı.
+- 20/20 coordinator unit testi başarılı.
+- Repo HTTP testleri 68 dosyada 818/818 başarılı.
 - CI coverage, docs, typecheck ve build başarılı.
 - İnceleme onarımları: exact-head-only Depot checkout, non-empty workflow/job/
   attempt başarı kanıtı, tüm non-pass Depot durumlarında fail-closed merge,
