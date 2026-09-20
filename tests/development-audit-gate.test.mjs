@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { authenticatedReceipts, classifyFileRecords, freshnessReport, parseReviewerAllowlist, sameIdentity, verifiedReceipts } from '../scripts/development-audit-gate.mjs';
 
 const head = 'a'.repeat(40), base = 'b'.repeat(40);
-const caseFp = 'c'.repeat(64), requestFp = 'd'.repeat(64);
+const caseFp = 'c'.repeat(64), requestFp = 'd'.repeat(64), challenge = 'e'.repeat(64);
+const challengeHash = createHash('sha256').update(challenge).digest('hex');
 const pr = { number: 201, state: 'open', head: { sha: head }, base: { sha: base }, user: { login: 'author' } };
-const allowlist = { R1: ['kepenk-r1-reviewer[bot]'], R2: ['kepenk-r2-reviewer[bot]'] };
+const allowlist = { R1: ['claude[bot]'], R2: ['claude[bot]'] };
 
 function receipt(change = {}, itemChange = {}) {
   const marker = {
@@ -16,12 +18,13 @@ function receipt(change = {}, itemChange = {}) {
     baseSha: base,
     dispatcherCaseFingerprint: caseFp,
     requestFingerprint: requestFp,
+    receiptChallenge: challenge,
     verdict: 'ACCEPTABLE',
     ...change,
   };
   return {
     id: 42,
-    user: { login: 'kepenk-r1-reviewer[bot]' },
+    user: { login: 'claude[bot]' },
     html_url: 'https://github.com/example/repo/pull/201#issuecomment-42',
     body: `<!-- development-review-receipt ${JSON.stringify(marker)} -->`,
     ...itemChange,
@@ -46,6 +49,7 @@ function launch(change = {}, itemChange = {}) {
       `- base main: ${baseSha}`,
       `- dispatcher case: ${dispatcherCaseFingerprint}`,
       `- role request: ${requestFingerprint}`,
+      `- receipt challenge hash: ${change.receiptChallengeHash ?? challengeHash}`,
     ].join('\n'),
     ...itemChange,
   };
@@ -70,15 +74,15 @@ test('malformed reviewer allowlist fails closed to no trusted roles', () => {
   assert.deepEqual(parseReviewerAllowlist(JSON.stringify(allowlist)), allowlist);
 });
 
-test('only one dedicated disjoint publisher per role can produce independent receipts', () => {
+test('exactly one dedicated publisher per role is required; one challenge-bound Claude bot may serve both roles', () => {
+  assert.equal(verifiedReceipts(evidence(), pr, allowlist).length, 1);
   for (const login of ['copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]', 'github-actions[bot]', 'author', 'stranger']) {
     assert.deepEqual(verifiedReceipts([launch(), { ...receipt(), user: { login } }], pr, allowlist), []);
   }
   assert.deepEqual(verifiedReceipts([launch(), { ...receipt(), body: 'R1 ACCEPTABLE current head approved' }], pr, allowlist), []);
   assert.deepEqual(verifiedReceipts(evidence(), pr), []);
-  assert.deepEqual(verifiedReceipts(evidence(), pr, { R1: ['same[bot]'], R2: ['same[bot]'] }), []);
-  assert.deepEqual(verifiedReceipts(evidence(), pr, { R1: ['a[bot]', 'b[bot]'], R2: ['c[bot]'] }), []);
-  assert.deepEqual(verifiedReceipts(evidence(), pr, { R1: ['a[bot]'], R2: 'c[bot]' }), []);
+  assert.deepEqual(verifiedReceipts(evidence(), pr, { R1: ['a[bot]', 'b[bot]'], R2: ['claude[bot]'] }), []);
+  assert.deepEqual(verifiedReceipts(evidence(), pr, { R1: ['claude[bot]'], R2: 'claude[bot]' }), []);
 });
 
 test('receipt identity, launch binding and head/base freshness are deterministic', () => {
@@ -99,10 +103,15 @@ test('receipt identity, launch binding and head/base freshness are deterministic
     { requestFingerprint: 'bad' },
     { dispatcherCaseFingerprint: 'bad' },
     { verdict: 'APPROVED' },
+    { receiptChallenge: 'bad' },
     { schemaVersion: 'development-review-receipt.v0' },
   ]) assert.deepEqual(verifiedReceipts([launch(delta), receipt(delta)], pr, allowlist), []);
 
   assert.deepEqual(verifiedReceipts([receipt()], pr, allowlist), []);
+  assert.deepEqual(verifiedReceipts([
+    launch({ receiptChallengeHash: 'f'.repeat(64) }),
+    receipt(),
+  ], pr, allowlist), []);
   assert.deepEqual(verifiedReceipts([launch({ requestFingerprint: 'e'.repeat(64) }), receipt()], pr, allowlist), []);
   assert.deepEqual(verifiedReceipts([launch(), { ...receipt(), commit_id: 'e'.repeat(40) }], pr, allowlist), []);
   assert.deepEqual(verifiedReceipts([launch(), { ...receipt(), body: receipt().body.repeat(2) }], pr, allowlist), []);
