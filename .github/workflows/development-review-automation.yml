@@ -48,6 +48,7 @@ jobs:
       REPOSITORY: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number || github.event.pull_request.number }}
       EVENT_RUN_ID: ${{ github.event.workflow_run.id || '' }}
+      DEVELOPMENT_REVIEWER_ALLOWLIST: ${{ vars.DEVELOPMENT_REVIEWER_ALLOWLIST }}
 
     steps:
       - name: Checkout canonical main automation
