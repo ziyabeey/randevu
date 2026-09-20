@@ -6,9 +6,10 @@
 - Boyut / mod: M / FOCUSED
 - Başlangıç main / task claim: `86d1bfdd729577ebd9ab3f47d1273219b1afe8f0`
 - Branch: `chore/dev-engine-07-qwen-coordinator`
-- PR / current repair code candidate: [#208](https://github.com/ziyabeey1-ai/randevu/pull/208)
-  · head `66f734a59777ac4d0e13167be2fb006ba84453e4`
-  · base `4909c06143a89ef0c40f2c27e63c970a42a52e81`.
+- PR / current integrated code candidate: [#208](https://github.com/ziyabeey1-ai/randevu/pull/208)
+  · head `edaaff6964491d256a89cd338e3d7262116a81ef`
+  · semantic repair ancestor `66f734a59777ac4d0e13167be2fb006ba84453e4`
+  · base `f5b5d9f6a3ff1dad235e008248cda28619cb55e4`.
 - Yazım alanı: `scripts/qwen-coordinator/**`,
   `tests/qwen-coordinator-*.test.mjs`, `docs/runbooks/qwen-coordinator.md`, bu
   devir, `.gitignore` ve görev satırı.
@@ -63,7 +64,7 @@
 ## Güncel doğrulama
 
 - `node --test tests/qwen-coordinator-*.test.mjs`: 29/29 başarılı.
-- Güncel main entegrasyonu sonrası repo HTTP testleri 72 dosyada 877/877
+- Güncel main entegrasyonu sonrası repo HTTP testleri 72 dosyada 878/878
   başarılı.
 - CI coverage, docs, typecheck ve build başarılı.
 - İnceleme onarımları: exact-head-only Depot checkout, non-empty workflow/job/
@@ -76,7 +77,7 @@
   exact-head CI run `35500844512`, job `106052216068`, attempt `1`, tested
   checkout aynı full SHA ve Depot `h9n2mpjxxj` aynı head/base üzerinde PASS.
 - Exact-head GitHub CI, Depot shadow CI ve fresh bağımsız CI/governance incelemesi
-  `66f734a59777ac4d0e13167be2fb006ba84453e4` kod adayı üzerinde yeniden alınacak.
+  `edaaff6964491d256a89cd338e3d7262116a81ef` integrated kod adayı üzerinde yeniden alınacak.
 
 ## Sonraki tek adım
 
