@@ -97,12 +97,12 @@ function main() {
     } else {
       configAction = 'created';
     }
-    const source = readFileSync(path.join(sourceRoot, 'config.example.json'), 'utf8')
-      .replaceAll('__REPO_ROOT__', repoRoot)
-      .replaceAll('__COORDINATOR_HOME__', coordinatorHome)
-      .replaceAll('__DEPOT_BINARY__', depotBinary)
-      .replaceAll('__DEPOT_ORG_ID__', depotOrgId);
-    JSON.parse(source);
+    const generated = JSON.parse(readFileSync(path.join(sourceRoot, 'config.example.json'), 'utf8'));
+    generated.repoRoot = repoRoot;
+    generated.depotBinary = depotBinary;
+    generated.depotOrgId = depotOrgId;
+    generated.depotWorkflowFile = path.join(coordinatorHome, 'depot-full-ci.yml');
+    const source = `${JSON.stringify(generated, null, 2)}\n`;
     atomicWrite(configFile, source);
   }
 

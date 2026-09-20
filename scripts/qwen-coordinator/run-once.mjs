@@ -17,6 +17,7 @@ import {
   notificationEvent,
   parseTasksText,
   policyFingerprint,
+  validateQwenChoices,
 } from './policy.mjs';
 import {
   applyDepotEvidence,
@@ -547,7 +548,14 @@ async function startDepotRun(config, pr) {
 }
 
 function cancelDepotRun(config, run) {
-  if (!run.runId || isDepotTerminal(run.status)) return;
+  if (!run.runId || isDepotTerminal(run.status)) return true;
+  if (run.cancelRequestedAt) {
+    pollDepotRun(config, run);
+    return isDepotTerminal(run.status);
+  }
+  const lastAttempt = Date.parse(run.lastCancelAttemptAt ?? '') || 0;
+  if (lastAttempt && Date.now() - lastAttempt < config.depotRetrySeconds * 1000) return false;
+  run.lastCancelAttemptAt = nowIso();
   const result = depotCommand(config, [
     'ci', 'cancel', run.runId, '--org', config.depotOrgId, '--output', 'json',
   ], config.repoRoot, 20_000);
@@ -557,6 +565,15 @@ function cancelDepotRun(config, run) {
     runId: run.runId,
     error: result.ok ? null : compactText(result.stderr, 500),
   });
+  if (!result.ok) {
+    run.cancelError = compactText(result.stderr, 700);
+    return false;
+  }
+  run.cancelRequestedAt = nowIso();
+  run.status = 'cancelling';
+  delete run.cancelError;
+  pollDepotRun(config, run);
+  return isDepotTerminal(run.status);
 }
 
 function pollDepotRun(config, run) {
@@ -660,9 +677,9 @@ async function reconcileDepot(config, remote, decisions, state) {
   for (const [number, run] of Object.entries(state.depotRuns)) {
     const pr = openByNumber.get(number);
     if (!pr || pr.headSha !== run.headSha || pr.baseSha !== run.baseSha) {
-      cancelDepotRun(config, run);
-      run.status = 'superseded';
-      run.completedAt ??= nowIso();
+      const terminal = cancelDepotRun(config, run);
+      if (terminal && run.status !== 'cancelled') run.status = 'superseded';
+      if (terminal) run.completedAt ??= nowIso();
       continue;
     }
     const baseDecision = decisions.find((decision) => decision.prNumber === run.prNumber);
@@ -676,9 +693,9 @@ async function reconcileDepot(config, remote, decisions, state) {
         'CROSS_REPOSITORY_HEAD',
       ].includes(gap));
     if (structurallyInvalid && !isDepotTerminal(run.status)) {
-      cancelDepotRun(config, run);
-      run.status = 'superseded';
-      run.completedAt ??= nowIso();
+      const terminal = cancelDepotRun(config, run);
+      if (terminal && run.status !== 'cancelled') run.status = 'superseded';
+      if (terminal) run.completedAt ??= nowIso();
       continue;
     }
     if (run.runId && (!isDepotTerminal(run.status) || run.identityVerified == null)) pollDepotRun(config, run);
@@ -749,40 +766,6 @@ function extractJson(value) {
     if (start >= 0 && end > start) return JSON.parse(source.slice(start, end + 1));
     throw new Error('Qwen response did not contain a JSON object');
   }
-}
-
-function validateQwenChoices(value, decisions) {
-  const known = new Map(decisions.map((decision) => [decision.prNumber, decision]));
-  const choices = [];
-  const submitted = Array.isArray(value?.choices) && value.choices.every((item) => typeof item === 'string')
-    ? value.choices.map((choice, index) => ({ prNumber: decisions[index]?.prNumber, choice }))
-    : Array.isArray(value?.choices)
-      ? value.choices
-      : Object.entries(value?.choices ?? {}).map(([prNumber, choice]) => ({
-        prNumber: prNumber.match(/\d+/)?.[0],
-        choice,
-      }));
-  for (const item of submitted) {
-    const prNumber = Number(item?.prNumber);
-    const choice = String(item?.choice ?? '').toUpperCase();
-    if (!known.has(prNumber) || !Object.hasOwn(CHOICES, choice)) continue;
-    choices.push({
-      prNumber,
-      choice,
-      label: CHOICES[choice],
-      overriddenByPolicy: known.get(prNumber).choice !== choice,
-    });
-  }
-  if (choices.length !== decisions.length) {
-    throw new Error(`Qwen returned ${choices.length}/${decisions.length} choices`);
-  }
-  return {
-    available: true,
-    choices,
-    summary: `${choices.length} PR sabit A/B/C/D seçenekleriyle değerlendirildi.`,
-    advisoryOnly: true,
-    stale: false,
-  };
 }
 
 async function askQwen(config, decisions) {
@@ -959,7 +942,7 @@ function updateTaskForCloseout(remote, pending, config) {
   }
   const matches = remote.taskSource.split(/\r?\n/).filter((line) => line === task.rawLine).length;
   if (matches !== 1) throw new Error('Closeout task row is not uniquely identifiable');
-  const evidence = `coordinator merge [PR #${pending.prNumber}](https://github.com/${config.repoSlug}/pull/${pending.prNumber}) main \`${pending.mergeSha.slice(0, 8)}\` · post-main ${config.requiredCheckName} SUCCESS`;
+  const evidence = `coordinator merge [PR #${pending.prNumber}](https://github.com/${config.repoSlug}/pull/${pending.prNumber}) main \`${pending.mergeSha}\` · post-main ${config.requiredCheckName} SUCCESS`;
   let nextLine = task.rawLine.replace(`| ${task.status} |`, '| Tamamlandı |');
   if (!nextLine.includes(evidence)) nextLine = nextLine.replace(/\s*\|\s*$/, ` · ${evidence} |`);
   if (nextLine === task.rawLine) throw new Error('Closeout row transformation produced no change');
@@ -967,6 +950,9 @@ function updateTaskForCloseout(remote, pending, config) {
 }
 
 async function createCloseoutPull(config, token, remote, pending) {
+  if (remote.available !== true || remote.complete !== true) {
+    throw new Error('Closeout requires a complete fresh GitHub snapshot');
+  }
   if (!remote.taskBlobOid) throw new Error('TASKS.md blob identity unavailable');
   const updatedTasks = updateTaskForCloseout(remote, pending, config);
   const branch = `qwen-coordinator/close-${pending.taskId.toLowerCase()}-${pending.mergeSha.slice(0, 8)}`;
@@ -1025,6 +1011,9 @@ async function executeAction(config, state, action) {
   if (action.type === 'CREATE_CLOSEOUT') {
     const pending = state.pendingMerges?.[String(action.prNumber)];
     if (!pending || pending.mergeSha !== action.mergeSha) throw new Error('Pending merge identity changed');
+    if (fresh.available !== true || fresh.complete !== true) {
+      throw new Error('Closeout requires a complete fresh GitHub snapshot');
+    }
     if (fresh.mainSha !== action.mergeSha || mainCi(fresh, config).status !== 'pass') {
       throw new Error('Post-main exact merge SHA/CI gate changed before closeout commit');
     }
@@ -1183,6 +1172,29 @@ function notifyIfNeeded(state, report) {
   state.notificationLedger = Object.fromEntries(entries);
 }
 
+function observationFingerprint(config, remote, decisions) {
+  return policyFingerprint({
+    qwenPromptVersion: config.qwenPromptVersion,
+    mainSha: remote.mainSha,
+    tasks: remote.tasks?.map(({ id, status, owner, prNumbers, evidence }) => ({
+      id, status, owner, prNumbers, evidence,
+    })),
+    pulls: decisions.map(({
+      prNumber, headSha, baseSha, draft, choice, ci, depot, missingReviews, gaps,
+    }) => ({
+      prNumber,
+      headSha,
+      baseSha,
+      draft,
+      choice,
+      ci: ci.status,
+      depot: depot.status,
+      missingReviews,
+      gaps,
+    })),
+  });
+}
+
 async function main() {
   if (!acquireLock()) {
     log('skip-overlap');
@@ -1201,20 +1213,24 @@ async function main() {
     let decisions = buildDecisions(config, remote, state);
     await reconcileDepot(config, remote, decisions, state);
     decisions = attachDepotEvidence(decisions, state);
-    const fingerprint = policyFingerprint({
-      qwenPromptVersion: config.qwenPromptVersion,
-      mainSha: remote.mainSha,
-      tasks: remote.tasks?.map(({ id, status, owner, prNumbers, evidence }) => ({ id, status, owner, prNumbers, evidence })),
-      pulls: decisions.map(({ prNumber, headSha, baseSha, draft, choice, ci, depot, missingReviews, gaps }) => ({
-        prNumber, headSha, baseSha, draft, choice, ci: ci.status, depot: depot.status, missingReviews, gaps,
-      })),
-    });
+    let fingerprint = observationFingerprint(config, remote, decisions);
 
     const qwenCandidates = qwenEligibleDecisions(decisions);
     const qwenFingerprint = policyFingerprint({
       qwenPromptVersion: config.qwenPromptVersion,
-      candidates: qwenCandidates.map(({ prNumber, headSha, baseSha, choice, missingReviews, gaps }) => ({
-        prNumber, headSha, baseSha, choice, missingReviews, gaps,
+      candidates: qwenCandidates.map(({
+        prNumber, headSha, baseSha, choice, ci, depot, mergeable, draft, missingReviews, gaps,
+      }) => ({
+        prNumber,
+        headSha,
+        baseSha,
+        choice,
+        ci: ci.status,
+        depot: depot.status,
+        mergeable,
+        draft,
+        missingReviews,
+        gaps,
       })),
     });
     const lastAttemptMs = Date.parse(state.lastQwenAttemptAt ?? '') || 0;
@@ -1262,6 +1278,15 @@ async function main() {
         executedAction = { ...action, result };
         remote = await gatherRemote(config, state, { force: true });
         decisions = attachDepotEvidence(buildDecisions(config, remote, state), state);
+        fingerprint = observationFingerprint(config, remote, decisions);
+        qwen = {
+          available: false,
+          choices: [],
+          summary: 'Dış aksiyon sonrası yenilenen snapshot için Qwen sonucu yeniden kullanılmadı.',
+          advisoryOnly: true,
+          stale: false,
+          status: 'not-run',
+        };
       } catch (error) {
         const key = actionKey(action);
         state.actionLedger[key] ??= { attempts: 1, lastAttemptAt: nowIso() };

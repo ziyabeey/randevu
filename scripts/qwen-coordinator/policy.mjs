@@ -47,6 +47,45 @@ function unique(values) {
   return [...new Set(values)];
 }
 
+export function validateQwenChoices(value, decisions) {
+  const known = new Map(decisions.map((decision) => [decision.prNumber, decision]));
+  const choices = [];
+  const seen = new Set();
+  const submitted = Array.isArray(value?.choices) && value.choices.every((item) => typeof item === 'string')
+    ? value.choices.map((choice, index) => ({ prNumber: decisions[index]?.prNumber, choice }))
+    : Array.isArray(value?.choices)
+      ? value.choices
+      : Object.entries(value?.choices ?? {}).map(([prNumber, choice]) => ({
+        prNumber: prNumber.match(/\d+/)?.[0],
+        choice,
+      }));
+  for (const item of submitted) {
+    const prNumber = Number(item?.prNumber);
+    const choice = String(item?.choice ?? '').toUpperCase();
+    if (!known.has(prNumber) || !Object.hasOwn(CHOICES, choice)) {
+      throw new Error(`Qwen returned an unknown PR/choice pair: ${prNumber}/${choice}`);
+    }
+    if (seen.has(prNumber)) throw new Error(`Qwen returned duplicate choice coverage for PR #${prNumber}`);
+    seen.add(prNumber);
+    choices.push({
+      prNumber,
+      choice,
+      label: CHOICES[choice],
+      overriddenByPolicy: known.get(prNumber).choice !== choice,
+    });
+  }
+  if (choices.length !== decisions.length || seen.size !== known.size) {
+    throw new Error(`Qwen returned ${choices.length}/${decisions.length} choices`);
+  }
+  return {
+    available: true,
+    choices,
+    summary: `${choices.length} PR sabit A/B/C/D seçenekleriyle değerlendirildi.`,
+    advisoryOnly: true,
+    stale: false,
+  };
+}
+
 export function automaticActionAllowed(config, actionType) {
   const capability = ACTION_CAPABILITIES[actionType];
   return Boolean(capability)

@@ -67,7 +67,7 @@ test('generated wrapper paths are shell-quoted literally', async (context) => {
   context.after(() => rm(root, { recursive: true, force: true }));
   const repoRoot = path.join(root, 'repo');
   const userHome = path.join(root, 'home');
-  const coordinatorHome = path.join(root, 'coord $(touch injected) $HOME `touch injected-too`');
+  const coordinatorHome = path.join(root, 'coord "quoted" \\backslash $(touch injected) $HOME `touch injected-too`');
   const binRoot = path.join(root, 'bin');
   await mkdir(repoRoot, { recursive: true });
   await mkdir(userHome, { recursive: true });
@@ -81,6 +81,9 @@ test('generated wrapper paths are shell-quoted literally', async (context) => {
     '--node', process.execPath,
   ]);
   const report = '# literal path works\n';
+  const config = JSON.parse(await readFile(path.join(coordinatorHome, 'config.json'), 'utf8'));
+  assert.equal(config.repoRoot, repoRoot);
+  assert.equal(config.depotWorkflowFile, path.join(coordinatorHome, 'depot-full-ci.yml'));
   await writeFile(path.join(coordinatorHome, 'reports', 'latest.md'), report);
   const wrapper = path.join(binRoot, 'qwen-coordinator-status');
   const result = await execFileAsync('/bin/sh', [wrapper], { cwd: root });

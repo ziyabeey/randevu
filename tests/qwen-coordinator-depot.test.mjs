@@ -177,4 +177,16 @@ test('Qwen sees only dual-green review/merge candidates', () => {
   }, 'shadow-v1');
   assert.match(comment, /does not replace the required GitHub `CI gate`/);
   assert.match(comment, new RegExp(headSha));
+
+  const headFallbackComment = depotCommentBody({
+    status: 'pass',
+    headSha,
+    baseSha,
+    runId: '39ccx70t42',
+    workflowHash: 'a'.repeat(64),
+    observedSha: null,
+    observedHeadSha: headSha,
+    failedJobs: [],
+  }, 'shadow-v1');
+  assert.ok(headFallbackComment.includes(`Observed Depot SHA: \`${headSha}\``));
 });

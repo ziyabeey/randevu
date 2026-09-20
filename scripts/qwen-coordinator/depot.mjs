@@ -242,7 +242,7 @@ export function depotCommentBody(run, workflowName) {
     `- Exact head: \`${run.headSha}\``,
     `- Base SHA: \`${run.baseSha}\``,
     `- Tree SHA: \`${run.treeSha ?? 'unavailable'}\``,
-    `- Observed Depot SHA: \`${run.observedSha ?? 'unavailable'}\``,
+    `- Observed Depot SHA: \`${run.observedSha ?? run.observedHeadSha ?? 'unavailable'}\``,
     `- Run: ${runLine}`,
     `- Workflow: \`${workflowName}\` · SHA-256 \`${run.workflowHash}\``,
     `- Failed jobs: ${failed}`,

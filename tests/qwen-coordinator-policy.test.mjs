@@ -7,6 +7,7 @@ import {
   notificationEvent,
   parseTasksText,
   reviewReceipts,
+  validateQwenChoices,
 } from '../scripts/qwen-coordinator/policy.mjs';
 
 const head = '1'.repeat(40);
@@ -249,4 +250,25 @@ test('truncated coordination history blocks only roles that consume it', () => {
   assert.equal(r2Required.choice, 'A');
   assert.ok(r2Required.gaps.includes('REMOTE_EVIDENCE_INCOMPLETE'));
   assert.equal(r2Required.mergeEligible, false);
+});
+
+test('Qwen response must cover every PR exactly once', () => {
+  const decisions = [
+    { prNumber: 7, choice: 'C' },
+    { prNumber: 8, choice: 'D' },
+  ];
+  assert.deepEqual(
+    validateQwenChoices({ choices: [
+      { prNumber: 7, choice: 'C' },
+      { prNumber: 8, choice: 'D' },
+    ] }, decisions).choices.map(({ prNumber, choice }) => ({ prNumber, choice })),
+    [{ prNumber: 7, choice: 'C' }, { prNumber: 8, choice: 'D' }],
+  );
+  assert.throws(() => validateQwenChoices({ choices: [
+    { prNumber: 7, choice: 'C' },
+    { prNumber: 7, choice: 'D' },
+  ] }, decisions), /duplicate choice coverage/);
+  assert.throws(() => validateQwenChoices({ choices: [
+    { prNumber: 7, choice: 'C' },
+  ] }, decisions), /1\/2 choices/);
 });
