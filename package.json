@@ -16,6 +16,7 @@
     "test:http": "node scripts/run-http-tests.mjs",
     "test:ci-coverage": "node scripts/verify-ci-coverage.mjs",
     "test:browser-smoke": "bash scripts/browser-smoke.sh",
+    "test:public-bundle": "node scripts/check-public-bundle-budget.mjs",
     "staging:seed": "node scripts/staging-db.mjs seed",
     "staging:reset": "node scripts/staging-db.mjs reset",
     "staging:smoke": "node scripts/staging-smoke.mjs",
