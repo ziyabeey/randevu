@@ -4,7 +4,7 @@ Bu belge, görevlerin farklı oturumlar ve uygulayıcılar arasında aynı kapsa
 
 ## Teknik kapılar
 
-Canlı görev/sahip/PR durumu [TASKS](../../TASKS.md) üzerinden okunur; bu rehber ikinci bir durum tablosu tutmaz. `GS`, [S01…S08](stabilization.md) teknik düzeltmelerinin kabulüdür. Yeni özellik kodu GS'yi bekler; F12-01 tasarım çalışması ayrı planlanabilir. [K01…K03](architecture-contracts.md) bağlayıcı tasarım bölümleridir, görev veya grafik düğümü değildir. Bağımlılık hücreleri yalnız TEMEL/Sxx/Fxx-yy/GS/Gxx kullanır.
+Canlı görev/sahip/PR durumu [TASKS](../../TASKS.md) üzerinden okunur; bu rehber ikinci bir durum tablosu tutmaz. `GS`, [S01…S08](stabilization.md) teknik düzeltmelerinin kabulüdür. Yeni özellik kodu GS'yi bekler; F12-01 görsel yön çalışması ayrı planlanabilir. [K01…K03](architecture-contracts.md) bağlayıcı tasarım bölümleridir, görev veya grafik düğümü değildir. Bağımlılık hücreleri yalnız TEMEL/Sxx/Fxx-yy/GS/Gxx kullanır.
 
 Canlı koordinasyon ve aktif validation bütçesi Issue #65 üzerinden yürütülür. Ürün doğrulama / geri-alınabilirlik politikası Issue #83'te tutulur.
 
@@ -68,7 +68,7 @@ Candidate SHA: current exact head / base / semantic identity gereken yerde
 Approved delta: coordinator reference / repair range / writable scope
 Frozen blockers: stable IDs veya açık NONE
 Closure evidence: blocker ID -> CLOSED | OPEN | UNVERIFIED / candidate-bound evidence
-Evidence gaps: missing / failed / skipped / provenance-scope conflict; yoksa NONE
+Evidence gaps: missing / failed / skipped / unknown obligations; yoksa NONE
 Next coordinator action: tek somut adım
 ```
 

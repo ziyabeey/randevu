@@ -102,11 +102,13 @@ An advisory assignment does not itself change the task's acceptance budget.
    carry an old result forward merely because the branch name stayed the same.
 5. Immediately before publishing, reread assignment, labels, live head/base and
    existing results. Revocation, identity drift, duplicate result or incomplete
-   evidence stops the write. Publish one normal result comment on the authorized
-   PR. Use the format below; do not submit a GitHub APPROVE, change code/branch,
-   resolve threads, alter TASKS/settings/secrets, trigger CI/models/workflows,
-   mark ready or merge. Do not use TinyFish. On 403 or another access error, stop
-   without repeated writes or switching accounts; report the actual blocker once.
+   assignment/identity evidence stops the write. An assigned test-evidence gap
+   may be reported as INCOMPLETE; it is not permission to claim a pass.
+   Publish one normal result comment on the authorized PR. Use the format below;
+   do not submit a GitHub APPROVE, change code/branch, resolve threads, alter
+   TASKS/settings/secrets, trigger CI/models/workflows, mark ready or merge.
+   Do not use TinyFish. On 403 or another access error, stop without repeated
+   writes or switching accounts; report the actual blocker once.
 6. The coordinator consumes the result and removes that role's label on closure
    or revocation. If the label remains temporarily, the durable result still
    suppresses repeat work. Only a materially new candidate or an explicitly
