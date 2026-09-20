@@ -98,7 +98,7 @@ function r2Launch(reviewedHead = oldHead, reviewedBase = main, requestFingerprin
     html_url: `https://github.com/${repository}/pull/187#issuecomment-590`,
     user: { login: 'github-actions[bot]' },
     body: [
-      `<!-- development-review-launch:r2:${requestFingerprint} -->`,
+      `<!-- development-review-launch:v1:r2:${requestFingerprint} -->`,
       '## Development R2 Routine launch',
       '- status: ROUTINE_TRIGGERED',
       `- exact head: ${reviewedHead}`,
