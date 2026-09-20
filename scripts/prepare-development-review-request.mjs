@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { reviewReservationFingerprint } from './development-review-reservation.mjs';
 import {
   buildIndependentReviewRequest,
   renderIndependentReviewRequest,
@@ -27,6 +28,9 @@ const request = buildIndependentReviewRequest(
   role,
   { expectedCaseFingerprint, receiptChallenge },
 );
+// A payload fingerprint is not a paid-work identity: CI reruns and sibling
+// receipts may change it without authorizing another launch.
+request.reservationFingerprint = reviewReservationFingerprint(request);
 if (requestOutput) {
   writeFileSync(path.resolve(process.cwd(), requestOutput), JSON.stringify(request, null, 2));
 }
