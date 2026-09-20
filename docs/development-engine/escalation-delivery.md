@@ -71,9 +71,14 @@ or acceptance authority. The fingerprint remains a dedupe key, not a status stor
 
 ## Triggering
 
-`.github/workflows/development-escalation-router.yml` remains manual/reusable. A
-future event collector may call it only after producing the same normalized
-observation contract. Model calls must never move ahead of the Dispatcher.
+`.github/workflows/development-escalation-router.yml` remains manual/reusable for
+general escalation. The narrowly scoped
+`.github/workflows/development-review-automation.yml` collector may call it for
+independent review delivery after a successful PR CI run or a later submitted R0
+receipt. The collector checks out canonical `main`, rebuilds the normalized
+observation from live GitHub evidence and proceeds only when the pure Dispatcher
+returns `request_required_reviews`. Model calls never move ahead of the
+Dispatcher.
 
 The resulting chain is:
 
@@ -85,8 +90,9 @@ canonical observation -> Dispatcher -> disposition -> Haiku -> attested Opus han
 
 ## Activation gates
 
-The delivery layer may enter main only when the current exact head has required CI
-green, all material review threads resolved, current main integrated, and the
-DEV-ENGINE-02 TASKS row present. Activation does not add an automatic PR-event
-collector; the router remains manual/reusable until its event budget and dedupe
-contract are separately accepted.
+The general escalation delivery layer entered main without an automatic event
+collector. DEV-ENGINE-04 adds only the independent-review collector after its
+event budget and duplicate-spend contract were separately defined. A candidate
+must still have current exact-head CI, a current clean R0 receipt, current main
+integration and an exact canonical TASKS-to-PR binding before R1/R2 credentials
+can be reached.

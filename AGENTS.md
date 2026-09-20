@@ -5,7 +5,7 @@
 1. [TASKS.md](TASKS.md): **tek canlı görev/durum otoritesi**; sahiplik, bağımlılık, kabul kapıları, main kabulü ve açık engeller burada okunur.
 2. [PRODUCT_SPEC.md](PRODUCT_SPEC.md) ve [ROADMAP.md](ROADMAP.md): ürün sınırı ile Faz 17'ye kadar planlanan sıra; canlı statü tutmaz.
 3. [CONTRIBUTING.md](CONTRIBUTING.md), [ajan çalışma akışı](docs/plan/agent-workflow.md), [Context Pack protokolü](docs/plan/context-packs.md) ve [Shadow Validation Mode](docs/plan/shadow-validation-mode.md): çalışma, context, validation ve devir kuralları.
-4. Yalnız görevin ilgili faz/kontrat belgesi, kodu ve testleri. Teknik karar gerekiyorsa [DECISIONS.md](DECISIONS.md); onaylı bir UI referansı varsa [referans matrisi](docs/references/README.md) okunur. Handoff/PR/CI kayıtları tarihsel kanıttır, canlı durum kaynağı değildir.
+4. Yalnız görevin ilgili faz/kontrat belgesi, kodu ve testleri. Teknik karar gerekiyorsa [DECISIONS.md](DECISIONS.md); onaylı bir UI referansı varsa [referans matrisi](docs/references/README.md) okunur. TASKS kalıcı görev durumudur; aktif adayın exact head/base, CI run/job/attempt, review freshness ve mergeability bilgisi canlı PR/check API üzerinden okunur. Bu volatile alanlar TASKS’e senkronlanmaz. Handoff/receipt kayıtları candidate-bound veya tarihsel kanıttır; kalıcı görev durumunu değiştirmez.
 
 Kullanıcının açık ve güncel talebi önceliklidir. Planlanan durum, uygulanmış kod ve doğrulanmış sonuç ayrı raporlanır. Sohbet tek kalıcı talimat veya devir kaynağı olamaz.
 

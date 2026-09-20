@@ -264,7 +264,7 @@ test('R0 discovery, verification and frozen-blocker closure are distinct conditi
 
 test('docs-only descendants never silently make stale review receipts current', async (t) => {
   const reviews = {
-    r1: { requirement: 'required', verdict: 'acceptable', receipt: 'accessible', reviewedHeadSha: oldHead },
+    r1: { requirement: 'required', verdict: 'acceptable', receipt: 'accessible', reviewedHeadSha: oldHead, reviewedBaseSha: main },
   };
 
   await t.test('unconfirmed delta requires coordinator confirmation', () => {
@@ -306,6 +306,7 @@ test('docs-only descendants never silently make stale review receipts current', 
           verdict: 'acceptable',
           receipt: 'accessible',
           reviewedHeadSha: sha('f'),
+          reviewedBaseSha: main,
         },
       },
     });
@@ -313,6 +314,23 @@ test('docs-only descendants never silently make stale review receipts current', 
     assert.equal(output.state.reviews.r1.status, 'stale');
     assert.equal(output.recommendation.suggestedAction, 'request_required_reviews');
   });
+});
+
+test('same-head independent review receipt from an older base is stale', () => {
+  const output = result({
+    reviews: {
+      r1: {
+        requirement: 'required',
+        verdict: 'acceptable',
+        receipt: 'accessible',
+        reviewedHeadSha: head,
+        reviewedBaseSha: oldHead,
+      },
+    },
+  });
+  assert.equal(output.state.reviews.r1.freshness, 'stale');
+  assert.equal(output.state.reviews.r1.status, 'stale');
+  assert.equal(output.recommendation.suggestedAction, 'request_required_reviews');
 });
 
 test('R1 and R2 remain independent obligations while recommendation can request both', () => {

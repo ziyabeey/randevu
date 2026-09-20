@@ -53,6 +53,18 @@ test('trusted receipt normalization accepts only valid unique run identities', (
   assert.deepEqual(normalizeTrustedReceipts({}), []);
 });
 
+test('trusted receipt normalization preserves distinct origins for the same head', () => {
+  const headSha = 'b'.repeat(40);
+  assert.deepEqual(normalizeTrustedReceipts([
+    { headSha, runId: 10, origin: 'main-push' },
+    { headSha, runId: 20, origin: 'pr-full' },
+    { headSha, runId: 30, origin: 'main-push' },
+  ]), [
+    { headSha, runId: 10, origin: 'main-push' },
+    { headSha, runId: 20, origin: 'pr-full' },
+  ]);
+});
+
 test('an unproven docs-only PR still runs full code checks', () => {
   const base = 'a'.repeat(40);
   const head = 'b'.repeat(40);
@@ -192,13 +204,15 @@ test('actual Git history classifies multi-file pushes, rename and deletion conse
 test('CI receipt lookup is anonymous, authoritative and requires prior full-code completion', () => {
   const workflow = readFileSync(path.resolve('.github/workflows/ci.yml'), 'utf8');
   assert.match(workflow, /actions\/workflows\/ci\.yml\/runs/);
+  assert.match(workflow, /event=push&branch=main&head_sha=\$\{CURRENT_BASE_SHA\}&status=success/);
+  assert.match(workflow, /unique_by\(\.id\)/);
   assert.match(workflow, /actions\/runs\/\$\{run_id\}\/jobs/);
   assert.match(workflow, /Run all required code checks/);
   assert.match(workflow, /Require the selected checks to complete/);
   assert.match(workflow, /Resolve trusted prior full-code CI receipts/);
   assert.doesNotMatch(workflow, /pull_requests\[\]\?; \.number == \$pr and \.base\.sha == \$base/);
   assert.doesNotMatch(workflow, /Authorization: Bearer|github\.token|GH_TOKEN|GITHUB_TOKEN/);
-  assert.ok((workflow.match(/--connect-timeout 3 --max-time 10/g) ?? []).length >= 2);
+  assert.ok((workflow.match(/--connect-timeout 3 --max-time 10/g) ?? []).length >= 3);
   assert.match(workflow, /unexpected shape; full code checks remain required/);
   assert.match(workflow, /candidate parsing failed; full code checks remain required/);
   const scopeSection = workflow.split('- name: Select required checks')[1]?.split('- name: Check documentation')[0] ?? '';
@@ -225,4 +239,24 @@ test('full runner propagates a real failed child and cannot emit its success rec
     assert.throws(() => runCode({ root, output, log() {}, selected: stages.filter(s => s.id !== 'postgres') }), /stage missing/);
     assert.equal(readFileSync(output, 'utf8'), '');
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('standalone docs PR inherits only its exact green main push baseline', () => {
+  const base = 'a'.repeat(40), head = 'b'.repeat(40);
+  const event = { action: 'opened', pull_request: { base: { sha: base, ref: 'main' }, head: { sha: head } } };
+  const git = (args) => args[0] === 'merge-base' ? base : 'M\0TASKS.md\0';
+  const receipt = { headSha: base, runId: 42, origin: 'main-push' };
+  const opts = { eventName: 'pull_request', event, git, trustedReceipts: [receipt] };
+  assert.equal(selectScope(opts).reason, 'green-main-docs-only');
+  for (const change of [
+    { trustedReceipts: [{ ...receipt, origin: 'pr-full' }] },
+    { trustedReceipts: [{ ...receipt, headSha: 'c'.repeat(40) }] },
+    { trustedReceipts: [] },
+    { event: { ...event, pull_request: { ...event.pull_request, base: { sha: base, ref: 'stacked' } } } },
+    { git: (args) => args[0] === 'merge-base' ? 'c'.repeat(40) : 'M\0TASKS.md\0' },
+    { git: (args) => args[0] === 'merge-base' ? base : 'M\0TASKS.md\0M\0worker/app.ts\0' },
+  ]) assert.equal(selectScope({ ...opts, ...change }).mode, 'code');
+  // A docs-only main gate is not a full-code receipt for a code descendant.
+  assert.equal(selectScope({ ...opts, event: { ...event, action: 'synchronize' },
+    git: (args) => args[0] === 'merge-base' ? base : 'M\0worker/app.ts\0' }).mode, 'code');
 });
