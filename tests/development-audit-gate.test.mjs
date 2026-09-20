@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyFileRecords, sameIdentity, verifiedReceipts, freshnessReport } from '../scripts/development-audit-gate.mjs';
+import { classifyFileRecords, freshnessReport, parseReviewerAllowlist, sameIdentity, verifiedReceipts } from '../scripts/development-audit-gate.mjs';
 const head = 'a'.repeat(40), base = 'b'.repeat(40);
 const pr = { number: 201, state: 'open', head: { sha: head }, base: { sha: base }, user: { login: 'author' } };
 const allowlist = { R1: ['security'], R2: ['integration'] };
@@ -16,6 +16,13 @@ test('docs classifier includes rename origin and refuses incomplete evidence', (
   assert.equal(classifyFileRecords([{ filename: 'docs/a.md', status: 'renamed' }], 1), 'unknown');
   assert.equal(classifyFileRecords([], 0), 'code');
 });
+test('malformed reviewer allowlist fails closed to no trusted roles', () => {
+  assert.deepEqual(parseReviewerAllowlist('{not-json'), {});
+  assert.deepEqual(parseReviewerAllowlist('[]'), {});
+  assert.deepEqual(parseReviewerAllowlist(''), {});
+  assert.deepEqual(parseReviewerAllowlist(JSON.stringify(allowlist)), allowlist);
+});
+
 test('Copilot/Codex generic reviews and prose approval never become independent roles', () => {
   for (const login of ['copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]', 'author', 'stranger']) {
     assert.deepEqual(verifiedReceipts([{ ...source(), user: { login } }], pr, allowlist), []);
