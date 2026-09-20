@@ -90,7 +90,7 @@ export function decodeBookingPageCursor(
     if (cursor.v !== 2 || cursor.k !== 'bookings' || !validKey || !UUID_PATTERN.test(String(cursor.r ?? ''))) {
       return undefined;
     }
-    return { at: cursor.at, id: String(cursor.id), revision: String(cursor.r) };
+    return { at: String(cursor.at), id: String(cursor.id), revision: String(cursor.r) };
   } catch {
     return undefined;
   }
