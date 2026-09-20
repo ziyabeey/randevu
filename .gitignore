@@ -17,3 +17,9 @@ gha-creds-*.json
 
 # Gemini CLI GitHub Action
 .gemini/
+
+# Local Qwen coordinator runtime (source stays tracked)
+scripts/qwen-coordinator/config.json
+scripts/qwen-coordinator/logs/
+scripts/qwen-coordinator/reports/
+scripts/qwen-coordinator/state/

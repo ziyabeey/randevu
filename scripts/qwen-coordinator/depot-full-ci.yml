@@ -1,0 +1,99 @@
+name: Qwen coordinator full CI shadow v1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_HEAD_SHA: "__EXPECTED_HEAD_SHA__"
+  EXPECTED_BASE_SHA: "__EXPECTED_BASE_SHA__"
+  EXPECTED_TREE_SHA: "__EXPECTED_TREE_SHA__"
+
+jobs:
+  verify:
+    name: Full gate shadow (Depot 16-core)
+    runs-on: depot-ubuntu-24.04-16
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify runner and select scope
+        run: |
+          set -euo pipefail
+          actual_head="$(git rev-parse HEAD)"
+          test "${actual_head}" = "${EXPECTED_BASE_SHA}" || test "${actual_head}" = "${EXPECTED_HEAD_SHA}"
+          git add -A
+          test "$(git write-tree)" = "${EXPECTED_TREE_SHA}"
+          test "$(nproc)" -eq 16
+          node scripts/ci-scope.mjs
+
+      - name: Check documentation and task graph
+        run: node scripts/ci-docs.mjs
+
+      - name: Install dependencies once
+        run: npm ci
+
+      - name: Attempt npm security audit
+        id: audit
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Start disposable PostgreSQL 17
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          docker run --detach --name randevu-ci-postgres \
+            --env POSTGRES_PASSWORD=postgres --env POSTGRES_DB=yzt_test \
+            --publish 127.0.0.1:5432:5432 \
+            --health-cmd='pg_isready -U postgres -d yzt_test' \
+            --health-interval=1s --health-timeout=3s --health-retries=30 postgres:17
+          for attempt in {1..30}; do
+            if [ "$(docker inspect --format '{{.State.Health.Status}}' randevu-ci-postgres)" = healthy ]; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'Test PostgreSQL did not become healthy.'
+          exit 1
+
+      - name: Run all required code checks
+        env:
+          PGPASSWORD: postgres
+        run: |
+          node --input-type=module -e "
+          import { stages } from './scripts/ci-code.mjs';
+          import { spawnSync } from 'node:child_process';
+          for (const stage of stages) {
+            if (stage.id === 'audit') continue;
+            console.log('::group::CI stage: ' + stage.id);
+            const result = spawnSync(stage.command, stage.args, { stdio: 'inherit', timeout: 15 * 60 * 1000 });
+            console.log('::endgroup::');
+            if (result.error || result.status !== 0) {
+              console.error('CI stage failed: ' + stage.id);
+              process.exit(1);
+            }
+          }
+          "
+
+      - name: Report audit shadow limitation
+        if: ${{ always() }}
+        env:
+          AUDIT_RESULT: ${{ steps.audit.outcome }}
+        run: echo "npm-audit=${AUDIT_RESULT}; GitHub CI remains authoritative for the audit gate."
+
+      - name: Remove disposable test database
+        if: ${{ always() }}
+        run: docker rm --force --volumes randevu-ci-postgres || true
