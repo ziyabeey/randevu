@@ -63,6 +63,7 @@ function liveFetch(overrides = {}) {
     if (url.endsWith('/pulls/183')) {
       return response({
         state: 'open',
+        user: { login: 'implementer' },
         head: { sha: overrides.liveHead ?? head },
         base: { sha: main },
       });
@@ -100,6 +101,8 @@ function liveFetch(overrides = {}) {
         `2026-09-20T00:00:00.0000001Z ${checkoutSha}`,
       ].join('\n'));
     }
+    if (url.includes('/issues/183/comments?')) return response(overrides.comments ?? []);
+    if (url.includes('/pulls/183/reviews?')) return response(overrides.reviews ?? []);
     throw new Error(`unexpected URL: ${url}`);
   };
 }
@@ -261,6 +264,26 @@ test('claimed tested checkout must equal the checkout recorded by the cited CI j
       fetchImpl: liveFetch({ checkoutSha: head }),
     }),
     /LIVE_CI_TESTED_CHECKOUT_MISMATCH/,
+  );
+});
+
+test('a current authenticated same-role receipt stops Routine spend before reservation or fire', async () => {
+  const receipt = {
+    id: 300,
+    html_url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-300',
+    created_at: '2026-09-20T00:03:00Z',
+    user: { login: 'integration-reviewer' },
+    body: `<!-- development-review-receipt {"role":"R2","prNumber":183,"headSha":"${head}","baseSha":"${main}"} -->\nVERDICT: ACCEPTABLE`,
+  };
+  await assert.rejects(
+    verifyDevelopmentReviewLiveState(request(), {
+      repository: 'ziyabeey1-ai/randevu',
+      token: 'test-token',
+      tasksText: tasks(),
+      reviewerAllowlist: { R2: ['integration-reviewer'] },
+      fetchImpl: liveFetch({ comments: [receipt] }),
+    }),
+    /R2_REVIEW_ALREADY_RECEIVED/,
   );
 });
 
