@@ -170,3 +170,14 @@ test('effective-state audit follows code synchronize events through the determin
   assert.match(section, /needs\.classify\.outputs\.code == 'true'/);
   assert.match(section, /github\.event\.action == 'synchronize'/);
 });
+
+
+test('effective-state advisory publish revalidates classified head and base', () => {
+  const workflow = readFileSync(path.resolve('.github/workflows/development-audits.yml'), 'utf8');
+  const section = workflow.split('  effective_state_report:')[1]?.split('  stale_review:')[0] ?? '';
+  assert.match(section, /needs: \[classify, effective_state\]/);
+  assert.match(section, /CLASSIFIED_HEAD: \$\{\{ needs\.classify\.outputs\.head \}\}/);
+  assert.match(section, /CLASSIFIED_BASE: \$\{\{ needs\.classify\.outputs\.base \}\}/);
+  assert.match(section, /gh api "repos\/\$\{REPOSITORY\}\/pulls\/\$\{PR_NUMBER\}"/);
+  assert.match(section, /Discard Effective State advisory: PR identity moved during audit/);
+});
