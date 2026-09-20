@@ -64,7 +64,7 @@ jobs:
         needs.classify.outputs.code == 'true' && ((
           github.event_name == 'pull_request_target' &&
           github.event.pull_request.head.repo.full_name == github.repository &&
-          (github.event.action == 'opened' || github.event.action == 'reopened')
+          (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.action == 'synchronize')
         ) ||
         (github.event_name == 'workflow_dispatch' && inputs.audit == 'effective-state'))
       }}
