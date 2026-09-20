@@ -231,7 +231,9 @@ export function buildIndependentReviewRequest(dispatcherResult = {}, rawEvidence
   const requestFingerprintMaterial = {
     schemaVersion: request.schemaVersion,
     role: request.role,
-    receiptChallenge: request.receiptChallenge,
+    // The one-time receipt challenge authenticates the eventual result, but is
+    // intentionally excluded from the request fingerprint. Exact-case retries
+    // must reuse the same fingerprint so an existing reservation blocks duplicate spend.
     reviewMode: request.reviewMode,
     case: {
       task: request.case.task,
