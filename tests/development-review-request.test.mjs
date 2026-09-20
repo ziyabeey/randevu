@@ -173,17 +173,39 @@ test('review request requires exact CI run job and attempt identity', () => {
   }
 });
 
-test('an accessible previous same-role receipt turns the request into follow-up mode', () => {
+test('an accessible previous same-role receipt turns the request into follow-up mode with exact snapshot identity', () => {
   const input = dispatcher(['r1']);
   input.facts.reviews.r1 = {
     requirement: 'required',
-    verdict: 'acceptable',
+    verdict: 'incomplete',
     receipt: 'accessible',
-    reviewedHeadSha: sha('d'),
+    reviewedHeadSha: head,
+    reviewedBaseSha: main,
+    sourceRef: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-77',
+    reviewedAt: 123456789,
+    receiptId: 77,
   };
   const request = buildIndependentReviewRequest(input, {}, 'r1');
   assert.equal(request.reviewMode, 'FOLLOW_UP');
-  assert.equal(request.currentEvidence.review.previousReviewedHeadSha, sha('d'));
+  assert.equal(request.currentEvidence.review.previousReviewedHeadSha, head);
+  assert.equal(request.currentEvidence.review.previousReviewedBaseSha, main);
+  assert.equal(request.currentEvidence.review.previousReceiptId, 77);
+  assert.equal(request.currentEvidence.review.previousReceiptObservedAt, 123456789);
+});
+
+test('follow-up request fails closed when prior receipt snapshot identity is incomplete', () => {
+  const input = dispatcher(['r1']);
+  input.facts.reviews.r1 = {
+    requirement: 'required',
+    verdict: 'incomplete',
+    receipt: 'accessible',
+    reviewedHeadSha: head,
+    reviewedBaseSha: main,
+  };
+  assert.throws(
+    () => buildIndependentReviewRequest(input, {}, 'r1'),
+    /FOLLOW_UP_RECEIPT_IDENTITY_MISSING/,
+  );
 });
 
 test('review output contract carries one exact machine-readable role/head/base receipt marker', () => {
