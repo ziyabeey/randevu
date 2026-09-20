@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deriveDispatcherResult } from './development-dispatcher.mjs';
+import { parseReviewerAllowlist, verifiedReceipts } from './development-audit-gate.mjs';
 
 const SHA_RE = /^[a-f0-9]{40}$/;
 const modulePath = fileURLToPath(import.meta.url);
@@ -175,13 +176,14 @@ function receiptCandidates({ repository, pr, prReviews, prComments, coordination
   }));
 }
 
-function independentReceipt(candidates, role, requirement, currentHead) {
+function independentReceipt(candidates, authenticated, role, requirement, currentHead, currentBase) {
   if (requirement === 'not_required') {
     return {
       requirement,
       verdict: 'not_required',
       receipt: 'missing',
       reviewedHeadSha: null,
+      reviewedBaseSha: null,
       sourceRef: null,
     };
   }
@@ -191,22 +193,29 @@ function independentReceipt(candidates, role, requirement, currentHead) {
       verdict: 'unknown',
       receipt: 'unknown',
       reviewedHeadSha: null,
+      reviewedBaseSha: null,
       sourceRef: null,
     };
   }
 
-  const rolePattern = new RegExp(`(?:^|[^a-z0-9])${role}(?:[^a-z0-9]|$)`, 'i');
-  const receipts = candidates.map((item) => {
-    const verdict = verdictFromBody(item.body);
-    const reviewedHeadSha = extractReviewedSha(item.body, item.commit_id);
-    return { ...item, verdict, reviewedHeadSha };
-  }).filter((item) => item.trustedAuthor
-    && rolePattern.test(String(item.body ?? ''))
-    && item.verdict
-    && SHA_RE.test(item.reviewedHeadSha ?? '')
-    && !/launch receipt only|status:\s*(?:reserved|routine_triggered|launch_)/i.test(String(item.body ?? '')));
+  const roleName = role.toUpperCase();
+  const receipts = authenticated
+    .filter((entry) => entry.role === roleName)
+    .map((entry) => {
+      const source = candidates.find((item) => item.id === entry.id && item.sourceRef === entry.url);
+      return source ? {
+        ...entry,
+        verdict: verdictFromBody(source.body),
+        sourceRef: entry.url,
+      } : null;
+    })
+    .filter((item) => item && item.verdict
+      && !/launch receipt only|status:\s*(?:reserved|routine_triggered|launch_)/i.test(String(
+        candidates.find((candidate) => candidate.id === item.id && candidate.sourceRef === item.sourceRef)?.body ?? '',
+      )));
 
-  const current = latest(receipts.filter((item) => item.reviewedHeadSha === currentHead));
+  const current = latest(receipts.filter((item) =>
+    item.headSha === currentHead && item.baseSha === currentBase));
   const prior = current ?? latest(receipts);
   if (!prior) {
     return {
@@ -214,6 +223,7 @@ function independentReceipt(candidates, role, requirement, currentHead) {
       verdict: 'pending',
       receipt: 'missing',
       reviewedHeadSha: null,
+      reviewedBaseSha: null,
       sourceRef: null,
     };
   }
@@ -221,7 +231,8 @@ function independentReceipt(candidates, role, requirement, currentHead) {
     requirement,
     verdict: prior.verdict,
     receipt: 'accessible',
-    reviewedHeadSha: prior.reviewedHeadSha,
+    reviewedHeadSha: prior.headSha,
+    reviewedBaseSha: prior.baseSha,
     sourceRef: prior.sourceRef,
   };
 }
@@ -295,6 +306,7 @@ export function buildDevelopmentReviewObservation({
   prComments = [],
   coordinationComments = [],
   reviewThreads,
+  reviewerAllowlist = parseReviewerAllowlist(process.env.DEVELOPMENT_REVIEWER_ALLOWLIST),
   observedAt = new Date().toISOString(),
 } = {}) {
   validateRepository(repository);
@@ -330,9 +342,14 @@ export function buildDevelopmentReviewObservation({
     prComments,
     coordinationComments,
   });
+  const authenticated = verifiedReceipts(candidates.map((item) => ({
+    ...item,
+    html_url: item.sourceRef,
+    user: { login: item.author },
+  })), pr, reviewerAllowlist);
   const reviews = {
-    r1: independentReceipt(candidates, 'r1', requirements.r1, head),
-    r2: independentReceipt(candidates, 'r2', requirements.r2, head),
+    r1: independentReceipt(candidates, authenticated, 'r1', requirements.r1, head, base),
+    r2: independentReceipt(candidates, authenticated, 'r2', requirements.r2, head, base),
   };
   const r0 = r0Receipt(candidates, head, reviewThreads);
   const historicalIndependentReceipt = ['r1', 'r2']
@@ -391,12 +408,14 @@ export function buildDevelopmentReviewObservation({
         verdict: reviews.r1.verdict,
         receipt: reviews.r1.receipt,
         reviewedHeadSha: reviews.r1.reviewedHeadSha,
+        reviewedBaseSha: reviews.r1.reviewedBaseSha,
       },
       r2: {
         requirement: reviews.r2.requirement,
         verdict: reviews.r2.verdict,
         receipt: reviews.r2.receipt,
         reviewedHeadSha: reviews.r2.reviewedHeadSha,
+        reviewedBaseSha: reviews.r2.reviewedBaseSha,
       },
     },
     proofs: [],
