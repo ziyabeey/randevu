@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from './api';
+import { api, ApiRequestError } from './api';
+import {
+  CALENDAR_HTTP_TIMEOUT_MS,
+  CalendarRefreshScheduler,
+  LatestCalendarRequest,
+} from './calendar-refresh';
 
 type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'no_show' | 'cancelled';
 type GroupStatus = AppointmentStatus | 'partial';
@@ -50,7 +55,7 @@ type CalendarGroupDetail = {
 };
 type Staff = { id: string; name: string; active: boolean };
 type CalendarPayload = {
-  membership: { role: 'owner' | 'manager' | 'staff' };
+  membership: { id: string; business_id: string; role: 'owner' | 'manager' | 'staff' };
   business: { id: string; name: string; timezone: string };
   localDate: string;
   date: string;
@@ -59,6 +64,19 @@ type CalendarPayload = {
   appointments: CalendarAppointment[];
 };
 type ViewMode = 'day' | 'week';
+type CalendarQuery = { date: string; view: ViewMode; staffId: string };
+
+function abortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
+function authorityError(error: unknown): error is ApiRequestError {
+  return error instanceof ApiRequestError && (
+    error.status === 401
+    || error.status === 403
+    || (error.status === 409 && error.code === 'WORKSPACE_CONTEXT_CHANGED')
+  );
+}
 
 function addDays(date: string, amount: number) {
   const value = new Date(`${date}T12:00:00Z`);
@@ -122,33 +140,108 @@ export default function CalendarPage() {
   const [selectedGroupLoading, setSelectedGroupLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [loadError, setLoadError] = useState('');
   const mutationKeys = useRef(new Map<string, string>());
   const selectionGeneration = useRef(0);
+  const selectionController = useRef<AbortController | null>(null);
+  const requestGate = useRef(new LatestCalendarRequest());
+  const query = useRef<CalendarQuery>({ date: '', view: 'day', staffId: 'all' });
+  const payloadRef = useRef<CalendarPayload | null>(null);
+  const authorityContextRef = useRef<string | null>(null);
 
-  const load = useCallback(async (requestedDate?: string, requestedView?: ViewMode, requestedStaff?: string) => {
-    const nextView = requestedView ?? view;
-    const nextStaff = requestedStaff ?? staffId;
-    const nextDate = requestedDate || date;
+  const invalidateCalendarContext = useCallback((message: string) => {
+    payloadRef.current = null;
+    authorityContextRef.current = null;
+    selectionController.current?.abort();
+    selectionController.current = null;
+    ++selectionGeneration.current;
+    setPayload(null);
+    setSelectedGroupId(null);
+    setSelectedGroup(null);
+    setSelectedGroupLoading(false);
+    setCancelReason('');
+    setLoadError(message);
+  }, []);
+
+  const load = useCallback(async (requested: Partial<CalendarQuery> = {}) => {
+    const nextQuery = { ...query.current, ...requested };
+    const nextView = nextQuery.view;
+    const nextStaff = nextQuery.staffId;
+    const nextDate = nextQuery.date;
     const params = new URLSearchParams({ days: nextView === 'week' ? '7' : '1' });
     if (nextDate) params.set('date', nextView === 'week' ? mondayOf(nextDate) : nextDate);
     if (nextStaff !== 'all') params.set('staffId', nextStaff);
 
-    setLoading(true);
-    setNotice('');
+    const ticket = requestGate.current.begin();
+    const hasVerifiedPayload = payloadRef.current !== null;
+    if (hasVerifiedPayload) setRefreshing(true);
+    else setLoading(true);
     try {
-      const result = await api<CalendarPayload>(`/api/calendar?${params}`);
-      setPayload(result);
-      setDate((current) => current || result.date);
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Takvim yüklenemedi.');
-    } finally {
-      setLoading(false);
-    }
-  }, [date, staffId, view]);
+      const result = await api<CalendarPayload>(`/api/calendar?${params}`, {
+        signal: ticket.controller.signal,
+        timeoutMs: CALENDAR_HTTP_TIMEOUT_MS,
+      });
+      if (!requestGate.current.isCurrent(ticket)) return false;
 
-  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+      const authorityContext = `${result.membership.id}:${result.business.id}:${result.membership.role}`;
+      if (authorityContextRef.current && authorityContextRef.current !== authorityContext) {
+        invalidateCalendarContext('İşletme veya oturum bağlamı değişti. Takvim güncel bağlamla yeniden açılıyor.');
+        window.location.reload();
+        return false;
+      }
+
+      authorityContextRef.current = authorityContext;
+      payloadRef.current = result;
+      setPayload(result);
+      if (!nextQuery.date) {
+        query.current = { ...nextQuery, date: result.date };
+        setDate(result.date);
+      }
+      setLoadError('');
+      return true;
+    } catch (error) {
+      if (!requestGate.current.isCurrent(ticket) || abortError(error)) return false;
+      const message = error instanceof Error ? error.message : 'Takvim yüklenemedi.';
+      if (authorityError(error)) {
+        invalidateCalendarContext(message);
+      } else {
+        setLoadError(hasVerifiedPayload
+          ? `${message} Son doğrulanmış takvim gösteriliyor.`
+          : message);
+      }
+      return false;
+    } finally {
+      if (requestGate.current.isCurrent(ticket)) {
+        requestGate.current.complete(ticket);
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+  }, [invalidateCalendarContext]);
+
+  useEffect(() => {
+    const scheduler = new CalendarRefreshScheduler({
+      isVisible: () => document.visibilityState !== 'hidden',
+      onRefresh: () => { void load(); },
+    });
+    scheduler.start();
+    void load();
+
+    const onFocus = () => scheduler.focused();
+    const onVisibilityChange = () => scheduler.visibilityChanged();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      scheduler.dispose();
+      requestGate.current.cancel();
+      selectionController.current?.abort();
+    };
+  }, [load]);
 
   const timezone = payload?.business.timezone ?? 'Europe/Istanbul';
   const visibleAppointments = useMemo(
@@ -202,6 +295,8 @@ export default function CalendarPage() {
   }), [logicalGroups]);
 
   function clearSelection() {
+    selectionController.current?.abort();
+    selectionController.current = null;
     selectionGeneration.current += 1;
     setSelectedGroupId(null);
     setSelectedGroup(null);
@@ -210,6 +305,7 @@ export default function CalendarPage() {
   }
 
   function selectAppointment(appointment: CalendarAppointment) {
+    selectionController.current?.abort();
     const generation = ++selectionGeneration.current;
     setSelectedGroupId(appointment.group_id);
     setSelectedGroup(null);
@@ -219,18 +315,30 @@ export default function CalendarPage() {
       return;
     }
 
+    const controller = new AbortController();
+    selectionController.current = controller;
     setSelectedGroupLoading(true);
-    void api<{ group: CalendarGroupDetail }>(`/api/bookings/groups/${appointment.group_id}`)
+    void api<{ group: CalendarGroupDetail }>(`/api/bookings/groups/${appointment.group_id}`, {
+      signal: controller.signal,
+      timeoutMs: CALENDAR_HTTP_TIMEOUT_MS,
+    })
       .then((result) => {
-        if (generation !== selectionGeneration.current) return;
+        if (controller.signal.aborted || generation !== selectionGeneration.current) return;
         setSelectedGroup(result.group);
       })
       .catch((error) => {
-        if (generation !== selectionGeneration.current) return;
+        if (controller.signal.aborted || generation !== selectionGeneration.current || abortError(error)) return;
+        if (authorityError(error)) {
+          invalidateCalendarContext(error.message);
+          return;
+        }
         setNotice(error instanceof Error ? error.message : 'Rezervasyon grubunun tam detayı yüklenemedi.');
       })
       .finally(() => {
-        if (generation === selectionGeneration.current) setSelectedGroupLoading(false);
+        if (!controller.signal.aborted && generation === selectionGeneration.current) {
+          selectionController.current = null;
+          setSelectedGroupLoading(false);
+        }
       });
   }
 
@@ -239,32 +347,36 @@ export default function CalendarPage() {
     if (!base) return;
     const step = view === 'week' ? 7 * amount : amount;
     const next = addDays(base, step);
+    query.current = { date: next, view, staffId };
     setDate(next);
     clearSelection();
-    void load(next, view, staffId);
+    void load(query.current);
   }
 
   function changeView(next: ViewMode) {
     const base = date || payload?.date || payload?.localDate || '';
     const nextDate = next === 'week' && base ? mondayOf(base) : base;
+    query.current = { date: nextDate, view: next, staffId };
     setView(next);
     if (nextDate) setDate(nextDate);
     clearSelection();
-    void load(nextDate, next, staffId);
+    void load(query.current);
   }
 
   function changeStaff(next: string) {
+    query.current = { date, view, staffId: next };
     setStaffId(next);
     clearSelection();
-    void load(date, view, next);
+    void load(query.current);
   }
 
   function today() {
     if (!payload?.localDate) return;
     const next = view === 'week' ? mondayOf(payload.localDate) : payload.localDate;
+    query.current = { date: next, view, staffId };
     setDate(next);
     clearSelection();
-    void load(next, view, staffId);
+    void load(query.current);
   }
 
   function mutationKey(fingerprint: string) {
@@ -291,10 +403,11 @@ export default function CalendarPage() {
       });
       mutationKeys.current.delete(fingerprint);
       clearSelection();
-      await load(date, view, staffId);
+      await load();
       setNotice(`Randevu durumu “${statusLabel(status)}” olarak güncellendi.`);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Randevu güncellenemedi.');
+      if (authorityError(error)) invalidateCalendarContext(error.message);
+      else setNotice(error instanceof Error ? error.message : 'Randevu güncellenemedi.');
     } finally {
       setBusy(false);
     }
@@ -314,10 +427,11 @@ export default function CalendarPage() {
       });
       mutationKeys.current.delete(fingerprint);
       clearSelection();
-      await load(date, view, staffId);
+      await load();
       setNotice('Rezervasyon grubu iptal edildi.');
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Rezervasyon grubu iptal edilemedi.');
+      if (authorityError(error)) invalidateCalendarContext(error.message);
+      else setNotice(error instanceof Error ? error.message : 'Rezervasyon grubu iptal edilemedi.');
     } finally {
       setBusy(false);
     }
@@ -328,7 +442,7 @@ export default function CalendarPage() {
   }
 
   if (!payload) {
-    return <main className="calendar-shell"><section className="calendar-empty"><h1>Takvim açılamadı</h1><p>{notice}</p><a href="/">İşletmeye dön</a></section></main>;
+    return <main className="calendar-shell"><section className="calendar-empty"><h1>Takvim açılamadı</h1><p>{loadError || notice}</p><button className="calendar-retry" type="button" onClick={() => void load()}>Tekrar dene</button><a href="/">İşletmeye dön</a></section></main>;
   }
 
   const weekDates = Array.from({ length: 7 }, (_, index) => addDays(payload.date, index));
@@ -340,7 +454,7 @@ export default function CalendarPage() {
   const drawerEndsAt = selectedGroup?.endsAt ?? selected?.group_ends_at ?? '';
 
   return (
-    <main className="calendar-shell">
+    <main className="calendar-shell" aria-busy={refreshing}>
       <header className="calendar-header">
         <div>
           <p className="calendar-kicker">OPERASYON TAKVİMİ</p>
@@ -377,6 +491,12 @@ export default function CalendarPage() {
         <div><strong>{stats.done}</strong><span>Tamamlanan</span></div>
       </section>
 
+      {loadError && (
+        <div className="calendar-notice calendar-stale" role="alert">
+          <span>{loadError}</span>
+          <button type="button" disabled={refreshing} onClick={() => void load()}>{refreshing ? 'Yenileniyor…' : 'Yeniden dene'}</button>
+        </div>
+      )}
       {notice && <div className="calendar-notice" role="status">{notice}</div>}
 
       {view === 'day' ? (

@@ -48,6 +48,12 @@
 .calendar-stats strong { display: block; font-size: 24px; line-height: 1; }
 .calendar-stats span { display: block; margin-top: 6px; color: #77766f; font-size: 12px; }
 .calendar-notice { margin-bottom: 14px; padding: 11px 14px; border-radius: 12px; background: #fffbe7; border: 1px solid #eee3ac; }
+.calendar-stale { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.calendar-stale button, .calendar-retry {
+  min-height: 36px; padding: 0 12px; border: 1px solid #c9bd7d; border-radius: 9px; background: #fff; color: #343127; cursor: pointer; font-weight: 750;
+}
+.calendar-stale button:disabled { cursor: wait; opacity: .65; }
+.calendar-empty .calendar-retry { margin-right: 12px; }
 
 .calendar-day-wrap { overflow-x: auto; background: #fff; border: 1px solid #e2e0d7; border-radius: 20px; box-shadow: 0 12px 36px rgba(25, 25, 20, .05); }
 .calendar-day-grid { min-width: 760px; display: grid; position: relative; }
