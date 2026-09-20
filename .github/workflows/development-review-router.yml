@@ -193,19 +193,23 @@ jobs:
           request_fingerprint="$(jq -r '.text' "${RUNNER_TEMP}/r1-fire-body.json" | sed -n 's/^REQUEST_FINGERPRINT: \([a-f0-9]\{64\}\)$/\1/p')"
           [[ "${request_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
           printf 'request_fingerprint=%s\n' "${request_fingerprint}" >> "${GITHUB_OUTPUT}"
+          reservation_fingerprint="$(jq -er '.reservationFingerprint' "${RUNNER_TEMP}/r1-review-request.json")"
+          [[ "${reservation_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
+          printf 'reservation_fingerprint=%s\n' "${reservation_fingerprint}" >> "${GITHUB_OUTPUT}"
 
       - name: Reserve exact-case R1 launch receipt
         id: reserve
         env:
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RESERVATION_FINGERPRINT: ${{ steps.prepare.outputs.reservation_fingerprint }}
           RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r1-review-request.json"             > "${RUNNER_TEMP}/r1-live-reservation-state.json"
           marker="<!-- development-review-launch:v1:r1:${REQUEST_FINGERPRINT} -->"
-          existing_id="$(
-            gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
-          )"
+          reservation_marker="<!-- development-review-reservation:r1:${RESERVATION_FINGERPRINT} -->"
+          gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" > "${RUNNER_TEMP}/r1-reservation-comments.json"
+          existing_id="$(node scripts/development-review-reservation.mjs "${RUNNER_TEMP}/r1-review-request.json" "${RUNNER_TEMP}/r1-reservation-comments.json")"
           if [ -n "${existing_id}" ]; then
             printf 'should_fire=false\ncomment_id=%s\n' "${existing_id}" >> "${GITHUB_OUTPUT}"
             echo "Existing exact-case R1 reservation/launch receipt found; refusing duplicate Routine fire."
@@ -213,6 +217,7 @@ jobs:
           fi
 
           body="${marker}
+          ${reservation_marker}
           ## Development R1 Routine launch
           - status: RESERVED
           - exact head: ${HEAD_SHA}
@@ -243,12 +248,15 @@ jobs:
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RESERVATION_FINGERPRINT: ${{ steps.prepare.outputs.reservation_fingerprint }}
           RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           session_url="$(jq -er '.claudeCodeSessionUrl' "${RUNNER_TEMP}/r1-launch-receipt.json")"
           marker="<!-- development-review-launch:v1:r1:${REQUEST_FINGERPRINT} -->"
+          reservation_marker="<!-- development-review-reservation:r1:${RESERVATION_FINGERPRINT} -->"
           body="${marker}
+          ${reservation_marker}
           ## Development R1 Routine launch
           - status: ROUTINE_TRIGGERED
           - exact head: ${HEAD_SHA}
@@ -266,12 +274,15 @@ jobs:
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RESERVATION_FINGERPRINT: ${{ steps.prepare.outputs.reservation_fingerprint }}
           RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           marker="<!-- development-review-launch:v1:r1:${REQUEST_FINGERPRINT} -->"
+          reservation_marker="<!-- development-review-reservation:r1:${RESERVATION_FINGERPRINT} -->"
           if [ -f "${RUNNER_TEMP}/r1-fire-aborted-stale" ] && [ ! -f "${RUNNER_TEMP}/r1-fire-attempted" ]; then
             body="${marker}
+          ${reservation_marker}
           ## Development R1 Routine launch
           - status: LAUNCH_ABORTED_STALE
           - exact head: ${HEAD_SHA}
@@ -283,6 +294,7 @@ jobs:
           - no R1 verdict is implied"
           else
             body="${marker}
+          ${reservation_marker}
           ## Development R1 Routine launch
           - status: LAUNCH_UNCERTAIN
           - exact head: ${HEAD_SHA}
@@ -353,19 +365,23 @@ jobs:
           request_fingerprint="$(jq -r '.text' "${RUNNER_TEMP}/r2-fire-body.json" | sed -n 's/^REQUEST_FINGERPRINT: \([a-f0-9]\{64\}\)$/\1/p')"
           [[ "${request_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
           printf 'request_fingerprint=%s\n' "${request_fingerprint}" >> "${GITHUB_OUTPUT}"
+          reservation_fingerprint="$(jq -er '.reservationFingerprint' "${RUNNER_TEMP}/r2-review-request.json")"
+          [[ "${reservation_fingerprint}" =~ ^[a-f0-9]{64}$ ]]
+          printf 'reservation_fingerprint=%s\n' "${reservation_fingerprint}" >> "${GITHUB_OUTPUT}"
 
       - name: Reserve exact-case R2 launch receipt
         id: reserve
         env:
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RESERVATION_FINGERPRINT: ${{ steps.prepare.outputs.reservation_fingerprint }}
           RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           node scripts/verify-development-review-live-state.mjs             "${RUNNER_TEMP}/r2-review-request.json"             > "${RUNNER_TEMP}/r2-live-reservation-state.json"
           marker="<!-- development-review-launch:v1:r2:${REQUEST_FINGERPRINT} -->"
-          existing_id="$(
-            gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"               | jq -s -r --arg marker "${marker}"                 '[.[][] | select((.body // "") | contains($marker))] | last | .id // empty'
-          )"
+          reservation_marker="<!-- development-review-reservation:r2:${RESERVATION_FINGERPRINT} -->"
+          gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" > "${RUNNER_TEMP}/r2-reservation-comments.json"
+          existing_id="$(node scripts/development-review-reservation.mjs "${RUNNER_TEMP}/r2-review-request.json" "${RUNNER_TEMP}/r2-reservation-comments.json")"
           if [ -n "${existing_id}" ]; then
             printf 'should_fire=false\ncomment_id=%s\n' "${existing_id}" >> "${GITHUB_OUTPUT}"
             echo "Existing exact-case R2 reservation/launch receipt found; refusing duplicate Routine fire."
@@ -373,6 +389,7 @@ jobs:
           fi
 
           body="${marker}
+          ${reservation_marker}
           ## Development R2 Routine launch
           - status: RESERVED
           - exact head: ${HEAD_SHA}
@@ -403,12 +420,15 @@ jobs:
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RESERVATION_FINGERPRINT: ${{ steps.prepare.outputs.reservation_fingerprint }}
           RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           session_url="$(jq -er '.claudeCodeSessionUrl' "${RUNNER_TEMP}/r2-launch-receipt.json")"
           marker="<!-- development-review-launch:v1:r2:${REQUEST_FINGERPRINT} -->"
+          reservation_marker="<!-- development-review-reservation:r2:${RESERVATION_FINGERPRINT} -->"
           body="${marker}
+          ${reservation_marker}
           ## Development R2 Routine launch
           - status: ROUTINE_TRIGGERED
           - exact head: ${HEAD_SHA}
@@ -426,12 +446,15 @@ jobs:
         env:
           COMMENT_ID: ${{ steps.reserve.outputs.comment_id }}
           REQUEST_FINGERPRINT: ${{ steps.prepare.outputs.request_fingerprint }}
+          RESERVATION_FINGERPRINT: ${{ steps.prepare.outputs.reservation_fingerprint }}
           RECEIPT_CHALLENGE_HASH: ${{ steps.prepare.outputs.receipt_challenge_hash }}
         run: |
           set -euo pipefail
           marker="<!-- development-review-launch:v1:r2:${REQUEST_FINGERPRINT} -->"
+          reservation_marker="<!-- development-review-reservation:r2:${RESERVATION_FINGERPRINT} -->"
           if [ -f "${RUNNER_TEMP}/r2-fire-aborted-stale" ] && [ ! -f "${RUNNER_TEMP}/r2-fire-attempted" ]; then
             body="${marker}
+          ${reservation_marker}
           ## Development R2 Routine launch
           - status: LAUNCH_ABORTED_STALE
           - exact head: ${HEAD_SHA}
@@ -443,6 +466,7 @@ jobs:
           - no R2 verdict is implied"
           else
             body="${marker}
+          ${reservation_marker}
           ## Development R2 Routine launch
           - status: LAUNCH_UNCERTAIN
           - exact head: ${HEAD_SHA}
