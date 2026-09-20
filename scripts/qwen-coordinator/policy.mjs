@@ -216,6 +216,34 @@ function positiveReceipt(item, role, pr, config) {
   return independentReceipt(item, role, pr, config.trustedReceiptActorsByRole);
 }
 
+function receiptTime(item) {
+  return text(item.updatedAt ?? item.submittedAt ?? item.createdAt);
+}
+
+function independentNegative(item, role, pr, allowlist) {
+  if (!INDEPENDENT_ROLES.includes(role) || !explicitNegative(item.body, role)) return false;
+  if (!allowlist || typeof allowlist !== 'object' || Array.isArray(allowlist)) return false;
+  if (INDEPENDENT_ROLES.some((name) => allowlist[name] !== undefined && !Array.isArray(allowlist[name]))) return false;
+  const author = text(item.author);
+  const allowed = Array.isArray(allowlist[role]) ? allowlist[role] : [];
+  if (!author || !allowed.includes(author) || GENERIC_REVIEW_BOTS.has(author)
+    || author === text(pr.author)) return false;
+  if (INDEPENDENT_ROLES.some((other) => other !== role && (allowlist[other] ?? []).includes(author))) return false;
+  const body = text(item.body);
+  const exactHead = text(item.commitOid).toLowerCase() === text(pr.headSha).toLowerCase()
+    || body.toLowerCase().includes(text(pr.headSha).toLowerCase());
+  return exactHead && new RegExp(`\\b${role}\\b`, 'i').test(body);
+}
+
+function negativeReceipt(item, role, pr, config) {
+  if (!explicitNegative(item.body, role)) return false;
+  if (role === 'R0') {
+    return /copilot-pull-request-reviewer/i.test(text(item.author))
+      && text(item.commitOid).toLowerCase() === text(pr.headSha).toLowerCase();
+  }
+  return independentNegative(item, role, pr, config.trustedReceiptActorsByRole);
+}
+
 export function reviewReceipts(pr, coordinationComments, config) {
   const items = [
     ...(pr.reviews ?? []).map((item) => ({ ...item, source: 'review' })),
@@ -230,10 +258,15 @@ export function reviewReceipts(pr, coordinationComments, config) {
 
   const result = {};
   for (const role of ['R0', 'R1', 'R2']) {
-    const accepted = items
+    const positive = items
       .filter((item) => positiveReceipt(item, role, pr, config))
-      .sort((left, right) => text(right.updatedAt ?? right.submittedAt ?? right.createdAt)
-        .localeCompare(text(left.updatedAt ?? left.submittedAt ?? left.createdAt)))[0] ?? null;
+      .sort((left, right) => receiptTime(right).localeCompare(receiptTime(left)))[0] ?? null;
+    const negative = items
+      .filter((item) => negativeReceipt(item, role, pr, config))
+      .sort((left, right) => receiptTime(right).localeCompare(receiptTime(left)))[0] ?? null;
+    const accepted = positive && (!negative || receiptTime(positive).localeCompare(receiptTime(negative)) > 0)
+      ? positive
+      : null;
     result[role.toLowerCase()] = accepted ? {
       status: 'accepted',
       id: accepted.id ?? null,

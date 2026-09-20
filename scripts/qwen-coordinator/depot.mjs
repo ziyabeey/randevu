@@ -66,6 +66,19 @@ export function isDepotTerminal(status) {
   return ['pass', 'fail', 'cancelled', 'superseded', 'identity-error'].includes(status);
 }
 
+export function depotFetchRef(pr) {
+  if (!Number.isSafeInteger(pr?.number) || pr.number < 1
+    || !SHA.test(text(pr?.headSha))
+    || !SAFE_REF.test(text(pr?.headRef))
+    || text(pr?.headRef).includes('..')) {
+    throw new Error('Unsafe Depot PR fetch identity');
+  }
+  return {
+    remoteRef: `refs/heads/${pr.headRef}`,
+    localRef: `refs/qwen-coordinator/pr-${pr.number}`,
+  };
+}
+
 export function depotEligible(pr, decision, config) {
   const structuralBlockers = new Set([
     'REMOTE_EVIDENCE_INCOMPLETE',
@@ -76,9 +89,7 @@ export function depotEligible(pr, decision, config) {
     'CROSS_REPOSITORY_HEAD',
   ]);
   const githubAwaiting = ['missing', 'pending'].includes(decision.ci?.status);
-  const explicitBackfill = decision.ci?.status === 'pass'
-    && Array.isArray(config.depotBackfillPullNumbers)
-    && config.depotBackfillPullNumbers.includes(pr?.number);
+  const githubPassed = decision.ci?.status === 'pass';
   return config.depotShadowEnabled === true
     && decision?.taskId
     && decision.choice !== 'B'
@@ -91,11 +102,11 @@ export function depotEligible(pr, decision, config) {
     && SHA.test(text(pr?.baseSha))
     && SAFE_REF.test(text(pr?.headRef))
     && !text(pr?.headRef).includes('..')
-    && (githubAwaiting || explicitBackfill);
+    && (githubAwaiting || githubPassed);
 }
 
 export function applyDepotEvidence(decision, run) {
-  const depot = !run || run.headSha !== decision.headSha
+  const depot = !run || run.headSha !== decision.headSha || run.baseSha !== decision.baseSha
     ? { status: decision.surface?.docsOnly ? 'skipped-docs' : 'not-run' }
     : {
       status: run.status,
@@ -105,6 +116,18 @@ export function applyDepotEvidence(decision, run) {
       failedJobs: run.failedJobs ?? [],
     };
   const next = { ...decision, depot };
+  if (depot.status === 'not-run' && decision.surface?.docsOnly === false
+    && decision.ci?.status === 'pass') {
+    return {
+      ...next,
+      choice: 'A',
+      label: 'WAIT',
+      reason: 'GitHub CI geçti ancak aynı head/base kimliği için Depot shadow CI kanıtı yok.',
+      gaps: unique([...(decision.gaps ?? []), 'DEPOT_SHADOW_MISSING']),
+      readyEligible: false,
+      mergeEligible: false,
+    };
+  }
   if (depot.status === 'identity-error') {
     if (decision.choice === 'B') {
       return { ...next, gaps: unique([...(decision.gaps ?? []), 'DEPOT_IDENTITY_UNVERIFIED']) };

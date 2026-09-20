@@ -24,6 +24,7 @@ import {
   applyDepotEvidence,
   depotCommentBody,
   depotEligible,
+  depotFetchRef,
   isDepotTerminal,
   normalizeDepotStatus,
   qwenEligibleDecisions,
@@ -365,7 +366,9 @@ async function fetchSnapshot(config, token) {
     schemaVersion: 2,
     available: true,
     complete: repository.pullRequests?.pageInfo?.hasNextPage !== true
-      && repository.taskBlob?.isTruncated !== true,
+      && repository.taskBlob?.isTruncated !== true
+      && repository.issue?.comments?.pageInfo?.hasPreviousPage !== true
+      && mainRollup?.contexts?.pageInfo?.hasNextPage !== true,
     auth: 'authenticated',
     fetchedAt: nowIso(),
     refreshed: true,
@@ -437,12 +440,17 @@ function taskForPull(pr, remote, state) {
 function buildDecisions(config, remote, state) {
   return (remote.pulls ?? []).map((pr) => {
     const task = taskForPull(pr, remote, state);
+    const pullEvidenceComplete = pr.reviewsTruncated !== true
+      && pr.commentsTruncated !== true
+      && pr.checksTruncated !== true;
     const result = classifyPull(pr, {
       config,
       mainSha: remote.mainSha,
       task,
       coordinationComments: remote.coordinationComments,
-      remoteComplete: remote.available === true && remote.complete === true,
+      remoteComplete: remote.available === true
+        && remote.complete === true
+        && pullEvidenceComplete,
     });
     return {
       ...result,
@@ -493,7 +501,21 @@ async function depotApi(pathname, token, body, timeout = 20_000) {
 }
 
 async function startDepotRun(config, pr) {
-  const expectedTree = git(config.repoRoot, ['rev-parse', `${pr.headSha}^{tree}`]);
+  let expectedTree = git(config.repoRoot, ['rev-parse', `${pr.headSha}^{tree}`]);
+  if (!expectedTree.ok) {
+    const { remoteRef, localRef } = depotFetchRef(pr);
+    const fetched = git(config.repoRoot, [
+      'fetch', '--no-tags', '--force', 'origin', `${remoteRef}:${localRef}`,
+    ]);
+    if (!fetched.ok) {
+      throw new Error(`Depot head fetch failed: ${fetched.stderr.slice(0, 500)}`);
+    }
+    const observedHead = git(config.repoRoot, ['rev-parse', localRef]);
+    if (!observedHead.ok || observedHead.stdout !== pr.headSha) {
+      throw new Error('Depot fetched branch no longer matches the observed exact PR head');
+    }
+    expectedTree = git(config.repoRoot, ['rev-parse', `${pr.headSha}^{tree}`]);
+  }
   if (!expectedTree.ok || !/^[a-f0-9]{40}$/.test(expectedTree.stdout)) {
     throw new Error(`Depot head tree identity unavailable: ${expectedTree.stderr.slice(0, 500)}`);
   }
@@ -644,7 +666,7 @@ async function reconcileDepot(config, remote, decisions, state) {
 
   for (const [number, run] of Object.entries(state.depotRuns)) {
     const pr = openByNumber.get(number);
-    if (!pr || pr.headSha !== run.headSha) {
+    if (!pr || pr.headSha !== run.headSha || pr.baseSha !== run.baseSha) {
       cancelDepotRun(config, run);
       run.status = 'superseded';
       run.completedAt ??= nowIso();
@@ -685,7 +707,7 @@ async function reconcileDepot(config, remote, decisions, state) {
     .filter(({ decision, pr }) => depotEligible(pr, decision, config))
     .filter(({ pr }) => {
       const prior = state.depotRuns[String(pr.number)];
-      if (!prior || prior.headSha !== pr.headSha) return true;
+      if (!prior || prior.headSha !== pr.headSha || prior.baseSha !== pr.baseSha) return true;
       const retryFailedBackfill = prior.status === 'fail'
         && Array.isArray(config.depotBackfillPullNumbers)
         && config.depotBackfillPullNumbers.includes(pr.number);
@@ -1102,6 +1124,9 @@ function compactRemoteForReport(remote, config) {
       mergeable: pr.mergeable,
       mergeStateStatus: pr.mergeStateStatus,
       fileCount: pr.fileCount,
+      reviewsTruncated: pr.reviewsTruncated,
+      commentsTruncated: pr.commentsTruncated,
+      checksTruncated: pr.checksTruncated,
       unresolvedThreads: pr.unresolvedThreads,
       url: pr.url,
     })),

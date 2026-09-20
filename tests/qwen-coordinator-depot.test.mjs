@@ -4,6 +4,7 @@ import {
   applyDepotEvidence,
   depotCommentBody,
   depotEligible,
+  depotFetchRef,
   normalizeDepotStatus,
   parseDepotRunId,
   qwenEligibleDecisions,
@@ -51,6 +52,11 @@ test('Depot starts only for an exact, mapped, non-doc PR while GitHub CI is pend
   assert.equal(depotEligible({ ...pr, headRef: '../unsafe' }, decision, {
     depotShadowEnabled: true,
   }), false);
+  assert.deepEqual(depotFetchRef(pr), {
+    remoteRef: 'refs/heads/feature/test',
+    localRef: 'refs/qwen-coordinator/pr-7',
+  });
+  assert.throws(() => depotFetchRef({ ...pr, headRef: '../unsafe' }), /Unsafe Depot PR fetch identity/);
 });
 
 test('Depot payload normalization preserves pass/fail evidence', () => {
@@ -99,6 +105,24 @@ test('CI conflicts and identity errors fail closed', () => {
   });
   assert.equal(invalidIdentity.choice, 'A');
   assert.ok(invalidIdentity.gaps.includes('DEPOT_IDENTITY_UNVERIFIED'));
+
+  const staleBase = applyDepotEvidence({
+    ...decision,
+    choice: 'D',
+    label: 'MERGE',
+    ci: { status: 'pass' },
+    mergeEligible: true,
+  }, {
+    headSha,
+    baseSha: '3'.repeat(40),
+    runId: '39ccx70t42',
+    status: 'pass',
+    workflowHash: 'a'.repeat(64),
+  });
+  assert.equal(staleBase.depot.status, 'not-run');
+  assert.equal(staleBase.choice, 'A');
+  assert.ok(staleBase.gaps.includes('DEPOT_SHADOW_MISSING'));
+  assert.equal(staleBase.mergeEligible, false);
 });
 
 test('Qwen sees only dual-green review/merge candidates', () => {

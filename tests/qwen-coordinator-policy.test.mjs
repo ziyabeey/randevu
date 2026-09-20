@@ -189,3 +189,39 @@ test('stale, prose-only and generic-bot specialist receipts fail closed', () => 
     },
   }).r2.status, 'missing');
 });
+
+test('a newer exact-head blocker supersedes an older independent acceptance', () => {
+  const reviewed = pull({ files: [{ path: 'scripts/browser-flow.mjs' }] });
+  reviewed.comments.push({
+    id: 6,
+    author: 'integration-reviewer',
+    body: `<!-- development-review-receipt ${JSON.stringify({
+      role: 'R2', prNumber: 7, headSha: head, baseSha: main,
+    })} -->`,
+    createdAt: '2026-01-02T00:00:00Z',
+    url: 'https://github.com/example/repo/pull/7#issuecomment-6',
+  }, {
+    id: 7,
+    author: 'integration-reviewer',
+    commitOid: head,
+    body: `VERDICT: R2 = BLOCKER\nREVIEWED SHA: ${head}`,
+    createdAt: '2026-01-03T00:00:00Z',
+    url: 'https://github.com/example/repo/pull/7#issuecomment-7',
+  });
+  assert.equal(reviewReceipts(reviewed, [], config).r2.status, 'missing');
+
+  reviewed.comments[1].createdAt = '2026-01-01T00:00:00Z';
+  assert.equal(reviewReceipts(reviewed, [], config).r2.status, 'accepted');
+});
+
+test('truncated remote evidence blocks an otherwise merge-eligible pull', () => {
+  const result = classifyPull(pull(), {
+    config,
+    mainSha: main,
+    task,
+    remoteComplete: false,
+  });
+  assert.equal(result.choice, 'A');
+  assert.ok(result.gaps.includes('REMOTE_EVIDENCE_INCOMPLETE'));
+  assert.equal(result.mergeEligible, false);
+});
