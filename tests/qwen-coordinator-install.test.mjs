@@ -84,6 +84,9 @@ test('generated wrapper paths are shell-quoted literally', async (context) => {
   const config = JSON.parse(await readFile(path.join(coordinatorHome, 'config.json'), 'utf8'));
   assert.equal(config.repoRoot, repoRoot);
   assert.equal(config.depotWorkflowFile, path.join(coordinatorHome, 'depot-full-ci.yml'));
+  const nowWrapper = await readFile(path.join(binRoot, 'qwen-coordinator-now'), 'utf8');
+  assert.match(nowWrapper, /export QWEN_COORDINATOR_HOME=/);
+  assert.ok(nowWrapper.includes(`'${coordinatorHome.replaceAll("'", `'"'"'`)}'`));
   await writeFile(path.join(coordinatorHome, 'reports', 'latest.md'), report);
   const wrapper = path.join(binRoot, 'qwen-coordinator-status');
   const result = await execFileAsync('/bin/sh', [wrapper], { cwd: root });

@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   applyDepotEvidence,
+  createDepotLaunchReservation,
   depotCommentBody,
   depotEligible,
   depotFetchRef,
+  isDepotTerminal,
   normalizeDepotStatus,
   parseDepotRunId,
   qwenEligibleDecisions,
@@ -57,6 +59,23 @@ test('Depot starts only for an exact, mapped, non-doc PR while GitHub CI is pend
     localRef: 'refs/qwen-coordinator/pr-7',
   });
   assert.throws(() => depotFetchRef({ ...pr, headRef: '../unsafe' }), /Unsafe Depot PR fetch identity/);
+});
+
+test('Depot launch reservation is durable identity-bound active state', () => {
+  const reservation = createDepotLaunchReservation(pr, null, '2026-01-01T00:00:00.000Z');
+  assert.equal(reservation.status, 'launch-reserved');
+  assert.equal(reservation.headSha, headSha);
+  assert.equal(reservation.baseSha, baseSha);
+  assert.equal(reservation.startAttempts, 1);
+  assert.match(reservation.launchReservationId, /^[a-f0-9-]{36}$/);
+  assert.equal(isDepotTerminal(reservation.status), false);
+
+  const retry = createDepotLaunchReservation(pr, {
+    ...reservation,
+    status: 'start-error',
+  }, '2026-01-02T00:00:00.000Z');
+  assert.equal(retry.startAttempts, 2);
+  assert.equal(retry.startedAt, reservation.startedAt);
 });
 
 test('Depot payload normalization preserves pass/fail evidence', () => {

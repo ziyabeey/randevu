@@ -6,7 +6,9 @@ import {
   classifyPull,
   githubPollIntervalSeconds,
   notificationEvent,
+  parseTasksSnapshot,
   parseTasksText,
+  receiptEvidenceBody,
   reviewReceipts,
   validateQwenChoices,
 } from '../scripts/qwen-coordinator/policy.mjs';
@@ -62,6 +64,22 @@ const task = { id: 'F00-01', status: 'İncelemede', evidence: 'PR #7' };
 test('TASKS parser recognizes product and DEV-ENGINE rows', () => {
   assert.equal(parseTasksText('| [F00-01](x) | Test | X | İncelemede | A | PR #7 |')[0].id, 'F00-01');
   assert.equal(parseTasksText('| DEV-ENGINE-07 | Test | X | Çalışılıyor | A | PR #207 |')[0].id, 'DEV-ENGINE-07');
+});
+
+test('TASKS parser exposes row-cap truncation instead of accepting partial authority', () => {
+  const source = [
+    '| F00-01 | One | X | İncelemede | A | PR #7 |',
+    '| F00-02 | Two | X | İncelemede | A | PR #8 |',
+  ].join('\n');
+  const parsed = parseTasksSnapshot(source, 1);
+  assert.equal(parsed.rows.length, 1);
+  assert.equal(parsed.totalRows, 2);
+  assert.equal(parsed.truncated, true);
+});
+
+test('receipt evidence bodies are preserved beyond the former local cutoff', () => {
+  const body = `${'x'.repeat(9_000)}\nVERDICT: R2 = BLOCKER`;
+  assert.equal(receiptEvidenceBody(body), body);
 });
 
 test('TASKS binding requires one row owned by one open pull request', () => {
@@ -272,12 +290,12 @@ test('Qwen response must cover every PR exactly once', () => {
     { prNumber: 8, choice: 'D' },
   ];
   assert.deepEqual(
-    validateQwenChoices({ choices: [
-      { prNumber: 7, choice: 'C' },
-      { prNumber: 8, choice: 'D' },
-    ] }, decisions).choices.map(({ prNumber, choice }) => ({ prNumber, choice })),
+    validateQwenChoices({ choices: { 8: 'D', 7: 'C' } }, decisions)
+      .choices.map(({ prNumber, choice }) => ({ prNumber, choice }))
+      .sort((left, right) => left.prNumber - right.prNumber),
     [{ prNumber: 7, choice: 'C' }, { prNumber: 8, choice: 'D' }],
   );
+  assert.throws(() => validateQwenChoices({ choices: ['C', 'D'] }, decisions), /explicit prNumber/);
   assert.throws(() => validateQwenChoices({ choices: [
     { prNumber: 7, choice: 'C' },
     { prNumber: 7, choice: 'D' },

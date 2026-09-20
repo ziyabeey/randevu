@@ -11,7 +11,6 @@ const ACTION_CAPABILITIES = Object.freeze({
   RUN_DEPOT: 'run_exact_sha_depot_shadow_ci',
   UPDATE_DEPOT_COMMENT: 'update_single_depot_evidence_comment',
   MARK_READY: 'mark_review_ready_after_hard_gates',
-  DISPATCH_REVIEW: 'dispatch_exact_sha_r1_or_r2_after_hard_gates',
   MERGE: 'merge_after_all_hard_gates',
   CREATE_CLOSEOUT: 'create_tasks_closeout_commit_after_post_main_ci',
 });
@@ -51,18 +50,26 @@ export function validateQwenChoices(value, decisions) {
   const known = new Map(decisions.map((decision) => [decision.prNumber, decision]));
   const choices = [];
   const seen = new Set();
-  const submitted = Array.isArray(value?.choices) && value.choices.every((item) => typeof item === 'string')
-    ? value.choices.map((choice, index) => ({ prNumber: decisions[index]?.prNumber, choice }))
-    : Array.isArray(value?.choices)
-      ? value.choices
-      : Object.entries(value?.choices ?? {}).map(([prNumber, choice]) => ({
-        prNumber: prNumber.match(/\d+/)?.[0],
-        choice,
-      }));
+  let submitted;
+  if (Array.isArray(value?.choices)) {
+    if (!value.choices.every((item) => item && typeof item === 'object' && !Array.isArray(item))) {
+      throw new Error('Qwen choices must carry explicit prNumber values');
+    }
+    submitted = value.choices;
+  } else if (value?.choices && typeof value.choices === 'object') {
+    submitted = Object.entries(value.choices).map(([prNumber, choice]) => {
+      if (!/^[1-9][0-9]*$/.test(prNumber)) {
+        throw new Error(`Qwen returned an invalid PR key: ${prNumber}`);
+      }
+      return { prNumber: Number(prNumber), choice };
+    });
+  } else {
+    throw new Error('Qwen response does not contain keyed choices');
+  }
   for (const item of submitted) {
-    const prNumber = Number(item?.prNumber);
+    const prNumber = item?.prNumber;
     const choice = String(item?.choice ?? '').toUpperCase();
-    if (!known.has(prNumber) || !Object.hasOwn(CHOICES, choice)) {
+    if (!Number.isSafeInteger(prNumber) || !known.has(prNumber) || !Object.hasOwn(CHOICES, choice)) {
       throw new Error(`Qwen returned an unknown PR/choice pair: ${prNumber}/${choice}`);
     }
     if (seen.has(prNumber)) throw new Error(`Qwen returned duplicate choice coverage for PR #${prNumber}`);
@@ -137,8 +144,9 @@ export function notificationEvent(report) {
   };
 }
 
-export function parseTasksText(source, maxRows = 200) {
+export function parseTasksSnapshot(source, maxRows = 200) {
   const rows = [];
+  let totalRows = 0;
   for (const line of text(source).split(/\r?\n/)) {
     if (!/^\|\s*(?:\[[A-Z][A-Z0-9-]*\](?:\([^)]*\))?|[A-Z][A-Z0-9-]*)\s*\|/.test(line)) continue;
     const columns = line.split('|').slice(1, -1).map((value) => value.trim());
@@ -147,6 +155,8 @@ export function parseTasksText(source, maxRows = 200) {
       ?? null;
     const statusIndex = columns.findIndex((value) => TASK_STATUSES.includes(value));
     if (!id || statusIndex < 0) continue;
+    totalRows += 1;
+    if (rows.length >= maxRows) continue;
     const status = columns[statusIndex];
     const owner = columns[statusIndex + 1] ?? null;
     const evidence = columns.slice(statusIndex + 2).join(' | ');
@@ -163,9 +173,16 @@ export function parseTasksText(source, maxRows = 200) {
       evidence: evidence.slice(0, 5000),
       rawLine: line,
     });
-    if (rows.length >= maxRows) break;
   }
-  return rows;
+  return { rows, totalRows, truncated: totalRows > rows.length };
+}
+
+export function parseTasksText(source, maxRows = 200) {
+  return parseTasksSnapshot(source, maxRows).rows;
+}
+
+export function receiptEvidenceBody(value) {
+  return String(value ?? '');
 }
 
 export function canonicalTaskBinding(tasks, pulls, prNumber) {

@@ -66,6 +66,8 @@ Depot sonucu yalnız non-empty workflow/job/attempt kanıtı terminal başarı
 gösteriyorsa `pass` olur. Exact head dışındaki checkout, base drift ve `pass`
 dışındaki her durum merge kapısını kapalı tutar. GitHub snapshot'ı eksik veya
 ulaşılamazken çalışan shadow koşular iptal edilmez.
+Depot API çağrısından önce diske yazılan launch reservation crash penceresinde
+ikinci koşuyu engeller; çağrı sonucu belirsizse otomatik retry yapılmaz.
 
 ## Güvenli etkinleştirme sırası
 
@@ -74,6 +76,11 @@ ulaşılamazken çalışan shadow koşular iptal edilmez.
 3. Gerekliyse yalnız PR yorum yazımını aç; ready/review/merge kapıları ayrı kalır.
 4. R1/R2 allowlist'leri bağımsız, rol-bazlı ve birbirinden ayrık kimliklerle doldur.
 5. Guarded eylemleri ancak gerçek PR üzerinde shadow pilot kanıtından sonra aç.
+
+Yerel koordinatör R1/R2 isteği yazmaz veya sağlayıcı/model adı çağırmaz. Bağımsız
+rolleri exact CI provenance ile başlatma yetkisi repository'nin canonical
+`Development Review Automation` ve reusable `Development Review Router` akışında
+kalır; koordinatör yalnız bu rollerin exact-head receipt'lerini tüketir.
 
 `mode=guarded` tek başına yazma açmaz. Dış yazım için ayrıca
 `writeActionsEnabled=true`, ilgili eylem bayrağı ve birebir

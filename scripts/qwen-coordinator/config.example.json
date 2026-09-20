@@ -34,7 +34,6 @@
   "mergeMethod": "squash",
   "writeActionsEnabled": false,
   "autoReadyEnabled": false,
-  "reviewDispatchEnabled": false,
   "autoMergeEnabled": false,
   "coordinationCommitsEnabled": false,
   "maxActionsPerRun": 1,

@@ -109,7 +109,7 @@ function main() {
   const reportFile = path.join(coordinatorHome, 'reports', 'latest.md');
   const queueFile = path.join(coordinatorHome, 'reports', 'action-queue.json');
   const wrappers = {
-    'qwen-coordinator-now': commandScript(`exec ${shellQuote(nodeBinary)} ${shellQuote(path.join(coordinatorHome, 'run-once.mjs'))}`),
+    'qwen-coordinator-now': commandScript(`export QWEN_COORDINATOR_HOME=${shellQuote(coordinatorHome)}\nexec ${shellQuote(nodeBinary)} ${shellQuote(path.join(coordinatorHome, 'run-once.mjs'))}`),
     'qwen-coordinator-status': commandScript(`[ -f ${shellQuote(reportFile)} ] || { echo "Henüz koordinatör raporu yok."; exit 1; }\nexec /bin/cat ${shellQuote(reportFile)}`),
     'qwen-coordinator-actions': commandScript(`[ -f ${shellQuote(queueFile)} ] || { echo "Henüz aksiyon kuyruğu yok."; exit 1; }\nexec /bin/cat ${shellQuote(queueFile)}`),
   };

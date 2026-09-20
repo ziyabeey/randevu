@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 const SHA = /^[a-f0-9]{40}$/;
 const SAFE_REF = /^[A-Za-z0-9._/-]+$/;
@@ -73,6 +73,23 @@ export function normalizeDepotStatus(payload) {
 
 export function isDepotTerminal(status) {
   return ['pass', 'fail', 'cancelled', 'superseded', 'identity-error'].includes(status);
+}
+
+export function createDepotLaunchReservation(pr, previous = null, reservedAt = new Date().toISOString()) {
+  const sameIdentity = previous?.headSha === pr.headSha && previous?.baseSha === pr.baseSha;
+  return {
+    prNumber: pr.number,
+    headSha: pr.headSha,
+    baseSha: pr.baseSha,
+    headRef: pr.headRef,
+    status: 'launch-reserved',
+    launchReservationId: randomUUID(),
+    launchReservedAt: reservedAt,
+    startedAt: sameIdentity ? previous.startedAt ?? reservedAt : reservedAt,
+    lastStartAttemptAt: reservedAt,
+    startAttempts: sameIdentity ? (previous.startAttempts ?? 0) + 1 : 1,
+    commentPublished: false,
+  };
 }
 
 export function depotFetchRef(pr) {

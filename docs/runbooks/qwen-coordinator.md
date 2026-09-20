@@ -79,13 +79,17 @@ launchctl print "gui/$(id -u)/ai.yzt.qwen-coordinator"
 | `depotShadowEnabled` | `false` | Org, CLI ve exact-SHA identity smoke doğrulanırsa `true` |
 | `writeActionsEnabled` | `false` | Dış yazma açıkça istenirse `true` |
 | `autoReadyEnabled` | `false` | Task/CI/base/thread kapıları pilotta doğrulanırsa |
-| `reviewDispatchEnabled` | `false` | Rol allowlist'leri güvenilir ve ayrık ise |
 | `autoMergeEnabled` | `false` | En son; tüm exact-head receipt ve ruleset kanıtı doğrulanırsa |
 | `coordinationCommitsEnabled` | `false` | Post-main closeout akışı ayrıca kabul edilirse |
 
 Bir eylem için `mode=guarded`, `writeActionsEnabled=true`, ilgili eylem bayrağı
 ve `allowedAutomaticActions` girdisi birlikte gerekir. Bir turda en fazla
 `maxActionsPerRun=1` korunur.
+
+R1/R2 başlatma yerel koordinatörün yazma yetkisi değildir. Bu roller yalnız
+canonical `Development Review Automation` → reusable `Development Review Router`
+akışında, configured rol endpoint'leri ve exact CI checkout/run/job/attempt
+provenance ile başlatılır; yerel koordinatör yalnız sonuç receipt'lerini gözler.
 
 Depot koşusu ayrıca `run_exact_sha_depot_shadow_ci` capability girdisini ister.
 Terminal Depot yorumunun GitHub'a yazılması
@@ -116,6 +120,11 @@ olur ve merge kapalı kalır. Depot'un `pass` dışındaki hiçbir terminal/ara 
 merge kanıtı değildir. Stale lock ancak sahibi olan PID'nin artık yaşamadığı
 kanıtlanırsa devralınır; her tur yalnız kendi lease token'ına ait kilidi
 bırakabilir. Aynı anda çalışan ikinci tur sessizce atlanır.
+
+Depot başlatma öncesinde runtime state'e kalıcı bir launch reservation yazılır.
+API çağrısından sonra run kimliği alınamazsa kayıt `launch-uncertain` kalır;
+koordinatör bu kaydı aktif sayar ve otomatik retry ile ikinci bir koşu başlatmaz.
+Operatör Depot tarafını doğrulamadan bu durum elle temizlenmez.
 
 ## Acil durdurma ve geri dönüş
 

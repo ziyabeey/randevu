@@ -16,12 +16,14 @@ import {
   classifyPull,
   githubPollIntervalSeconds,
   notificationEvent,
-  parseTasksText,
+  parseTasksSnapshot,
   policyFingerprint,
+  receiptEvidenceBody,
   validateQwenChoices,
 } from './policy.mjs';
 import {
   applyDepotEvidence,
+  createDepotLaunchReservation,
   depotCommentBody,
   depotEligible,
   depotFetchRef,
@@ -65,6 +67,10 @@ function writeAtomic(file, value) {
   const temporary = `${file}.tmp-${process.pid}`;
   writeFileSync(temporary, value, { mode: 0o600 });
   renameSync(temporary, file);
+}
+
+function persistRuntimeState(state) {
+  writeAtomic(stateFile, `${JSON.stringify(state, null, 2)}\n`);
 }
 
 function log(event, details = {}) {
@@ -248,7 +254,7 @@ function compactComment(node) {
   return {
     id: node.databaseId ?? null,
     author: node.author?.login ?? null,
-    body: compactText(node.body),
+    body: receiptEvidenceBody(node.body),
     createdAt: node.createdAt ?? null,
     updatedAt: node.updatedAt ?? null,
     url: node.url ?? null,
@@ -261,7 +267,7 @@ function compactReview(node) {
     author: node.author?.login ?? null,
     state: node.state ?? null,
     commitOid: node.commit?.oid ?? null,
-    body: compactText(node.body),
+    body: receiptEvidenceBody(node.body),
     submittedAt: node.submittedAt ?? null,
     url: node.url ?? null,
   };
@@ -352,12 +358,14 @@ async function fetchSnapshot(config, token) {
   const repository = result.data?.data?.repository;
   if (!repository?.defaultBranchRef?.target?.oid) throw new Error('GitHub snapshot default branch bilgisi içermiyor');
   const taskSource = repository.taskBlob?.text ?? '';
+  const taskSnapshot = parseTasksSnapshot(taskSource, config.maxTaskRows);
   const mainRollup = repository.defaultBranchRef.target.statusCheckRollup ?? null;
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     available: true,
     complete: repository.pullRequests?.pageInfo?.hasNextPage !== true
       && repository.taskBlob?.isTruncated !== true
+      && taskSnapshot.truncated !== true
       && mainRollup?.contexts?.pageInfo?.hasNextPage !== true,
     auth: 'authenticated',
     fetchedAt: nowIso(),
@@ -371,11 +379,13 @@ async function fetchSnapshot(config, token) {
     mainChecksTruncated: mainRollup?.contexts?.pageInfo?.hasNextPage === true,
     taskBlobOid: repository.taskBlob?.oid ?? null,
     taskSource,
-    tasks: parseTasksText(taskSource, config.maxTaskRows),
+    tasks: taskSnapshot.rows,
+    tasksTruncated: taskSnapshot.truncated,
+    taskRowCount: taskSnapshot.totalRows,
     pulls: (repository.pullRequests?.nodes ?? []).map(compactPull),
     coordinationComments: (repository.issue?.comments?.nodes ?? []).map(compactComment),
     coordinationCommentsTruncated: repository.issue?.comments?.pageInfo?.hasPreviousPage === true,
-    errors: [],
+    errors: taskSnapshot.truncated ? ['TASKS row limit exceeded; snapshot is incomplete'] : [],
   };
 }
 
@@ -385,15 +395,15 @@ async function gatherRemote(config, previousState, options = {}) {
   const pollSeconds = githubPollIntervalSeconds(previousState, config);
   const due = options.force === true
     || !previous
-    || previous.schemaVersion !== 2
+    || previous.schemaVersion !== 3
     || Date.now() - lastFetchMs >= pollSeconds * 1000;
   if (!due) return { ...previous, refreshed: false };
   const token = getGithubToken();
   try {
     return await fetchSnapshot(config, token);
   } catch (error) {
-    const fallback = previous?.schemaVersion === 2 ? previous : {
-      schemaVersion: 2,
+    const fallback = previous?.schemaVersion === 3 ? previous : {
+      schemaVersion: 3,
       pulls: [],
       tasks: [],
       coordinationComments: [],
@@ -492,7 +502,7 @@ async function depotApi(pathname, token, body, timeout = 20_000) {
   }
 }
 
-async function startDepotRun(config, pr) {
+async function startDepotRun(config, pr, beforeLaunch = () => {}) {
   let expectedTree = git(config.repoRoot, ['rev-parse', `${pr.headSha}^{tree}`]);
   if (!expectedTree.ok) {
     const { remoteRef, localRef } = depotFetchRef(pr);
@@ -522,6 +532,7 @@ async function startDepotRun(config, pr) {
   writeAtomic(runtimeWorkflow, source);
   const hash = workflowHash(source);
   const token = getDepotToken(config);
+  beforeLaunch({ workflowHash: hash, treeSha: expectedTree.stdout });
   const response = await depotApi('depot.ci.v1.CIService/Run', token, {
     repo: config.repoSlug,
     sha: pr.headSha,
@@ -550,7 +561,8 @@ async function startDepotRun(config, pr) {
 }
 
 function cancelDepotRun(config, run) {
-  if (!run.runId || isDepotTerminal(run.status)) return true;
+  if (isDepotTerminal(run.status)) return true;
+  if (!run.runId) return !['launch-reserved', 'launch-uncertain'].includes(run.status);
   if (run.cancelRequestedAt) {
     pollDepotRun(config, run);
     return isDepotTerminal(run.status);
@@ -732,25 +744,42 @@ async function reconcileDepot(config, remote, decisions, state) {
   const candidate = candidates[0];
   if (!candidate) return;
   const previous = state.depotRuns[String(candidate.pr.number)];
+  let reservation = null;
   try {
-    const run = await startDepotRun(config, candidate.pr);
-    if (previous?.headSha === run.headSha) run.startAttempts = (previous.startAttempts ?? 0) + 1;
-    state.depotRuns[String(candidate.pr.number)] = run;
+    const run = await startDepotRun(config, candidate.pr, (prepared) => {
+      reservation = {
+        ...createDepotLaunchReservation(candidate.pr, previous, nowIso()),
+        ...prepared,
+      };
+      state.depotRuns[String(candidate.pr.number)] = reservation;
+      persistRuntimeState(state);
+    });
+    if (!reservation) throw new Error('Depot launch was not durably reserved');
+    state.depotRuns[String(candidate.pr.number)] = {
+      ...reservation,
+      ...run,
+      startAttempts: reservation.startAttempts,
+      launchReservationId: reservation.launchReservationId,
+      launchReservedAt: reservation.launchReservedAt,
+    };
+    persistRuntimeState(state);
     log('depot-started', { prNumber: run.prNumber, headSha: run.headSha, runId: run.runId, workflowHash: run.workflowHash });
   } catch (error) {
+    const failed = reservation ?? createDepotLaunchReservation(candidate.pr, previous, nowIso());
+    const failureStatus = reservation ? 'launch-uncertain' : 'start-error';
     state.depotRuns[String(candidate.pr.number)] = {
+      ...failed,
+      status: failureStatus,
+      lastStartAttemptAt: nowIso(),
+      error: compactText(error.message, 1000),
+    };
+    persistRuntimeState(state);
+    log(failureStatus === 'launch-uncertain' ? 'depot-start-uncertain' : 'depot-start-failed', {
       prNumber: candidate.pr.number,
       headSha: candidate.pr.headSha,
-      baseSha: candidate.pr.baseSha,
-      headRef: candidate.pr.headRef,
-      status: 'start-error',
-      startedAt: previous?.startedAt ?? nowIso(),
-      lastStartAttemptAt: nowIso(),
-      startAttempts: (previous?.headSha === candidate.pr.headSha ? previous.startAttempts ?? 0 : 0) + 1,
-      error: compactText(error.message, 1000),
-      commentPublished: false,
-    };
-    log('depot-start-failed', { prNumber: candidate.pr.number, headSha: candidate.pr.headSha, error: error.message });
+      launchReservationId: failed.launchReservationId,
+      error: error.message,
+    });
   }
 }
 
@@ -779,15 +808,15 @@ async function askQwen(config, decisions) {
     const models = await modelResponse.json();
     const model = models.data?.[0]?.id;
     if (!model) throw new Error('no local model is available');
-    const system = 'PR sınıflandır. A=WAIT, B=REPAIR, C=REVIEW, D=MERGE. Her satırdaki ikinci değer deterministik üst sınırdır; daha ileri karar verme. CI fail veya conflict B; kanıt/base/task eksik A; review eksik C; D yalnız üst sınır D ise. Satır sırasını koru ve her satıra bir harf yaz. Yalnız JSON: {"choices":["A","B"]}.';
-    const payload = decisions.map((decision) => [
-      decision.prNumber,
-      decision.choice,
-      decision.ci.status,
-      decision.mergeable,
-      decision.draft ? 1 : 0,
-      decision.missingReviews.join(','),
-    ]);
+    const system = 'PR sınıflandır. A=WAIT, B=REPAIR, C=REVIEW, D=MERGE. Her kaydın policy alanı deterministik üst sınırdır; daha ileri karar verme. CI fail veya conflict B; kanıt/base/task eksik A; review eksik C; D yalnız üst sınır D ise. Her sonucu exact prNumber anahtarıyla döndür. Yalnız JSON: {"choices":{"208":"D"}}.';
+    const payload = decisions.map((decision) => ({
+      prNumber: decision.prNumber,
+      policy: decision.choice,
+      ci: decision.ci.status,
+      mergeable: decision.mergeable,
+      draft: decision.draft ? 1 : 0,
+      missingReviews: decision.missingReviews.join(','),
+    }));
     const response = await fetch(`${config.qwenEndpoint}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -832,11 +861,6 @@ function actionAllowed(state, action, config) {
   if ((entry.attempts ?? 0) >= config.maximumActionAttempts) return false;
   const last = Date.parse(entry.lastAttemptAt ?? '') || 0;
   return Date.now() - last >= config.actionRetrySeconds * 1000;
-}
-
-function hasDispatchMarker(remote, prNumber, headSha, role) {
-  const marker = `qwen-local-coordinator:review:${role}:pr:${prNumber}:sha:${headSha}`;
-  return remote.coordinationComments.some((comment) => comment.body.includes(marker));
 }
 
 function mainCi(remote, config) {
@@ -886,23 +910,6 @@ function planActions(config, remote, decisions, state) {
       });
       continue;
     }
-    if (decision.choice !== 'C' || pr.draft || config.reviewDispatchEnabled !== true) continue;
-    const role = decision.missingReviews.find((item) => item === 'R1' || item === 'R2');
-    if (!role || decision.missingReviews.includes('R0')) continue;
-    if (!Array.isArray(config.trustedReceiptActorsByRole?.[role])
-      || config.trustedReceiptActorsByRole[role].length === 0) continue;
-    if (role === 'R2' && decision.requiredReviews.r1 && decision.receipts.r1.status !== 'accepted') continue;
-    if (hasDispatchMarker(remote, pr.number, pr.headSha, role)) continue;
-    const structuralGaps = decision.gaps.filter((gap) => !gap.endsWith('_RECEIPT_MISSING_OR_STALE'));
-    if (structuralGaps.length > 0) continue;
-    queue.push({
-      type: 'DISPATCH_REVIEW',
-      role,
-      prNumber: pr.number,
-      headSha: pr.headSha,
-      taskId: decision.taskId,
-      priority: role === 'R1' ? 60 : 50,
-    });
   }
 
   return queue
@@ -910,30 +917,6 @@ function planActions(config, remote, decisions, state) {
     .filter((action) => actionAllowed(state, action, config))
     .sort((left, right) => right.priority - left.priority || left.prNumber - right.prNumber)
     .slice(0, config.maxActionsPerRun);
-}
-
-function reviewDispatchBody(config, action, pr, decision, remote) {
-  const paths = decision.surface.paths.slice(0, 30).map((file) => `- \`${file}\``).join('\n');
-  const focus = action.role === 'R1'
-    ? 'DB/auth/access/security ve tenant-authority risklerini bağımsız doğrula.'
-    : 'Gerçek browser/integration/a11y ve kullanıcı akışı risklerini bağımsız doğrula.';
-  return [
-    `<!-- qwen-local-coordinator:review:${action.role}:pr:${pr.number}:sha:${pr.headSha} -->`,
-    `@codex Perform a fresh independent **${action.role} verification** for ${decision.taskId} / PR #${pr.number}.`,
-    '',
-    '- Verification-only and read-only: do not change code/docs/TASKS, push, approve or merge.',
-    `- Exact raw head: \`${pr.headSha}\``,
-    `- Current base/main: \`${remote.mainSha}\``,
-    `- Required CI \`${config.requiredCheckName}\`: SUCCESS on this exact head.`,
-    `- Open review threads: ${pr.unresolvedThreads}.`,
-    `- Focus: ${focus}`,
-    '',
-    'Changed paths:',
-    paths || '- unavailable',
-    '',
-    `If acceptable, include exactly one structured receipt marker: \`<!-- development-review-receipt {"role":"${action.role}","prNumber":${pr.number},"headSha":"${pr.headSha}","baseSha":"${pr.baseSha}"} -->\`.`,
-    `Also return \`VERDICT: ${action.role} = ACCEPTABLE | BLOCKER | INCOMPLETE\`, blockers/evidence gaps and exact test identity. Stop as STALE if the live head or base changes.`,
-  ].join('\n');
 }
 
 function updateTaskForCloseout(remote, pending, config) {
@@ -1048,16 +1031,6 @@ async function executeAction(config, state, action) {
       });
       if (response.data?.errors?.length) throw new Error(response.data.errors.map((item) => item.message).join('; '));
       result = { ready: true, prNumber: pr.number, headSha: pr.headSha };
-    } else if (action.type === 'DISPATCH_REVIEW') {
-      if (decision.choice !== 'C' || !decision.missingReviews.includes(action.role)) {
-        throw new Error('Review dispatch gates no longer satisfied');
-      }
-      const body = reviewDispatchBody(config, action, pr, decision, fresh);
-      const response = await githubJson(`https://api.github.com/repos/${config.repoSlug}/issues/${config.coordinationIssueNumber}/comments`, token, {
-        method: 'POST',
-        body: { body },
-      });
-      result = { role: action.role, commentId: response.data.id, url: response.data.html_url };
     } else if (action.type === 'MERGE') {
       if (!decision.mergeEligible) throw new Error('Merge gates no longer satisfied');
       const response = await githubJson(`https://api.github.com/repos/${config.repoSlug}/pulls/${pr.number}/merge`, token, {
@@ -1102,6 +1075,7 @@ function compactRemoteForReport(remote, config) {
     mainSha: remote.mainSha ?? null,
     mainCi: remote.mainChecks ? mainCi(remote, config).status : 'unknown',
     tasksCount: remote.tasks?.length ?? 0,
+    tasksTruncated: remote.tasksTruncated === true,
     coordinationCommentsTruncated: remote.coordinationCommentsTruncated === true,
     pulls: (remote.pulls ?? []).map((pr) => ({
       number: pr.number,
