@@ -1,7 +1,10 @@
+import { createHash } from 'node:crypto';
 import { classifyPaths } from './ci-scope.mjs';
 
 const sha = /^[a-f0-9]{40}$/;
+const fingerprint = /^[a-f0-9]{64}$/;
 const roles = ['R1', 'R2'];
+const verdicts = ['ACCEPTABLE', 'BLOCKER', 'INCOMPLETE'];
 const genericBots = new Set(['copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]']);
 
 export function sameIdentity(a, b) {
@@ -38,37 +41,86 @@ export function parseReviewerAllowlist(raw) {
 // Arbitrary prose, GitHub approvals and generic code-review bots are never role evidence.
 export function authenticatedReceipts(items, pr, allowlist = {}) {
   if (!allowlist || typeof allowlist !== 'object' || Array.isArray(allowlist)
-      || roles.some((role) => allowlist[role] !== undefined && !Array.isArray(allowlist[role]))) {
+      || roles.some((role) => !Array.isArray(allowlist[role]) || allowlist[role].length !== 1)) {
     return [];
   }
-  const configured = Object.fromEntries(roles.map((role) => [
-    role,
-    Array.isArray(allowlist[role]) ? allowlist[role] : [],
-  ]));
+
+  const configured = Object.fromEntries(roles.map((role) => [role, allowlist[role][0]]));
+  const launches = [];
+
+  for (const item of items) {
+    if (item?.user?.login !== 'github-actions[bot]') continue;
+    const body = String(item.body ?? '');
+    const marker = body.match(/<!-- development-review-launch:v1:(r1|r2):([a-f0-9]{64}) -->/i);
+    if (!marker || !/status:\s*ROUTINE_TRIGGERED/i.test(body)) continue;
+    if (typeof item.html_url !== 'string' || !item.html_url.includes(`/pull/${pr.number}#`)) continue;
+    const role = marker[1].toUpperCase();
+    const requestFingerprint = marker[2].toLowerCase();
+    const headSha = body.match(/exact head:\s*([a-f0-9]{40})/i)?.[1]?.toLowerCase();
+    const baseSha = body.match(/base main:\s*([a-f0-9]{40})/i)?.[1]?.toLowerCase();
+    const dispatcherCaseFingerprint = body.match(/dispatcher case:\s*([a-f0-9]{64})/i)?.[1]?.toLowerCase();
+    const roleRequest = body.match(/role request:\s*([a-f0-9]{64})/i)?.[1]?.toLowerCase();
+    const receiptChallengeHash = body.match(/receipt challenge hash:\s*([a-f0-9]{64})/i)?.[1]?.toLowerCase();
+    if (!sha.test(headSha ?? '') || !sha.test(baseSha ?? '')
+        || !fingerprint.test(dispatcherCaseFingerprint ?? '')
+        || !fingerprint.test(receiptChallengeHash ?? '')
+        || roleRequest !== requestFingerprint) continue;
+    launches.push({
+      role, requestFingerprint, dispatcherCaseFingerprint, headSha, baseSha, receiptChallengeHash,
+    });
+  }
+
   const found = [];
   for (const item of items) {
     const author = item?.user?.login;
-    if (!author || genericBots.has(author) || author === pr.user?.login) continue;
+    if (!author || genericBots.has(author) || author === 'github-actions[bot]' || author === pr.user?.login) continue;
     const matches = [...String(item.body ?? '').matchAll(/<!-- development-review-receipt\s+(\{[^\n]*\})\s*-->/g)];
     if (matches.length !== 1) continue;
+
     let receipt;
     try { receipt = JSON.parse(matches[0][1]); } catch { continue; }
-    const { role, headSha, baseSha, prNumber } = receipt;
-    if (!roles.includes(role) || !configured[role].includes(author)
-      || roles.some((other) => other !== role && configured[other].includes(author))
-      || prNumber !== pr.number || !sha.test(headSha ?? '') || !sha.test(baseSha ?? '')
+
+    const {
+      schemaVersion, role, headSha, baseSha, prNumber,
+      dispatcherCaseFingerprint, requestFingerprint, receiptChallenge, verdict,
+    } = receipt;
+
+    if (schemaVersion !== 'development-review-receipt.v1'
+      || typeof item.html_url !== 'string'
+      || !item.html_url.includes(`/pull/${pr.number}#`)
+      || !roles.includes(role)
+      || author !== configured[role]
+      || prNumber !== pr.number
+      || !sha.test(headSha ?? '')
+      || !sha.test(baseSha ?? '')
+      || !fingerprint.test(dispatcherCaseFingerprint ?? '')
+      || !fingerprint.test(requestFingerprint ?? '')
+      || !fingerprint.test(receiptChallenge ?? '')
+      || !verdicts.includes(verdict)
       || (item.commit_id && item.commit_id !== headSha)
-      || !Number.isSafeInteger(item.id) || !item.html_url) continue;
+      || !Number.isSafeInteger(item.id)
+      || !item.html_url) continue;
+
+    const receiptChallengeHash = createHash('sha256').update(receiptChallenge).digest('hex');
+    const matchingLaunch = launches.find((launch) =>
+      launch.role === role
+      && launch.requestFingerprint === requestFingerprint
+      && launch.dispatcherCaseFingerprint === dispatcherCaseFingerprint
+      && launch.headSha === headSha
+      && launch.baseSha === baseSha
+      && launch.receiptChallengeHash === receiptChallengeHash);
+    if (!matchingLaunch) continue;
+
     const receiptTime = Date.parse(item.updated_at ?? item.submitted_at ?? item.created_at ?? '');
     found.push({
-      role, author, headSha, baseSha, id: item.id,
+      role, author, headSha, baseSha, id: item.id, verdict,
+      dispatcherCaseFingerprint, requestFingerprint, receiptChallengeHash,
       observedAt: Number.isFinite(receiptTime) ? receiptTime : 0,
       url: item.html_url,
       freshness: headSha === pr.head.sha && baseSha === pr.base.sha ? 'current' : 'stale',
     });
   }
-  // Preserve every authenticated receipt. Callers that need current candidate evidence
-  // must select exact head+base before considering chronology.
+
   return found.sort((a, b) => b.observedAt - a.observedAt || b.id - a.id);
 }
 
@@ -86,7 +138,7 @@ export function freshnessReport(pr, receipts) {
     `PR: #${pr.number}`, `Current head: ${pr.head.sha}`, `Current base: ${pr.base.sha}`, '',
     ...roles.map((role) => {
       const r = receipts.find((entry) => entry.role === role);
-      return r ? `${role}: ${r.url} · receipt head ${r.headSha} · receipt base ${r.baseSha} · freshness ${r.freshness}`
+      return r ? `${role}: ${r.url} · verdict ${r.verdict} · request ${r.requestFingerprint} · receipt head ${r.headSha} · receipt base ${r.baseSha} · freshness ${r.freshness}`
         : `${role}: unknown — no verified role receipt`;
     }), '', '_Advisory only. Exact staleness does not imply semantic re-review. No dispatch, acceptance or R1/R2 satisfaction._'].join('\n');
 }
