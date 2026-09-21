@@ -11,6 +11,8 @@ type Control = {
   bookingButtons(customer: string): string[];
   calendarReservationCount(): string;
   calendarEventCount(): number;
+  calendarListRows(): string[];
+  setCalendarDate(value: string): boolean;
   selectCalendarStaff(name: string): boolean;
   clickCalendarEvent(text: string): boolean;
   calendarDrawerLines(): string[];
@@ -50,7 +52,17 @@ window.__f1103c = {
   bookingButtons: (customer) => [...(bookingArticle(customer)?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
     .map((button) => button.innerText.trim()),
   calendarReservationCount: () => document.querySelector<HTMLElement>('.calendar-stats > div:first-child strong')?.innerText ?? '',
-  calendarEventCount: () => document.querySelectorAll('.calendar-event, .calendar-week-event').length,
+  calendarEventCount: () => document.querySelectorAll('.calendar-event, .calendar-week-event, .calendar-list-event').length,
+  calendarListRows: () => [...document.querySelectorAll<HTMLElement>('.calendar-list-event')]
+    .map((item) => item.innerText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()),
+  setCalendarDate: (value) => {
+    const input = document.querySelector<HTMLInputElement>('.calendar-date-filter input');
+    if (!input) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(input, value);
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  },
   selectCalendarStaff: (name) => {
     const select = document.querySelector<HTMLSelectElement>('.calendar-filter select');
     if (!select) return false;
@@ -62,7 +74,7 @@ window.__f1103c = {
     return true;
   },
   clickCalendarEvent: (text) => {
-    const event = [...document.querySelectorAll<HTMLButtonElement>('.calendar-event, .calendar-week-event')]
+    const event = [...document.querySelectorAll<HTMLButtonElement>('.calendar-event, .calendar-week-event, .calendar-list-event')]
       .find((candidate) => candidate.innerText.includes(text));
     if (!event) return false;
     event.click();
