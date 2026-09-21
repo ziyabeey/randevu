@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 
 import {
@@ -154,4 +155,12 @@ test('Qwen janitor response must cover every candidate and cannot exceed determi
     () => validateJanitorChoices({ choices: { 248: 'KEEP' } }, candidates),
     /1\/2 choices/,
   );
+});
+
+test('integrated coordinator source remains syntactically valid', () => {
+  assert.doesNotThrow(() => {
+    execFileSync(process.execPath, ['--check', 'scripts/qwen-coordinator/run-once.mjs'], {
+      stdio: 'pipe',
+    });
+  });
 });
