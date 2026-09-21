@@ -730,11 +730,13 @@ export async function runManagementAcceptance(options = {}) {
 
     state.memberships[ids.businessB].active = false;
     await reload(pageB);
-    await waitText(pageB, 'Ekip alanı açılamadı');
+    await waitText(pageB, 'Hangi işletmede çalışacağız?');
     const inactiveText = await bodyText(pageB);
+    assert.ok(inactiveText.includes('Salon A'), 'workspace gate did not retain the remaining active membership');
     assert.ok(!inactiveText.includes('Davet oluştur'));
     assert.ok(!inactiveText.includes('Salon B Çalışanı'));
-    await assertSafeSurface(pageB, 'team/B inactive');
+    assert.ok(!inactiveText.includes('Salon B'), 'inactive business remained selectable in the workspace gate');
+    await assertSafeSurface(pageB, 'workspace/B inactive');
 
     state.memberships[ids.businessB].active = true;
     state.memberships[ids.businessB].role = 'manager';
