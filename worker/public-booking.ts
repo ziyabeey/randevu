@@ -91,7 +91,7 @@ function rpcError(data: unknown, fallback: string) {
     return { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.', status: 404 as const };
   }
   if (message.includes('PUBLIC_BOOKING_NOT_READY')) {
-    return { code: 'PUBLIC_BOOKING_NOT_READY', message: 'Yayınlamadan önce hizmet, personel ve çalışma saatlerini tamamlayın.', status: 409 as const };
+    return { code: 'PUBLIC_BOOKING_NOT_READY', message: 'Yayınlamadan önce hizmet, personel, çalışma saatleri ve en az bir destek iletişim kanalını tamamlayın.', status: 409 as const };
   }
   if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
     return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };

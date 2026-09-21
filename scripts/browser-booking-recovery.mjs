@@ -351,7 +351,7 @@ try {
   await uiContains(pageB, 'RANDEVU KAYDI BULUNDU');
   await reload(pageB);
   await uiContains(pageB, 'RANDEVU KAYDI BULUNDU');
-  assert.ok(!(await call(pageB, 'links')).some((href) => href?.includes('#')));
+  assert.ok(!(await call(pageB, 'links')).some((href) => href?.startsWith('/m#')));
   await call(pageB, 'clickButton', 'Yeni randevu');
   await uiContains(pageB, 'Hizmet ve tarih');
   assert.equal((await call(pageB, 'load', 'receipt-salon')).length, 0);
@@ -377,7 +377,7 @@ try {
   }
   await navigate(pageA, `${origin}/harness?mode=ui&slug=committed-resolve-salon`);
   await uiContains(pageA, 'RANDEVU KAYDI BULUNDU');
-  assert.ok(!(await call(pageA, 'links')).some((href) => href?.includes('#')));
+  assert.ok(!(await call(pageA, 'links')).some((href) => href?.startsWith('/m#')));
   passed('manual committed resolve keeps its capability in the resolving page only');
 
   const unresolvedIntent = await call(pageA, 'candidate', 'unresolved-salon', 6);
@@ -423,7 +423,7 @@ try {
   await call(pageB, 'clickButton', 'kontrol');
   await uiContains(pageB, 'RANDEVU KAYDI BULUNDU');
   assert.equal((await call(pageA, 'load', 'unresolved-salon'))[0].status, 'exists_nolink');
-  assert.ok(!(await call(pageB, 'links')).some((href) => href?.includes('#')));
+  assert.ok(!(await call(pageB, 'links')).some((href) => href?.startsWith('/m#')));
   passed('generic 404 and body timeout preserve pending until exists_nolink');
 
   const closedIntent = await call(pageA, 'candidate', 'closed-salon', 13);

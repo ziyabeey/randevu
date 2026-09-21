@@ -23,6 +23,14 @@ const env = {
   COOKIE_SECURE: 'false',
 };
 
+const publishedInformation = {
+  kvkk_notice_text: 'Test işletmesi aydınlatma metni.',
+  kvkk_notice_url: 'https://example.test/kvkk',
+  privacy_policy_url: 'https://example.test/privacy',
+  booking_terms_text: 'Test işletmesi randevu koşulları.',
+  booking_terms_url: 'https://example.test/terms',
+};
+
 function rpc(data) {
   return new Response(JSON.stringify({ ok: true, data }), {
     status: 200,
@@ -111,6 +119,7 @@ await test('S07 v2 create verifies the exact proof and sends the immutable key/h
   globalThis.fetch = async (_input, init) => {
     calls += 1;
     const wire = JSON.parse(String(init.body));
+    if (wire.p_action === 'profile') return rpc([publishedInformation]);
     assert.equal(wire.p_action, 'book');
     assert.equal(wire.p_args.p_idempotency_key, intent.idempotencyKey);
     assert.equal(wire.p_args.p_recovery_id, recoveryId);
@@ -137,7 +146,7 @@ await test('S07 v2 create verifies the exact proof and sends the immutable key/h
     });
     assert.equal(response.status, 201);
     assert.equal((await response.json()).management.url, `/m#${managementToken}`);
-    assert.equal(calls, 1);
+    assert.equal(calls, 2);
 
     for (const badKey of [intent.idempotencyKey.toUpperCase(), `${intent.idempotencyKey}x`]) {
       const rejected = await post('/business/s07-salon/book', booking, { 'Idempotency-Key': badKey });
@@ -154,7 +163,7 @@ await test('S07 v2 create verifies the exact proof and sends the immutable key/h
       'Idempotency-Key': lateIntent.idempotencyKey,
     });
     assert.equal(late.status, 400);
-    assert.equal(calls, 1, 'invalid v2 attempts reached the gate or database');
+    assert.equal(calls, 2, 'invalid v2 attempts reached the gate or database');
     assert.ok(encrypted);
   } finally {
     globalThis.fetch = realFetch;
