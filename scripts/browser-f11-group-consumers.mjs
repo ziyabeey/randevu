@@ -341,6 +341,9 @@ try {
 
   assert.equal(await call(page, 'click', 'Hafta'), true);
   await waitFor(async () => (await call(page, 'calendarEventCount')) === 3, 'week view did not preserve physical line geometry');
+  const weekRows = await call(page, 'calendarWeekRows');
+  assert.equal(weekRows.length, 3);
+  assert.ok(weekRows.every((row) => row.includes('Planlandı')), 'week status became color-only');
   calendarRequest = requestsTo('/api/calendar').at(-1);
   calendarQuery = new URLSearchParams(calendarRequest.search);
   assert.equal(calendarQuery.get('date'), '2026-09-21');

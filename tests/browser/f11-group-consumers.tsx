@@ -12,6 +12,7 @@ type Control = {
   calendarReservationCount(): string;
   calendarEventCount(): number;
   calendarListRows(): string[];
+  calendarWeekRows(): string[];
   calendarStaffColors(): string[];
   setCalendarDate(value: string): boolean;
   selectCalendarStaff(name: string): boolean;
@@ -55,6 +56,8 @@ window.__f1103c = {
   calendarReservationCount: () => document.querySelector<HTMLElement>('.calendar-stats > div:first-child strong')?.innerText ?? '',
   calendarEventCount: () => document.querySelectorAll('.calendar-event, .calendar-week-event, .calendar-list-event').length,
   calendarListRows: () => [...document.querySelectorAll<HTMLElement>('.calendar-list-event')]
+    .map((item) => item.innerText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()),
+  calendarWeekRows: () => [...document.querySelectorAll<HTMLElement>('.calendar-week-event')]
     .map((item) => item.innerText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()),
   calendarStaffColors: () => [...document.querySelectorAll<HTMLElement>('.calendar-staff-head')]
     .map((item) => getComputedStyle(item).borderTopColor),

@@ -622,7 +622,7 @@ export default function CalendarPage() {
                     <button type="button" style={{ borderLeftColor: staffAccent(appointment.staff_id) }} className={`calendar-week-event status-${appointment.status}`} key={appointment.appointment_id} onClick={() => selectAppointment(appointment)}>
                       <strong>{instantParts(appointment.starts_at, timezone).time}</strong>
                       <span>{appointment.customer_name}</span>
-                      <small>{appointment.staff_name} · {appointment.service_name}{appointment.group_line_count > 1 ? ` · ${appointment.line_ordinal}/${appointment.group_line_count}` : ''}</small>
+                      <small>{appointment.staff_name} · {appointment.service_name}{appointment.group_line_count > 1 ? ` · ${appointment.line_ordinal}/${appointment.group_line_count}` : ''} · {statusLabel(appointment.group_status)}</small>
                     </button>
                   )) : <p>Boş</p>}
                 </div>
