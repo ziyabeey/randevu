@@ -24,6 +24,7 @@ test('F13-02 person identity and status remain separate visual channels with a b
   assert.match(calendar, /function staffAccent/);
   assert.match(calendar, /borderLeftColor: staffAccent\(appointment\.staff_id\)/);
   assert.match(calendar, /statusLabel\(root\.group_status\)/);
+  assert.match(calendar, /calendar-week-event[\s\S]*statusLabel\(appointment\.group_status\)/);
   assert.match(calendar, /className="calendar-now-line"/);
   assert.match(calendar, /nowParts\.date === \(payload\?\.date \?\? date\)/);
   assert.match(css, /\.calendar-now-line/);
