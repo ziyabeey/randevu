@@ -105,7 +105,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','f1250000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 
-do $
+do $$
 declare
   v_start timestamptz:=((date_trunc('week',current_date)::date+7)+time '10:00') at time zone 'Europe/Istanbul';
   v_row public.appointments;
@@ -119,11 +119,11 @@ begin
   if v_row.id is null then raise exception 'F12 information fixture booking missing'; end if;
   perform set_config('f12.info.appointment_id',v_row.id::text,true);
 end
-$;
+$$;
 
 reset role;
 
-do $
+do $$
 declare
   v_id uuid:=current_setting('f12.info.appointment_id')::uuid;
   v_token text:='F12informationSupportToken__________________';
@@ -150,7 +150,7 @@ begin
     raise exception 'management view lost public support contact';
   end if;
 end
-$;
+$$;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f1250000-0000-4000-8000-000000000001',true);
