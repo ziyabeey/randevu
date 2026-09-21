@@ -73,7 +73,13 @@ const server = createServer(async (request, response) => {
     state.requests.push({ method: request.method, path: url.pathname, body });
     if (request.method === 'GET' && url.pathname === '/api/session') return sendJson(response, 200, {
       user: { id: ids.user, email: 'owner@example.test', fullName: 'Owner' },
-      memberships: [],
+      memberships: [{
+        id: ids.membership,
+        business_id: ids.business,
+        role: 'owner',
+        active: true,
+        businesses: { id: ids.business, name: 'Catalog Test Salon', slug: 'catalog-test', timezone: 'Europe/Istanbul' },
+      }],
       activeBusinessId: ids.business,
       passwordRecovery: false,
       csrfToken,
