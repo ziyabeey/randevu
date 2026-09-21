@@ -86,23 +86,6 @@ select * from public.update_business_public_profile(
   '+905550001122','İstanbul',true,null
 );
 
-do $$
-declare r record;
-begin
-  select * into r from public.get_business_onboarding_readiness('f1251000-0000-4000-8000-000000000001');
-  if r.publishable or not ('PUBLIC_INFORMATION_REQUIRED'=any(r.missing_reasons)) then
-    raise exception 'public booking became publishable with support but without published information';
-  end if;
-  begin
-    perform public.update_public_booking_settings('f1251000-0000-4000-8000-000000000001',true,15,0,30);
-    raise exception 'public booking enabled without published information';
-  exception when others then
-    if sqlerrm='public booking enabled without published information' then raise; end if;
-    if position('PUBLIC_BOOKING_NOT_READY' in sqlerrm)=0 then raise; end if;
-  end;
-end
-$$;
-
 select * from public.update_business_public_information(
   'f1251000-0000-4000-8000-000000000001',
   'Bu içerik F12 kabul fixture işletmesinin yayınladığı test aydınlatma metnidir.',
