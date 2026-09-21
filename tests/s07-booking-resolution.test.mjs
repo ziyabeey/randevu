@@ -232,6 +232,7 @@ await test('S07 resolve exposes only its explicit terminal envelope', async (t) 
           price_minor: baseRow.price_minor,
           currency: baseRow.currency,
         },
+        notification: { channel: 'email', status: 'unknown' },
         management: { url: `/m#${managementToken}` },
         recovery: { expiresAt: baseRow.recovery_expires_at },
       });
