@@ -585,7 +585,7 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.match(managed, /Kesim/);
     assert.match(managed, /Bildirim durumu:/);
     assert.match(managed, /E-posta sağlayıcı tarafından kabul edildi/);
-    assert.match(managed, /Teslim edildiği doğrulanmaz/);
+    assert.match(managed, /teslim edildiği doğrulanmaz/);
     assert.match(managed, /Aydınlatma ve KVKK/);
     assert.match(managed, /Destek ve iletişim/);
     assert.match(managed, /destek@f12\.example\.test/);
