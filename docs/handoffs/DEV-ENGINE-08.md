@@ -43,10 +43,13 @@ Action queue, merge, ready, close, comment veya branch mutation üretmez.
 
 ## Kabul durumu
 
+Semantic code head `6760bec98619b63f5dc737b6d4a0878e4668cd69` için
+[CI #1946](https://github.com/ziyabeey1-ai/randevu/actions/runs/35586259231)
+**SUCCESS**: full-code 11/11 aşama ve CI gate geçti.
+
 Bekleyen kanıt:
 
-1. exact-head repository CI;
-2. Mac installer refresh ile `janitor.mjs` kopyası;
+1. Mac installer refresh ile `janitor.mjs` kopyası;
 3. bir canlı shadow turunda bounded GitHub snapshot;
 4. #248-benzeri superseded aday ve #259-benzeri review quota sinyalinin doğru
    raporlanması;
