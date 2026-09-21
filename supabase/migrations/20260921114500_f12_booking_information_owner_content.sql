@@ -170,17 +170,21 @@ begin
   perform 1 from public.businesses b where b.id=p_business_id for update;
   if not found then raise exception 'NOT_ALLOWED' using errcode='42501'; end if;
 
-  insert into public.business_public_profiles(
-    business_id,kvkk_notice_text,kvkk_notice_url,privacy_policy_url,booking_terms_text,booking_terms_url
-  ) values (
-    p_business_id,v_notice_text,v_notice_url,v_privacy_url,v_terms_text,v_terms_url
-  )
-  on conflict on constraint business_public_profiles_pkey do update
-  set kvkk_notice_text=excluded.kvkk_notice_text,
-      kvkk_notice_url=excluded.kvkk_notice_url,
-      privacy_policy_url=excluded.privacy_policy_url,
-      booking_terms_text=excluded.booking_terms_text,
-      booking_terms_url=excluded.booking_terms_url;
+  update public.business_public_profiles p
+  set kvkk_notice_text=v_notice_text,
+      kvkk_notice_url=v_notice_url,
+      privacy_policy_url=v_privacy_url,
+      booking_terms_text=v_terms_text,
+      booking_terms_url=v_terms_url
+  where p.business_id=p_business_id;
+
+  if not found then
+    insert into public.business_public_profiles(
+      business_id,kvkk_notice_text,kvkk_notice_url,privacy_policy_url,booking_terms_text,booking_terms_url
+    ) values (
+      p_business_id,v_notice_text,v_notice_url,v_privacy_url,v_terms_text,v_terms_url
+    );
+  end if;
 
   return query
   select p.business_id,p.kvkk_notice_text,p.kvkk_notice_url,p.privacy_policy_url,p.booking_terms_text,p.booking_terms_url
