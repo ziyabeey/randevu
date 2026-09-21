@@ -346,6 +346,10 @@ groups.post('/public/business/:slug/group-book', async (context) => {
   const abuse = await resolvePublicAbuseIdentity(context);
   if (!abuse) return context.json(publicGateUnavailableBody(), 503);
 
+  const encrypted = await encryptManagementToken(context.env, managementToken, recoveryId);
+  if (!encrypted) {
+    return context.json({ error: { code: 'BOOKING_RECOVERY_UNAVAILABLE', message: 'Rezervasyon güvenli olarak hazırlanamadı.' } }, 503);
+  }
   const information = await publicOperation<PublicBookingInformationProjection[]>(context.env, 'profile', { p_slug: slug }, abuse);
   if (!information.ok) {
     return publicErrorResponse(context, publicFailure(information.data, 'Rezervasyon bilgilendirmeleri şu anda doğrulanamıyor.'));
@@ -358,10 +362,6 @@ groups.post('/public/business/:slug/group-book', async (context) => {
     return context.json({ error: { code: 'PUBLIC_INFORMATION_REQUIRED', message: 'İşletme rezervasyon bilgilendirmelerini henüz tamamlamadı.' } }, 409);
   }
 
-  const encrypted = await encryptManagementToken(context.env, managementToken, recoveryId);
-  if (!encrypted) {
-    return context.json({ error: { code: 'BOOKING_RECOVERY_UNAVAILABLE', message: 'Rezervasyon güvenli olarak hazırlanamadı.' } }, 503);
-  }
   const managementTokenHash = await sha256Hex(managementToken);
 
   const result = await publicOperation<PublicGroupCreateRow[]>(context.env, 'group_book', {
