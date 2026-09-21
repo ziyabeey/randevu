@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiRequestError } from './api';
+import { navigateApp } from './workspace-route';
 import {
   CALENDAR_HTTP_TIMEOUT_MS,
   CalendarRefreshScheduler,
@@ -509,7 +510,7 @@ export default function CalendarPage() {
   }
 
   if (!payload) {
-    return <main className="calendar-shell"><section className="calendar-empty"><h1>Takvim açılamadı</h1><p>{loadError || notice}</p><button className="calendar-retry" type="button" onClick={() => void load()}>Tekrar dene</button><a href="/">İşletmeye dön</a></section></main>;
+    return <main className="calendar-shell"><section className="calendar-empty"><h1>Takvim açılamadı</h1><p>{loadError || notice}</p><button className="calendar-retry" type="button" onClick={() => void load()}>Tekrar dene</button><a href="/app">İşletmeye dön</a></section></main>;
   }
 
   const weekDates = Array.from({ length: 7 }, (_, index) => addDays(payload.date, index));
@@ -528,7 +529,7 @@ export default function CalendarPage() {
           <h1>{payload.business.name}</h1>
           <p>{title} · {payload.business.timezone}</p>
         </div>
-        <a className="calendar-new" href="/bookings">+ Yeni randevu</a>
+        <button className="calendar-new" type="button" onClick={() => navigateApp("/app/bookings")}>+ Yeni randevu</button>
       </header>
 
       <section className="calendar-toolbar" aria-label="Takvim kontrolleri">

@@ -37,3 +37,14 @@ test('F13-04 panel navigation keeps calendar primary and does not masquerade as 
   assert.match(shell, /page: 'setup'/);
   assert.doesNotMatch(shell, /Adisyonlar|Yeni paket|Masraf/);
 });
+
+test('F13-04 private domain pages do not create parallel session authorities', () => {
+  for (const path of ['CustomersPage.tsx', 'BookingPage.tsx', 'AvailabilityPage.tsx', 'OnboardingPage.tsx']) {
+    const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /\/api\/session/);
+    assert.match(source, /useWorkspace/);
+  }
+  const calendar = readFileSync(new URL('../src/CalendarPage.tsx', import.meta.url), 'utf8');
+  assert.match(calendar, /navigateApp\("\/app\/bookings"\)/);
+  assert.doesNotMatch(calendar, /href="\/bookings"/);
+});
