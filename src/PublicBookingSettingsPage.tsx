@@ -32,6 +32,14 @@ type PublicProfile = {
   cover_media_id: string | null;
   media: PublicMedia[];
 };
+type PublicInformation = {
+  business_id: string;
+  kvkk_notice_text: string | null;
+  kvkk_notice_url: string | null;
+  privacy_policy_url: string | null;
+  booking_terms_text: string | null;
+  booking_terms_url: string | null;
+};
 type SettingsPayload = {
   membership: { id: string; business_id: string; role: Role; active: boolean };
   business: { id: string; name: string; slug: string; timezone: string };
@@ -58,6 +66,7 @@ function profileBody(profile: PublicProfile, coverMediaId = profile.cover_media_
 export default function PublicBookingSettingsPage() {
   const [data, setData] = useState<SettingsPayload | null>(null);
   const [profile, setProfile] = useState<PublicProfile | null>(null);
+  const [information, setInformation] = useState<PublicInformation | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [stepMinutes, setStepMinutes] = useState(15);
   const [minNoticeMinutes, setMinNoticeMinutes] = useState(60);
@@ -70,12 +79,14 @@ export default function PublicBookingSettingsPage() {
   const load = useCallback(async (): Promise<LoadResult> => {
     setLoading(true);
     try {
-      const [settingsResult, profileResult] = await Promise.all([
+      const [settingsResult, profileResult, informationResult] = await Promise.all([
         api<SettingsPayload>('/api/public/settings'),
         api<ProfilePayload>('/api/public/profile'),
+        api<{ information: PublicInformation }>('/api/public/profile/information'),
       ]);
       setData(settingsResult);
       setProfile(profileResult.profile);
+      setInformation(informationResult.information);
       setEnabled(settingsResult.settings.enabled);
       setStepMinutes(settingsResult.settings.step_minutes);
       setMinNoticeMinutes(settingsResult.settings.min_notice_minutes);
@@ -87,6 +98,7 @@ export default function PublicBookingSettingsPage() {
       setNotice(message);
       setData(null);
       setProfile(null);
+      setInformation(null);
       return { ok: false, message };
     } finally {
       setLoading(false);
@@ -139,6 +151,30 @@ export default function PublicBookingSettingsPage() {
       setNotice('Salon profili kaydedildi.');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Salon profili kaydedilemedi.');
+    } finally { setBusy(false); }
+  }
+
+  async function saveInformation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!information) return;
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    setNotice('');
+    try {
+      const result = await api<{ information: PublicInformation }>('/api/public/profile/information', {
+        method: 'PUT',
+        body: JSON.stringify({
+          kvkkNoticeText: String(form.get('kvkkNoticeText') ?? ''),
+          kvkkNoticeUrl: String(form.get('kvkkNoticeUrl') ?? ''),
+          privacyPolicyUrl: String(form.get('privacyPolicyUrl') ?? ''),
+          bookingTermsText: String(form.get('bookingTermsText') ?? ''),
+          bookingTermsUrl: String(form.get('bookingTermsUrl') ?? ''),
+        }),
+      });
+      setInformation(result.information);
+      setNotice('Rezervasyon bilgilendirmeleri kaydedildi.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Rezervasyon bilgilendirmeleri kaydedilemedi.');
     } finally { setBusy(false); }
   }
 
@@ -200,7 +236,7 @@ export default function PublicBookingSettingsPage() {
   }
 
   if (loading) return <main className="public-settings-page"><section className="public-admin-card"><p>Online randevu ayarları hazırlanıyor…</p></section></main>;
-  if (!data || !profile) return <main className="public-settings-page"><section className="public-admin-card"><h1>Çalışma alanı açılamadı.</h1><p className="muted">Aktif işletmeyi seçip tekrar deneyin.</p>{notice && <p className="public-inline-notice" role="status">{notice}</p>}<button type="button" className="public-primary" onClick={() => void load()}>Tekrar yükle</button></section></main>;
+  if (!data || !profile || !information) return <main className="public-settings-page"><section className="public-admin-card"><h1>Çalışma alanı açılamadı.</h1><p className="muted">Aktif işletmeyi seçip tekrar deneyin.</p>{notice && <p className="public-inline-notice" role="status">{notice}</p>}<button type="button" className="public-primary" onClick={() => void load()}>Tekrar yükle</button></section></main>;
 
   return <main className="public-settings-page">
     <header className="public-admin-hero"><div><p className="eyebrow">ONLINE RANDEVU</p><h1>Salon profiliniz ve randevu bağlantınız</h1><p className="muted">{data.business.name} · {data.business.timezone}</p></div><span className={`public-state ${enabled ? 'is-on' : 'is-off'}`}>{enabled ? 'Aktif' : 'Kapalı'}</span></header>
@@ -216,6 +252,19 @@ export default function PublicBookingSettingsPage() {
           <label><span>Adres</span><textarea name="addressText" defaultValue={profile.address_text ?? ''} maxLength={500} rows={3} disabled={!canManage || busy} /></label>
           <label className="public-toggle-row"><span><strong>Çalışma saatlerini göster</strong><small>Kurulumda tanımladığınız salon saatleri müşterilere görünür.</small></span><input name="showWorkHours" type="checkbox" defaultChecked={profile.show_work_hours} disabled={!canManage || busy} /></label>
           {canManage && <button className="public-primary" disabled={busy}>Profili kaydet</button>}
+        </form>
+      </article>
+
+      <article className="public-admin-card span-two">
+        <div className="section-head"><h2>Bilgilendirme ve koşullar</h2><span>İşletmenin yayınladığı içerik</span></div>
+        <p className="muted">Randevu Kolay bu alanların metnini üretmez. İşletmenizin yayınlamayı onayladığı aydınlatma, gizlilik ve randevu koşullarını girin. Yeni müşteri rezervasyonu için aydınlatma metni veya HTTPS bağlantısı, HTTPS gizlilik bağlantısı ve randevu koşulları metni gerekir.</p>
+        <form className="public-settings-form" onSubmit={saveInformation}>
+          <label><span>Aydınlatma / KVKK metni <small>(metin veya bağlantı gerekli)</small></span><textarea name="kvkkNoticeText" defaultValue={information.kvkk_notice_text ?? ''} maxLength={12000} rows={8} disabled={!canManage || busy} /></label>
+          <label><span>Aydınlatma / KVKK bağlantısı <small>(HTTPS)</small></span><input name="kvkkNoticeUrl" type="url" placeholder="https://" defaultValue={information.kvkk_notice_url ?? ''} maxLength={1000} disabled={!canManage || busy} /></label>
+          <label><span>Gizlilik politikası bağlantısı <small>(yayın için zorunlu, HTTPS)</small></span><input name="privacyPolicyUrl" type="url" placeholder="https://" defaultValue={information.privacy_policy_url ?? ''} maxLength={1000} disabled={!canManage || busy} /></label>
+          <label><span>Randevu / iptal / değişiklik koşulları <small>(yayın için zorunlu)</small></span><textarea name="bookingTermsText" defaultValue={information.booking_terms_text ?? ''} maxLength={8000} rows={7} disabled={!canManage || busy} /></label>
+          <label><span>Ayrıntılı randevu koşulları bağlantısı <small>(isteğe bağlı, HTTPS)</small></span><input name="bookingTermsUrl" type="url" placeholder="https://" defaultValue={information.booking_terms_url ?? ''} maxLength={1000} disabled={!canManage || busy} /></label>
+          {canManage && <button className="public-primary" disabled={busy}>Bilgilendirmeleri kaydet</button>}
         </form>
       </article>
 
