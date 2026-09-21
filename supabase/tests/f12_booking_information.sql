@@ -109,15 +109,17 @@ declare
   v_managed record;
 begin
   select appointment_id into v_id
-  from public.create_public_appointment(
+  from public.create_public_appointment_with_recovery(
     'f12-info-salon','f12-info-create-0001','Bilgi Müşteri',
     'f1253000-0000-4000-8000-000000000001','f1254000-0000-4000-8000-000000000001',
-    v_start,'05550001122',null,null
+    v_start,
+    encode(digest(v_token,'sha256'),'hex'),
+    'f1257000-0000-4000-8000-000000000001',
+    repeat('a',64),
+    repeat('b',64),repeat('c',16),1::smallint,
+    '05550001122',null,null
   );
   if v_id is null then raise exception 'F12 information fixture booking missing'; end if;
-  if not public.provision_public_management_token(v_id,'f12-info-create-0001',v_token) then
-    raise exception 'F12 information management capability missing';
-  end if;
   select * into strict v_managed from public.get_public_managed_appointment(v_token);
   if v_managed.support_slug<>'f12-info-salon'
      or v_managed.support_phone<>'+905550001122'
