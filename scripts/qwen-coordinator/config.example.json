@@ -20,7 +20,7 @@
   "janitorRetrySeconds": 300,
   "janitorTimeoutSeconds": 30,
   "janitorPromptVersion": 1,
-  "janitorRecentMergedPullRequests": 30,
+  "janitorRecentMergedPullRequests": 20,
   "maxOpenPullRequests": 20,
   "maxTaskRows": 200,
   "coordinationIssueNumber": 65,
