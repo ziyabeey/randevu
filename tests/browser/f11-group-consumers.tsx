@@ -12,6 +12,7 @@ type Control = {
   calendarReservationCount(): string;
   calendarEventCount(): number;
   calendarListRows(): string[];
+  calendarStaffColors(): string[];
   setCalendarDate(value: string): boolean;
   selectCalendarStaff(name: string): boolean;
   clickCalendarEvent(text: string): boolean;
@@ -55,6 +56,8 @@ window.__f1103c = {
   calendarEventCount: () => document.querySelectorAll('.calendar-event, .calendar-week-event, .calendar-list-event').length,
   calendarListRows: () => [...document.querySelectorAll<HTMLElement>('.calendar-list-event')]
     .map((item) => item.innerText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()),
+  calendarStaffColors: () => [...document.querySelectorAll<HTMLElement>('.calendar-staff-head')]
+    .map((item) => getComputedStyle(item).borderTopColor),
   setCalendarDate: (value) => {
     const input = document.querySelector<HTMLInputElement>('.calendar-date-filter input');
     if (!input) return false;
