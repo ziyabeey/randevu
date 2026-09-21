@@ -250,6 +250,11 @@ if (params.get('mode') === 'ui') {
       businessName: 'Browser Recovery Salon',
       phone: '+905550007070',
       email: 'destek@recovery.example.test',
+      kvkkNoticeText: 'S07 Chrome fixture işletmesinin yayınladığı test aydınlatma metni.',
+      kvkkNoticeUrl: 'https://recovery.example.test/kvkk',
+      privacyPolicyUrl: 'https://recovery.example.test/privacy',
+      bookingTermsText: 'S07 Chrome fixture işletmesinin yayınladığı test randevu koşulları.',
+      bookingTermsUrl: 'https://recovery.example.test/terms',
     },
   }));
 }
