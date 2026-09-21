@@ -86,7 +86,7 @@ select * from public.update_business_public_profile(
   '+905550001122','İstanbul',true,null
 );
 
-do $
+do $$
 declare r record;
 begin
   select * into r from public.get_business_onboarding_readiness('f1251000-0000-4000-8000-000000000001');
@@ -101,7 +101,7 @@ begin
     if position('PUBLIC_BOOKING_NOT_READY' in sqlerrm)=0 then raise; end if;
   end;
 end
-$;
+$$;
 
 select * from public.update_business_public_information(
   'f1251000-0000-4000-8000-000000000001',
