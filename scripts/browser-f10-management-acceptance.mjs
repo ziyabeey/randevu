@@ -896,12 +896,12 @@ export async function runManagementAcceptance(options = {}) {
     }
 
     await navigate(pageA, '/app/setup');
-    await waitText(pageA, 'Önce giriş yapın');
+    await waitText(pageA, 'Çalışma alanına girin');
     const expiredSetupText = await bodyText(pageA);
     assert.ok(!expiredSetupText.includes('Salon B Hizmeti'));
 
     await reload(pageB);
-    await waitText(pageB, 'Ekip alanı açılamadı');
+    await waitText(pageB, 'Çalışma alanına girin');
     const expiredTeamText = await bodyText(pageB);
     assert.ok(!expiredTeamText.includes('Davet oluştur'));
     assert.ok(!expiredTeamText.includes('Salon B Çalışanı'));
