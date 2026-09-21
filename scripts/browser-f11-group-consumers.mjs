@@ -310,6 +310,9 @@ try {
   await uiContains(page, 'Native Customer');
   assert.equal(await call(page, 'calendarReservationCount'), '2');
   assert.equal(await call(page, 'calendarEventCount'), 3, 'line geometry was lost');
+  const staffColors = await call(page, 'calendarStaffColors');
+  assert.equal(staffColors.length, 2);
+  assert.equal(new Set(staffColors).size, 2, 'staff columns lost distinct person colors');
 
   assert.equal(await call(page, 'click', 'Liste'), true);
   await waitFor(async () => (await call(page, 'calendarListRows')).length === 2, 'one-day list did not collapse physical lines into logical reservations');
