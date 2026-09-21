@@ -714,7 +714,7 @@ export default function CalendarPage() {
               </div>
             ) : null}
 
-            <a className="calendar-secondary-link" href="/bookings">Gelişmiş randevu işlemlerine git</a>
+            <button className="calendar-secondary-link" type="button" onClick={() => navigateApp("/app/bookings")}>Gelişmiş randevu işlemlerine git</button>
           </aside>
         </div>
       )}
