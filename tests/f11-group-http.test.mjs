@@ -223,6 +223,44 @@ await test('F11-02 public group slots use execute_public_operation only', async 
   }
 });
 
+await test('F12-05 public group create stops before mutation when published information is incomplete', async () => {
+  const recoveryId = '70000000-0000-4000-8000-000000000013';
+  const recoverySecret = canonicalSecret(6);
+  const managementToken = canonicalSecret(7);
+  const intent = await derivePublicBookingIntentV2(recoveryId, Math.floor(Date.now() / 1000) + 120, recoverySecret);
+  assert.ok(intent);
+  const realFetch = globalThis.fetch;
+  const actions = [];
+  globalThis.fetch = async (_input, init) => {
+    const wire = JSON.parse(String(init?.body ?? '{}'));
+    actions.push(wire.p_action);
+    if (wire.p_action === 'profile') {
+      return json({ ok: true, data: [{ ...publishedInformation, booking_terms_text: null }] });
+    }
+    throw new Error(`unexpected mutation after information gate: ${wire.p_action}`);
+  };
+  try {
+    const response = await app.request('http://localhost/api/public/business/test-salon/group-book', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': intent.idempotencyKey, 'CF-Connecting-IP': '203.0.113.12' },
+      body: JSON.stringify({
+        customerName: 'Deniz',
+        customerPhone: '05551112233',
+        startsAt: '2026-09-20T07:00:00Z',
+        lines: lines(),
+        recoveryId,
+        recoverySecret,
+        managementToken,
+      }),
+    }, env);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error?.code, 'PUBLIC_INFORMATION_REQUIRED');
+    assert.deepEqual(actions, ['profile']);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 await test('F11-02 public group create uses guarded v2 recovery and canonical replay', async () => {
   const recoveryId = '70000000-0000-4000-8000-000000000011';
   const recoverySecret = canonicalSecret(2);
