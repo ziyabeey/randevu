@@ -358,6 +358,11 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
   const abuse = await resolvePublicAbuseIdentity(context);
   if (!abuse) return context.json(publicGateUnavailableBody(), 503);
 
+  const encrypted = await encryptManagementToken(context.env, managementToken, recoveryId);
+  if (!encrypted) {
+    return context.json({ error: { code: 'BOOKING_RECOVERY_UNAVAILABLE', message: 'Rezervasyon güvenli olarak hazırlanamadı. Lütfen tekrar deneyin.' } }, 503);
+  }
+
   const information = await publicOperation<PublicBookingInformationProjection[]>(context.env, 'profile', { p_slug: slug }, abuse);
   if (!information.ok) {
     return errorResponse(context, rpcError(information.data, 'Rezervasyon bilgilendirmeleri şu anda doğrulanamıyor.'));
@@ -368,11 +373,6 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
   }
   if (!hasRequiredPublicBookingInformation(informationProfile)) {
     return context.json({ error: { code: 'PUBLIC_INFORMATION_REQUIRED', message: 'İşletme rezervasyon bilgilendirmelerini henüz tamamlamadı.' } }, 409);
-  }
-
-  const encrypted = await encryptManagementToken(context.env, managementToken, recoveryId);
-  if (!encrypted) {
-    return context.json({ error: { code: 'BOOKING_RECOVERY_UNAVAILABLE', message: 'Rezervasyon güvenli olarak hazırlanamadı. Lütfen tekrar deneyin.' } }, 503);
   }
 
   const [managementTokenHash, recoverySecretHash] = await Promise.all([
