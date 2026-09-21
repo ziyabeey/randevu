@@ -70,7 +70,12 @@ insert into public.public_booking_settings(
 ) values(
   'f12c1000-0000-4000-8000-000000000001',
   false,15,0,30
-);
+)
+on conflict (business_id) do update
+set enabled=excluded.enabled,
+    step_minutes=excluded.step_minutes,
+    min_notice_minutes=excluded.min_notice_minutes,
+    horizon_days=excluded.horizon_days;
 
 do $$
 declare
