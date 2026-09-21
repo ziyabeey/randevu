@@ -252,7 +252,7 @@ query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$mergedLimit:
     recentMergedPullRequests: pullRequests(first:$mergedLimit,states:[MERGED],orderBy:{field:UPDATED_AT,direction:DESC}){
       nodes{
         number title url createdAt updatedAt mergedAt
-        files(first:100){totalCount pageInfo{hasNextPage} nodes{path additions deletions changeType}}
+        files(first:20){totalCount pageInfo{hasNextPage} nodes{path additions deletions changeType}}
       }
     }
     issue(number:$coordinationIssue){
@@ -370,7 +370,7 @@ async function fetchSnapshot(config, token) {
         owner,
         name,
         limit: config.maxOpenPullRequests,
-        mergedLimit: config.janitorRecentMergedPullRequests ?? 30,
+        mergedLimit: config.janitorRecentMergedPullRequests ?? 20,
         coordinationIssue: config.coordinationIssueNumber,
         tasksExpression: `${config.defaultBranch}:TASKS.md`,
       },
