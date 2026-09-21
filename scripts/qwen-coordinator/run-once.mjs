@@ -249,7 +249,7 @@ query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$mergedLimit:
         }}}
       }
     }
-    recentMergedPullRequests: pullRequests(first:$mergedLimit,states:MERGED,orderBy:{field:UPDATED_AT,direction:DESC}){
+    recentMergedPullRequests: pullRequests(first:$mergedLimit,states:[MERGED],orderBy:{field:UPDATED_AT,direction:DESC}){
       nodes{
         number title url createdAt updatedAt mergedAt
         files(first:100){totalCount pageInfo{hasNextPage} nodes{path additions deletions changeType}}
@@ -385,7 +385,7 @@ async function fetchSnapshot(config, token) {
   const taskSnapshot = parseTasksSnapshot(taskSource, config.maxTaskRows);
   const mainRollup = repository.defaultBranchRef.target.statusCheckRollup ?? null;
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     available: true,
     complete: repository.pullRequests?.pageInfo?.hasNextPage !== true
       && repository.taskBlob?.isTruncated !== true
@@ -420,15 +420,15 @@ async function gatherRemote(config, previousState, options = {}) {
   const pollSeconds = githubPollIntervalSeconds(previousState, config);
   const due = options.force === true
     || !previous
-    || previous.schemaVersion !== 3
+    || previous.schemaVersion !== 4
     || Date.now() - lastFetchMs >= pollSeconds * 1000;
   if (!due) return { ...previous, refreshed: false };
   const token = getGithubToken();
   try {
     return await fetchSnapshot(config, token);
   } catch (error) {
-    const fallback = previous?.schemaVersion === 3 ? previous : {
-      schemaVersion: 3,
+    const fallback = previous?.schemaVersion === 4 ? previous : {
+      schemaVersion: 4,
       pulls: [],
       recentMergedPulls: [],
       tasks: [],
