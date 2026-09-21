@@ -440,6 +440,7 @@ try {
     desktopMenu: getComputedStyle(document.querySelector('.workspace-panel-nav')).display,
     overflow: document.documentElement.scrollWidth - window.innerWidth,
     scrollable: document.documentElement.scrollHeight > window.innerHeight,
+    navLabels: [...document.querySelectorAll('.workspace-mobile-nav a')].map((node) => node.textContent?.trim() ?? ''),
     body: document.body.innerText,
   }))()`);
   assert.equal(mobile.path, '/app');
@@ -449,10 +450,9 @@ try {
   assert.equal(mobile.desktopMenu, 'none', 'desktop panel nav leaked into narrow viewport');
   assert.ok(mobile.overflow <= 1, `workspace overflowed narrow viewport by ${mobile.overflow}px`);
   assert.equal(mobile.scrollable, true, 'long mobile list is not vertically scrollable');
-  assert.match(mobile.body, /Takvim/);
-  assert.match(mobile.body, /Müşteriler/);
-  assert.match(mobile.body, /Hizmetler/);
-  assert.match(mobile.body, /Ekip/);
+  for (const label of ['Takvim', 'Müşteriler', 'Hizmetler', 'Ekip']) {
+    assert.ok(mobile.navLabels.includes(label), `mobile workspace navigation is missing ${label}: ${JSON.stringify(mobile.navLabels)}`);
+  }
   assert.doesNotMatch(mobile.body, /YÖNETİM ÖZETİ|PROMOSYON/i);
 
   await page.evaluate(`document.activeElement instanceof HTMLElement && document.activeElement.blur()`);
