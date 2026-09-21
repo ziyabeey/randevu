@@ -1255,6 +1255,27 @@
           "file": "supabase/tests/f13_booking_date_range.sql"
         }
       ]
+    },
+    {
+      "name": "Verify F13-03 native group lifecycle",
+      "steps": [
+        {
+          "database": "yzt_test",
+          "file": "supabase/migrations/20260921023000_f13_group_lifecycle.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/f13_group_lifecycle.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/migrations/20260921023000_f13_group_lifecycle.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f13_group_lifecycle.sql"
+        }
+      ]
     }
   ]
 }
