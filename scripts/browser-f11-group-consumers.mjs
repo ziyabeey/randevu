@@ -508,7 +508,7 @@ try {
   await waitFor(async () => (await call(page, 'detailText')).includes('Fotoğraf F16-03'), 'detail surface did not expose the future photo connection point');
   const detail = await call(page, 'detailText');
   assert.ok(detail.includes('Adisyon F14') && detail.includes('Renk') && detail.includes('Kesim') && detail.includes('Planlandı'));
-  assert.equal(await call(page, 'click', 'Onayla'), true);
+  assert.equal(await call(page, 'clickDetailButton', 'Onayla'), true);
   await waitFor(() => requestsTo(`/api/bookings/groups/${NATIVE_GROUP}/status`).length === statusBefore + 1, 'native detail status did not use group lifecycle endpoint');
   const statusRequest = requestsTo(`/api/bookings/groups/${NATIVE_GROUP}/status`).at(-1);
   assert.deepEqual(statusRequest.body, { expectedVersion: 7, status: 'confirmed' });
