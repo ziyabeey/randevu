@@ -55,6 +55,18 @@ export default function BrowserWorkspaceProvider({ children }: { children: React
   }, [activeMembership, refreshSession, scopeEpoch, selectBusiness, session]);
 
   if (error) return <main role="alert">{error}</main>;
-  if (!session || !value) return <main aria-busy="true">Browser workspace hazırlanıyor…</main>;
+  if (!session) return <main aria-busy="true">İşletme ayarları hazırlanıyor…</main>;
+  if (!session.user) return <main><h1>Önce giriş yapın</h1></main>;
+  if (session.passwordRecovery) {
+    return (
+      <main>
+        <h1>Önce yeni parolanızı belirleyin</h1>
+        <p>Parolanızı güncelledikten sonra işletme alanını yeniden açın.</p>
+      </main>
+    );
+  }
+  if (!value) {
+    return <main><h1>Önce çalışma alanını seçin.</h1></main>;
+  }
   return <WorkspaceProvider value={value}>{children}</WorkspaceProvider>;
 }
