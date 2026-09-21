@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
+import { useWorkspace } from './workspace-context';
 
 type Role = 'owner' | 'manager' | 'staff';
 type Business = { id: string; name: string; slug: string; timezone: string };
@@ -10,12 +11,6 @@ type Membership = {
   role: Role;
   active: boolean;
   businesses: Business | null;
-};
-type Session = {
-  user: null | { id: string; email: string | null; fullName: string | null };
-  memberships: Membership[];
-  activeBusinessId: string | null;
-  passwordRecovery: boolean;
 };
 type Customer = {
   customer_id: string;
@@ -89,7 +84,7 @@ function bookingEstimate(booking: CustomerBookingGroup) {
 }
 
 export default function CustomersPage() {
-  const [session, setSession] = useState<Session | null>(null);
+  const { session, activeMembership, activeBusinessId, scopeEpoch, selectBusiness } = useWorkspace();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerPage, setCustomerPage] = useState<PageInfo | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -105,7 +100,6 @@ export default function CustomersPage() {
   const [historyError, setHistoryError] = useState('');
   const listController = useRef<AbortController | null>(null);
   const historyController = useRef<AbortController | null>(null);
-  const pageController = useRef<AbortController | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const listGeneration = useRef(0);
   const historyGeneration = useRef(0);
@@ -114,11 +108,6 @@ export default function CustomersPage() {
   const selected = useMemo(
     () => customers.find((customer) => customer.customer_id === selectedId) ?? null,
     [customers, selectedId],
-  );
-
-  const activeMembership = useMemo(
-    () => session?.memberships.find((membership) => membership.business_id === session.activeBusinessId) ?? null,
-    [session],
   );
 
   const setSelectedCustomerId = useCallback((customerId: string | null) => {
@@ -150,6 +139,9 @@ export default function CustomersPage() {
     try {
       const result = await api<CustomerListResponse>(`/api/customers?${params}`, { signal: controller.signal });
       if (controller.signal.aborted || generation !== listGeneration.current || tenant !== tenantGeneration.current) return;
+      if (result.membership.business_id !== activeBusinessId) {
+        throw new Error('Müşteri kayıtları güncel işletme bağlamıyla eşleşmiyor.');
+      }
       setCustomers((current) => append ? [...current, ...result.customers] : result.customers);
       setCustomerPage(result.page);
       if (!append) {
@@ -175,7 +167,7 @@ export default function CustomersPage() {
         setListState('error');
       }
     }
-  }, [setSelectedCustomerId]);
+  }, [activeBusinessId, setSelectedCustomerId]);
 
   const loadHistory = useCallback(async (customerId: string, cursor: string | null = null, append = false) => {
     historyController.current?.abort();
@@ -210,32 +202,24 @@ export default function CustomersPage() {
   }, []);
 
   const loadPage = useCallback(async () => {
-    pageController.current?.abort();
-    const controller = new AbortController();
-    pageController.current = controller;
     setLoading(true);
+    cancelBusinessScopedReads();
     try {
-      const nextSession = await api<Session>('/api/session', { signal: controller.signal });
-      if (controller.signal.aborted) return;
-      setSession(nextSession);
-      if (nextSession.user && nextSession.activeBusinessId && !nextSession.passwordRecovery) {
-        await loadCustomers('', null, false);
-      }
+      await loadCustomers('', null, false);
     } catch (error) {
-      if (!controller.signal.aborted) setNotice(message(error, 'Müşteri çalışma alanı yüklenemedi.'));
+      setNotice(message(error, 'Müşteri çalışma alanı yüklenemedi.'));
     } finally {
-      if (!controller.signal.aborted) setLoading(false);
+      setLoading(false);
     }
-  }, [loadCustomers]);
+  }, [cancelBusinessScopedReads, loadCustomers]);
 
   useEffect(() => {
     void loadPage();
     return () => {
-      pageController.current?.abort();
       listController.current?.abort();
       historyController.current?.abort();
     };
-  }, [loadPage]);
+  }, [loadPage, scopeEpoch]);
 
   async function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -249,9 +233,7 @@ export default function CustomersPage() {
   }
 
   async function switchBusiness(businessId: string) {
-    if (businessId === session?.activeBusinessId) return;
-    setBusy(true);
-    setNotice('');
+    if (businessId === activeBusinessId) return;
     cancelBusinessScopedReads();
     setCustomers([]);
     setCustomerPage(null);
@@ -262,17 +244,7 @@ export default function CustomersPage() {
     setHistoryPage(null);
     setHistoryState('idle');
     setHistoryError('');
-    try {
-      await api('/api/businesses/select', {
-        method: 'POST',
-        body: JSON.stringify({ businessId }),
-      });
-      window.location.assign('/customers');
-    } catch (error) {
-      setNotice(message(error, 'İşletme değiştirilemedi.'));
-      setBusy(false);
-      window.location.assign('/customers');
-    }
+    await selectBusiness(businessId);
   }
 
   async function createCustomer(event: FormEvent<HTMLFormElement>) {
@@ -348,18 +320,18 @@ export default function CustomersPage() {
   }
 
   if (!session?.user) {
-    return <main className="customers-shell"><section className="customers-card"><h1>Önce giriş yapın</h1><p>Müşteri kayıtları işletme hesabına özeldir.</p><a href="/">Giriş ekranına dön</a></section></main>;
+    return <main className="customers-shell"><section className="customers-card"><h1>Önce giriş yapın</h1><p>Müşteri kayıtları işletme hesabına özeldir.</p><a href="/app">Giriş ekranına dön</a></section></main>;
   }
 
   if (session.passwordRecovery) {
-    return <main className="customers-shell"><section className="customers-card"><h1>Önce yeni parolanızı belirleyin</h1><p>Müşteri verileri parola kurtarma oturumunda kapalıdır.</p><a href="/account">Parolayı güncelle</a></section></main>;
+    return <main className="customers-shell"><section className="customers-card"><h1>Önce yeni parolanızı belirleyin</h1><p>Müşteri verileri parola kurtarma oturumunda kapalıdır.</p><a href="/app">Parolayı güncelle</a></section></main>;
   }
 
   return (
     <main className="customers-shell">
       <header className="customers-hero">
         <div><p className="customers-eyebrow">MÜŞTERİLER</p><h1>İşletme müşteri kayıtları</h1><p>İletişim bilgilerini yönetin, geçmiş rezervasyonları grup snapshotlarıyla inceleyin.</p></div>
-        <a href="/">Çalışma alanına dön</a>
+        <a href="/app">Çalışma alanına dön</a>
       </header>
 
       {notice && <div className="customers-notice" role="status">{notice}</div>}
@@ -371,16 +343,16 @@ export default function CustomersPage() {
             <button
               key={membership.id}
               type="button"
-              disabled={busy || membership.business_id === session.activeBusinessId}
+              disabled={busy || membership.business_id === activeBusinessId}
               onClick={() => void switchBusiness(membership.business_id)}
             >
-              {membership.businesses?.name ?? 'İşletme'}{membership.business_id === session.activeBusinessId ? ' · seçili' : ''}
+              {membership.businesses?.name ?? 'İşletme'}{membership.business_id === activeBusinessId ? ' · seçili' : ''}
             </button>
           ))}
         </div>
       </section>
 
-      {!session.activeBusinessId ? (
+      {!activeBusinessId ? (
         <section className="customers-card"><h2>İşletme seçimi gerekli</h2><p>Müşteri kayıtlarını açmak için önce yetkili olduğunuz bir işletmeyi seçin.</p></section>
       ) : (
         <div className="customers-layout">
