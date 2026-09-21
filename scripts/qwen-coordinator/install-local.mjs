@@ -83,7 +83,7 @@ function main() {
     mkdirSync(path.join(coordinatorHome, directory), { recursive: true });
   }
 
-  for (const file of ['policy.mjs', 'depot.mjs', 'lease.mjs', 'run-once.mjs', 'depot-full-ci.yml']) {
+  for (const file of ['policy.mjs', 'depot.mjs', 'lease.mjs', 'janitor.mjs', 'run-once.mjs', 'depot-full-ci.yml']) {
     copyFileSync(path.join(sourceRoot, file), path.join(coordinatorHome, file));
   }
 
