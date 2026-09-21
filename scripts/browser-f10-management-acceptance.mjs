@@ -605,6 +605,15 @@ export async function runManagementAcceptance(options = {}) {
     }
 
     async function selectWorkspaceBusiness(page, businessId, businessName) {
+      await waitFor(
+        () => page.evaluate(`(() => {
+          const select = document.querySelector('select[aria-label="Aktif işletme"]');
+          if (!(select instanceof HTMLSelectElement)) return false;
+          const option = [...select.options].find((item) => item.value === ${JSON.stringify(businessId)});
+          return Boolean(option && option.textContent?.trim() === ${JSON.stringify(businessName)});
+        })()`),
+        `workspace business ${businessName} option did not render`,
+      );
       const selected = await page.evaluate(`(() => {
         const select = document.querySelector('select[aria-label="Aktif işletme"]');
         if (!(select instanceof HTMLSelectElement)) return false;
