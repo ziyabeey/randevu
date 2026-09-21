@@ -8,6 +8,7 @@ import {
   type AuthEnv,
 } from './auth.ts';
 import { publicOperation } from './public-rpc.ts';
+import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';
 import {
   publicGateUnavailableBody,
   publicRateLimitedBody,
@@ -344,6 +345,19 @@ groups.post('/public/business/:slug/group-book', async (context) => {
 
   const abuse = await resolvePublicAbuseIdentity(context);
   if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+
+  const information = await publicOperation<PublicBookingInformationProjection[]>(context.env, 'profile', { p_slug: slug }, abuse);
+  if (!information.ok) {
+    return publicErrorResponse(context, publicFailure(information.data, 'Rezervasyon bilgilendirmeleri şu anda doğrulanamıyor.'));
+  }
+  const informationProfile = information.data?.[0];
+  if (!informationProfile) {
+    return context.json({ error: { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.' } }, 404);
+  }
+  if (!hasRequiredPublicBookingInformation(informationProfile)) {
+    return context.json({ error: { code: 'PUBLIC_INFORMATION_REQUIRED', message: 'İşletme rezervasyon bilgilendirmelerini henüz tamamlamadı.' } }, 409);
+  }
+
   const encrypted = await encryptManagementToken(context.env, managementToken, recoveryId);
   if (!encrypted) {
     return context.json({ error: { code: 'BOOKING_RECOVERY_UNAVAILABLE', message: 'Rezervasyon güvenli olarak hazırlanamadı.' } }, 503);
