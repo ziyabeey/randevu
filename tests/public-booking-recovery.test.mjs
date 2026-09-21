@@ -92,6 +92,28 @@ test('F09-02 booking recovery HTTP contract under F09-04 guard', async (t) => {
     assert.equal(calls, 0);
   });
 
+  await t.test('missing business-published information blocks create before the booking RPC', async () => {
+    const actions = [];
+    globalThis.fetch = async (_input, init) => {
+      const wire = JSON.parse(String(init?.body ?? '{}'));
+      actions.push(wire.p_action);
+      if (wire.p_action === 'profile') {
+        return json([{ ...publishedInformation, privacy_policy_url: null }]);
+      }
+      throw new Error(`unexpected mutation after information gate: ${wire.p_action}`);
+    };
+
+    const response = await post(
+      '/business/recovery-test/book',
+      bookingBody,
+      env,
+      { 'Idempotency-Key': idempotencyKey },
+    );
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error.code, 'PUBLIC_INFORMATION_REQUIRED');
+    assert.deepEqual(actions, ['profile']);
+  });
+
   await t.test('atomic booking request sends only hashes/ciphertext plus server gate proof to Supabase', async () => {
     globalThis.fetch = async (input, init) => {
       const url = String(input);
