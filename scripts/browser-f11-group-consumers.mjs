@@ -32,6 +32,12 @@ const STAFF_1 = '84000000-0000-4000-8000-000000000001';
 const STAFF_2 = '84000000-0000-4000-8000-000000000002';
 const CSRF = 'R'.repeat(43);
 
+function addDateDays(value, amount) {
+  const date = new Date(`${value}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
 async function waitFor(read, message, timeoutMs = 7_000) {
   const deadline = Date.now() + timeoutMs;
   let lastError;
@@ -172,10 +178,17 @@ const server = createServer(async (request, response) => {
         calendarRow(legacy.lines[0], legacy, 'Legacy Customer'),
       ];
       const staff = url.searchParams.get('staffId');
+      const requestedDate = url.searchParams.get('date') ?? '2026-09-24';
+      const requestedDays = Number(url.searchParams.get('days') ?? '1');
+      const rangeEnd = addDateDays(requestedDate, requestedDays);
+      const rangedRows = allRows.filter((row) => {
+        const rowDate = row.starts_at.slice(0, 10);
+        return rowDate >= requestedDate && rowDate < rangeEnd;
+      });
       return sendJson(response, 200, {
-        membership, business: membership.businesses, localDate: '2026-09-24', date: '2026-09-24', days: 1,
+        membership, business: membership.businesses, localDate: '2026-09-24', date: requestedDate, days: requestedDays,
         staff: [{ id: STAFF_1, name: 'Ada', active: true }, { id: STAFF_2, name: 'Bora', active: true }],
-        appointments: staff ? allRows.filter((row) => row.staff_id === staff) : allRows,
+        appointments: staff ? rangedRows.filter((row) => row.staff_id === staff) : rangedRows,
       });
     }
     if (url.pathname === '/api/customers' && request.method === 'GET') return sendJson(response, 200, {
@@ -297,6 +310,49 @@ try {
   await uiContains(page, 'Native Customer');
   assert.equal(await call(page, 'calendarReservationCount'), '2');
   assert.equal(await call(page, 'calendarEventCount'), 3, 'line geometry was lost');
+
+  assert.equal(await call(page, 'click', 'Liste'), true);
+  await waitFor(async () => (await call(page, 'calendarListRows')).length === 2, 'one-day list did not collapse physical lines into logical reservations');
+  let listRows = await call(page, 'calendarListRows');
+  assert.equal(listRows.length, 2);
+  const nativeList = listRows.find((row) => row.includes('Native Customer'));
+  assert.ok(nativeList?.includes('Renk + Kesim') && nativeList.includes('Ada') && nativeList.includes('Bora') && nativeList.includes('Planlandı'));
+  let calendarRequest = requestsTo('/api/calendar').at(-1);
+  let calendarQuery = new URLSearchParams(calendarRequest.search);
+  assert.equal(calendarQuery.get('date'), '2026-09-24');
+  assert.equal(calendarQuery.get('days'), '1');
+
+  assert.equal(await call(page, 'click', '7 gün'), true);
+  await waitFor(() => {
+    const request = requestsTo('/api/calendar').at(-1);
+    const query = new URLSearchParams(request.search);
+    return query.get('date') === '2026-09-21' && query.get('days') === '7';
+  }, 'seven-day list range did not normalize to business week');
+  await waitFor(async () => (await call(page, 'calendarListRows')).length === 2, 'seven-day list changed the logical reservation set');
+
+  assert.equal(await call(page, 'click', 'Hafta'), true);
+  await waitFor(async () => (await call(page, 'calendarEventCount')) === 3, 'week view did not preserve physical line geometry');
+  calendarRequest = requestsTo('/api/calendar').at(-1);
+  calendarQuery = new URLSearchParams(calendarRequest.search);
+  assert.equal(calendarQuery.get('date'), '2026-09-21');
+  assert.equal(calendarQuery.get('days'), '7');
+
+  assert.equal(await call(page, 'click', 'Gün'), true);
+  assert.equal(await call(page, 'setCalendarDate', '2026-09-24'), true);
+  await waitFor(async () => (await call(page, 'calendarEventCount')) === 3, 'direct date filter did not restore the selected business day');
+  assert.equal(await call(page, 'setCalendarDate', '2026-09-25'), true);
+  await waitFor(async () => (await call(page, 'calendarEventCount')) === 0, 'direct date filter leaked records from another business day');
+  assert.equal(await call(page, 'click', 'Bugün'), true);
+  await waitFor(async () => (await call(page, 'calendarEventCount')) === 3, 'Today did not restore the business-local day');
+
+  assert.equal(await call(page, 'click', 'Liste'), true);
+  await waitFor(async () => (await call(page, 'calendarListRows')).length === 2, 'list did not restore after Today');
+  assert.equal(await call(page, 'clickCalendarEvent', 'Native Customer'), true);
+  await waitFor(async () => (await call(page, 'calendarDrawerLines')).length === 2, 'list selection lost canonical group detail');
+  passed('calendar day/week/list share range identity and list keeps native groups atomic');
+
+  await navigate(page, `${origin}/calendar`);
+  await uiContains(page, 'Native Customer');
   assert.equal(await call(page, 'clickCalendarEvent', 'Native Customer'), true);
   await waitFor(async () => (await call(page, 'calendarDrawerLines')).length === 2, 'unfiltered group drawer was incomplete');
   let drawer = await call(page, 'calendarDrawerLines');
