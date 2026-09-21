@@ -92,7 +92,7 @@ returns public.public_booking_settings
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   v_row public.public_booking_settings;
   v_publishable boolean;
@@ -142,7 +142,7 @@ begin
 
   return v_row;
 end
-$;
+$$;
 
 revoke all on function public.update_public_booking_settings(uuid,boolean,integer,integer,integer)
   from public, anon, authenticated;
