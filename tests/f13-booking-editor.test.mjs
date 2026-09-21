@@ -58,7 +58,7 @@ test('F13-03 real Chrome acceptance covers multi-service create, stale slots, cl
 
 test('F13-03 production-entry acceptance is wired through the real main route and lazy BookingPage chunk', () => {
   assert.match(productionBrowser, /src\/main\.tsx/);
-  assert.match(productionBrowser, /production \/bookings did not request BookingPage lazy chunk/);
+  assert.match(productionBrowser, /production \/app\/bookings did not request BookingPage lazy chunk/);
   assert.match(productionBrowser, /RANDEVU YÖNETİMİ/);
   assert.match(browserSmoke, /browser-f13-booking-production\.mjs/);
 });
