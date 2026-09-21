@@ -188,7 +188,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','f1250000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 
-do $
+do $$
 begin
   begin
     perform public.update_business_public_information(
@@ -201,10 +201,10 @@ begin
     if position('PUBLIC_INFORMATION_REQUIRED' in sqlerrm)=0 then raise; end if;
   end;
 end
-$;
+$$;
 
 reset role;
-do $
+do $$
 begin
   if has_function_privilege('anon','public.get_public_managed_appointment(text)','EXECUTE')
      or has_function_privilege('authenticated','public.get_public_managed_appointment(text)','EXECUTE')
@@ -217,6 +217,6 @@ begin
     raise exception 'F12 information member RPC grants missing';
   end if;
 end
-$;
+$$;
 
 rollback;
