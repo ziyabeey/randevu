@@ -89,10 +89,26 @@ allowlist'ine; Depot yorumunun GitHub'a yazılması hem capability allowlist'ine
 de `writeActionsEnabled=true` değerine bağlıdır. Otomatik merge en son
 etkinleştirilecek ayrı bir opt-in'dir.
 
+## Repo hijyeni / Janitor
+
+Yerel koordinatör aynı GitHub snapshot'ından düşük maliyetli bir repo-hijyeni
+katmanı da üretir. Son birleşen PR'ların yalnız numara, başlık, zaman ve dosya
+metadata'sı alınır; diff veya tam geçmiş modele taşınmaz.
+
+Janitor deterministik olarak superseded/duplicate docs adaylarını ve code-review
+quota sinyallerini çıkarır. Qwen yalnız candidate fingerprint değiştiğinde ve
+varsayılan olarak en fazla 5 dakikada bir küçük JSON paketini değerlendirir.
+`CLOSE_CANDIDATE` veya `REBASE_CANDIDATE` yalnız rapor önerisidir: Janitor'ın
+PR kapatma, branch güncelleme, merge veya başka GitHub yazma yetkisi yoktur.
+Mevcut config installer tarafından korunursa yeni ayarlar güvenli varsayılanlarla
+çalışır; `janitorEnabled=false` veya `janitorQwenEnabled=false` ile ayrıca
+kapatılabilir.
+
 ## Test
 
 ```bash
 node --check scripts/qwen-coordinator/lease.mjs
+node --check scripts/qwen-coordinator/janitor.mjs
 node --check scripts/qwen-coordinator/run-once.mjs
 node --check scripts/qwen-coordinator/install-local.mjs
 node --test tests/qwen-coordinator-*.test.mjs
