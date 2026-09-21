@@ -101,25 +101,45 @@ $$;
 
 reset role;
 
-do $$
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1250000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+
+do $
 declare
   v_start timestamptz:=((date_trunc('week',current_date)::date+7)+time '10:00') at time zone 'Europe/Istanbul';
-  v_id uuid;
+  v_row public.appointments;
+begin
+  select * into v_row
+  from public.create_appointment(
+    'f1251000-0000-4000-8000-000000000001','f12-info-create-0001','Bilgi Müşteri',
+    'f1253000-0000-4000-8000-000000000001','f1254000-0000-4000-8000-000000000001',
+    v_start,'05550001122',null,null
+  );
+  if v_row.id is null then raise exception 'F12 information fixture booking missing'; end if;
+  perform set_config('f12.info.appointment_id',v_row.id::text,true);
+end
+$;
+
+reset role;
+
+do $
+declare
+  v_id uuid:=current_setting('f12.info.appointment_id')::uuid;
   v_token text:='F12informationSupportToken__________________';
   v_managed record;
 begin
-  select appointment_id into v_id
-  from public.create_public_appointment_with_recovery(
-    'f12-info-salon','f12-info-create-0001','Bilgi Müşteri',
-    'f1253000-0000-4000-8000-000000000001','f1254000-0000-4000-8000-000000000001',
-    v_start,
-    encode(digest(v_token,'sha256'),'hex'),
-    'f1257000-0000-4000-8000-000000000001',
-    repeat('a',64),
-    repeat('b',64),repeat('c',16),1::smallint,
-    '05550001122',null,null
+  update public.appointments
+  set source='public'
+  where business_id='f1251000-0000-4000-8000-000000000001' and id=v_id;
+
+  insert into public.appointment_management_capabilities(appointment_id,business_id,token_hash)
+  values (
+    v_id,
+    'f1251000-0000-4000-8000-000000000001',
+    public.management_token_hash(v_token)
   );
-  if v_id is null then raise exception 'F12 information fixture booking missing'; end if;
+
   select * into strict v_managed from public.get_public_managed_appointment(v_token);
   if v_managed.support_slug<>'f12-info-salon'
      or v_managed.support_phone<>'+905550001122'
@@ -130,7 +150,7 @@ begin
     raise exception 'management view lost public support contact';
   end if;
 end
-$$;
+$;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f1250000-0000-4000-8000-000000000001',true);
