@@ -78,7 +78,7 @@ npm run dev
 | `/setup` | İşletme seçimi ve onboarding |
 | `/team` | Davet, üyelik ve rol yönetimi |
 | `/account` | Hesap/parola akışları |
-| `/calendar` | Gün/hafta takvimi |
+| `/calendar` | Gün/hafta/liste takvimi |
 | `/bookings` | Randevu oluşturma ve taşıma |
 | `/availability` | Mesai, kapanış ve müsaitlik |
 | `/public-booking` | Public rezervasyon ayarları |
