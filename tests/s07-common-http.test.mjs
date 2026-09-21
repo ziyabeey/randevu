@@ -239,7 +239,7 @@ await test('S07 legacy first-create cutover error is mapped without another requ
     },
     body: JSON.stringify({
       customerName: 'Legacy Client',
-      customerPhone: null,
+      customerPhone: '05550000230',
       customerEmail: 'legacy-cutover@example.test',
       notes: null,
       serviceId: '6c000000-0000-4000-8000-000000000230',
