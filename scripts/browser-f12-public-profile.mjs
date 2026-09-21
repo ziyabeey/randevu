@@ -213,8 +213,8 @@ async function inspectViewport(debugUrl, origin, slug, width) {
     await page.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: true });
     await page.send('Page.navigate', { url: `${origin}/harness/${slug}` });
     const readyExpression = slug === 'broken-salon'
-      ? 'document.documentElement.dataset.f12Ready === "true" && document.body.innerText.includes("Fotoğraf yüklenemedi")'
-      : 'document.documentElement.dataset.f12Ready === "true"';
+      ? 'document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav")) && document.body.innerText.includes("Fotoğraf yüklenemedi")'
+      : 'document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav"))';
     await waitFor(() => page.evaluate(readyExpression), `F12 ${width}px harness did not become ready`);
     const result = await page.evaluate(`(() => {
       const root = document.documentElement;
