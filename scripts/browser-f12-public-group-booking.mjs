@@ -153,7 +153,6 @@ function recoveryResponse(saved, recoveryId) {
     },
     group: saved.group,
     notification: { channel: 'email', status: 'queued' },
-    notification: { channel: 'email', status: 'queued' },
     management: { url: `/m#${saved.managementToken}` },
     recovery: { expiresAt: '2026-09-23T07:00:00.000Z' },
   };
@@ -176,6 +175,7 @@ function scalarRecoveryResponse(saved, recoveryId) {
       price_minor: anchor.priceMinMinor,
       currency: saved.group.currency,
     },
+    notification: { channel: 'email', status: 'queued' },
     management: { url: `/m#${saved.managementToken}` },
     recovery: { expiresAt: '2026-09-23T07:00:00.000Z' },
   };
