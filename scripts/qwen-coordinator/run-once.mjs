@@ -37,6 +37,11 @@ import {
   workflowHash,
 } from './depot.mjs';
 import { acquireDirectoryLease, releaseDirectoryLease } from './lease.mjs';
+import {
+  buildJanitorCandidates,
+  janitorFingerprintInput,
+  validateJanitorChoices,
+} from './janitor.mjs';
 
 const root = path.resolve(
   process.env.QWEN_COORDINATOR_HOME
@@ -195,7 +200,7 @@ async function githubJson(url, token, options = {}) {
 }
 
 const PROJECT_QUERY = `
-query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$coordinationIssue:Int!,$tasksExpression:String!){
+query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$mergedLimit:Int!,$coordinationIssue:Int!,$tasksExpression:String!){
   rateLimit{cost remaining resetAt}
   repository(owner:$owner,name:$name){
     defaultBranchRef{
@@ -221,7 +226,7 @@ query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$coordination
     pullRequests(first:$limit,states:OPEN,orderBy:{field:UPDATED_AT,direction:DESC}){
       pageInfo{hasNextPage}
       nodes{
-        id number title isDraft state url updatedAt author{login}
+        id number title isDraft state url createdAt updatedAt author{login}
         baseRefName baseRefOid headRefName headRefOid
         mergeable mergeStateStatus isCrossRepository reviewDecision
         files(first:100){totalCount pageInfo{hasNextPage} nodes{path additions deletions changeType}}
@@ -242,6 +247,12 @@ query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$coordination
             }
           }
         }}}
+      }
+    }
+    recentMergedPullRequests: pullRequests(first:$mergedLimit,states:MERGED,orderBy:{field:UPDATED_AT,direction:DESC}){
+      nodes{
+        number title url createdAt updatedAt mergedAt
+        files(first:100){totalCount pageInfo{hasNextPage} nodes{path additions deletions changeType}}
       }
     }
     issue(number:$coordinationIssue){
@@ -299,6 +310,7 @@ function compactPull(node) {
     draft: node.isDraft === true,
     state: node.state ?? null,
     url: node.url ?? null,
+    createdAt: node.createdAt ?? null,
     updatedAt: node.updatedAt ?? null,
     baseRef: node.baseRefName ?? null,
     baseSha: node.baseRefOid ?? null,
@@ -329,6 +341,25 @@ function compactPull(node) {
   };
 }
 
+function compactMergedPull(node) {
+  return {
+    number: node.number,
+    title: compactText(node.title, 240),
+    url: node.url ?? null,
+    createdAt: node.createdAt ?? null,
+    updatedAt: node.updatedAt ?? null,
+    mergedAt: node.mergedAt ?? null,
+    files: (node.files?.nodes ?? []).map((entry) => ({
+      path: entry.path,
+      additions: entry.additions,
+      deletions: entry.deletions,
+      changeType: entry.changeType,
+    })),
+    filesTruncated: node.files?.pageInfo?.hasNextPage === true,
+    fileCount: node.files?.totalCount ?? 0,
+  };
+}
+
 async function fetchSnapshot(config, token) {
   const [owner, name] = config.repoSlug.split('/');
   const result = await githubJson('https://api.github.com/graphql', token, {
@@ -339,6 +370,7 @@ async function fetchSnapshot(config, token) {
         owner,
         name,
         limit: config.maxOpenPullRequests,
+        mergedLimit: config.janitorRecentMergedPullRequests ?? 30,
         coordinationIssue: config.coordinationIssueNumber,
         tasksExpression: `${config.defaultBranch}:TASKS.md`,
       },
@@ -375,6 +407,7 @@ async function fetchSnapshot(config, token) {
     tasksTruncated: taskSnapshot.truncated,
     taskRowCount: taskSnapshot.totalRows,
     pulls: (repository.pullRequests?.nodes ?? []).map(compactPull),
+    recentMergedPulls: (repository.recentMergedPullRequests?.nodes ?? []).map(compactMergedPull),
     coordinationComments: (repository.issue?.comments?.nodes ?? []).map(compactComment),
     coordinationCommentsTruncated: repository.issue?.comments?.pageInfo?.hasPreviousPage === true,
     errors: taskSnapshot.truncated ? ['TASKS row limit exceeded; snapshot is incomplete'] : [],
@@ -397,6 +430,7 @@ async function gatherRemote(config, previousState, options = {}) {
     const fallback = previous?.schemaVersion === 3 ? previous : {
       schemaVersion: 3,
       pulls: [],
+      recentMergedPulls: [],
       tasks: [],
       coordinationComments: [],
       mainChecks: [],
@@ -831,8 +865,78 @@ async function askQwen(config, decisions) {
   }
 }
 
+async function askJanitorQwen(config, candidates) {
+  const controller = new AbortController();
+  const timeoutSeconds = config.janitorTimeoutSeconds ?? config.qwenTimeoutSeconds ?? 60;
+  const timer = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
+  try {
+    const modelResponse = await fetch(`${config.qwenEndpoint}/v1/models`, { signal: controller.signal });
+    if (!modelResponse.ok) throw new Error(`model endpoint HTTP ${modelResponse.status}`);
+    const models = await modelResponse.json();
+    const model = models.data?.[0]?.id;
+    if (!model) throw new Error('no local model is available');
+    const system = [
+      'Repo hijyeni sınıflandır.',
+      'Her satırın status ve allowedChoices alanı deterministik sınırdır.',
+      'Kanıt icat etme ve allowedChoices dışına çıkma.',
+      'CLOSE_CANDIDATE yalnız superseded/duplicate adaylarında bir insan inceleme önerisidir; hiçbir şeyi kapatmaz.',
+      'REVIEW_CAPACITY kod hatası değildir.',
+      'Yalnız exact PR anahtarlı JSON döndür: {"choices":{"248":"CLOSE_CANDIDATE"}}.',
+    ].join(' ');
+    const rows = candidates.map((item) => ({
+      prNumber: item.prNumber,
+      title: item.title,
+      taskKey: item.taskKey,
+      status: item.status,
+      reason: item.reason,
+      confidence: item.confidence ?? null,
+      allowedChoices: item.allowedChoices,
+      mergedEvidence: item.mergedEvidence
+        ? {
+          prNumber: item.mergedEvidence.prNumber,
+          title: item.mergedEvidence.title,
+          overlapFiles: item.mergedEvidence.overlapFiles,
+        }
+        : null,
+      duplicateEvidence: item.duplicateEvidence ?? null,
+    }));
+    const response = await fetch(`${config.qwenEndpoint}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model,
+        temperature: 0,
+        max_tokens: 240,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: JSON.stringify({ rows }) },
+        ],
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`completion endpoint HTTP ${response.status}: ${(await response.text()).slice(0, 300)}`);
+    }
+    const body = await response.json();
+    const content = body.choices?.[0]?.message?.content;
+    try {
+      return { model, ...validateJanitorChoices(extractJson(content), candidates) };
+    } catch (error) {
+      log('janitor-qwen-invalid-response', { error: error.message, sample: compactText(content, 500) });
+      throw error;
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function modelChoiceFor(qwen, prNumber) {
   return qwen.choices?.find((item) => item.prNumber === prNumber) ?? null;
+}
+
+function janitorChoiceFor(janitor, prNumber) {
+  return janitor?.qwen?.choices?.find((item) => item.prNumber === prNumber) ?? null;
 }
 
 function actionKey(action) {
@@ -1062,6 +1166,7 @@ function compactRemoteForReport(remote, config) {
     tasksCount: remote.tasks?.length ?? 0,
     tasksTruncated: remote.tasksTruncated === true,
     coordinationCommentsTruncated: remote.coordinationCommentsTruncated === true,
+    recentMergedPullsCount: remote.recentMergedPulls?.length ?? 0,
     pulls: (remote.pulls ?? []).map((pr) => ({
       number: pr.number,
       title: pr.title,
@@ -1107,6 +1212,26 @@ function markdownReport(report) {
     lines.push(`| [#${decision.prNumber}](${decision.url}) | ${decision.taskId ?? 'eşleşmedi'} | **${decision.choice} ${decision.label}** | ${qwenChoice} | ${decision.ci.status} | ${decision.depot.status} | ${decision.reason.replaceAll('|', '\\|')} |`);
   }
   if (report.decisions.length === 0) lines.push('| — | — | A WAIT | — | — | — | Açık PR yok. |');
+  lines.push('', '## Repo hijyeni', '');
+  const janitorStatus = report.janitor.qwen.status === 'not-run'
+    ? 'Qwen çağrılmadı'
+    : report.janitor.qwen.available ? report.janitor.qwen.model : 'Qwen unavailable';
+  lines.push(`- Janitor: ${report.janitor.enabled ? 'açık' : 'kapalı'} · ${report.janitor.candidates.length} aday · ${janitorStatus}`);
+  if (report.janitor.candidates.length > 0) {
+    lines.push('', '| PR | Sinyal | Güven | Qwen | Kanıt |', '| --- | --- | --- | --- | --- |');
+    for (const item of report.janitor.candidates) {
+      const advice = janitorChoiceFor(report.janitor, item.prNumber);
+      const qwenAdvice = advice ? advice.choice : '—';
+      const evidence = item.mergedEvidence
+        ? `merged #${item.mergedEvidence.prNumber}: ${item.mergedEvidence.overlapFiles.join(', ')}`
+        : item.duplicateEvidence
+          ? `open #${item.duplicateEvidence.prNumber}`
+          : item.reason;
+      lines.push(`| [#${item.prNumber}](${item.url}) | ${item.status} | ${item.confidence ?? '—'} | ${qwenAdvice} | ${String(evidence).replaceAll('|', '\\|')} |`);
+    }
+  } else {
+    lines.push('- Temizlenecek veya kapasite uyarısı gerektiren aday yok.');
+  }
   lines.push('', '## Aksiyon kuyruğu', '');
   if (report.actionQueue.length === 0) lines.push('- Uygulanabilir, tüm kapıları geçmiş aksiyon yok.');
   for (const action of report.actionQueue) {
@@ -1114,6 +1239,7 @@ function markdownReport(report) {
   }
   lines.push('', '## Güvenlik sınırı', '');
   lines.push('- Qwen kararı danışmadır; deterministik kapıyı yükseltemez.');
+  lines.push('- Janitor yalnız rapor/advisory üretir; PR kapatma veya rebase yetkisi yoktur.');
   lines.push('- Qwen yalnız exact-head GitHub CI ve Depot shadow CI başarıyla bittikten sonra karar-değer kod PR’larında çağrılır.');
   lines.push('- Depot sonucu shadow kanıttır; GitHub `CI gate` yerine geçmez.');
   lines.push('- Merge öncesi GitHub head/base/CI/review/thread kanıtı yeniden okunur.');
@@ -1257,8 +1383,52 @@ async function main() {
       actionQueue = planActions(config, remote, decisions, state);
     }
 
+    const janitorCandidates = buildJanitorCandidates(remote, config);
+    const janitorFingerprint = policyFingerprint(janitorFingerprintInput(
+      janitorCandidates,
+      config.janitorPromptVersion ?? 1,
+    ));
+    const janitorRetrySeconds = config.janitorRetrySeconds ?? 300;
+    const lastJanitorAttemptMs = Date.parse(state.lastJanitorQwenAttemptAt ?? '') || 0;
+    const shouldAskJanitor = config.janitorQwenEnabled !== false
+      && janitorCandidates.length > 0
+      && Date.now() - lastJanitorAttemptMs >= janitorRetrySeconds * 1000
+      && janitorFingerprint !== state.lastJanitorQwenFingerprint;
+    let janitorQwen = {
+      available: false,
+      choices: [],
+      summary: janitorCandidates.length === 0
+        ? 'Repo hygiene candidate yok.'
+        : 'Janitor Qwen fingerprint değişimi veya retry penceresi bekliyor.',
+      advisoryOnly: true,
+      stale: false,
+      status: 'not-run',
+    };
+    if (shouldAskJanitor) {
+      state.lastJanitorQwenAttemptAt = nowIso();
+      try {
+        janitorQwen = { ...await askJanitorQwen(config, janitorCandidates), status: 'complete' };
+        state.lastJanitorQwenFingerprint = janitorFingerprint;
+        state.lastJanitorQwen = janitorQwen;
+      } catch (error) {
+        janitorQwen = {
+          available: false,
+          choices: [],
+          summary: `Janitor Qwen değerlendirmesi alınamadı: ${error.message}`,
+          advisoryOnly: true,
+          stale: false,
+          status: 'error',
+        };
+        log('janitor-qwen-unavailable', { error: error.message });
+      }
+    } else if (janitorCandidates.length > 0
+      && janitorFingerprint === state.lastJanitorQwenFingerprint
+      && state.lastJanitorQwen) {
+      janitorQwen = { ...state.lastJanitorQwen, stale: false };
+    }
+
     const report = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       observedAt: nowIso(),
       fingerprint,
       mode: config.mode,
@@ -1268,6 +1438,13 @@ async function main() {
       remote: compactRemoteForReport(remote, config),
       decisions,
       qwen,
+      janitor: {
+        enabled: config.janitorEnabled !== false,
+        fingerprint: janitorFingerprint,
+        candidates: janitorCandidates,
+        qwen: janitorQwen,
+        writeAuthority: false,
+      },
       depot: {
         enabled: config.depotShadowEnabled === true,
         active: Object.values(state.depotRuns).filter((run) => !isDepotTerminal(run.status) && run.status !== 'start-error').length,
@@ -1299,6 +1476,8 @@ async function main() {
       openPullRequests: decisions.length,
       choices: Object.fromEntries(Object.keys(CHOICES).map((choice) => [choice, decisions.filter((item) => item.choice === choice).length])),
       qwenAvailable: qwen.available,
+      janitorCandidates: janitorCandidates.length,
+      janitorQwenAvailable: janitorQwen.available,
       queuedActions: actionQueue.length,
       executedAction: executedAction?.type ?? null,
     });
