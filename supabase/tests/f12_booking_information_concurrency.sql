@@ -59,10 +59,16 @@ select
   time '09:00',time '18:00',true;
 
 insert into public.business_public_profiles(
-  business_id,public_name,public_phone,public_email,show_work_hours
+  business_id,public_name,public_phone,public_email,show_work_hours,
+  kvkk_notice_text,kvkk_notice_url,privacy_policy_url,booking_terms_text,booking_terms_url
 ) values(
   'f12c1000-0000-4000-8000-000000000001',
-  'F12 Contact Race','+905550001299','contact-race@example.invalid',true
+  'F12 Contact Race','+905550001299','contact-race@example.invalid',true,
+  'Concurrency fixture işletmesinin test aydınlatma metni.',
+  'https://f12-race.example.test/kvkk',
+  'https://f12-race.example.test/privacy',
+  'Concurrency fixture işletmesinin test randevu koşulları.',
+  'https://f12-race.example.test/terms'
 );
 
 insert into public.public_booking_settings(
