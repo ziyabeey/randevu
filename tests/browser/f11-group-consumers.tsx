@@ -14,6 +14,7 @@ type Control = {
   setBookingDraftSelect(index: number, label: string, optionText: string): boolean;
   setCloseField(label: string, value: string): boolean;
   clickBookingButton(customer: string, label: string): boolean;
+  clickDetailButton(label: string): boolean;
   detailText(): string;
   calendarReservationCount(): string;
   calendarEventCount(): number;
@@ -109,6 +110,14 @@ window.__f1103c = {
   clickBookingButton: (customer, label) => {
     const article = bookingArticle(customer);
     const button = [...(article?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
+      .find((candidate) => candidate.innerText.includes(label) && !candidate.disabled);
+    if (!button) return false;
+    button.click();
+    return true;
+  },
+  clickDetailButton: (label) => {
+    const detail = document.querySelector<HTMLElement>('.booking-detail-card');
+    const button = [...(detail?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
       .find((candidate) => candidate.innerText.includes(label) && !candidate.disabled);
     if (!button) return false;
     button.click();
