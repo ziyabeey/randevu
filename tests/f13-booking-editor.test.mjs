@@ -7,6 +7,8 @@ const css = await readFile(new URL('../src/phase5.css', import.meta.url), 'utf8'
 const worker = await readFile(new URL('../worker/f11-group-management-http.ts', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../supabase/migrations/20260921023000_f13_group_lifecycle.sql', import.meta.url), 'utf8');
 const browser = await readFile(new URL('../scripts/browser-f11-group-consumers.mjs', import.meta.url), 'utf8');
+const productionBrowser = await readFile(new URL('../scripts/browser-f13-booking-production.mjs', import.meta.url), 'utf8');
+const browserSmoke = await readFile(new URL('../scripts/browser-smoke.sh', import.meta.url), 'utf8');
 
 test('F13-03 operator composer keeps the required field order and uses the atomic group engine', () => {
   const time = booking.indexOf('<strong>Zaman</strong>');
@@ -47,8 +49,16 @@ test('F13-03 native lifecycle is one CAS/idempotent group mutation, never N clie
   assert.match(migration, /BOOKING_GROUP_PARTIAL_STATUS/);
 });
 
-test('F13-03 real Chrome acceptance covers multi-service create, close-time and detail lifecycle', () => {
+test('F13-03 real Chrome acceptance covers multi-service create, stale slots, close-time and detail lifecycle', () => {
   assert.match(browser, /operator composer creates a two-service reservation through one atomic group command/);
+  assert.match(browser, /operator composer ignores stale group-slot responses after draft changes/);
   assert.match(browser, /guarded close-time access next to booking creation/);
   assert.match(browser, /truthful future tabs and native CAS lifecycle actions/);
+});
+
+test('F13-03 production-entry acceptance is wired through the real main route and lazy BookingPage chunk', () => {
+  assert.match(productionBrowser, /src\/main\.tsx/);
+  assert.match(productionBrowser, /production \/bookings did not request BookingPage lazy chunk/);
+  assert.match(productionBrowser, /RANDEVU YÖNETİMİ/);
+  assert.match(browserSmoke, /browser-f13-booking-production\.mjs/);
 });

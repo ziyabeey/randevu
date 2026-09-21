@@ -185,6 +185,9 @@ export default function BookingPage() {
   ]);
   const [createSlots, setCreateSlots] = useState<GroupSlot[]>([]);
   const [selectedCreateSlot, setSelectedCreateSlot] = useState<GroupSlot | null>(null);
+  const [createSlotsBusy, setCreateSlotsBusy] = useState(false);
+  const createSlotGeneration = useRef(0);
+  const createSlotController = useRef<AbortController | null>(null);
   const [createKey, setCreateKey] = useState(commandKey);
   const [closeOpen, setCloseOpen] = useState(false);
   const [closeDate, setCloseDate] = useState(dateToday());
@@ -245,6 +248,7 @@ export default function BookingPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => () => createSlotController.current?.abort(), []);
 
   const activeServices = useMemo(() => catalog?.services.filter((item) => item.active) ?? [], [catalog]);
   const editableServices = activeServices;
@@ -303,6 +307,10 @@ export default function BookingPage() {
   }
 
   function resetCreateAvailability(rotateKey = true) {
+    createSlotGeneration.current += 1;
+    createSlotController.current?.abort();
+    createSlotController.current = null;
+    setCreateSlotsBusy(false);
     setCreateSlots([]);
     setSelectedCreateSlot(null);
     if (rotateKey) setCreateKey(commandKey());
@@ -333,10 +341,16 @@ export default function BookingPage() {
 
   async function previewCreateSlots() {
     if (!createLines.length || createLines.some((line) => !line.serviceId)) return;
-    setBusy(true); setNotice(''); setCreateSlots([]); setSelectedCreateSlot(null);
+    const generation = createSlotGeneration.current + 1;
+    createSlotGeneration.current = generation;
+    createSlotController.current?.abort();
+    const controller = new AbortController();
+    createSlotController.current = controller;
+    setCreateSlotsBusy(true); setNotice(''); setCreateSlots([]); setSelectedCreateSlot(null);
     try {
       const result = await api<{ slots: GroupSlot[] }>('/api/availability/group-slots', {
         method: 'POST',
+        signal: controller.signal,
         body: JSON.stringify({
           date,
           step: 15,
@@ -346,10 +360,18 @@ export default function BookingPage() {
           })),
         }),
       });
+      if (controller.signal.aborted || generation !== createSlotGeneration.current) return;
       setCreateSlots(result.slots);
       setNotice(result.slots.length ? `${result.slots.length} uygun grup saati bulundu.` : 'Bu hizmet planı için boş saat yok.');
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Saatler hesaplanamadı.'); }
-    finally { setBusy(false); }
+    } catch (error) {
+      if (controller.signal.aborted || generation !== createSlotGeneration.current) return;
+      setNotice(error instanceof Error ? error.message : 'Saatler hesaplanamadı.');
+    } finally {
+      if (generation === createSlotGeneration.current) {
+        createSlotController.current = null;
+        setCreateSlotsBusy(false);
+      }
+    }
   }
 
   async function createBooking() {
@@ -645,7 +667,7 @@ export default function BookingPage() {
           <button className="secondary-button" type="button" disabled={busy || createLines.length >= 10 || !activeServices.length} onClick={addCreateLine}>+ Hizmet ekle</button>
         </div>
         {hasRangeServices && <p className="muted">Fiyat aralıklı hizmetler tahmin olarak gösterilir; kesin tahsilat bu ekranda üretilmez.</p>}
-        <div className="booking-actions"><button className="secondary-button" type="button" disabled={busy || createLines.some((line) => !line.serviceId)} onClick={() => void previewCreateSlots()}>Uygun saatleri getir</button></div>
+        <div className="booking-actions"><button className="secondary-button" type="button" disabled={busy || createSlotsBusy || createLines.some((line) => !line.serviceId)} onClick={() => void previewCreateSlots()}>{createSlotsBusy ? 'Saatler aranıyor…' : 'Uygun saatleri getir'}</button></div>
 
         <div className="slot-cloud">
           {createSlots.map((slot) => <button type="button" className={selectedCreateSlot?.starts_at === slot.starts_at ? 'slot-button selected' : 'slot-button'} key={slot.starts_at} onClick={() => setSelectedCreateSlot(slot)}>
@@ -662,7 +684,7 @@ export default function BookingPage() {
           <span><strong>Tekrar</strong><small>F16-01 ile açılacak</small></span>
           <span><strong>SMS</strong><small>F16-02 ile açılacak</small></span>
         </div>
-        {selectedCreateSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedCreateSlot.starts_at, selectedCreateSlot.timezone)}</strong><span>{createLines.length} hizmet tek rezervasyon olarak oluşturulacak.</span></div><button className="primary-button" type="button" disabled={busy || customerName.trim().length < 2} onClick={() => void createBooking()}>{busy ? 'Oluşturuluyor…' : 'Randevuyu oluştur'}</button></div>}
+        {selectedCreateSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedCreateSlot.starts_at, selectedCreateSlot.timezone)}</strong><span>{createLines.length} hizmet tek rezervasyon olarak oluşturulacak.</span></div><button className="primary-button" type="button" disabled={busy || createSlotsBusy || customerName.trim().length < 2} onClick={() => void createBooking()}>{busy ? 'Oluşturuluyor…' : 'Randevuyu oluştur'}</button></div>}
       </section>
 
       <section className="booking-card booking-list-card">

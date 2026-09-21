@@ -10,6 +10,7 @@ type Control = {
   bookingLineCount(customer: string): number;
   bookingButtons(customer: string): string[];
   bookingDraftCount(): number;
+  bookingCreateSlotCount(): number;
   setComposerField(label: string, value: string): boolean;
   setBookingDraftSelect(index: number, label: string, optionText: string): boolean;
   setCloseField(label: string, value: string): boolean;
@@ -84,6 +85,7 @@ window.__f1103c = {
   bookingButtons: (customer) => [...(bookingArticle(customer)?.querySelectorAll<HTMLButtonElement>('button') ?? [])]
     .map((button) => button.innerText.trim()),
   bookingDraftCount: () => document.querySelectorAll('.booking-line-draft').length,
+  bookingCreateSlotCount: () => document.querySelectorAll('.booking-composer .slot-cloud .slot-button').length,
   setComposerField: (label, value) => {
     const composer = document.querySelector<HTMLElement>('.booking-composer');
     if (!composer) return false;
