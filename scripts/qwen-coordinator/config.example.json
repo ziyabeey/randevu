@@ -18,7 +18,7 @@
   "janitorEnabled": true,
   "janitorQwenEnabled": true,
   "janitorRetrySeconds": 300,
-  "janitorTimeoutSeconds": 30,
+  "janitorTimeoutSeconds": 60,
   "janitorPromptVersion": 1,
   "janitorRecentMergedPullRequests": 20,
   "maxOpenPullRequests": 20,

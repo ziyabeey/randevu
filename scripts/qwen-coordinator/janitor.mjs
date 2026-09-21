@@ -201,6 +201,21 @@ export function buildJanitorCandidates(remote = {}, config = {}) {
   return result.sort((left, right) => left.prNumber - right.prNumber);
 }
 
+// Lists the exact keys instead of a concrete example: the local 3B model copied
+// the sample verbatim and answered only that PR (1/7 coverage, fail-closed).
+export function janitorSystemPrompt(candidates) {
+  const keys = (candidates ?? []).map((item) => item.prNumber);
+  return [
+    'Repo hijyeni sınıflandır.',
+    'Her satırın status ve allowedChoices alanı deterministik sınırdır.',
+    'Kanıt icat etme ve allowedChoices dışına çıkma.',
+    'CLOSE_CANDIDATE yalnız superseded/duplicate adaylarında bir insan inceleme önerisidir; hiçbir şeyi kapatmaz.',
+    'REVIEW_CAPACITY kod hatası değildir.',
+    `Her satır için tam bir karar ver; toplam ${keys.length} anahtar: ${keys.join(', ')}.`,
+    'Yalnız JSON döndür: {"choices":{"<prNumber>":"<allowedChoices içinden biri>"}}.',
+  ].join(' ');
+}
+
 export function validateJanitorChoices(value, candidates) {
   const known = new Map((candidates ?? []).map((item) => [item.prNumber, item]));
   let submitted;

@@ -140,6 +140,19 @@ export function depotRunHardInvalidation(decision) {
   ].includes(gap));
 }
 
+// Small local models copy a concrete example verbatim (e.g. answering only the
+// sample PR), so the prompt lists the exact keys expected instead of an example.
+export function qwenSystemPrompt(decisions) {
+  const keys = (decisions ?? []).map((decision) => decision.prNumber);
+  return [
+    'PR sınıflandır. A=WAIT, B=REPAIR, C=REVIEW, D=MERGE.',
+    'Her kaydın policy alanı deterministik üst sınırdır; daha ileri karar verme.',
+    'CI fail veya conflict B; kanıt/base/task eksik A; review eksik C; D yalnız üst sınır D ise.',
+    `Her satır için tam bir karar ver; toplam ${keys.length} anahtar: ${keys.join(', ')}.`,
+    'Yalnız JSON döndür: {"choices":{"<prNumber>":"<A|B|C|D>"}}.',
+  ].join(' ');
+}
+
 export function notificationEvents(report) {
   const action = report?.executedAction;
   if (action) {

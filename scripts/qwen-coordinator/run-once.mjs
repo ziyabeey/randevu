@@ -21,6 +21,7 @@ import {
   notificationEvent,
   parseTasksSnapshot,
   policyFingerprint,
+  qwenSystemPrompt,
   receiptEvidenceBody,
   safeDepotMaxConcurrentRuns,
   validateQwenChoices,
@@ -40,6 +41,7 @@ import { acquireDirectoryLease, releaseDirectoryLease } from './lease.mjs';
 import {
   buildJanitorCandidates,
   janitorFingerprintInput,
+  janitorSystemPrompt,
   validateJanitorChoices,
 } from './janitor.mjs';
 
@@ -827,7 +829,7 @@ async function askQwen(config, decisions) {
     const models = await modelResponse.json();
     const model = models.data?.[0]?.id;
     if (!model) throw new Error('no local model is available');
-    const system = 'PR sınıflandır. A=WAIT, B=REPAIR, C=REVIEW, D=MERGE. Her kaydın policy alanı deterministik üst sınırdır; daha ileri karar verme. CI fail veya conflict B; kanıt/base/task eksik A; review eksik C; D yalnız üst sınır D ise. Her sonucu exact prNumber anahtarıyla döndür. Yalnız JSON: {"choices":{"208":"D"}}.';
+    const system = qwenSystemPrompt(decisions);
     const payload = decisions.map((decision) => ({
       prNumber: decision.prNumber,
       policy: decision.choice,
@@ -867,7 +869,7 @@ async function askQwen(config, decisions) {
 
 async function askJanitorQwen(config, candidates) {
   const controller = new AbortController();
-  const timeoutSeconds = config.janitorTimeoutSeconds ?? 30;
+  const timeoutSeconds = config.janitorTimeoutSeconds ?? 60;
   const timer = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
   try {
     const modelResponse = await fetch(`${config.qwenEndpoint}/v1/models`, { signal: controller.signal });
@@ -875,14 +877,7 @@ async function askJanitorQwen(config, candidates) {
     const models = await modelResponse.json();
     const model = models.data?.[0]?.id;
     if (!model) throw new Error('no local model is available');
-    const system = [
-      'Repo hijyeni sınıflandır.',
-      'Her satırın status ve allowedChoices alanı deterministik sınırdır.',
-      'Kanıt icat etme ve allowedChoices dışına çıkma.',
-      'CLOSE_CANDIDATE yalnız superseded/duplicate adaylarında bir insan inceleme önerisidir; hiçbir şeyi kapatmaz.',
-      'REVIEW_CAPACITY kod hatası değildir.',
-      'Yalnız exact PR anahtarlı JSON döndür: {"choices":{"248":"CLOSE_CANDIDATE"}}.',
-    ].join(' ');
+    const system = janitorSystemPrompt(candidates);
     const rows = candidates.map((item) => ({
       prNumber: item.prNumber,
       title: item.title,

@@ -12,6 +12,7 @@ import {
   notificationEvents,
   parseTasksSnapshot,
   parseTasksText,
+  qwenSystemPrompt,
   receiptEvidenceBody,
   reviewReceipts,
   safeDepotMaxConcurrentRuns,
@@ -507,4 +508,10 @@ test('Qwen response must cover every PR exactly once', () => {
   assert.throws(() => validateQwenChoices({ choices: [
     { prNumber: 7, choice: 'C' },
   ] }, decisions), /1\/2 choices/);
+});
+
+test('main Qwen prompt lists every decision key instead of a copyable example', () => {
+  const prompt = qwenSystemPrompt([{ prNumber: 77 }, { prNumber: 248 }]);
+  assert.match(prompt, /toplam 2 anahtar: 77, 248\./);
+  assert.doesNotMatch(prompt, /"\d+":"[A-D]"/);
 });

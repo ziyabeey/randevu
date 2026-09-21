@@ -6,6 +6,7 @@ import {
   buildJanitorCandidates,
   hasReviewQuotaSignal,
   janitorDocsOnly,
+  janitorSystemPrompt,
   janitorTaskKey,
   validateJanitorChoices,
 } from '../scripts/qwen-coordinator/janitor.mjs';
@@ -194,4 +195,10 @@ test('integrated coordinator source remains syntactically valid', () => {
       stdio: 'pipe',
     });
   });
+});
+
+test('janitor prompt lists every candidate key instead of a copyable example', () => {
+  const prompt = janitorSystemPrompt([{ prNumber: 236 }, { prNumber: 248 }, { prNumber: 267 }]);
+  assert.match(prompt, /toplam 3 anahtar: 236, 248, 267\./);
+  assert.doesNotMatch(prompt, /"\d+":"[A-Z_]+"/);
 });

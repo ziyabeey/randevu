@@ -45,6 +45,7 @@ test('installer creates a portable shadow-default layout and preserves config', 
   assert.equal(config.janitorEnabled, true);
   assert.equal(config.janitorQwenEnabled, true);
   assert.equal(config.janitorRetrySeconds, 300);
+  assert.equal(config.janitorTimeoutSeconds, 60);
   assert.equal(config.janitorRecentMergedPullRequests, 20);
   assert.equal(config.repoRoot, repoRoot);
   assert.match(await readFile(path.join(coordinatorHome, 'janitor.mjs'), 'utf8'), /buildJanitorCandidates/);
