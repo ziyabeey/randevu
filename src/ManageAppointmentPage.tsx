@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 import PublicBookingInformation from './PublicBookingInformation';
+import PublicNotificationStatus from './PublicNotificationStatus';
+import { customerNotificationStatus, type CustomerNotificationStatus } from '../shared/customer-notification-status';
 
 type ManagedAppointment = {
   appointment_id: string;
@@ -76,7 +78,7 @@ type SlotChoice =
   | { mode: 'legacy'; slot: ManagedSlot }
   | { mode: 'group'; slot: GroupManagedSlot };
 
-type ViewResponse = { appointment: ManagedAppointment; group?: ManagedGroup };
+type ViewResponse = { appointment: ManagedAppointment; group?: ManagedGroup; notification?: unknown };
 
 function formatDateTime(value: string, timezone: string) {
   return new Intl.DateTimeFormat('tr-TR', {
@@ -125,6 +127,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [notification, setNotification] = useState<CustomerNotificationStatus>(customerNotificationStatus(null));
   const rescheduleCommand = useRef<{ fingerprint: string; key: string } | null>(null);
   const cancelCommand = useRef<{ fingerprint: string; key: string } | null>(null);
 
@@ -136,6 +139,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
     });
     setAppointment(result.appointment);
     setGroup(result.group ?? null);
+    setNotification(customerNotificationStatus(result.notification));
     setDate((current) => current || result.appointment.local_date);
     return result;
   }
@@ -159,6 +163,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         if (cancelled) return;
         setAppointment(result.appointment);
         setGroup(result.group ?? null);
+        setNotification(customerNotificationStatus(result.notification));
         setDate(result.appointment.local_date);
       } catch (error) {
         if (!cancelled) setNotice(error instanceof Error ? error.message : 'Randevu bilgisi yüklenemedi.');
@@ -362,6 +367,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
               <div><dt>Ücret</dt><dd>{money(appointment.price_minor, appointment.currency)}</dd></div>
             </dl>
           )}
+          <div className="public-result-status is-neutral" aria-label="Bildirim durumu"><PublicNotificationStatus notification={notification} /></div>
           <p className="manage-security-note">Bu sayfanın bağlantısı randevunuzu değiştirme yetkisi verir. Bağlantıyı yalnız güvendiğiniz kişilerle paylaşın.</p>
         </section>
 

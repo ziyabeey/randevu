@@ -1,4 +1,5 @@
 import { publicOperation } from './public-rpc.ts';
+import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
 import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';
 import { Hono } from 'hono';
 import { base64UrlToBytes, bytesToBase64Url } from '../shared/base64.ts';
@@ -36,6 +37,7 @@ type PublicConfirmation = {
   price_minor: number;
   currency: string;
   recovery_expires_at: string;
+  notification_status?: unknown;
 };
 type RecoveryRow = {
   appointment_id: string;
@@ -52,6 +54,7 @@ type RecoveryRow = {
   management_token_iv: string;
   key_version: number;
   recovery_expires_at: string;
+  notification_status?: unknown;
   group_payload?: unknown;
 };
 type ResolutionRow = {
@@ -71,6 +74,7 @@ type ResolutionRow = {
   management_token_iv: string | null;
   key_version: number | null;
   recovery_expires_at: string | null;
+  notification_status?: unknown;
   group_payload?: unknown;
 };
 
@@ -407,8 +411,12 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
     return context.json({ error: { code: 'BOOKING_RESULT_UNKNOWN', message: 'Rezervasyon sonucunuz doğrulanamadı. Aynı işlemle sonucu kontrol edin.' } }, 503);
   }
 
+  const notification = customerNotificationStatus(appointment.notification_status);
+  const publicAppointment = { ...appointment };
+  delete publicAppointment.notification_status;
   return context.json({
-    appointment,
+    appointment: publicAppointment,
+    notification,
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: appointment.recovery_expires_at },
   }, 201);
@@ -465,6 +473,7 @@ bookingRecovery.post('/booking/recover', async (context) => {
       currency: row.currency,
     },
     ...(group ? { group } : {}),
+    notification: customerNotificationStatus(row.notification_status),
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: row.recovery_expires_at },
   });
@@ -547,6 +556,7 @@ bookingRecovery.post('/booking/resolve', async (context) => {
       currency: row.currency,
     },
     ...(group ? { group } : {}),
+    notification: customerNotificationStatus(row.notification_status),
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: row.recovery_expires_at },
   });

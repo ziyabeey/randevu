@@ -152,6 +152,8 @@ function recoveryResponse(saved, recoveryId) {
       currency: saved.group.currency,
     },
     group: saved.group,
+    notification: { channel: 'email', status: 'queued' },
+    notification: { channel: 'email', status: 'queued' },
     management: { url: `/m#${saved.managementToken}` },
     recovery: { expiresAt: '2026-09-23T07:00:00.000Z' },
   };
@@ -195,6 +197,7 @@ function preF12SingleRecoveryResponse() {
       price_minor: 10000,
       currency: 'TRY',
     },
+    notification: { channel: 'email', status: 'queued' },
     management: { url: `/m#${preF12SingleManagementToken}` },
     recovery: { expiresAt: '2026-09-23T07:00:00.000Z' },
   };
@@ -321,6 +324,7 @@ const server = createServer(async (request, response) => {
     return sendJson(response, 201, {
       group,
       appointmentId: group.lines[0].appointmentId,
+      notification: { channel: 'email', status: 'queued' },
       management: { url: `/m#${body.managementToken}` },
       recovery: { expiresAt: '2026-09-23T07:00:00.000Z' },
     });
@@ -368,6 +372,7 @@ const server = createServer(async (request, response) => {
       starts_at: body.startsAt, ends_at: '2026-09-20T07:30:00.000Z', timezone: 'Europe/Istanbul',
       service_name: 'Kesim', staff_name: 'Deniz', price_minor: 10000, currency: 'TRY',
     },
+    notification: { channel: 'email', status: 'queued' },
     management: { url: `/m#${body.managementToken}` },
     recovery: { expiresAt: '2026-09-23T07:00:00.000Z' },
   });
@@ -388,6 +393,7 @@ const server = createServer(async (request, response) => {
         support_address: 'İstanbul',
       },
       group: managedProjection(saved.group),
+      notification: { channel: 'email', status: 'accepted' },
     });
   }
   const businessMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)$/);
@@ -551,7 +557,9 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.match(result.text, /Tahmini/);
     assert.match(result.text, /Kesin tahsilat tutarı değildir/);
     assert.match(result.text, /Kayıt durumu:/);
-    assert.match(result.text, /Mesaj durumu:/);
+    assert.match(result.text, /Bildirim durumu:/);
+    assert.match(result.text, /E-posta gönderim sırasına alındı/);
+    assert.doesNotMatch(result.text, /Bu ekran SMS veya e-posta teslimini doğrulamaz/);
     assert.match(result.text, /Aydınlatma ve KVKK/);
     assert.match(result.text, /Destek ve iletişim/);
     assert.match(result.text, /\+90 555 000 11 22/);
@@ -575,6 +583,9 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.match(managed, /2/);
     assert.match(managed, /Renk Bakımı/);
     assert.match(managed, /Kesim/);
+    assert.match(managed, /Bildirim durumu:/);
+    assert.match(managed, /E-posta sağlayıcı tarafından kabul edildi/);
+    assert.match(managed, /Teslim edildiği doğrulanmaz/);
     assert.match(managed, /Aydınlatma ve KVKK/);
     assert.match(managed, /Destek ve iletişim/);
     assert.match(managed, /destek@f12\.example\.test/);
