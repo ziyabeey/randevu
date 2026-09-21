@@ -79,7 +79,7 @@ function installAuthFetch(t, handler) {
 await test('F13 bookings HTTP binds continuation to the opaque v2 page revision and strips it from appointment DTOs', async (t) => {
   const calls = [];
   installAuthFetch(t, async (url, init) => {
-    assert.equal(url.pathname, '/rest/v1/rpc/list_appointments_page_v2');
+    assert.equal(url.pathname, '/rest/v1/rpc/list_appointments_page_v3');
     const body = JSON.parse(String(init.body));
     calls.push(body);
     if (calls.length === 1) return json(Array.from({ length: 26 }, (_, i) => appointment(i + 1)));
@@ -97,6 +97,8 @@ await test('F13 bookings HTTP binds continuation to the opaque v2 page revision 
     at: first.appointments[24].starts_at,
     id: first.appointments[24].id,
     revision: pageRevision,
+    rangeStart: null,
+    rangeEnd: null,
   });
   assert.deepEqual(calls[0], {
     p_business_id: businessId,
@@ -104,6 +106,8 @@ await test('F13 bookings HTTP binds continuation to the opaque v2 page revision 
     p_after_starts_at: null,
     p_after_id: null,
     p_expected_revision: null,
+    p_start_date: null,
+    p_end_date: null,
   });
 
   const secondResponse = await app.request(`http://localhost/api/bookings?limit=25&cursor=${encodeURIComponent(first.page.nextCursor)}`, { headers: { Cookie: cookies() } }, env);
@@ -118,13 +122,15 @@ await test('F13 bookings HTTP binds continuation to the opaque v2 page revision 
     p_after_starts_at: first.appointments[24].starts_at,
     p_after_id: first.appointments[24].id,
     p_expected_revision: pageRevision,
+    p_start_date: null,
+    p_end_date: null,
   });
 });
 
 await test('F13 stale DB revision becomes an explicit non-5xx restart response', async (t) => {
   let calls = 0;
   installAuthFetch(t, async (url) => {
-    assert.equal(url.pathname, '/rest/v1/rpc/list_appointments_page_v2');
+    assert.equal(url.pathname, '/rest/v1/rpc/list_appointments_page_v3');
     calls += 1;
     if (calls === 1) return json(Array.from({ length: 26 }, (_, i) => appointment(i + 1)));
     return json({ message: 'STALE_APPOINTMENT_PAGE', code: 'P0001' }, 400);
@@ -148,6 +154,81 @@ await test('F13 legacy v1 booking cursor is restart-required before the DB RPC',
     id: '81000000-0000-4000-8000-000000000001',
   });
   const response = await app.request(`http://localhost/api/bookings?limit=25&cursor=${encodeURIComponent(oldCursor)}`, { headers: { Cookie: cookies() } }, env);
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error.code, 'BOOKINGS_PAGE_RESTART_REQUIRED');
+  assert.equal(listCalls, 0);
+});
+
+await test('F13-02 booking date range is business-local, cursor-bound and filter changes restart before RPC', async (t) => {
+  const calls = [];
+  installAuthFetch(t, async (url, init) => {
+    assert.equal(url.pathname, '/rest/v1/rpc/list_appointments_page_v3');
+    calls.push(JSON.parse(String(init.body)));
+    return json(Array.from({ length: 26 }, (_, i) => appointment(i + 1)));
+  });
+
+  const firstResponse = await app.request(
+    'http://localhost/api/bookings?limit=25&from=2027-01-15&to=2027-01-16',
+    { headers: { Cookie: cookies() } },
+    env,
+  );
+  assert.equal(firstResponse.status, 200);
+  const first = await firstResponse.json();
+  const cursor = decodeBookingPageCursor(first.page.nextCursor);
+  assert.equal(typeof cursor, 'object');
+  assert.equal(cursor.rangeStart, '2027-01-15');
+  assert.equal(cursor.rangeEnd, '2027-01-16');
+  assert.deepEqual(calls[0], {
+    p_business_id: businessId,
+    p_limit: 26,
+    p_after_starts_at: null,
+    p_after_id: null,
+    p_expected_revision: null,
+    p_start_date: '2027-01-15',
+    p_end_date: '2027-01-16',
+  });
+
+  const mismatch = await app.request(
+    `http://localhost/api/bookings?limit=25&from=2027-01-16&to=2027-01-17&cursor=${encodeURIComponent(first.page.nextCursor)}`,
+    { headers: { Cookie: cookies() } },
+    env,
+  );
+  assert.equal(mismatch.status, 409);
+  assert.equal((await mismatch.json()).error.code, 'BOOKINGS_PAGE_RESTART_REQUIRED');
+  assert.equal(calls.length, 1, 'range mismatch must fail before a continuation RPC');
+});
+
+await test('F13-02 booking range rejects half, malformed and reversed ranges before list RPC', async (t) => {
+  let listCalls = 0;
+  installAuthFetch(t, async () => { listCalls += 1; return json([]); });
+  for (const query of [
+    'from=2027-01-15',
+    'from=2027-02-30&to=2027-03-01',
+    'from=2027-01-16&to=2027-01-16',
+    'from=2027-01-17&to=2027-01-16',
+  ]) {
+    const response = await app.request(`http://localhost/api/bookings?${query}`, { headers: { Cookie: cookies() } }, env);
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error.code, 'INVALID_PAGE_RANGE');
+  }
+  assert.equal(listCalls, 0);
+});
+
+await test('F13-02 legacy v2 booking cursor is restart-required after range cutover', async (t) => {
+  let listCalls = 0;
+  installAuthFetch(t, async () => { listCalls += 1; return json([]); });
+  const oldV2 = Buffer.from(JSON.stringify({
+    v: 2,
+    k: 'bookings',
+    at: '2027-01-15T09:00:00.000Z',
+    id: '81000000-0000-4000-8000-000000000001',
+    r: pageRevision,
+  })).toString('base64url');
+  const response = await app.request(
+    `http://localhost/api/bookings?cursor=${encodeURIComponent(oldV2)}`,
+    { headers: { Cookie: cookies() } },
+    env,
+  );
   assert.equal(response.status, 409);
   assert.equal((await response.json()).error.code, 'BOOKINGS_PAGE_RESTART_REQUIRED');
   assert.equal(listCalls, 0);
@@ -187,7 +268,7 @@ await test('S07 malformed pagination fails before list RPC and cannot be treated
 
 await test('S07 upstream page failure is explicit 503, never a successful empty list', async (t) => {
   installAuthFetch(t, async (url) => {
-    assert.equal(url.pathname, '/rest/v1/rpc/list_appointments_page_v2');
+    assert.equal(url.pathname, '/rest/v1/rpc/list_appointments_page_v3');
     return json({ message: 'canceling statement due to statement timeout', code: '57014' }, 500);
   });
   const response = await app.request('http://localhost/api/bookings?limit=25', { headers: { Cookie: cookies() } }, env);

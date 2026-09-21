@@ -9,6 +9,8 @@ export type PageCursor = {
 
 export type BookingPageCursor = PageCursor & {
   revision: string;
+  rangeStart: string | null;
+  rangeEnd: string | null;
 };
 
 type CursorEnvelope = PageCursor & {
@@ -17,9 +19,11 @@ type CursorEnvelope = PageCursor & {
 };
 
 type BookingCursorEnvelope = PageCursor & {
-  v: 2;
+  v: 3;
   k: 'bookings';
   r: string;
+  s: string | null;
+  e: string | null;
 };
 
 export const BOOKING_CURSOR_RESTART_REQUIRED = 'BOOKING_CURSOR_RESTART_REQUIRED' as const;
@@ -31,6 +35,12 @@ function validTimestamp(value: unknown): value is string {
     && value.length >= 20
     && value.length <= 40
     && Number.isFinite(Date.parse(value));
+}
+
+function validDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
 export function parsePageLimit(value: string | undefined): number | null {
@@ -64,11 +74,13 @@ export function decodePageCursor(value: string | undefined, kind: PageKind): Pag
 
 export function encodeBookingPageCursor(cursor: BookingPageCursor) {
   const envelope: BookingCursorEnvelope = {
-    v: 2,
+    v: 3,
     k: 'bookings',
     at: cursor.at,
     id: cursor.id,
     r: cursor.revision,
+    s: cursor.rangeStart,
+    e: cursor.rangeEnd,
   };
   return textToBase64Url(JSON.stringify(envelope));
 }
@@ -82,15 +94,29 @@ export function decodeBookingPageCursor(
     if (!/^[A-Za-z0-9_-]+$/.test(value)) return undefined;
     const parsed: unknown = JSON.parse(base64UrlToText(value));
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return undefined;
-    const cursor = parsed as { v?: unknown; k?: unknown; at?: unknown; id?: unknown; r?: unknown };
+    const cursor = parsed as {
+      v?: unknown; k?: unknown; at?: unknown; id?: unknown; r?: unknown; s?: unknown; e?: unknown;
+    };
     const validKey = validTimestamp(cursor.at) && UUID_PATTERN.test(String(cursor.id ?? ''));
-    if (cursor.v === 1 && cursor.k === 'bookings' && validKey) {
+    if (cursor.k === 'bookings' && validKey && (
+      cursor.v === 1
+      || (cursor.v === 2 && UUID_PATTERN.test(String(cursor.r ?? '')))
+    )) {
       return BOOKING_CURSOR_RESTART_REQUIRED;
     }
-    if (cursor.v !== 2 || cursor.k !== 'bookings' || !validKey || !UUID_PATTERN.test(String(cursor.r ?? ''))) {
+    const rangeValid = (cursor.s === null && cursor.e === null)
+      || (validDate(cursor.s) && validDate(cursor.e) && cursor.s < cursor.e);
+    if (cursor.v !== 3 || cursor.k !== 'bookings' || !validKey
+        || !UUID_PATTERN.test(String(cursor.r ?? '')) || !rangeValid) {
       return undefined;
     }
-    return { at: String(cursor.at), id: String(cursor.id), revision: String(cursor.r) };
+    return {
+      at: String(cursor.at),
+      id: String(cursor.id),
+      revision: String(cursor.r),
+      rangeStart: cursor.s as string | null,
+      rangeEnd: cursor.e as string | null,
+    };
   } catch {
     return undefined;
   }
