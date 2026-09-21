@@ -3,6 +3,7 @@
 ## Kimlik ve kapsam
 
 - Görev: [DEV-ENGINE-08 / Issue #264](https://github.com/ziyabeey1-ai/randevu/issues/264)
+- PR: [#265](https://github.com/ziyabeey1-ai/randevu/pull/265)
 - Branch: `dev-engine/qwen-janitor-v0`
 - Bağımlılık: DEV-ENGINE-07 kabul edilmiş yerel Qwen koordinatörü.
 - Amaç: aynı daemon içinde düşük-yük, advisory-only repo hijyeni / Janitor katmanı.
