@@ -867,7 +867,7 @@ async function askQwen(config, decisions) {
 
 async function askJanitorQwen(config, candidates) {
   const controller = new AbortController();
-  const timeoutSeconds = config.janitorTimeoutSeconds ?? config.qwenTimeoutSeconds ?? 60;
+  const timeoutSeconds = config.janitorTimeoutSeconds ?? 30;
   const timer = setTimeout(() => controller.abort(), timeoutSeconds * 1000);
   try {
     const modelResponse = await fetch(`${config.qwenEndpoint}/v1/models`, { signal: controller.signal });
