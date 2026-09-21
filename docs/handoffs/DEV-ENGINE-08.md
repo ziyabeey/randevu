@@ -31,9 +31,12 @@ kanıtı fail-closed kalır.
 
 - Candidate yoksa Janitor completion çağrısı yok.
 - Candidate fingerprint değişmedikçe sonuç yeniden kullanılabilir.
-- Varsayılan retry alt sınırı 300 saniye, timeout 30 saniye.
+- Varsayılan retry alt sınırı 300 saniye, timeout 60 saniye (yerel 3B modelde 7 adaylık
+  sınıflandırma sıcak önbellekle ~15 sn, soğuk önbellekle 34–40 sn sürdü; 30 sn yetmedi).
 - Prompt yalnız küçük normalize JSON satırlarını taşır.
-- Ana A/B/C/D coordinator inference kontratı değiştirilmez.
+- Ana A/B/C/D coordinator inference kontratı (girdi satırları, çıktı şeması, policy üst sınırı)
+  değiştirilmez. Yalnız prompt'taki somut örnek (`{"208":"D"}`) beklenen anahtar listesiyle
+  değiştirildi: yerel model örneği aynen kopyalayıp yalnız o PR'ı yanıtlıyordu.
 
 ## Güvenlik sınırı
 
@@ -47,14 +50,24 @@ Semantic code head `6760bec98619b63f5dc737b6d4a0878e4668cd69` için
 [CI #1946](https://github.com/ziyabeey1-ai/randevu/actions/runs/35586259231)
 **SUCCESS**: full-code 11/11 aşama ve CI gate geçti.
 
-Bekleyen kanıt:
+### Canlı Mac shadow smoke (2026-09-21)
 
-1. Mac installer refresh ile `janitor.mjs` kopyası;
-3. bir canlı shadow turunda bounded GitHub snapshot;
-4. #248-benzeri superseded aday ve #259-benzeri review quota sinyalinin doğru
-   raporlanması;
-5. fingerprint değişmeden tekrarlanan LaunchAgent tiklerinde ekstra Janitor
-   completion oluşmadığının log doğrulaması.
+Janitor modülü Mac'teki `~/.local/share/qwen-coordinator` kurulumuna yerleştirildi ve
+LaunchAgent tikleri (15 sn) izlendi. Model: `qwen2.5-coder-3b-instruct-q4_k_m`.
+
+1. İlk tur (10:19 UTC, eski prompt): bounded snapshot 7 aday üretti; Qwen yalnız prompt
+   örneğini kopyaladı (`{"248":"CLOSE_CANDIDATE"}`, 1/7) ve validator fail-closed reddetti.
+2. Aynı 7 adayla prompt varyantı ölçüldü: somut örnek yerine beklenen anahtar listesiyle
+   3/3 denemede 7/7 kapsama, hepsi `allowedChoices` içinde; süre sıcak ~15 sn, soğuk 34–40 sn.
+   Bu yüzden `janitorTimeoutSeconds` varsayılanı 60 sn yapıldı.
+3. Düzeltilmiş prompt ile canlı tur (10:29 UTC): `status=complete`, 7/7 —
+   #236/#240/#255/#261/#263 `REBASE_CANDIDATE` (stale base), #248 `CLOSE_CANDIDATE`
+   (superseded), #267 `REVIEW_CAPACITY` (review kota sinyali).
+4. Fingerprint değişmeden izleyen 4 LaunchAgent tikinde `lastJanitorQwenAttemptAt`
+   değişmedi ve yeni `janitor-qwen-*` log satırı oluşmadı; önceki sonuç yeniden kullanıldı.
+5. `coordinator.err.log` boş; LaunchAgent son çıkış kodu 0.
+
+Bekleyen kanıt: prompt/timeout düzeltmesini içeren yeni head için exact-head CI.
 
 Bu kanıtlar gelmeden DEV-ENGINE-08 tamamlandı sayılmaz ve write capability
 eklenmez.
