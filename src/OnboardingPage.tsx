@@ -2,23 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
 import { formatLocalDate, formatTry, onboardingCopy as copy } from './onboardingLocale';
+import { useWorkspace } from './workspace-context';
 
 type Business = { id: string; name: string; slug: string; timezone: string };
 type Role = 'owner' | 'manager' | 'staff';
-type Membership = {
-  id: string;
-  business_id: string;
-  role: Role;
-  active: boolean;
-  businesses: Business | null;
-};
-type Session = {
-  user: null | { id: string; email: string | null; fullName: string | null };
-  memberships: Membership[];
-  activeBusinessId: string | null;
-  passwordRecovery: boolean;
-  csrfToken: string;
-};
 type Service = {
   id: string;
   name: string;
@@ -89,7 +76,7 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 export default function OnboardingPage() {
-  const [session, setSession] = useState<Session | null>(null);
+  const { session, activeMembership, activeBusinessId, scopeEpoch, selectBusiness, refreshSession } = useWorkspace();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -127,30 +114,26 @@ export default function OnboardingPage() {
     const { controller, generation } = replaceReadRequest();
     setLoading(true);
     try {
-      const nextSession = await api<Session>('/api/session', { signal: controller.signal });
+      const next = await api<Snapshot>('/api/onboarding', { signal: controller.signal });
       if (generation !== requestGeneration.current) return;
-      setSession(nextSession);
-      if (nextSession.user && nextSession.activeBusinessId && !nextSession.passwordRecovery) {
-        const next = await api<Snapshot>('/api/onboarding', { signal: controller.signal });
-        if (generation !== requestGeneration.current) return;
-        if (next.membership.business_id !== nextSession.activeBusinessId) return;
-        setSnapshot(next);
-      } else {
-        setSnapshot(null);
+      if (next.membership.business_id !== activeBusinessId) {
+        throw new Error('Kurulum bilgileri güncel işletme bağlamıyla eşleşmiyor.');
       }
+      setSnapshot(next);
     } catch (error) {
       if (!controller.signal.aborted && generation === requestGeneration.current) {
+        setSnapshot(null);
         setNotice(errorMessage(error, copy.reloadFailed));
       }
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
     }
-  }, [replaceReadRequest]);
+  }, [activeBusinessId, replaceReadRequest]);
 
   useEffect(() => {
     void loadPage();
     return () => requestController.current?.abort();
-  }, [loadPage]);
+  }, [loadPage, scopeEpoch]);
 
   const activeServices = useMemo(() => snapshot?.services.filter((service) => service.active) ?? [], [snapshot]);
   const activeStaff = useMemo(() => snapshot?.staff.filter((person) => person.active) ?? [], [snapshot]);
@@ -181,7 +164,9 @@ export default function OnboardingPage() {
         method: 'POST',
         body: JSON.stringify({ name: data.get('name'), timezone: 'Europe/Istanbul' }),
       });
-      window.location.assign('/setup');
+      await refreshSession();
+      setNotice('İşletme oluşturuldu. Üst menüden seçerek kurulumuna devam edebilirsiniz.');
+      setBusy(false);
     } catch (error) {
       setNotice(errorMessage(error, 'İşletme oluşturulamadı.'));
       setBusy(false);
@@ -189,24 +174,12 @@ export default function OnboardingPage() {
   }
 
   async function switchBusiness(businessId: string) {
-    if (businessId === session?.activeBusinessId) return;
-    setBusy(true);
-    setNotice('');
+    if (businessId === activeBusinessId) return;
     requestController.current?.abort();
     ++requestGeneration.current;
     setSnapshot(null);
     setSlots([]);
-    try {
-      await api('/api/businesses/select', {
-        method: 'POST',
-        body: JSON.stringify({ businessId }),
-      });
-      window.location.assign('/setup');
-    } catch (error) {
-      setNotice(errorMessage(error, 'İşletme değiştirilemedi.'));
-      setBusy(false);
-      await loadPage();
-    }
+    await selectBusiness(businessId);
   }
 
   async function createService(event: FormEvent<HTMLFormElement>) {
@@ -384,15 +357,7 @@ export default function OnboardingPage() {
     return <main className="setup-shell"><section className="setup-card"><p>Kurulum bilgileri hazırlanıyor…</p></section></main>;
   }
 
-  if (!session?.user) {
-    return <main className="setup-shell"><section className="setup-card"><h1>Önce giriş yapın</h1><p>İşletme kurulumuna devam etmek için çalışma alanına giriş yapmanız gerekir.</p><a className="setup-primary-link" href="/">Giriş ekranına dön</a></section></main>;
-  }
-
-  if (session.passwordRecovery) {
-    return <main className="setup-shell"><section className="setup-card"><h1>Önce yeni parolanızı belirleyin</h1><p>Kurulum işlemleri parola kurtarma oturumunda kapalıdır.</p><a className="setup-primary-link" href="/account">Parolayı güncelle</a></section></main>;
-  }
-
-  const selectedMembership = session.memberships.find((membership) => membership.business_id === session.activeBusinessId) ?? null;
+  const selectedMembership = activeMembership;
 
   return (
     <main className="setup-shell">
@@ -402,7 +367,7 @@ export default function OnboardingPage() {
           <h1>{copy.title}</h1>
           <p>{copy.subtitle}</p>
         </div>
-        <a className="setup-secondary-link" href="/">Çalışma alanına dön</a>
+        <a className="setup-secondary-link" href="/app">Çalışma alanına dön</a>
       </header>
 
       {notice && <div className="setup-notice" role="status">{notice}</div>}
@@ -416,13 +381,13 @@ export default function OnboardingPage() {
           {session.memberships.map((membership) => (
             <button
               type="button"
-              className={membership.business_id === session.activeBusinessId ? 'setup-business active' : 'setup-business'}
-              disabled={busy || membership.business_id === session.activeBusinessId}
+              className={membership.business_id === activeBusinessId ? 'setup-business active' : 'setup-business'}
+              disabled={busy || membership.business_id === activeBusinessId}
               key={membership.id}
               onClick={() => void switchBusiness(membership.business_id)}
             >
               <strong>{membership.businesses?.name ?? 'İşletme'}</strong>
-              <span>{membership.business_id === session.activeBusinessId ? 'Şu an seçili' : copy.selectBusiness}</span>
+              <span>{membership.business_id === activeBusinessId ? 'Şu an seçili' : copy.selectBusiness}</span>
             </button>
           ))}
         </div>
@@ -475,7 +440,7 @@ export default function OnboardingPage() {
             })}</ul>}
             {canManage && activeServices.length > 0 && (
               <form className="setup-grid-form" onSubmit={createStaff}>
-                <label>Personel adı<input name="name" required minLength={2} defaultValue={snapshot.membership.role === 'owner' ? session.user.fullName ?? '' : ''} /></label>
+                <label>Personel adı<input name="name" required minLength={2} defaultValue={snapshot.membership.role === 'owner' ? session.user?.fullName ?? '' : ''} /></label>
                 <label>Telefon<input name="phone" placeholder="İsteğe bağlı" /></label>
                 <label>Hizmet<select name="serviceId" required defaultValue={activeServices[0]?.id}>{activeServices.map((service) => <option value={service.id} key={service.id}>{service.name}</option>)}</select></label>
                 {snapshot.membership.role === 'owner' && <label className="setup-check"><input type="checkbox" name="ownerAsStaff" />{copy.ownerAsStaff}</label>}

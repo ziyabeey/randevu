@@ -2,14 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiRequestError, api } from './api';
 import CatalogSettingsPanel, { type ManagedCatalog, type ManagedStaff } from './CatalogSettingsPanel';
+import { useWorkspace } from './workspace-context';
 
 type Role = 'owner' | 'manager' | 'staff';
-type Session = {
-  user: null | { id: string; email: string | null; fullName: string | null };
-  memberships: Array<{ id: string; business_id: string; role: Role; active: boolean }>;
-  activeBusinessId: string | null;
-  passwordRecovery?: boolean;
-};
 type HourRow = { id: string; weekday: number; starts_local: string; ends_local: string; active: boolean };
 type StaffHourRow = HourRow & { staff_id: string };
 type Block = {
@@ -70,7 +65,7 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 export default function AvailabilityPage() {
-  const [session, setSession] = useState<Session | null>(null);
+  const { activeBusinessId, scopeEpoch } = useWorkspace();
   const [catalog, setCatalog] = useState<ManagedCatalog | null>(null);
   const [setup, setSetup] = useState<Setup | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -94,34 +89,13 @@ export default function AvailabilityPage() {
     setLoadState('loading');
     setLoadError('');
     try {
-      const nextSession = await api<Session>('/api/session', { signal: controller.signal });
-      if (controller.signal.aborted || generation !== requestGeneration.current) return false;
-      setSession(nextSession);
-
-      if (nextSession.passwordRecovery) {
-        setCatalog(null);
-        setSetup(null);
-        setSlots([]);
-        setLoadError('Parolanızı güncelledikten sonra işletme ayarlarını yeniden açın.');
-        setLoadState('error');
-        return false;
-      }
-
-      if (!nextSession.user || !nextSession.activeBusinessId) {
-        setCatalog(null);
-        setSetup(null);
-        setSlots([]);
-        setLoadState('no-workspace');
-        return false;
-      }
-
       const [nextCatalog, nextSetup] = await Promise.all([
         api<ManagedCatalog>('/api/catalog', { signal: controller.signal }),
         api<Setup>('/api/availability/setup', { signal: controller.signal }),
       ]);
       if (controller.signal.aborted || generation !== requestGeneration.current) return false;
-      if (nextCatalog.membership.business_id !== nextSession.activeBusinessId
-          || nextSetup.membership.business_id !== nextSession.activeBusinessId) {
+      if (nextCatalog.membership.business_id !== activeBusinessId
+          || nextSetup.membership.business_id !== activeBusinessId) {
         throw new Error('Seçili işletmenin güncel ayarları doğrulanamadı. Tekrar yükleyin.');
       }
       setCatalog(nextCatalog);
@@ -138,12 +112,12 @@ export default function AvailabilityPage() {
       setLoadState('error');
       return false;
     }
-  }, [replaceReadRequest]);
+  }, [activeBusinessId, replaceReadRequest]);
 
   useEffect(() => {
     void load();
     return () => requestController.current?.abort();
-  }, [load]);
+  }, [load, scopeEpoch]);
 
   const canManage = setup?.membership.role === 'owner' || setup?.membership.role === 'manager';
   const activeServices = useMemo(() => catalog?.services.filter((item) => item.active) ?? [], [catalog]);
@@ -295,17 +269,13 @@ export default function AvailabilityPage() {
           <h1>Ayarlar yüklenemedi.</h1>
           <p className="muted">{loadError || 'Güncel işletme bilgileri doğrulanamadı.'}</p>
           <button className="primary-button" type="button" onClick={() => void load()}>Tekrar yükle</button>
-          <a className="primary-link secondary-link" href="/">Çalışma alanına dön</a>
+          <a className="primary-link secondary-link" href="/app">Çalışma alanına dön</a>
         </section>
       </main>
     );
   }
 
-  if (loadState === 'no-workspace') {
-    return <main className="availability-page"><section className="availability-card"><p className="eyebrow">İŞLETME AYARLARI</p><h1>Önce çalışma alanını seçin.</h1><p className="muted">Giriş ve işletme seçimi ana çalışma alanında yapılır.</p><a className="primary-link" href="/">Çalışma alanına dön</a></section></main>;
-  }
-
-  if (!session?.user || !session.activeBusinessId || !catalog || !setup) {
+  if (!catalog || !setup) {
     return <main className="availability-page"><section className="availability-card availability-error" role="alert"><h1>Ayarlar doğrulanamadı.</h1><button className="primary-button" type="button" onClick={() => void load()}>Tekrar yükle</button></section></main>;
   }
 

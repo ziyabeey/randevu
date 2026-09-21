@@ -52,7 +52,7 @@ function callbackUrl(context: AuthContext, state: string) {
 }
 
 function authResultUrl(context: AuthContext, result: string) {
-  const url = new URL('/', applicationOrigin(context));
+  const url = new URL('/app', applicationOrigin(context));
   url.searchParams.set('auth', result);
   return url.toString();
 }
