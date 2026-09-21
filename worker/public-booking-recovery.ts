@@ -300,7 +300,7 @@ function rpcError(data: unknown, fallback: string) {
     return { code: 'DATE_OUT_OF_RANGE', message: 'Seçilen tarih rezervasyon aralığının dışında.', status: 400 as const };
   }
   if (message.includes('PUBLIC_CONTACT_REQUIRED')) {
-    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon veya e-posta bilgilerinden en az biri gerekli.', status: 400 as const };
+    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.', status: 400 as const };
   }
   if (message.includes('INVALID_CUSTOMER') || message.includes('NOTES_TOO_LONG') || message.includes('INVALID_START') || message.includes('INVALID_BOOKING_RECOVERY_BOOTSTRAP')) {
     return { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon bilgileri geçerli değil.', status: 400 as const };
@@ -335,10 +335,12 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
   }
   if (customerName.length < 2 || customerName.length > 120
       || customerPhone === undefined || customerEmail === undefined || notes === undefined
-      || (customerPhone === null && customerEmail === null)
       || (customerEmail !== null && !customerEmail.includes('@'))
       || !validUuid(body?.serviceId) || !validUuid(body?.staffId) || !validTimestamp(body?.startsAt)) {
     return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Ad, iletişim, hizmet veya saat bilgileri geçerli değil.' } }, 400);
+  }
+  if (customerPhone === null) {
+    return context.json({ error: { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.' } }, 400);
   }
 
   if (looksLikePublicBookingIntentV2(rawKey)) {

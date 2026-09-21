@@ -199,7 +199,7 @@ async function uiSubmit() {
     'customer form',
   );
   setValue(form.elements.namedItem('customerName') as HTMLInputElement, 'Browser Customer');
-  setValue(form.elements.namedItem('customerEmail') as HTMLInputElement, 'browser@example.test');
+  setValue(form.elements.namedItem('customerPhone') as HTMLInputElement, '05550000707');
   await until(() => {
     const button = form.querySelector<HTMLButtonElement>('.public-book-button');
     return button && !button.disabled ? button : null;

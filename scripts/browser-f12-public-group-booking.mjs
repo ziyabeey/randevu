@@ -507,7 +507,7 @@ async function preparePlan(page, slug, pinFirstStaff = false, checkKeyboard = tr
 }
 
 async function submitContact(page) {
-  await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const email=document.querySelector("input[name=customerEmail]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(email,"deniz@example.test"); email.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
+  await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const phone=document.querySelector("input[name=customerPhone]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(phone,"05550001122"); phone.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
 }
 
 async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
@@ -523,10 +523,10 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
 
     await page.evaluate('(() => { const input=document.querySelector("input[name=customerName]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"Deniz Örnek"); input.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
     await waitFor(() => page.evaluate('Boolean(document.querySelector("#public-contact-error"))'), `${slug} contact relation error did not appear`);
-    const relation = await page.evaluate('(() => { const input=document.querySelector("input[name=customerEmail]"); const error=document.querySelector("#public-contact-error"); return {invalid:input.getAttribute("aria-invalid"),describedBy:input.getAttribute("aria-describedby"),role:error?.getAttribute("role")}; })()');
-    assert.deepEqual(relation, { invalid: 'true', describedBy: 'public-contact-help public-contact-error', role: 'alert' });
+    const relation = await page.evaluate('(() => { const input=document.querySelector("input[name=customerPhone]"); const error=document.querySelector("#public-contact-error"); const email=document.querySelector("input[name=customerEmail]"); return {invalid:input.getAttribute("aria-invalid"),required:input.getAttribute("aria-required"),describedBy:input.getAttribute("aria-describedby"),emailRequired:email.getAttribute("aria-required"),role:error?.getAttribute("role")}; })()');
+    assert.deepEqual(relation, { invalid: 'true', required: 'true', describedBy: 'public-contact-help public-contact-error', emailRequired: null, role: 'alert' });
 
-    await page.evaluate('(() => { const input=document.querySelector("input[name=customerEmail]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"deniz@example.test"); input.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
+    await page.evaluate('(() => { const input=document.querySelector("input[name=customerPhone]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"05550001122"); input.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
     await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), `${slug} confirmation did not appear`);
     const result = await page.evaluate('(() => { const root=document.documentElement; const controls=Array.from(document.querySelectorAll("button,input,textarea,a.public-primary")); const status=document.querySelector(".public-result-status"); const marker=document.querySelector(".public-result-mark"); return {text:document.body.innerText,overflow:root.scrollWidth>root.clientWidth+1,targets:controls.length>0&&controls.every((node)=>node.getBoundingClientRect().height>=44),shortControls:controls.map((node)=>({tag:node.tagName,className:node.className,text:(node.textContent||node.name||"").trim(),height:node.getBoundingClientRect().height})).filter((item)=>item.height<44),planner:Boolean(document.querySelector(".public-multi-service")),href:document.querySelector("a.public-primary")?.getAttribute("href"),statusClass:status?.className,markerClass:marker?.className}; })()');
     assert.equal(result.overflow, false, `${slug} overflowed at ${width}px`);
@@ -548,7 +548,8 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     const create = journeyRequests.find((item) => item.path.endsWith('/group-book'));
     assert.ok(create.idempotencyKey);
     assert.deepEqual(create.body.lines, [{ serviceId: serviceA, staffId: null }, { serviceId: serviceB, staffId: null }]);
-    assert.equal(create.body.customerEmail, 'deniz@example.test');
+    assert.equal(create.body.customerPhone, '05550001122');
+    assert.equal(create.body.customerEmail, null, 'email must stay optional when phone is present');
 
     await page.evaluate('document.querySelector("a.public-primary")?.click()');
     await waitFor(() => page.evaluate('location.pathname === "/m" && document.body.innerText.includes("RANDEVUMU YÖNET")'), `${slug} management journey did not open`);
@@ -772,7 +773,7 @@ async function runLegacyFallback(debugUrl, origin) {
     await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-slot"))'), 'legacy slot did not load');
     await page.evaluate('document.querySelector(".public-slot")?.click()');
     await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-customer-card input[name=customerName]"))'), 'legacy contact form did not open');
-    await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const email=document.querySelector("input[name=customerEmail]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(email,"deniz@example.test"); email.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Randevuyu oluştur"))?.click(); })()');
+    await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const phone=document.querySelector("input[name=customerPhone]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(phone,"05550001122"); phone.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Randevuyu oluştur"))?.click(); })()');
     await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), 'legacy /book fallback did not complete');
     const journeyRequests = requests.slice(start);
     assert.equal(journeyRequests.filter((item) => item.path.endsWith('/book')).length, 1, 'legacy fallback did not issue one /book create');

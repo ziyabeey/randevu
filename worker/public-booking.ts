@@ -106,7 +106,7 @@ function rpcError(data: unknown, fallback: string) {
     return { code: 'DATE_OUT_OF_RANGE', message: 'Seçilen tarih rezervasyon aralığının dışında.', status: 400 as const };
   }
   if (message.includes('PUBLIC_CONTACT_REQUIRED')) {
-    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon veya e-posta bilgilerinden en az biri gerekli.', status: 400 as const };
+    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.', status: 400 as const };
   }
   if (message.includes('INVALID_CUSTOMER') || message.includes('NOTES_TOO_LONG') || message.includes('INVALID_START')) {
     return { code: 'INVALID_BOOKING', message: 'Rezervasyon bilgileri geçerli değil.', status: 400 as const };

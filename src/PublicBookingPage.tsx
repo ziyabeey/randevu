@@ -631,8 +631,8 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     const customerPhone = String(formData.get('customerPhone') ?? '').trim();
     const customerEmail = String(formData.get('customerEmail') ?? '').trim();
     const notes = String(formData.get('notes') ?? '').trim();
-    if (!customerPhone && !customerEmail) {
-      setContactError('Telefon veya e-posta bilgilerinden en az birini yazın.');
+    if (!customerPhone) {
+      setContactError('Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.');
       return;
     }
     setContactError('');
@@ -829,8 +829,8 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         </div>
         <form className="public-customer-form" onSubmit={(event) => void book(event)}>
           <label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label>
-          <div className="public-two-columns"><label><span>Telefon</span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>E-posta</span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label></div>
-          <small id="public-contact-help" className="public-field-hint">Telefon veya e-postadan en az biri gerekli.</small>
+          <div className="public-two-columns"><label><span>Telefon <small>(zorunlu)</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div>
+          <small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>
           {contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}
           <label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={1000} rows={3} /></label>
           <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Planı onayla ve randevuyu oluştur'}</button>
@@ -864,7 +864,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       </section>
       <section className={`public-booking-card public-customer-card ${selectedSlot ? 'is-ready' : ''}`}><span className="public-step">3</span><h2>İletişim bilgileri</h2>
         {selectedSlot && selectedService ? <><div className="public-selection-summary"><strong>{selectedService.name}</strong><span>{formatDateTime(selectedSlot.starts_at, selectedSlot.timezone)} · {selectedSlot.staff_name}</span></div>
-          <form className="public-customer-form" onSubmit={(event) => void book(event)}><label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required /></label><div className="public-two-columns"><label><span>Telefon</span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" /></label><label><span>E-posta</span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" /></label></div><small className="public-field-hint">Telefon veya e-postadan en az biri gerekli.</small><label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
+          <form className="public-customer-form" onSubmit={(event) => void book(event)}><label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label><div className="public-two-columns"><label><span>Telefon <small>(zorunlu)</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div><small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>{contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}<label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
             <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
           </form></> : <p className="public-muted">Bir saat seçtiğinizde iletişim formu burada açılır.</p>}
       </section>
