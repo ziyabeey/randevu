@@ -42,7 +42,12 @@ test('installer creates a portable shadow-default layout and preserves config', 
   assert.equal(config.writeActionsEnabled, false);
   assert.equal(config.autoMergeEnabled, false);
   assert.equal(config.depotShadowEnabled, false);
+  assert.equal(config.janitorEnabled, true);
+  assert.equal(config.janitorQwenEnabled, true);
+  assert.equal(config.janitorRetrySeconds, 300);
+  assert.equal(config.janitorRecentMergedPullRequests, 30);
   assert.equal(config.repoRoot, repoRoot);
+  assert.match(await readFile(path.join(coordinatorHome, 'janitor.mjs'), 'utf8'), /buildJanitorCandidates/);
   assert.equal(config.depotOrgId, 'example-org');
 
   const plist = await readFile(
