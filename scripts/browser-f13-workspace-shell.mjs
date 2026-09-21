@@ -287,13 +287,14 @@ class Cdp {
 }
 
 async function newPage(debugUrl, origin, pathname, width = 390) {
-  const target = await (await fetch(`${debugUrl}/json/new?${encodeURIComponent(`${origin}${pathname}`)}`, {
+  const target = await (await fetch(`${debugUrl}/json/new?about%3Ablank`, {
     method: 'PUT', signal: AbortSignal.timeout(5_000),
   })).json();
   const page = await Cdp.connect(target.webSocketDebuggerUrl);
   await page.send('Runtime.enable');
   await page.send('Page.enable');
   await page.send('Emulation.setDeviceMetricsOverride', { width, height: 820, deviceScaleFactor: 1, mobile: width <= 760 });
+  await page.send('Page.navigate', { url: `${origin}${pathname}` });
   return page;
 }
 async function tab(page) {
