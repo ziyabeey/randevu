@@ -76,6 +76,7 @@ type AppointmentEvent = {
 type PageInfo = { limit: number; hasMore: boolean; nextCursor: string | null };
 type RescheduleTarget = { booking: BookingGroup; key: string };
 type LineTarget = { booking: BookingGroup; line: BookingLine; key: string };
+type DraftLine = { key: string; serviceId: string; staffId: string };
 
 function commandKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -182,12 +183,20 @@ export default function BookingPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [notes, setNotes] = useState('');
-  const [serviceId, setServiceId] = useState('');
-  const [staffId, setStaffId] = useState('any');
   const [date, setDate] = useState(dateToday());
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [createLines, setCreateLines] = useState<DraftLine[]>([
+    { key: commandKey(), serviceId: '', staffId: 'any' },
+  ]);
+  const [createSlots, setCreateSlots] = useState<GroupSlot[]>([]);
+  const [selectedCreateSlot, setSelectedCreateSlot] = useState<GroupSlot | null>(null);
   const [createKey, setCreateKey] = useState(commandKey);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [closeDate, setCloseDate] = useState(dateToday());
+  const [closeStart, setCloseStart] = useState('09:00');
+  const [closeEnd, setCloseEnd] = useState('10:00');
+  const [closeStaff, setCloseStaff] = useState('all');
+  const [closeReason, setCloseReason] = useState('');
+  const [detailFor, setDetailFor] = useState<BookingGroup | null>(null);
 
   const [rescheduleTarget, setRescheduleTarget] = useState<RescheduleTarget | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState(dateToday());
@@ -223,10 +232,16 @@ export default function BookingPage() {
       setTimezone(nextSetup.timezone);
       setBookings(nextBookings.bookings);
       setBookingsNextCursor(nextBookings.page.nextCursor);
-      setServiceId((current) => {
-        const bookable = nextCatalog.services.filter(legacyCreateBookable);
-        if (current && bookable.some((item) => item.id === current)) return current;
-        return bookable[0]?.id ?? '';
+      setCreateLines((current) => {
+        const active = nextCatalog.services.filter((item) => item.active);
+        const firstService = active[0]?.id ?? '';
+        if (!current.length) return [{ key: commandKey(), serviceId: firstService, staffId: 'any' }];
+        return current.map((line) => ({
+          ...line,
+          serviceId: active.some((item) => item.id === line.serviceId) ? line.serviceId : firstService,
+          staffId: nextCatalog.assignments.some((item) => item.active && item.service_id === line.serviceId && item.staff_id === line.staffId)
+            ? line.staffId : 'any',
+        }));
       });
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Randevu ekranı yüklenemedi.');
@@ -235,15 +250,18 @@ export default function BookingPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const activeServices = useMemo(() => catalog?.services.filter(legacyCreateBookable) ?? [], [catalog]);
-  const editableServices = useMemo(() => catalog?.services.filter((item) => item.active) ?? [], [catalog]);
-  const hasRangeServices = useMemo(() => catalog?.services.some((item) => item.active && item.price_type === 'range') ?? false, [catalog]);
+  const activeServices = useMemo(() => catalog?.services.filter((item) => item.active) ?? [], [catalog]);
+  const editableServices = activeServices;
+  const hasRangeServices = useMemo(() => activeServices.some((item) => item.price_type === 'range'), [activeServices]);
   const activeStaff = useMemo(() => catalog?.staff.filter((item) => item.active) ?? [], [catalog]);
-  const eligibleStaff = useMemo(() => {
+
+  function eligibleStaffFor(serviceId: string) {
     if (!catalog || !serviceId) return [];
-    const ids = new Set(catalog.assignments.filter((item) => item.active && item.service_id === serviceId).map((item) => item.staff_id));
+    const ids = new Set(catalog.assignments
+      .filter((item) => item.active && item.service_id === serviceId)
+      .map((item) => item.staff_id));
     return activeStaff.filter((person) => ids.has(person.id));
-  }, [activeStaff, catalog, serviceId]);
+  }
   const legacyRescheduleStaff = useMemo(() => {
     const line = rescheduleTarget?.booking.lines[0];
     if (!catalog || !line) return [];
@@ -268,6 +286,7 @@ export default function BookingPage() {
 
   async function reloadAfterMutation(message: string, fingerprint?: string) {
     if (fingerprint) mutationKeys.current.delete(fingerprint);
+    setDetailFor(null);
     await load();
     setNotice(message);
   }
@@ -287,35 +306,114 @@ export default function BookingPage() {
     finally { setBusy(false); }
   }
 
-  async function previewSlots() {
-    if (!serviceId) return;
-    setBusy(true); setNotice(''); setSlots([]); setSelectedSlot(null);
-    const params = new URLSearchParams({ date, serviceId, staffId, step: '15' });
+  function resetCreateAvailability(rotateKey = true) {
+    setCreateSlots([]);
+    setSelectedCreateSlot(null);
+    if (rotateKey) setCreateKey(commandKey());
+  }
+
+  function updateCreateLine(key: string, patch: Partial<Pick<DraftLine, 'serviceId' | 'staffId'>>) {
+    setCreateLines((current) => current.map((line) => {
+      if (line.key !== key) return line;
+      const next = { ...line, ...patch };
+      if (patch.serviceId !== undefined) next.staffId = 'any';
+      return next;
+    }));
+    resetCreateAvailability();
+  }
+
+  function addCreateLine() {
+    const serviceId = activeServices[0]?.id ?? '';
+    setCreateLines((current) => current.length >= 10
+      ? current
+      : [...current, { key: commandKey(), serviceId, staffId: 'any' }]);
+    resetCreateAvailability();
+  }
+
+  function removeCreateLine(key: string) {
+    setCreateLines((current) => current.length <= 1 ? current : current.filter((line) => line.key !== key));
+    resetCreateAvailability();
+  }
+
+  async function previewCreateSlots() {
+    if (!createLines.length || createLines.some((line) => !line.serviceId)) return;
+    setBusy(true); setNotice(''); setCreateSlots([]); setSelectedCreateSlot(null);
     try {
-      const result = await api<{ slots: Slot[] }>(`/api/availability/slots?${params}`);
-      setSlots(result.slots);
-      setNotice(result.slots.length ? `${result.slots.length} boş saat bulundu.` : 'Bu seçim için boş saat yok.');
+      const result = await api<{ slots: GroupSlot[] }>('/api/availability/group-slots', {
+        method: 'POST',
+        body: JSON.stringify({
+          date,
+          step: 15,
+          lines: createLines.map((line) => ({
+            serviceId: line.serviceId,
+            staffId: line.staffId === 'any' ? null : line.staffId,
+          })),
+        }),
+      });
+      setCreateSlots(result.slots);
+      setNotice(result.slots.length ? `${result.slots.length} uygun grup saati bulundu.` : 'Bu hizmet planı için boş saat yok.');
     } catch (error) { setNotice(error instanceof Error ? error.message : 'Saatler hesaplanamadı.'); }
     finally { setBusy(false); }
   }
 
   async function createBooking() {
-    if (!selectedSlot) return;
+    if (!selectedCreateSlot || !createLines.length) return;
     setBusy(true); setNotice('');
     try {
-      await api('/api/bookings', {
+      await api('/api/bookings/groups', {
         method: 'POST',
         headers: { 'Idempotency-Key': createKey },
         body: JSON.stringify({
           customerName, customerPhone, customerEmail, notes,
-          serviceId, staffId: selectedSlot.staff_id, startsAt: selectedSlot.starts_at,
+          lines: createLines.map((line) => ({
+            serviceId: line.serviceId,
+            staffId: line.staffId === 'any' ? null : line.staffId,
+          })),
+          startsAt: selectedCreateSlot.starts_at,
         }),
       });
-      setNotice('Randevu oluşturuldu ve slot kilitlendi.');
+      setNotice('Rezervasyon atomik olarak oluşturuldu.');
       setCustomerName(''); setCustomerPhone(''); setCustomerEmail(''); setNotes('');
-      setSlots([]); setSelectedSlot(null); setCreateKey(commandKey());
+      const firstService = activeServices[0]?.id ?? '';
+      setCreateLines([{ key: commandKey(), serviceId: firstService, staffId: 'any' }]);
+      setCreateSlots([]); setSelectedCreateSlot(null); setCreateKey(commandKey());
       await load();
     } catch (error) { setNotice(error instanceof Error ? error.message : 'Randevu oluşturulamadı.'); }
+    finally { setBusy(false); }
+  }
+
+  async function createCloseBlock() {
+    setBusy(true); setNotice('');
+    try {
+      await api('/api/availability/blocks', {
+        method: 'POST',
+        body: JSON.stringify({
+          date: closeDate,
+          start: closeStart,
+          end: closeEnd,
+          staffId: closeStaff === 'all' ? null : closeStaff,
+          reason: closeReason,
+        }),
+      });
+      setCloseOpen(false);
+      setCloseReason('');
+      resetCreateAvailability();
+      setNotice('Saat kapatıldı. Yeni müsaitlik araması bu kapanışı dikkate alacak.');
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'Saat kapatılamadı.'); }
+    finally { setBusy(false); }
+  }
+
+  async function changeGroupStatus(booking: BookingGroup, status: 'confirmed' | 'completed' | 'no_show') {
+    const fingerprint = `group-status:${booking.groupId}:${booking.version}:${status}`;
+    setBusy(true); setNotice('');
+    try {
+      await api(`/api/bookings/groups/${booking.groupId}/status`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': stableMutationKey(fingerprint) },
+        body: JSON.stringify({ expectedVersion: booking.version, status }),
+      });
+      await reloadAfterMutation(`Rezervasyon: ${statusText[status]}.`, fingerprint);
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'Rezervasyon durumu güncellenemedi.'); }
     finally { setBusy(false); }
   }
 
@@ -496,28 +594,78 @@ export default function BookingPage() {
 
     <div className="booking-grid">
       <section className="booking-card booking-composer">
-        <div className="section-head"><h2>Yeni tek hizmetli randevu</h2><span>{slots.length ? `${slots.length} slot` : '1 · müşteri'}</span></div>
-        <div className="booking-fields">
-          <label>Müşteri<input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Ad soyad" maxLength={120} /></label>
-          <label>Telefon<input value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+90…" maxLength={40} /></label>
-          <label>E-posta<input value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} type="email" placeholder="mail@…" maxLength={254} /></label>
-          <label>Hizmet<select value={serviceId} onChange={(event) => { setServiceId(event.target.value); setStaffId('any'); setSlots([]); setSelectedSlot(null); }}>
-            {activeServices.map((service) => <option key={service.id} value={service.id}>{service.name} · {service.duration_minutes} dk · {money(service.price_minor, service.currency)}</option>)}
-          </select></label>
-          <label>Personel<select value={staffId} onChange={(event) => { setStaffId(event.target.value); setSlots([]); setSelectedSlot(null); }}>
-            <option value="any">Fark etmez</option>{eligibleStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
-          <label>Tarih<input type="date" value={date} onChange={(event) => { setDate(event.target.value); setSlots([]); setSelectedSlot(null); }} /></label>
-          <label className="wide-field">Not<textarea value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={1000} placeholder="İsteğe bağlı not" /></label>
+        <div className="section-head"><div><p className="eyebrow">YENİ RANDEVU</p><h2>Zaman → müşteri → hizmetler → not</h2></div><span>{createSlots.length ? `${createSlots.length} saat` : `${createLines.length} hizmet`}</span></div>
+
+        <div className="booking-step">
+          <span className="booking-step-index">1</span>
+          <div><strong>Zaman</strong><small>Önce günü ve hizmet planını kur, sonra uygun başlangıç saatini seç.</small></div>
         </div>
-        {hasRangeServices && <p className="muted">Fiyat aralıklı veya çok hizmetli rezervasyonlar grup motorunda authoritative estimate ile yönetilir.</p>}
-        <div className="booking-actions"><button className="secondary-button" disabled={busy || !serviceId} onClick={() => void previewSlots()}>Boş saatleri getir</button></div>
+        <div className="booking-fields">
+          <label>Tarih<input type="date" value={date} onChange={(event) => { setDate(event.target.value); resetCreateAvailability(); }} /></label>
+          <div className="booking-inline-action">
+            <span>Saat kapatma</span>
+            <button className="secondary-button" type="button" disabled={busy} onClick={() => { setCloseDate(date); setCloseOpen((current) => !current); }}>{closeOpen ? 'Kapat' : 'Saat kapat'}</button>
+          </div>
+        </div>
+
+        {closeOpen && <div className="booking-close-panel">
+          <label>Gün<input type="date" value={closeDate} onChange={(event) => setCloseDate(event.target.value)} /></label>
+          <label>Başlangıç<input type="time" value={closeStart} onChange={(event) => setCloseStart(event.target.value)} /></label>
+          <label>Bitiş<input type="time" value={closeEnd} onChange={(event) => setCloseEnd(event.target.value)} /></label>
+          <label>Kapsam<select value={closeStaff} onChange={(event) => setCloseStaff(event.target.value)}><option value="all">Tüm salon</option>{activeStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
+          <label className="wide-field">Neden<input value={closeReason} maxLength={240} onChange={(event) => setCloseReason(event.target.value)} placeholder="Toplantı, mola, izin…" /></label>
+          <button className="secondary-button wide-field" type="button" disabled={busy || !['owner','manager'].includes(catalog.membership.role)} onClick={() => void createCloseBlock()}>{['owner','manager'].includes(catalog.membership.role) ? 'Kapanışı kaydet' : 'Yönetici yetkisi gerekli'}</button>
+        </div>}
+
+        <div className="booking-step">
+          <span className="booking-step-index">2</span>
+          <div><strong>Müşteri</strong><small>İletişim bilgileri yeni rezervasyon snapshot'ına yazılır; geçmiş kayıtlar değişmez.</small></div>
+        </div>
+        <div className="booking-fields">
+          <label>Müşteri<input value={customerName} onChange={(event) => { setCustomerName(event.target.value); setCreateKey(commandKey()); }} placeholder="Ad soyad" maxLength={120} /></label>
+          <label>Telefon<input value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setCreateKey(commandKey()); }} placeholder="+90…" maxLength={40} /></label>
+          <label>E-posta<input value={customerEmail} onChange={(event) => { setCustomerEmail(event.target.value); setCreateKey(commandKey()); }} type="email" placeholder="mail@…" maxLength={254} /></label>
+        </div>
+
+        <div className="booking-step">
+          <span className="booking-step-index">3</span>
+          <div><strong>Hizmet / personel satırları</strong><small>1–10 hizmet tek rezervasyon olarak planlanır; sunucu hepsini birlikte kilitler.</small></div>
+        </div>
+        <div className="booking-line-editor">
+          {createLines.map((line, index) => {
+            const staff = eligibleStaffFor(line.serviceId);
+            const service = activeServices.find((item) => item.id === line.serviceId);
+            return <div className="booking-line-draft" key={line.key}>
+              <span className="booking-line-number">{index + 1}</span>
+              <label>Hizmet<select value={line.serviceId} onChange={(event) => updateCreateLine(line.key, { serviceId: event.target.value })}>
+                {activeServices.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.duration_minutes} dk{item.price_type === 'range' ? ' · fiyat aralığı' : ` · ${money(item.price_minor, item.currency)}`}</option>)}
+              </select></label>
+              <label>Personel<select value={line.staffId} onChange={(event) => updateCreateLine(line.key, { staffId: event.target.value })}><option value="any">Fark etmez</option>{staff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
+              <span className="booking-line-meta">{service?.price_type === 'range' ? 'Kesin tutar adisyonda belirlenir' : 'Sabit fiyat'}</span>
+              <button className="booking-line-remove" type="button" disabled={busy || createLines.length === 1} onClick={() => removeCreateLine(line.key)}>Kaldır</button>
+            </div>;
+          })}
+          <button className="secondary-button" type="button" disabled={busy || createLines.length >= 10 || !activeServices.length} onClick={addCreateLine}>+ Hizmet ekle</button>
+        </div>
+        {hasRangeServices && <p className="muted">Fiyat aralıklı hizmetler tahmin olarak gösterilir; kesin tahsilat bu ekranda üretilmez.</p>}
+        <div className="booking-actions"><button className="secondary-button" type="button" disabled={busy || createLines.some((line) => !line.serviceId)} onClick={() => void previewCreateSlots()}>Uygun saatleri getir</button></div>
 
         <div className="slot-cloud">
-          {slots.map((slot) => <button type="button" className={selectedSlot?.starts_at === slot.starts_at && selectedSlot.staff_id === slot.staff_id ? 'slot-button selected' : 'slot-button'} key={`${slot.staff_id}-${slot.starts_at}`} onClick={() => setSelectedSlot(slot)}>
-            <strong>{formatTime(slot.starts_at, slot.timezone)}</strong><span>{slot.staff_name}</span>
+          {createSlots.map((slot) => <button type="button" className={selectedCreateSlot?.starts_at === slot.starts_at ? 'slot-button selected' : 'slot-button'} key={slot.starts_at} onClick={() => setSelectedCreateSlot(slot)}>
+            <strong>{formatTime(slot.starts_at, slot.timezone)}</strong><span>{createLines.length} hizmet · {slot.total_duration_minutes} dk</span>
           </button>)}
         </div>
-        {selectedSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedSlot.starts_at, selectedSlot.timezone)}</strong><span>{selectedSlot.staff_name}</span></div><button className="primary-button" disabled={busy || customerName.trim().length < 2} onClick={() => void createBooking()}>Randevuyu oluştur</button></div>}
+
+        <div className="booking-step">
+          <span className="booking-step-index">4</span>
+          <div><strong>Not ve oluştur</strong><small>Tek tıklama, tek idempotency anahtarı; grup ya bütünüyle oluşur ya hiç oluşmaz.</small></div>
+        </div>
+        <div className="booking-fields"><label className="wide-field">Not<textarea value={notes} onChange={(event) => { setNotes(event.target.value); setCreateKey(commandKey()); }} maxLength={1000} placeholder="İsteğe bağlı not" /></label></div>
+        <div className="booking-future-hints" aria-label="Sonraki özellik bağlantıları">
+          <span><strong>Tekrar</strong><small>F16-01 ile açılacak</small></span>
+          <span><strong>SMS</strong><small>F16-02 ile açılacak</small></span>
+        </div>
+        {selectedCreateSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedCreateSlot.starts_at, selectedCreateSlot.timezone)}</strong><span>{createLines.length} hizmet tek rezervasyon olarak oluşturulacak.</span></div><button className="primary-button" type="button" disabled={busy || customerName.trim().length < 2} onClick={() => void createBooking()}>{busy ? 'Oluşturuluyor…' : 'Randevuyu oluştur'}</button></div>}
       </section>
 
       <section className="booking-card booking-list-card">
@@ -541,6 +689,7 @@ export default function BookingPage() {
               </div>)}
             </div>
             <div className="appointment-actions">
+              <button disabled={busy} onClick={() => { setDetailFor(booking); setNotice(''); }}>Detay</button>
               {booking.managementMode === 'legacy_single' ? <>
                 {booking.status === 'scheduled' && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'confirmed')}>Onayla</button>}
                 {(booking.status === 'scheduled' || booking.status === 'confirmed') && <button disabled={busy} onClick={() => openReschedule(booking)}>Taşı</button>}
@@ -559,6 +708,38 @@ export default function BookingPage() {
         {bookingsNextCursor && <div className="booking-actions"><button className="secondary-button" disabled={busy} onClick={() => void loadMoreBookings()}>Daha fazla randevu yükle</button></div>}
       </section>
     </div>
+
+    {detailFor && <section className="booking-card booking-modal-card booking-detail-card">
+      <div className="section-head"><div><p className="eyebrow">RANDEVU DETAYI</p><h2>{detailFor.customerName}</h2></div><button type="button" onClick={() => setDetailFor(null)}>Kapat</button></div>
+      <div className="booking-detail-tabs" aria-label="Randevu bölümleri">
+        <span className="is-active">Detay</span>
+        <span aria-disabled="true">Fotoğraf <small>F16-03</small></span>
+        <span aria-disabled="true">Adisyon <small>F14</small></span>
+      </div>
+      <dl className="booking-detail-grid">
+        <div><dt>Zaman</dt><dd>{formatDateTime(detailFor.startsAt, detailFor.timezone)} – {formatTime(detailFor.endsAt, detailFor.timezone)}</dd></div>
+        <div><dt>Durum</dt><dd><span className="status-pill">{statusText[detailFor.status]}</span></dd></div>
+        <div><dt>İletişim</dt><dd>{detailFor.customerPhone || 'Telefon yok'}{detailFor.customerEmail ? ` · ${detailFor.customerEmail}` : ''}</dd></div>
+        <div><dt>Not</dt><dd>{detailFor.notes || 'Not yok'}</dd></div>
+        <div className="wide-field"><dt>Hizmetler</dt><dd>{detailFor.lines.map((line) => <div key={line.appointmentId}>{line.lineOrdinal}. {line.serviceName} · {line.staffName} · {formatTime(line.startsAt, detailFor.timezone)} · {statusText[line.status]}</div>)}</dd></div>
+      </dl>
+      <div className="appointment-actions booking-detail-actions">
+        {detailFor.managementMode === 'legacy_single' ? <>
+          {detailFor.status === 'scheduled' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'confirmed')}>Onayla</button>}
+          {(detailFor.status === 'scheduled' || detailFor.status === 'confirmed') && <button disabled={busy} onClick={() => openReschedule(detailFor)}>Taşı</button>}
+          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'completed')}>Tamamlandı</button>}
+          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'no_show')}>Gelmedi</button>}
+          {(detailFor.status === 'scheduled' || detailFor.status === 'confirmed') && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'cancelled')}>İptal</button>}
+        </> : <>
+          {detailFor.status === 'scheduled' && <button disabled={busy} onClick={() => void changeGroupStatus(detailFor, 'confirmed')}>Onayla</button>}
+          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeGroupStatus(detailFor, 'completed')}>Tamamlandı</button>}
+          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeGroupStatus(detailFor, 'no_show')}>Gelmedi</button>}
+          {detailFor.canRescheduleGroup && <button disabled={busy} onClick={() => openReschedule(detailFor)}>Tümünü taşı</button>}
+          {detailFor.canCancelGroup && <button disabled={busy} onClick={() => void cancelGroup(detailFor)}>Tümünü iptal et</button>}
+        </>}
+      </div>
+      <p className="muted booking-detail-future">Fotoğraf ve Adisyon bağlantıları yerini korur; ilgili backend fazları tamamlanmadan çalışıyormuş gibi sunulmaz.</p>
+    </section>}
 
     {rescheduleTarget && <section className="booking-card booking-modal-card">
       <div className="section-head"><div><p className="eyebrow">TAŞI</p><h2>{rescheduleTarget.booking.customerName} · {rescheduleTarget.booking.lineCount} hizmet</h2></div><button onClick={() => setRescheduleTarget(null)}>Kapat</button></div>
