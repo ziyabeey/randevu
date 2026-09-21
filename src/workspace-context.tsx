@@ -21,6 +21,7 @@ export type WorkspaceContextValue = {
   session: WorkspaceSession;
   activeMembership: WorkspaceMembership;
   activeBusiness: WorkspaceBusiness | null;
+  activeBusinessId: string;
   scopeEpoch: number;
   refreshSession(): Promise<WorkspaceSession>;
   selectBusiness(businessId: string): Promise<void>;

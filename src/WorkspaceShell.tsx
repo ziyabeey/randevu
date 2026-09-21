@@ -258,6 +258,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
       session,
       activeMembership,
       activeBusiness: activeMembership.businesses,
+      activeBusinessId: activeMembership.business_id,
       scopeEpoch,
       refreshSession,
       selectBusiness,
