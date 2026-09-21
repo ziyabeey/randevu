@@ -188,7 +188,7 @@ $$;
 
 reset role;
 
-do $
+do $f13lifecycle$
 declare
   v_group_version integer;
   v_group_status text;
@@ -244,7 +244,7 @@ begin
     raise exception 'F13-03 idempotency replay created unexpected command count: %',v_commands;
   end if;
 end
-$;
+$f13lifecycle$;
 
 delete from public.businesses where id='f3310000-0000-4000-8000-000000000001';
 delete from auth.users where id='f3300000-0000-4000-8000-000000000001';
