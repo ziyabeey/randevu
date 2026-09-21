@@ -46,6 +46,142 @@ $$;
 revoke all on function public.f12_public_information_ready(text,text,text,text)
   from public, anon, authenticated;
 
+create or replace function public.business_onboarding_readiness_internal(p_business_id uuid)
+returns table(
+  business_id uuid,
+  has_active_service boolean,
+  has_active_staff boolean,
+  has_active_assignment boolean,
+  has_business_hours boolean,
+  has_staff_hours boolean,
+  has_overlapping_hours boolean,
+  publishable boolean,
+  missing_reasons text[]
+)
+language sql
+stable
+security definer
+set search_path=public
+as $
+  with flags as (
+    select
+      exists (select 1 from public.services s where s.business_id=p_business_id and s.active) as has_active_service,
+      exists (select 1 from public.staff_profiles sp where sp.business_id=p_business_id and sp.active) as has_active_staff,
+      exists (
+        select 1 from public.staff_services ss
+        join public.staff_profiles sp on sp.business_id=ss.business_id and sp.id=ss.staff_id and sp.active
+        join public.services s on s.business_id=ss.business_id and s.id=ss.service_id and s.active
+        where ss.business_id=p_business_id and ss.active
+      ) as has_active_assignment,
+      exists (select 1 from public.business_hours bh where bh.business_id=p_business_id and bh.active) as has_business_hours,
+      exists (
+        select 1 from public.staff_hours sh
+        join public.staff_profiles sp on sp.business_id=sh.business_id and sp.id=sh.staff_id and sp.active
+        join public.staff_services ss on ss.business_id=sh.business_id and ss.staff_id=sh.staff_id and ss.active
+        join public.services s on s.business_id=ss.business_id and s.id=ss.service_id and s.active
+        where sh.business_id=p_business_id and sh.active
+      ) as has_staff_hours,
+      exists (
+        select 1 from public.business_hours bh
+        join public.staff_hours sh
+          on sh.business_id=bh.business_id and sh.weekday=bh.weekday and sh.active
+         and bh.starts_local<sh.ends_local and sh.starts_local<bh.ends_local
+        join public.staff_profiles sp on sp.business_id=sh.business_id and sp.id=sh.staff_id and sp.active
+        join public.staff_services ss on ss.business_id=sh.business_id and ss.staff_id=sh.staff_id and ss.active
+        join public.services s on s.business_id=ss.business_id and s.id=ss.service_id and s.active
+        where bh.business_id=p_business_id and bh.active
+      ) as has_overlapping_hours,
+      exists (
+        select 1 from public.business_public_profiles p
+        where p.business_id=p_business_id
+          and (
+            nullif(trim(coalesce(p.public_phone,'')),'') is not null
+            or nullif(trim(coalesce(p.public_email,'')),'') is not null
+            or nullif(trim(coalesce(p.public_whatsapp,'')),'') is not null
+          )
+      ) as has_public_contact,
+      exists (
+        select 1 from public.business_public_profiles p
+        where p.business_id=p_business_id
+          and public.f12_public_information_ready(
+            p.kvkk_notice_text,p.kvkk_notice_url,p.privacy_policy_url,p.booking_terms_text
+          )
+      ) as has_public_information
+  )
+  select
+    p_business_id,
+    f.has_active_service,
+    f.has_active_staff,
+    f.has_active_assignment,
+    f.has_business_hours,
+    f.has_staff_hours,
+    f.has_overlapping_hours,
+    f.has_active_service and f.has_active_staff and f.has_active_assignment
+      and f.has_business_hours and f.has_staff_hours and f.has_overlapping_hours
+      and f.has_public_contact and f.has_public_information as publishable,
+    array_remove(array[
+      case when not f.has_active_service then 'SERVICE_REQUIRED' end,
+      case when not f.has_active_staff then 'STAFF_REQUIRED' end,
+      case when not f.has_active_assignment then 'ASSIGNMENT_REQUIRED' end,
+      case when not f.has_business_hours then 'BUSINESS_HOURS_REQUIRED' end,
+      case when not f.has_staff_hours then 'STAFF_HOURS_REQUIRED' end,
+      case when not f.has_overlapping_hours then 'OVERLAPPING_HOURS_REQUIRED' end,
+      case when not f.has_public_contact then 'PUBLIC_CONTACT_REQUIRED' end,
+      case when not f.has_public_information then 'PUBLIC_INFORMATION_REQUIRED' end
+    ]::text[],null)
+  from flags f;
+$;
+
+revoke all on function public.business_onboarding_readiness_internal(uuid)
+  from public, anon, authenticated;
+
+create or replace function public.f12_require_public_support_contact()
+returns trigger
+language plpgsql
+security definer
+set search_path=public
+as $
+declare
+  v_required boolean;
+  v_old_ready boolean;
+  v_new_ready boolean;
+begin
+  perform 1 from public.businesses b where b.id=new.business_id for update;
+  if not found then raise exception 'BUSINESS_NOT_FOUND'; end if;
+
+  v_new_ready :=
+    nullif(trim(coalesce(new.public_phone,'')),'') is not null
+    or nullif(trim(coalesce(new.public_email,'')),'') is not null
+    or nullif(trim(coalesce(new.public_whatsapp,'')),'') is not null;
+
+  if tg_op='INSERT' or v_new_ready then return new; end if;
+
+  v_old_ready :=
+    nullif(trim(coalesce(old.public_phone,'')),'') is not null
+    or nullif(trim(coalesce(old.public_email,'')),'') is not null
+    or nullif(trim(coalesce(old.public_whatsapp,'')),'') is not null;
+
+  if not v_old_ready then return new; end if;
+
+  select
+    exists(select 1 from public.public_booking_settings s where s.business_id=new.business_id and s.enabled)
+    or exists(
+      select 1 from public.appointments a
+      where a.business_id=new.business_id
+        and a.source='public'
+        and a.status in ('scheduled','confirmed')
+        and a.ends_at>now()
+    )
+  into v_required;
+
+  if v_required then raise exception 'PUBLIC_CONTACT_REQUIRED'; end if;
+  return new;
+end
+$;
+
+revoke all on function public.f12_require_public_support_contact()
+  from public, anon, authenticated;
+
 create or replace function public.get_business_public_information(p_business_id uuid)
 returns table(
   business_id uuid,
@@ -81,17 +217,24 @@ returns trigger
 language plpgsql
 security definer
 set search_path=public
-as $$
-declare v_required boolean;
+as $
+declare
+  v_required boolean;
+  v_old_ready boolean;
+  v_new_ready boolean;
 begin
   perform 1 from public.businesses b where b.id=new.business_id for update;
   if not found then raise exception 'BUSINESS_NOT_FOUND'; end if;
 
-  if public.f12_public_information_ready(
+  v_new_ready:=public.f12_public_information_ready(
     new.kvkk_notice_text,new.kvkk_notice_url,new.privacy_policy_url,new.booking_terms_text
-  ) then
-    return new;
-  end if;
+  );
+  if tg_op='INSERT' or v_new_ready then return new; end if;
+
+  v_old_ready:=public.f12_public_information_ready(
+    old.kvkk_notice_text,old.kvkk_notice_url,old.privacy_policy_url,old.booking_terms_text
+  );
+  if not v_old_ready then return new; end if;
 
   select
     exists(select 1 from public.public_booking_settings s where s.business_id=new.business_id and s.enabled)
@@ -107,7 +250,7 @@ begin
   if v_required then raise exception 'PUBLIC_INFORMATION_REQUIRED'; end if;
   return new;
 end
-$$;
+$;
 
 revoke all on function public.f12_require_public_information()
   from public, anon, authenticated;
