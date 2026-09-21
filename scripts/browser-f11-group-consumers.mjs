@@ -315,6 +315,12 @@ try {
   assert.equal(new Set(staffColors).size, 2, 'staff columns lost distinct person colors');
 
   assert.equal(await call(page, 'click', 'Liste'), true);
+  await waitFor(() => {
+    const request = requestsTo('/api/calendar').at(-1);
+    if (!request) return false;
+    const params = new URLSearchParams(request.search);
+    return params.get('date') === '2026-09-24' && params.get('days') === '1';
+  }, 'one-day list did not request the selected business-local range');
   await waitFor(async () => (await call(page, 'calendarListRows')).length === 2, 'one-day list did not collapse physical lines into logical reservations');
   let listRows = await call(page, 'calendarListRows');
   assert.equal(listRows.length, 2);
