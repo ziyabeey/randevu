@@ -3,16 +3,19 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const page = readFileSync(new URL('../src/CustomersPage.tsx', import.meta.url), 'utf8');
-const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
+const shell = readFileSync(new URL('../src/WorkspaceShell.tsx', import.meta.url), 'utf8');
+const routes = readFileSync(new URL('../src/workspace-route.ts', import.meta.url), 'utf8');
 const worker = readFileSync(new URL('../worker/customers.ts', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20260914110000_f10_customer_records.sql', import.meta.url), 'utf8');
 const groupProjection = readFileSync(new URL('../supabase/migrations/20260917160500_f11_group_integration_repair.sql', import.meta.url), 'utf8');
 const groupPayload = readFileSync(new URL('../supabase/migrations/20260917133000_f11_multi_service_final_repair.sql', import.meta.url), 'utf8');
 
-await test('F10-05 customers are a dedicated workspace routed through the shared API client', () => {
-  assert.match(main, /const isCustomers = path === '\/customers'/);
-  assert.match(main, /isCustomers\s*\? <CustomersPage/);
+await test('F10-05 customers are a dedicated canonical workspace route through the shared shell and API client', () => {
+  assert.match(routes, /'\/app\/customers': 'customers'/);
+  assert.match(shell, /page === 'customers'\) return <CustomersPage/);
   assert.match(page, /import \{ api, ApiRequestError \} from '\.\/api'/);
+  assert.match(page, /useWorkspace/);
+  assert.doesNotMatch(page, /\/api\/session/);
   assert.doesNotMatch(page, /\bfetch\s*\(/);
   assert.doesNotMatch(page, /localStorage|sessionStorage/);
 });
@@ -32,17 +35,16 @@ await test('F10-05 customer selection does not recreate the mount loader or abor
   assert.match(page, /selectedIdRef\.current = customerId/);
   assert.match(page, /row\.customer_id === selectedIdRef\.current/);
   assert.doesNotMatch(page, /\}, \[selectedId\]\);\n\n  const loadHistory/);
-  assert.match(page, /const loadPage = useCallback[\s\S]*?\}, \[loadCustomers\]\);/);
+  assert.match(page, /const loadPage = useCallback[\s\S]*?\}, \[cancelBusinessScopedReads, loadCustomers\]\);/);
 });
 
-await test('F10-05 tenant switch clears scoped state and hard-navigates only after server selection', () => {
+await test('F10-05 tenant switch clears scoped state and delegates selection to the shared shell', () => {
   const switchBody = page.match(/async function switchBusiness[\s\S]*?\n  }\n\n  async function createCustomer/)?.[0] ?? '';
   assert.match(switchBody, /cancelBusinessScopedReads\(\)/);
   assert.match(switchBody, /setCustomers\(\[\]\)/);
   assert.match(switchBody, /setHistory\(\[\]\)/);
-  const apiCall = switchBody.indexOf("await api('/api/businesses/select'");
-  const navigation = switchBody.indexOf("window.location.assign('/customers')");
-  assert.ok(apiCall >= 0 && navigation > apiCall, 'tenant UI must change only after server selection succeeds');
+  assert.match(switchBody, /await selectBusiness\(businessId\)/);
+  assert.doesNotMatch(switchBody, /\/api\/businesses\/select|window\.location/);
 });
 
 await test('F10-05 customer history renders frozen booking snapshots instead of current master fields', () => {
