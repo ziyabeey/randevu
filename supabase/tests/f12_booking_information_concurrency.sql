@@ -163,13 +163,27 @@ begin
     raise exception 'contact-first race left an enabled or stale-contact state';
   end if;
 
-  -- Reset for reverse ordering.
-  update public.business_public_profiles
-  set public_phone='+905550001299',public_email='contact-race@example.invalid'
-  where business_id='f12c1000-0000-4000-8000-000000000001';
-  update public.public_booking_settings
-  set enabled=false
-  where business_id='f12c1000-0000-4000-8000-000000000001';
+  -- Reset for reverse ordering in its own committed connection. Doing these
+  -- writes in this DO transaction would retain the business-row lock while the
+  -- next dblink writer waits for it, creating a harness-only self-deadlock.
+  perform dblink_connect('f12_reset',v_connstr);
+  perform dblink_exec(
+    'f12_reset',
+    $reset$
+      update public.business_public_profiles
+      set public_phone='+905550001299',public_email='contact-race@example.invalid'
+      where business_id='f12c1000-0000-4000-8000-000000000001'
+    $reset$
+  );
+  perform dblink_exec(
+    'f12_reset',
+    $reset$
+      update public.public_booking_settings
+      set enabled=false
+      where business_id='f12c1000-0000-4000-8000-000000000001'
+    $reset$
+  );
+  perform dblink_disconnect('f12_reset');
 
   -- Scenario 2: enable wins first. Contact removal must wait and then fail,
   -- preserving at least one direct support path for the live public booking.
