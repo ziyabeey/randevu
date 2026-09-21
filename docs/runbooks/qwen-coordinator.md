@@ -90,7 +90,7 @@ launchctl print "gui/$(id -u)/ai.yzt.qwen-coordinator"
 | `coordinationCommitsEnabled` | `false` | Post-main closeout akışı ayrıca kabul edilirse |
 
 Janitor varsayılanları: `janitorEnabled=true`, `janitorQwenEnabled=true`,
-`janitorRetrySeconds=300`, `janitorTimeoutSeconds=30` ve son 30 merged PR
+`janitorRetrySeconds=300`, `janitorTimeoutSeconds=30` ve son 20 merged PR
 metadata penceresi. Bunlar mevcut config dosyasında bulunmasa da runtime güvenli
 fallback değerlerini kullanır. Janitor hiçbir automatic-action capability'ye
 bağlı değildir ve GitHub write path'ine sahip değildir.
