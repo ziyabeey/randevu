@@ -22,6 +22,12 @@ type ManagedAppointment = {
   can_cancel?: boolean;
   local_date?: string;
   max_date?: string;
+  support_slug?: string;
+  support_phone?: string | null;
+  support_email?: string | null;
+  support_website?: string | null;
+  support_whatsapp?: string | null;
+  support_address?: string | null;
 };
 type ManagedSlot = {
   staff_id: string;

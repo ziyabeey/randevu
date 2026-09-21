@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
+import PublicBookingInformation from './PublicBookingInformation';
 
 type ManagedAppointment = {
   appointment_id: string;
@@ -16,6 +17,12 @@ type ManagedAppointment = {
   can_cancel: boolean;
   local_date: string;
   max_date: string;
+  support_slug: string;
+  support_phone?: string | null;
+  support_email?: string | null;
+  support_website?: string | null;
+  support_whatsapp?: string | null;
+  support_address?: string | null;
 };
 type ManagedSlot = {
   staff_id: string;
@@ -403,6 +410,19 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         </section>
       </div>
 
+      <PublicBookingInformation
+        slug={appointment.support_slug}
+        contact={{
+          businessName: appointment.business_name,
+          phone: appointment.support_phone,
+          email: appointment.support_email,
+          website: appointment.support_website,
+          whatsapp: appointment.support_whatsapp,
+          address: appointment.support_address,
+        }}
+        prefix="manage"
+        className="manage-information"
+      />
       <footer className="public-booking-footer">Saatler {displayTimezone} saat dilimine göre gösterilir.</footer>
     </main>
   );

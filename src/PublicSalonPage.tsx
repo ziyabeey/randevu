@@ -81,7 +81,105 @@ function ContactLink({ label, href }: { label: string; href: string }) {
   </a>;
 }
 
+type InformationSection = 'kvkk' | 'privacy' | 'terms' | 'support';
+
+function informationSectionFor(slug: string): InformationSection | null {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  if (parts[0] !== 'r' || parts[1] !== slug || parts.length < 3) return null;
+  const section = parts[2];
+  return section === 'kvkk' || section === 'privacy' || section === 'terms' || section === 'support'
+    ? section
+    : null;
+}
+
+function publicContactLinks(profile: PublicProfile) {
+  const links: Array<{ label: string; href: string }> = [];
+  if (profile.public_phone) links.push({ label: profile.public_phone, href: `tel:${profile.public_phone.replace(/\s+/g, '')}` });
+  if (profile.public_email) links.push({ label: profile.public_email, href: `mailto:${profile.public_email}` });
+  if (profile.public_website) links.push({ label: 'Web sitesi', href: profile.public_website });
+  if (profile.public_whatsapp) links.push({ label: 'WhatsApp', href: `https://wa.me/${profile.public_whatsapp.replace(/\D/g, '')}` });
+  return links;
+}
+
+function PublicInformationPage({ slug, profile, section }: { slug: string; profile: PublicProfile; section: InformationSection }) {
+  const contacts = publicContactLinks(profile);
+  const base = `/r/${encodeURIComponent(slug)}`;
+  const commonContact = <div className="public-information-contact">
+    <h2>İletişim</h2>
+    <p>Randevu, kişisel veri veya hizmet koşullarıyla ilgili taleplerinizi doğrudan işletmeye iletebilirsiniz.</p>
+    <div className="public-salon-contacts">
+      {contacts.map((item) => <ContactLink key={item.href} label={item.label} href={item.href} />)}
+    </div>
+    {profile.address_text && <address>{profile.address_text}</address>}
+  </div>;
+
+  let title = 'Bilgilendirme';
+  let body: React.ReactNode = null;
+
+  if (section === 'kvkk') {
+    title = 'KVKK / Aydınlatma';
+    body = <>
+      <p><strong>Veri sorumlusu:</strong> {profile.public_name}. Randevu Kolay, işletmenin online randevu akışını sağlayan teknik altyapıdır.</p>
+      <h2>İşlenen bilgiler</h2>
+      <p>Ad soyad, telefon, isteğe bağlı e-posta, seçilen hizmet/personel/zaman, randevu notu ve güvenlik/işlem kayıtları randevunun oluşturulması ve yönetilmesi için işlenebilir.</p>
+      <p><strong>Not alanına sağlık bilgisi veya diğer özel nitelikli kişisel verileri yazmayın.</strong></p>
+      <h2>İşleme amaçları ve hukuki sebepler</h2>
+      <p>Bilgiler randevunun kurulması, doğrulanması, değiştirilmesi veya iptali; sizinle iletişim kurulması; hizmet güvenliği ve uyuşmazlık kayıtlarının korunması amaçlarıyla işlenir. İşletme, somut işleme faaliyeti için KVKK m.5 kapsamındaki uygun hukuki sebebi belirlemekle yükümlüdür.</p>
+      <h2>Aktarım ve toplama yöntemi</h2>
+      <p>Bilgiler elektronik randevu formu üzerinden elde edilir; hizmetin çalışması için gerekli teknik hizmet sağlayıcılara ve hukuken zorunlu hallerde yetkili mercilere, amaçla sınırlı olarak aktarılabilir.</p>
+      <h2>Haklarınız</h2>
+      <p>KVKK m.11 kapsamındaki taleplerinizi aşağıdaki kanallardan işletmeye iletebilirsiniz.</p>
+    </>;
+  } else if (section === 'privacy') {
+    title = 'Gizlilik Politikası';
+    body = <>
+      <p>{profile.public_name} adına yürütülen online randevu akışında yalnız randevunun kurulması ve yönetimi için gerekli müşteri, hizmet, zaman ve iletişim verileri kullanılır.</p>
+      <h2>Teknik kayıtlar</h2>
+      <p>Güvenlik, kötüye kullanımın önlenmesi ve kayıp bağlantı durumunda randevu sonucunun tekrar bulunabilmesi için teknik çerezler, tarayıcı yerel saklama kayıtları ve sınırlı işlem günlükleri kullanılabilir.</p>
+      <h2>Saklama</h2>
+      <p>Kişisel verilerin saklama süresi işletmenin hukuki ve operasyonel yükümlülüklerine göre belirlenir. İşleme amacı ve saklama gerekliliği sona erdiğinde silme, yok etme veya anonimleştirme süreçleri uygulanır.</p>
+      <h2>Yönetim bağlantısı</h2>
+      <p>Randevu yönetim bağlantısı randevuyu görme, taşıma veya iptal etme yetkisi verebilir. Bu bağlantıyı üçüncü kişilerle paylaşmayın.</p>
+    </>;
+  } else if (section === 'terms') {
+    title = 'Randevu / İptal / Değişiklik Koşulları';
+    body = <>
+      <p>Randevu, ekranda başarılı kayıt sonucu gösterildiğinde oluşturulmuş sayılır. Mesaj veya e-posta teslimi, randevu kaydından ayrı bir durumdur.</p>
+      <h2>Fiyat</h2>
+      <p>“Tahmini” olarak gösterilen tutarlar kesin tahsilat tutarı değildir. Nihai fiyat, işletmenin sunduğu hizmetin kapsamına göre işletmede netleşebilir.</p>
+      <h2>Taşıma ve iptal</h2>
+      <p>Randevu yönetim bağlantısı izin verdiği sürece randevuyu uygun başka bir saate taşıyabilir veya iptal edebilirsiniz. Sistem, işletme ayrıca yayınlamadıkça kendiliğinden iptal bedeli, kesinti veya süre cezası üretmez.</p>
+      <h2>İletişim</h2>
+      <p>Hizmetin kapsamı, fiyatı veya işletmeye özgü koşullar için aşağıdaki kanallardan işletmeyle iletişim kurun.</p>
+    </>;
+  } else {
+    title = 'Destek';
+    body = <>
+      <p>Randevu oluşturma, değişiklik, iptal, fiyat, hizmet veya kişisel veri talepleri için doğrudan {profile.public_name} ile iletişim kurun.</p>
+      <p>Randevu Kolay teknik altyapıyı sağlar; hizmetin kendisi ve işletmeye özgü kurallar ilgili işletmenin sorumluluğundadır.</p>
+    </>;
+  }
+
+  return <main className="public-salon-page public-information-page">
+    <article className="public-information-card">
+      <p className="public-kicker">RANDEVU KOLAY</p>
+      <h1>{title}</h1>
+      <p className="public-information-business">{profile.public_name}</p>
+      <div className="public-information-copy">{body}</div>
+      {commonContact}
+      <nav className="public-information-nav" aria-label="Bilgilendirme sayfaları">
+        <a href={`${base}/kvkk`}>KVKK / Aydınlatma</a>
+        <a href={`${base}/privacy`}>Gizlilik</a>
+        <a href={`${base}/terms`}>Randevu koşulları</a>
+        <a href={`${base}/support`}>Destek</a>
+      </nav>
+      <a className="public-preview-link" href={base}>Salona ve randevuya dön</a>
+    </article>
+  </main>;
+}
+
 export default function PublicSalonPage({ slug }: { slug: string }) {
+  const informationSection = useMemo(() => informationSectionFor(slug), [slug]);
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [inactive, setInactive] = useState(false);
@@ -167,6 +265,10 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
     return profile.media.find((media) => media.id === profile.cover_media_id) ?? null;
   }, [profile]);
   const gallery = useMemo(() => profile?.media.filter((media) => media.id !== profile.cover_media_id) ?? [], [profile]);
+
+  if (profile && informationSection) {
+    return <PublicInformationPage slug={slug} profile={profile} section={informationSection} />;
+  }
 
   if (inactive) {
     return <main className="public-salon-page public-salon-inactive">
@@ -270,6 +372,14 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
         multiServiceSelection={bookingSelection}
         onPlanNeedsRefresh={refreshBookingAvailability}
         onResultVisibilityChange={setBookingResultVisible}
+        informationContact={profile ? {
+          businessName: profile.public_name,
+          phone: profile.public_phone,
+          email: profile.public_email,
+          website: profile.public_website,
+          whatsapp: profile.public_whatsapp,
+          address: profile.address_text,
+        } : null}
       />
     </div>
   </div>;

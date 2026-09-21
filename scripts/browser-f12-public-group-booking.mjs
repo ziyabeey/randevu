@@ -268,7 +268,7 @@ const server = createServer(async (request, response) => {
     if (profileMatch[1] === 'loading-salon') await sleep(500);
     return sendJson(response, 200, { profile: {
     public_name: 'F12 Salon', short_description: 'Çoklu hizmet rezervasyonu', long_description: null,
-    public_phone: null, public_email: null, public_website: null, public_whatsapp: null,
+    public_phone: '+90 555 000 11 22', public_email: 'destek@f12.example.test', public_website: 'https://f12.example.test', public_whatsapp: '+905550001122',
     address_text: 'İstanbul', show_work_hours: false, cover_media_id: null, work_hours: [], media: [],
     } });
   }
@@ -380,6 +380,10 @@ const server = createServer(async (request, response) => {
         service_name: anchor.serviceName, staff_name: anchor.staffName, price_minor: anchor.priceMinMinor,
         currency: saved.group.currency, can_reschedule: true, can_cancel: true,
         local_date: '2026-09-20', max_date: '2026-11-19',
+        support_slug: saved.slug,
+        support_phone: '+90 555 000 11 22', support_email: 'destek@f12.example.test',
+        support_website: 'https://f12.example.test', support_whatsapp: '+905550001122',
+        support_address: 'İstanbul',
       },
       group: managedProjection(saved.group),
     });
@@ -488,7 +492,8 @@ async function preparePlan(page, slug, pinFirstStaff = false, checkKeyboard = tr
   if (checkKeyboard) {
     await page.evaluate('document.activeElement instanceof HTMLElement && document.activeElement.blur()');
     let serviceFocus = null;
-    for (let index = 0; index < 8; index += 1) {
+    const tabBudget = await page.evaluate('document.querySelectorAll("a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex=\\\"-1\\\"])").length');
+    for (let index = 0; index < Math.min(Number(tabBudget) + 2, 40); index += 1) {
       const focus = await pressTab(page);
       if (String(focus.className).includes('public-service-choice')) { serviceFocus = focus; break; }
     }
@@ -516,6 +521,13 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
   try {
     await preparePlan(page, slug);
 
+    const information=await page.evaluate('(() => ({origin:location.origin,links:Array.from(document.querySelectorAll(".public-information-links a")).map((a)=>({text:a.textContent.trim(),href:a.href,target:a.target})),text:document.querySelector(".public-booking-information")?.innerText||""}))()');
+    assert.deepEqual(information.links.map((item)=>item.text),['Aydınlatma ve KVKK','Gizlilik','Randevu koşulları','Destek']);
+    assert.deepEqual(information.links.map((item)=>new URL(item.href).pathname),[`/r/${slug}/kvkk`,`/r/${slug}/privacy`,`/r/${slug}/terms`,`/r/${slug}/support`]);
+    assert.ok(information.links.every((item)=>item.target==='_blank'), `${slug} information links should not replace the active booking surface`);
+    assert.match(information.text,/F12 Salon/);
+    assert.match(information.text,/\+90 555 000 11 22/);
+
     await page.evaluate('document.querySelector("input[name=customerName]")?.focus()');
     const contactFocus = await pressTab(page);
     assert.equal(contactFocus.name, 'customerPhone', `${slug} keyboard did not advance into contact fields`);
@@ -538,6 +550,9 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.match(result.text, /Kesin tahsilat tutarı değildir/);
     assert.match(result.text, /Kayıt durumu:/);
     assert.match(result.text, /Mesaj durumu:/);
+    assert.match(result.text, /Aydınlatma ve KVKK/);
+    assert.match(result.text, /Destek ve iletişim/);
+    assert.match(result.text, /\+90 555 000 11 22/);
     assert.match(result.href, /^\/m#[A-Za-z0-9_-]{43}$/);
     assert.match(result.statusClass, /\bis-active\b/, `${slug} active result did not use the active status tone`);
     assert.match(result.markerClass, /\bis-active\b/, `${slug} active result did not use the active marker tone`);
@@ -558,6 +573,13 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.match(managed, /2/);
     assert.match(managed, /Renk Bakımı/);
     assert.match(managed, /Kesim/);
+    assert.match(managed, /Aydınlatma ve KVKK/);
+    assert.match(managed, /Destek ve iletişim/);
+    assert.match(managed, /destek@f12\.example\.test/);
+    const managementLinks=await page.evaluate('Array.from(document.querySelectorAll(".public-information-links a")).map((a)=>({path:new URL(a.href).pathname,target:a.target}))');
+    assert.deepEqual(managementLinks.map((item)=>item.path),[`/r/${slug}/kvkk`,`/r/${slug}/privacy`,`/r/${slug}/terms`,`/r/${slug}/support`]);
+    assert.ok(managementLinks.every((item)=>item.target==='_blank'), `${slug} management information links must preserve the capability page`);
+    assert.match(await page.evaluate('location.hash'), /^#[A-Za-z0-9_-]{43}$/, `${slug} management capability hash was not preserved`);
     assert.deepEqual(page.diagnostics, []);
   } finally {
     page.close();
