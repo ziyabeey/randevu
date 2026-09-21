@@ -246,22 +246,22 @@ try {
   const page = await Cdp.connect(target.webSocketDebuggerUrl);
   await page.send('Runtime.enable');
   await page.send('Page.enable');
-  await page.send('Page.navigate', { url: `${origin}/bookings` });
+  await page.send('Page.navigate', { url: `${origin}/app/bookings` });
 
   await waitFor(
-    () => page.evaluate('location.pathname === "/bookings" && document.body.innerText.includes("RANDEVU YÖNETİMİ") && document.body.innerText.includes("YENİ RANDEVU")'),
-    'production /bookings lazy route did not render BookingPage',
+    () => page.evaluate('location.pathname === "/app/bookings" && document.body.innerText.includes("RANDEVU YÖNETİMİ") && document.body.innerText.includes("YENİ RANDEVU")'),
+    'production /app/bookings lazy route did not render BookingPage',
   );
 
   assert.ok(
     [...servedAssets].some((name) => /\/BookingPage-[^/]+\.js$/.test(name)),
-    `production /bookings did not request BookingPage lazy chunk: ${JSON.stringify([...servedAssets])}`,
+    `production /app/bookings did not request BookingPage lazy chunk: ${JSON.stringify([...servedAssets])}`,
   );
   assert.equal(await page.evaluate("document.querySelector('a[aria-current=\"page\"]')?.textContent"), 'Randevular');
   assert.deepEqual(page.diagnostics, []);
   page.close();
 
-  console.log('F13-03 production-entry browser passed: src/main.tsx /bookings route requested BookingPage lazy chunk and rendered workspace UI.');
+  console.log('F13-03 production-entry browser passed: src/main.tsx /app/bookings route requested BookingPage lazy chunk and rendered workspace UI.');
 } catch (error) {
   let diagnostics = '';
   try { diagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }

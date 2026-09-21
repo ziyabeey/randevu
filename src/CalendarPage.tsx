@@ -137,9 +137,14 @@ function nextStatuses(status: AppointmentStatus) {
   return [] as const;
 }
 
+function initialCalendarView(): ViewMode {
+  return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches ? 'list' : 'day';
+}
+
 export default function CalendarPage() {
+  const initialView = initialCalendarView();
   const [payload, setPayload] = useState<CalendarPayload | null>(null);
-  const [view, setView] = useState<ViewMode>('day');
+  const [view, setView] = useState<ViewMode>(initialView);
   const [days, setDays] = useState<1 | 7>(1);
   const [date, setDate] = useState('');
   const [clock, setClock] = useState(() => new Date());
@@ -158,7 +163,7 @@ export default function CalendarPage() {
   const selectionGeneration = useRef(0);
   const selectionController = useRef<AbortController | null>(null);
   const requestGate = useRef(new LatestCalendarRequest());
-  const query = useRef<CalendarQuery>({ date: '', view: 'day', days: 1, staffId: 'all' });
+  const query = useRef<CalendarQuery>({ date: '', view: initialView, days: 1, staffId: 'all' });
   const payloadRef = useRef<CalendarPayload | null>(null);
   const authorityContextRef = useRef<string | null>(null);
 

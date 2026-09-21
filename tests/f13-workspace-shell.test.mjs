@@ -1,0 +1,39 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolveAppRoute } from '../src/workspace-route.ts';
+
+test('F13-04 route authority separates capability, public, invite, canonical workspace and legacy routes', () => {
+  assert.deepEqual(resolveAppRoute('/m', true), { kind: 'management' });
+  assert.deepEqual(resolveAppRoute('/r/test-salon', true), { kind: 'public', slug: 'test-salon' });
+  assert.deepEqual(resolveAppRoute('/', true), { kind: 'invite' });
+  assert.deepEqual(resolveAppRoute('/', false), { kind: 'redirect', to: '/app' });
+  assert.deepEqual(resolveAppRoute('/calendar', false), { kind: 'redirect', to: '/app/calendar' });
+  assert.deepEqual(resolveAppRoute('/app', false), { kind: 'workspace', page: 'calendar' });
+  assert.deepEqual(resolveAppRoute('/app/services', false), { kind: 'workspace', page: 'services' });
+  assert.deepEqual(resolveAppRoute('/app/does-not-exist', false), { kind: 'workspace', page: 'not-found' });
+  assert.deepEqual(resolveAppRoute('/does-not-exist', false), { kind: 'not-found' });
+});
+
+test('F13-04 shell consumes existing workspace authority instead of creating a second client', () => {
+  const shell = readFileSync(new URL('../src/WorkspaceShell.tsx', import.meta.url), 'utf8');
+  const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
+  const auth = readFileSync(new URL('../worker/auth-routes.ts', import.meta.url), 'utf8');
+  assert.match(shell, /api<WorkspaceSession>\('\/api\/session'\)/);
+  assert.match(shell, /api\('\/api\/businesses\/select'/);
+  assert.match(shell, /scopeEpoch/);
+  assert.match(main, /installWorkspaceCoherence\(\{ readsSessionItself: true \}\)/);
+  assert.match(main, /setWorkspaceGuard\(workspaceGuard\)/);
+  assert.doesNotMatch(shell, /fetch\(/);
+  assert.match(auth, /new URL\('\/app', applicationOrigin\(context\)\)/);
+});
+
+test('F13-04 panel navigation keeps calendar primary and does not masquerade as SalonApp', () => {
+  const shell = readFileSync(new URL('../src/WorkspaceShell.tsx', import.meta.url), 'utf8');
+  assert.ok(shell.indexOf("page: 'calendar'") < shell.indexOf("page: 'bookings'"));
+  assert.match(shell, /page: 'customers'/);
+  assert.match(shell, /page: 'services'/);
+  assert.match(shell, /page: 'team'/);
+  assert.match(shell, /page: 'setup'/);
+  assert.doesNotMatch(shell, /Adisyonlar|Yeni paket|Masraf/);
+});
