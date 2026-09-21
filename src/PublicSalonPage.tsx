@@ -26,6 +26,11 @@ type PublicProfile = {
   cover_media_id: string | null;
   work_hours: BusinessHour[];
   media: PublicMedia[];
+  kvkk_notice_text: string | null;
+  kvkk_notice_url: string | null;
+  privacy_policy_url: string | null;
+  booking_terms_text: string | null;
+  booking_terms_url: string | null;
 };
 
 const dayLabels = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
@@ -106,7 +111,7 @@ function PublicInformationPage({ slug, profile, section }: { slug: string; profi
   const base = `/r/${encodeURIComponent(slug)}`;
   const commonContact = <div className="public-information-contact">
     <h2>İletişim</h2>
-    <p>Randevu, kişisel veri veya hizmet koşullarıyla ilgili taleplerinizi doğrudan işletmeye iletebilirsiniz.</p>
+    <p>Rezervasyon desteği için işletmenin yayınladığı iletişim kanallarını kullanabilirsiniz.</p>
     <div className="public-salon-contacts">
       {contacts.map((item) => <ContactLink key={item.href} label={item.label} href={item.href} />)}
     </div>
@@ -119,45 +124,27 @@ function PublicInformationPage({ slug, profile, section }: { slug: string; profi
   if (section === 'kvkk') {
     title = 'KVKK / Aydınlatma';
     body = <>
-      <p><strong>Veri sorumlusu:</strong> {profile.public_name}. Randevu Kolay, işletmenin online randevu akışını sağlayan teknik altyapıdır.</p>
-      <h2>İşlenen bilgiler</h2>
-      <p>Ad soyad, telefon, isteğe bağlı e-posta, seçilen hizmet/personel/zaman, randevu notu ve güvenlik/işlem kayıtları randevunun oluşturulması ve yönetilmesi için işlenebilir.</p>
-      <p><strong>Not alanına sağlık bilgisi veya diğer özel nitelikli kişisel verileri yazmayın.</strong></p>
-      <h2>İşleme amaçları ve hukuki sebepler</h2>
-      <p>Bilgiler randevunun kurulması, doğrulanması, değiştirilmesi veya iptali; sizinle iletişim kurulması; hizmet güvenliği ve uyuşmazlık kayıtlarının korunması amaçlarıyla işlenir. İşletme, somut işleme faaliyeti için KVKK m.5 kapsamındaki uygun hukuki sebebi belirlemekle yükümlüdür.</p>
-      <h2>Aktarım ve toplama yöntemi</h2>
-      <p>Bilgiler elektronik randevu formu üzerinden elde edilir; hizmetin çalışması için gerekli teknik hizmet sağlayıcılara ve hukuken zorunlu hallerde yetkili mercilere, amaçla sınırlı olarak aktarılabilir.</p>
-      <h2>Haklarınız</h2>
-      <p>KVKK m.11 kapsamındaki taleplerinizi aşağıdaki kanallardan işletmeye iletebilirsiniz.</p>
+      {profile.kvkk_notice_text?.trim()
+        ? <p className="public-information-prewrap">{profile.kvkk_notice_text}</p>
+        : <p className="public-muted">İşletmenin aydınlatma metni bu sayfada yayınlanmamış.</p>}
+      {profile.kvkk_notice_url?.trim() && <a className="public-preview-link" href={profile.kvkk_notice_url} target="_blank" rel="noreferrer">İşletmenin yayınladığı aydınlatma metnini aç ↗</a>}
     </>;
   } else if (section === 'privacy') {
     title = 'Gizlilik Politikası';
-    body = <>
-      <p>{profile.public_name} adına yürütülen online randevu akışında yalnız randevunun kurulması ve yönetimi için gerekli müşteri, hizmet, zaman ve iletişim verileri kullanılır.</p>
-      <h2>Teknik kayıtlar</h2>
-      <p>Güvenlik, kötüye kullanımın önlenmesi ve kayıp bağlantı durumunda randevu sonucunun tekrar bulunabilmesi için teknik çerezler, tarayıcı yerel saklama kayıtları ve sınırlı işlem günlükleri kullanılabilir.</p>
-      <h2>Saklama</h2>
-      <p>Kişisel verilerin saklama süresi işletmenin hukuki ve operasyonel yükümlülüklerine göre belirlenir. İşleme amacı ve saklama gerekliliği sona erdiğinde silme, yok etme veya anonimleştirme süreçleri uygulanır.</p>
-      <h2>Yönetim bağlantısı</h2>
-      <p>Randevu yönetim bağlantısı randevuyu görme, taşıma veya iptal etme yetkisi verebilir. Bu bağlantıyı üçüncü kişilerle paylaşmayın.</p>
-    </>;
+    body = profile.privacy_policy_url?.trim()
+      ? <a className="public-preview-link" href={profile.privacy_policy_url} target="_blank" rel="noreferrer">İşletmenin yayınladığı gizlilik politikasını aç ↗</a>
+      : <p className="public-muted">İşletmenin gizlilik politikası bağlantısı henüz yayınlanmamış.</p>;
   } else if (section === 'terms') {
     title = 'Randevu / İptal / Değişiklik Koşulları';
     body = <>
-      <p>Randevu, ekranda başarılı kayıt sonucu gösterildiğinde oluşturulmuş sayılır. Mesaj veya e-posta teslimi, randevu kaydından ayrı bir durumdur.</p>
-      <h2>Fiyat</h2>
-      <p>“Tahmini” olarak gösterilen tutarlar kesin tahsilat tutarı değildir. Nihai fiyat, işletmenin sunduğu hizmetin kapsamına göre işletmede netleşebilir.</p>
-      <h2>Taşıma ve iptal</h2>
-      <p>Randevu yönetim bağlantısı izin verdiği sürece randevuyu uygun başka bir saate taşıyabilir veya iptal edebilirsiniz. Sistem, işletme ayrıca yayınlamadıkça kendiliğinden iptal bedeli, kesinti veya süre cezası üretmez.</p>
-      <h2>İletişim</h2>
-      <p>Hizmetin kapsamı, fiyatı veya işletmeye özgü koşullar için aşağıdaki kanallardan işletmeyle iletişim kurun.</p>
+      {profile.booking_terms_text?.trim()
+        ? <p className="public-information-prewrap">{profile.booking_terms_text}</p>
+        : <p className="public-muted">İşletmenin randevu koşulları henüz yayınlanmamış.</p>}
+      {profile.booking_terms_url?.trim() && <a className="public-preview-link" href={profile.booking_terms_url} target="_blank" rel="noreferrer">Ayrıntılı koşulları aç ↗</a>}
     </>;
   } else {
     title = 'Destek';
-    body = <>
-      <p>Randevu oluşturma, değişiklik, iptal, fiyat, hizmet veya kişisel veri talepleri için doğrudan {profile.public_name} ile iletişim kurun.</p>
-      <p>Randevu Kolay teknik altyapıyı sağlar; hizmetin kendisi ve işletmeye özgü kurallar ilgili işletmenin sorumluluğundadır.</p>
-    </>;
+    body = <p>Rezervasyonla ilgili destek için aşağıdaki işletme iletişim kanallarını kullanın.</p>;
   }
 
   return <main className="public-salon-page public-information-page">
@@ -379,6 +366,11 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
           website: profile.public_website,
           whatsapp: profile.public_whatsapp,
           address: profile.address_text,
+          kvkkNoticeText: profile.kvkk_notice_text,
+          kvkkNoticeUrl: profile.kvkk_notice_url,
+          privacyPolicyUrl: profile.privacy_policy_url,
+          bookingTermsText: profile.booking_terms_text,
+          bookingTermsUrl: profile.booking_terms_url,
         } : null}
       />
     </div>
