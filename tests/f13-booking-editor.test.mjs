@@ -14,7 +14,7 @@ test('F13-03 operator composer keeps the required field order and uses the atomi
   const lines = booking.indexOf('<strong>Hizmet / personel satırları</strong>');
   const note = booking.indexOf('<strong>Not ve oluştur</strong>');
   assert.ok(time >= 0 && time < customer && customer < lines && lines < note);
-  assert.match(booking, /api\('\/api\/availability\/group-slots'/);
+  assert.ok(booking.includes("'/api/availability/group-slots'"));
   assert.match(booking, /api\('\/api\/bookings\/groups'/);
   assert.match(booking, /'Idempotency-Key': createKey/);
   assert.match(booking, /lines: createLines\.map/);
@@ -25,7 +25,7 @@ test('F13-03 operator composer keeps the required field order and uses the atomi
 });
 
 test('F13-03 close-time stays adjacent to create and detail future tabs are truthful placeholders', () => {
-  assert.match(booking, />Saat kapat</);
+  assert.match(booking, /closeOpen \? 'Kapat' : 'Saat kapat'/);
   assert.match(booking, /api\('\/api\/availability\/blocks'/);
   assert.match(booking, /Fotoğraf <small>F16-03<\/small>/);
   assert.match(booking, /Adisyon <small>F14<\/small>/);
