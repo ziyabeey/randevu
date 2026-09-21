@@ -164,6 +164,34 @@ const server = createServer(async (request, response) => {
       ],
     });
     if (url.pathname === '/api/availability/setup') return sendJson(response, 200, { timezone: TZ });
+    if (url.pathname === '/api/availability/group-slots' && request.method === 'POST') {
+      return sendJson(response, 200, { slots: [{
+        starts_at: '2026-09-24T12:00:00.000Z',
+        ends_at: '2026-09-24T13:30:00.000Z',
+        timezone: TZ,
+        total_duration_minutes: 90,
+        lines: [],
+      }] });
+    }
+    if (url.pathname === '/api/availability/blocks' && request.method === 'POST') {
+      return sendJson(response, 201, { block: {
+        id: '88000000-0000-4000-8000-000000000001',
+        staff_id: body?.staffId ?? null,
+        starts_at: `${body?.date}T${body?.start}:00+03:00`,
+        ends_at: `${body?.date}T${body?.end}:00+03:00`,
+        reason: body?.reason ?? null,
+        active: true,
+      } });
+    }
+    if (url.pathname === '/api/bookings/groups' && request.method === 'POST') {
+      return sendJson(response, 201, { group: {
+        ...nativeBooking(),
+        groupId: '62000000-0000-4000-8000-000000000099',
+        customerName: body?.customerName ?? 'Created Customer',
+        startsAt: body?.startsAt,
+        version: 1,
+      } });
+    }
     if (url.pathname === '/api/bookings/groups' && request.method === 'GET') return sendJson(response, 200, {
       membership, bookings: [nativeBooking(), legacyBooking()], page: { limit: 25, hasMore: false, nextCursor: null },
     });
@@ -203,6 +231,9 @@ const server = createServer(async (request, response) => {
       }
       const native = nativeBooking(); native.customerName = 'History Customer';
       return sendJson(response, 200, { bookings: [native], page: { limit: 25, hasMore: true, nextCursor: 'logical-page-2' } });
+    }
+    if (url.pathname === `/api/bookings/groups/${NATIVE_GROUP}/status` && request.method === 'POST') {
+      return sendJson(response, 200, { group: { ...nativeBooking(), version: 8, status: body?.status ?? 'confirmed' } });
     }
     if (url.pathname === `/api/bookings/groups/${NATIVE_GROUP}/cancel` && request.method === 'POST') {
       return sendJson(response, 200, { group: { ...nativeBooking(), version: 8, status: 'cancelled' } });
@@ -422,7 +453,69 @@ try {
   assert.equal(new URLSearchParams(historyRequests[1].search).get('cursor'), 'logical-page-2');
   passed('customer history keeps native group atomic across pagination and preserves legacy history');
 
-  console.log('F11-03 browser operator consumer acceptance passed.');
+  await navigate(page, `${origin}/bookings`);
+  await uiContains(page, 'Native Customer');
+  const groupSlotBefore = requestsTo('/api/availability/group-slots').length;
+  const createBefore = requestsTo('/api/bookings/groups').filter((request) => request.method === 'POST').length;
+  const blockBefore = requestsTo('/api/availability/blocks').length;
+  const statusBefore = requestsTo(`/api/bookings/groups/${NATIVE_GROUP}/status`).length;
+
+  assert.equal(await call(page, 'setComposerField', 'Tarih', '2026-09-24'), true);
+  assert.equal(await call(page, 'setComposerField', 'Müşteri', 'F13 Operator'), true);
+  assert.equal(await call(page, 'setComposerField', 'Telefon', '05550009999'), true);
+  assert.equal(await call(page, 'setBookingDraftSelect', 0, 'Hizmet', 'Renk'), true);
+  assert.equal(await call(page, 'setBookingDraftSelect', 0, 'Personel', 'Ada'), true);
+  assert.equal(await call(page, 'click', '+ Hizmet ekle'), true);
+  await waitFor(async () => (await call(page, 'bookingDraftCount')) === 2, 'second operator service line did not appear');
+  assert.equal(await call(page, 'setBookingDraftSelect', 1, 'Hizmet', 'Kesim'), true);
+  assert.equal(await call(page, 'setBookingDraftSelect', 1, 'Personel', 'Bora'), true);
+  assert.equal(await call(page, 'click', 'Uygun saatleri getir'), true);
+  await waitFor(() => requestsTo('/api/availability/group-slots').length === groupSlotBefore + 1, 'operator group-slot request did not fire');
+  const groupSlotRequest = requestsTo('/api/availability/group-slots').at(-1);
+  assert.equal(groupSlotRequest.body.date, '2026-09-24');
+  assert.deepEqual(groupSlotRequest.body.lines, [
+    { serviceId: SERVICE_1, staffId: STAFF_1 },
+    { serviceId: SERVICE_2, staffId: STAFF_2 },
+  ]);
+  assert.equal(await call(page, 'click', '2 hizmet'), true);
+  assert.equal(await call(page, 'click', 'Randevuyu oluştur'), true);
+  await waitFor(() => requestsTo('/api/bookings/groups').filter((request) => request.method === 'POST').length === createBefore + 1, 'operator group create did not fire');
+  const createRequest = requestsTo('/api/bookings/groups').filter((request) => request.method === 'POST').at(-1);
+  assert.equal(createRequest.body.customerName, 'F13 Operator');
+  assert.equal(createRequest.body.startsAt, '2026-09-24T12:00:00.000Z');
+  assert.deepEqual(createRequest.body.lines, [
+    { serviceId: SERVICE_1, staffId: STAFF_1 },
+    { serviceId: SERVICE_2, staffId: STAFF_2 },
+  ]);
+  assert.ok(typeof createRequest.idempotencyKey === 'string' && createRequest.idempotencyKey.length >= 8);
+  passed('operator composer creates a two-service reservation through one atomic group command');
+
+  assert.equal(await call(page, 'click', 'Saat kapat'), true);
+  assert.equal(await call(page, 'setCloseField', 'Gün', '2026-09-24'), true);
+  assert.equal(await call(page, 'setCloseField', 'Başlangıç', '16:00'), true);
+  assert.equal(await call(page, 'setCloseField', 'Bitiş', '17:00'), true);
+  assert.equal(await call(page, 'setCloseField', 'Kapsam', 'Tüm salon'), true);
+  assert.equal(await call(page, 'setCloseField', 'Neden', 'Toplantı'), true);
+  assert.equal(await call(page, 'click', 'Kapanışı kaydet'), true);
+  await waitFor(() => requestsTo('/api/availability/blocks').length === blockBefore + 1, 'nearby close-time action did not reach guarded availability block');
+  const closeRequest = requestsTo('/api/availability/blocks').at(-1);
+  assert.deepEqual(closeRequest.body, {
+    date: '2026-09-24', start: '16:00', end: '17:00', staffId: null, reason: 'Toplantı',
+  });
+  passed('operator composer keeps guarded close-time access next to booking creation');
+
+  assert.equal(await call(page, 'clickBookingButton', 'Native Customer', 'Detay'), true);
+  await waitFor(async () => (await call(page, 'detailText')).includes('Fotoğraf F16-03'), 'detail surface did not expose the future photo connection point');
+  const detail = await call(page, 'detailText');
+  assert.ok(detail.includes('Adisyon F14') && detail.includes('Renk') && detail.includes('Kesim') && detail.includes('Planlandı'));
+  assert.equal(await call(page, 'click', 'Onayla'), true);
+  await waitFor(() => requestsTo(`/api/bookings/groups/${NATIVE_GROUP}/status`).length === statusBefore + 1, 'native detail status did not use group lifecycle endpoint');
+  const statusRequest = requestsTo(`/api/bookings/groups/${NATIVE_GROUP}/status`).at(-1);
+  assert.deepEqual(statusRequest.body, { expectedVersion: 7, status: 'confirmed' });
+  assert.ok(typeof statusRequest.idempotencyKey === 'string' && statusRequest.idempotencyKey.length >= 8);
+  passed('booking detail exposes truthful future tabs and native CAS lifecycle actions');
+
+  console.log('F11-03/F13-03 browser operator consumer acceptance passed.');
 } catch (error) {
   console.error(error);
   if (page?.diagnostics.length) console.error(`browser exceptions:\n${page.diagnostics.join('\n')}`);
