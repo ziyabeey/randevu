@@ -175,7 +175,7 @@ begin
   ) values (
     p_business_id,v_notice_text,v_notice_url,v_privacy_url,v_terms_text,v_terms_url
   )
-  on conflict (business_id) do update
+  on conflict on constraint business_public_profiles_pkey do update
   set kvkk_notice_text=excluded.kvkk_notice_text,
       kvkk_notice_url=excluded.kvkk_notice_url,
       privacy_policy_url=excluded.privacy_policy_url,
