@@ -490,7 +490,7 @@ try {
   assert.ok(typeof createRequest.idempotencyKey === 'string' && createRequest.idempotencyKey.length >= 8);
   passed('operator composer creates a two-service reservation through one atomic group command');
 
-  assert.equal(await call(page, 'click', 'Saat kapat'), true);
+  await waitFor(async () => await call(page, 'click', 'Saat kapat'), 'close-time control did not re-enable after create reload');
   assert.equal(await call(page, 'setCloseField', 'Gün', '2026-09-24'), true);
   assert.equal(await call(page, 'setCloseField', 'Başlangıç', '16:00'), true);
   assert.equal(await call(page, 'setCloseField', 'Bitiş', '17:00'), true);
@@ -504,7 +504,7 @@ try {
   });
   passed('operator composer keeps guarded close-time access next to booking creation');
 
-  assert.equal(await call(page, 'clickBookingButton', 'Native Customer', 'Detay'), true);
+  await waitFor(async () => await call(page, 'clickBookingButton', 'Native Customer', 'Detay'), 'booking detail control did not re-enable after close-time mutation');
   await waitFor(async () => (await call(page, 'detailText')).includes('Fotoğraf F16-03'), 'detail surface did not expose the future photo connection point');
   const detail = await call(page, 'detailText');
   assert.ok(detail.includes('Adisyon F14') && detail.includes('Renk') && detail.includes('Kesim') && detail.includes('Planlandı'));
