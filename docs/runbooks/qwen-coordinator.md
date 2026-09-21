@@ -27,10 +27,17 @@ tanımlar. Bu araç bir ürün özelliği veya ikinci görev/veri otoritesi değ
    check'ler hızlı modu açmaz.
 3. Canlı `TASKS.md` satırıyla eşleşen, docs-only olmayan exact PR head için en
    fazla bir Depot shadow koşusu başlatılır.
-4. GitHub ve Depot terminal sonucuna gelene kadar Qwen çağrılmaz.
-5. Dual-green candidate için Qwen A/B/C/D seçimi üretir; deterministic policy bu
-   seçimi daha güvenli bir seviyeye sınırlayabilir.
-6. `shadow` modda yalnız yerel rapor yazılır. `guarded` modda bile dış yazım,
+4. Karar-değer kod PR'larında GitHub ve Depot terminal sonucuna gelene kadar
+   merge/review Qwen çağrılmaz.
+5. Repo-hijyeni Janitor aynı snapshot'tan son merge metadata'sını kullanarak
+   superseded/duplicate docs adaylarını ve review-quota sinyallerini çıkarır.
+   Janitor Qwen yalnız candidate fingerprint değiştiğinde, varsayılan olarak en
+   fazla 5 dakikada bir çağrılır.
+6. Dual-green candidate için ana Qwen A/B/C/D seçimi üretir; deterministic policy
+   bu seçimi daha güvenli bir seviyeye sınırlayabilir. Janitor'ın
+   CLOSE_CANDIDATE/REBASE_CANDIDATE sonucu yalnız advisory'dir ve action queue'ya
+   giremez.
+7. `shadow` modda yalnız yerel rapor yazılır. `guarded` modda bile dış yazım,
    genel ve eylem-bazlı opt-in bayrakları olmadan kapalıdır.
 
 ## Kurulum ve güncelleme
@@ -81,6 +88,12 @@ launchctl print "gui/$(id -u)/ai.yzt.qwen-coordinator"
 | `autoReadyEnabled` | `false` | Task/CI/base/thread kapıları pilotta doğrulanırsa |
 | `autoMergeEnabled` | `false` | En son; tüm exact-head receipt ve ruleset kanıtı doğrulanırsa |
 | `coordinationCommitsEnabled` | `false` | Post-main closeout akışı ayrıca kabul edilirse |
+
+Janitor varsayılanları: `janitorEnabled=true`, `janitorQwenEnabled=true`,
+`janitorRetrySeconds=300`, `janitorTimeoutSeconds=30` ve son 30 merged PR
+metadata penceresi. Bunlar mevcut config dosyasında bulunmasa da runtime güvenli
+fallback değerlerini kullanır. Janitor hiçbir automatic-action capability'ye
+bağlı değildir ve GitHub write path'ine sahip değildir.
 
 Bir eylem için `mode=guarded`, `writeActionsEnabled=true`, ilgili eylem bayrağı
 ve `allowedAutomaticActions` girdisi birlikte gerekir. Bir turda en fazla
@@ -144,6 +157,7 @@ kurucunun oluşturduğu `config.json.backup-*` dosyasından ayar elle geri alın
 ```bash
 node --check scripts/qwen-coordinator/policy.mjs
 node --check scripts/qwen-coordinator/depot.mjs
+node --check scripts/qwen-coordinator/janitor.mjs
 node --check scripts/qwen-coordinator/lease.mjs
 node --check scripts/qwen-coordinator/run-once.mjs
 node --check scripts/qwen-coordinator/install-local.mjs
