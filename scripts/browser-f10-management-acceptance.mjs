@@ -663,11 +663,23 @@ export async function runManagementAcceptance(options = {}) {
     await assertSafeSurface(pageA, 'setup/A');
 
     await clickButtonContaining(pageA, 'Salon B');
+    await waitFor(() => state.selected === ids.businessB, 'business switch did not select Salon B');
+    await waitPath(pageA, '/app/calendar');
+    await waitFor(
+      () => pageA.evaluate(`(() => {
+        const select = document.querySelector('select[aria-label="Aktif işletme"]');
+        if (!(select instanceof HTMLSelectElement)) return false;
+        return select.value === '${ids.businessB}'
+          && select.selectedOptions[0]?.textContent?.trim() === 'Salon B';
+      })()`),
+      'workspace header did not verify Salon B after switch',
+    );
+    await navigate(pageA, '/app/setup');
     await waitPath(pageA, '/app/setup');
     await waitFor(async () => {
       const text = await bodyText(pageA);
       return text.includes('Salon B') && text.includes('Yönetici') && text.includes('Şu an seçili');
-    }, 'business switch did not settle on Salon B manager state');
+    }, 'setup did not render verified Salon B manager state');
     assert.equal(state.selected, ids.businessB);
     await assertSafeSurface(pageA, 'setup/B');
 
