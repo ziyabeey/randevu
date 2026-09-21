@@ -147,6 +147,10 @@ begin
   if position('PUBLIC_BOOKING_NOT_READY' in coalesce(v_error,''))=0 then
     raise exception 'booking enable returned wrong race result: %',v_error;
   end if;
+  begin
+    perform * from dblink_get_result('f12_contact_b',false) as t(enabled boolean);
+  exception when others then null;
+  end;
   perform dblink_exec('f12_contact_b','rollback');
   perform dblink_disconnect('f12_contact_a');
   perform dblink_disconnect('f12_contact_b');
@@ -227,6 +231,10 @@ begin
   if position('PUBLIC_CONTACT_REQUIRED' in coalesce(v_error,''))=0 then
     raise exception 'contact removal returned wrong race result: %',v_error;
   end if;
+  begin
+    perform * from dblink_get_result('f12_enable_b',false) as t(n bigint);
+  exception when others then null;
+  end;
   perform dblink_exec('f12_enable_b','rollback');
   perform dblink_disconnect('f12_enable_a');
   perform dblink_disconnect('f12_enable_b');
