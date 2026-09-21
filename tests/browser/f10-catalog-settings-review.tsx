@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import BrowserWorkspaceProvider from './workspace-provider';
 import AvailabilityPage from '../../src/AvailabilityPage';
 import '../../src/styles.css';
 import '../../src/phase4.css';
@@ -148,5 +149,5 @@ window.__f10settingsReview = {
 
 const root = document.getElementById('root');
 if (!root) throw new Error('F10-04 review browser harness root missing');
-createRoot(root).render(<AvailabilityPage />);
+createRoot(root).render(<BrowserWorkspaceProvider><AvailabilityPage /></BrowserWorkspaceProvider>);
 document.documentElement.dataset.f10SettingsReviewReady = 'true';
