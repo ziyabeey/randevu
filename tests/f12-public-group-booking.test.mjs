@@ -9,6 +9,7 @@ const entry = await readFile(new URL('../src/main.tsx', import.meta.url), 'utf8'
 const browserEntry = await readFile(new URL('./browser/f12-public-group-booking.tsx', import.meta.url), 'utf8');
 const browserRunner = await readFile(new URL('../scripts/browser-f12-public-group-booking.mjs', import.meta.url), 'utf8');
 const css = await readFile(new URL('../src/public-booking.css', import.meta.url), 'utf8');
+const notificationStatus = await readFile(new URL('../src/PublicNotificationStatus.tsx', import.meta.url), 'utf8');
 
 test('F12-05 consumes the accepted group create contract with the durable v2 intent', () => {
   assert.match(booking, /isGroupMode \? 'group-book' : 'book'/);
@@ -41,8 +42,10 @@ test('F12-05 validates ordered group results, range estimates and the exact mana
   assert.match(booking, /estimateMaxMinor/);
   assert.match(booking, /Kesin tahsilat tutarı değildir\./);
   assert.match(booking, /Kayıt durumu:/);
-  assert.match(booking, /Mesaj durumu:/);
-  assert.match(booking, /Bu ekran SMS veya e-posta teslimini doğrulamaz\./);
+  assert.match(booking, /<PublicNotificationStatus notification=\{confirmation\.notification\} \/>/);
+  assert.doesNotMatch(booking, /Bu ekran SMS veya e-posta teslimini doğrulamaz\./);
+  assert.match(notificationStatus, /Bildirim durumu:/);
+  assert.match(notificationStatus, /Gelen kutusuna teslim edildiği doğrulanmaz\./);
   assert.match(booking, /RANDEVU İPTAL EDİLDİ/);
   assert.match(booking, /RANDEVU PLANI KISMEN DEĞİŞTİ/);
   assert.match(booking, /Randevu ayrıntılarını aç/);

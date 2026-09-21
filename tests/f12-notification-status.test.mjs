@@ -23,5 +23,5 @@ test('F12 C04/C05 workers expose normalized notification status', () => {
   const manage = readFileSync(new URL('../worker/customer-manage.ts', import.meta.url), 'utf8');
   assert.match(recovery, /notification: customerNotificationStatus\(/);
   assert.match(group, /notification: customerNotificationStatus\(/);
-  assert.match(manage, /notification: customerNotificationStatus\(/);
+  assert.match(manage, /customerNotificationStatus\(appointment\.notification_status\)/);
 });
