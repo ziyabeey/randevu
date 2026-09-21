@@ -47,5 +47,5 @@ test('F13-02 booking pagination binds cursor and RPC to one explicit local-date 
 test('F13-02 real Chrome acceptance covers logical list identity and range transitions', () => {
   assert.match(browser, /calendar day\/week\/list share range identity and list keeps native groups atomic/);
   assert.match(browser, /staff columns lost distinct person colors/);
-  assert.match(browser, /query\.get\('days'\), '7'/);
+  assert.match(browser, /calendarQuery\.get\('days'\), '7'/);
 });
