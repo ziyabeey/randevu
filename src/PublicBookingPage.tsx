@@ -17,7 +17,7 @@ import type { LegacyPendingRecord, PublicBookingGroupPlan, PublicBookingRecord, 
 import { randomBase64Url } from '../shared/base64.ts';
 import { derivePublicBookingIntentV2, sha256Hex } from '../shared/public-booking-intent';
 import type { PublicMultiServiceSelectionState } from './PublicMultiServiceSelection';
-import PublicBookingInformation, { hasPublicSupportContact, type BookingInformationContact } from './PublicBookingInformation';
+import PublicBookingInformation, { hasPublicBookingInformation, type BookingInformationContact } from './PublicBookingInformation';
 
 type PublicBusiness = { name: string; slug: string; timezone: string; local_date: string; max_date: string; step_minutes: number; min_notice_minutes: number; horizon_days: number };
 type PublicService = { service_id: string; name: string; duration_minutes: number; price_minor: number; currency: string };
@@ -302,7 +302,7 @@ function isRecoverableRecord(record: PublicBookingRecord): record is V2PendingRe
 
 export default function PublicBookingPage({ slug, groupMode = false, multiServiceSelection, onPlanNeedsRefresh, onResultVisibilityChange, informationContact }: Props) {
   const isGroupMode = groupMode;
-  const informationReady = hasPublicSupportContact(informationContact);
+  const informationReady = hasPublicBookingInformation(informationContact);
   const [page, setPage] = useState<PagePayload | null>(null);
   const [serviceId, setServiceId] = useState('');
   const [staffId, setStaffId] = useState('any');
