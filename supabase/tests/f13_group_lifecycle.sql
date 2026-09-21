@@ -115,8 +115,6 @@ select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false);
 do $$
 declare
   v_payload jsonb;
-  v_version integer;
-  v_events integer;
 begin
   v_payload:=public.set_appointment_group_status(
     'f3310000-0000-4000-8000-000000000001',
@@ -126,31 +124,14 @@ begin
   if v_payload->>'status' <> 'confirmed' or (v_payload->>'version')::integer <> 2 then
     raise exception 'F13-03 confirmed payload mismatch: %',v_payload;
   end if;
-  if exists (
-    select 1 from public.appointments
-    where group_id='f3360000-0000-4000-8000-000000000001' and status<>'confirmed'
-  ) then raise exception 'F13-03 confirmed did not update every line'; end if;
-
-  select count(*) into v_events from public.appointment_events
-  where business_id='f3310000-0000-4000-8000-000000000001'
-    and appointment_id in (
-      'f3370000-0000-4000-8000-000000000001',
-      'f3370000-0000-4000-8000-000000000002'
-    )
-    and event_type='confirmed'
-    and payload->>'scope'='group';
-  if v_events<>2 then raise exception 'F13-03 confirmed audit count mismatch: %',v_events; end if;
-
   -- Same command key is a read-back, not a second version/event mutation.
   v_payload:=public.set_appointment_group_status(
     'f3310000-0000-4000-8000-000000000001',
     'f3360000-0000-4000-8000-000000000001',
     'f13-group-status-confirm',1,'confirmed'
   );
-  select version into v_version from public.appointment_groups
-  where id='f3360000-0000-4000-8000-000000000001';
-  if v_version<>2 or (v_payload->>'version')::integer<>2 then
-    raise exception 'F13-03 idempotent replay changed version';
+  if (v_payload->>'version')::integer<>2 then
+    raise exception 'F13-03 idempotent replay changed version payload: %',v_payload;
   end if;
 
   v_payload:=public.set_appointment_group_status(
@@ -206,6 +187,64 @@ end
 $$;
 
 reset role;
+
+do $
+declare
+  v_group_version integer;
+  v_group_status text;
+  v_bad_lines integer;
+  v_confirmed_events integer;
+  v_completed_events integer;
+  v_commands integer;
+begin
+  select g.version,g.status into v_group_version,v_group_status
+  from public.appointment_groups g
+  where g.id='f3360000-0000-4000-8000-000000000001';
+
+  select count(*) into v_bad_lines
+  from public.appointments a
+  where a.group_id='f3360000-0000-4000-8000-000000000001'
+    and a.status<>'completed';
+
+  select count(*) into v_confirmed_events
+  from public.appointment_events e
+  where e.business_id='f3310000-0000-4000-8000-000000000001'
+    and e.appointment_id in (
+      'f3370000-0000-4000-8000-000000000001',
+      'f3370000-0000-4000-8000-000000000002'
+    )
+    and e.event_type='confirmed'
+    and e.payload->>'scope'='group';
+
+  select count(*) into v_completed_events
+  from public.appointment_events e
+  where e.business_id='f3310000-0000-4000-8000-000000000001'
+    and e.appointment_id in (
+      'f3370000-0000-4000-8000-000000000001',
+      'f3370000-0000-4000-8000-000000000002'
+    )
+    and e.event_type='completed'
+    and e.payload->>'scope'='group';
+
+  select count(*) into v_commands
+  from public.booking_commands bc
+  where bc.business_id='f3310000-0000-4000-8000-000000000001'
+    and bc.command='group_status';
+
+  if v_group_version<>3 or v_group_status<>'completed' then
+    raise exception 'F13-03 final group lifecycle mismatch: status %, version %',v_group_status,v_group_version;
+  end if;
+  if v_bad_lines<>0 then
+    raise exception 'F13-03 final lifecycle left non-completed lines: %',v_bad_lines;
+  end if;
+  if v_confirmed_events<>2 or v_completed_events<>2 then
+    raise exception 'F13-03 group audit mismatch: confirmed %, completed %',v_confirmed_events,v_completed_events;
+  end if;
+  if v_commands<>2 then
+    raise exception 'F13-03 idempotency replay created unexpected command count: %',v_commands;
+  end if;
+end
+$;
 
 delete from public.businesses where id='f3310000-0000-4000-8000-000000000001';
 delete from auth.users where id='f3300000-0000-4000-8000-000000000001';
