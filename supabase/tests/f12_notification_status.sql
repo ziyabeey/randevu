@@ -1,5 +1,20 @@
 begin;
 
+create or replace function pg_temp.f12_notification_v2_key(
+  p_recovery_id uuid,
+  p_deadline bigint,
+  p_secret_hash text
+)
+returns text
+language sql
+immutable
+set search_path=pg_catalog,extensions
+as $
+  select 'pub2_'||p_deadline::text||'_'||encode(extensions.digest(convert_to(
+    'yzt:public-booking:intent:v2'||chr(10)||p_recovery_id::text||chr(10)
+      ||p_deadline::text||chr(10)||p_secret_hash,'UTF8'),'sha256'),'hex');
+$;
+
 insert into auth.users(
   id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,
   raw_app_meta_data,raw_user_meta_data,created_at,updated_at
@@ -87,14 +102,19 @@ declare
   v_id uuid;
   v_status jsonb;
   v_token text:=repeat('m',43);
+  v_recovery uuid:='f1268000-0000-4000-8000-000000000001';
+  v_secret_hash text:=encode(digest(repeat('r',43),'sha256'),'hex');
+  v_deadline bigint:=floor(extract(epoch from clock_timestamp()))::bigint+300;
+  v_key text;
 begin
+  v_key:=pg_temp.f12_notification_v2_key(v_recovery,v_deadline,v_secret_hash);
   select appointment_id into v_id
   from public.create_public_appointment_with_recovery(
-    'f12-notification-salon','f12-notification-0001','Mail Müşteri',
+    'f12-notification-salon',v_key,'Mail Müşteri',
     'f1263000-0000-4000-8000-000000000001','f1264000-0000-4000-8000-000000000001',
     v_start,public.management_token_hash(v_token),
-    'f1268000-0000-4000-8000-000000000001',
-    encode(digest(repeat('r',43),'sha256'),'hex'),
+    v_recovery,
+    v_secret_hash,
     repeat('c',48),repeat('i',24),1::smallint,
     '05550006600','mail-status@example.test',null
   );
@@ -153,14 +173,19 @@ do $$
 declare
   v_start timestamptz:=((date_trunc('week',current_date)::date+7)+time '11:00') at time zone 'Europe/Istanbul';
   v_id uuid;
+  v_recovery uuid:='f1268000-0000-4000-8000-000000000002';
+  v_secret_hash text:=encode(digest(repeat('s',43),'sha256'),'hex');
+  v_deadline bigint:=floor(extract(epoch from clock_timestamp()))::bigint+300;
+  v_key text;
 begin
+  v_key:=pg_temp.f12_notification_v2_key(v_recovery,v_deadline,v_secret_hash);
   select appointment_id into v_id
   from public.create_public_appointment_with_recovery(
-    'f12-notification-salon','f12-notification-0002','Telefon Müşteri',
+    'f12-notification-salon',v_key,'Telefon Müşteri',
     'f1263000-0000-4000-8000-000000000001','f1264000-0000-4000-8000-000000000001',
     v_start,public.management_token_hash(repeat('n',43)),
-    'f1268000-0000-4000-8000-000000000002',
-    encode(digest(repeat('s',43),'sha256'),'hex'),
+    v_recovery,
+    v_secret_hash,
     repeat('d',48),repeat('j',24),1::smallint,
     '05550006601',null,null
   );
