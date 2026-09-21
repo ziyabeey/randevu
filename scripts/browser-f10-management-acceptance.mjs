@@ -654,7 +654,7 @@ export async function runManagementAcceptance(options = {}) {
       }
     }
 
-    const pageA = await openPage('/setup');
+    const pageA = await openPage('/app/setup');
     const missingAssetStatus = await pageA.evaluate(`fetch('/missing-chunk.js', { cache: 'no-store' }).then((response) => response.status)`);
     assert.equal(missingAssetStatus, 404, 'missing emitted-asset request fell through to the app HTML');
     await waitText(pageA, 'Salon A');
@@ -663,7 +663,7 @@ export async function runManagementAcceptance(options = {}) {
     await assertSafeSurface(pageA, 'setup/A');
 
     await clickButtonContaining(pageA, 'Salon B');
-    await waitPath(pageA, '/setup');
+    await waitPath(pageA, '/app/setup');
     await waitFor(async () => {
       const text = await bodyText(pageA);
       return text.includes('Salon B') && text.includes('Yönetici') && text.includes('Şu an seçili');
@@ -671,14 +671,14 @@ export async function runManagementAcceptance(options = {}) {
     assert.equal(state.selected, ids.businessB);
     await assertSafeSurface(pageA, 'setup/B');
 
-    await clickAnchor(pageA, '/team');
-    await waitPath(pageA, '/team');
+    await clickAnchor(pageA, '/app/team');
+    await waitPath(pageA, '/app/team');
     await waitText(pageA, 'Yönetici');
     await waitText(pageA, 'Davet oluştur');
     await assertSafeSurface(pageA, 'team/B manager');
 
     await pageA.evaluate('history.back()');
-    await waitPath(pageA, '/setup');
+    await waitPath(pageA, '/app/setup');
     await waitText(pageA, 'Yönetici');
     assert.equal(state.selected, ids.businessB, 'browser back changed selected business');
     const backText = await bodyText(pageA);
@@ -686,11 +686,11 @@ export async function runManagementAcceptance(options = {}) {
     assert.ok(!backText.includes('Salon A Hizmeti'), 'browser back exposed stale Salon A domain data');
 
     await pageA.evaluate('history.forward()');
-    await waitPath(pageA, '/team');
+    await waitPath(pageA, '/app/team');
     await waitText(pageA, 'Yönetici');
     await assertSafeSurface(pageA, 'team/B forward');
 
-    const pageB = await openPage('/team');
+    const pageB = await openPage('/app/team');
     await waitText(pageB, 'Yönetici');
     await waitText(pageB, 'Davet oluştur');
     assert.notEqual(await pageA.evaluate('location.href'), 'about:blank');
@@ -746,7 +746,7 @@ export async function runManagementAcceptance(options = {}) {
       );
     }
 
-    const pageC = await openPage('/');
+    const pageC = await openPage('/app');
     await waitText(pageC, 'Yönetici');
     await waitText(pageC, 'Çıkış yap');
     state.sessionFailureOnce = true;
@@ -773,7 +773,7 @@ export async function runManagementAcceptance(options = {}) {
     await reload(pageB);
     await waitText(pageB, 'Salon B Çalışanı');
     await waitText(pageB, 'Davet oluştur');
-    await navigate(pageA, '/setup');
+    await navigate(pageA, '/app/setup');
     await waitText(pageA, 'Salon A');
     await clickButtonContaining(pageA, 'Salon A');
     await waitFor(() => state.selected === ids.businessA, 'tab 1 did not switch the shared selection to Salon A');
@@ -812,7 +812,7 @@ export async function runManagementAcceptance(options = {}) {
     await reload(pageB);
     await waitText(pageB, 'Salon A Çalışanı');
     await waitText(pageB, 'Davet oluştur');
-    await navigate(pageA, '/setup');
+    await navigate(pageA, '/app/setup');
     await waitText(pageA, 'Salon B');
     await clickButtonContaining(pageA, 'Salon B');
     await waitFor(() => state.selected === ids.businessB, 'tab 1 did not switch the shared selection back to Salon B');
@@ -867,7 +867,7 @@ export async function runManagementAcceptance(options = {}) {
       );
     }
 
-    await navigate(pageA, '/setup');
+    await navigate(pageA, '/app/setup');
     await waitText(pageA, 'Önce giriş yapın');
     const expiredSetupText = await bodyText(pageA);
     assert.ok(!expiredSetupText.includes('Salon B Hizmeti'));
