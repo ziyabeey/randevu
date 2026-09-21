@@ -160,10 +160,6 @@ function estimateText(booking: BookingGroup) {
     : `${money(booking.estimateMinMinor, booking.currency)} – ${money(booking.estimateMaxMinor, booking.currency)}`;
 }
 
-function legacyCreateBookable(service: Service) {
-  return service.active && (service.price_type === undefined || service.price_type === 'fixed');
-}
-
 const statusText: Record<GroupStatus, string> = {
   scheduled: 'Planlandı', confirmed: 'Onaylandı', completed: 'Tamamlandı', no_show: 'Gelmedi', cancelled: 'İptal', partial: 'Kısmi',
 };
@@ -461,6 +457,7 @@ export default function BookingPage() {
   }
 
   function openReschedule(booking: BookingGroup) {
+    setDetailFor(null);
     setRescheduleTarget({ booking, key: commandKey() });
     setRescheduleDate(dateInZone(booking.startsAt, booking.timezone));
     setRescheduleStaff(booking.lines[0]?.staffId ?? 'any');
