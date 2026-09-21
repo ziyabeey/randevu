@@ -53,6 +53,14 @@ function makeTenant(key) {
       min_notice_minutes: 60,
       horizon_days: 60,
     },
+    information: {
+      business_id: a ? ids.businessA : ids.businessB,
+      kvkk_notice_text: 'Bu metin yalnız browser fixture işletmesi tarafından yayınlanan test aydınlatma içeriğidir.',
+      kvkk_notice_url: 'https://example.invalid/kvkk',
+      privacy_policy_url: 'https://example.invalid/privacy',
+      booking_terms_text: 'Browser fixture işletmesinin test randevu, iptal ve değişiklik koşulları.',
+      booking_terms_url: 'https://example.invalid/terms',
+    },
   };
 }
 
@@ -124,6 +132,10 @@ const server = createServer(async (request, response) => {
       if (state.recovery) return sendJson(response, 403, { error: { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Şifre güncellemesi gerekli.' } });
       return sendJson(response, 200, settingsPayload(tenant));
     }
+    if (request.method === 'GET' && url.pathname === '/api/public/profile/information') {
+      if (state.recovery) return sendJson(response, 403, { error: { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Şifre güncellemesi gerekli.' } });
+      return sendJson(response, 200, { information: tenant.information });
+    }
     if (request.method === 'GET' && url.pathname === '/api/public/profile') {
       const capturedKey = selectedKey;
       const captured = state.tenants[capturedKey];
@@ -141,6 +153,17 @@ const server = createServer(async (request, response) => {
     }
 
     const body = request.method === 'GET' || request.method === 'HEAD' ? {} : await readJson(request);
+    if (request.method === 'PUT' && url.pathname === '/api/public/profile/information') {
+      tenant.information = {
+        ...tenant.information,
+        kvkk_notice_text: String(body.kvkkNoticeText || '') || null,
+        kvkk_notice_url: String(body.kvkkNoticeUrl || '') || null,
+        privacy_policy_url: String(body.privacyPolicyUrl || '') || null,
+        booking_terms_text: String(body.bookingTermsText || '') || null,
+        booking_terms_url: String(body.bookingTermsUrl || '') || null,
+      };
+      return sendJson(response, 200, { information: tenant.information });
+    }
     if (request.method === 'PUT' && url.pathname === '/api/public/profile') {
       const profile = tenant.profile;
       if ('publicName' in body) profile.public_name = String(body.publicName);
