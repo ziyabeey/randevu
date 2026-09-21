@@ -44,6 +44,11 @@ function profile(slug) {
     cover_media_id: broken ? brokenMediaId : null,
     work_hours: [{ weekday: 1, starts_local: '09:00:00', ends_local: '18:00:00' }],
     media: broken ? [{ id: brokenMediaId, alt_text: 'Salon giriş alanı', sort_order: 0, width: 1600, height: 1000 }] : [],
+    kvkk_notice_text: 'F12 public profile browser fixture aydınlatma metni.',
+    kvkk_notice_url: 'https://salon.example.test/kvkk',
+    privacy_policy_url: 'https://salon.example.test/privacy',
+    booking_terms_text: 'F12 public profile browser fixture randevu koşulları.',
+    booking_terms_url: 'https://salon.example.test/terms',
   };
 }
 function bookingPayload(slug) {
@@ -213,8 +218,8 @@ async function inspectViewport(debugUrl, origin, slug, width) {
     await page.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: true });
     await page.send('Page.navigate', { url: `${origin}/harness/${slug}` });
     const readyExpression = slug === 'broken-salon'
-      ? 'document.documentElement.dataset.f12Ready === "true" && document.body.innerText.includes("Fotoğraf yüklenemedi")'
-      : 'document.documentElement.dataset.f12Ready === "true"';
+      ? 'document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav")) && document.body.innerText.includes("Fotoğraf yüklenemedi")'
+      : 'document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav"))';
     await waitFor(() => page.evaluate(readyExpression), `F12 ${width}px harness did not become ready`);
     const result = await page.evaluate(`(() => {
       const root = document.documentElement;

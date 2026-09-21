@@ -17,6 +17,7 @@ import type { LegacyPendingRecord, PublicBookingGroupPlan, PublicBookingRecord, 
 import { randomBase64Url } from '../shared/base64.ts';
 import { derivePublicBookingIntentV2, sha256Hex } from '../shared/public-booking-intent';
 import type { PublicMultiServiceSelectionState } from './PublicMultiServiceSelection';
+import PublicBookingInformation, { hasPublicBookingInformation, type BookingInformationContact } from './PublicBookingInformation';
 
 type PublicBusiness = { name: string; slug: string; timezone: string; local_date: string; max_date: string; step_minutes: number; min_notice_minutes: number; horizon_days: number };
 type PublicService = { service_id: string; name: string; duration_minutes: number; price_minor: number; currency: string };
@@ -73,6 +74,7 @@ type Props = {
   multiServiceSelection?: PublicMultiServiceSelectionState | null;
   onPlanNeedsRefresh?: () => void;
   onResultVisibilityChange?: (visible: boolean) => void;
+  informationContact?: BookingInformationContact | null;
 };
 
 const HTTP_TIMEOUT_MS = 10_000;
@@ -298,8 +300,9 @@ function isRecoverableRecord(record: PublicBookingRecord): record is V2PendingRe
   return record.status === 'submitting' || record.status === 'unresolved' || record.status === 'legacy_pending';
 }
 
-export default function PublicBookingPage({ slug, groupMode = false, multiServiceSelection, onPlanNeedsRefresh, onResultVisibilityChange }: Props) {
+export default function PublicBookingPage({ slug, groupMode = false, multiServiceSelection, onPlanNeedsRefresh, onResultVisibilityChange, informationContact }: Props) {
   const isGroupMode = groupMode;
+  const informationReady = hasPublicBookingInformation(informationContact);
   const [page, setPage] = useState<PagePayload | null>(null);
   const [serviceId, setServiceId] = useState('');
   const [staffId, setStaffId] = useState('any');
@@ -782,6 +785,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       </> : <dl className="public-confirmation-list"><div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div><div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div><div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div><div><dt>Ücret</dt><dd>{appointment.price_minor === null ? 'İşletmede netleşecek' : money(appointment.price_minor, appointment.currency)}</dd></div></dl>}
       <div className={`public-result-status is-${outcome.tone}`} aria-label="Rezervasyon ve mesaj durumu"><p><strong>Kayıt durumu:</strong> {outcome.state}</p><p><strong>Mesaj durumu:</strong> Bu ekran SMS veya e-posta teslimini doğrulamaz.</p></div>
       <p className="public-confirmation-note">{outcome.active ? 'Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.' : 'Randevu ayrıntılarınızı yönetim bağlantısından görüntüleyebilirsiniz.'}</p>
+      <PublicBookingInformation slug={slug} contact={informationContact} prefix="result" />
       <a className="public-primary" href={confirmation.manageUrl}>{outcome.active ? 'Randevumu yönet' : 'Randevu ayrıntılarını aç'}</a>
       {confirmationStorageError && <div className="public-booking-notice" role="alert">{confirmationStorageError} Bu kayıt tamamlanana kadar yeni randevu başlatmayın.</div>}
       {unpersistedConfirmation && <button className="public-secondary" type="button" onClick={() => void retryConfirmationPersistence()}>Güvenli kaydı yeniden dene</button>}
@@ -793,6 +797,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     return <main className="public-booking-shell"><section className="public-booking-card public-confirmation">
       <div className="public-success-mark">✓</div><p className="public-kicker">RANDEVU KAYDI BULUNDU</p><h1>Önceki randevunuz alındı.</h1>
       <p className="public-confirmation-note">Yönetim bağlantısı güvenlik nedeniyle bu cihazda saklanmadı. Bağlantıyı kaybettiyseniz randevu bilgilerinizi işletmeyle kontrol edin.</p>
+      <PublicBookingInformation slug={slug} contact={informationContact} prefix="receipt" />
       <button className="public-secondary" type="button" onClick={() => void removeReminder(blockingRecord)}>Yeni randevu oluştur</button>
     </section></main>;
   }
@@ -802,6 +807,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       <p className="public-kicker">ÖNCEKİ İŞLEM BELİRSİZ</p><h1>Önceki randevunuzu kontrol edin.</h1>
       <p>Bu cihazdaki kayıt sonucu doğrulamaya yetmiyor. E-posta veya yönetim bağlantınızı kontrol edin ya da işletmeyle görüşün.</p>
       <p>Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.</p>
+      <PublicBookingInformation slug={slug} contact={informationContact} prefix="uncertain" />
       <button className="public-secondary" type="button" onClick={() => void removeReminder(blockingRecord)}>Cihazdaki hatırlatıcıyı kaldır</button>
     </section></main>;
   }
@@ -833,7 +839,8 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           <small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>
           {contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}
           <label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={1000} rows={3} /></label>
-          <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Planı onayla ve randevuyu oluştur'}</button>
+          <PublicBookingInformation slug={slug} contact={informationContact} prefix="group-booking" />
+          <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Planı onayla ve randevuyu oluştur'}</button>
         </form>
       </> : <p className="public-muted">İletişim formunu açmak için yukarıdan hizmetlerinizi ve birlikte uygun bir saati seçin.</p>}
     </section>
@@ -865,7 +872,8 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       <section className={`public-booking-card public-customer-card ${selectedSlot ? 'is-ready' : ''}`}><span className="public-step">3</span><h2>İletişim bilgileri</h2>
         {selectedSlot && selectedService ? <><div className="public-selection-summary"><strong>{selectedService.name}</strong><span>{formatDateTime(selectedSlot.starts_at, selectedSlot.timezone)} · {selectedSlot.staff_name}</span></div>
           <form className="public-customer-form" onSubmit={(event) => void book(event)}><label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label><div className="public-two-columns"><label><span>Telefon <small>(zorunlu)</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div><small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>{contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}<label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
-            <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
+            <PublicBookingInformation slug={slug} contact={informationContact} prefix="booking" />
+            <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
           </form></> : <p className="public-muted">Bir saat seçtiğinizde iletişim formu burada açılır.</p>}
       </section>
     </div>

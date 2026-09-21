@@ -334,3 +334,18 @@
   .public-booking-card,
   .public-admin-card { padding: 1rem; }
 }
+
+
+/* F12-05 accessible information / privacy / terms / support surface. */
+.public-booking-information { display:grid; gap:.85rem; margin:1rem 0; padding:1rem; border:1px solid #dfe5f0; border-radius:.8rem; background:#fbfcff; text-align:left; }
+.public-information-links { display:flex; flex-wrap:wrap; gap:.45rem .8rem; }
+.public-information-links a,.public-information-contact a { display:inline-flex; align-items:center; min-height:44px; color:#3159d9; font-size:.8rem; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+.public-information-links a:focus-visible,.public-information-contact a:focus-visible,.public-information-sections article:focus-visible { outline:3px solid #9eb5ff; outline-offset:2px; }
+.public-information-sections { display:grid; gap:.75rem; }
+.public-information-sections article { scroll-margin-top:1rem; padding-top:.75rem; border-top:1px solid #e7ebf3; }
+.public-information-sections h3 { margin:0 0 .35rem; color:#26334d; font-size:.9rem; }
+.public-information-sections p { margin:.35rem 0; color:#5b667c; font-size:.78rem; line-height:1.55; }
+.public-information-warning { margin:0; padding:.7rem .8rem; border:1px solid #c63b3b; border-radius:.65rem; background:#fff2f2; color:#8f2222; font-size:.8rem; font-weight:700; }
+.public-information-contact { display:flex; flex-wrap:wrap; align-items:center; gap:.25rem .85rem; }
+.public-information-contact address { flex-basis:100%; margin-top:.2rem; color:#5b667c; font-size:.78rem; font-style:normal; }
+.public-confirmation .public-booking-information,.manage-information { margin-top:1.1rem; }
