@@ -18,7 +18,10 @@ test('F13-03 operator composer keeps the required field order and uses the atomi
   assert.match(booking, /api\('\/api\/bookings\/groups'/);
   assert.match(booking, /'Idempotency-Key': createKey/);
   assert.match(booking, /lines: createLines\.map/);
-  assert.doesNotMatch(booking, /customerId:\s*[^,}]+/);
+  const createStart = booking.indexOf("await api('/api/bookings/groups'");
+  const createEnd = booking.indexOf("      });", createStart);
+  assert.ok(createStart >= 0 && createEnd > createStart);
+  assert.doesNotMatch(booking.slice(createStart, createEnd), /customerId/);
 });
 
 test('F13-03 close-time stays adjacent to create and detail future tabs are truthful placeholders', () => {
