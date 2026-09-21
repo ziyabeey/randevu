@@ -127,6 +127,14 @@ function readPage(context: BaseContext, kind: 'events') {
   return { limit, cursor };
 }
 
+function readBookingRange(context: BaseContext) {
+  const from = context.req.query('from');
+  const to = context.req.query('to');
+  if (from === undefined && to === undefined) return { from: null, to: null };
+  if (!isDate(from) || !isDate(to) || from >= to) return null;
+  return { from, to };
+}
+
 function bookingPageRestart(context: BaseContext) {
   return context.json({
     error: {
@@ -147,6 +155,9 @@ function readFailure(context: BaseContext, data: unknown, status: number, code: 
   if (message.includes('APPOINTMENT_NOT_FOUND')) {
     return context.json({ error: { code: 'APPOINTMENT_NOT_FOUND', message: 'Randevu bulunamadı.' } }, 404);
   }
+  if (message.includes('INVALID_PAGE_RANGE')) {
+    return context.json({ error: { code: 'INVALID_PAGE_RANGE', message: 'Randevu tarih aralığı geçerli değil.' } }, 400);
+  }
   const unavailable = status === 0 || status >= 500;
   return context.json({
     error: {
@@ -160,13 +171,20 @@ bookings.get('/', async (context) => {
   const access = await requireMember(context);
   if ('error' in access) return access.error;
   const limit = parsePageLimit(context.req.query('limit'));
+  const range = readBookingRange(context);
   const cursor = decodeBookingPageCursor(context.req.query('cursor'));
   if (limit === null || cursor === undefined) {
     return context.json({ error: { code: 'INVALID_PAGE', message: 'Sayfa boyutu veya devam anahtarı geçerli değil.' } }, 400);
   }
+  if (!range) {
+    return context.json({ error: { code: 'INVALID_PAGE_RANGE', message: 'Randevu tarih aralığı geçerli değil.' } }, 400);
+  }
   if (cursor === BOOKING_CURSOR_RESTART_REQUIRED) return bookingPageRestart(context);
+  if (cursor && (cursor.rangeStart !== range.from || cursor.rangeEnd !== range.to)) {
+    return bookingPageRestart(context);
+  }
 
-  const result = await supabaseRequest<AppointmentPageRow[]>(context.env, 'rest/v1/rpc/list_appointments_page_v2', {
+  const result = await supabaseRequest<AppointmentPageRow[]>(context.env, 'rest/v1/rpc/list_appointments_page_v3', {
     method: 'POST',
     body: JSON.stringify({
       p_business_id: access.membership.business_id,
@@ -174,6 +192,8 @@ bookings.get('/', async (context) => {
       p_after_starts_at: cursor?.at ?? null,
       p_after_id: cursor?.id ?? null,
       p_expected_revision: cursor?.revision ?? null,
+      p_start_date: range.from,
+      p_end_date: range.to,
     }),
   }, access.auth.accessToken);
   if (!result.ok) return readFailure(context, result.data, result.status, 'BOOKINGS_READ', 'Randevular okunamadı.');
@@ -188,6 +208,8 @@ bookings.get('/', async (context) => {
     at: row.starts_at,
     id: row.id,
     revision: row.page_revision,
+    rangeStart: range.from,
+    rangeEnd: range.to,
   }));
   const appointments = paged.items.map((row) => {
     const { page_revision, ...appointment } = row;
