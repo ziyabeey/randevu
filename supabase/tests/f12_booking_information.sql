@@ -129,10 +129,8 @@ declare
   v_token text:='F12informationSupportToken__________________';
   v_managed record;
 begin
-  update public.appointments
-  set source='public'
-  where business_id='f1251000-0000-4000-8000-000000000001' and id=v_id;
-
+  -- Management support projection is capability-scoped and does not depend on
+  -- the appointment source. Keep the fixture's canonical operator group intact.
   insert into public.appointment_management_capabilities(appointment_id,business_id,token_hash)
   values (
     v_id,
