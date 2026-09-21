@@ -270,6 +270,8 @@ const server = createServer(async (request, response) => {
     public_name: 'F12 Salon', short_description: 'Çoklu hizmet rezervasyonu', long_description: null,
     public_phone: '+90 555 000 11 22', public_email: 'destek@f12.example.test', public_website: 'https://f12.example.test', public_whatsapp: '+905550001122',
     address_text: 'İstanbul', show_work_hours: false, cover_media_id: null, work_hours: [], media: [],
+    kvkk_notice_text: 'F12 browser fixture aydınlatma metni.', kvkk_notice_url: 'https://f12.example.test/kvkk',
+    privacy_policy_url: 'https://f12.example.test/privacy', booking_terms_text: 'F12 browser fixture randevu koşulları.', booking_terms_url: 'https://f12.example.test/terms',
     } });
   }
   const catalogMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/services-v2$/);
