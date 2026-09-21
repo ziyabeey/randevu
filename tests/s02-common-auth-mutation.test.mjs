@@ -304,7 +304,7 @@ const cookieMutations = [
   ['POST', '/api/services'], ['PATCH', '/api/services/:id'],
   ['POST', '/api/staff'], ['PATCH', '/api/staff/:id'], ['PUT', '/api/staff/:staffId/services/:serviceId'],
   ['POST', '/api/bookings'], ['POST', '/api/bookings/groups'],
-  ['POST', '/api/bookings/groups/:groupId/reschedule'], ['POST', '/api/bookings/groups/:groupId/cancel'],
+  ['POST', '/api/bookings/groups/:groupId/reschedule'], ['POST', '/api/bookings/groups/:groupId/status'], ['POST', '/api/bookings/groups/:groupId/cancel'],
   ['POST', '/api/bookings/groups/:groupId/lines/:lineId/cancel'],
   ['POST', '/api/bookings/groups/:groupId/lines/:lineId/service'],
   ['POST', '/api/bookings/groups/:groupId/lines/:lineId/reschedule'],
