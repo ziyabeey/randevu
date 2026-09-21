@@ -10,7 +10,13 @@ const migration=readFileSync(new URL('../supabase/migrations/20260921083000_f12_
 
 test('F12-05 exposes accessible information, privacy, terms and real support surfaces',()=>{
   for(const label of ['Aydınlatma ve KVKK','Gizlilik','Randevu koşulları','Destek']) assert.match(information,new RegExp(label));
-  assert.match(information,/new URL\(window\.location\.href\)/);
+  assert.match(information,/informationBase/);
+  assert.match(information,/encodeURIComponent\(slug\)/);
+  assert.match(information,/\/kvkk/);
+  assert.match(information,/\/privacy/);
+  assert.match(information,/\/terms/);
+  assert.match(information,/\/support/);
+  assert.match(information,/target=\"_blank\"/);
   assert.match(information,/KVKK m\.11/);
   assert.match(information,/özel nitelikli kişisel veri/);
   assert.match(information,/kapora, cayma bedeli/);
