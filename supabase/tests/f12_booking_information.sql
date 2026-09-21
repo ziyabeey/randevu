@@ -119,7 +119,8 @@ begin
     raise exception 'F12 information management capability missing';
   end if;
   select * into strict v_managed from public.get_public_managed_appointment(v_token);
-  if v_managed.support_phone<>'+905550001122'
+  if v_managed.support_slug<>'f12-info-salon'
+     or v_managed.support_phone<>'+905550001122'
      or v_managed.support_email<>'destek@f12.example.test'
      or v_managed.support_whatsapp<>'+905550001122'
      or v_managed.support_website<>'https://f12.example.test'
