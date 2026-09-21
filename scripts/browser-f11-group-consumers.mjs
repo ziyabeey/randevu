@@ -165,9 +165,14 @@ const server = createServer(async (request, response) => {
     });
     if (url.pathname === '/api/availability/setup') return sendJson(response, 200, { timezone: TZ });
     if (url.pathname === '/api/availability/group-slots' && request.method === 'POST') {
+      if (body?.date === '2026-09-23') await sleep(300);
       return sendJson(response, 200, { slots: [{
-        starts_at: '2026-09-24T12:00:00.000Z',
-        ends_at: '2026-09-24T13:30:00.000Z',
+        starts_at: body?.date === '2026-09-23'
+          ? '2026-09-23T12:00:00.000Z'
+          : '2026-09-24T12:00:00.000Z',
+        ends_at: body?.date === '2026-09-23'
+          ? '2026-09-23T13:30:00.000Z'
+          : '2026-09-24T13:30:00.000Z',
         timezone: TZ,
         total_duration_minutes: 90,
         lines: [],
@@ -455,7 +460,6 @@ try {
 
   await navigate(page, `${origin}/bookings`);
   await uiContains(page, 'Native Customer');
-  const groupSlotBefore = requestsTo('/api/availability/group-slots').length;
   const createBefore = requestsTo('/api/bookings/groups').filter((request) => request.method === 'POST').length;
   const blockBefore = requestsTo('/api/availability/blocks').length;
   const statusBefore = requestsTo(`/api/bookings/groups/${NATIVE_GROUP}/status`).length;
@@ -469,6 +473,17 @@ try {
   await waitFor(async () => (await call(page, 'bookingDraftCount')) === 2, 'second operator service line did not appear');
   assert.equal(await call(page, 'setBookingDraftSelect', 1, 'Hizmet', 'Kesim'), true);
   assert.equal(await call(page, 'setBookingDraftSelect', 1, 'Personel', 'Bora'), true);
+
+  const staleSlotBefore = requestsTo('/api/availability/group-slots').length;
+  assert.equal(await call(page, 'setComposerField', 'Tarih', '2026-09-23'), true);
+  assert.equal(await call(page, 'click', 'Uygun saatleri getir'), true);
+  await waitFor(() => requestsTo('/api/availability/group-slots').length === staleSlotBefore + 1, 'delayed stale group-slot request did not fire');
+  assert.equal(await call(page, 'setComposerField', 'Tarih', '2026-09-24'), true);
+  await sleep(450);
+  assert.equal(await call(page, 'bookingCreateSlotCount'), 0, 'stale slot response repopulated a superseded booking draft');
+  passed('operator composer ignores stale group-slot responses after draft changes');
+
+  const groupSlotBefore = requestsTo('/api/availability/group-slots').length;
   assert.equal(await call(page, 'click', 'Uygun saatleri getir'), true);
   await waitFor(() => requestsTo('/api/availability/group-slots').length === groupSlotBefore + 1, 'operator group-slot request did not fire');
   const groupSlotRequest = requestsTo('/api/availability/group-slots').at(-1);

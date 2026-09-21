@@ -99,11 +99,94 @@ insert into public.appointments(
     'f3300000-0000-4000-8000-000000000001','operator'
   );
 
+-- A real nonuniform native group. The existing aggregate trigger must derive
+-- header status=partial from scheduled + cancelled physical lines.
+insert into public.appointment_groups(id,business_id,customer_id,status,source,version,created_by)
+values (
+  'f3360000-0000-4000-8000-000000000002',
+  'f3310000-0000-4000-8000-000000000001',
+  'f3350000-0000-4000-8000-000000000001',
+  'scheduled','operator',1,
+  'f3300000-0000-4000-8000-000000000001'
+);
+
+insert into public.appointments(
+  id,business_id,group_id,line_ordinal,customer_id,service_id,staff_id,status,
+  starts_at,ends_at,occupied_starts_at,occupied_ends_at,timezone,
+  customer_name_snapshot,customer_phone_snapshot,customer_email_snapshot,
+  service_name_snapshot,staff_name_snapshot,duration_minutes_snapshot,
+  buffer_before_minutes_snapshot,buffer_after_minutes_snapshot,
+  price_minor_snapshot,price_type_snapshot,price_min_minor_snapshot,price_max_minor_snapshot,
+  price_policy_version_snapshot,currency_snapshot,created_by,source
+) values
+  (
+    'f3370000-0000-4000-8000-000000000003','f3310000-0000-4000-8000-000000000001',
+    'f3360000-0000-4000-8000-000000000002',1,
+    'f3350000-0000-4000-8000-000000000001','f3330000-0000-4000-8000-000000000001',
+    'f3340000-0000-4000-8000-000000000001','scheduled',
+    '2027-03-01 12:00+00','2027-03-01 12:30+00','2027-03-01 12:00+00','2027-03-01 12:30+00',
+    'Europe/Istanbul','F13 Lifecycle Customer','05553300001','f13-lifecycle@example.invalid',
+    'F13 Lifecycle Service','F13 Staff A',30,0,0,10000,'fixed',10000,10000,1,'TRY',
+    'f3300000-0000-4000-8000-000000000001','operator'
+  ),
+  (
+    'f3370000-0000-4000-8000-000000000004','f3310000-0000-4000-8000-000000000001',
+    'f3360000-0000-4000-8000-000000000002',2,
+    'f3350000-0000-4000-8000-000000000001','f3330000-0000-4000-8000-000000000001',
+    'f3340000-0000-4000-8000-000000000002','cancelled',
+    '2027-03-01 12:30+00','2027-03-01 13:00+00','2027-03-01 12:30+00','2027-03-01 13:00+00',
+    'Europe/Istanbul','F13 Lifecycle Customer','05553300001','f13-lifecycle@example.invalid',
+    'F13 Lifecycle Service','F13 Staff B',30,0,0,10000,'fixed',10000,10000,1,'TRY',
+    'f3300000-0000-4000-8000-000000000001','operator'
+  );
+
 do $$
+declare v_status text;
 begin
+  select status into v_status from public.appointment_groups
+  where id='f3360000-0000-4000-8000-000000000002';
+  if v_status<>'partial' then
+    raise exception 'F13-03 partial fixture did not aggregate: %',v_status;
+  end if;
   if not has_function_privilege('authenticated','public.set_appointment_group_status(uuid,uuid,text,integer,text)','EXECUTE')
      or has_function_privilege('anon','public.set_appointment_group_status(uuid,uuid,text,integer,text)','EXECUTE') then
     raise exception 'F13-03 group status RPC ACL mismatch';
+  end if;
+end
+$$;
+
+set role authenticated;
+select set_config('request.jwt.claim.sub','f3300000-0000-4000-8000-000000000001',false);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false);
+
+do $$
+begin
+  begin
+    perform public.set_appointment_group_status(
+      'f3310000-0000-4000-8000-000000000001',
+      'f3360000-0000-4000-8000-000000000002',
+      'f13-group-status-partial',1,'completed'
+    );
+    raise exception 'F13-03 accepted partial group lifecycle transition';
+  exception when others then
+    if sqlerrm='F13-03 accepted partial group lifecycle transition' then raise; end if;
+    if position('BOOKING_GROUP_PARTIAL_STATUS' in sqlerrm)=0 then
+      raise exception 'F13-03 partial group returned wrong error: %',sqlerrm;
+    end if;
+  end;
+end
+$$;
+
+reset role;
+do $$
+declare v_commands integer;
+begin
+  select count(*) into v_commands
+  from public.booking_commands
+  where business_id='f3310000-0000-4000-8000-000000000001'
+    and idempotency_key='f13-group-status-partial';
+  if v_commands<>0 then
+    raise exception 'F13-03 rejected partial transition persisted command: %',v_commands;
   end if;
 end
 $$;
