@@ -9,11 +9,11 @@ returns text
 language sql
 immutable
 set search_path=pg_catalog,extensions
-as $
+as $f12$
   select 'pub2_'||p_deadline::text||'_'||encode(extensions.digest(convert_to(
     'yzt:public-booking:intent:v2'||chr(10)||p_recovery_id::text||chr(10)
       ||p_deadline::text||chr(10)||p_secret_hash,'UTF8'),'sha256'),'hex');
-$;
+$f12$;
 
 insert into auth.users(
   id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,
