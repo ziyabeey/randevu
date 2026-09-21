@@ -62,7 +62,7 @@ language sql
 stable
 security definer
 set search_path=public
-as $
+as $$
   with flags as (
     select
       exists (select 1 from public.services s where s.business_id=p_business_id and s.active) as has_active_service,
@@ -130,7 +130,7 @@ as $
       case when not f.has_public_information then 'PUBLIC_INFORMATION_REQUIRED' end
     ]::text[],null)
   from flags f;
-$;
+$$;
 
 revoke all on function public.business_onboarding_readiness_internal(uuid)
   from public, anon, authenticated;
@@ -140,7 +140,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path=public
-as $
+as $$
 declare
   v_required boolean;
   v_old_ready boolean;
@@ -177,7 +177,7 @@ begin
   if v_required then raise exception 'PUBLIC_CONTACT_REQUIRED'; end if;
   return new;
 end
-$;
+$$;
 
 revoke all on function public.f12_require_public_support_contact()
   from public, anon, authenticated;
@@ -217,7 +217,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path=public
-as $
+as $$
 declare
   v_required boolean;
   v_old_ready boolean;
@@ -250,7 +250,7 @@ begin
   if v_required then raise exception 'PUBLIC_INFORMATION_REQUIRED'; end if;
   return new;
 end
-$;
+$$;
 
 revoke all on function public.f12_require_public_information()
   from public, anon, authenticated;
