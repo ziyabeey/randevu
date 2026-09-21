@@ -50,7 +50,7 @@ test('S02 staging smoke performs feature reads, negative guards and refresh with
       }]);
     }
     if (path === '/rest/v1/services' || path === '/rest/v1/staff_profiles') return json([{ id: business.id, name: 'Fixture', active: true }]);
-    if (['/rest/v1/staff_services', '/rest/v1/business_hours', '/rest/v1/staff_hours', '/rest/v1/availability_blocks', '/rest/v1/rpc/get_calendar_appointments', '/rest/v1/rpc/get_calendar_appointments_v2', '/rest/v1/rpc/list_appointments_page_v2', '/rest/v1/rpc/list_business_customer_appointments_page_v2'].includes(path)) return json([]);
+    if (['/rest/v1/staff_services', '/rest/v1/business_hours', '/rest/v1/staff_hours', '/rest/v1/availability_blocks', '/rest/v1/rpc/get_calendar_appointments', '/rest/v1/rpc/get_calendar_appointments_v2', '/rest/v1/rpc/list_appointments_page_v3', '/rest/v1/rpc/list_business_customer_appointments_page_v2'].includes(path)) return json([]);
     unknown.push(path); return json({}, 500);
   };
   try {
