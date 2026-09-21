@@ -604,6 +604,19 @@ export async function runManagementAcceptance(options = {}) {
       assert.equal(clicked, true, `button containing ${text} was not found`);
     }
 
+    async function selectWorkspaceBusiness(page, businessId, businessName) {
+      const selected = await page.evaluate(`(() => {
+        const select = document.querySelector('select[aria-label="Aktif işletme"]');
+        if (!(select instanceof HTMLSelectElement)) return false;
+        const option = [...select.options].find((item) => item.value === ${JSON.stringify(businessId)});
+        if (!option || option.textContent?.trim() !== ${JSON.stringify(businessName)}) return false;
+        select.value = option.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()`);
+      assert.equal(selected, true, `workspace business ${businessName} was not selectable`);
+    }
+
     async function clickAnchor(page, href) {
       const clicked = await page.evaluate(`(() => {
         const target = document.querySelector(${JSON.stringify(`a[href="${href}"]`)});
@@ -802,9 +815,9 @@ export async function runManagementAcceptance(options = {}) {
     await waitText(pageB, 'Salon B Çalışanı');
     await waitText(pageB, 'Davet oluştur');
     await navigate(pageA, '/app/setup');
-    await waitText(pageA, 'Salon A');
-    await clickButtonContaining(pageA, 'Salon A');
+    await selectWorkspaceBusiness(pageA, ids.businessA, 'Salon A');
     await waitFor(() => state.selected === ids.businessA, 'tab 1 did not switch the shared selection to Salon A');
+    await waitPath(pageA, '/app/calendar');
     await returnToTab(pageB);
     await sleep(750);
     const driftShown = await bodyText(pageB);
@@ -841,9 +854,9 @@ export async function runManagementAcceptance(options = {}) {
     await waitText(pageB, 'Salon A Çalışanı');
     await waitText(pageB, 'Davet oluştur');
     await navigate(pageA, '/app/setup');
-    await waitText(pageA, 'Salon B');
-    await clickButtonContaining(pageA, 'Salon B');
+    await selectWorkspaceBusiness(pageA, ids.businessB, 'Salon B');
     await waitFor(() => state.selected === ids.businessB, 'tab 1 did not switch the shared selection back to Salon B');
+    await waitPath(pageA, '/app/calendar');
     const silentShown = await bodyText(pageB);
     const silentWritesBefore = state.invitationWrites.length;
     await submitInvite(pageB, 'cross-tab-silent@example.test');
