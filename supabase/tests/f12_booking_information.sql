@@ -217,6 +217,6 @@ begin
     raise exception 'F12 information member RPC grants missing';
   end if;
 end
-$$;
+$;
 
 rollback;
