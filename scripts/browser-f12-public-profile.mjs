@@ -44,6 +44,11 @@ function profile(slug) {
     cover_media_id: broken ? brokenMediaId : null,
     work_hours: [{ weekday: 1, starts_local: '09:00:00', ends_local: '18:00:00' }],
     media: broken ? [{ id: brokenMediaId, alt_text: 'Salon giriş alanı', sort_order: 0, width: 1600, height: 1000 }] : [],
+    kvkk_notice_text: 'F12 public profile browser fixture aydınlatma metni.',
+    kvkk_notice_url: 'https://salon.example.test/kvkk',
+    privacy_policy_url: 'https://salon.example.test/privacy',
+    booking_terms_text: 'F12 public profile browser fixture randevu koşulları.',
+    booking_terms_url: 'https://salon.example.test/terms',
   };
 }
 function bookingPayload(slug) {
