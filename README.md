@@ -80,12 +80,13 @@ npm run dev
 | `/account` | Hesap/parola akışları |
 | `/calendar` | Gün/hafta takvimi |
 | `/bookings` | Randevu oluşturma ve taşıma |
+| `/customers` | Müşteri kayıtları ve randevu geçmişi |
 | `/availability` | Mesai, kapanış ve müsaitlik |
 | `/public-booking` | Public rezervasyon ayarları |
 | `/r/:slug` | Müşteri rezervasyonu |
 | `/m#<token>` | Tek randevuyu veya rezervasyon grubunu güvenli bağlantıyla yönetme |
 
-`/customers` F10-05 PR #74 içindedir; main'e merge edilmeden çalışan main route'u sayılmaz. Marketing homepage runtime'ı da PR #77 merge edilmeden main işlevi sayılmaz. SalonApp/adisyon yolları F14 ile gelir.
+Marketing homepage runtime'ı PR #77 merge edilmeden main işlevi sayılmaz. SalonApp/adisyon yolları F14 ile gelir.
 
 ## Korunan teknik sınırlar
 
