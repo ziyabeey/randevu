@@ -123,6 +123,37 @@ test('Codex review quota message is classified as review-capacity degradation, n
   assert.deepEqual(candidate.allowedChoices, ['KEEP', 'REVIEW_CAPACITY']);
 });
 
+test('incomplete or unavailable remote evidence disables Janitor suggestions', () => {
+  const remote = {
+    available: false,
+    complete: false,
+    mainSha: '9'.repeat(40),
+    pulls: [pr()],
+    recentMergedPulls: [{
+      number: 257,
+      title: 'docs: mark F13-03 repair accepted on main',
+      mergedAt: '2026-09-21T05:52:40Z',
+      files: [{ path: 'docs/handoffs/F13-03.md' }],
+    }],
+  };
+  assert.deepEqual(buildJanitorCandidates(remote, config), []);
+});
+
+test('truncated merged file evidence cannot prove a superseded candidate', () => {
+  const remote = {
+    mainSha: '2'.repeat(40),
+    pulls: [pr({ baseSha: '2'.repeat(40) })],
+    recentMergedPulls: [{
+      number: 257,
+      title: 'docs: mark F13-03 repair accepted on main',
+      mergedAt: '2026-09-21T05:52:40Z',
+      filesTruncated: true,
+      files: [{ path: 'docs/handoffs/F13-03.md' }],
+    }],
+  };
+  assert.deepEqual(buildJanitorCandidates(remote, config), []);
+});
+
 test('Qwen janitor response must cover every candidate and cannot exceed deterministic choices', () => {
   const candidates = [
     {
