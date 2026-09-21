@@ -21,6 +21,7 @@ type Control = {
   setInSection(title: string, name: string, value: string): boolean;
   submitInSection(title: string, buttonText: string): boolean;
   clickInSection(title: string, buttonText: string): boolean;
+  switchBusiness(businessId: string): Promise<boolean>;
   metrics(): Promise<Metrics>;
 };
 
@@ -123,6 +124,11 @@ window.__f10settingsReview = {
     const button = card ? buttonWithText(buttonText, card) : null;
     if (!button) return false;
     button.click();
+    return true;
+  },
+  switchBusiness: async (businessId) => {
+    if (!window.__browserWorkspace) return false;
+    await window.__browserWorkspace.selectBusiness(businessId);
     return true;
   },
   metrics: async () => {

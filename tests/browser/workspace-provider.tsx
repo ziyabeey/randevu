@@ -7,6 +7,14 @@ import {
   type WorkspaceSession,
 } from '../../src/workspace-context';
 
+declare global {
+  interface Window {
+    __browserWorkspace?: {
+      selectBusiness(businessId: string): Promise<void>;
+    };
+  }
+}
+
 export default function BrowserWorkspaceProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<WorkspaceSession | null>(null);
   const [scopeEpoch, setScopeEpoch] = useState(0);
@@ -36,6 +44,13 @@ export default function BrowserWorkspaceProvider({ children }: { children: React
       setError(nextError instanceof Error ? nextError.message : 'Browser workspace session failed.');
     });
   }, [refreshSession]);
+
+  useEffect(() => {
+    window.__browserWorkspace = { selectBusiness };
+    return () => {
+      delete window.__browserWorkspace;
+    };
+  }, [selectBusiness]);
 
   const activeMembership = session?.memberships.find(
     (membership) => membership.business_id === session.activeBusinessId,
