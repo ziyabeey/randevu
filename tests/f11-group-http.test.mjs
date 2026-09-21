@@ -20,6 +20,14 @@ const env = {
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1: canonicalSecret(1),
 };
 
+const publishedInformation = {
+  kvkk_notice_text: 'Test işletmesi aydınlatma metni.',
+  kvkk_notice_url: 'https://example.test/kvkk',
+  privacy_policy_url: 'https://example.test/privacy',
+  booking_terms_text: 'Test işletmesi randevu koşulları.',
+  booking_terms_url: 'https://example.test/terms',
+};
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
 }
@@ -229,6 +237,7 @@ await test('F11-02 public group create uses guarded v2 recovery and canonical re
     calls.push(url.pathname);
     assert.equal(url.pathname, '/rest/v1/rpc/execute_public_operation');
     const body = JSON.parse(init.body);
+    if (body.p_action === 'profile') return json({ ok: true, data: [publishedInformation] });
     assert.equal(body.p_action, 'group_book');
     assert.equal(body.p_args.p_idempotency_key, intent.idempotencyKey);
     assert.equal(body.p_args.p_recovery_id, recoveryId);
@@ -250,7 +259,10 @@ await test('F11-02 public group create uses guarded v2 recovery and canonical re
       assert.deepEqual(body.group, payload);
       assert.equal(body.management.url, `/m#${encodeURIComponent(managementToken)}`);
     }
-    assert.deepEqual(calls, ['/rest/v1/rpc/execute_public_operation', '/rest/v1/rpc/execute_public_operation']);
+    assert.deepEqual(calls, [
+      '/rest/v1/rpc/execute_public_operation', '/rest/v1/rpc/execute_public_operation',
+      '/rest/v1/rpc/execute_public_operation', '/rest/v1/rpc/execute_public_operation',
+    ]);
   } finally { globalThis.fetch = realFetch; }
 });
 
@@ -270,10 +282,12 @@ await test('F11-02 public group create maps semantic failures and status 0/>=500
     assert.ok(intent);
     const realFetch = globalThis.fetch;
     const calls = [];
-    globalThis.fetch = async (input) => {
+    globalThis.fetch = async (input, init) => {
       const url = new URL(String(input));
       calls.push(url.pathname);
       assert.equal(url.pathname, '/rest/v1/rpc/execute_public_operation');
+      const action = JSON.parse(String(init?.body ?? '{}')).p_action;
+      if (action === 'profile') return json({ ok: true, data: [publishedInformation] });
       if (message === 'transport-network') throw new Error('network down');
       if (transportStatus === 500) return json({ message: 'upstream exploded' }, 500);
       return json({ ok: false, error: { message } });
@@ -286,7 +300,7 @@ await test('F11-02 public group create maps semantic failures and status 0/>=500
       }, env);
       assert.equal(response.status, expectedStatus, message);
       assert.equal((await response.json()).error?.code, expectedCode, message);
-      assert.deepEqual(calls, ['/rest/v1/rpc/execute_public_operation']);
+      assert.deepEqual(calls, ['/rest/v1/rpc/execute_public_operation', '/rest/v1/rpc/execute_public_operation']);
     } finally { globalThis.fetch = realFetch; }
   }
 });
