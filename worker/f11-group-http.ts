@@ -186,8 +186,10 @@ function publicFailure(data: unknown, fallback: string) {
   if (message.includes('DATE_OUT_OF_RANGE')) {
     return { code: 'DATE_OUT_OF_RANGE', message: 'Seçilen tarih rezervasyon aralığının dışında.', status: 400 as const };
   }
-  if (message.includes('PUBLIC_CONTACT_REQUIRED') || message.includes('INVALID_')
-      || message.includes('BOOKING_INTENT_')) {
+  if (message.includes('PUBLIC_CONTACT_REQUIRED')) {
+    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.', status: 400 as const };
+  }
+  if (message.includes('INVALID_') || message.includes('BOOKING_INTENT_')) {
     return { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon isteği geçerli değil.', status: 400 as const };
   }
   return { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: fallback, status: 503 as const };
@@ -326,10 +328,12 @@ groups.post('/public/business/:slug/group-book', async (context) => {
       || !isCanonicalPublicBookingSecret(managementToken)
       || customerName.length < 2 || customerName.length > 120
       || customerPhone === undefined || customerEmail === undefined || notes === undefined
-      || (customerPhone === null && customerEmail === null)
       || (customerEmail !== null && !customerEmail.includes('@'))
       || lines === null || !isTimestamp(body?.startsAt)) {
     return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon isteği geçerli değil.' } }, 400);
+  }
+  if (customerPhone === null) {
+    return context.json({ error: { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.' } }, 400);
   }
 
   const proof = await verifyPublicBookingIntentV2(rawKey, recoveryId, recoverySecret);
