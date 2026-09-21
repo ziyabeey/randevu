@@ -110,7 +110,7 @@ function candidate(pr, status, reason, extras = {}) {
 }
 
 export function buildJanitorCandidates(remote = {}, config = {}) {
-  if (config.janitorEnabled === false) return [];
+  if (config.janitorEnabled === false || remote.available === false || remote.complete === false) return [];
   const pulls = Array.isArray(remote.pulls) ? remote.pulls : [];
   const merged = Array.isArray(remote.recentMergedPulls) ? remote.recentMergedPulls : [];
   const docsPulls = pulls.filter((pr) => janitorDocsOnly(pr, config));
@@ -125,7 +125,8 @@ export function buildJanitorCandidates(remote = {}, config = {}) {
           item,
           overlap: fileOverlap(pr, item),
         }))
-        .filter(({ item, overlap }) => overlap.length > 0
+        .filter(({ item, overlap }) => item.filesTruncated !== true
+          && overlap.length > 0
           && after(item.mergedAt, pr.createdAt ?? pr.updatedAt))
         .sort((left, right) => text(right.item.mergedAt).localeCompare(text(left.item.mergedAt)));
 
