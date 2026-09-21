@@ -85,6 +85,14 @@ select * from public.update_business_public_profile(
   '+905550001122','destek@f12.example.test','https://f12.example.test',
   '+905550001122','İstanbul',true,null
 );
+select * from public.update_business_public_information(
+  'f1251000-0000-4000-8000-000000000001',
+  'Bu içerik F12 kabul fixture işletmesinin yayınladığı test aydınlatma metnidir.',
+  'https://f12.example.test/kvkk',
+  'https://f12.example.test/privacy',
+  'F12 kabul fixture işletmesinin yayınladığı randevu, iptal ve değişiklik koşulları.',
+  'https://f12.example.test/terms'
+);
 select * from public.update_public_booking_settings(
   'f1251000-0000-4000-8000-000000000001',true,15,0,30
 );
@@ -144,8 +152,13 @@ begin
      or v_managed.support_email<>'destek@f12.example.test'
      or v_managed.support_whatsapp<>'+905550001122'
      or v_managed.support_website<>'https://f12.example.test'
-     or v_managed.support_address<>'İstanbul' then
-    raise exception 'management view lost public support contact';
+     or v_managed.support_address<>'İstanbul'
+     or v_managed.kvkk_notice_text is null
+     or v_managed.kvkk_notice_url<>'https://f12.example.test/kvkk'
+     or v_managed.privacy_policy_url<>'https://f12.example.test/privacy'
+     or v_managed.booking_terms_text is null
+     or v_managed.booking_terms_url<>'https://f12.example.test/terms' then
+    raise exception 'management view lost public support or published information';
   end if;
 end
 $$;
@@ -170,11 +183,38 @@ end
 $$;
 
 reset role;
-do $$
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1250000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+
+do $
+begin
+  begin
+    perform public.update_business_public_information(
+      'f1251000-0000-4000-8000-000000000001',
+      null,null,null,null,null
+    );
+    raise exception 'published information was cleared while public booking remained live';
+  exception when others then
+    if sqlerrm='published information was cleared while public booking remained live' then raise; end if;
+    if position('PUBLIC_INFORMATION_REQUIRED' in sqlerrm)=0 then raise; end if;
+  end;
+end
+$;
+
+reset role;
+do $
 begin
   if has_function_privilege('anon','public.get_public_managed_appointment(text)','EXECUTE')
-     or has_function_privilege('authenticated','public.get_public_managed_appointment(text)','EXECUTE') then
-    raise exception 'F12 information repair reopened raw management RPC';
+     or has_function_privilege('authenticated','public.get_public_managed_appointment(text)','EXECUTE')
+     or has_function_privilege('anon','public.get_public_business_profile_v2(text)','EXECUTE')
+     or has_function_privilege('authenticated','public.get_public_business_profile_v2(text)','EXECUTE') then
+    raise exception 'F12 information repair reopened a raw public RPC';
+  end if;
+  if not has_function_privilege('authenticated','public.get_business_public_information(uuid)','EXECUTE')
+     or not has_function_privilege('authenticated','public.update_business_public_information(uuid,text,text,text,text,text)','EXECUTE') then
+    raise exception 'F12 information member RPC grants missing';
   end if;
 end
 $$;
