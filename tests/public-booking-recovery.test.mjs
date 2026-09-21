@@ -41,6 +41,14 @@ const appointment = {
   recovery_expires_at: '2026-09-18T07:05:00.000Z',
 };
 
+const publishedInformation = {
+  kvkk_notice_text: 'Test işletmesi aydınlatma metni.',
+  kvkk_notice_url: 'https://example.test/kvkk',
+  privacy_policy_url: 'https://example.test/privacy',
+  booking_terms_text: 'Test işletmesi randevu koşulları.',
+  booking_terms_url: 'https://example.test/terms',
+};
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(status < 300 ? { ok: true, data } : { ok: false, error: data }), {
     status: 200,
@@ -88,10 +96,11 @@ test('F09-02 booking recovery HTTP contract under F09-04 guard', async (t) => {
     globalThis.fetch = async (input, init) => {
       const url = String(input);
       assert.match(url, /execute_public_operation$/);
-      assert.equal(JSON.parse(init.body).p_action, 'book');
+      const wire = JSON.parse(String(init.body));
+      if (wire.p_action === 'profile') return json([publishedInformation]);
+      assert.equal(wire.p_action, 'book');
       assert.ok(!url.includes(managementToken));
       assert.ok(!url.includes(recoverySecret));
-      const wire = JSON.parse(String(init?.body ?? '{}'));
       encryptedPayload = wire.p_args;
       assert.ok(!String(init?.body).includes(managementToken));
       assert.ok(!String(init?.body).includes(recoverySecret));
@@ -121,7 +130,11 @@ test('F09-02 booking recovery HTTP contract under F09-04 guard', async (t) => {
   });
 
   await t.test('ambiguous Supabase failure is not reported as a failed booking', async () => {
-    globalThis.fetch = async () => { throw new Error('connection dropped after request'); };
+    globalThis.fetch = async (_input, init) => {
+      const wire = JSON.parse(String(init?.body ?? '{}'));
+      if (wire.p_action === 'profile') return json([publishedInformation]);
+      throw new Error('connection dropped after request');
+    };
     const response = await post(
       '/business/recovery-test/book',
       bookingBody,
