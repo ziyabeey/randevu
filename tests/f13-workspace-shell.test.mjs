@@ -48,3 +48,12 @@ test('F13-04 private domain pages do not create parallel session authorities', (
   assert.match(calendar, /navigateApp\("\/app\/bookings"\)/);
   assert.doesNotMatch(calendar, /href="\/bookings"/);
 });
+
+test('F13-04 real-browser acceptance is wired into the required browser suite', () => {
+  const smoke = readFileSync(new URL('../scripts/browser-smoke.sh', import.meta.url), 'utf8');
+  const runner = readFileSync(new URL('../scripts/browser-f13-workspace-shell.mjs', import.meta.url), 'utf8');
+  assert.match(smoke, /browser-f13-workspace-shell\.mjs/);
+  assert.match(runner, /root compatibility did not land on mobile calendar workspace/);
+  assert.match(runner, /customer management did not reflect operator calendar change/);
+  assert.match(runner, /expectedBusiness/);
+});
