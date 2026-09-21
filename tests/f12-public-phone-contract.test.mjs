@@ -10,8 +10,9 @@ const env = {
   COOKIE_SECURE: 'false',
 };
 const recoveryId = '70000000-0000-4000-8000-000000000051';
-const recoverySecret = 'R'.repeat(43);
-const managementToken = 'M'.repeat(43);
+const canonicalSecret = (byte) => Buffer.alloc(32, byte).toString('base64url');
+const recoverySecret = canonicalSecret(7);
+const managementToken = canonicalSecret(8);
 const serviceId = '83000000-0000-4000-8000-000000000051';
 const staffId = '84000000-0000-4000-8000-000000000051';
 
