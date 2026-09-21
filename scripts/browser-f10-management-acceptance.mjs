@@ -761,7 +761,14 @@ export async function runManagementAcceptance(options = {}) {
     }
 
     const pageC = await openPage('/app');
-    await waitText(pageC, 'Yönetici');
+    await waitFor(
+      () => pageC.evaluate(`(() => {
+        const select = document.querySelector('select[aria-label="Aktif işletme"]');
+        return select instanceof HTMLSelectElement
+          && select.selectedOptions[0]?.textContent?.trim() === 'Salon B';
+      })()`),
+      'root workspace did not retain verified Salon B selection',
+    );
     await waitText(pageC, 'Çıkış yap');
     state.sessionFailureOnce = true;
     await reload(pageC);
@@ -777,7 +784,14 @@ export async function runManagementAcceptance(options = {}) {
     await assertSafeSurface(pageC, 'root/session-503');
 
     await reload(pageC);
-    await waitText(pageC, 'Yönetici');
+    await waitFor(
+      () => pageC.evaluate(`(() => {
+        const select = document.querySelector('select[aria-label="Aktif işletme"]');
+        return select instanceof HTMLSelectElement
+          && select.selectedOptions[0]?.textContent?.trim() === 'Salon B';
+      })()`),
+      'root workspace did not retain verified Salon B selection',
+    );
 
     // Cross-tab tenant drift. Two tabs show Salon B; tab 1 switches the shared
     // selection to Salon A through the real UI; the person returns to tab 2
