@@ -248,12 +248,9 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
     } finally { setBusy(false); }
   }
 
-  if (loading && !session) return <main className="center-card"><p>Çalışma alanı hazırlanıyor…</p></main>;
-
   const passwordRequired = Boolean(session?.user && session.passwordRecovery);
   const showPasswordPanel = Boolean(session?.user && (passwordRequired || showPasswordChange));
   const activeMembership = session?.memberships.find((membership) => membership.business_id === session.activeBusinessId) ?? null;
-
   const ready = Boolean(session?.user && activeMembership && !session?.passwordRecovery);
   const contextValue = useMemo<WorkspaceContextValue | null>(() => {
     if (!session || !activeMembership || !ready) return null;
@@ -266,6 +263,8 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
       selectBusiness,
     };
   }, [activeMembership, ready, refreshSession, scopeEpoch, selectBusiness, session]);
+
+  if (loading && !session) return <main className="center-card"><p>Çalışma alanı hazırlanıyor…</p></main>;
 
   return (
     <div className="app-shell workspace-app-shell">
