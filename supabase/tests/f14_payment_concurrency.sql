@@ -95,7 +95,11 @@ begin
   perform dblink_exec('f1403_blocker','begin');
   perform dblink_exec(
     'f1403_blocker',
-    format('select id from public.tickets where business_id=%L::uuid and id=%L::uuid for update',v_business,v_ticket)
+    format(
+      'do $block$ begin perform 1 from public.tickets where business_id=%L::uuid and id=%L::uuid for update; end $block$;',
+      v_business,
+      v_ticket
+    )
   );
 
   for v_conn in select unnest(array['f1403_pay_a','f1403_pay_b']) loop
