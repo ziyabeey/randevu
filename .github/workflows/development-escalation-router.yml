@@ -146,7 +146,7 @@ jobs:
       contents: read
       issues: read
       pull-requests: write
-    uses: ziyabeey1-ai/randevu/.github/workflows/development-review-router.yml@main
+    uses: ziyabeey/randevu/.github/workflows/development-review-router.yml@main
     with:
       observation_json: ${{ inputs.observation_json }}
       evidence_json: ${{ inputs.evidence_json }}

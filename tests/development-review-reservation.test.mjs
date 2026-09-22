@@ -12,7 +12,7 @@ import {
 import { buildIndependentReviewRequest, reviewReceiptMarker } from '../scripts/development-review-request.mjs';
 import { buildCaseFingerprint } from '../scripts/development-escalation-envelope.mjs';
 
-const repository = 'ziyabeey1-ai/randevu';
+const repository = 'ziyabeey/randevu';
 const head = 'a'.repeat(40);
 const base = 'b'.repeat(40);
 function request(role = 'r1') {

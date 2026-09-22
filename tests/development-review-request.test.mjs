@@ -190,7 +190,7 @@ test('an accessible previous same-role receipt turns the request into follow-up 
     receipt: 'accessible',
     reviewedHeadSha: head,
     reviewedBaseSha: main,
-    sourceRef: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-77',
+    sourceRef: 'https://github.com/ziyabeey/randevu/pull/183#issuecomment-77',
     reviewedAt: 123456789,
     receiptId: 77,
   };

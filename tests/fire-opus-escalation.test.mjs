@@ -36,10 +36,10 @@ function makeToken(overrides = {}) {
   const payload = encodeJson({
     iss: 'https://token.actions.githubusercontent.com',
     aud: `kepenk-escalation:v1:${fingerprint}:${sourceEnvelopeBytes}:${workflowSha}`,
-    repository: 'ziyabeey1-ai/randevu',
+    repository: 'ziyabeey/randevu',
     repository_id: '1363775739',
     runner_environment: 'github-hosted',
-    workflow_ref: 'ziyabeey1-ai/randevu/.github/workflows/development-escalation-router.yml@refs/heads/main',
+    workflow_ref: 'ziyabeey/randevu/.github/workflows/development-escalation-router.yml@refs/heads/main',
     sha: workflowSha,
     run_id: '12345',
     nbf: now - 30,
@@ -116,7 +116,7 @@ test('wrong repository or workflow claims are rejected', async () => {
     /OPUS_HANDOFF_BLOCKED: ATTESTATION_REPOSITORY_INVALID/,
   );
   await assert.rejects(
-    verifyGithubOidcAttestation(makeToken({ workflow_ref: 'ziyabeey1-ai/randevu/.github/workflows/other.yml@refs/heads/main' }), { jwks, nowMs }),
+    verifyGithubOidcAttestation(makeToken({ workflow_ref: 'ziyabeey/randevu/.github/workflows/other.yml@refs/heads/main' }), { jwks, nowMs }),
     /OPUS_HANDOFF_BLOCKED: ATTESTATION_WORKFLOW_INVALID/,
   );
 });
