@@ -69,7 +69,15 @@ function MoreActions() {
   );
 }
 
-export default function KolayAppSurface({ activeTab, notice = '' }: { activeTab: KolayAppTab; notice?: string }) {
+export default function KolayAppSurface({
+  activeTab,
+  notice = '',
+  scopeChanging = false,
+}: {
+  activeTab: KolayAppTab;
+  notice?: string;
+  scopeChanging?: boolean;
+}) {
   const { session, activeMembership, activeBusiness, activeBusinessId, selectBusiness } = useWorkspace();
   const [switchingBusiness, setSwitchingBusiness] = useState(false);
 
@@ -89,7 +97,7 @@ export default function KolayAppSurface({ activeTab, notice = '' }: { activeTab:
       <select
         aria-label="KolayApp aktif işletme"
         value={activeBusinessId}
-        disabled={switchingBusiness}
+        disabled={switchingBusiness || scopeChanging}
         onChange={(event) => void switchBusiness(event.target.value)}
       >
         {session.memberships.map((membership) => (
@@ -108,15 +116,17 @@ export default function KolayAppSurface({ activeTab, notice = '' }: { activeTab:
     content = <CustomersPage />;
   } else if (activeTab === 'tickets') {
     content = (
-      <KolayUnavailablePanel
+      <div role="main">
+        <KolayUnavailablePanel
         title="Adisyonlar"
         description="Adisyon ve tahsilat işlemleri henüz kullanıma açık değil."
-      />
+        />
+      </div>
     );
   } else if (activeTab === 'new') {
-    content = <NewActions />;
+    content = <div role="main"><NewActions /></div>;
   } else {
-    content = <MoreActions />;
+    content = <div role="main"><MoreActions /></div>;
   }
 
   return (
