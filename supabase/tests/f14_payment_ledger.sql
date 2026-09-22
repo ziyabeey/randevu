@@ -517,6 +517,10 @@ begin
 end
 $f1403immutable$;
 
-raise notice 'F14-03 manual payment/refund/correction ledger acceptance passed';
+do $f1403done$
+begin
+  raise notice 'F14-03 manual payment/refund/correction ledger acceptance passed';
+end
+$f1403done$;
 
 rollback;
