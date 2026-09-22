@@ -127,6 +127,7 @@ export default function TicketCashierPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
+  const [pendingAmbiguousAction, setPendingAmbiguousAction] = useState<string | null>(null);
   const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const initialTicketId = initialParams.get('ticketId');
   const initialCustomerId = initialParams.get('customerId');
@@ -153,8 +154,10 @@ export default function TicketCashierPage() {
     if (generation !== listGeneration.current) return;
     setTickets((current) => append ? [...current, ...result.tickets] : result.tickets);
     setPage(result.page);
-    if (!append && selected && !result.tickets.some((row) => row.ticketId === selected.ticketId)) setSelected(null);
-  }, [initialCustomerId, selected, status]);
+    if (!append) {
+      setSelected((current) => current && !result.tickets.some((row) => row.ticketId === current.ticketId) ? null : current);
+    }
+  }, [initialCustomerId, status]);
 
   const loadLookups = useCallback(async () => {
     const [customerResult, nextCatalog] = await Promise.all([
@@ -170,6 +173,7 @@ export default function TicketCashierPage() {
     setLoading(true);
     setNotice('');
     keys.current.clear();
+    setPendingAmbiguousAction(null);
     try {
       await Promise.all([loadTickets(false), loadLookups()]);
       if (initialTicketId) await loadTicket(initialTicketId);
@@ -192,6 +196,10 @@ export default function TicketCashierPage() {
     success: string,
     ticketId?: string,
   ) {
+    if (pendingAmbiguousAction && pendingAmbiguousAction !== action) {
+      setNotice('Önce sonucu belirsiz işlemi aynı bilgilerle tekrar doğrulayın. Yeni bir mali işlem başlatılmadı.');
+      return null;
+    }
     setBusy(true);
     setNotice('');
     const key = keyFor(keys.current, action);
@@ -202,6 +210,7 @@ export default function TicketCashierPage() {
         timeoutMs: 12_000,
       });
       keys.current.delete(action);
+      setPendingAmbiguousAction(null);
       const id = result.ticket.ticketId ?? ticketId;
       if (id) await loadTicket(id);
       await loadTickets(false);
@@ -209,9 +218,11 @@ export default function TicketCashierPage() {
       return result.ticket;
     } catch (error) {
       if (ambiguous(error)) {
-        setNotice('İşlemin sonucu henüz doğrulanamadı. Tekrar denerseniz aynı işlem anahtarı kullanılacak; ekran ödendi varsaymıyor.');
+        setPendingAmbiguousAction(action);
+        setNotice('İşlemin sonucu henüz doğrulanamadı. Aynı işlem ve tutarla tekrar deneyin; aynı anahtar kullanılacak ve ekran ödendi varsaymıyor.');
       } else {
         keys.current.delete(action);
+        setPendingAmbiguousAction(null);
         if (ticketId) {
           try { await loadTicket(ticketId); } catch { /* retain the server error message */ }
         }
