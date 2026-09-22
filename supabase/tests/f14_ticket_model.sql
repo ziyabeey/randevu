@@ -56,7 +56,7 @@ select 'e1410000-0000-4000-8000-000000000001'::uuid,
        time '09:00',time '18:00',true;
 
 -- S08/ACL boundary: raw financial tables stay inaccessible to API roles.
-do $$
+do $f14acl$
 begin
   if has_table_privilege('authenticated','public.tickets','SELECT')
      or has_table_privilege('authenticated','public.ticket_lines','SELECT')
@@ -77,7 +77,7 @@ begin
     raise exception 'F14 ticket RPC grants are wrong';
   end if;
 end
-$;
+$f14acl$;
 
 -- R1 residual closure: no F14 financial root may be silently erased by business cascade,
 -- and trigger guards keep an empty search_path hardening boundary.
