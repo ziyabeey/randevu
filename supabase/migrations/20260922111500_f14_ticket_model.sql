@@ -1139,15 +1139,63 @@ create trigger ticket_lines_f14_update_guard
 before update on public.ticket_lines
 for each row execute function public.f14_guard_ticket_line_update();
 
+create or replace function public.f14_guard_ticket_command_update()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  if old.business_id is distinct from new.business_id
+     or old.actor_membership_id is distinct from new.actor_membership_id
+     or old.command is distinct from new.command
+     or old.idempotency_key is distinct from new.idempotency_key
+     or old.request_hash is distinct from new.request_hash
+     or old.created_at is distinct from new.created_at then
+    raise exception 'TICKET_COMMAND_IMMUTABLE';
+  end if;
+
+  if old.ticket_id is null and old.result_payload is null
+     and new.ticket_id is not null and new.result_payload is not null then
+    return new;
+  end if;
+
+  raise exception 'TICKET_COMMAND_IMMUTABLE';
+end
+$;
+
+revoke all on function public.f14_guard_ticket_command_update() from public, anon, authenticated;
+
+drop trigger if exists ticket_commands_f14_update_guard on public.ticket_commands;
+create trigger ticket_commands_f14_update_guard
+before update on public.ticket_commands
+for each row execute function public.f14_guard_ticket_command_update();
+
+create or replace function public.f14_block_ticket_command_delete()
+returns trigger
+language plpgsql
+set search_path = public
+as $
+begin
+  raise exception 'TICKET_COMMAND_DELETE_FORBIDDEN';
+end
+$;
+
+revoke all on function public.f14_block_ticket_command_delete() from public, anon, authenticated;
+
+drop trigger if exists ticket_commands_f14_delete_guard on public.ticket_commands;
+create trigger ticket_commands_f14_delete_guard
+before delete on public.ticket_commands
+for each row execute function public.f14_block_ticket_command_delete();
+
 create or replace function public.f14_block_ticket_delete()
 returns trigger
 language plpgsql
 set search_path = public
-as $$
+as $
 begin
   raise exception 'TICKET_DELETE_FORBIDDEN';
 end
-$$;
+$;
 
 revoke all on function public.f14_block_ticket_delete() from public, anon, authenticated;
 
