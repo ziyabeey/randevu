@@ -177,8 +177,8 @@ begin
   order by sp.id
   for update;
 
-  v_plan := public.f11_plan_group_at(p_business_id, p_lines, p_starts_at, null);
-  if v_plan is null then raise exception 'GROUP_SLOT_UNAVAILABLE'; end if;
+  -- EXP-H19 M3 MUTANT: deliberately skip the second post-lock replan and
+  -- continue with the stale pre-authority-lock plan.
 
   v_group_id := gen_random_uuid();
   insert into public.appointment_groups(
