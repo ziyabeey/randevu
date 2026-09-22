@@ -47,22 +47,40 @@ function NewActions() {
 function MoreActions() {
   return (
     <>
-      <section className="kolay-action-group" aria-labelledby="kolay-more-operations">
-        <h2 id="kolay-more-operations">İşletme</h2>
+      <section className="kolay-action-group" aria-labelledby="kolay-more-general">
+        <h2 id="kolay-more-general">Genel</h2>
         <div className="kolay-action-list">
+          <DisabledAction title="Destek" description="Henüz kullanıma açık değil." />
           <AppLink href="/app/public-booking"><strong>Online Randevu</strong><span>Müşteri rezervasyon ayarları</span></AppLink>
+          <DisabledAction title="Müşteri geri bildirimleri" description="Henüz kullanıma açık değil." />
+          <DisabledAction title="Hizmet fotoğrafları" description="Henüz kullanıma açık değil." />
+        </div>
+      </section>
+
+      <section className="kolay-action-group" aria-labelledby="kolay-more-reports">
+        <h2 id="kolay-more-reports">Raporlar</h2>
+        <div className="kolay-action-list">
+          <DisabledAction title="Kasa" description="Henüz kullanıma açık değil." />
+          <DisabledAction title="Çalışan primleri" description="Henüz kullanıma açık değil." />
+          <DisabledAction title="Masraflar" description="Henüz kullanıma açık değil." />
+          <DisabledAction title="Ürün satışları" description="Henüz kullanıma açık değil." />
+          <DisabledAction title="Gelir-gider" description="Henüz kullanıma açık değil." />
+          <DisabledAction title="Detaylı çalışan raporu" description="Henüz kullanıma açık değil." />
+        </div>
+      </section>
+
+      <section className="kolay-action-group" aria-labelledby="kolay-more-setup">
+        <h2 id="kolay-more-setup">Kurulum</h2>
+        <div className="kolay-action-list">
           <AppLink href="/app/setup"><strong>Salon bilgileri</strong><span>İşletme kurulumu ve temel bilgiler</span></AppLink>
           <AppLink href="/app/availability"><strong>Çalışma saatleri</strong><span>Müsaitlik ve kapanış ayarları</span></AppLink>
           <AppLink href="/app/team"><strong>Çalışanlar</strong><span>Ekip ve erişim yönetimi</span></AppLink>
           <AppLink href="/app/services"><strong>Hizmetler</strong><span>Hizmet ve personel eşleşmeleri</span></AppLink>
-        </div>
-      </section>
-      <section className="kolay-action-group" aria-labelledby="kolay-more-future">
-        <h2 id="kolay-more-future">Diğer</h2>
-        <div className="kolay-action-list">
-          <DisabledAction title="Destek ve geri bildirim" description="Henüz kullanıma açık değil." />
-          <DisabledAction title="Kasa ve raporlar" description="Henüz kullanıma açık değil." />
-          <DisabledAction title="Ürün, stok ve promosyonlar" description="Henüz kullanıma açık değil." />
+          <AppLink href="/app/services"><strong>Süreler ve fiyatlar</strong><span>Hizmet süre ve fiyat ayarları</span></AppLink>
+          <AppLink href="/app/public-booking"><strong>Randevu ayarları</strong><span>Online randevu davranışı ve salon görünümü</span></AppLink>
+          <DisabledAction title="Ürün ve stok" description="Henüz kullanıma açık değil." />
+          <AppLink href="/app/public-booking"><strong>Salon fotoğrafları</strong><span>Yayınlanan salon görselleri</span></AppLink>
+          <DisabledAction title="Promosyonlar" description="Henüz kullanıma açık değil." />
         </div>
       </section>
     </>
@@ -138,6 +156,7 @@ export default function KolayAppSurface({
         meta: activeMembership.role === 'owner' ? 'İşletme sahibi' : activeMembership.role === 'manager' ? 'Yönetici' : 'Çalışan',
       }}
       headerAction={businessControl}
+      hideBusinessSummary
     >
       {notice && <div className="kolay-surface-notice" role="status">{notice}</div>}
       <Suspense fallback={<div className="kolay-empty-state" aria-busy="true">Ekran hazırlanıyor…</div>}>
