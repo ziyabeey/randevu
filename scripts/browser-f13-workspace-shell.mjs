@@ -28,11 +28,18 @@ const STAFF = 'f3440000-0000-4000-8000-000000000001';
 const APPOINTMENT = 'f3450000-0000-4000-8000-000000000001';
 const GROUP = 'f3460000-0000-4000-8000-000000000001';
 const CUSTOMER = 'f3470000-0000-4000-8000-000000000001';
+const TICKET = 'f3480000-0000-4000-8000-000000000001';
+const PAYMENT_CASH = 'f3490000-0000-4000-8000-000000000001';
+const PAYMENT_CARD = 'f3490000-0000-4000-8000-000000000002';
 const TOKEN = 'T'.repeat(48);
 const CSRF = 'C'.repeat(43);
 
 let activeBusinessId = BUSINESS_A;
 let appointmentStatus = 'scheduled';
+let ticketPaidMinor = 0;
+let ticketPaymentEvents = [];
+let ambiguousCashCommitted = false;
+const ticketPaymentReplays = new Map();
 
 function business(id) {
   return id === BUSINESS_A
@@ -182,6 +189,61 @@ function manageView() {
       booking_terms_text: 'Test randevu koşulları.',
     },
     notification: { channel: 'email', status: 'accepted' },
+  };
+}
+
+function ticketProjection() {
+  const totalMinor = 60000;
+  return {
+    ticketId: TICKET,
+    businessId: BUSINESS_A,
+    bookingGroupId: GROUP,
+    customerId: CUSTOMER,
+    source: 'booking_group',
+    status: 'open',
+    version: 1,
+    currency: 'TRY',
+    customerName: 'Ada Public',
+    customerPhone: '+905550001122',
+    customerEmail: 'customer@example.test',
+    settlementReady: true,
+    estimateMinMinor: totalMinor,
+    estimateMaxMinor: totalMinor,
+    subtotalMinor: totalMinor,
+    discountMinor: 0,
+    totalMinor,
+    paymentStatus: ticketPaidMinor === 0 ? 'unpaid' : ticketPaidMinor < totalMinor ? 'partial' : 'paid',
+    paidMinor: ticketPaidMinor,
+    balanceMinor: totalMinor - ticketPaidMinor,
+    createdAt: '2026-09-21T06:00:00.000Z',
+    updatedAt: '2026-09-21T06:00:00.000Z',
+    closedAt: null,
+    cancelledAt: null,
+    cancellationReason: null,
+    lines: [{
+      lineId: 'f3481000-0000-4000-8000-000000000001',
+      ordinal: 1,
+      sourceType: 'service',
+      sourceAppointmentLineId: APPOINTMENT,
+      serviceId: SERVICE,
+      staffId: STAFF,
+      serviceName: 'Kesim + Renk',
+      staffName: 'Deniz',
+      quantity: 1,
+      priceType: 'fixed',
+      priceMinMinor: totalMinor,
+      priceMaxMinor: totalMinor,
+      currency: 'TRY',
+      pricePolicyVersion: 1,
+      finalUnitPriceMinor: totalMinor,
+      discountMinor: 0,
+      netMinor: totalMinor,
+      finalizedAt: '2026-09-21T06:00:00.000Z',
+      finalizationReason: 'fixture',
+      discountAt: null,
+      discountReason: null,
+    }],
+    paymentEvents: ticketPaymentEvents,
   };
 }
 
@@ -366,6 +428,7 @@ try {
       body,
       expectedUser: request.headers['x-yzt-expected-user'] ?? null,
       expectedBusiness: request.headers['x-yzt-expected-business'] ?? null,
+      idempotencyKey: request.headers['idempotency-key'] ?? null,
     });
 
     if (request.method === 'GET' && url.pathname === '/api/session') return sendJson(response, 200, session());
@@ -392,6 +455,50 @@ try {
       });
     }
     if (request.method === 'GET' && url.pathname === '/api/customers') return sendJson(response, 200, customers());
+    if (request.method === 'GET' && url.pathname === '/api/tickets') {
+      return sendJson(response, 200, {
+        tickets: activeBusinessId === BUSINESS_A ? [ticketProjection()] : [],
+        page: { limit: 25, hasMore: false, nextCursor: null },
+      });
+    }
+    if (request.method === 'GET' && url.pathname === `/api/tickets/${TICKET}`) {
+      if (activeBusinessId !== BUSINESS_A) return sendJson(response, 404, { error: { code: 'TICKET_NOT_FOUND', message: 'Adisyon bulunamadı.' } });
+      return sendJson(response, 200, { ticket: ticketProjection() });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/tickets/${TICKET}/payments`) {
+      assert.equal(activeBusinessId, BUSINESS_A, 'payment escaped active business A');
+      const key = request.headers['idempotency-key'];
+      assert.ok(key, 'payment omitted Idempotency-Key');
+      if (ticketPaymentReplays.has(key)) {
+        return sendJson(response, 201, { ticket: ticketPaymentReplays.get(key) });
+      }
+      const amount = Number(body.amountMinor);
+      assert.ok(body.method === 'cash' || body.method === 'card', 'unexpected payment method');
+      assert.ok(amount > 0, 'unexpected payment amount');
+
+      const eventId = body.method === 'cash' ? PAYMENT_CASH : PAYMENT_CARD;
+      ticketPaidMinor += amount;
+      ticketPaymentEvents = [...ticketPaymentEvents, {
+        eventId,
+        eventType: 'payment',
+        sourcePaymentEventId: null,
+        method: body.method,
+        correctionDirection: null,
+        amountMinor: amount,
+        effectMinor: amount,
+        reason: null,
+        actorMembershipId: MEMBERSHIP_A,
+        createdAt: new Date().toISOString(),
+      }];
+      const projection = ticketProjection();
+      ticketPaymentReplays.set(key, projection);
+
+      if (body.method === 'cash' && amount === 20000 && !ambiguousCashCommitted) {
+        ambiguousCashCommitted = true;
+        return sendJson(response, 503, { error: { code: 'TICKET_WRITE_UNAVAILABLE', message: 'Sonuç doğrulanamadı.' } });
+      }
+      return sendJson(response, 201, { ticket: projection });
+    }
     if (request.method === 'POST' && url.pathname === `/api/bookings/${APPOINTMENT}/status`) {
       assert.equal(activeBusinessId, BUSINESS_A, 'status mutation escaped active business A');
       assert.equal(request.headers['x-yzt-expected-user'], USER, 'status mutation omitted expected user');
