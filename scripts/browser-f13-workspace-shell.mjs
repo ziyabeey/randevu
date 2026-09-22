@@ -512,7 +512,7 @@ try {
   const sessionReadsBeforeKolayTabs = requests.filter((item) => item.method === 'GET' && item.path === '/api/session').length;
   await page.evaluate(`[...document.querySelectorAll('.kolay-bottom-nav__item')].find((node) => node.textContent.includes('Müşteriler')).click()`);
   await waitFor(
-    () => page.evaluate(`location.pathname === '/app/mobile/customers' && document.body.innerText.includes('Ada Public') && document.body.innerText.includes('İşletme müşteri kayıtları')`),
+    () => page.evaluate(`location.pathname === '/app/mobile/customers' && Boolean(document.querySelector('.customers-list-panel')) && document.body.innerText.includes('Ada Public')`),
     'KolayApp customers tab did not reuse the canonical customer module',
   );
   const sessionReadsAfterKolayTabs = requests.filter((item) => item.method === 'GET' && item.path === '/api/session').length;
