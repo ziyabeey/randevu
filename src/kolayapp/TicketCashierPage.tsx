@@ -186,7 +186,6 @@ export default function TicketCashierPage() {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [pendingAmbiguity, setPendingAmbiguity] = useState<PendingAmbiguity | null>(() => readPendingAmbiguity());
-  const pendingAmbiguousAction = pendingAmbiguity?.action ?? null;
   const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const initialTicketId = initialParams.get('ticketId');
   const initialCustomerId = initialParams.get('customerId');
