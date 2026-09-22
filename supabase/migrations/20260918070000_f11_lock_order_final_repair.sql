@@ -79,7 +79,15 @@ begin
     'customerName', v_customer_name,
     'customerPhone', v_customer_phone,
     'customerEmail', v_customer_email,
-    'lines', p_lines,
+    -- EXP-H19 M1 MUTANT: collapse ordered line intent to service identity and
+    -- deliberately omit pinned staff from the idempotency request hash.
+    'lines', (
+      select jsonb_agg(
+        jsonb_build_object('serviceId', x.line->>'serviceId')
+        order by x.ordinality
+      )
+      from jsonb_array_elements(p_lines) with ordinality as x(line, ordinality)
+    ),
     'startsAt', p_starts_at,
     'notes', v_notes
   )::text);
