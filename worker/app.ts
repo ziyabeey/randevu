@@ -14,6 +14,7 @@ import customers from './customers.ts';
 import calendar from './calendar.ts';
 import snapshotReads from './snapshot-reads.ts';
 import team from './team.ts';
+import tickets from './tickets.ts';
 import onboarding from './onboarding.ts';
 import {
   mutationSecurityError,
@@ -109,6 +110,7 @@ app.route('/api/public', publicBooking);
 app.route('/api/manage', customerManage);
 app.route('/api/calendar', calendar);
 app.route('/api/team', team);
+app.route('/api', tickets);
 app.route('/api/onboarding', onboarding);
 
 export default app;
