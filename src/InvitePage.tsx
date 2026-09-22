@@ -51,7 +51,7 @@ export default function InvitePage() {
     }).then(() => {
       clearPendingTeamInvite();
       setNotice('Davet kabul edildi. Ekip alanı açılıyor…');
-      window.location.replace('/team');
+      window.location.replace('/app/team');
     }).catch((error: unknown) => {
       attemptRef.current = null;
       if (error instanceof ApiRequestError && error.code && TERMINAL_INVITE_CODES.has(error.code)) {
@@ -116,7 +116,7 @@ export default function InvitePage() {
       <main className="center-card">
         <h1>Davet artık kullanılamıyor</h1>
         <p className="muted">Bağlantı geçersiz, süresi dolmuş veya daha önce kullanılmış olabilir.</p>
-        <a className="primary-link" href="/">Çalışma alanına dön</a>
+        <a className="primary-link" href="/app">Çalışma alanına dön</a>
       </main>
     );
   }
@@ -127,7 +127,7 @@ export default function InvitePage() {
         <p className="eyebrow">DAVET BEKLİYOR</p>
         <h1>Önce parolanızı tamamlayın</h1>
         <p className="muted">Kurtarma oturumu ekip yetkisi kazanamaz. Yeni parolanızı belirledikten sonra bu davet aynı sekmede devam eder.</p>
-        <a className="primary-link" href="/account">Parola ekranına dön</a>
+        <a className="primary-link" href="/app">Parola ekranına dön</a>
       </main>
     );
   }

@@ -712,7 +712,10 @@ async function runProductionLoadingState(debugUrl, origin) {
     }))()`);
     assert.deepEqual(loading, { hero: true, booking: true }, 'production route did not expose both salon and booking loading states');
     await waitFor(() => page.evaluate('document.querySelectorAll(".public-service-choice").length === 2'), 'production loading route did not settle into the service catalog');
-    assert.equal(await page.evaluate('document.body.innerText.includes("Uygun saatler hazırlanıyor…")'), false, 'production booking loading state did not clear');
+    await waitFor(
+      () => page.evaluate('!document.body.innerText.includes("Uygun saatler hazırlanıyor…")'),
+      'production booking loading state did not clear',
+    );
     assert.deepEqual(page.diagnostics, [], 'production loading route emitted browser diagnostics');
   } finally {
     page.close();

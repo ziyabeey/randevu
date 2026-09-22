@@ -75,3 +75,5 @@ CHROME_BIN="$CHROME_BIN" node scripts/browser-f10-catalog-settings-review.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f11-group-management.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f11-group-consumers.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f13-booking-production.mjs
+
+CHROME_BIN="$CHROME_BIN" node scripts/browser-f13-workspace-shell.mjs

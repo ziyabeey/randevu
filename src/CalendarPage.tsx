@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiRequestError } from './api';
+import { navigateApp } from './workspace-route';
 import {
   CALENDAR_HTTP_TIMEOUT_MS,
   CalendarRefreshScheduler,
@@ -137,9 +138,14 @@ function nextStatuses(status: AppointmentStatus) {
   return [] as const;
 }
 
+function initialCalendarView(): ViewMode {
+  return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches ? 'list' : 'day';
+}
+
 export default function CalendarPage() {
+  const initialView = initialCalendarView();
   const [payload, setPayload] = useState<CalendarPayload | null>(null);
-  const [view, setView] = useState<ViewMode>('day');
+  const [view, setView] = useState<ViewMode>(initialView);
   const [days, setDays] = useState<1 | 7>(1);
   const [date, setDate] = useState('');
   const [clock, setClock] = useState(() => new Date());
@@ -158,7 +164,7 @@ export default function CalendarPage() {
   const selectionGeneration = useRef(0);
   const selectionController = useRef<AbortController | null>(null);
   const requestGate = useRef(new LatestCalendarRequest());
-  const query = useRef<CalendarQuery>({ date: '', view: 'day', days: 1, staffId: 'all' });
+  const query = useRef<CalendarQuery>({ date: '', view: initialView, days: 1, staffId: 'all' });
   const payloadRef = useRef<CalendarPayload | null>(null);
   const authorityContextRef = useRef<string | null>(null);
 
@@ -504,7 +510,7 @@ export default function CalendarPage() {
   }
 
   if (!payload) {
-    return <main className="calendar-shell"><section className="calendar-empty"><h1>Takvim açılamadı</h1><p>{loadError || notice}</p><button className="calendar-retry" type="button" onClick={() => void load()}>Tekrar dene</button><a href="/">İşletmeye dön</a></section></main>;
+    return <main className="calendar-shell"><section className="calendar-empty"><h1>Takvim açılamadı</h1><p>{loadError || notice}</p><button className="calendar-retry" type="button" onClick={() => void load()}>Tekrar dene</button><a href="/app">İşletmeye dön</a></section></main>;
   }
 
   const weekDates = Array.from({ length: 7 }, (_, index) => addDays(payload.date, index));
@@ -523,7 +529,7 @@ export default function CalendarPage() {
           <h1>{payload.business.name}</h1>
           <p>{title} · {payload.business.timezone}</p>
         </div>
-        <a className="calendar-new" href="/bookings">+ Yeni randevu</a>
+        <button className="calendar-new" type="button" onClick={() => navigateApp("/app/bookings")}>+ Yeni randevu</button>
       </header>
 
       <section className="calendar-toolbar" aria-label="Takvim kontrolleri">
@@ -708,7 +714,7 @@ export default function CalendarPage() {
               </div>
             ) : null}
 
-            <a className="calendar-secondary-link" href="/bookings">Gelişmiş randevu işlemlerine git</a>
+            <button className="calendar-secondary-link" type="button" onClick={() => navigateApp("/app/bookings")}>Gelişmiş randevu işlemlerine git</button>
           </aside>
         </div>
       )}

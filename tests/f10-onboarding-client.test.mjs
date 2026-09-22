@@ -3,33 +3,34 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const page = readFileSync(new URL('../src/OnboardingPage.tsx', import.meta.url), 'utf8');
-const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
+const shell = readFileSync(new URL('../src/WorkspaceShell.tsx', import.meta.url), 'utf8');
+const routes = readFileSync(new URL('../src/workspace-route.ts', import.meta.url), 'utf8');
 const api = readFileSync(new URL('../src/api.ts', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../supabase/migrations/20260914090000_f10_onboarding_readiness.sql', import.meta.url), 'utf8');
 
-await test('F10-03 setup is a dedicated routed surface without replacing F10-02 invite/team routes', () => {
-  assert.match(main, /const isSetup = path === '\/setup'/);
-  assert.match(main, /isSetup\s*\? <OnboardingPage/);
-  assert.match(main, /const isTeam = path === '\/team'/);
-  assert.match(main, /isInviteFlow/);
-  assert.match(main, /<a href="\/setup"/);
+await test('F10-03 setup is a dedicated canonical workspace surface without replacing invite/team routes', () => {
+  assert.match(routes, /'\/app\/setup': 'setup'/);
+  assert.match(routes, /'\/app\/team': 'team'/);
+  assert.match(routes, /pathname === '\/' && pendingInvite/);
+  assert.match(shell, /page === 'setup'\) return <OnboardingPage/);
+  assert.match(shell, /page === 'team'\) return <TeamPage/);
 });
 
-await test('F10-03 business switch aborts stale reads, clears old setup state and hard-navigates only after server selection', () => {
+await test('F10-03 business switch aborts stale reads, clears old setup state and delegates authority to the shared shell', () => {
   assert.match(page, /requestController\.current\?\.abort\(\)/);
   assert.match(page, /const generation = \+\+requestGeneration\.current/);
   assert.match(page, /if \(generation !== requestGeneration\.current\) return/);
   assert.match(page, /setSnapshot\(null\);\s*setSlots\(\[\]\);/s);
-  assert.match(page, /await api\('\/api\/businesses\/select'/);
-  assert.match(page, /window\.location\.assign\('\/setup'\)/);
-  assert.match(page, /if \(businessId === session\?\.activeBusinessId\) return/);
-  assert.doesNotMatch(page, /setTimeout\([^)]*businesses\/select/);
+  assert.match(page, /await selectBusiness\(businessId\)/);
+  assert.match(page, /if \(businessId === activeBusinessId\) return/);
+  assert.doesNotMatch(page, /window\.location\.(?:assign|replace)|\/api\/businesses\/select/);
 });
 
 await test('F10-03 reuses shared AbortSignal-capable API instead of creating a second HTTP client', () => {
   assert.match(api, /const callerSignal = init\.signal/);
   assert.match(api, /callerSignal\?\.addEventListener\('abort'/);
-  assert.match(page, /api<Session>\('\/api\/session', \{ signal: controller\.signal \}\)/);
+  assert.doesNotMatch(page, /\/api\/session/);
+  assert.match(page, /useWorkspace/);
   assert.match(page, /api<Snapshot>\('\/api\/onboarding', \{ signal: controller\.signal \}\)/);
   assert.doesNotMatch(page, /fetch\(/);
 });

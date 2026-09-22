@@ -492,6 +492,10 @@ try {
     { serviceId: SERVICE_1, staffId: STAFF_1 },
     { serviceId: SERVICE_2, staffId: STAFF_2 },
   ]);
+  await waitFor(
+    async () => (await call(page, 'bookingCreateSlotCount')) > 0,
+    'operator group-slot response did not render a selectable slot',
+  );
   assert.equal(await call(page, 'click', '2 hizmet'), true);
   assert.equal(await call(page, 'click', 'Randevuyu oluştur'), true);
   await waitFor(() => requestsTo('/api/bookings/groups').filter((request) => request.method === 'POST').length === createBefore + 1, 'operator group create did not fire');

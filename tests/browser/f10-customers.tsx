@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import BrowserWorkspaceProvider from './workspace-provider';
 import CustomersPage from '../../src/CustomersPage';
 
 type Metrics = {
@@ -109,9 +110,10 @@ window.__f10customers = {
 const root = document.getElementById('root');
 if (!root) throw new Error('F10 customer browser harness root missing');
 createRoot(root).render(
-  <>
-    <CustomersPage />
-    <nav className="phase-nav" aria-label="Çalışma alanları">
+  <BrowserWorkspaceProvider>
+    <>
+      <CustomersPage />
+      <nav className="phase-nav" aria-label="Çalışma alanları">
       <a href="/calendar">Takvim</a>
       <a href="/bookings">Randevular</a>
       <a href="/customers" aria-current="page">Müşteriler</a>
@@ -120,7 +122,8 @@ createRoot(root).render(
       <a href="/">Hizmetler</a>
       <a href="/team">Ekip</a>
       <a href="/public-booking">Public Sayfa</a>
-    </nav>
-  </>,
+      </nav>
+    </>
+  </BrowserWorkspaceProvider>,
 );
 document.documentElement.dataset.f10CustomersReady = 'true';
