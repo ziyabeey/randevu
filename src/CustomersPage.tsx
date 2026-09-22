@@ -396,7 +396,10 @@ export default function CustomersPage() {
                   <label>Not<textarea name="notes" maxLength={1000} defaultValue={selected.notes ?? ''} /></label>
                   <button disabled={busy}>Bilgileri güncelle</button>
                 </form>
-                <div className="customers-history-head"><h3>Rezervasyon geçmişi</h3><span>Bir rezervasyon tek kayıt, hizmetleri sıralı satırlardır.</span></div>
+                <div className="customers-history-head">
+                  <div><h3>Rezervasyon geçmişi</h3><span>Bir rezervasyon tek kayıt, hizmetleri sıralı satırlardır.</span></div>
+                  <button type="button" disabled={busy} onClick={() => navigateApp(`/app/mobile/tickets?customerId=${encodeURIComponent(selected.customer_id)}`)}>Adisyon geçmişi</button>
+                </div>
                 <div aria-busy={historyState === 'loading'}>
                   {historyState === 'loading' ? (
                     <p className="customers-muted" role="status">Randevu geçmişi yükleniyor…</p>
