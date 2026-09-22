@@ -203,4 +203,6 @@ exception when others then
 end
 $$;
 
-delete from public.businesses where id='e1510000-0000-4000-8000-000000000001';
+-- The CI database is disposable. Deliberately do not delete the business here:
+-- F14 financial tickets are retention-protected and business deletion must not
+-- cascade through immutable financial history.
