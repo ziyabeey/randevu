@@ -727,12 +727,7 @@ begin
     end if;
   end if;
 
-  if v_ticket.currency is null then
-    update public.tickets
-    set currency = v_service.currency
-    where business_id = p_business_id and id = p_ticket_id;
-    v_ticket.currency := v_service.currency;
-  elsif v_ticket.currency <> v_service.currency then
+  if v_ticket.currency is not null and v_ticket.currency <> v_service.currency then
     raise exception 'MIXED_CURRENCY';
   end if;
 
@@ -763,7 +758,8 @@ begin
   );
 
   update public.tickets
-  set version = version + 1
+  set currency = coalesce(currency, v_service.currency),
+      version = version + 1
   where business_id = p_business_id and id = p_ticket_id;
 
   v_result := public.f14_ticket_projection(p_business_id, p_ticket_id);
