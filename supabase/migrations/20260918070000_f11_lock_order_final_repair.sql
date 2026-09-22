@@ -34,6 +34,7 @@ declare
   v_hash text;
   v_claim record;
   v_plan jsonb;
+  v_stale_plan jsonb;
   v_line jsonb;
   v_customer_id uuid;
   v_group_id uuid;
@@ -125,6 +126,7 @@ begin
 
   v_plan := public.f11_plan_group_at(p_business_id, p_lines, p_starts_at, null);
   if v_plan is null then raise exception 'GROUP_SLOT_UNAVAILABLE'; end if;
+  v_stale_plan := v_plan;
   v_timezone := v_plan->>'timezone';
 
   -- Acquire every mutable F10-04 schedule-authority advisory family before
@@ -179,6 +181,18 @@ begin
 
   v_plan := public.f11_plan_group_at(p_business_id, p_lines, p_starts_at, null);
   if v_plan is null then raise exception 'GROUP_SLOT_UNAVAILABLE'; end if;
+
+  -- EXP-H19 M4 MUTANT: staff/schedule replan is current, but the first line's
+  -- financial snapshot is accidentally restored from the stale pre-lock plan.
+  if jsonb_array_length(v_plan->'lines') > 0
+     and jsonb_array_length(v_stale_plan->'lines') > 0 then
+    v_plan := jsonb_set(v_plan,'{lines,0,priceType}',v_stale_plan#>'{lines,0,priceType}');
+    v_plan := jsonb_set(v_plan,'{lines,0,priceMinMinor}',v_stale_plan#>'{lines,0,priceMinMinor}');
+    v_plan := jsonb_set(v_plan,'{lines,0,priceMaxMinor}',v_stale_plan#>'{lines,0,priceMaxMinor}');
+    v_plan := jsonb_set(v_plan,'{lines,0,priceMinor}',v_stale_plan#>'{lines,0,priceMinor}');
+    v_plan := jsonb_set(v_plan,'{lines,0,pricePolicyVersion}',v_stale_plan#>'{lines,0,pricePolicyVersion}');
+    v_plan := jsonb_set(v_plan,'{lines,0,currency}',v_stale_plan#>'{lines,0,currency}');
+  end if;
 
   v_group_id := gen_random_uuid();
   insert into public.appointment_groups(
