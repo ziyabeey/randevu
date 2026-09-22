@@ -47,12 +47,19 @@ begin
     raise exception 'H19 M3 tenant B initial claim was not new';
   end if;
 
-  -- Make the no-tenant-predicate mutant deterministic: a sequential scan sees
-  -- tenant A first. The correct query still filters by business_id and reaches B.
-  cluster public.booking_commands using booking_commands_pkey;
-  analyze public.booking_commands;
+  -- Make the no-tenant-predicate mutant deterministic. This database is fresh,
+  -- A was inserted before B, and forcing a sequential scan therefore sees A
+  -- first. The correct query still filters by business_id and reaches B.
+  if (select business_id
+      from public.booking_commands
+      where idempotency_key='h19-shared-key-0001'
+      order by ctid
+      limit 1) <> '19000000-0000-4000-8000-000000000010'::uuid then
+    raise exception 'H19 M3 fixture row order is not deterministic';
+  end if;
   set local enable_indexscan = off;
   set local enable_bitmapscan = off;
+  set local enable_seqscan = on;
 
   begin
     perform *
