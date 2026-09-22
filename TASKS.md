@@ -22,6 +22,7 @@ Kepenk Core platform çalışması ayrı track'tir: **KC-00…KC-07**, 54 MVP g�
 ### Kalıcı durum ve aday kanıtı
 
 TASKS yalnız gerçek durum geçişinde (sahiplik, inceleme, blocker, kabul, merge/kapanış) güncellenir. Aktif görevlerde current head/base SHA, CI run/job/attempt, açık thread sayısı ve GitHub mergeability buraya kopyalanmaz; canlı PR/check API ve candidate-bound receipt kaynaklarında okunur. Bu alanları tazelemek için TASKS-only PR açılmaz. Kabul edilmiş işlerin sabit tarihsel exact-SHA kanıtları korunur. Bu kural otomatik senkronlara ve koordinatörlere birlikte uygulanır.
+
 ## Teknik düzeltmeler
 
 | Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / PR / kanıt veya engel |
@@ -87,6 +88,7 @@ TASKS yalnız gerçek durum geçişinde (sahiplik, inceleme, blocker, kabul, mer
 | [F17-05](docs/plan/phase-17.md#f17-05) | Kontrollü pilot ve MVP teslimi | F17-04 | Planlandı | — | — |
 
 ## Marketing / site track — 54 MVP görevinin dışında
+
 | Kimlik | İş | Durum | Sahip | Kanıt / sonraki kapı |
 | --- | --- | --- | --- | --- |
 | [MKT-01](https://github.com/ziyabeey1-ai/randevu/issues/70) | Randevu marketing homepage — scroll-motion implementation | Çalışılıyor | Ziya / ürün sahibi + FRONTEND 2 | [PR #69](https://github.com/ziyabeey1-ai/randevu/pull/69) brand/motion docs main'de; [PR #77](https://github.com/ziyabeey1-ai/randevu/pull/77) draft. Production renderer gerçek Kling binary/perf + real-phone/cellular ve shared route cutover kapısını bekler. |
@@ -105,6 +107,7 @@ Bağlayıcı topology [K04](docs/plan/k04-platform-core-contract.md), paket/bağ
 | [KC-05](docs/plan/kepenk-core-migration-plan.md) | Core → Firestore projection ve canary cutover | KC-03, KC-04 | Engelli | Kepenk ajanı + R1 / 2026-09-19 | Kepenk [PR #21](https://github.com/ziyabeey1-ai/istanbul-sales-agent-dashboard/pull/21) draft · KC-02→KC-04 dependency closure ile hosted canary/stale-projection/root-write-blocked/orphan-recovery/rollback kanıtları açık |
 | [KC-06](docs/plan/kepenk-core-migration-plan.md) | `auth.kepenk.ai` broker | KC-05 | Planlandı | — | İkinci uygulamada gerçek kullanıcı ihtiyacı doğmadan açılmaz |
 | [KC-07](docs/plan/kepenk-core-migration-plan.md) | Platform admin read RPC ve audit | KC-05 | Planlandı | — | Salt-okunur auditli admin sınırı; impersonation ayrı karar/R1 ister |
+
 ## Development tooling track — 54 MVP görevinin dışında
 
 | Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / kanıt / sonraki adım |
