@@ -59,11 +59,18 @@ function assertCsrf(request) {
   assert.equal(request.headers['x-yzt-csrf'], csrfToken, 'unsafe fixture request missing CSRF header');
 }
 function membership(businessId) {
+  const isA = businessId === ids.businessA;
   return {
-    id: businessId === ids.businessA ? ids.membershipA : ids.membershipB,
+    id: isA ? ids.membershipA : ids.membershipB,
     business_id: businessId,
     role: 'owner',
     active: true,
+    businesses: {
+      id: businessId,
+      name: isA ? 'Salon A' : 'Salon B',
+      slug: isA ? 'salon-a' : 'salon-b',
+      timezone: 'Europe/Istanbul',
+    },
   };
 }
 function catalogFor(businessId) {
@@ -105,11 +112,19 @@ const server = createServer(async (request, response) => {
       if (state.sessionDelayMs) await sleep(state.sessionDelayMs);
       return sendJson(response, 200, {
         user: { id: ids.user, email: 'owner@example.test', fullName: 'Owner' },
-        memberships: businessId ? [membership(businessId)] : [],
+        memberships: [membership(ids.businessA), membership(ids.businessB)],
         activeBusinessId: businessId,
         passwordRecovery: state.recovery,
         csrfToken,
       });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/businesses/select') {
+      assertCsrf(request);
+      if (body.businessId !== ids.businessA && body.businessId !== ids.businessB) {
+        return sendJson(response, 403, { error: { code: 'TENANT_FORBIDDEN', message: 'İşletme erişimi yok.' } });
+      }
+      state.activeBusinessId = body.businessId;
+      return sendJson(response, 200, { ok: true });
     }
     if (request.method === 'GET' && url.pathname === '/api/catalog') {
       const businessId = state.activeBusinessId;
@@ -352,19 +367,18 @@ try {
   await uiContains(page, 'Ayarlar yüklenemedi.');
   await uiExcludes(page, 'Hizmet güncellendi.');
 
-  // Retry switches to business B while the old A catalog read is still outstanding. A cannot overwrite B.
-  state.activeBusinessId = ids.businessB;
+  // Switch through the shared workspace authority while the old A catalog read is still outstanding.
+  // The page must cancel/ignore A and render only the verified B context.
   state.catalogDelayMs = 0;
-  assert.equal(await call(page, 'clickButton', 'Tekrar yükle'), true);
+  assert.equal(await call(page, 'switchBusiness', ids.businessB), true);
   await uiContains(page, 'Boya');
   await uiContains(page, 'Bora');
   await sleep(500);
   await uiContains(page, 'Boya');
   await uiExcludes(page, 'Kesim');
 
-  // Return to A for responsive and keyboard checks.
-  state.activeBusinessId = ids.businessA;
-  await reloadPage(page);
+  // Return through the same shared workspace authority for responsive and keyboard checks.
+  assert.equal(await call(page, 'switchBusiness', ids.businessA), true);
   await uiContains(page, 'Kesim');
 
   for (const width of [360, 390]) {

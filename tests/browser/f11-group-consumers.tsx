@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import BrowserWorkspaceProvider from './workspace-provider';
 import BookingPage from '../../src/BookingPage';
 import CalendarPage from '../../src/CalendarPage';
 import CustomersPage from '../../src/CustomersPage';
@@ -192,5 +193,5 @@ const page = pathname === '/calendar'
     : pathname === '/customers'
       ? <CustomersPage />
       : <div>Unknown F11-03 consumer harness route: {pathname}</div>;
-createRoot(root).render(page);
+createRoot(root).render(<BrowserWorkspaceProvider>{page}</BrowserWorkspaceProvider>);
 document.documentElement.dataset.f1103ConsumerReady = 'true';

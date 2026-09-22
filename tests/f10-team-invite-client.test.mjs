@@ -10,7 +10,7 @@ import {
 
 const token = 'A'.repeat(43);
 const invitePage = readFileSync(new URL('../src/InvitePage.tsx', import.meta.url), 'utf8');
-const main = readFileSync(new URL('../src/main.tsx', import.meta.url), 'utf8');
+const routes = readFileSync(new URL('../src/workspace-route.ts', import.meta.url), 'utf8');
 
 function browser(pathname = '/', hash = '') {
   const store = new Map();
@@ -56,7 +56,8 @@ test('F10 management capability hash is never consumed as an invitation', () => 
 });
 
 test('F10 recovery invite keeps the token while routing to the real password surface', () => {
-  assert.match(invitePage, /href="\/account">Parola ekranına dön<\/a>/);
-  assert.match(main, /const isInviteFlow = path === '\/' && Boolean\(readPendingTeamInvite\(\)\)/);
-  assert.doesNotMatch(main, /path === '\/account'.*InvitePage/);
+  assert.match(invitePage, /href="\/app">Parola ekranına dön<\/a>/);
+  assert.match(routes, /pathname === '\/' && pendingInvite/);
+  assert.match(routes, /if \(pathname === '\/'\) return \{ kind: 'redirect', to: '\/app' \}/);
+  assert.doesNotMatch(routes, /'\/app': 'invite'/);
 });

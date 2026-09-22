@@ -29,8 +29,13 @@ test('F13-03 operator composer keeps the required field order and uses the atomi
 test('F13-03 close-time stays adjacent to create and detail future tabs are truthful placeholders', () => {
   assert.match(booking, /closeOpen \? 'Kapat' : 'Saat kapat'/);
   assert.match(booking, /api\('\/api\/availability\/blocks'/);
-  assert.match(booking, /Fotoğraf <small>F16-03<\/small>/);
-  assert.match(booking, /Adisyon <small>F14<\/small>/);
+  assert.match(booking, /<span aria-disabled="true">Fotoğraf<\/span>/);
+  assert.match(booking, /<span aria-disabled="true">Adisyon<\/span>/);
+  assert.match(booking, /Fotoğraf ve Adisyon bölümleri henüz kullanıma açık değil\./);
+  const detailStart = booking.indexOf('booking-detail-tabs');
+  const detailEnd = booking.indexOf('{rescheduleTarget', detailStart);
+  const detailSurface = booking.slice(detailStart, detailEnd);
+  assert.doesNotMatch(detailSurface, /F14|F16-03|backend|\bFaz\b|\bRPC\b|\btenant\b/i);
   assert.doesNotMatch(booking, /api\([^\n]*photo|api\([^\n]*ticket|api\([^\n]*adisyon/i);
   assert.match(css, /\.booking-close-panel/);
   assert.match(css, /\.booking-detail-tabs/);
@@ -58,7 +63,7 @@ test('F13-03 real Chrome acceptance covers multi-service create, stale slots, cl
 
 test('F13-03 production-entry acceptance is wired through the real main route and lazy BookingPage chunk', () => {
   assert.match(productionBrowser, /src\/main\.tsx/);
-  assert.match(productionBrowser, /production \/bookings did not request BookingPage lazy chunk/);
+  assert.match(productionBrowser, /production \/app\/bookings did not request BookingPage lazy chunk/);
   assert.match(productionBrowser, /RANDEVU YÖNETİMİ/);
   assert.match(browserSmoke, /browser-f13-booking-production\.mjs/);
 });
