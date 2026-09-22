@@ -68,13 +68,6 @@ export default function KolayAppShell({
           ))}
           {headerAction}
         </div>
-          ) : (
-            <div className="kolay-business-switch kolay-business-switch--static" aria-label={`İşletme: ${businessName}`}>
-              {businessSummary}
-            </div>
-          ))}
-          {headerAction}
-        </div>
       </header>
 
       <div id="kolayapp-content" className="kolay-app-content" tabIndex={-1}>
