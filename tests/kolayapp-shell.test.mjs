@@ -120,7 +120,13 @@ await test('F14-04 cashier UI consumes server financial projection and stable am
     assert.match(ticketCashierSource, new RegExp(field));
   }
   assert.match(ticketCashierSource, /Idempotency-Key/);
-  assert.match(ticketCashierSource, /pendingAmbiguousAction/);
+  assert.match(ticketCashierSource, /PENDING_AMBIGUITY_STORAGE_KEY/);
+  assert.match(ticketCashierSource, /sessionStorage/);
+  assert.match(ticketCashierSource, /path: string/);
+  assert.match(ticketCashierSource, /body: string \| null/);
+  assert.match(ticketCashierSource, /pending\.path/);
+  assert.match(ticketCashierSource, /pending\.body/);
+  assert.match(ticketCashierSource, /Belirsiz işlemi doğrula/);
   assert.match(ticketCashierSource, /REQUEST_TIMEOUT/);
   assert.match(ticketCashierSource, /NETWORK_UNAVAILABLE/);
   assert.match(ticketCashierSource, /status === 503/);
@@ -132,6 +138,9 @@ await test('F14-04 cashier UI consumes server financial projection and stable am
   assert.doesNotMatch(ticketCashierSource, /paidMinor\s*\+|balanceMinor\s*-|totalMinor\s*-/);
   assert.match(productionSource, /<TicketCashierPage \/>/);
   assert.match(workspaceBrowserSource, /F14-04 ticket cashier payment\/idempotency\/mobile acceptance passed/);
+  assert.match(workspaceBrowserSource, /allowed a different ticket mutation while a payment result was ambiguous/);
+  assert.match(workspaceBrowserSource, /ambiguity remount changed Idempotency-Key/);
+  assert.match(workspaceBrowserSource, /Belirsiz işlemi doğrula/);
   assert.match(ticketCashierCss, /@media \(max-width:\s*420px\)/);
   assert.match(ticketCashierCss, /min-height:\s*44px/);
 });

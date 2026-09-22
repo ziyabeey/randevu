@@ -73,9 +73,15 @@
 }
 
 .ticket-notice {
+  display: grid;
+  gap: .5rem;
   padding: .7rem .8rem;
   color: var(--kolay-muted);
   font-size: .8rem;
+}
+
+.ticket-notice button {
+  justify-self: start;
 }
 
 .ticket-walkin {

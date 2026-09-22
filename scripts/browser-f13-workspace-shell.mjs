@@ -709,17 +709,11 @@ try {
     () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.querySelector('.kolay-business-select select').value === '${BUSINESS_A}' && document.body.innerText.includes('Ada Public')`),
     'F14-04 ambiguity switch did not restore business A ticket state',
   );
-  await page.evaluate(`[...document.querySelectorAll('.ticket-list button')].find((node) => node.textContent.includes('Ada Public')).click()`);
   await waitFor(
-    () => page.evaluate(`Boolean(document.querySelector('.ticket-payment')) && document.body.innerText.includes('Sonucu belirsiz mali işlem korunuyor')`),
-    'F14-04 ambiguity recovery did not restore the originating ticket workflow',
+    () => page.evaluate(`document.body.innerText.includes('Sonucu belirsiz mali işlem korunuyor') && [...document.querySelectorAll('.ticket-notice button')].some((node) => node.textContent.includes('Belirsiz işlemi doğrula'))`),
+    'F14-04 ambiguity recovery did not restore the persisted replay control',
   );
-  await page.evaluate(`(() => {
-    const form=document.querySelector('.ticket-payment');
-    form.querySelector('select[name="method"]').value='cash';
-    form.querySelector('input[name="amount"]').value='200';
-    form.requestSubmit();
-  })()`);
+  await page.evaluate(`[...document.querySelectorAll('.ticket-notice button')].find((node) => node.textContent.includes('Belirsiz işlemi doğrula')).click()`);
   await waitFor(
     () => page.evaluate(`document.body.innerText.includes('Tahsilat sunucuda doğrulandı.') && document.querySelector('.ticket-totals')?.innerText.includes('200') && document.querySelector('.ticket-totals')?.innerText.includes('400')`),
     'F14-04 same-key ambiguous payment recovery after business remount did not restore server projection',

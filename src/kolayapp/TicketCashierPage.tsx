@@ -82,9 +82,14 @@ type PendingAmbiguity = {
   businessId: string;
   action: string;
   idempotencyKey: string;
+  path: string;
+  method: string;
+  body: string | null;
+  success: string;
+  ticketId: string | null;
 };
 
-const PENDING_AMBIGUITY_STORAGE_KEY = 'randevu:ticket-cashier:pending-ambiguity:v1';
+const PENDING_AMBIGUITY_STORAGE_KEY = 'randevu:ticket-cashier:pending-ambiguity:v2';
 
 function samePendingAmbiguity(left: PendingAmbiguity | null, right: PendingAmbiguity) {
   return Boolean(left
@@ -102,9 +107,17 @@ function readPendingAmbiguity(): PendingAmbiguity | null {
     if (typeof parsed.businessId !== 'string'
       || typeof parsed.action !== 'string'
       || typeof parsed.idempotencyKey !== 'string'
+      || typeof parsed.path !== 'string'
+      || typeof parsed.method !== 'string'
+      || (parsed.body !== null && typeof parsed.body !== 'string')
+      || typeof parsed.success !== 'string'
+      || (parsed.ticketId !== null && typeof parsed.ticketId !== 'string')
       || !parsed.businessId
       || !parsed.action
-      || !parsed.idempotencyKey) {
+      || !parsed.idempotencyKey
+      || !parsed.path.startsWith('/api/tickets')
+      || !['POST', 'PUT', 'PATCH', 'DELETE'].includes(parsed.method)
+      || !parsed.success) {
       window.sessionStorage.removeItem(PENDING_AMBIGUITY_STORAGE_KEY);
       return null;
     }
@@ -112,6 +125,11 @@ function readPendingAmbiguity(): PendingAmbiguity | null {
       businessId: parsed.businessId,
       action: parsed.action,
       idempotencyKey: parsed.idempotencyKey,
+      path: parsed.path,
+      method: parsed.method,
+      body: parsed.body,
+      success: parsed.success,
+      ticketId: parsed.ticketId,
     };
   } catch {
     return null;
@@ -261,20 +279,36 @@ export default function TicketCashierPage() {
     success: string,
     ticketId?: string,
   ) {
-    if (pendingAmbiguity
-      && (pendingAmbiguity.businessId !== activeBusinessId || pendingAmbiguity.action !== action)) {
+    const method = String(init.method ?? 'POST').toUpperCase();
+    const body = typeof init.body === 'string' ? init.body : null;
+    const pendingRequestMatches = Boolean(pendingAmbiguity
+      && pendingAmbiguity.businessId === activeBusinessId
+      && pendingAmbiguity.action === action
+      && pendingAmbiguity.path === path
+      && pendingAmbiguity.method === method
+      && pendingAmbiguity.body === body);
+    if (pendingAmbiguity && !pendingRequestMatches) {
       setNotice(pendingAmbiguity.businessId === activeBusinessId
-        ? 'Önce sonucu belirsiz işlemi aynı bilgilerle tekrar doğrulayın. Yeni bir mali işlem başlatılmadı.'
-        : 'Başka bir işletmede sonucu belirsiz mali işlem var. O işletmeye dönüp aynı işlemi doğrulamadan yeni adisyon işlemi başlatılmadı.');
+        ? 'Önce sonucu belirsiz işlemi kayıtlı istekle doğrulayın. Yeni bir mali işlem başlatılmadı.'
+        : 'Başka bir işletmede sonucu belirsiz mali işlem var. O işletmeye dönüp kayıtlı isteği doğrulamadan yeni adisyon işlemi başlatılmadı.');
       return null;
     }
     setBusy(true);
     setNotice('');
-    const key = pendingAmbiguity?.businessId === activeBusinessId && pendingAmbiguity.action === action
-      ? pendingAmbiguity.idempotencyKey
+    const key = pendingRequestMatches
+      ? pendingAmbiguity!.idempotencyKey
       : keyFor(keys.current, action);
     keys.current.set(action, key);
-    const ambiguityIdentity = { businessId: activeBusinessId, action, idempotencyKey: key };
+    const ambiguityIdentity: PendingAmbiguity = {
+      businessId: activeBusinessId,
+      action,
+      idempotencyKey: key,
+      path,
+      method,
+      body,
+      success,
+      ticketId: ticketId ?? null,
+    };
     try {
       const result = await api<{ ticket: TicketContract }>(path, {
         ...init,
@@ -307,6 +341,22 @@ export default function TicketCashierPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function retryPendingAmbiguity() {
+    const pending = pendingAmbiguity;
+    if (!pending) return;
+    if (pending.businessId !== activeBusinessId) {
+      setNotice('Belirsiz işlemi doğrulamak için önce işlemin başladığı işletmeye dönün.');
+      return;
+    }
+    await mutation(
+      pending.action,
+      pending.path,
+      { method: pending.method, body: pending.body ?? undefined },
+      pending.success,
+      pending.ticketId ?? undefined,
+    );
   }
 
   async function createWalkIn(event: FormEvent<HTMLFormElement>) {
@@ -450,7 +500,16 @@ export default function TicketCashierPage() {
         </label>
       </div>
 
-      {notice && <div className="ticket-notice" role="status">{notice}</div>}
+      {notice && (
+        <div className="ticket-notice" role="status">
+          <span>{notice}</span>
+          {pendingAmbiguity?.businessId === activeBusinessId && (
+            <button type="button" disabled={busy} onClick={() => void retryPendingAmbiguity()}>
+              Belirsiz işlemi doğrula
+            </button>
+          )}
+        </div>
+      )}
 
       <form className="ticket-walkin" onSubmit={createWalkIn}>
         <label>Randevusuz adisyon
