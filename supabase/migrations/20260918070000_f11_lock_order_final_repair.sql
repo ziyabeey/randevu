@@ -34,6 +34,7 @@ declare
   v_hash text;
   v_claim record;
   v_plan jsonb;
+  v_stale_plan jsonb;
   v_line jsonb;
   v_customer_id uuid;
   v_group_id uuid;
@@ -125,6 +126,7 @@ begin
 
   v_plan := public.f11_plan_group_at(p_business_id, p_lines, p_starts_at, null);
   if v_plan is null then raise exception 'GROUP_SLOT_UNAVAILABLE'; end if;
+  v_stale_plan := v_plan;
   v_timezone := v_plan->>'timezone';
 
   -- Acquire every mutable F10-04 schedule-authority advisory family before
@@ -179,6 +181,14 @@ begin
 
   v_plan := public.f11_plan_group_at(p_business_id, p_lines, p_starts_at, null);
   if v_plan is null then raise exception 'GROUP_SLOT_UNAVAILABLE'; end if;
+
+  -- EXP-H19 M5 MUTANT: keep the fresh schedule replan, then accidentally
+  -- restore the first line's stale pre-authority staff identity.
+  if jsonb_array_length(v_plan->'lines') > 0
+     and jsonb_array_length(v_stale_plan->'lines') > 0 then
+    v_plan := jsonb_set(v_plan,'{lines,0,staffId}',v_stale_plan#>'{lines,0,staffId}');
+    v_plan := jsonb_set(v_plan,'{lines,0,staffName}',v_stale_plan#>'{lines,0,staffName}');
+  end if;
 
   v_group_id := gen_random_uuid();
   insert into public.appointment_groups(
