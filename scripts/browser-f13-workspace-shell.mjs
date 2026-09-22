@@ -638,11 +638,105 @@ try {
 
   await page.evaluate(`[...document.querySelectorAll('.kolay-bottom-nav__item')].find((node) => node.textContent.includes('Adisyonlar')).click()`);
   await waitFor(
-    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.body.innerText.includes('Adisyon ve tahsilat işlemleri henüz kullanıma açık değil.')`),
-    'KolayApp unavailable ticket domain was not fail-closed',
+    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.body.innerText.includes('Kasa ve adisyon') && document.body.innerText.includes('Ada Public')`),
+    'F14-04 ticket cashier surface did not open',
   );
-  const ticketCopy = await page.evaluate(`document.body.innerText`);
-  assert.doesNotMatch(ticketCopy, /ödendi|tahsil edildi|başarılı tahsilat/i);
+
+  await page.evaluate(`[...document.querySelectorAll('.ticket-list button')].find((node) => node.textContent.includes('Ada Public')).click()`);
+  await waitFor(
+    () => page.evaluate(`Boolean(document.querySelector('.ticket-detail')) && document.querySelector('.ticket-totals')?.innerText.includes('600')`),
+    'F14-04 ticket detail did not render server totals',
+  );
+
+  const ticket390 = await page.evaluate(`(() => ({
+    overflow: document.documentElement.scrollWidth - innerWidth,
+    bottom: document.querySelector('.kolay-bottom-nav').getBoundingClientRect().bottom,
+    viewport: innerHeight,
+    totals: document.querySelector('.ticket-totals').innerText,
+  }))()`);
+  assert.ok(ticket390.overflow <= 1, `F14-04 cashier overflowed 390px viewport by ${ticket390.overflow}px`);
+  assert.ok(ticket390.bottom <= ticket390.viewport + 1, 'F14-04 cashier covered the fixed bottom navigation');
+  assert.match(ticket390.totals, /600/);
+  assert.match(ticket390.totals, /0/);
+
+  await page.evaluate(`(() => {
+    const form=document.querySelector('.ticket-payment');
+    form.querySelector('select[name="method"]').value='cash';
+    form.querySelector('input[name="amount"]').value='200';
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('İşlemin sonucu henüz doğrulanamadı')`),
+    'F14-04 ambiguous payment did not preserve uncertainty',
+  );
+  const ambiguousTotals = await page.evaluate(`document.querySelector('.ticket-totals').innerText`);
+  assert.match(ambiguousTotals, /Tahsil/);
+  assert.ok(!/200[^\n]*Kalan[^\n]*400/s.test(ambiguousTotals), 'ambiguous write was shown as locally paid');
+
+  await page.evaluate(`document.querySelector('.ticket-payment').requestSubmit()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Tahsilat sunucuda doğrulandı.') && document.querySelector('.ticket-totals')?.innerText.includes('200') && document.querySelector('.ticket-totals')?.innerText.includes('400')`),
+    'F14-04 same-key ambiguous payment recovery did not restore server projection',
+  );
+
+  const cashRequests = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'cash');
+  assert.equal(cashRequests.length, 2, 'F14-04 ambiguous cash payment was not retried exactly once');
+  assert.equal(cashRequests[0].idempotencyKey, cashRequests[1].idempotencyKey, 'F14-04 ambiguous cash retry changed Idempotency-Key');
+  assert.equal(ticketPaymentEvents.filter((item) => item.method === 'cash').length, 1, 'F14-04 same-key retry duplicated cash event');
+
+  await page.evaluate(`(() => {
+    const form=document.querySelector('.ticket-payment');
+    form.querySelector('select[name="method"]').value='card';
+    form.querySelector('input[name="amount"]').value='400';
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Tahsilat sunucuda doğrulandı.') && document.querySelector('.ticket-totals')?.innerText.includes('600') && document.querySelector('.ticket-totals')?.innerText.includes('0')`),
+    'F14-04 200 cash + 400 card did not display paid 600 / balance 0 from server',
+  );
+  assert.equal(ticketPaidMinor, 60000, 'F14-04 fixture did not preserve server paid total');
+  assert.equal(ticketPaymentEvents.length, 2, 'F14-04 fixture created an unexpected payment count');
+
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 1, mobile: true });
+  await sleep(100);
+  const ticket360 = await page.evaluate(`(() => ({
+    overflow: document.documentElement.scrollWidth - innerWidth,
+    minTarget: Math.min(...[...document.querySelectorAll('.ticket-page button')].map((node)=>node.getBoundingClientRect().height)),
+  }))()`);
+  assert.ok(ticket360.overflow <= 1, `F14-04 cashier overflowed 360px viewport by ${ticket360.overflow}px`);
+  assert.ok(ticket360.minTarget >= 44, `F14-04 cashier touch target dropped below 44px: ${ticket360.minTarget}`);
+
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 480, deviceScaleFactor: 1, mobile: true });
+  await sleep(100);
+  const ticketKeyboard = await page.evaluate(`(() => ({
+    navBottom: document.querySelector('.kolay-bottom-nav').getBoundingClientRect().bottom,
+    viewport: innerHeight,
+    contentScroll: document.querySelector('.kolay-app-content').scrollHeight,
+    contentClient: document.querySelector('.kolay-app-content').clientHeight,
+  }))()`);
+  assert.ok(ticketKeyboard.navBottom <= ticketKeyboard.viewport + 1, 'F14-04 cashier bottom nav is covered in keyboard-sized viewport');
+  assert.ok(ticketKeyboard.contentScroll >= ticketKeyboard.contentClient, 'F14-04 cashier content is not scrollable in keyboard-sized viewport');
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.kolay-business-select select');
+    select.value='${BUSINESS_B}';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.querySelector('.kolay-business-select select').value === '${BUSINESS_B}' && document.body.innerText.includes('Açık filtrede adisyon yok.')`),
+    'F14-04 business switch did not clear/remount ticket state',
+  );
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.kolay-business-select select');
+    select.value='${BUSINESS_A}';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.querySelector('.kolay-business-select select').value === '${BUSINESS_A}' && document.body.innerText.includes('Ada Public')`),
+    'F14-04 business switch did not restore A ticket state',
+  );
+  console.log('F14-04 ticket cashier payment/idempotency/mobile acceptance passed.');
 
   await page.evaluate(`[...document.querySelectorAll('.kolay-bottom-nav__item')].find((node) => node.textContent.includes('Müşteriler')).click()`);
   await waitFor(() => page.evaluate(`location.pathname === '/app/mobile/customers'`), 'KolayApp did not return to customers');
