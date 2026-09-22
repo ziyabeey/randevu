@@ -524,9 +524,10 @@ try {
   passed('operator composer keeps guarded close-time access next to booking creation');
 
   await waitFor(async () => await call(page, 'clickBookingButton', 'Native Customer', 'Detay'), 'booking detail control did not re-enable after close-time mutation');
-  await waitFor(async () => (await call(page, 'detailText')).includes('Fotoğraf F16-03'), 'detail surface did not expose the future photo connection point');
+  await waitFor(async () => (await call(page, 'detailText')).includes('Fotoğraf'), 'detail surface did not expose the future photo connection point');
   const detail = await call(page, 'detailText');
-  assert.ok(detail.includes('Adisyon F14') && detail.includes('Renk') && detail.includes('Kesim') && detail.includes('Planlandı'));
+  assert.ok(detail.includes('Adisyon') && detail.includes('Renk') && detail.includes('Kesim') && detail.includes('Planlandı'));
+  assert.doesNotMatch(detail, /F14|F16-03|backend|\bFaz\b|\bRPC\b|\btenant\b/i);
   assert.equal(await call(page, 'clickDetailButton', 'Onayla'), true);
   await waitFor(() => requestsTo(`/api/bookings/groups/${NATIVE_GROUP}/status`).length === statusBefore + 1, 'native detail status did not use group lifecycle endpoint');
   const statusRequest = requestsTo(`/api/bookings/groups/${NATIVE_GROUP}/status`).at(-1);
