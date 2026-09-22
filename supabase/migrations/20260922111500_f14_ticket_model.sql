@@ -1143,7 +1143,7 @@ create or replace function public.f14_guard_ticket_command_update()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $f14cmd$
 begin
   if old.business_id is distinct from new.business_id
      or old.actor_membership_id is distinct from new.actor_membership_id
@@ -1161,7 +1161,7 @@ begin
 
   raise exception 'TICKET_COMMAND_IMMUTABLE';
 end
-$;
+$f14cmd$;
 
 revoke all on function public.f14_guard_ticket_command_update() from public, anon, authenticated;
 
@@ -1174,11 +1174,11 @@ create or replace function public.f14_block_ticket_command_delete()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $f14cmddel$
 begin
   raise exception 'TICKET_COMMAND_DELETE_FORBIDDEN';
 end
-$;
+$f14cmddel$;
 
 revoke all on function public.f14_block_ticket_command_delete() from public, anon, authenticated;
 
@@ -1191,11 +1191,11 @@ create or replace function public.f14_block_ticket_delete()
 returns trigger
 language plpgsql
 set search_path = public
-as $
+as $f14del$
 begin
   raise exception 'TICKET_DELETE_FORBIDDEN';
 end
-$;
+$f14del$;
 
 revoke all on function public.f14_block_ticket_delete() from public, anon, authenticated;
 
