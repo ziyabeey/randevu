@@ -85,6 +85,9 @@ declare
   v_result jsonb;
   v_successes integer := 0;
   v_failures integer := 0;
+  v_finished integer := 0;
+  v_done_a boolean := false;
+  v_done_b boolean := false;
   v_error text;
   v_projection jsonb;
 begin
@@ -150,11 +153,30 @@ begin
   perform dblink_exec('f1403_blocker','commit');
   perform dblink_disconnect('f1403_blocker');
 
-  for v_conn in select unnest(array['f1403_pay_a','f1403_pay_b']) loop
-    for i in 1..3000 loop
-      exit when dblink_is_busy(v_conn)=0;
+  -- Consume whichever writer finishes first. A successful writer keeps
+  -- the ticket row lock until its transaction commits; fixed A→B consumption
+  -- can deadlock the harness when B wins and A is the waiter.
+  while v_finished < 2 loop
+    v_conn := null;
+
+    for i in 1..6000 loop
+      if not v_done_a and dblink_is_busy('f1403_pay_a')=0 then
+        v_conn := 'f1403_pay_a';
+        exit;
+      elsif not v_done_b and dblink_is_busy('f1403_pay_b')=0 then
+        v_conn := 'f1403_pay_b';
+        exit;
+      end if;
       perform pg_sleep(0.01);
     end loop;
+
+    if v_conn is null then
+      raise exception 'F14-03 timed out waiting for either payment race writer';
+    end if;
+
+    v_result := null;
+    v_error := null;
+    v_rows := 0;
 
     begin
       select t.result into v_result
@@ -188,6 +210,12 @@ begin
     end if;
 
     perform dblink_disconnect(v_conn);
+    if v_conn='f1403_pay_a' then
+      v_done_a:=true;
+    else
+      v_done_b:=true;
+    end if;
+    v_finished:=v_finished+1;
   end loop;
 
   if v_successes<>1 or v_failures<>1 then
