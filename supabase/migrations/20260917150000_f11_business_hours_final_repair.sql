@@ -80,8 +80,8 @@ begin
     if not exists (
       select 1
       from public.business_hours bh
-      where bh.weekday = extract( -- H19 M4 mutant: tenant fence intentionally removed
-
+      where bh.business_id = p_business_id
+        and bh.weekday = extract(
           dow from (v_service_start at time zone v_timezone)::date
         )::smallint
         and bh.active
