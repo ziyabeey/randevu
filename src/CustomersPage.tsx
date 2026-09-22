@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
+import { navigateApp } from './workspace-route';
 import { useWorkspace } from './workspace-context';
 
 type Role = 'owner' | 'manager' | 'staff';
