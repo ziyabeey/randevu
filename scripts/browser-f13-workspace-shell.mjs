@@ -673,15 +673,61 @@ try {
   assert.match(ambiguousTotals, /Tahsil/);
   assert.ok(!/200[^\n]*Kalan[^\n]*400/s.test(ambiguousTotals), 'ambiguous write was shown as locally paid');
 
-  await page.evaluate(`document.querySelector('.ticket-payment').requestSubmit()`);
+  const walkInPostsBeforeAmbiguitySwitch = requests.filter((item) => item.method === 'POST' && item.path === '/api/tickets').length;
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.kolay-business-select select');
+    select.value='${BUSINESS_B}';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.querySelector('.kolay-business-select select').value === '${BUSINESS_B}' && document.body.innerText.includes('Açık filtrede adisyon yok.')`),
+    'F14-04 ambiguity switch did not remount business B ticket state',
+  );
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Başka bir işletmede sonucu belirsiz mali işlem var')`),
+    'F14-04 ambiguity lock did not survive business switch',
+  );
+  await page.evaluate(`(() => {
+    const form=document.querySelector('.ticket-walkin');
+    const select=form.querySelector('select[name="customerId"]');
+    select.value=select.options[1].value;
+    form.requestSubmit();
+  })()`);
+  await sleep(100);
+  assert.equal(
+    requests.filter((item) => item.method === 'POST' && item.path === '/api/tickets').length,
+    walkInPostsBeforeAmbiguitySwitch,
+    'F14-04 allowed a different ticket mutation while a payment result was ambiguous',
+  );
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.kolay-business-select select');
+    select.value='${BUSINESS_A}';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.querySelector('.kolay-business-select select').value === '${BUSINESS_A}' && document.body.innerText.includes('Ada Public')`),
+    'F14-04 ambiguity switch did not restore business A ticket state',
+  );
+  await page.evaluate(`[...document.querySelectorAll('.ticket-list button')].find((node) => node.textContent.includes('Ada Public')).click()`);
+  await waitFor(
+    () => page.evaluate(`Boolean(document.querySelector('.ticket-payment')) && document.body.innerText.includes('Sonucu belirsiz mali işlem korunuyor')`),
+    'F14-04 ambiguity recovery did not restore the originating ticket workflow',
+  );
+  await page.evaluate(`(() => {
+    const form=document.querySelector('.ticket-payment');
+    form.querySelector('select[name="method"]').value='cash';
+    form.querySelector('input[name="amount"]').value='200';
+    form.requestSubmit();
+  })()`);
   await waitFor(
     () => page.evaluate(`document.body.innerText.includes('Tahsilat sunucuda doğrulandı.') && document.querySelector('.ticket-totals')?.innerText.includes('200') && document.querySelector('.ticket-totals')?.innerText.includes('400')`),
-    'F14-04 same-key ambiguous payment recovery did not restore server projection',
+    'F14-04 same-key ambiguous payment recovery after business remount did not restore server projection',
   );
 
   const cashRequests = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'cash');
   assert.equal(cashRequests.length, 2, 'F14-04 ambiguous cash payment was not retried exactly once');
-  assert.equal(cashRequests[0].idempotencyKey, cashRequests[1].idempotencyKey, 'F14-04 ambiguous cash retry changed Idempotency-Key');
+  assert.equal(cashRequests[0].idempotencyKey, cashRequests[1].idempotencyKey, 'F14-04 ambiguity remount changed Idempotency-Key');
   assert.equal(ticketPaymentEvents.filter((item) => item.method === 'cash').length, 1, 'F14-04 same-key retry duplicated cash event');
 
   await page.evaluate(`(() => {

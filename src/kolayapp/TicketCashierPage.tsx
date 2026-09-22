@@ -78,6 +78,64 @@ type Customer = {
 };
 type CustomerList = { customers: Customer[]; page: PageInfo };
 type TicketList = { tickets: TicketContract[]; page: PageInfo };
+type PendingAmbiguity = {
+  businessId: string;
+  action: string;
+  idempotencyKey: string;
+};
+
+const PENDING_AMBIGUITY_STORAGE_KEY = 'randevu:ticket-cashier:pending-ambiguity:v1';
+
+function samePendingAmbiguity(left: PendingAmbiguity | null, right: PendingAmbiguity) {
+  return Boolean(left
+    && left.businessId === right.businessId
+    && left.action === right.action
+    && left.idempotencyKey === right.idempotencyKey);
+}
+
+function readPendingAmbiguity(): PendingAmbiguity | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(PENDING_AMBIGUITY_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PendingAmbiguity>;
+    if (typeof parsed.businessId !== 'string'
+      || typeof parsed.action !== 'string'
+      || typeof parsed.idempotencyKey !== 'string'
+      || !parsed.businessId
+      || !parsed.action
+      || !parsed.idempotencyKey) {
+      window.sessionStorage.removeItem(PENDING_AMBIGUITY_STORAGE_KEY);
+      return null;
+    }
+    return {
+      businessId: parsed.businessId,
+      action: parsed.action,
+      idempotencyKey: parsed.idempotencyKey,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePendingAmbiguity(value: PendingAmbiguity) {
+  try {
+    window.sessionStorage.setItem(PENDING_AMBIGUITY_STORAGE_KEY, JSON.stringify(value));
+  } catch {
+    // The in-memory key still protects the current mounted session.
+  }
+}
+
+function clearPendingAmbiguity(expected: PendingAmbiguity) {
+  try {
+    const current = readPendingAmbiguity();
+    if (!current || samePendingAmbiguity(current, expected)) {
+      window.sessionStorage.removeItem(PENDING_AMBIGUITY_STORAGE_KEY);
+    }
+  } catch {
+    // Storage unavailability must not turn a definitive server result into a UI failure.
+  }
+}
 
 function money(minor: number | null, currency: string | null) {
   if (minor === null) return 'Kesinleşmedi';
@@ -127,7 +185,8 @@ export default function TicketCashierPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
-  const [pendingAmbiguousAction, setPendingAmbiguousAction] = useState<string | null>(null);
+  const [pendingAmbiguity, setPendingAmbiguity] = useState<PendingAmbiguity | null>(() => readPendingAmbiguity());
+  const pendingAmbiguousAction = pendingAmbiguity?.action ?? null;
   const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const initialTicketId = initialParams.get('ticketId');
   const initialCustomerId = initialParams.get('customerId');
@@ -172,11 +231,18 @@ export default function TicketCashierPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setNotice('');
+    const persistedAmbiguity = readPendingAmbiguity();
     keys.current.clear();
-    setPendingAmbiguousAction(null);
+    if (persistedAmbiguity) keys.current.set(persistedAmbiguity.action, persistedAmbiguity.idempotencyKey);
+    setPendingAmbiguity(persistedAmbiguity);
     try {
       await Promise.all([loadTickets(false), loadLookups()]);
       if (initialTicketId) await loadTicket(initialTicketId);
+      if (persistedAmbiguity) {
+        setNotice(persistedAmbiguity.businessId === activeBusinessId
+          ? 'Sonucu belirsiz mali işlem korunuyor. Aynı işlem ve tutarla tekrar deneyin; önceki anahtar kullanılacak.'
+          : 'Başka bir işletmede sonucu belirsiz mali işlem var. Yeni adisyon işlemi başlatmadan önce o işletmeye dönüp sonucu doğrulayın.');
+      }
     } catch (error) {
       setTickets([]);
       setPage(null);
@@ -185,7 +251,7 @@ export default function TicketCashierPage() {
     } finally {
       setLoading(false);
     }
-  }, [initialTicketId, loadLookups, loadTicket, loadTickets]);
+  }, [activeBusinessId, initialTicketId, loadLookups, loadTicket, loadTickets]);
 
   useEffect(() => { void load(); }, [load, scopeEpoch]);
 
@@ -196,13 +262,20 @@ export default function TicketCashierPage() {
     success: string,
     ticketId?: string,
   ) {
-    if (pendingAmbiguousAction && pendingAmbiguousAction !== action) {
-      setNotice('Önce sonucu belirsiz işlemi aynı bilgilerle tekrar doğrulayın. Yeni bir mali işlem başlatılmadı.');
+    if (pendingAmbiguity
+      && (pendingAmbiguity.businessId !== activeBusinessId || pendingAmbiguity.action !== action)) {
+      setNotice(pendingAmbiguity.businessId === activeBusinessId
+        ? 'Önce sonucu belirsiz işlemi aynı bilgilerle tekrar doğrulayın. Yeni bir mali işlem başlatılmadı.'
+        : 'Başka bir işletmede sonucu belirsiz mali işlem var. O işletmeye dönüp aynı işlemi doğrulamadan yeni adisyon işlemi başlatılmadı.');
       return null;
     }
     setBusy(true);
     setNotice('');
-    const key = keyFor(keys.current, action);
+    const key = pendingAmbiguity?.businessId === activeBusinessId && pendingAmbiguity.action === action
+      ? pendingAmbiguity.idempotencyKey
+      : keyFor(keys.current, action);
+    keys.current.set(action, key);
+    const ambiguityIdentity = { businessId: activeBusinessId, action, idempotencyKey: key };
     try {
       const result = await api<{ ticket: TicketContract }>(path, {
         ...init,
@@ -210,7 +283,8 @@ export default function TicketCashierPage() {
         timeoutMs: 12_000,
       });
       keys.current.delete(action);
-      setPendingAmbiguousAction(null);
+      clearPendingAmbiguity(ambiguityIdentity);
+      setPendingAmbiguity((current) => samePendingAmbiguity(current, ambiguityIdentity) ? null : current);
       const id = result.ticket.ticketId ?? ticketId;
       if (id) await loadTicket(id);
       await loadTickets(false);
@@ -218,11 +292,13 @@ export default function TicketCashierPage() {
       return result.ticket;
     } catch (error) {
       if (ambiguous(error)) {
-        setPendingAmbiguousAction(action);
+        writePendingAmbiguity(ambiguityIdentity);
+        setPendingAmbiguity(ambiguityIdentity);
         setNotice('İşlemin sonucu henüz doğrulanamadı. Aynı işlem ve tutarla tekrar deneyin; aynı anahtar kullanılacak ve ekran ödendi varsaymıyor.');
       } else {
         keys.current.delete(action);
-        setPendingAmbiguousAction(null);
+        clearPendingAmbiguity(ambiguityIdentity);
+        setPendingAmbiguity((current) => samePendingAmbiguity(current, ambiguityIdentity) ? null : current);
         if (ticketId) {
           try { await loadTicket(ticketId); } catch { /* retain the server error message */ }
         }
