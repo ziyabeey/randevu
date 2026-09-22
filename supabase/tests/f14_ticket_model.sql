@@ -77,7 +77,53 @@ begin
     raise exception 'F14 ticket RPC grants are wrong';
   end if;
 end
-$$;
+$;
+
+-- R1 residual closure: no F14 financial root may be silently erased by business cascade,
+-- and trigger guards keep an empty search_path hardening boundary.
+do $f14r1$
+declare
+  v_bad_cascade integer;
+  v_bad_search_path integer;
+begin
+  select count(*)::integer
+  into v_bad_cascade
+  from pg_constraint c
+  where c.contype = 'f'
+    and c.conrelid in (
+      'public.tickets'::regclass,
+      'public.ticket_lines'::regclass,
+      'public.ticket_commands'::regclass
+    )
+    and c.confrelid = 'public.businesses'::regclass
+    and c.confdeltype = 'c';
+
+  if v_bad_cascade <> 0 then
+    raise exception 'F14 financial history still has business ON DELETE CASCADE';
+  end if;
+
+  select count(*)::integer
+  into v_bad_search_path
+  from pg_proc p
+  where p.oid in (
+      'public.f14_guard_ticket_update()'::regprocedure,
+      'public.f14_guard_ticket_line_update()'::regprocedure,
+      'public.f14_guard_ticket_command_update()'::regprocedure,
+      'public.f14_block_ticket_command_delete()'::regprocedure,
+      'public.f14_block_ticket_delete()'::regprocedure
+    )
+    and not exists (
+      select 1
+      from unnest(coalesce(p.proconfig, array[]::text[])) cfg
+      where split_part(cfg, '=', 1) = 'search_path'
+        and split_part(cfg, '=', 2) in ('', '""')
+    );
+
+  if v_bad_search_path <> 0 then
+    raise exception 'F14 trigger guard search_path is not empty for % functions', v_bad_search_path;
+  end if;
+end
+$f14r1$;
 
 -- Build one two-service reservation through the accepted F11 authority.
 set local role authenticated;
