@@ -122,8 +122,7 @@ begin
 
   select * into v_existing
   from public.booking_commands
-  where business_id = p_business_id
-    and idempotency_key = p_idempotency_key;
+  where idempotency_key = p_idempotency_key;
 
   if v_existing.command <> p_command or v_existing.request_hash <> p_request_hash then
     raise exception 'IDEMPOTENCY_CONFLICT';
