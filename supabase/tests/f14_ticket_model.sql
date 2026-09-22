@@ -194,6 +194,13 @@ begin
     raise exception 'F14 second valid key created a duplicate booking ticket';
   end if;
 
+end
+$$;
+
+reset role;
+
+do $
+begin
   if (
     select count(*) from public.tickets
     where business_id='e1410000-0000-4000-8000-000000000001'
@@ -202,9 +209,7 @@ begin
     raise exception 'F14 booking group has more than one ticket';
   end if;
 end
-$$;
-
-reset role;
+$;
 
 -- Even postgres cannot silently rewrite an open line's source snapshot.
 do $$
