@@ -517,6 +517,10 @@ $$;
 
 reset role;
 
-raise notice 'F14-02 ticket model, permission, idempotency, pricing and immutability acceptance passed';
+do $f14done$
+begin
+  raise notice 'F14-02 ticket model, permission, idempotency, pricing and immutability acceptance passed';
+end
+$f14done$;
 
 rollback;
