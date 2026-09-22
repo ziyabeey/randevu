@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
+import { navigateApp } from './workspace-route';
 import { useWorkspace } from './workspace-context';
 
 type Role = 'owner' | 'manager' | 'staff';
@@ -283,6 +284,36 @@ export default function BookingPage() {
     setDetailFor(null);
     await load();
     setNotice(message);
+  }
+
+  async function openTicketForBooking(booking: BookingGroup) {
+    const fingerprint = `ticket:${booking.groupId}`;
+    const key = stableMutationKey(fingerprint);
+    setBusy(true);
+    setNotice('');
+    try {
+      const result = await api<{ ticket: { ticketId: string } }>('/api/tickets/from-booking-group', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': key },
+        body: JSON.stringify({ bookingGroupId: booking.groupId }),
+        timeoutMs: 12_000,
+      });
+      mutationKeys.current.delete(fingerprint);
+      navigateApp(`/app/mobile/tickets?ticketId=${encodeURIComponent(result.ticket.ticketId)}`);
+    } catch (error) {
+      const ambiguous = error instanceof Error
+        && ('code' in error)
+        && ((error as { code?: string }).code === 'NETWORK_UNAVAILABLE'
+          || (error as { code?: string }).code === 'REQUEST_TIMEOUT');
+      if (ambiguous) {
+        setNotice('Adisyon açma sonucu henüz doğrulanamadı. Tekrar deneyin; aynı işlem anahtarı kullanılacak.');
+      } else {
+        mutationKeys.current.delete(fingerprint);
+        setNotice(error instanceof Error ? error.message : 'Adisyon açılamadı.');
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function loadMoreBookings() {
@@ -727,7 +758,7 @@ export default function BookingPage() {
       <div className="booking-detail-tabs" aria-label="Randevu bölümleri">
         <span className="is-active">Detay</span>
         <span aria-disabled="true">Fotoğraf</span>
-        <span aria-disabled="true">Adisyon</span>
+        <button type="button" disabled={busy} onClick={() => void openTicketForBooking(detailFor)}>Adisyon</button>
       </div>
       <dl className="booking-detail-grid">
         <div><dt>Zaman</dt><dd>{formatDateTime(detailFor.startsAt, detailFor.timezone)} – {formatTime(detailFor.endsAt, detailFor.timezone)}</dd></div>
@@ -751,7 +782,7 @@ export default function BookingPage() {
           {detailFor.canCancelGroup && <button disabled={busy} onClick={() => void cancelGroup(detailFor)}>Tümünü iptal et</button>}
         </>}
       </div>
-      <p className="muted booking-detail-future">Fotoğraf ve Adisyon bölümleri henüz kullanıma açık değil.</p>
+      <p className="muted booking-detail-future">Fotoğraf bölümü henüz kullanıma açık değil. Adisyon aynı randevu kaynağından güvenli biçimde açılır veya yeniden kullanılır.</p>
     </section>}
 
     {rescheduleTarget && <section className="booking-card booking-modal-card">
