@@ -326,6 +326,9 @@ const cookieMutations = [
   ['PUT', '/api/tickets/:id/lines/:lineId/discount'],
   ['POST', '/api/tickets/:id/close'],
   ['POST', '/api/tickets/:id/cancel'],
+  ['POST', '/api/tickets/:id/payments'],
+  ['POST', '/api/tickets/:id/payments/:paymentId/corrections'],
+  ['POST', '/api/tickets/:id/payments/:paymentId/refunds'],
 ];
 const exceptions = [
   '/api/public/business/:slug/book',
