@@ -8,6 +8,7 @@ import type { KolayAppTab } from './model';
 
 const CalendarPage = lazy(() => import('../CalendarPage'));
 const CustomersPage = lazy(() => import('../CustomersPage'));
+const TicketCashierPage = lazy(() => import('./TicketCashierPage'));
 
 function AppLink({ href, children }: { href: string; children: ReactNode }) {
   function click(event: MouseEvent<HTMLAnchorElement>) {
@@ -34,7 +35,7 @@ function NewActions() {
         <h2 id="kolay-new-heading">Yeni işlem</h2>
         <div className="kolay-action-list">
           <AppLink href="/app/bookings"><strong>Yeni randevu</strong><span>Mevcut güvenli randevu oluşturma akışını aç</span></AppLink>
-          <DisabledAction title="Yeni adisyon" description="Henüz kullanıma açık değil." />
+          <AppLink href="/app/mobile/tickets"><strong>Yeni adisyon</strong><span>Randevusuz adisyon aç veya mevcut adisyona dön</span></AppLink>
           <DisabledAction title="Yeni ürün satışı" description="Henüz kullanıma açık değil." />
           <DisabledAction title="Yeni paket satışı" description="Henüz kullanıma açık değil." />
           <DisabledAction title="Yeni masraf" description="Henüz kullanıma açık değil." />
@@ -133,14 +134,7 @@ export default function KolayAppSurface({
   } else if (activeTab === 'customers') {
     content = <CustomersPage />;
   } else if (activeTab === 'tickets') {
-    content = (
-      <div role="main">
-        <KolayUnavailablePanel
-        title="Adisyonlar"
-        description="Adisyon ve tahsilat işlemleri henüz kullanıma açık değil."
-        />
-      </div>
-    );
+    content = <TicketCashierPage />;
   } else if (activeTab === 'new') {
     content = <div role="main"><NewActions /></div>;
   } else {
