@@ -199,7 +199,7 @@ $$;
 
 reset role;
 
-do $
+do $f14$
 begin
   if (
     select count(*) from public.tickets
@@ -209,7 +209,7 @@ begin
     raise exception 'F14 booking group has more than one ticket';
   end if;
 end
-$;
+$f14$;
 
 -- Even postgres cannot silently rewrite an open line's source snapshot.
 do $$
