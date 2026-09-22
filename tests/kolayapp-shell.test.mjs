@@ -23,6 +23,7 @@ const navSource = readFileSync(path.join(root, 'src/kolayapp/KolayBottomNav.tsx'
 const previewSource = readFileSync(path.join(root, 'src/kolayapp/KolayAppSpikePreview.tsx'), 'utf8');
 const productionSource = readFileSync(path.join(root, 'src/kolayapp/KolayAppSurface.tsx'), 'utf8');
 const workspaceShellSource = readFileSync(path.join(root, 'src/WorkspaceShell.tsx'), 'utf8');
+const workspaceBrowserSource = readFileSync(path.join(root, 'scripts/browser-f13-workspace-shell.mjs'), 'utf8');
 
 await test('KOLAY-SPIKE-01 fixes the canonical five-tab order and keyboard adjacency', () => {
   assert.deepEqual(KOLAY_APP_TABS.map((tab) => tab.label), [
@@ -84,6 +85,15 @@ await test('F14-01 future financial actions stay explicitly unavailable', () => 
   }
   assert.doesNotMatch(productionSource, /ödendi|tahsil edildi|başarılı tahsilat/i);
   assert.doesNotMatch(previewSource, /F14-01|F14 mali akışı/);
+});
+
+
+await test('F14-01 real-browser acceptance remains wired into the required workspace browser suite', () => {
+  assert.match(workspaceBrowserSource, /F14-01 KolayApp mobile route\/back-forward\/business-switch acceptance passed/);
+  assert.match(workspaceBrowserSource, /location\.pathname === '\/app\/mobile\/customers'/);
+  assert.match(workspaceBrowserSource, /width: 390/);
+  assert.match(workspaceBrowserSource, /width: 360/);
+  assert.match(workspaceBrowserSource, /kolay-business-select select/);
 });
 
 await test('KOLAY-SPIKE-01 mobile CSS protects touch, safe-area and keyboard-resized viewport contracts', () => {
