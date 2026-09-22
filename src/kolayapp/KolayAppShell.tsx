@@ -68,9 +68,9 @@ export default function KolayAppShell({
         </div>
       </header>
 
-      <main id="kolayapp-content" className="kolay-app-content" tabIndex={-1}>
+      <div id="kolayapp-content" className="kolay-app-content" role="main" tabIndex={-1}>
         {children}
-      </main>
+      </div>
 
       <KolayBottomNav activeTab={activeTab} onTabChange={onTabChange} />
     </section>
