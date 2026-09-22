@@ -88,6 +88,24 @@ await test('F14-01 future financial actions stay explicitly unavailable', () => 
 });
 
 
+
+await test('F14-01 New and More groups preserve the approved product order', () => {
+  const ordered = (labels) => labels.map((label) => productionSource.indexOf(label));
+  const newOrder = ordered(['Yeni randevu', 'Yeni adisyon', 'Yeni ürün satışı', 'Yeni paket satışı', 'Yeni masraf']);
+  assert.ok(newOrder.every((index) => index >= 0));
+  assert.deepEqual([...newOrder].sort((a, b) => a - b), newOrder);
+
+  const generalOrder = ordered(['Destek', 'Online Randevu', 'Müşteri geri bildirimleri', 'Hizmet fotoğrafları']);
+  const reportOrder = ordered(['Kasa', 'Çalışan primleri', 'Masraflar', 'Ürün satışları', 'Gelir-gider', 'Detaylı çalışan raporu']);
+  const setupOrder = ordered(['Salon bilgileri', 'Çalışma saatleri', 'Çalışanlar', 'Hizmetler', 'Süreler ve fiyatlar', 'Randevu ayarları', 'Ürün ve stok', 'Salon fotoğrafları', 'Promosyonlar']);
+  for (const order of [generalOrder, reportOrder, setupOrder]) {
+    assert.ok(order.every((index) => index >= 0));
+    assert.deepEqual([...order].sort((a, b) => a - b), order);
+  }
+  assert.match(productionSource, /hideBusinessSummary/);
+  assert.doesNotMatch(productionSource, /F14-01|canonical|\bAPI\b|production bağımlılık/i);
+});
+
 await test('F14-01 real-browser acceptance remains wired into the required workspace browser suite', () => {
   assert.match(workspaceBrowserSource, /F14-01 KolayApp mobile route\/back-forward\/business-switch acceptance passed/);
   assert.match(workspaceBrowserSource, /location\.pathname === '\/app\/mobile\/customers'/);
@@ -132,7 +150,7 @@ await test('KOLAY-SPIKE-01 renders the real shell without pretending unavailable
     }
     assert.match(markup, /KolayApp mobil çalışma alanı/);
     assert.match(markup, /Randevu verisi bağlı değil/);
-    assert.match(markup, /API bağlı değil/);
+    assert.match(markup, /Önizleme/);
     assert.doesNotMatch(markup, /₺|\bTL\b|ödendi|tahsil edildi/i);
   } finally {
     rmSync(work, { recursive: true, force: true });
