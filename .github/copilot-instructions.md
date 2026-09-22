@@ -6,7 +6,7 @@ Follow [AGENTS](../AGENTS.md), [CONTRIBUTING](../CONTRIBUTING.md),
 task's current Context Pack.
 Live task, accepted-main and blocker status is recorded only in TASKS. PRODUCT_SPEC
 defines the product boundary and ROADMAP the planned sequence. Open PRs and
-[Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65) carry temporary
+[Issue #65](https://github.com/ziyabeey/randevu/issues/65) carry temporary
 candidate/coordination evidence only and never override TASKS.
 Derived manifests/audits are observation-only, never replacement authority.
 

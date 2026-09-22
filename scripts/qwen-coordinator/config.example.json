@@ -3,7 +3,7 @@
   "mode": "shadow",
   "projectName": "YZT Randevu",
   "repoRoot": "__REPO_ROOT__",
-  "repoSlug": "ziyabeey1-ai/randevu",
+  "repoSlug": "ziyabeey/randevu",
   "defaultBranch": "main",
   "githubAuthenticatedPollSeconds": 60,
   "githubActivePollSeconds": 30,

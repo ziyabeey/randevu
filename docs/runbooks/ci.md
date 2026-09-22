@@ -46,18 +46,18 @@ Tam kolun tek yürütücüsü `scripts/ci-code.mjs` şu sırayı uygular: çalı
 Repo sahibi `Settings → Rules → Rulesets → New ruleset → Import a ruleset` üzerinden JSON'u içe aktarabilir. Yetkili yönetici CLI alternatifi (değerler secret içermez):
 
 ```bash
-gh api --method POST repos/ziyabeey1-ai/randevu/rulesets --input .github/main-ruleset.json
+gh api --method POST repos/ziyabeey/randevu/rulesets --input .github/main-ruleset.json
 ```
 
-Aynı kural varsa ikinci kez oluşturma; mevcut ID'nin ayarını karşılaştırıp güncelle. Yönetici erişimi bağlı uygulamada yoktur; ilk branch-protection okuması `403 Resource not accessible by integration` döndü. Repo sahibinin kurulumu sonrası 13 Eylül 2026'da [23159972 numaralı ruleset](https://github.com/ziyabeey1-ai/randevu/rules/23159972) etkin ve main `protected:true` doğrulandı. Kapsam main, bypass yok, insan onayı 0, last-push approval false, konuşma çözümü ve strict CI gate / Actions 15368 zorunludur. Koruma ruleset ile sağlandığından eski branch-protection alanlarının boş olması korumasızlık anlamına gelmez.
+Aynı kural varsa ikinci kez oluşturma; mevcut ID'nin ayarını karşılaştırıp güncelle. Yönetici erişimi bağlı uygulamada yoktur; ilk branch-protection okuması `403 Resource not accessible by integration` döndü. Repo sahibinin kurulumu sonrası 13 Eylül 2026'da [23159972 numaralı ruleset](https://github.com/ziyabeey/randevu/rules/23159972) etkin ve main `protected:true` doğrulandı. Kapsam main, bypass yok, insan onayı 0, last-push approval false, konuşma çözümü ve strict CI gate / Actions 15368 zorunludur. Koruma ruleset ile sağlandığından eski branch-protection alanlarının boş olması korumasızlık anlamına gelmez.
 
 Uygulamadan sonra geri oku:
 
 ```bash
-gh api repos/ziyabeey1-ai/randevu/rulesets
-gh api repos/ziyabeey1-ai/randevu/rules/branches/main
-gh api repos/ziyabeey1-ai/randevu/pulls/PR_NUMBER
-gh api repos/ziyabeey1-ai/randevu/commits/HEAD_SHA/check-runs
+gh api repos/ziyabeey/randevu/rulesets
+gh api repos/ziyabeey/randevu/rules/branches/main
+gh api repos/ziyabeey/randevu/pulls/PR_NUMBER
+gh api repos/ziyabeey/randevu/commits/HEAD_SHA/check-runs
 ```
 
 Aktif main kapsamı, bypass yokluğu, insan onayı sayısı 0, son-push approval false ve strict required `CI gate`/GitHub Actions kaynağı doğrulanır. PR'ın güncel head/merge sonucu ile bağımsız ajan inceleme kaydı birlikte değerlendirilir. Yeşil eski commit yeterli değildir. Başarısız veya eksik CI birleşmeyi engellemelidir; başka insan hesabının bulunmaması engel değildir. Aktif koruma ve güncel CI doğrulanmadan S06 tamamlanmış sayılmaz.
