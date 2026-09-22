@@ -10,6 +10,7 @@ import {
 type RpcError = { message?: string };
 type TicketPayload = Record<string, unknown>;
 type TicketContext = Parameters<typeof requireMember>[0];
+type TicketWriteAccess = { auth: { accessToken: string }; membership: { business_id: string } };
 
 const tickets = new Hono<{ Bindings: AuthEnv }>();
 
@@ -51,6 +52,9 @@ function rpcMessage(data: unknown) {
 function ticketError(message: string) {
   if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
     return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
+  }
+  if (message.includes('PAYMENTS_PERMISSION_REQUIRED')) {
+    return { code: 'PAYMENTS_PERMISSION_REQUIRED', message: 'Bu tahsilat işlemi için ödeme yetkiniz yok.', status: 403 as const };
   }
   if (message.includes('FINANCIAL_PERMISSION_REQUIRED') || message.includes('NOT_ALLOWED')) {
     return { code: 'FINANCIAL_PERMISSION_REQUIRED', message: 'Bu adisyon işlemi için mali işlem yetkiniz yok.', status: 403 as const };
@@ -106,6 +110,36 @@ function ticketError(message: string) {
   if (message.includes('TICKET_LINE_LIMIT_EXCEEDED')) {
     return { code: 'TICKET_LINE_LIMIT_EXCEEDED', message: 'Adisyon satır sayısı güvenli sınırı aşıyor.', status: 409 as const };
   }
+  if (message.includes('PAYMENT_REQUIRES_FINAL_TOTAL')) {
+    return { code: 'PAYMENT_REQUIRES_FINAL_TOTAL', message: 'Kesinleşmemiş hizmet tutarı varken tahsilat kaydedilemez.', status: 409 as const };
+  }
+  if (message.includes('TICKET_ALREADY_PAID')) {
+    return { code: 'TICKET_ALREADY_PAID', message: 'Adisyonun kalan bakiyesi yok.', status: 409 as const };
+  }
+  if (message.includes('OVERPAYMENT')) {
+    return { code: 'OVERPAYMENT', message: 'Tahsilat kalan bakiyeyi aşamaz.', status: 409 as const };
+  }
+  if (message.includes('SOURCE_PAYMENT_NOT_FOUND')) {
+    return { code: 'SOURCE_PAYMENT_NOT_FOUND', message: 'Kaynak tahsilat bulunamadı.', status: 404 as const };
+  }
+  if (message.includes('SOURCE_PAYMENT_NEGATIVE')) {
+    return { code: 'SOURCE_PAYMENT_NEGATIVE', message: 'Düzeltme kaynak tahsilatın net tutarını sıfırın altına indiremez.', status: 409 as const };
+  }
+  if (message.includes('REFUND_EXCEEDS_SOURCE')) {
+    return { code: 'REFUND_EXCEEDS_SOURCE', message: 'İade kaynak tahsilatın kalan net tutarını aşamaz.', status: 409 as const };
+  }
+  if (message.includes('TICKET_BALANCE_REMAINS')) {
+    return { code: 'TICKET_BALANCE_REMAINS', message: 'Kalan bakiye sıfırlanmadan adisyon kapatılamaz.', status: 409 as const };
+  }
+  if (message.includes('TICKET_TOTAL_BELOW_PAID')) {
+    return { code: 'TICKET_TOTAL_BELOW_PAID', message: 'İskonto mevcut net tahsilatın altında bir toplam oluşturamaz.', status: 409 as const };
+  }
+  if (message.includes('TICKET_CANCELLED')) {
+    return { code: 'TICKET_CANCELLED', message: 'İptal edilmiş adisyona yeni tahsilat eklenemez.', status: 409 as const };
+  }
+  if (message.includes('TICKET_HAS_FINANCIAL_EVENTS')) {
+    return { code: 'TICKET_HAS_FINANCIAL_EVENTS', message: 'Tahsilat başladıktan sonra adisyona yeni hizmet satırı eklenemez.', status: 409 as const };
+  }
   if (message.includes('INVALID_')) {
     return { code: 'INVALID_TICKET', message: 'Adisyon isteği geçerli değil.', status: 400 as const };
   }
@@ -160,9 +194,44 @@ async function requirePricingWrite(context: TicketContext) {
   return access;
 }
 
+async function requirePaymentsWrite(context: TicketContext) {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access;
+
+  const permission = await supabaseRequest<boolean>(
+    context.env,
+    'rest/v1/rpc/has_financial_permission',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_business_id: access.membership.business_id,
+        p_permission: 'payments_write',
+      }),
+    },
+    access.auth.accessToken,
+  );
+
+  if (upstreamUnavailable(permission.status)) {
+    return {
+      error: context.json({
+        error: { code: 'PAYMENTS_PERMISSION_UNAVAILABLE', message: 'Ödeme yetkisi şu anda doğrulanamıyor. Lütfen tekrar deneyin.' },
+      }, 503),
+    } as const;
+  }
+  if (!permission.ok || permission.data !== true) {
+    return {
+      error: context.json({
+        error: { code: 'PAYMENTS_PERMISSION_REQUIRED', message: 'Bu tahsilat işlemi için ödeme yetkiniz yok.' },
+      }, 403),
+    } as const;
+  }
+
+  return access;
+}
+
 async function rpcWrite(
   context: TicketContext,
-  access: Exclude<Awaited<ReturnType<typeof requirePricingWrite>>, { error: Response }>,
+  access: TicketWriteAccess,
   name: string,
   body: Record<string, unknown>,
   successStatus = 200,
@@ -355,6 +424,88 @@ tickets.post('/tickets/:id/close', async (context) => {
     p_idempotency_key: key,
     p_request_hash: hash,
   });
+});
+
+tickets.post('/tickets/:id/payments', async (context) => {
+  const access = await requirePaymentsWrite(context);
+  if ('error' in access) return access.error;
+  const key = idempotencyKey(context.req.header('Idempotency-Key'));
+  const ticketId = context.req.param('id');
+  const body = (await readJson(context)) ?? {};
+  const method = body.method;
+  if (!key || !isUuid(ticketId)
+      || (method !== 'cash' && method !== 'card')
+      || !integerIn(body.amountMinor, 1, 100000000)) {
+    return context.json({ error: { code: 'INVALID_PAYMENT', message: 'Tahsilat yöntemi, tutarı veya işlem anahtarı geçerli değil.' } }, 400);
+  }
+  const hash = await requestHash('record_payment', {
+    ticketId, method, amountMinor: body.amountMinor,
+  });
+  return rpcWrite(context, access, 'record_ticket_payment_guarded', {
+    p_business_id: access.membership.business_id,
+    p_ticket_id: ticketId,
+    p_payment_method: method,
+    p_amount_minor: body.amountMinor,
+    p_idempotency_key: key,
+    p_request_hash: hash,
+  }, 201);
+});
+
+tickets.post('/tickets/:id/payments/:paymentId/corrections', async (context) => {
+  const access = await requirePaymentsWrite(context);
+  if ('error' in access) return access.error;
+  const key = idempotencyKey(context.req.header('Idempotency-Key'));
+  const ticketId = context.req.param('id');
+  const paymentId = context.req.param('paymentId');
+  const body = (await readJson(context)) ?? {};
+  const reason = cleanReason(body.reason);
+  const direction = body.direction;
+  if (!key || !isUuid(ticketId) || !isUuid(paymentId)
+      || (direction !== 'increase' && direction !== 'decrease')
+      || !integerIn(body.amountMinor, 1, 100000000)
+      || !reason) {
+    return context.json({ error: { code: 'INVALID_CORRECTION', message: 'Düzeltme yönü, tutarı, gerekçesi veya işlem anahtarı geçerli değil.' } }, 400);
+  }
+  const hash = await requestHash('record_correction', {
+    ticketId, paymentId, direction, amountMinor: body.amountMinor, reason,
+  });
+  return rpcWrite(context, access, 'record_ticket_correction_guarded', {
+    p_business_id: access.membership.business_id,
+    p_ticket_id: ticketId,
+    p_source_payment_event_id: paymentId,
+    p_direction: direction,
+    p_amount_minor: body.amountMinor,
+    p_reason: reason,
+    p_idempotency_key: key,
+    p_request_hash: hash,
+  }, 201);
+});
+
+tickets.post('/tickets/:id/payments/:paymentId/refunds', async (context) => {
+  const access = await requirePaymentsWrite(context);
+  if ('error' in access) return access.error;
+  const key = idempotencyKey(context.req.header('Idempotency-Key'));
+  const ticketId = context.req.param('id');
+  const paymentId = context.req.param('paymentId');
+  const body = (await readJson(context)) ?? {};
+  const reason = cleanReason(body.reason);
+  if (!key || !isUuid(ticketId) || !isUuid(paymentId)
+      || !integerIn(body.amountMinor, 1, 100000000)
+      || !reason) {
+    return context.json({ error: { code: 'INVALID_REFUND', message: 'İade tutarı, gerekçesi veya işlem anahtarı geçerli değil.' } }, 400);
+  }
+  const hash = await requestHash('record_refund', {
+    ticketId, paymentId, amountMinor: body.amountMinor, reason,
+  });
+  return rpcWrite(context, access, 'record_ticket_refund_guarded', {
+    p_business_id: access.membership.business_id,
+    p_ticket_id: ticketId,
+    p_source_payment_event_id: paymentId,
+    p_amount_minor: body.amountMinor,
+    p_reason: reason,
+    p_idempotency_key: key,
+    p_request_hash: hash,
+  }, 201);
 });
 
 tickets.post('/tickets/:id/cancel', async (context) => {
