@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent, MouseEvent, ReactNode } from 'react';
 import { api, ApiRequestError } from './api';
-import { navigateApp, workspaceHref, type WorkspacePage } from './workspace-route';
+import { kolayAppTabFromWorkspacePage, navigateApp, workspaceHref, type WorkspacePage } from './workspace-route';
 import {
   WorkspaceProvider,
   type WorkspaceContextValue,
@@ -16,6 +16,7 @@ const AvailabilityPage = lazy(() => import('./AvailabilityPage'));
 const OnboardingPage = lazy(() => import('./OnboardingPage'));
 const TeamPage = lazy(() => import('./TeamPage'));
 const PublicBookingSettingsPage = lazy(() => import('./PublicBookingSettingsPage'));
+const KolayAppSurface = lazy(() => import('./kolayapp/KolayAppSurface'));
 
 type AuthMode = 'login' | 'signup' | 'recovery';
 
@@ -205,7 +206,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
     } finally { setBusy(false); }
   }
 
-  const selectBusiness = useCallback(async (businessId: string) => {
+  const selectBusiness = useCallback(async (businessId: string, options: { to?: string } = {}) => {
     if (businessId === session?.activeBusinessId) return;
     setBusy(true);
     setScopeChanging(true);
@@ -221,7 +222,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
         throw new ApiRequestError('İşletme seçimi sunucuda doğrulanamadı.', 409, 'WORKSPACE_CONTEXT_CHANGED');
       }
       setScopeEpoch((value) => value + 1);
-      navigateApp('/app/calendar', { replace: true });
+      navigateApp(options.to ?? '/app/calendar', { replace: true });
     } catch (error) {
       try { await refreshSession(); } catch { /* preserve the actionable selection error */ }
       setNotice(error instanceof Error ? error.message : 'İşletme seçilemedi.');
@@ -248,6 +249,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
     } finally { setBusy(false); }
   }
 
+  const kolayTab = kolayAppTabFromWorkspacePage(page);
   const passwordRequired = Boolean(session?.user && session.passwordRecovery);
   const showPasswordPanel = Boolean(session?.user && (passwordRequired || showPasswordChange));
   const activeMembership = session?.memberships.find((membership) => membership.business_id === session.activeBusinessId) ?? null;
@@ -266,6 +268,20 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
   }, [activeMembership, ready, refreshSession, scopeEpoch, selectBusiness, session]);
 
   if (loading && !session) return <main className="center-card"><p>Çalışma alanı hazırlanıyor…</p></main>;
+
+  if (ready && contextValue && kolayTab && !scopeChanging) {
+    return (
+      <WorkspaceProvider value={contextValue}>
+        <Suspense fallback={<main className="route-loading" aria-busy="true">KolayApp hazırlanıyor…</main>}>
+          <KolayAppSurface
+            key={`${session?.activeBusinessId ?? 'none'}:${scopeEpoch}:${kolayTab}`}
+            activeTab={kolayTab}
+            notice={notice}
+          />
+        </Suspense>
+      </WorkspaceProvider>
+    );
+  }
 
   return (
     <div className="app-shell workspace-app-shell">
