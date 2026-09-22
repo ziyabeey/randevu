@@ -556,6 +556,29 @@ try {
   assert.ok(kolay360.minWidth >= 44, `KolayApp 360px touch target width dropped below 44px: ${kolay360.minWidth}`);
   assert.ok(kolay360.navBottom <= kolay360.viewportHeight + 1, 'KolayApp 360px bottom navigation is outside the viewport');
 
+
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 480, deviceScaleFactor: 1, mobile: true });
+  await sleep(100);
+  const kolayKeyboardViewport = await page.evaluate(`(() => {
+    const nav=document.querySelector('.kolay-bottom-nav');
+    const content=document.querySelector('.kolay-app-content');
+    return {
+      navBottom: nav.getBoundingClientRect().bottom,
+      viewportHeight: innerHeight,
+      contentClientHeight: content.clientHeight,
+      contentScrollHeight: content.scrollHeight,
+    };
+  })()`);
+  assert.ok(
+    kolayKeyboardViewport.navBottom <= kolayKeyboardViewport.viewportHeight + 1,
+    'KolayApp bottom navigation is covered after keyboard-like viewport resize',
+  );
+  assert.ok(kolayKeyboardViewport.contentClientHeight > 0, 'KolayApp content collapsed after keyboard-like viewport resize');
+  assert.ok(
+    kolayKeyboardViewport.contentScrollHeight >= kolayKeyboardViewport.contentClientHeight,
+    'KolayApp content cannot scroll inside keyboard-like viewport',
+  );
+
   await page.evaluate(`(() => {
     const select=document.querySelector('.kolay-business-select select');
     select.value='${BUSINESS_B}';
