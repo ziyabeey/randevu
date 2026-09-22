@@ -6,9 +6,19 @@ import {
   upstreamUnavailable,
   type AuthEnv,
 } from './auth.ts';
+import {
+  decodePageCursor,
+  pageResult,
+  parsePageLimit,
+} from './pagination.ts';
 
 type RpcError = { message?: string };
 type TicketPayload = Record<string, unknown>;
+type TicketPageRow = {
+  ticket: TicketPayload;
+  sort_updated_at: string;
+  sort_id: string;
+};
 type TicketContext = Parameters<typeof requireMember>[0];
 type TicketWriteAccess = { auth: { accessToken: string }; membership: { business_id: string } };
 
@@ -50,6 +60,12 @@ function rpcMessage(data: unknown) {
 }
 
 function ticketError(message: string) {
+  if (message.includes('INVALID_TICKET_STATUS')) {
+    return { code: 'INVALID_TICKET_STATUS', message: 'Adisyon durum filtresi geçerli değil.', status: 400 as const };
+  }
+  if (message.includes('INVALID_PAGE')) {
+    return { code: 'INVALID_PAGE', message: 'Sayfa bilgisi geçerli değil.', status: 400 as const };
+  }
   if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
     return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
   }
@@ -253,6 +269,63 @@ async function rpcWrite(
   }
   return context.json({ ticket: result.data }, successStatus as 200 | 201);
 }
+
+tickets.get('/tickets', async (context) => {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+
+  const limit = parsePageLimit(context.req.query('limit'));
+  const cursor = decodePageCursor(context.req.query('cursor'), 'tickets');
+  const statusParam = context.req.query('status')?.trim() ?? '';
+  const status = statusParam === '' || statusParam === 'all' ? null : statusParam;
+  const customerParam = context.req.query('customerId')?.trim() ?? '';
+  const customerId = customerParam || null;
+
+  if (limit === null || cursor === undefined
+      || (status !== null && !['open', 'closed', 'cancelled'].includes(status))
+      || (customerId !== null && !isUuid(customerId))) {
+    return context.json({
+      error: { code: 'INVALID_PAGE', message: 'Adisyon filtresi veya sayfa bilgisi geçerli değil.' },
+    }, 400);
+  }
+
+  const result = await supabaseRequest<TicketPageRow[]>(
+    context.env,
+    'rest/v1/rpc/list_ticket_contracts_page',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_business_id: access.membership.business_id,
+        p_status: status,
+        p_customer_id: customerId,
+        p_limit: limit + 1,
+        p_after_updated_at: cursor?.at ?? null,
+        p_after_id: cursor?.id ?? null,
+      }),
+    },
+    access.auth.accessToken,
+  );
+
+  if (!result.ok) {
+    if (upstreamUnavailable(result.status)) {
+      return context.json({
+        error: { code: 'TICKET_READ_UNAVAILABLE', message: 'Adisyonlar şu anda yüklenemiyor.' },
+      }, 503);
+    }
+    const error = ticketError(rpcMessage(result.data));
+    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+  }
+
+  const paged = pageResult(result.data ?? [], limit, 'tickets', (row) => ({
+    at: row.sort_updated_at,
+    id: row.sort_id,
+  }));
+
+  return context.json({
+    tickets: paged.items.map((row) => row.ticket),
+    page: paged.page,
+  });
+});
 
 tickets.get('/tickets/:id', async (context) => {
   const access = await requireStandardMember(context);
