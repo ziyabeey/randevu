@@ -732,8 +732,8 @@ export default function BookingPage() {
       <div className="section-head"><div><p className="eyebrow">RANDEVU DETAYI</p><h2>{detailFor.customerName}</h2></div><button type="button" onClick={() => setDetailFor(null)}>Kapat</button></div>
       <div className="booking-detail-tabs" aria-label="Randevu bölümleri">
         <span className="is-active">Detay</span>
-        <span aria-disabled="true">Fotoğraf <small>F16-03</small></span>
-        <span aria-disabled="true">Adisyon <small>F14</small></span>
+        <span aria-disabled="true">Fotoğraf</span>
+        <span aria-disabled="true">Adisyon</span>
       </div>
       <dl className="booking-detail-grid">
         <div><dt>Zaman</dt><dd>{formatDateTime(detailFor.startsAt, detailFor.timezone)} – {formatTime(detailFor.endsAt, detailFor.timezone)}</dd></div>
@@ -757,7 +757,7 @@ export default function BookingPage() {
           {detailFor.canCancelGroup && <button disabled={busy} onClick={() => void cancelGroup(detailFor)}>Tümünü iptal et</button>}
         </>}
       </div>
-      <p className="muted booking-detail-future">Fotoğraf ve Adisyon bağlantıları yerini korur; ilgili backend fazları tamamlanmadan çalışıyormuş gibi sunulmaz.</p>
+      <p className="muted booking-detail-future">Fotoğraf ve Adisyon bölümleri henüz kullanıma açık değil.</p>
     </section>}
 
     {rescheduleTarget && <section className="booking-card booking-modal-card">

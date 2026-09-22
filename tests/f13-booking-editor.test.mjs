@@ -29,8 +29,13 @@ test('F13-03 operator composer keeps the required field order and uses the atomi
 test('F13-03 close-time stays adjacent to create and detail future tabs are truthful placeholders', () => {
   assert.match(booking, /closeOpen \? 'Kapat' : 'Saat kapat'/);
   assert.match(booking, /api\('\/api\/availability\/blocks'/);
-  assert.match(booking, /Fotoğraf <small>F16-03<\/small>/);
-  assert.match(booking, /Adisyon <small>F14<\/small>/);
+  assert.match(booking, /<span aria-disabled="true">Fotoğraf<\/span>/);
+  assert.match(booking, /<span aria-disabled="true">Adisyon<\/span>/);
+  assert.match(booking, /Fotoğraf ve Adisyon bölümleri henüz kullanıma açık değil\./);
+  const detailStart = booking.indexOf('booking-detail-tabs');
+  const detailEnd = booking.indexOf('{rescheduleTarget', detailStart);
+  const detailSurface = booking.slice(detailStart, detailEnd);
+  assert.doesNotMatch(detailSurface, /F14|F16-03|backend|\bFaz\b|\bRPC\b|\btenant\b/i);
   assert.doesNotMatch(booking, /api\([^\n]*photo|api\([^\n]*ticket|api\([^\n]*adisyon/i);
   assert.match(css, /\.booking-close-panel/);
   assert.match(css, /\.booking-detail-tabs/);
