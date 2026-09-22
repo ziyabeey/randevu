@@ -61,6 +61,44 @@ begin
 end
 $f1403acl$;
 
+-- Retention/search-path hardening is a financial invariant, not an implementation detail.
+do $f1403hardening$
+declare
+  v_bad_cascade integer;
+  v_bad_search_path integer;
+begin
+  select count(*)::integer
+  into v_bad_cascade
+  from pg_constraint c
+  where c.contype = 'f'
+    and c.conrelid = 'public.ticket_payment_events'::regclass
+    and c.confrelid = 'public.businesses'::regclass
+    and c.confdeltype = 'c';
+
+  if v_bad_cascade <> 0 then
+    raise exception 'F14-03 payment ledger unexpectedly cascades with business deletion';
+  end if;
+
+  select count(*)::integer
+  into v_bad_search_path
+  from pg_proc p
+  where p.oid in (
+      'public.f14_guard_payment_event_change()'::regprocedure,
+      'public.f14_guard_ticket_line_insert_after_payment()'::regprocedure
+    )
+    and not exists (
+      select 1
+      from unnest(coalesce(p.proconfig, array[]::text[])) cfg
+      where split_part(cfg, '=', 1) = 'search_path'
+        and split_part(cfg, '=', 2) in ('', '""')
+    );
+
+  if v_bad_search_path <> 0 then
+    raise exception 'F14-03 trigger guard search_path is not empty for % functions', v_bad_search_path;
+  end if;
+end
+$f1403hardening$;
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
