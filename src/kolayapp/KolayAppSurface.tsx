@@ -96,7 +96,7 @@ export default function KolayAppSurface({
   notice?: string;
   scopeChanging?: boolean;
 }) {
-  const { session, activeMembership, activeBusiness, activeBusinessId, selectBusiness } = useWorkspace();
+  const { session, activeBusinessId, selectBusiness } = useWorkspace();
   const [switchingBusiness, setSwitchingBusiness] = useState(false);
 
   async function switchBusiness(businessId: string) {
@@ -151,10 +151,6 @@ export default function KolayAppSurface({
     <KolayAppShell
       activeTab={activeTab}
       onTabChange={(tab) => navigateApp(kolayAppHref(tab))}
-      business={{
-        name: activeBusiness?.name ?? 'İşletme',
-        meta: activeMembership.role === 'owner' ? 'İşletme sahibi' : activeMembership.role === 'manager' ? 'Yönetici' : 'Çalışan',
-      }}
       headerAction={businessControl}
       hideBusinessSummary
     >
