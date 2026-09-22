@@ -1362,6 +1362,51 @@
           "file": "supabase/tests/f14_ticket_model.sql"
         }
       ]
+    },
+    {
+      "name": "Verify H19 M3 D0xD1 tenant-scoped idempotency composition",
+      "steps": [
+        {
+          "database": "postgres",
+          "sql": "drop database if exists yzt_h19_m3;"
+        },
+        {
+          "database": "postgres",
+          "sql": "create database yzt_h19_m3;"
+        },
+        {
+          "database": "yzt_h19_m3",
+          "file": "supabase/tests/bootstrap.sql"
+        },
+        {
+          "database": "yzt_h19_m3",
+          "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql"
+        },
+        {
+          "database": "yzt_h19_m3",
+          "file": "supabase/migrations/20260911100000_phase3_services_team.sql"
+        },
+        {
+          "database": "yzt_h19_m3",
+          "file": "supabase/migrations/20260911110000_phase4_availability.sql"
+        },
+        {
+          "database": "yzt_h19_m3",
+          "file": "supabase/migrations/20260911120000_phase5_booking_core.sql"
+        },
+        {
+          "database": "yzt_h19_m3",
+          "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql"
+        },
+        {
+          "database": "yzt_h19_m3",
+          "file": "supabase/migrations/20260911130000_phase6_public_booking.sql"
+        },
+        {
+          "database": "yzt_h19_m3",
+          "file": "supabase/tests/h19_m3_tenant_idempotency.sql"
+        }
+      ]
     }
   ]
 }
