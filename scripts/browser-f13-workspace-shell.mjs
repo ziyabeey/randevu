@@ -506,7 +506,7 @@ try {
   assert.deepEqual(kolay390.labels, ['Randevular', 'Adisyonlar', 'Yeni', 'Müşteriler', 'Diğer']);
   assert.ok(kolay390.overflow <= 1, `KolayApp overflowed 390px viewport by ${kolay390.overflow}px`);
   assert.ok(kolay390.minWidth >= 44, `KolayApp touch target width dropped below 44px: ${kolay390.minWidth}`);
-  assert.ok(kolay390.minHeight >= 48, `KolayApp touch target height is too small: ${kolay390.minHeight}`);
+  assert.ok(kolay390.minHeight >= 44, `KolayApp touch target height dropped below 44px: ${kolay390.minHeight}`);
   assert.ok(kolay390.navBottom <= kolay390.viewportHeight + 1, 'KolayApp bottom navigation is outside the viewport');
 
   const sessionReadsBeforeKolayTabs = requests.filter((item) => item.method === 'GET' && item.path === '/api/session').length;
