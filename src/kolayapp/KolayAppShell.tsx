@@ -68,7 +68,7 @@ export default function KolayAppShell({
         </div>
       </header>
 
-      <div id="kolayapp-content" className="kolay-app-content" role="main" tabIndex={-1}>
+      <div id="kolayapp-content" className="kolay-app-content" tabIndex={-1}>
         {children}
       </div>
 
