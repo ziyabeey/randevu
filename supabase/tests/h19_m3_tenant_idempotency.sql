@@ -1,6 +1,7 @@
 begin;
 
 -- H19 M3 prospective coverage probe: D0 x D1
+-- Frozen mutant baseline: 330e907b6103ec758709e5dfe9e072ab657a3da9
 -- Tenant isolation and idempotency must compose. The same idempotency key is
 -- valid in two tenants because the ledger identity is (business_id, key).
 -- A retry in tenant B must therefore resolve only tenant B's ledger row.
