@@ -80,7 +80,8 @@ begin
     'customerPhone', v_customer_phone,
     'customerEmail', v_customer_email,
     'lines', p_lines,
-    'startsAt', p_starts_at,
+    -- EXP-H19 M3 MUTANT: deliberately omit start time from idempotency identity.
+    -- Same key + same lines at a different time can now alias the old command.
     'notes', v_notes
   )::text);
 
