@@ -171,6 +171,10 @@ $f1404deny$;
 
 reset role;
 
-raise notice 'F14-04 tenant-safe ticket list projection acceptance passed';
+do $f1404done$
+begin
+  raise notice 'F14-04 tenant-safe ticket list projection acceptance passed';
+end
+$f1404done$;
 
 rollback;
