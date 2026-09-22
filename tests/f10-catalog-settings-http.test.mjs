@@ -15,6 +15,9 @@ const membershipId = 'c3000000-0000-4000-8000-000000000001';
 const serviceId = 'c4000000-0000-4000-8000-000000000001';
 const staffId = 'c5000000-0000-4000-8000-000000000001';
 const csrf = 'C'.repeat(43);
+// Kept inside worker/availability.ts validDateHorizon() (UTC today-1 .. UTC today+366) so the
+// guarded-RPC route is reached instead of being short-circuited by an expiring fixed date.
+const blockDate = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
@@ -265,7 +268,7 @@ await test('F10-04 availability block create uses guarded RPC and ignores client
   try {
     const response = await app.request('http://localhost/api/availability/blocks', {
       method: 'POST', headers: mutationHeaders(),
-      body: JSON.stringify({ date: '2026-09-20', start: '12:00', end: '13:00', staffId: staffId, reason: 'İzin', businessId: 'forged' }),
+      body: JSON.stringify({ date: blockDate, start: '12:00', end: '13:00', staffId: staffId, reason: 'İzin', businessId: 'forged' }),
     }, env);
     assert.equal(response.status, 201);
     assert.equal(body.p_business_id, businessId);
@@ -282,7 +285,7 @@ await test('F10-04 availability block write cap maps to stable 409', async () =>
   try {
     const response = await app.request('http://localhost/api/availability/blocks', {
       method: 'POST', headers: mutationHeaders(),
-      body: JSON.stringify({ date: '2026-09-20', start: '12:00', end: '13:00', staffId: null, reason: 'İzin' }),
+      body: JSON.stringify({ date: blockDate, start: '12:00', end: '13:00', staffId: null, reason: 'İzin' }),
     }, env);
     assert.equal(response.status, 409);
     assert.equal((await response.json()).error?.code, 'AVAILABILITY_BLOCKS_LIMIT_EXCEEDED');
