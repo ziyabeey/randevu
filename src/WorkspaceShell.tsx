@@ -269,7 +269,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
 
   if (loading && !session) return <main className="center-card"><p>Çalışma alanı hazırlanıyor…</p></main>;
 
-  if (ready && contextValue && kolayTab && !scopeChanging) {
+  if (ready && contextValue && kolayTab) {
     return (
       <WorkspaceProvider value={contextValue}>
         <Suspense fallback={<main className="route-loading" aria-busy="true">KolayApp hazırlanıyor…</main>}>
@@ -277,6 +277,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
             key={`${session?.activeBusinessId ?? 'none'}:${scopeEpoch}:${kolayTab}`}
             activeTab={kolayTab}
             notice={notice}
+            scopeChanging={scopeChanging}
           />
         </Suspense>
       </WorkspaceProvider>
