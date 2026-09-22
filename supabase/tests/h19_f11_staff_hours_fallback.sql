@@ -221,7 +221,7 @@ begin
       begin
         perform *
         from public.replace_staff_hours_guarded(
-          %L::uuid,%L::uuid,%s,
+          %L::uuid,%L::uuid,%s::smallint,
           '[{"start":"09:00","end":"10:00"}]'::jsonb,
           '[{"start":"09:00","end":"18:00"}]'::jsonb
         );
