@@ -127,6 +127,9 @@ export default function TicketCashierPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
+  const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const initialTicketId = initialParams.get('ticketId');
+  const initialCustomerId = initialParams.get('customerId');
   const keys = useRef(new Map<string, string>());
   const listGeneration = useRef(0);
 
@@ -144,13 +147,14 @@ export default function TicketCashierPage() {
   const loadTickets = useCallback(async (append = false, cursor: string | null = null) => {
     const generation = ++listGeneration.current;
     const params = new URLSearchParams({ limit: '25', status });
+    if (initialCustomerId) params.set('customerId', initialCustomerId);
     if (cursor) params.set('cursor', cursor);
     const result = await api<TicketList>(`/api/tickets?${params}`);
     if (generation !== listGeneration.current) return;
     setTickets((current) => append ? [...current, ...result.tickets] : result.tickets);
     setPage(result.page);
     if (!append && selected && !result.tickets.some((row) => row.ticketId === selected.ticketId)) setSelected(null);
-  }, [selected, status]);
+  }, [initialCustomerId, selected, status]);
 
   const loadLookups = useCallback(async () => {
     const [customerResult, nextCatalog] = await Promise.all([
@@ -168,6 +172,7 @@ export default function TicketCashierPage() {
     keys.current.clear();
     try {
       await Promise.all([loadTickets(false), loadLookups()]);
+      if (initialTicketId) await loadTicket(initialTicketId);
     } catch (error) {
       setTickets([]);
       setPage(null);
@@ -176,7 +181,7 @@ export default function TicketCashierPage() {
     } finally {
       setLoading(false);
     }
-  }, [loadLookups, loadTickets]);
+  }, [initialTicketId, loadLookups, loadTicket, loadTickets]);
 
   useEffect(() => { void load(); }, [load, scopeEpoch]);
 
