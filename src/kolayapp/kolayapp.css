@@ -359,3 +359,10 @@ button.kolay-business-switch { cursor: pointer; }
   min-height: auto;
   margin: 0;
 }
+
+
+/* KolayApp owns the mobile header/business selector; embedded customer content keeps only its domain body. */
+.kolay-app-content > .customers-shell .customers-hero,
+.kolay-app-content > .customers-shell .customers-businesses {
+  display: none;
+}
