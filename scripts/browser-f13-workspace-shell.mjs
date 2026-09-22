@@ -480,6 +480,134 @@ try {
   await page.evaluate('history.back()');
   await waitFor(() => page.evaluate(`location.pathname === '/app'`), 'calendar did not return after history traversal');
 
+
+  // F14-01: the mobile product surface reuses this exact session/business authority.
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 820, deviceScaleFactor: 1, mobile: true });
+  await page.send('Page.navigate', { url: `${origin}/app/mobile` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile' && Boolean(document.querySelector('.kolay-bottom-nav')) && document.body.innerText.includes('Ada Public')`),
+    'KolayApp appointments route did not reuse the canonical calendar data',
+  );
+
+  const kolay390 = await page.evaluate(`(() => {
+    const labels=[...document.querySelectorAll('.kolay-bottom-nav__label')].map((node)=>node.textContent.trim());
+    const items=[...document.querySelectorAll('.kolay-bottom-nav__item')];
+    const nav=document.querySelector('.kolay-bottom-nav');
+    const navRect=nav.getBoundingClientRect();
+    return {
+      labels,
+      overflow: document.documentElement.scrollWidth - innerWidth,
+      minWidth: Math.min(...items.map((node)=>node.getBoundingClientRect().width)),
+      minHeight: Math.min(...items.map((node)=>node.getBoundingClientRect().height)),
+      navBottom: navRect.bottom,
+      viewportHeight: innerHeight,
+    };
+  })()`);
+  assert.deepEqual(kolay390.labels, ['Randevular', 'Adisyonlar', 'Yeni', 'Müşteriler', 'Diğer']);
+  assert.ok(kolay390.overflow <= 1, `KolayApp overflowed 390px viewport by ${kolay390.overflow}px`);
+  assert.ok(kolay390.minWidth >= 44, `KolayApp touch target width dropped below 44px: ${kolay390.minWidth}`);
+  assert.ok(kolay390.minHeight >= 44, `KolayApp touch target height dropped below 44px: ${kolay390.minHeight}`);
+  assert.ok(kolay390.navBottom <= kolay390.viewportHeight + 1, 'KolayApp bottom navigation is outside the viewport');
+
+  const sessionReadsBeforeKolayTabs = requests.filter((item) => item.method === 'GET' && item.path === '/api/session').length;
+  await page.evaluate(`[...document.querySelectorAll('.kolay-bottom-nav__item')].find((node) => node.textContent.includes('Müşteriler')).click()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/customers' && Boolean(document.querySelector('.customers-list-panel')) && document.body.innerText.includes('Ada Public')`),
+    'KolayApp customers tab did not reuse the canonical customer module',
+  );
+  const sessionReadsAfterKolayTabs = requests.filter((item) => item.method === 'GET' && item.path === '/api/session').length;
+  assert.equal(sessionReadsAfterKolayTabs, sessionReadsBeforeKolayTabs, 'KolayApp tab navigation created a second session authority');
+
+  await page.evaluate('history.back()');
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile' && document.body.innerText.includes('Ada Public')`),
+    'KolayApp history back did not restore appointments',
+  );
+  await page.evaluate('history.forward()');
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/customers'`),
+    'KolayApp history forward did not restore customers',
+  );
+
+  await page.evaluate(`[...document.querySelectorAll('.kolay-bottom-nav__item')].find((node) => node.textContent.includes('Adisyonlar')).click()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.body.innerText.includes('Adisyon ve tahsilat işlemleri henüz kullanıma açık değil.')`),
+    'KolayApp unavailable ticket domain was not fail-closed',
+  );
+  const ticketCopy = await page.evaluate(`document.body.innerText`);
+  assert.doesNotMatch(ticketCopy, /ödendi|tahsil edildi|başarılı tahsilat/i);
+
+  await page.evaluate(`[...document.querySelectorAll('.kolay-bottom-nav__item')].find((node) => node.textContent.includes('Müşteriler')).click()`);
+  await waitFor(() => page.evaluate(`location.pathname === '/app/mobile/customers'`), 'KolayApp did not return to customers');
+
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 1, mobile: true });
+  await sleep(100);
+  const kolay360 = await page.evaluate(`(() => {
+    const nav=document.querySelector('.kolay-bottom-nav');
+    const items=[...document.querySelectorAll('.kolay-bottom-nav__item')];
+    return {
+      overflow: document.documentElement.scrollWidth - innerWidth,
+      minWidth: Math.min(...items.map((node)=>node.getBoundingClientRect().width)),
+      navBottom: nav.getBoundingClientRect().bottom,
+      viewportHeight: innerHeight,
+    };
+  })()`);
+  assert.ok(kolay360.overflow <= 1, `KolayApp overflowed 360px viewport by ${kolay360.overflow}px`);
+  assert.ok(kolay360.minWidth >= 44, `KolayApp 360px touch target width dropped below 44px: ${kolay360.minWidth}`);
+  assert.ok(kolay360.navBottom <= kolay360.viewportHeight + 1, 'KolayApp 360px bottom navigation is outside the viewport');
+
+
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 480, deviceScaleFactor: 1, mobile: true });
+  await sleep(100);
+  const kolayKeyboardViewport = await page.evaluate(`(() => {
+    const nav=document.querySelector('.kolay-bottom-nav');
+    const content=document.querySelector('.kolay-app-content');
+    return {
+      navBottom: nav.getBoundingClientRect().bottom,
+      viewportHeight: innerHeight,
+      contentClientHeight: content.clientHeight,
+      contentScrollHeight: content.scrollHeight,
+    };
+  })()`);
+  assert.ok(
+    kolayKeyboardViewport.navBottom <= kolayKeyboardViewport.viewportHeight + 1,
+    'KolayApp bottom navigation is covered after keyboard-like viewport resize',
+  );
+  assert.ok(kolayKeyboardViewport.contentClientHeight > 0, 'KolayApp content collapsed after keyboard-like viewport resize');
+  assert.ok(
+    kolayKeyboardViewport.contentScrollHeight >= kolayKeyboardViewport.contentClientHeight,
+    'KolayApp content cannot scroll inside keyboard-like viewport',
+  );
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.kolay-business-select select');
+    select.value='${BUSINESS_B}';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/customers' && document.body.innerText.includes('Salon B') && document.body.innerText.includes('Bora Business B')`),
+    'KolayApp business switch did not remount the verified B context on the same tab',
+  );
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.kolay-business-select select');
+    select.value='${BUSINESS_A}';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/customers' && document.body.innerText.includes('Salon A') && document.body.innerText.includes('Ada Public')`),
+    'KolayApp business switch did not restore the verified A context',
+  );
+  console.log('F14-01 KolayApp mobile route/back-forward/business-switch acceptance passed.');
+
+  // Return the shared F13 harness to its canonical workspace before continuing
+  // the pre-existing desktop/legacy-route acceptance below.
+  await page.send('Page.navigate', { url: `${origin}/app` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app' && Boolean(document.querySelector('.workspace-panel-nav')) && document.body.innerText.includes('Salon A')`),
+    'workspace harness did not return from KolayApp to the canonical panel',
+  );
+
   await page.send('Emulation.setDeviceMetricsOverride', { width: 1200, height: 900, deviceScaleFactor: 1, mobile: false });
   await sleep(100);
   const desktop = await page.evaluate(`(() => ({

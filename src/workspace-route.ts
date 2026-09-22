@@ -7,6 +7,11 @@ export type WorkspacePage =
   | 'setup'
   | 'team'
   | 'public-booking'
+  | 'mobile-appointments'
+  | 'mobile-tickets'
+  | 'mobile-new'
+  | 'mobile-customers'
+  | 'mobile-more'
   | 'not-found';
 
 export type AppRoute =
@@ -40,6 +45,13 @@ const workspaceRoutes: Record<string, WorkspacePage> = {
   '/app/setup': 'setup',
   '/app/team': 'team',
   '/app/public-booking': 'public-booking',
+  '/app/mobile': 'mobile-appointments',
+  '/app/mobile/': 'mobile-appointments',
+  '/app/mobile/appointments': 'mobile-appointments',
+  '/app/mobile/tickets': 'mobile-tickets',
+  '/app/mobile/new': 'mobile-new',
+  '/app/mobile/customers': 'mobile-customers',
+  '/app/mobile/more': 'mobile-more',
 };
 
 export function resolveAppRoute(pathname: string, pendingInvite: boolean): AppRoute {
@@ -86,4 +98,18 @@ export function subscribeAppNavigation(listener: () => void) {
 
 export function workspaceHref(page: Exclude<WorkspacePage, 'not-found'>) {
   return page === 'calendar' ? '/app/calendar' : `/app/${page}`;
+}
+
+export type KolayAppRouteTab = 'appointments' | 'tickets' | 'new' | 'customers' | 'more';
+
+const KOLAY_APP_ROUTE_TABS = new Set<KolayAppRouteTab>(['appointments', 'tickets', 'new', 'customers', 'more']);
+
+export function kolayAppHref(tab: KolayAppRouteTab) {
+  return tab === 'appointments' ? '/app/mobile' : `/app/mobile/${tab}`;
+}
+
+export function kolayAppTabFromWorkspacePage(page: WorkspacePage): KolayAppRouteTab | null {
+  if (!page.startsWith('mobile-')) return null;
+  const tab = page.slice('mobile-'.length) as KolayAppRouteTab;
+  return KOLAY_APP_ROUTE_TABS.has(tab) ? tab : null;
 }

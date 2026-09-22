@@ -10,12 +10,20 @@ import {
   adjacentKolayAppTab,
   isKolayAppTab,
 } from '../src/kolayapp/model.ts';
+import {
+  kolayAppHref,
+  kolayAppTabFromWorkspacePage,
+  resolveAppRoute,
+} from '../src/workspace-route.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const css = readFileSync(path.join(root, 'src/kolayapp/kolayapp.css'), 'utf8');
 const shellSource = readFileSync(path.join(root, 'src/kolayapp/KolayAppShell.tsx'), 'utf8');
 const navSource = readFileSync(path.join(root, 'src/kolayapp/KolayBottomNav.tsx'), 'utf8');
 const previewSource = readFileSync(path.join(root, 'src/kolayapp/KolayAppSpikePreview.tsx'), 'utf8');
+const productionSource = readFileSync(path.join(root, 'src/kolayapp/KolayAppSurface.tsx'), 'utf8');
+const workspaceShellSource = readFileSync(path.join(root, 'src/WorkspaceShell.tsx'), 'utf8');
+const workspaceBrowserSource = readFileSync(path.join(root, 'scripts/browser-f13-workspace-shell.mjs'), 'utf8');
 
 await test('KOLAY-SPIKE-01 fixes the canonical five-tab order and keyboard adjacency', () => {
   assert.deepEqual(KOLAY_APP_TABS.map((tab) => tab.label), [
@@ -41,6 +49,69 @@ await test('KOLAY-SPIKE-01 shell remains route, auth and API agnostic', () => {
   assert.match(navSource, /aria-current=/);
   assert.match(navSource, /ArrowRight/);
   assert.match(navSource, /ArrowLeft/);
+});
+
+
+await test('F14-01 canonical mobile routes keep tab state in browser history', () => {
+  assert.deepEqual(resolveAppRoute('/app/mobile', false), { kind: 'workspace', page: 'mobile-appointments' });
+  assert.deepEqual(resolveAppRoute('/app/mobile/appointments', false), { kind: 'workspace', page: 'mobile-appointments' });
+  assert.deepEqual(resolveAppRoute('/app/mobile/tickets', false), { kind: 'workspace', page: 'mobile-tickets' });
+  assert.deepEqual(resolveAppRoute('/app/mobile/new', false), { kind: 'workspace', page: 'mobile-new' });
+  assert.deepEqual(resolveAppRoute('/app/mobile/customers', false), { kind: 'workspace', page: 'mobile-customers' });
+  assert.deepEqual(resolveAppRoute('/app/mobile/more', false), { kind: 'workspace', page: 'mobile-more' });
+  assert.deepEqual(resolveAppRoute('/app/mobile/unknown', false), { kind: 'workspace', page: 'not-found' });
+  assert.equal(kolayAppHref('appointments'), '/app/mobile');
+  assert.equal(kolayAppHref('customers'), '/app/mobile/customers');
+  assert.equal(kolayAppTabFromWorkspacePage('mobile-more'), 'more');
+  assert.equal(kolayAppTabFromWorkspacePage('calendar'), null);
+});
+
+await test('F14-01 production surface consumes canonical workspace authority and modules', () => {
+  assert.match(productionSource, /useWorkspace\(\)/);
+  assert.match(productionSource, /CalendarPage/);
+  assert.match(productionSource, /CustomersPage/);
+  assert.match(productionSource, /selectBusiness\(businessId, \{ to: kolayAppHref\(activeTab\) \}\)/);
+  assert.doesNotMatch(productionSource, /\/api\/session|\bfetch\s*\(|localStorage|sessionStorage/);
+  assert.match(workspaceShellSource, /KolayAppSurface/);
+  assert.match(workspaceShellSource, /options\.to \?\? '\/app\/calendar'/);
+});
+
+await test('F14-01 future financial actions stay explicitly unavailable', () => {
+  assert.match(productionSource, /title="Adisyonlar"/);
+  assert.match(productionSource, /Adisyon ve tahsilat işlemleri henüz kullanıma açık değil/);
+  assert.match(productionSource, /Yeni randevu/);
+  for (const label of ['Yeni adisyon', 'Yeni ürün satışı', 'Yeni paket satışı', 'Yeni masraf']) {
+    assert.match(productionSource, new RegExp(label));
+  }
+  assert.doesNotMatch(productionSource, /ödendi|tahsil edildi|başarılı tahsilat/i);
+  assert.doesNotMatch(previewSource, /F14-01|F14 mali akışı/);
+});
+
+
+
+await test('F14-01 New and More groups preserve the approved product order', () => {
+  const ordered = (labels) => labels.map((label) => productionSource.indexOf(label));
+  const newOrder = ordered(['Yeni randevu', 'Yeni adisyon', 'Yeni ürün satışı', 'Yeni paket satışı', 'Yeni masraf']);
+  assert.ok(newOrder.every((index) => index >= 0));
+  assert.deepEqual([...newOrder].sort((a, b) => a - b), newOrder);
+
+  const generalOrder = ordered(['Destek', 'Online Randevu', 'Müşteri geri bildirimleri', 'Hizmet fotoğrafları']);
+  const reportOrder = ordered(['Kasa', 'Çalışan primleri', 'Masraflar', 'Ürün satışları', 'Gelir-gider', 'Detaylı çalışan raporu']);
+  const setupOrder = ordered(['Salon bilgileri', 'Çalışma saatleri', 'Çalışanlar', 'Hizmetler', 'Süreler ve fiyatlar', 'Randevu ayarları', 'Ürün ve stok', 'Salon fotoğrafları', 'Promosyonlar']);
+  for (const order of [generalOrder, reportOrder, setupOrder]) {
+    assert.ok(order.every((index) => index >= 0));
+    assert.deepEqual([...order].sort((a, b) => a - b), order);
+  }
+  assert.match(productionSource, /hideBusinessSummary/);
+  assert.doesNotMatch(productionSource, /F14-01|canonical|\bAPI\b|production bağımlılık/i);
+});
+
+await test('F14-01 real-browser acceptance remains wired into the required workspace browser suite', () => {
+  assert.match(workspaceBrowserSource, /F14-01 KolayApp mobile route\/back-forward\/business-switch acceptance passed/);
+  assert.match(workspaceBrowserSource, /location\.pathname === '\/app\/mobile\/customers'/);
+  assert.match(workspaceBrowserSource, /width: 390/);
+  assert.match(workspaceBrowserSource, /width: 360/);
+  assert.match(workspaceBrowserSource, /kolay-business-select select/);
 });
 
 await test('KOLAY-SPIKE-01 mobile CSS protects touch, safe-area and keyboard-resized viewport contracts', () => {
@@ -79,7 +150,7 @@ await test('KOLAY-SPIKE-01 renders the real shell without pretending unavailable
     }
     assert.match(markup, /KolayApp mobil çalışma alanı/);
     assert.match(markup, /Randevu verisi bağlı değil/);
-    assert.match(markup, /API bağlı değil/);
+    assert.match(markup, /Önizleme/);
     assert.doesNotMatch(markup, /₺|\bTL\b|ödendi|tahsil edildi/i);
   } finally {
     rmSync(work, { recursive: true, force: true });

@@ -24,7 +24,7 @@ export type WorkspaceContextValue = {
   activeBusinessId: string;
   scopeEpoch: number;
   refreshSession(): Promise<WorkspaceSession>;
-  selectBusiness(businessId: string): Promise<void>;
+  selectBusiness(businessId: string, options?: { to?: string }): Promise<void>;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);

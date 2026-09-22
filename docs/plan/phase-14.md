@@ -1,14 +1,14 @@
-# Faz 14 — SalonApp, adisyon ve tahsilat
+# Faz 14 — KolayApp, adisyon ve tahsilat
 
 **Sonuç:** Aynı salon verisi üzerinde mobil işlem, adisyon ve manuel tahsilat çalışır. **Kapı:** G14. Eski 14A = F14-01/02, 14B = F14-03/04; F14-05 ortak kabulüdür. Durumlar [TASKS.md](../../TASKS.md) içindedir.
 
-Mevcut başlangıç: ortak kabuk, booking/calendar/customer API'leri. Adisyon/tahsilat tabloları ve SalonApp yolları henüz yoktur. Yeni dosya/yol adları ilgili PR sözleşmesinde belirlenir; bağımsız auth/randevu motoru oluşturulmaz.
+Mevcut başlangıç: ortak kabuk, booking/calendar/customer API'leri. Adisyon/tahsilat tabloları ve KolayApp production yolları henüz yoktur. Yeni dosya/yol adları ilgili PR sözleşmesinde belirlenir; bağımsız auth/randevu motoru oluşturulmaz.
 
 **Faz direktifi / kaynak head `5e789ad`:** Para dokunan F14-02/03 ve bunların mali bütünlük kabulü STRICT'tir. Tutarlar integer minor-unit veya exact `numeric` ile tutulur; `double precision` para kaynağı olmaz. F10-02'nin beş açık mali izni tüketilir, ikinci izin motoru kurulmaz.
 
 ## F14-01
 
-**SalonApp mobil kabuğu**
+**KolayApp mobil kabuğu**
 
 - **Bağımlılık:** F13-04.
 - **Sorumluluk:** Mobil frontend. **Çakışma alanı:** SalonApp kabuğu ve ortak router bağlantısı.
@@ -60,7 +60,7 @@ Mevcut başlangıç: ortak kabuk, booking/calendar/customer API'leri. Adisyon/ta
 
 - **Bağımlılık:** F14-04, F12-05.
 - **Sorumluluk:** QA + frontend/backend. **Çakışma alanı:** Entegrasyon ve mobil uygulama yaşam döngüsü.
-- **İş ve çıktı:** Müşteri → panel → SalonApp → adisyon → tahsilat zincirini iki işletmeyle doğrula. Kurulabilir web uygulaması/manifest ve sürüm güncelleme davranışını tamamla; hassas API verisi veya mali yazımlar çevrimdışı kuyruğa/kalıcı önbelleğe alınmaz.
-- **Kabul:** Bağlantı kesilmesi, çift tıklama, ikinci cihaz, yetki iptali ve uygulama güncellemesi veri/tahsilat kaybı yaratmaz. Desteklenen mobil tarayıcıda ana ekrana ekleme denenir; native mağaza yayını varsayılmaz. Panel ve SalonApp aynı işlem sonucunu gösterir.
+- **İş ve çıktı:** Müşteri → panel → KolayApp → adisyon → tahsilat zincirini iki işletmeyle doğrula. Kurulabilir web uygulaması/manifest ve sürüm güncelleme davranışını tamamla; hassas API verisi veya mali yazımlar çevrimdışı kuyruğa/kalıcı önbelleğe alınmaz.
+- **Kabul:** Bağlantı kesilmesi, çift tıklama, ikinci cihaz, yetki iptali ve uygulama güncellemesi veri/tahsilat kaybı yaratmaz. Desteklenen mobil tarayıcıda ana ekrana ekleme denenir; native mağaza yayını varsayılmaz. Panel ve KolayApp aynı işlem sonucunu gösterir.
 - **Devir:** G14 kanıtı, mobil destek sınırı ve açık F15–16 işleri. Bu ara teslimat tam referans eşdeğerliği sayılmaz.
 - **Tuzak / bundle:** Public müşteri yüzeyi, private workspace ve SalonApp/marketing bundle ayrımı F12/F13'te çözülmüş olmalıdır. F14-05 bunu ilk kez keşfeden kart değildir; kabul yalnız route/bundle budget'ın hâlâ korunduğunu doğrular.

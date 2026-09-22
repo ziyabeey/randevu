@@ -16,6 +16,7 @@ type Props = {
   eyebrow?: string;
   title?: string;
   headerAction?: ReactNode;
+  hideBusinessSummary?: boolean;
   children: ReactNode;
 };
 
@@ -27,6 +28,7 @@ export default function KolayAppShell({
   eyebrow = 'KOLAYAPP',
   title,
   headerAction,
+  hideBusinessSummary = false,
   children,
 }: Props) {
   const businessName = business?.name ?? 'İşletme seçilmedi';
@@ -35,7 +37,7 @@ export default function KolayAppShell({
   const businessSummary = (
     <>
       <span className="kolay-business-switch__name">{businessName}</span>
-      <span className="kolay-business-switch__meta">{business?.meta ?? 'İşletme bağlamı dışarıdan sağlanır'}</span>
+      <span className="kolay-business-switch__meta">{business?.meta ?? 'İşletme seçimi hazır değil'}</span>
     </>
   );
 
@@ -50,7 +52,7 @@ export default function KolayAppShell({
         </div>
 
         <div className="kolay-app-header__actions">
-          {onBusinessPress ? (
+          {!hideBusinessSummary && (onBusinessPress ? (
             <button
               className="kolay-business-switch kolay-touch-target"
               type="button"
@@ -63,14 +65,14 @@ export default function KolayAppShell({
             <div className="kolay-business-switch kolay-business-switch--static" aria-label={`İşletme: ${businessName}`}>
               {businessSummary}
             </div>
-          )}
+          ))}
           {headerAction}
         </div>
       </header>
 
-      <main id="kolayapp-content" className="kolay-app-content" tabIndex={-1}>
+      <div id="kolayapp-content" className="kolay-app-content" tabIndex={-1}>
         {children}
-      </main>
+      </div>
 
       <KolayBottomNav activeTab={activeTab} onTabChange={onTabChange} />
     </section>
