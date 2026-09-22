@@ -88,9 +88,11 @@ begin
         and ((
           (v_service_start at time zone v_timezone)::date + bh.starts_local
         ) at time zone v_timezone) <= v_service_start
+        -- EXP-H19 M2 MUTANT: incorrectly let RELEASE staff occupancy define
+        -- the business-close boundary instead of the full customer interval.
         and ((
           (v_service_start at time zone v_timezone)::date + bh.ends_local
-        ) at time zone v_timezone) >= v_service_end
+        ) at time zone v_timezone) >= v_staff_active_end
     ) or exists (
       select 1
       from public.availability_blocks ab
