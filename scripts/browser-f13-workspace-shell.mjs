@@ -600,6 +600,14 @@ try {
   );
   console.log('F14-01 KolayApp mobile route/back-forward/business-switch acceptance passed.');
 
+  // Return the shared F13 harness to its canonical workspace before continuing
+  // the pre-existing desktop/legacy-route acceptance below.
+  await page.send('Page.navigate', { url: `${origin}/app` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app' && Boolean(document.querySelector('.workspace-panel-nav')) && document.body.innerText.includes('Salon A')`),
+    'workspace harness did not return from KolayApp to the canonical panel',
+  );
+
   await page.send('Emulation.setDeviceMetricsOverride', { width: 1200, height: 900, deviceScaleFactor: 1, mobile: false });
   await sleep(100);
   const desktop = await page.evaluate(`(() => ({
