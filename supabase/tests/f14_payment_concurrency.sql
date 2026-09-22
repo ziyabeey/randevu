@@ -81,6 +81,7 @@ declare
   v_sql_b text;
   v_blocked integer := 0;
   v_rows integer;
+  v_drain integer;
   v_result jsonb;
   v_successes integer := 0;
   v_failures integer := 0;
@@ -163,11 +164,22 @@ begin
       v_rows:=0;
     end;
 
+    if v_rows<>1 then
+      v_error:=dblink_error_message(v_conn);
+    end if;
+
+    -- Async dblink keeps a terminal empty result frame after the statement
+    -- result/error. Drain it before COMMIT/ROLLBACK so the connection is idle.
+    perform * from dblink_get_result(v_conn,false) as t(result jsonb);
+    get diagnostics v_drain=row_count;
+    if v_drain<>0 or dblink_is_busy(v_conn)<>0 then
+      raise exception 'F14-03 payment race writer had trailing async results on %',v_conn;
+    end if;
+
     if v_rows=1 and v_result->>'ticketId'=v_ticket::text then
       v_successes:=v_successes+1;
       perform dblink_exec(v_conn,'commit');
     else
-      v_error:=dblink_error_message(v_conn);
       if position('OVERPAYMENT' in coalesce(v_error,''))=0 then
         raise exception 'F14-03 losing race writer failed for unexpected reason on %: %',v_conn,v_error;
       end if;
