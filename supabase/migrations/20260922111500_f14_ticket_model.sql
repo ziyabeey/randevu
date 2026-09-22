@@ -76,7 +76,7 @@ create index if not exists tickets_business_status_idx
 
 create table if not exists public.ticket_lines (
   id uuid primary key default gen_random_uuid(),
-  business_id uuid not null references public.businesses(id) on delete cascade,
+  business_id uuid not null references public.businesses(id),
   ticket_id uuid not null,
   line_ordinal integer not null check (line_ordinal between 1 and 100),
   source_type text not null default 'service' check (source_type = 'service'),
@@ -166,7 +166,7 @@ create index if not exists ticket_lines_ticket_idx
   on public.ticket_lines(business_id, ticket_id, line_ordinal);
 
 create table if not exists public.ticket_commands (
-  business_id uuid not null references public.businesses(id) on delete cascade,
+  business_id uuid not null references public.businesses(id),
   actor_membership_id uuid not null,
   command text not null check (command in (
     'open_from_booking_group',
@@ -1052,7 +1052,7 @@ $$;
 create or replace function public.f14_guard_ticket_update()
 returns trigger
 language plpgsql
-set search_path = public
+set search_path = ''
 as $$
 begin
   if old.business_id is distinct from new.business_id
@@ -1094,7 +1094,7 @@ for each row execute function public.f14_guard_ticket_update();
 create or replace function public.f14_guard_ticket_line_update()
 returns trigger
 language plpgsql
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_status text;
@@ -1142,7 +1142,7 @@ for each row execute function public.f14_guard_ticket_line_update();
 create or replace function public.f14_guard_ticket_command_update()
 returns trigger
 language plpgsql
-set search_path = public
+set search_path = ''
 as $f14cmd$
 begin
   if old.business_id is distinct from new.business_id
@@ -1173,7 +1173,7 @@ for each row execute function public.f14_guard_ticket_command_update();
 create or replace function public.f14_block_ticket_command_delete()
 returns trigger
 language plpgsql
-set search_path = public
+set search_path = ''
 as $f14cmddel$
 begin
   raise exception 'TICKET_COMMAND_DELETE_FORBIDDEN';
@@ -1190,7 +1190,7 @@ for each row execute function public.f14_block_ticket_command_delete();
 create or replace function public.f14_block_ticket_delete()
 returns trigger
 language plpgsql
-set search_path = public
+set search_path = ''
 as $f14del$
 begin
   raise exception 'TICKET_DELETE_FORBIDDEN';
