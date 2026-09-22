@@ -5,7 +5,7 @@ begin;
 
 create table if not exists public.tickets (
   id uuid primary key default gen_random_uuid(),
-  business_id uuid not null references public.businesses(id) on delete cascade,
+  business_id uuid not null references public.businesses(id),
   appointment_group_id uuid,
   customer_id uuid not null,
   source text not null check (source in ('booking_group','walk_in')),
