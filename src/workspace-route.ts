@@ -1,5 +1,3 @@
-import { isKolayAppTab, type KolayAppTab } from './kolayapp/model';
-
 export type WorkspacePage =
   | 'calendar'
   | 'bookings'
@@ -102,12 +100,16 @@ export function workspaceHref(page: Exclude<WorkspacePage, 'not-found'>) {
   return page === 'calendar' ? '/app/calendar' : `/app/${page}`;
 }
 
-export function kolayAppHref(tab: KolayAppTab) {
+export type KolayAppRouteTab = 'appointments' | 'tickets' | 'new' | 'customers' | 'more';
+
+const KOLAY_APP_ROUTE_TABS = new Set<KolayAppRouteTab>(['appointments', 'tickets', 'new', 'customers', 'more']);
+
+export function kolayAppHref(tab: KolayAppRouteTab) {
   return tab === 'appointments' ? '/app/mobile' : `/app/mobile/${tab}`;
 }
 
-export function kolayAppTabFromWorkspacePage(page: WorkspacePage): KolayAppTab | null {
+export function kolayAppTabFromWorkspacePage(page: WorkspacePage): KolayAppRouteTab | null {
   if (!page.startsWith('mobile-')) return null;
-  const tab = page.slice('mobile-'.length);
-  return isKolayAppTab(tab) ? tab : null;
+  const tab = page.slice('mobile-'.length) as KolayAppRouteTab;
+  return KOLAY_APP_ROUTE_TABS.has(tab) ? tab : null;
 }
