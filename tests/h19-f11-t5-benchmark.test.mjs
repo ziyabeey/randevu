@@ -203,3 +203,60 @@ test('Kepenk F11 evidence preserves the preregistered snapshot/concurrency holdo
   assert.match(authorityRace, /schedule authority races accepted/);
   assert.match(finalBinding, /processingCapacityPolicy/);
 });
+
+
+function monotoneFaultSignature(suite, support) {
+  return suite
+    .map((candidate, index) => support.every((axis) => candidate[axis] === 1) ? index : -1)
+    .filter((index) => index >= 0);
+}
+
+function lowOrderFaultDiagnostics(suite) {
+  const faults = [
+    ...Array.from({ length: N }, (_, axis) => [axis]),
+    ...combinations(Array.from({ length: N }, (_, axis) => axis), 2),
+  ];
+  const entries = faults.map((support) => ({
+    support,
+    signature: monotoneFaultSignature(suite, support),
+  }));
+  const detected = entries.filter((entry) => entry.signature.length > 0);
+  const singles = entries.filter((entry) => entry.support.length === 1);
+  const pairs = entries.filter((entry) => entry.support.length === 2);
+  const detectedPairs = pairs.filter((entry) => entry.signature.length > 0);
+  const signatureOwners = new Map();
+  for (const entry of detected) {
+    const key = entry.signature.join(',');
+    signatureOwners.set(key, (signatureOwners.get(key) ?? 0) + 1);
+  }
+  return {
+    detected: detected.length,
+    total: entries.length,
+    undetected: entries.filter((entry) => entry.signature.length === 0).map((entry) => entry.support),
+    uniqueDetected: detected.filter((entry) => signatureOwners.get(entry.signature.join(',')) === 1).length,
+    averageSingleFanout: singles.reduce((sum, entry) => sum + entry.signature.length, 0) / singles.length,
+    averageDetectedPairFanout:
+      detectedPairs.reduce((sum, entry) => sum + entry.signature.length, 0) / detectedPairs.length,
+  };
+}
+
+test('H19 trades complete pair detection for sparse diagnostic signatures under a frozen monotone fault model', () => {
+  // Conditional model: a support S fails any test row that activates every axis
+  // in S, regardless of additional active axes. This models a simple monotone
+  // single/pair interaction and is not claimed as a universal bug model.
+  const h19 = lowOrderFaultDiagnostics(H19_SUITE);
+  const greedy = lowOrderFaultDiagnostics(greedyCombinatorialSuite(19));
+
+  assert.deepEqual(h19.undetected, [[0, 3], [1, 4], [2, 5]]);
+  assert.equal(h19.detected, 18);
+  assert.equal(h19.total, 21);
+  assert.equal(h19.uniqueDetected, 18);
+  assert.equal(h19.averageSingleFanout, 5);
+  assert.equal(h19.averageDetectedPairFanout, 1);
+
+  assert.deepEqual(greedy.undetected, []);
+  assert.equal(greedy.detected, 21);
+  assert.equal(greedy.uniqueDetected, 21);
+  assert.equal(greedy.averageSingleFanout, 56 / 6);
+  assert.equal(greedy.averageDetectedPairFanout, 72 / 15);
+});
