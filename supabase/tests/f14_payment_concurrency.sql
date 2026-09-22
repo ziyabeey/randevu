@@ -229,4 +229,6 @@ exception when others then
 end
 $f1403race$;
 
-delete from public.businesses where id='f1710000-0000-4000-8000-000000000001';
+-- The CI database is disposable. Deliberately do not delete the business here:
+-- F14 financial tickets/payment events are retention-protected and business
+-- deletion must not cascade through immutable financial history.
