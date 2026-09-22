@@ -459,18 +459,25 @@ begin
 end
 $f1403staffrevoked$;
 
--- Manager has effective payments_write and may settle using the same authority.
+-- Manager has the existing effective payments_write and can write without a staff grant.
 select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000002',true);
 do $f1403manager$
 declare
   v_result jsonb;
 begin
-  v_result := public.get_ticket_contract(
+  v_result := public.record_ticket_refund_guarded(
     'f1610000-0000-4000-8000-000000000001',
-    current_setting('f1403.staff_ticket')::uuid
+    current_setting('f1403.main_ticket')::uuid,
+    current_setting('f1403.cash_payment')::uuid,
+    1000,
+    'Manager yetki kontrolü',
+    'f1403-manager-refund',
+    repeat('5',64)
   );
-  if (v_result->>'paymentStatus') <> 'paid' then
-    raise exception 'F14-03 manager precondition expected settled ticket';
+  if (v_result->>'paymentStatus') <> 'partial'
+     or (v_result->>'paidMinor')::int <> 59000
+     or (v_result->>'balanceMinor')::int <> 1000 then
+    raise exception 'F14-03 manager effective payments_write failed: %',v_result;
   end if;
 end
 $f1403manager$;
