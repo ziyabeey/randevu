@@ -517,6 +517,45 @@ $$;
 
 reset role;
 
+-- The ticket command ledger is append-only after the one allowed result-finalization update.
+do $f14ledger$
+declare
+  v_update_raised boolean := false;
+  v_delete_raised boolean := false;
+begin
+  begin
+    update public.ticket_commands
+    set result_payload = jsonb_build_object('tampered', true)
+    where business_id='e1410000-0000-4000-8000-000000000001'
+      and command='open_from_booking_group'
+      and idempotency_key='f1402-open-group-0001';
+  exception when others then
+    if position('TICKET_COMMAND_IMMUTABLE' in sqlerrm) > 0 then
+      v_update_raised := true;
+    else
+      raise;
+    end if;
+  end;
+
+  begin
+    delete from public.ticket_commands
+    where business_id='e1410000-0000-4000-8000-000000000001'
+      and command='open_from_booking_group'
+      and idempotency_key='f1402-open-group-0001';
+  exception when others then
+    if position('TICKET_COMMAND_DELETE_FORBIDDEN' in sqlerrm) > 0 then
+      v_delete_raised := true;
+    else
+      raise;
+    end if;
+  end;
+
+  if not v_update_raised or not v_delete_raised then
+    raise exception 'F14 append-only ticket command ledger guard failed';
+  end if;
+end
+$f14ledger$;
+
 do $f14done$
 begin
   raise notice 'F14-02 ticket model, permission, idempotency, pricing and immutability acceptance passed';
