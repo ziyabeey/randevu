@@ -346,8 +346,63 @@ begin
 end
 $$;
 
+-- H19 prospective D0×D1 coverage: tenant-scoped idempotency lookup.
+-- Two tenants may legally reuse the same idempotency key. A retry must resolve
+-- only inside the caller's tenant, never to the other tenant's ledger row.
+do $
+declare
+  v_a uuid;
+  v_b uuid;
+  v_retry uuid;
+  v_is_new boolean;
+begin
+  select appointment_id into v_a
+  from public.booking_commands
+  where business_id='45000000-0000-4000-8000-000000000001'
+    and idempotency_key='phase5-create-0001';
+
+  select appointment_id into v_b
+  from public.booking_commands
+  where business_id='46000000-0000-4000-8000-000000000002'
+    and idempotency_key='phase5-b-create-0001';
+
+  if v_a is null or v_b is null then
+    raise exception 'H19 D0xD1 fixture appointments missing';
+  end if;
+
+  perform set_config('request.jwt.claim.sub','15000000-0000-4000-8000-000000000001',true);
+  select c.is_new, c.appointment_id into v_is_new, v_retry
+  from public.claim_booking_command(
+    '45000000-0000-4000-8000-000000000001',
+    'h19-d0d1-shared-0001','create','h19-d0d1-same-hash',v_a
+  ) c;
+  if not v_is_new or v_retry<>v_a then
+    raise exception 'H19 D0xD1 tenant A claim setup failed';
+  end if;
+
+  perform set_config('request.jwt.claim.sub','25000000-0000-4000-8000-000000000002',true);
+  select c.is_new, c.appointment_id into v_is_new, v_retry
+  from public.claim_booking_command(
+    '46000000-0000-4000-8000-000000000002',
+    'h19-d0d1-shared-0001','create','h19-d0d1-same-hash',v_b
+  ) c;
+  if not v_is_new or v_retry<>v_b then
+    raise exception 'H19 D0xD1 tenant B claim setup failed';
+  end if;
+
+  select c.is_new, c.appointment_id into v_is_new, v_retry
+  from public.claim_booking_command(
+    '46000000-0000-4000-8000-000000000002',
+    'h19-d0d1-shared-0001','create','h19-d0d1-same-hash',v_b
+  ) c;
+  if v_is_new or v_retry<>v_b then
+    raise exception 'H19_D0D1_TENANT_IDEMPOTENCY_LEAK expected %, got %',v_b,v_retry;
+  end if;
+end
+$;
+
 select set_config('request.jwt.claim.sub','15000000-0000-4000-8000-000000000001',true);
-do $$
+do $
 begin
   if exists(select 1 from public.appointments where business_id='46000000-0000-4000-8000-000000000002') then
     raise exception 'tenant A can see tenant B appointments';
