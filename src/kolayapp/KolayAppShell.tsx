@@ -37,7 +37,7 @@ export default function KolayAppShell({
   const businessSummary = (
     <>
       <span className="kolay-business-switch__name">{businessName}</span>
-      <span className="kolay-business-switch__meta">{business?.meta ?? 'İşletme bağlamı dışarıdan sağlanır'}</span>
+      <span className="kolay-business-switch__meta">{business?.meta ?? 'İşletme seçimi hazır değil'}</span>
     </>
   );
 
