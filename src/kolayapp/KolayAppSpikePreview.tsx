@@ -7,7 +7,7 @@ import type { KolayAppTab } from './model';
 const unavailableCopy: Record<Exclude<KolayAppTab, 'appointments'>, { title: string; description: string }> = {
   tickets: {
     title: 'Adisyonlar',
-    description: 'Adisyon ve tahsilat domaini bu spike kapsamında bağlı değil. F14 mali akışı hazır olduğunda bu sekme aynı kabukta gerçek sunucu sonucunu gösterecek.',
+    description: 'Adisyon ve tahsilat bu önizlemeye bağlı değil. Hazır olduğunda bu sekme gerçek sunucu sonucunu gösterecek.',
   },
   new: {
     title: 'Yeni',
@@ -15,7 +15,7 @@ const unavailableCopy: Record<Exclude<KolayAppTab, 'appointments'>, { title: str
   },
   customers: {
     title: 'Müşteriler',
-    description: 'Mevcut müşteri domaini bu izole spike içinde route edilmez. F14-01 sırasında ortak işletme/session bağlamından beslenecek.',
+    description: 'Müşteri kayıtları bu önizlemeye bağlı değil. Production entegrasyonunda ortak işletme bağlamı kullanılacak.',
   },
   more: {
     title: 'Diğer',
