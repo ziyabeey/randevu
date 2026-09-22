@@ -95,10 +95,6 @@
         {
           "database": "yzt_test",
           "file": "supabase/tests/h19_d0_d1_tenant_idempotency.sql"
-        },
-        {
-          "database": "yzt_test",
-          "file": "supabase/tests/h19_d0_d4_tenant_time_boundary.sql"
         }
       ]
     },
@@ -1021,6 +1017,10 @@
         {
           "database": "yzt_test",
           "file": "supabase/migrations/20260917150000_f11_business_hours_final_repair.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/h19_d0_d4_tenant_time_boundary.sql"
         },
         {
           "database": "yzt_test",
