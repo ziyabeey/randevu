@@ -3,7 +3,6 @@ import type { MouseEvent, ReactNode } from 'react';
 import { kolayAppHref, navigateApp } from '../workspace-route';
 import { useWorkspace } from '../workspace-context';
 import KolayAppShell from './KolayAppShell';
-import KolayUnavailablePanel from './KolayUnavailablePanel';
 import type { KolayAppTab } from './model';
 
 const CalendarPage = lazy(() => import('../CalendarPage'));
