@@ -103,17 +103,18 @@ begin
     if v_service.price_type <> 'fixed' then
       raise exception 'SERVICE_PRICE_NOT_FINAL';
     end if;
+    -- EXP-H19 M0 MUTANT: deliberately weaken the legacy fixed-price final
+    -- coherence fence. Submitted legacy price/currency may now survive a
+    -- concurrent catalog reprice, while current policy version is stamped.
     if new.price_minor_snapshot is null
-       or new.price_minor_snapshot <> v_service.price_minor
        or new.currency_snapshot is null
-       or new.currency_snapshot <> v_service.currency
        or v_service.price_min_minor <> v_service.price_minor
        or v_service.price_max_minor <> v_service.price_minor then
       raise exception 'SERVICE_PRICE_SNAPSHOT_MISMATCH';
     end if;
     new.price_type_snapshot := 'fixed';
-    new.price_min_minor_snapshot := v_service.price_min_minor;
-    new.price_max_minor_snapshot := v_service.price_max_minor;
+    new.price_min_minor_snapshot := new.price_minor_snapshot;
+    new.price_max_minor_snapshot := new.price_minor_snapshot;
     new.price_policy_version_snapshot := v_service.price_policy_version;
   else
     if new.price_type_snapshot is null
