@@ -1,0 +1,354 @@
+.mkt-booking-scene {
+  --mkt-booking-progress: 0;
+  position: relative;
+  width: 100%;
+  height: 250svh;
+  min-height: 250svh;
+  margin: 0;
+  padding: 0;
+  display: block;
+  background:
+    radial-gradient(circle at 72% 42%, rgba(198, 232, 0, 0.16), transparent 24%),
+    radial-gradient(circle at 20% 34%, rgba(51, 102, 204, 0.10), transparent 30%),
+    var(--mkt-cream);
+}
+
+.mkt-booking-sticky {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+  overflow: clip;
+  isolation: isolate;
+}
+
+.mkt-booking-scene .mkt-booking-copy,
+.mkt-booking-scene .mkt-booking-proof {
+  animation: none;
+}
+
+.mkt-booking-copy {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  left: 0;
+  width: min(560px, 44%);
+  opacity: clamp(0, calc(1.24 - (var(--mkt-booking-progress) * 1.58)), 1);
+  transform: translate3d(
+    calc(var(--mkt-booking-progress) * -34px),
+    calc(-50% + (var(--mkt-booking-progress) * -12px)),
+    0
+  );
+  transition: none;
+  will-change: transform, opacity;
+}
+
+.mkt-booking-device-stage {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mkt-booking-orbit {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  border: 1px solid rgba(51, 102, 204, 0.13);
+  opacity: clamp(0, calc(0.8 - (var(--mkt-booking-progress) * 0.55)), 0.8);
+  transform: scale(calc(0.78 + (var(--mkt-booking-progress) * 0.42)));
+  will-change: transform, opacity;
+}
+
+.mkt-booking-orbit--one {
+  width: min(56vw, 760px);
+  aspect-ratio: 1;
+  right: -10vw;
+  top: 8%;
+}
+
+.mkt-booking-orbit--two {
+  width: min(34vw, 460px);
+  aspect-ratio: 1;
+  right: 10vw;
+  bottom: -14%;
+  border-color: rgba(198, 232, 0, 0.45);
+}
+
+.mkt-booking-phone-wrap {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.mkt-booking-phone {
+  position: relative;
+  width: min(360px, 31vw);
+  aspect-ratio: 9 / 18.5;
+  padding: 11px;
+  border-radius: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #10213d;
+  box-shadow:
+    0 42px 110px rgba(12, 38, 79, 0.28),
+    0 0 0 1px rgba(9, 27, 54, 0.16);
+  transform:
+    translate3d(calc(26vw - (var(--mkt-booking-progress) * 26vw)), 0, 0)
+    rotate(calc(5deg - (var(--mkt-booking-progress) * 5deg)))
+    scale(calc(0.78 + (var(--mkt-booking-progress) * 0.92)));
+  transform-origin: center center;
+  transition: none;
+  will-change: transform;
+}
+
+.mkt-booking-phone-bar {
+  position: absolute;
+  z-index: 4;
+  top: 17px;
+  left: 50%;
+  width: 34%;
+  height: 22px;
+  padding: 0 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 999px;
+  background: #071327;
+  transform: translateX(-50%);
+}
+
+.mkt-booking-phone-bar span {
+  width: 42%;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.mkt-booking-phone-bar i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(104, 153, 255, 0.6);
+  box-shadow: 0 0 8px rgba(104, 153, 255, 0.5);
+}
+
+.mkt-booking-screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 41px;
+  background:
+    linear-gradient(180deg, rgba(217, 236, 255, 0.74), rgba(255, 255, 255, 0.96) 28%),
+    #fff;
+}
+
+.mkt-booking-scene .mkt-booking-proof {
+  height: 100%;
+  padding: 70px 22px 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.mkt-booking-scene .mkt-proof-header {
+  opacity: clamp(0.45, calc(var(--mkt-booking-progress) * 4), 1);
+}
+
+.mkt-booking-scene .mkt-proof-step {
+  transition: none;
+  will-change: transform, opacity;
+}
+
+.mkt-booking-scene .mkt-proof-step:nth-of-type(2) {
+  opacity: clamp(0.24, calc((var(--mkt-booking-progress) - 0.08) * 6), 1);
+  transform: translate3d(0, calc((1 - clamp(0, calc((var(--mkt-booking-progress) - 0.08) * 6), 1)) * 18px), 0);
+}
+
+.mkt-booking-scene .mkt-proof-step:nth-of-type(3) {
+  opacity: clamp(0.18, calc((var(--mkt-booking-progress) - 0.30) * 6), 1);
+  transform: translate3d(0, calc((1 - clamp(0, calc((var(--mkt-booking-progress) - 0.30) * 6), 1)) * 22px), 0);
+}
+
+.mkt-booking-scene .mkt-proof-step:nth-of-type(4) {
+  opacity: clamp(0.12, calc((var(--mkt-booking-progress) - 0.54) * 7), 1);
+  transform: translate3d(0, calc((1 - clamp(0, calc((var(--mkt-booking-progress) - 0.54) * 7), 1)) * 26px), 0);
+}
+
+.mkt-booking-complete-glow {
+  position: absolute;
+  z-index: 2;
+  inset: auto 8% 4% 8%;
+  height: 26%;
+  border-radius: 50%;
+  background: rgba(198, 232, 0, 0.32);
+  filter: blur(26px);
+  opacity: clamp(0, calc((var(--mkt-booking-progress) - 0.68) * 5), 0.78);
+  transform: scale(calc(0.82 + (var(--mkt-booking-progress) * 0.22)));
+  pointer-events: none;
+}
+
+@media (max-width: 980px) {
+  .mkt-booking-copy {
+    width: min(520px, 48%);
+  }
+
+  .mkt-booking-phone {
+    width: min(340px, 36vw);
+  }
+}
+
+@media (max-width: 680px) {
+  .mkt-booking-scene {
+    height: 230svh;
+    min-height: 230svh;
+  }
+
+  .mkt-booking-sticky {
+    width: calc(100% - 32px);
+  }
+
+  .mkt-booking-copy {
+    top: 94px;
+    right: 0;
+    left: 0;
+    width: auto;
+    transform: translate3d(0, calc(var(--mkt-booking-progress) * -20px), 0);
+    opacity: clamp(0, calc(1.18 - (var(--mkt-booking-progress) * 1.68)), 1);
+  }
+
+  .mkt-booking-copy h2 {
+    font-size: clamp(3rem, 15vw, 5.2rem);
+  }
+
+  .mkt-booking-copy > p:not(.mkt-eyebrow) {
+    margin-top: 18px;
+    font-size: 0.96rem;
+  }
+
+  .mkt-booking-copy .mkt-inline-note {
+    margin-top: 16px;
+  }
+
+  .mkt-booking-orbit--one {
+    width: 110vw;
+    right: -52vw;
+    top: 28%;
+  }
+
+  .mkt-booking-orbit--two {
+    width: 74vw;
+    right: 12vw;
+    bottom: -4%;
+  }
+
+  .mkt-booking-phone {
+    width: min(72vw, 270px);
+    transform:
+      translate3d(0, calc(12vh - (var(--mkt-booking-progress) * 12vh)), 0)
+      rotate(calc(3deg - (var(--mkt-booking-progress) * 3deg)))
+      scale(calc(0.82 + (var(--mkt-booking-progress) * 0.56)));
+  }
+
+  .mkt-booking-scene .mkt-booking-proof {
+    padding: 60px 16px 18px;
+  }
+
+  .mkt-booking-scene .mkt-proof-step {
+    grid-template-columns: 32px 1fr auto;
+    padding-block: 16px;
+  }
+
+  .mkt-booking-scene .mkt-proof-step strong {
+    font-size: 0.94rem;
+  }
+
+  .mkt-booking-scene .mkt-time-pills i {
+    padding: 6px 7px;
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-booking-scene {
+    width: min(1240px, calc(100% - 48px));
+    height: auto;
+    min-height: 0;
+    margin: 0 auto;
+    padding: clamp(96px, 11vw, 150px) 0;
+    background: var(--mkt-cream);
+  }
+
+  .mkt-booking-sticky {
+    position: relative;
+    top: auto;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    display: grid;
+    grid-template-columns: minmax(0, 0.88fr) minmax(360px, 0.82fr);
+    align-items: center;
+    gap: clamp(44px, 8vw, 120px);
+  }
+
+  .mkt-booking-copy,
+  .mkt-booking-phone-wrap {
+    position: relative;
+    inset: auto;
+  }
+
+  .mkt-booking-copy {
+    width: auto;
+  }
+
+  .mkt-booking-phone-wrap {
+    min-height: 680px;
+  }
+
+  .mkt-booking-device-stage {
+    display: none;
+  }
+
+  .mkt-booking-copy,
+  .mkt-booking-phone,
+  .mkt-booking-scene .mkt-proof-header,
+  .mkt-booking-scene .mkt-proof-step,
+  .mkt-booking-complete-glow {
+    opacity: 1;
+    transform: none;
+    will-change: auto;
+  }
+
+  .mkt-booking-phone {
+    width: min(360px, 100%);
+  }
+
+  .mkt-booking-complete-glow {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 680px) {
+  .mkt-booking-scene {
+    width: calc(100% - 32px);
+    padding-block: 82px;
+  }
+
+  .mkt-booking-sticky {
+    grid-template-columns: 1fr;
+  }
+
+  .mkt-booking-phone-wrap {
+    min-height: 590px;
+  }
+
+  .mkt-booking-phone {
+    width: min(78vw, 270px);
+    margin: 0 auto;
+  }
+}

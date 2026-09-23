@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 
 import "./marketing.css";
 import "./marketing-sections.css";
+import "./booking-scroll.css";
 import "./marketing-overrides.css";
 import "./marketing-polish.css";
 import "./mobile-nav.css";

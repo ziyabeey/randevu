@@ -1,54 +1,86 @@
+import { useRef } from "react";
+
 import { MARKETING_RELEASE_GATES } from "./releaseGates";
+import { useScrollScene } from "./useScrollScene";
 
 const bookingTimes = ["11:30", "14:30", "16:00"];
 
 function BookingDemo() {
+  const bookingSectionRef = useRef<HTMLElement>(null);
+  useScrollScene(bookingSectionRef, {
+    cssProperty: "--mkt-booking-progress",
+    datasetKey: "bookingProgress",
+  });
+
   if (!MARKETING_RELEASE_GATES.publicBooking) {
     return null;
   }
 
   return (
-    <section className="mkt-product-story" id="nasil-calisiyor" aria-labelledby="mkt-booking-title">
-      <div className="mkt-section-copy">
-        <p className="mkt-eyebrow">İşin güzellik. Karışıklık değil.</p>
-        <h2 id="mkt-booking-title">Müşteri kendi alsın.</h2>
-        <p>
-          Hizmeti seçsin, uygun saatini görsün, randevusunu tamamlasın. Sen her mesajın peşinden koşma.
-        </p>
-        <div className="mkt-inline-note">Linki paylaş. Gerisini müşteri tamamlasın.</div>
-      </div>
+    <section
+      ref={bookingSectionRef}
+      className="mkt-product-story mkt-booking-scene"
+      id="nasil-calisiyor"
+      aria-labelledby="mkt-booking-title"
+    >
+      <div className="mkt-booking-sticky">
+        <div className="mkt-section-copy mkt-booking-copy">
+          <p className="mkt-eyebrow">İşin güzellik. Karışıklık değil.</p>
+          <h2 id="mkt-booking-title">Müşteri kendi alsın.</h2>
+          <p>
+            Hizmeti seçsin, uygun saatini görsün, randevusunu tamamlasın. Sen her mesajın peşinden koşma.
+          </p>
+          <div className="mkt-inline-note">Linki paylaş. Gerisini müşteri tamamlasın.</div>
+        </div>
 
-      <div className="mkt-booking-proof" aria-label="Online rezervasyon akışı örneği">
-        <div className="mkt-proof-header">
-          <span>Randevu</span>
-          <small>3 adım</small>
+        <div className="mkt-booking-device-stage" aria-hidden="true">
+          <span className="mkt-booking-orbit mkt-booking-orbit--one" />
+          <span className="mkt-booking-orbit mkt-booking-orbit--two" />
         </div>
-        <div className="mkt-proof-step is-done">
-          <span>01</span>
-          <div>
-            <small>Hizmet</small>
-            <strong>Saç kesimi</strong>
-          </div>
-          <b aria-hidden="true">✓</b>
-        </div>
-        <div className="mkt-proof-step">
-          <span>02</span>
-          <div>
-            <small>Uygun saat</small>
-            <div className="mkt-time-pills" aria-hidden="true">
-              {bookingTimes.map((time, index) => (
-                <i className={index === 1 ? "is-picked" : ""} key={time}>{time}</i>
-              ))}
+
+        <div className="mkt-booking-phone-wrap">
+          <div className="mkt-booking-phone">
+            <div className="mkt-booking-phone-bar" aria-hidden="true">
+              <span />
+              <i />
             </div>
+            <div className="mkt-booking-screen">
+              <div className="mkt-booking-proof" aria-label="Online rezervasyon akışı örneği">
+                <div className="mkt-proof-header">
+                  <span>Randevu</span>
+                  <small>3 adım</small>
+                </div>
+                <div className="mkt-proof-step is-done">
+                  <span>01</span>
+                  <div>
+                    <small>Hizmet</small>
+                    <strong>Saç kesimi</strong>
+                  </div>
+                  <b aria-hidden="true">✓</b>
+                </div>
+                <div className="mkt-proof-step">
+                  <span>02</span>
+                  <div>
+                    <small>Uygun saat</small>
+                    <div className="mkt-time-pills" aria-hidden="true">
+                      {bookingTimes.map((time, index) => (
+                        <i className={index === 1 ? "is-picked" : ""} key={time}>{time}</i>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="mkt-proof-step is-final">
+                  <span>03</span>
+                  <div>
+                    <small>Sonuç</small>
+                    <strong>Randevu tamam.</strong>
+                  </div>
+                  <b aria-hidden="true">✦</b>
+                </div>
+              </div>
+            </div>
+            <div className="mkt-booking-complete-glow" aria-hidden="true" />
           </div>
-        </div>
-        <div className="mkt-proof-step is-final">
-          <span>03</span>
-          <div>
-            <small>Sonuç</small>
-            <strong>Randevu tamam.</strong>
-          </div>
-          <b aria-hidden="true">✦</b>
         </div>
       </div>
     </section>
