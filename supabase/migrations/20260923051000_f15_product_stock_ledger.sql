@@ -769,10 +769,6 @@ declare
   v_result jsonb;
 begin
   v_actor := public.f15_inventory_actor(p_business_id);
-  v_replay := public.f15_claim_product_command(
-    p_business_id, v_actor.id, 'record_stock', p_idempotency_key, p_request_hash
-  );
-  if v_replay is not null then return v_replay; end if;
 
   if p_kind not in ('receipt'::public.stock_movement_kind, 'adjustment'::public.stock_movement_kind) then
     raise exception 'INVALID_STOCK_KIND';
@@ -795,6 +791,13 @@ begin
   if v_product.id is null then raise exception 'PRODUCT_NOT_FOUND'; end if;
   if not v_product.active then raise exception 'PRODUCT_ARCHIVED'; end if;
   if p_expected_version is null or v_product.version <> p_expected_version then raise exception 'STALE_WRITE'; end if;
+
+  -- EXP-H19 blind D1xD5 variation: classify product version before consulting
+  -- the existing command identity. This is intentionally experimental only.
+  v_replay := public.f15_claim_product_command(
+    p_business_id, v_actor.id, 'record_stock', p_idempotency_key, p_request_hash
+  );
+  if v_replay is not null then return v_replay; end if;
 
   v_new_balance := v_product.stock_on_hand + p_quantity_delta;
   if v_new_balance < 0 then raise exception 'NEGATIVE_STOCK'; end if;
