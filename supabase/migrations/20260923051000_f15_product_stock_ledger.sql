@@ -151,6 +151,12 @@ create table public.product_commands (
     )
 );
 
+-- H19 experimental D0 x D1 variant only.
+-- Deliberately over-scope product-command idempotency to the tenant+command+key,
+-- collapsing the accepted actor_membership_id identity dimension.
+create unique index product_commands_h19_tenant_command_key
+  on public.product_commands(business_id, command, idempotency_key);
+
 create or replace function public.f15_guard_product_command_update()
 returns trigger
 language plpgsql
