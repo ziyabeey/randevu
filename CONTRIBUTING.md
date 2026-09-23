@@ -75,7 +75,7 @@ Bağımlılık hücreleri yalnız `TEMEL`, `Sxx`, `Fxx-yy`, `GS` ve `Gxx` kullan
 
 ## Oturum sonu devri
 
-PR açıklamasını ve TASKS'taki kendi satırını güncelle. PR yoksa ve çalışma sonraki oturuma bırakılacaksa `docs/handoffs/<görev>.md` içinde aynı kayıt tutulur. Devri yalnız sohbette bırakma.
+PR açıklamasını ve TASKS'taki kendi satırını güncelle. PR yoksa ve çalışma sonraki oturuma bırakılacaksa `docs/handoffs/<görev>.md` içinde aynı kayıt tutulur. Devri yalnız sohbette bırakma. Görev main'de kabul edilip TASKS'ta kapandıktan sonra yalnız bu kapanışı handoff/README'ye tekrar yazmak için ikinci bir docs PR açma; tarihsel handoff değişmeden kalabilir. Gerçek bir dokümantasyon düzeltmesi gerekiyorsa aktif görev PR'ına katılır veya koordinatörün açıkça TASKS'a bağladığı tek bir bakım PR'ı kullanılır.
 
 ```text
 Görev / sorumlu / UTC tarih:

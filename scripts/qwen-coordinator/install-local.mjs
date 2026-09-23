@@ -83,7 +83,16 @@ function main() {
     mkdirSync(path.join(coordinatorHome, directory), { recursive: true });
   }
 
-  for (const file of ['policy.mjs', 'depot.mjs', 'lease.mjs', 'janitor.mjs', 'run-once.mjs', 'depot-full-ci.yml']) {
+  for (const file of [
+    'policy.mjs',
+    'depot.mjs',
+    'lease.mjs',
+    'janitor.mjs',
+    'run-once.mjs',
+    'build-ci-image.mjs',
+    'depot-full-ci.yml',
+    'depot-build-ci-image.yml',
+  ]) {
     copyFileSync(path.join(sourceRoot, file), path.join(coordinatorHome, file));
   }
 
@@ -102,6 +111,7 @@ function main() {
     generated.depotBinary = depotBinary;
     generated.depotOrgId = depotOrgId;
     generated.depotWorkflowFile = path.join(coordinatorHome, 'depot-full-ci.yml');
+    generated.depotBuildImageWorkflowFile = path.join(coordinatorHome, 'depot-build-ci-image.yml');
     const source = `${JSON.stringify(generated, null, 2)}\n`;
     atomicWrite(configFile, source);
   }
@@ -112,6 +122,7 @@ function main() {
     'qwen-coordinator-now': commandScript(`export QWEN_COORDINATOR_HOME=${shellQuote(coordinatorHome)}\nexec ${shellQuote(nodeBinary)} ${shellQuote(path.join(coordinatorHome, 'run-once.mjs'))}`),
     'qwen-coordinator-status': commandScript(`[ -f ${shellQuote(reportFile)} ] || { echo "Henüz koordinatör raporu yok."; exit 1; }\nexec /bin/cat ${shellQuote(reportFile)}`),
     'qwen-coordinator-actions': commandScript(`[ -f ${shellQuote(queueFile)} ] || { echo "Henüz aksiyon kuyruğu yok."; exit 1; }\nexec /bin/cat ${shellQuote(queueFile)}`),
+    'qwen-coordinator-build-ci-image': commandScript(`export QWEN_COORDINATOR_HOME=${shellQuote(coordinatorHome)}\nexec ${shellQuote(nodeBinary)} ${shellQuote(path.join(coordinatorHome, 'build-ci-image.mjs'))} --enable`),
   };
   for (const [name, source] of Object.entries(wrappers)) {
     const target = path.join(binRoot, name);

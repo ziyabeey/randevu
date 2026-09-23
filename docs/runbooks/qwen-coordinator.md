@@ -78,6 +78,43 @@ launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/ai.yzt.qwen-coord
 launchctl print "gui/$(id -u)/ai.yzt.qwen-coordinator"
 ```
 
+## CI ortamını prewarm etme
+
+GitHub'ın zorunlu `CI gate` işi temiz hosted runner üzerinde kalır. Bu yüzden
+güvenlik/izolasyon korunurken tekrar eden hazırlık maliyeti iki yerde azaltılır:
+
+1. GitHub CI, Ubuntu 24.04 runner'da zaten bulunan `psql` istemcisini kullanır;
+   yalnız gerçekten yoksa apt fallback çalışır. `npm ci` ile `postgres:17`
+   container launch aynı step içinde paralel yürür, ardından server major sürümü
+   17 olarak fail-closed doğrulanır.
+2. Depot shadow CI için opsiyonel custom image Node 24 toolcache'i,
+   `postgresql-client` ve önceden çekilmiş `postgres:17` katmanlarını snapshot
+   olarak taşır. `npm ci` ve disposable veritabanı her koşumda yine temiz çalışır.
+
+İlk veya image yenileme koşumu:
+
+```bash
+qwen-coordinator-build-ci-image
+```
+
+Komut önce `depot ci migrate preflight` ile mevcut `ziyabeey/randevu` Code
+Access yetkisini doğrular. Repo transferi sonrası Depot GitHub App erişimi eksikse
+Depot'un bastığı yetkilendirme bağlantısı tamamlanmadan image build veya shadow CI
+başlatılmaz. Preflight geçerse `depot-build-ci-image.yml` Depot üzerinde çalışır,
+snapshot tamamlandıktan sonra local config'te `depotCustomImageEnabled=true`
+atomik olarak açılır.
+
+Custom image adı local `depotOrgId` üzerinden deterministik üretilir:
+`<org>.registry.depot.dev/randevu-ci:node24-pg17-v1`. Org kimliği güvenli biçim
+kontrolünden geçmezse workflow üretilmez. Image hazır değilse
+`depotCustomImageEnabled=false` bırakılarak standart
+`depot-ubuntu-24.04-16` fallback'i kullanılır.
+
+Image'ın yeniden üretilmesi gereken durumlar: Node major/toolchain değişikliği,
+PostgreSQL client ihtiyacının değişmesi veya `postgres:17` tabanının bilinçli
+yenilenmesi. Uygulama bağımlılıkları image'a gömülmez; `npm ci` lockfile
+doğrulaması her candidate'da korunur.
+
 ## Yapılandırma ve opt-in sırası
 
 | Kontrol | Güvenli başlangıç | Açılma koşulu |

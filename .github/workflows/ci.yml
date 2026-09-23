@@ -132,27 +132,55 @@ jobs:
       - name: Check documentation and task graph
         id: docs
         run: node scripts/ci-docs.mjs
-      - name: Install dependencies once
+      - name: Install dependencies while launching PostgreSQL 17
         if: ${{ steps.scope.outputs.mode == 'code' }}
-        run: npm ci
-      - name: Install PostgreSQL client
-        if: ${{ steps.scope.outputs.mode == 'code' }}
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Start disposable PostgreSQL 17
-        if: ${{ steps.scope.outputs.mode == 'code' }}
-        timeout-minutes: 2
+        timeout-minutes: 3
         run: |
+          set -euo pipefail
+          pg_launch_log="${RUNNER_TEMP}/postgres-launch.log"
           docker run --detach --name randevu-ci-postgres \
             --env POSTGRES_PASSWORD=postgres --env POSTGRES_DB=yzt_test \
             --publish 127.0.0.1:5432:5432 \
             --health-cmd='pg_isready -U postgres -d yzt_test' \
-            --health-interval=1s --health-timeout=3s --health-retries=30 postgres:17
+            --health-interval=1s --health-timeout=3s --health-retries=30 postgres:17 \
+            >"${RUNNER_TEMP}/postgres-container-id" 2>"${pg_launch_log}" &
+          pg_launch_pid=$!
+
+          npm ci
+
+          if ! wait "${pg_launch_pid}"; then
+            cat "${pg_launch_log}" >&2 || true
+            echo 'PostgreSQL 17 container launch failed.' >&2
+            exit 1
+          fi
+
+          # ubuntu-24.04 hosted runners currently ship psql already. Keep a
+          # fail-safe fallback for future runner-image drift instead of paying
+          # apt update/install on every green run.
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+
+      - name: Verify disposable PostgreSQL 17 readiness
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        timeout-minutes: 1
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
           for attempt in {1..30}; do
             if [ "$(docker inspect --format '{{.State.Health.Status}}' randevu-ci-postgres)" = healthy ]; then
-              exit 0
+              server_version_num="$(psql -h 127.0.0.1 -U postgres -d yzt_test -Atqc 'show server_version_num')"
+              case "${server_version_num}" in
+                17*) exit 0 ;;
+                *) echo "Expected PostgreSQL 17, got server_version_num=${server_version_num}" >&2; exit 1 ;;
+              esac
             fi
             sleep 1
           done
+          cat "${RUNNER_TEMP}/postgres-launch.log" >&2 || true
           echo 'Test PostgreSQL did not become healthy.'
           exit 1
       - name: Run all required code checks

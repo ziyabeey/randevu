@@ -2,6 +2,9 @@ import { createHash, randomUUID } from 'node:crypto';
 
 const SHA = /^[a-f0-9]{40}$/;
 const SAFE_REF = /^[A-Za-z0-9._/-]+$/;
+const SAFE_DEPOT_ORG = /^[A-Za-z0-9-]+$/;
+const DEPOT_CI_IMAGE_REPOSITORY = 'randevu-ci';
+const DEPOT_CI_IMAGE_TAG = 'node24-pg17-v1';
 
 function text(value) {
   return String(value ?? '');
@@ -13,6 +16,20 @@ function unique(values) {
 
 export function workflowHash(source) {
   return createHash('sha256').update(source).digest('hex');
+}
+
+export function depotCustomImageRef(config = {}) {
+  const org = text(config.depotOrgId).trim();
+  if (!SAFE_DEPOT_ORG.test(org)) {
+    throw new Error('Depot custom image requires a safe non-empty depotOrgId');
+  }
+  return `${org}.registry.depot.dev/${DEPOT_CI_IMAGE_REPOSITORY}:${DEPOT_CI_IMAGE_TAG}`;
+}
+
+export function depotRunnerSpec(config = {}) {
+  if (config.depotCustomImageEnabled !== true) return 'depot-ubuntu-24.04-16';
+  const image = depotCustomImageRef(config);
+  return `{ size: 16x64, image: "${image}" }`;
 }
 
 export function parseDepotRunId(output) {
