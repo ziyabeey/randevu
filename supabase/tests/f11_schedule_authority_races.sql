@@ -502,7 +502,7 @@ set role authenticated;
 select set_config('request.jwt.claim.sub','d1900000-0000-4000-8000-000000000001',false);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false);
 
-do $
+do $h19setup$
 declare
   v_b uuid:='d1910000-0000-4000-8000-000000000001';
   v_g uuid:=current_setting('f1104.gb')::uuid;
@@ -536,10 +536,10 @@ begin
     raise exception 'H19 D4xD5 fixture did not place the sibling line on day 2';
   end if;
 end
-$;
+$h19setup$;
 reset role;
 
-do $
+do $h19probe$
 declare
   v_b uuid:='d1910000-0000-4000-8000-000000000001';
   v_u uuid:='d1900000-0000-4000-8000-000000000001';
@@ -718,7 +718,7 @@ exception when others then
   begin perform dblink_disconnect('h19_d4d5_line'); exception when others then null; end;
   raise;
 end
-$;
+$h19probe$;
 
-do $ begin raise notice 'F11-04 schedule authority races accepted: create/group/line vs hours, blocks, assignment, service/staff mutations plus shared-parent booking writers'; end $;
+do $f1104done$ begin raise notice 'F11-04 schedule authority races accepted: create/group/line vs hours, blocks, assignment, service/staff mutations plus shared-parent booking writers'; end $f1104done$;
 delete from public.businesses where id='d1910000-0000-4000-8000-000000000001';
