@@ -421,12 +421,10 @@ insert into public.appointments(
 set local role authenticated;
 select set_config('request.jwt.claim.sub','b8000000-0000-4000-8000-000000000004',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
-do $h19d2d4$
+do $h19d2d4write$
 declare
   v_old timestamptz;
   v_service public.services;
-  v_start timestamptz;
-  v_end timestamptz;
 begin
   select updated_at into v_old
   from public.services
@@ -443,7 +441,15 @@ begin
   if v_service.duration_minutes <> 90 then
     raise exception 'H19 D2xD4 probe setup failed: service duration did not update';
   end if;
+end
+$h19d2d4write$;
+reset role;
 
+do $h19d2d4read$
+declare
+  v_start timestamptz;
+  v_end timestamptz;
+begin
   select starts_at,ends_at into v_start,v_end
   from public.appointments
   where id='b8810000-0000-4000-8000-000000000001';
@@ -453,7 +459,6 @@ begin
     raise exception 'H19 D2xD4 appointment timing snapshot changed: start %, end %',v_start,v_end;
   end if;
 end
-$h19d2d4$;
-reset role;
+$h19d2d4read$;
 
 rollback;
