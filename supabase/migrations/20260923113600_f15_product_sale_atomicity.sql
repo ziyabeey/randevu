@@ -119,6 +119,99 @@ create index if not exists product_stock_return_source_idx
   on public.product_stock_movements(business_id, product_id, source_sale_movement_id)
   where kind = 'return';
 
+-- F15-02 owns ticket-coupled sale/return stock effects. Generic stock
+-- reversal must never detach those effects from their ticket/refund lineage.
+create or replace function public.reverse_product_stock_movement_guarded(
+  p_business_id uuid,
+  p_product_id uuid,
+  p_movement_id uuid,
+  p_reason text,
+  p_expected_version integer,
+  p_idempotency_key text,
+  p_request_hash text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $f1502stockreverse$
+declare
+  v_actor public.memberships;
+  v_product public.products;
+  v_source public.product_stock_movements;
+  v_reason text := btrim(coalesce(p_reason, ''));
+  v_new_balance bigint;
+  v_replay jsonb;
+  v_result jsonb;
+begin
+  v_actor := public.f15_inventory_actor(p_business_id);
+  v_replay := public.f15_claim_product_command(
+    p_business_id, v_actor.id, 'reverse_stock', p_idempotency_key, p_request_hash
+  );
+  if v_replay is not null then return v_replay; end if;
+
+  if char_length(v_reason) not between 2 and 240 then raise exception 'STOCK_REASON_REQUIRED'; end if;
+
+  select * into v_product
+  from public.products p
+  where p.business_id = p_business_id and p.id = p_product_id
+  for update;
+
+  if v_product.id is null then raise exception 'PRODUCT_NOT_FOUND'; end if;
+  if not v_product.active then raise exception 'PRODUCT_ARCHIVED'; end if;
+  if p_expected_version is null or v_product.version <> p_expected_version then raise exception 'STALE_WRITE'; end if;
+
+  select * into v_source
+  from public.product_stock_movements m
+  where m.business_id = p_business_id
+    and m.product_id = p_product_id
+    and m.id = p_movement_id
+  for share;
+
+  if v_source.id is null then raise exception 'STOCK_MOVEMENT_NOT_FOUND'; end if;
+  if v_source.kind in (
+       'reversal'::public.stock_movement_kind,
+       'sale'::public.stock_movement_kind,
+       'return'::public.stock_movement_kind
+     )
+     or v_source.ticket_line_id is not null
+     or v_source.source_sale_movement_id is not null then
+    raise exception 'STOCK_REVERSAL_SOURCE_INVALID';
+  end if;
+  if exists (
+    select 1 from public.product_stock_movements r
+    where r.business_id = p_business_id
+      and r.product_id = p_product_id
+      and r.reverses_movement_id = p_movement_id
+  ) then
+    raise exception 'STOCK_MOVEMENT_ALREADY_REVERSED';
+  end if;
+
+  v_new_balance := v_product.stock_on_hand - v_source.quantity_delta;
+  if v_new_balance < 0 then raise exception 'NEGATIVE_STOCK'; end if;
+
+  update public.products
+  set stock_on_hand = v_new_balance,
+      version = version + 1
+  where business_id = p_business_id and id = p_product_id
+  returning * into v_product;
+
+  insert into public.product_stock_movements(
+    business_id, product_id, kind, quantity_delta, balance_after,
+    reason, reverses_movement_id, created_by_membership_id
+  ) values (
+    p_business_id, p_product_id, 'reversal', -v_source.quantity_delta, v_new_balance,
+    v_reason, p_movement_id, v_actor.id
+  );
+
+  v_result := public.f15_product_projection(p_business_id, p_product_id);
+  perform public.f15_finish_product_command(
+    p_business_id, v_actor.id, 'reverse_stock', p_idempotency_key, p_product_id, v_result
+  );
+  return v_result;
+end
+$f1502stockreverse$;
+
 create table public.ticket_product_returns (
   id uuid primary key default gen_random_uuid(),
   business_id uuid not null references public.businesses(id),
