@@ -445,8 +445,7 @@ begin
      and (not p_active or p_role <> 'owner') then
     select count(*) into v_other_owner_count
     from public.memberships m
-    where m.business_id = p_business_id
-      and m.active
+    where m.active
       and m.role = 'owner'
       and m.id <> v_target.id;
     if v_other_owner_count = 0 then
