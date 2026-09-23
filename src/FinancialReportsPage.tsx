@@ -25,6 +25,8 @@ type FinancialReport = {
   netMovementMinor: number;
   cashNetMovementMinor: number;
   cardNetMovementMinor: number;
+  expectedMinMinor: number;
+  expectedMaxMinor: number;
   serviceSaleMinor: number;
   productSaleMinor: number;
   saleValueMinor: number;
@@ -51,6 +53,11 @@ function money(minor: number, currency: string | null) {
   } catch {
     return `${new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(minor / 100)} ${currency}`;
   }
+}
+
+function moneyRange(minorMin: number, minorMax: number, currency: string | null) {
+  if (minorMin === minorMax) return money(minorMin, currency);
+  return `${money(minorMin, currency)} – ${money(minorMax, currency)}`;
 }
 
 function timeLabel(instant: string, timeZone: string) {
@@ -162,6 +169,11 @@ export default function FinancialReportsPage() {
               <span>Masraf</span>
               <strong>{money(report.expenseMinor, currency)}</strong>
               <small>Nakit {money(report.cashExpenseMinor, currency)} · Kart {money(report.cardExpenseMinor, currency)}</small>
+            </article>
+            <article className="financial-report-card">
+              <span>Beklenen tutar</span>
+              <strong>{moneyRange(report.expectedMinMinor, report.expectedMaxMinor, currency)}</strong>
+              <small>Kesinleşmemiş adisyonlar dahil snapshot aralığı</small>
             </article>
             <article className="financial-report-card">
               <span>Satış değeri</span>
