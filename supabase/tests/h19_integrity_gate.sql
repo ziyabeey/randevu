@@ -20,15 +20,17 @@
 
 -- Canonical scenario manifest. Axis pairs may repeat across domains when the
 -- same interaction geometry protects a distinct authority model.
-select pg_temp.h19_expect('booking.d0d1.tenant_idempotency','booking','D0','D1');
-select pg_temp.h19_expect('booking.d1d5.idempotency_concurrency','booking','D1','D5');
-select pg_temp.h19_expect('booking.d0d4.tenant_time_boundary','booking','D0','D4');
-select pg_temp.h19_expect('booking.d0d5.tenant_lock_isolation','booking','D0','D5');
-select pg_temp.h19_expect('booking.d4d5.cross_day_authority','booking','D4','D5');
-select pg_temp.h19_expect('booking.d0d3.tenant_capacity','booking','D0','D3');
-select pg_temp.h19_expect('booking.d3d4.staff_hours_fallback','booking','D3','D4');
-select pg_temp.h19_expect('inventory.d0d1.actor_idempotency','inventory','D0','D1');
-select pg_temp.h19_expect('booking.d2d3.snapshot_staff_coherence','booking','D2','D3');
+-- Each permanent scenario also carries its frozen three-arm evidence:
+-- baseline/current-suite PASS, prospective-probe FAIL, clean-control PASS.
+select pg_temp.h19_expect('booking.d0d1.tenant_idempotency','booking','D0','D1',2131,2135,2136);
+select pg_temp.h19_expect('booking.d1d5.idempotency_concurrency','booking','D1','D5',2197,2200,2202);
+select pg_temp.h19_expect('booking.d0d4.tenant_time_boundary','booking','D0','D4',2152,2174,2175);
+select pg_temp.h19_expect('booking.d0d5.tenant_lock_isolation','booking','D0','D5',2177,2181,2249);
+select pg_temp.h19_expect('booking.d4d5.cross_day_authority','booking','D4','D5',2216,2232,2233);
+select pg_temp.h19_expect('booking.d0d3.tenant_capacity','booking','D0','D3',2207,2212,2213);
+select pg_temp.h19_expect('booking.d3d4.staff_hours_fallback','booking','D3','D4',2162,2164,2285);
+select pg_temp.h19_expect('inventory.d0d1.actor_idempotency','inventory','D0','D1',2283,2287,2288);
+select pg_temp.h19_expect('booking.d2d3.snapshot_staff_coherence','booking','D2','D3',2106,2107,2098);
 
 \echo 'H19 Integrity Gate: D0xD1 tenant/idempotency'
 \ir h19_d0_d1_tenant_idempotency.sql
