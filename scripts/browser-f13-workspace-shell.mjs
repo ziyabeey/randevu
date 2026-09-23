@@ -37,6 +37,8 @@ const CSRF = 'C'.repeat(43);
 let activeBusinessId = BUSINESS_A;
 let appointmentStatus = 'scheduled';
 let ticketPaidMinor = 0;
+let ticketVersion = 1;
+let ticketServiceLineWrites = 0;
 let ticketPaymentEvents = [];
 let ambiguousCashCommitted = false;
 const ticketPaymentReplays = new Map();
@@ -258,7 +260,7 @@ function ticketProjection() {
     customerId: CUSTOMER,
     source: 'booking_group',
     status: 'open',
-    version: 1,
+    version: ticketVersion,
     currency: 'TRY',
     customerName: 'Ada Public',
     customerPhone: '+905550001122',
@@ -614,6 +616,17 @@ try {
     if (request.method === 'GET' && url.pathname === `/api/tickets/${TICKET}`) {
       if (activeBusinessId !== BUSINESS_A) return sendJson(response, 404, { error: { code: 'TICKET_NOT_FOUND', message: 'Adisyon bulunamadı.' } });
       return sendJson(response, 200, { ticket: ticketProjection() });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/tickets/${TICKET}/service-lines`) {
+      assert.equal(activeBusinessId, BUSINESS_A, 'service-line mutation escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'service-line mutation omitted Idempotency-Key');
+      assert.equal(body.serviceId, SERVICE, 'service-line mutation changed the service identity');
+      if (Number(body.expectedVersion) !== ticketVersion) {
+        return sendJson(response, 409, { error: { code: 'VERSION_CONFLICT', message: 'Adisyon başka bir cihazda güncellendi. Güncel hali yeniden yüklendi.' } });
+      }
+      ticketVersion += 1;
+      ticketServiceLineWrites += 1;
+      return sendJson(response, 201, { ticket: ticketProjection() });
     }
     if (request.method === 'POST' && url.pathname === `/api/tickets/${TICKET}/payments`) {
       assert.equal(activeBusinessId, BUSINESS_A, 'payment escaped active business A');
@@ -1006,8 +1019,34 @@ try {
   }))()`);
   assert.match(secondClientState.text, /600/);
   assert.match(secondClientState.text, /0/);
+
+  const secondDeviceWrite = await secondClient.evaluate(`fetch('/api/tickets/${TICKET}/service-lines', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'f14-05-second-device-service-line' },
+    body: JSON.stringify({ serviceId: '${SERVICE}', staffId: null, expectedVersion: 1 }),
+  }).then(async (response) => ({ status: response.status, body: await response.json() }))`);
+  assert.equal(secondDeviceWrite.status, 201, 'F14-05 second device did not advance the ticket version');
+  assert.equal(ticketVersion, 2, 'F14-05 second device did not create a newer server ticket version');
+  assert.equal(ticketServiceLineWrites, 1, 'F14-05 second device did not produce exactly one accepted versioned write');
+
+  await page.evaluate(`(() => {
+    const form = document.querySelector('.ticket-add-line');
+    const service = form.querySelector('select[name="serviceId"]');
+    service.value = '${SERVICE}';
+    service.dispatchEvent(new Event('change', { bubbles: true }));
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Adisyon başka bir cihazda güncellendi')`),
+    'F14-05 stale first-device write did not surface the version conflict',
+  );
+  assert.equal(ticketServiceLineWrites, 1, 'F14-05 stale first-device write mutated the ticket despite version conflict');
+  await waitFor(
+    () => page.evaluate(`document.querySelector('.ticket-detail')?.innerText.includes('Ada Public')`),
+    'F14-05 stale-version recovery did not re-read the authoritative ticket',
+  );
   secondClient.close();
-  console.log('F14-05 permission revoke, reload ambiguity, double-submit and second-client acceptance passed.');
+  console.log('F14-05 permission revoke, reload ambiguity, double-submit, second-device and stale-version acceptance passed.');
 
   await page.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 1, mobile: true });
   await sleep(100);
