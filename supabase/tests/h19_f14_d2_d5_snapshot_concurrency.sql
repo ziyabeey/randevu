@@ -1,4 +1,6 @@
--- Permanent H19 F14 D2 x D5 regression. Evidence: 2436 / 2441 / 2444.\n\n\ir h19_test_support.sql
+-- Permanent H19 F14 D2 x D5 regression. Evidence: 2436 / 2441 / 2444.
+
+\ir h19_test_support.sql
 
 insert into auth.users(id,email,raw_user_meta_data)
 values ('f19c0000-0000-4000-8000-000000000001','h19-pay-d2d5@example.invalid','{}'::jsonb)
