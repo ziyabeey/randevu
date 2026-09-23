@@ -596,6 +596,25 @@ try {
     'KolayApp appointments route did not reuse the canonical calendar data',
   );
 
+  const appManifest = await page.send('Page.getAppManifest');
+  assert.match(appManifest.url ?? '', /\/manifest\.webmanifest$/, 'F14-05 browser did not discover the KolayApp manifest');
+  assert.equal(appManifest.errors?.length ?? 0, 0, `F14-05 manifest parse errors: ${JSON.stringify(appManifest.errors ?? [])}`);
+  const parsedManifest = JSON.parse(appManifest.data);
+  assert.equal(parsedManifest.start_url, '/app/mobile');
+  assert.equal(parsedManifest.scope, '/app/');
+  assert.equal(parsedManifest.display, 'standalone');
+  assert.ok(parsedManifest.icons.some((icon) => icon.sizes === '192x192'));
+  assert.ok(parsedManifest.icons.some((icon) => icon.sizes === '512x512'));
+
+  const pwaRuntime = await page.evaluate(`(async () => ({
+    secure: window.isSecureContext,
+    serviceWorkers: 'serviceWorker' in navigator ? (await navigator.serviceWorker.getRegistrations()).length : 0,
+    cacheKeys: 'caches' in window ? await caches.keys() : [],
+  }))()`);
+  assert.equal(pwaRuntime.secure, true, 'F14-05 browser fixture is not a secure localhost context');
+  assert.equal(pwaRuntime.serviceWorkers, 0, 'F14-05 unexpectedly registered a service worker');
+  assert.deepEqual(pwaRuntime.cacheKeys, [], 'F14-05 unexpectedly persisted application responses in Cache Storage');
+
   const kolay390 = await page.evaluate(`(() => {
     const labels=[...document.querySelectorAll('.kolay-bottom-nav__label')].map((node)=>node.textContent.trim());
     const items=[...document.querySelectorAll('.kolay-bottom-nav__item')];
@@ -840,6 +859,38 @@ try {
     'KolayApp business switch did not restore the verified A context',
   );
   console.log('F14-01 KolayApp mobile route/back-forward/business-switch acceptance passed.');
+
+  await page.send('Network.enable');
+  await page.send('Network.emulateNetworkConditions', {
+    offline: true,
+    latency: 0,
+    downloadThroughput: 0,
+    uploadThroughput: 0,
+  });
+  const offlineNavigation = await page.send('Page.navigate', { url: `${origin}/app/mobile` });
+  assert.match(
+    String(offlineNavigation.errorText ?? ''),
+    /ERR_INTERNET_DISCONNECTED|ERR_FAILED/,
+    `F14-05 private app unexpectedly navigated from an offline persistent shell: ${JSON.stringify(offlineNavigation)}`,
+  );
+  await page.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: 0,
+    downloadThroughput: -1,
+    uploadThroughput: -1,
+  });
+  await page.send('Page.navigate', { url: `${origin}/app/mobile` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile' && document.body.innerText.includes('Ada Public')`),
+    'F14-05 KolayApp did not recover from an offline navigation with the current network version',
+  );
+  const pwaRuntimeAfterReconnect = await page.evaluate(`(async () => ({
+    serviceWorkers: 'serviceWorker' in navigator ? (await navigator.serviceWorker.getRegistrations()).length : 0,
+    cacheKeys: 'caches' in window ? await caches.keys() : [],
+  }))()`);
+  assert.equal(pwaRuntimeAfterReconnect.serviceWorkers, 0, 'F14-05 reconnect unexpectedly registered a service worker');
+  assert.deepEqual(pwaRuntimeAfterReconnect.cacheKeys, [], 'F14-05 reconnect populated persistent Cache Storage');
+  console.log('F14-05 manifest/installability and no-offline-private-cache acceptance passed.');
 
   // Return the shared F13 harness to its canonical workspace before continuing
   // the pre-existing desktop/legacy-route acceptance below.
