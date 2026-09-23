@@ -81,6 +81,7 @@ function rpcMessage(data: unknown) {
 
 function expenseError(message: string) {
   if (message.includes('PASSWORD_UPDATE_REQUIRED')) return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
+  if (message.includes('FINANCIAL_REPORTS_PERMISSION_REQUIRED')) return { code: 'FINANCIAL_REPORTS_PERMISSION_REQUIRED', message: 'Masraf kayıtlarını görüntülemek için mali rapor yetkiniz yok.', status: 403 as const };
   if (message.includes('EXPENSES_PERMISSION_REQUIRED') || message.includes('NOT_ALLOWED')) return { code: 'EXPENSES_PERMISSION_REQUIRED', message: 'Masraf kaydı için yetkiniz yok.', status: 403 as const };
   if (message.includes('EXPENSE_NOT_FOUND')) return { code: 'EXPENSE_NOT_FOUND', message: 'Masraf kaydı bulunamadı veya bu işletmeye ait değil.', status: 404 as const };
   if (message.includes('EXPENSE_ALREADY_REVERSED')) return { code: 'EXPENSE_ALREADY_REVERSED', message: 'Bu masraf daha önce tersine çevrilmiş.', status: 409 as const };
@@ -99,6 +100,30 @@ async function requireStandardMember(context: ExpenseContext) {
         error: { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.' },
       }, 403),
     } as const;
+  }
+  return access;
+}
+
+async function requireExpenseRead(context: ExpenseContext) {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access;
+  const result = await supabaseRequest<boolean>(
+    context.env,
+    'rest/v1/rpc/has_financial_permission',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_business_id: access.membership.business_id,
+        p_permission: 'financial_reports_read',
+      }),
+    },
+    access.auth.accessToken,
+  );
+  if (upstreamUnavailable(result.status)) {
+    return { error: context.json({ error: { code: 'FINANCIAL_REPORTS_PERMISSION_UNAVAILABLE', message: 'Mali rapor yetkisi şu anda doğrulanamıyor.' } }, 503) } as const;
+  }
+  if (!result.ok || result.data !== true) {
+    return { error: context.json({ error: { code: 'FINANCIAL_REPORTS_PERMISSION_REQUIRED', message: 'Masraf kayıtlarını görüntülemek için mali rapor yetkiniz yok.' } }, 403) } as const;
   }
   return access;
 }
@@ -151,7 +176,7 @@ async function rpcWrite(
 }
 
 expenses.get('/expenses', async (context) => {
-  const access = await requireStandardMember(context);
+  const access = await requireExpenseRead(context);
   if ('error' in access) return access.error;
 
   const limit = parsePageLimit(context.req.query('limit'));
