@@ -474,5 +474,251 @@ begin
   end if;
 end $$;
 
-do $$ begin raise notice 'F11-04 schedule authority races accepted: create/group/line vs hours, blocks, assignment, service/staff mutations plus shared-parent booking writers'; end $$;
+-- H19 D4 x D5 prospective probe: cross-day time authority x group version.
+-- This block is identical in the experimental variant and clean-control arms.
+-- It reuses group B, moves line 2 to the following day, then holds a guarded
+-- day-2 business-hours change open while line 1 is edited on day 1.
+--
+-- Clean behavior must wait on the sibling-day authority, then revalidate after
+-- the narrower day-2 hours commit and reject the line edit without version or
+-- command-ledger movement.
+
+insert into public.business_hours(business_id,weekday,starts_local,ends_local,active)
+select
+  'd1910000-0000-4000-8000-000000000001',
+  extract(dow from (date_trunc('week',current_date)::date+8))::smallint,
+  time '09:00',time '20:00',true;
+
+insert into public.staff_hours(business_id,staff_id,weekday,starts_local,ends_local,active)
+select
+  'd1910000-0000-4000-8000-000000000001'::uuid,
+  sp.id,
+  extract(dow from (date_trunc('week',current_date)::date+8))::smallint,
+  time '09:00',time '20:00',true
+from public.staff_profiles sp
+where sp.business_id='d1910000-0000-4000-8000-000000000001';
+
+set role authenticated;
+select set_config('request.jwt.claim.sub','d1900000-0000-4000-8000-000000000001',false);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false);
+
+do $
+declare
+  v_b uuid:='d1910000-0000-4000-8000-000000000001';
+  v_g uuid:=current_setting('f1104.gb')::uuid;
+  v_line2 uuid:=current_setting('f1104.gb2')::uuid;
+  v_staff uuid;
+  v_v integer;
+  v_day2 date:=date_trunc('week',current_date)::date+8;
+  v_payload jsonb;
+begin
+  select version into strict v_v
+  from public.appointment_groups
+  where business_id=v_b and id=v_g;
+
+  select staff_id into strict v_staff
+  from public.appointments
+  where business_id=v_b and id=v_line2;
+
+  v_payload:=public.reschedule_appointment_group_line(
+    v_b,v_g,v_line2,
+    'h19-d4d5-setup-sibling-day',
+    v_v,
+    v_staff,
+    (v_day2+time '10:00') at time zone 'Europe/Istanbul'
+  );
+
+  if (v_payload->>'version')::integer<>v_v+1 then
+    raise exception 'H19 D4xD5 fixture version did not advance exactly once';
+  end if;
+  if (v_payload#>>'{lines,1,startsAt}')::timestamptz
+     <>((v_day2+time '10:00') at time zone 'Europe/Istanbul') then
+    raise exception 'H19 D4xD5 fixture did not place the sibling line on day 2';
+  end if;
+end
+$;
+reset role;
+
+do $
+declare
+  v_b uuid:='d1910000-0000-4000-8000-000000000001';
+  v_u uuid:='d1900000-0000-4000-8000-000000000001';
+  v_g uuid:=current_setting('f1104.gb')::uuid;
+  v_line1 uuid;
+  v_staff uuid;
+  v_v integer;
+  v_before timestamptz;
+  v_target timestamptz:=((date_trunc('week',current_date)::date+7)+time '17:00') at time zone 'Europe/Istanbul';
+  v_w2 smallint:=extract(dow from (date_trunc('week',current_date)::date+8))::smallint;
+  v_key text:='h19-d4d5-probe-line1';
+  v_q text;
+  v_wait boolean:=false;
+  v_finished boolean:=false;
+  v_result jsonb;
+  v_err text;
+begin
+  select id,staff_id,starts_at
+  into strict v_line1,v_staff,v_before
+  from public.appointments
+  where business_id=v_b and group_id=v_g and line_ordinal=1;
+
+  select version into strict v_v
+  from public.appointment_groups
+  where business_id=v_b and id=v_g;
+
+  perform dblink_connect(
+    'h19_d4d5_hours',
+    'host=127.0.0.1 port=5432 dbname='||current_database()
+      ||' user=postgres password=postgres application_name=h19_d4d5_hours'
+  );
+  perform dblink_exec('h19_d4d5_hours','set statement_timeout=30000');
+  perform dblink_exec('h19_d4d5_hours','begin');
+  perform dblink_exec('h19_d4d5_hours','set local role authenticated');
+  perform dblink_exec(
+    'h19_d4d5_hours',
+    'set local "request.jwt.claim.sub" = '''||v_u::text||''''
+  );
+  perform dblink_exec(
+    'h19_d4d5_hours',
+    'set local "request.jwt.claims" = ''{"amr":[{"method":"password"}]}'''
+  );
+
+  perform *
+  from dblink(
+    'h19_d4d5_hours',
+    format(
+      $q$
+        select count(*)::bigint
+        from public.replace_business_hours_guarded(
+          %L::uuid,%s::smallint,
+          '[{"start":"09:00","end":"09:30"}]'::jsonb,
+          '[{"start":"09:00","end":"20:00"}]'::jsonb
+        )
+      $q$,
+      v_b,v_w2
+    )
+  ) as t(n bigint);
+
+  perform dblink_connect(
+    'h19_d4d5_line',
+    'host=127.0.0.1 port=5432 dbname='||current_database()
+      ||' user=postgres password=postgres application_name=h19_d4d5_line'
+  );
+  perform dblink_exec('h19_d4d5_line','set statement_timeout=30000');
+  perform dblink_exec('h19_d4d5_line','set role authenticated');
+  perform dblink_exec(
+    'h19_d4d5_line',
+    'set "request.jwt.claim.sub" = '''||v_u::text||''''
+  );
+  perform dblink_exec(
+    'h19_d4d5_line',
+    'set "request.jwt.claims" = ''{"amr":[{"method":"password"}]}'''
+  );
+
+  v_q:=format(
+    $q$
+      select public.reschedule_appointment_group_line(
+        %L::uuid,%L::uuid,%L::uuid,%L,%s,%L::uuid,%L::timestamptz
+      )
+    $q$,
+    v_b,v_g,v_line1,v_key,v_v,v_staff,v_target
+  );
+
+  if dblink_send_query('h19_d4d5_line',v_q)<>1 then
+    raise exception 'H19 D4xD5 probe could not start the day-1 line edit';
+  end if;
+
+  for i in 1..300 loop
+    perform pg_stat_clear_snapshot();
+    if exists(
+      select 1 from pg_stat_activity
+      where application_name='h19_d4d5_line' and wait_event_type='Lock'
+    ) then
+      v_wait:=true;
+      exit;
+    end if;
+    if dblink_is_busy('h19_d4d5_line')=0 then
+      v_finished:=true;
+      exit;
+    end if;
+    perform pg_sleep(0.01);
+  end loop;
+
+  if not v_wait then
+    if v_finished then
+      begin
+        select x.r into strict v_result
+        from dblink_get_result('h19_d4d5_line') x(r jsonb);
+      exception when others then
+        v_err:=sqlerrm;
+      end;
+      begin perform * from dblink_get_result('h19_d4d5_line',false) x(r jsonb);
+      exception when others then null; end;
+    end if;
+
+    begin perform dblink_exec('h19_d4d5_hours','rollback'); exception when others then null; end;
+    begin perform dblink_disconnect('h19_d4d5_hours'); exception when others then null; end;
+    begin perform dblink_disconnect('h19_d4d5_line'); exception when others then null; end;
+
+    if v_err is not null then
+      raise exception 'H19 D4xD5 day-1 edit returned an unexpected pre-serialization result: %',v_err;
+    end if;
+    if not v_finished then
+      raise exception 'H19 D4xD5 probe did not observe the sibling-day wait state';
+    end if;
+    raise exception 'H19 D4xD5 cross-day authority scope mismatch: day-1 edit completed while day-2 business-hours authority was pending';
+  end if;
+
+  perform dblink_exec('h19_d4d5_hours','commit');
+
+  for i in 1..3000 loop
+    exit when dblink_is_busy('h19_d4d5_line')=0;
+    perform pg_sleep(0.01);
+  end loop;
+  if dblink_is_busy('h19_d4d5_line')<>0 then
+    raise exception 'H19 D4xD5 day-1 edit did not resolve after day-2 authority commit';
+  end if;
+
+  v_err:=null;
+  begin
+    select x.r into strict v_result
+    from dblink_get_result('h19_d4d5_line') x(r jsonb);
+  exception when others then
+    v_err:=sqlerrm;
+  end;
+  begin perform * from dblink_get_result('h19_d4d5_line',false) x(r jsonb);
+  exception when others then null; end;
+
+  perform dblink_disconnect('h19_d4d5_hours');
+  perform dblink_disconnect('h19_d4d5_line');
+
+  if v_err is null or position('SLOT_UNAVAILABLE' in v_err)=0 then
+    raise exception 'H19 D4xD5 expected SLOT_UNAVAILABLE after day-2 closure, got %',
+      coalesce(v_err,coalesce(v_result::text,'<null>'));
+  end if;
+
+  if (select version from public.appointment_groups where business_id=v_b and id=v_g)<>v_v then
+    raise exception 'H19 D4xD5 rejected edit changed group version';
+  end if;
+  if (select starts_at from public.appointments where business_id=v_b and id=v_line1)<>v_before then
+    raise exception 'H19 D4xD5 rejected edit changed line-1 time';
+  end if;
+  if exists(
+    select 1 from public.booking_commands
+    where business_id=v_b and idempotency_key=v_key
+  ) then
+    raise exception 'H19 D4xD5 rejected edit retained a command claim';
+  end if;
+
+  raise notice 'H19 D4xD5 prospective invariant accepted: sibling-day authority serialized before group-version movement';
+exception when others then
+  begin perform dblink_exec('h19_d4d5_hours','rollback'); exception when others then null; end;
+  begin perform dblink_exec('h19_d4d5_line','rollback'); exception when others then null; end;
+  begin perform dblink_disconnect('h19_d4d5_hours'); exception when others then null; end;
+  begin perform dblink_disconnect('h19_d4d5_line'); exception when others then null; end;
+  raise;
+end
+$;
+
+do $ begin raise notice 'F11-04 schedule authority races accepted: create/group/line vs hours, blocks, assignment, service/staff mutations plus shared-parent booking writers'; end $;
 delete from public.businesses where id='d1910000-0000-4000-8000-000000000001';
