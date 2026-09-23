@@ -16,14 +16,15 @@
     radial-gradient(circle at 72% 42%, rgba(198, 232, 0, 0.16), transparent 24%),
     radial-gradient(circle at 20% 34%, rgba(51, 102, 204, 0.10), transparent 30%),
     var(--mkt-cream);
+  scroll-margin-top: 0;
 }
 
 .mkt-booking-sticky {
   position: sticky;
   top: 0;
   height: 100svh;
-  width: min(1240px, calc(100% - 48px));
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   overflow: clip;
   isolation: isolate;
 }
@@ -48,7 +49,7 @@
   position: absolute;
   z-index: 4;
   top: 50%;
-  left: 0;
+  left: max(24px, calc((100vw - 1240px) / 2));
   width: min(560px, 44%);
   opacity: calc(1 - var(--mkt-booking-copy-out));
   transform: translate3d(
@@ -227,13 +228,13 @@
   }
 
   .mkt-booking-sticky {
-    width: calc(100% - 32px);
+    width: 100%;
   }
 
   .mkt-booking-copy {
     top: 94px;
-    right: 0;
-    left: 0;
+    right: 16px;
+    left: 16px;
     width: auto;
     transform: translate3d(0, calc(var(--mkt-booking-copy-out) * -20px), 0);
     opacity: calc(1 - var(--mkt-booking-copy-out));
@@ -327,7 +328,8 @@
     min-height: 680px;
   }
 
-  .mkt-booking-device-stage {
+  .mkt-booking-device-stage,
+  .mkt-booking-sticky::before {
     display: none;
   }
 
