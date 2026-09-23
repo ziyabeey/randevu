@@ -55,6 +55,7 @@ declare
   v_user uuid:='f1900000-0000-4000-8000-000000000001';
   v_source uuid:=current_setting('f1503.race_expense')::uuid;
   v_conn text;
+  v_first_conn text;
   v_blocked integer:=0;
   v_correct_ok boolean:=false;
   v_reverse_ok boolean:=false;
@@ -139,16 +140,25 @@ begin
   perform dblink_exec('f1503_holder','commit');
   perform dblink_disconnect('f1503_holder');
 
+  -- The first writer that finishes still holds the source row lock until its
+  -- transaction commits. Commit that winner immediately; only then can the
+  -- losing writer wake up and observe the durable reversal.
+  v_first_conn:=null;
   for i in 1..3000 loop
-    exit when dblink_is_busy('f1503_correct')=0 and dblink_is_busy('f1503_reverse')=0;
+    if dblink_is_busy('f1503_correct')=0 then
+      v_first_conn:='f1503_correct';
+      exit;
+    elsif dblink_is_busy('f1503_reverse')=0 then
+      v_first_conn:='f1503_reverse';
+      exit;
+    end if;
     perform pg_sleep(0.01);
   end loop;
-
-  if dblink_is_busy('f1503_correct')<>0 or dblink_is_busy('f1503_reverse')<>0 then
-    raise exception 'F15-03 timed out waiting for race writers';
+  if v_first_conn is null then
+    raise exception 'F15-03 timed out waiting for first race winner';
   end if;
 
-  begin
+  if v_first_conn='f1503_correct' then
     select t.result into strict v_result
     from dblink_get_result('f1503_correct') as t(result jsonb);
     perform * from dblink_get_result('f1503_correct',false) as t(result jsonb);
@@ -156,16 +166,36 @@ begin
       raise exception 'F15-03 correction winner returned malformed result: %',v_result;
     end if;
     v_correct_ok:=true;
-  exception when others then
-    if position('EXPENSE_ALREADY_REVERSED' in sqlerrm)>0
-       or position('duplicate key value violates unique constraint "expense_events_one_reversal_idx"' in sqlerrm)>0 then
-      v_correct_failed:=true;
-    else
-      raise;
-    end if;
-  end;
+    perform dblink_exec('f1503_correct','commit');
+    perform dblink_disconnect('f1503_correct');
 
-  begin
+    for i in 1..3000 loop
+      exit when dblink_is_busy('f1503_reverse')=0;
+      perform pg_sleep(0.01);
+    end loop;
+    if dblink_is_busy('f1503_reverse')<>0 then
+      raise exception 'F15-03 timed out waiting for reversal loser';
+    end if;
+    begin
+      select t.result into strict v_result
+      from dblink_get_result('f1503_reverse') as t(result jsonb);
+      perform * from dblink_get_result('f1503_reverse',false) as t(result jsonb);
+      if v_result->>'eventType'<>'reversal' then
+        raise exception 'F15-03 unexpected second reversal result: %',v_result;
+      end if;
+      v_reverse_ok:=true;
+      perform dblink_exec('f1503_reverse','commit');
+    exception when others then
+      if position('EXPENSE_ALREADY_REVERSED' in sqlerrm)>0
+         or position('duplicate key value violates unique constraint "expense_events_one_reversal_idx"' in sqlerrm)>0 then
+        v_reverse_failed:=true;
+        begin perform dblink_exec('f1503_reverse','rollback'); exception when others then null; end;
+      else
+        raise;
+      end if;
+    end;
+    perform dblink_disconnect('f1503_reverse');
+  else
     select t.result into strict v_result
     from dblink_get_result('f1503_reverse') as t(result jsonb);
     perform * from dblink_get_result('f1503_reverse',false) as t(result jsonb);
@@ -173,28 +203,36 @@ begin
       raise exception 'F15-03 reversal winner returned malformed result: %',v_result;
     end if;
     v_reverse_ok:=true;
-  exception when others then
-    if position('EXPENSE_ALREADY_REVERSED' in sqlerrm)>0
-       or position('duplicate key value violates unique constraint "expense_events_one_reversal_idx"' in sqlerrm)>0 then
-      v_reverse_failed:=true;
-    else
-      raise;
-    end if;
-  end;
-
-  if v_correct_ok then
-    perform dblink_exec('f1503_correct','commit');
-  else
-    begin perform dblink_exec('f1503_correct','rollback'); exception when others then null; end;
-  end if;
-  if v_reverse_ok then
     perform dblink_exec('f1503_reverse','commit');
-  else
-    begin perform dblink_exec('f1503_reverse','rollback'); exception when others then null; end;
-  end if;
+    perform dblink_disconnect('f1503_reverse');
 
-  perform dblink_disconnect('f1503_correct');
-  perform dblink_disconnect('f1503_reverse');
+    for i in 1..3000 loop
+      exit when dblink_is_busy('f1503_correct')=0;
+      perform pg_sleep(0.01);
+    end loop;
+    if dblink_is_busy('f1503_correct')<>0 then
+      raise exception 'F15-03 timed out waiting for correction loser';
+    end if;
+    begin
+      select t.result into strict v_result
+      from dblink_get_result('f1503_correct') as t(result jsonb);
+      perform * from dblink_get_result('f1503_correct',false) as t(result jsonb);
+      if v_result->'reversal' is null or v_result->'replacement' is null then
+        raise exception 'F15-03 unexpected second correction result: %',v_result;
+      end if;
+      v_correct_ok:=true;
+      perform dblink_exec('f1503_correct','commit');
+    exception when others then
+      if position('EXPENSE_ALREADY_REVERSED' in sqlerrm)>0
+         or position('duplicate key value violates unique constraint "expense_events_one_reversal_idx"' in sqlerrm)>0 then
+        v_correct_failed:=true;
+        begin perform dblink_exec('f1503_correct','rollback'); exception when others then null; end;
+      else
+        raise;
+      end if;
+    end;
+    perform dblink_disconnect('f1503_correct');
+  end if;
 
   if (case when v_correct_ok then 1 else 0 end)+(case when v_reverse_ok then 1 else 0 end)<>1 then
     raise exception 'F15-03 race did not produce exactly one winner: correct %, reverse %',
