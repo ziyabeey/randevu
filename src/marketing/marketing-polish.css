@@ -48,7 +48,7 @@
   transform: none !important;
 }
 
-.mkt-product-story,
+.mkt-product-story:not(.mkt-booking-scene),
 .mkt-calendar-stage,
 .mkt-today,
 .mkt-proof-before-pilot,
