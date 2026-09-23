@@ -1,19 +1,19 @@
 create extension if not exists dblink;
 
-delete from public.businesses where id='f1610000-0000-4000-8000-000000000001';
+delete from public.businesses where id='f15c1000-0000-4000-8000-000000000001';
 
 insert into auth.users(id,email,raw_user_meta_data)
-values ('f1600000-0000-4000-8000-000000000001','f1501-race@example.invalid','{}'::jsonb)
+values ('f15c0000-0000-4000-8000-000000000001','f1501-race@example.invalid','{}'::jsonb)
 on conflict(id) do nothing;
 
 insert into public.businesses(id,name,slug,timezone,created_by)
-values ('f1610000-0000-4000-8000-000000000001','F15-01 Race Salon','f1501-race','Europe/Istanbul','f1600000-0000-4000-8000-000000000001');
+values ('f15c1000-0000-4000-8000-000000000001','F15-01 Race Salon','f1501-race','Europe/Istanbul','f15c0000-0000-4000-8000-000000000001');
 
 insert into public.memberships(id,business_id,user_id,role,active)
-values ('f1620000-0000-4000-8000-000000000001','f1610000-0000-4000-8000-000000000001','f1600000-0000-4000-8000-000000000001','owner',true);
+values ('f15c2000-0000-4000-8000-000000000001','f15c1000-0000-4000-8000-000000000001','f15c0000-0000-4000-8000-000000000001','owner',true);
 
 set role authenticated;
-select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',false);
+select set_config('request.jwt.claim.sub','f15c0000-0000-4000-8000-000000000001',false);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false);
 
 do $$
@@ -21,7 +21,7 @@ declare
   v_product jsonb;
 begin
   v_product := public.create_product_guarded(
-    'f1610000-0000-4000-8000-000000000001',
+    'f15c1000-0000-4000-8000-000000000001',
     'Race Product','RACE-1','piece',10000,'TRY',10,
     'f1501-race-create-0001',repeat('a',64)
   );
@@ -33,8 +33,8 @@ reset role;
 
 do $race$
 declare
-  v_business uuid := 'f1610000-0000-4000-8000-000000000001';
-  v_user uuid := 'f1600000-0000-4000-8000-000000000001';
+  v_business uuid := 'f15c1000-0000-4000-8000-000000000001';
+  v_user uuid := 'f15c0000-0000-4000-8000-000000000001';
   v_product uuid := current_setting('f1501.race_product')::uuid;
   v_conn text;
   v_sql text;
@@ -176,21 +176,3 @@ exception when others then
   raise;
 end
 $race$;
-
--- Keep this committed dblink race self-contained. Later phases deliberately
--- reuse the F14 fixture IDs to replay accepted money-authority proofs after
--- forward migrations; persistent F15-01 race rows must not poison those checks.
-delete from public.product_commands
-where business_id='f1610000-0000-4000-8000-000000000001';
-
-delete from public.product_stock_movements
-where business_id='f1610000-0000-4000-8000-000000000001';
-
-delete from public.products
-where business_id='f1610000-0000-4000-8000-000000000001';
-
-delete from public.memberships
-where business_id='f1610000-0000-4000-8000-000000000001';
-
-delete from public.businesses
-where id='f1610000-0000-4000-8000-000000000001';
