@@ -1,0 +1,27 @@
+{
+  "name": "Randevu Kolay — KolayApp",
+  "short_name": "KolayApp",
+  "description": "Randevu Kolay işletme çalışma alanının mobil KolayApp yüzeyi.",
+  "id": "/app/mobile",
+  "start_url": "/app/mobile",
+  "scope": "/app/",
+  "display": "standalone",
+  "background_color": "#f6f8fc",
+  "theme_color": "#2456e8",
+  "lang": "tr",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/kolayapp-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/kolayapp-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

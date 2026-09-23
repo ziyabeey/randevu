@@ -37,9 +37,14 @@ const CSRF = 'C'.repeat(43);
 let activeBusinessId = BUSINESS_A;
 let appointmentStatus = 'scheduled';
 let ticketPaidMinor = 0;
+let ticketVersion = 1;
+let ticketServiceLineWrites = 0;
 let ticketPaymentEvents = [];
 let ambiguousCashCommitted = false;
 const ticketPaymentReplays = new Map();
+let publicBookingCreated = false;
+let publicCreateRequest = null;
+let paymentsWriteAllowed = true;
 
 function business(id) {
   return id === BUSINESS_A
@@ -192,6 +197,60 @@ function manageView() {
   };
 }
 
+function publicGroupSlot(startsAt = isoAt(0)) {
+  const endsAt = new Date(Date.parse(startsAt) + 30 * 60_000).toISOString();
+  return {
+    startsAt,
+    endsAt,
+    timezone: 'Europe/Istanbul',
+    currency: 'TRY',
+    estimateMinMinor: 60000,
+    estimateMaxMinor: 60000,
+    lines: [{
+      lineOrdinal: 1,
+      serviceId: SERVICE,
+      serviceName: 'Kesim',
+      staffId: STAFF,
+      staffName: 'Deniz',
+      startsAt,
+      endsAt,
+      priceType: 'fixed',
+      priceMinMinor: 60000,
+      priceMaxMinor: 60000,
+    }],
+  };
+}
+
+function publicCreatedGroup(startsAt = isoAt(0)) {
+  const slot = publicGroupSlot(startsAt);
+  return {
+    groupId: GROUP,
+    status: 'scheduled',
+    source: 'public',
+    version: 1,
+    customerId: CUSTOMER,
+    startsAt: slot.startsAt,
+    endsAt: slot.endsAt,
+    timezone: slot.timezone,
+    currency: slot.currency,
+    estimateMinMinor: slot.estimateMinMinor,
+    estimateMaxMinor: slot.estimateMaxMinor,
+    lines: slot.lines.map((line) => ({
+      ...line,
+      appointmentId: APPOINTMENT,
+      status: 'scheduled',
+      occupiedStartsAt: line.startsAt,
+      occupiedEndsAt: line.endsAt,
+      processingCapacityPolicy: 'HOLD',
+      passiveWaitMinutes: 0,
+      processingPolicyVersion: 1,
+      priceMinor: 60000,
+      currency: 'TRY',
+      pricePolicyVersion: 1,
+    })),
+  };
+}
+
 function ticketProjection() {
   const totalMinor = 60000;
   return {
@@ -201,7 +260,7 @@ function ticketProjection() {
     customerId: CUSTOMER,
     source: 'booking_group',
     status: 'open',
-    version: 1,
+    version: ticketVersion,
     currency: 'TRY',
     customerName: 'Ada Public',
     customerPhone: '+905550001122',
@@ -254,6 +313,7 @@ function contentType(filePath) {
     case '.css': return 'text/css; charset=utf-8';
     case '.json':
     case '.map': return 'application/json; charset=utf-8';
+    case '.webmanifest': return 'application/manifest+json; charset=utf-8';
     case '.svg': return 'image/svg+xml';
     case '.png': return 'image/png';
     case '.webp': return 'image/webp';
@@ -387,6 +447,7 @@ try {
   });
 
   const bundleRoot = path.resolve(bundleDir);
+  const publicRoot = path.resolve(root, 'public');
   const appJs = readFileSync(path.join(bundleDir, 'app.js'));
   const cssFile = readdirSync(bundleDir).find((name) => name.endsWith('.css'));
   assert.ok(cssFile, 'F13-04 production build did not emit CSS');
@@ -407,16 +468,21 @@ try {
       let relative;
       try { relative = decodeURIComponent(url.pathname).replace(/^\/+/, ''); }
       catch { response.writeHead(400); response.end('bad asset'); return; }
-      const assetPath = path.resolve(bundleRoot, relative);
-      if (!assetPath.startsWith(`${bundleRoot}${path.sep}`) || !existsSync(assetPath) || !statSync(assetPath).isFile()) {
+      const candidates = [
+        { root: bundleRoot, target: path.resolve(bundleRoot, relative) },
+        { root: publicRoot, target: path.resolve(publicRoot, relative) },
+      ];
+      const found = candidates.find(({ root: candidateRoot, target }) =>
+        target.startsWith(`${candidateRoot}${path.sep}`) && existsSync(target) && statSync(target).isFile());
+      if (!found) {
         response.writeHead(404); response.end('asset not found'); return;
       }
-      response.writeHead(200, { 'Content-Type': contentType(assetPath), 'Cache-Control': 'no-store' });
-      response.end(readFileSync(assetPath)); return;
+      response.writeHead(200, { 'Content-Type': contentType(found.target), 'Cache-Control': 'no-store' });
+      response.end(readFileSync(found.target)); return;
     }
     if (!url.pathname.startsWith('/api/')) {
       response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-      response.end('<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>');
+      response.end('<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#2456e8"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/kolayapp-192.png"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>');
       return;
     }
 
@@ -430,6 +496,92 @@ try {
       expectedBusiness: request.headers['x-yzt-expected-business'] ?? null,
       idempotencyKey: request.headers['idempotency-key'] ?? null,
     });
+
+    if (request.method === 'GET' && url.pathname === '/api/public/business/salon-a/profile') {
+      return sendJson(response, 200, { profile: {
+        public_name: 'Salon A',
+        short_description: 'F14-05 üç yüzey kabul salonu',
+        long_description: null,
+        public_phone: '+905550001122',
+        public_email: 'salon-a@example.test',
+        public_website: null,
+        public_whatsapp: '+905550001122',
+        address_text: 'İstanbul',
+        show_work_hours: false,
+        cover_media_id: null,
+        work_hours: [],
+        media: [],
+        kvkk_notice_text: 'F14-05 test aydınlatma metni.',
+        kvkk_notice_url: null,
+        privacy_policy_url: 'https://example.test/privacy',
+        booking_terms_text: 'F14-05 test randevu koşulları.',
+        booking_terms_url: null,
+      } });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/public/business/salon-a/services-v2') {
+      return sendJson(response, 200, { services: [{
+        service_id: SERVICE,
+        name: 'Kesim',
+        category: 'Saç',
+        sort_order: 10,
+        duration_minutes: 30,
+        price_type: 'fixed',
+        price_min_minor: 60000,
+        price_max_minor: 60000,
+        currency: 'TRY',
+        price_policy_version: 1,
+      }] });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/public/business/salon-a/staff') {
+      assert.equal(url.searchParams.get('serviceId'), SERVICE, 'F14-05 public staff lookup used another service identity');
+      return sendJson(response, 200, { staff: [{ staff_id: STAFF, staff_name: 'Deniz' }] });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/public/business/salon-a/group-slots') {
+      assert.deepEqual(body.lines, [{ serviceId: SERVICE, staffId: null }], 'F14-05 public availability lost the canonical service request');
+      return sendJson(response, 200, { slots: [publicGroupSlot()] });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/public/business/salon-a/group-book') {
+      assert.equal(body.customerName, 'Ada Public', 'F14-05 public create changed the canonical customer name');
+      assert.equal(body.customerPhone, '05550001122', 'F14-05 public create changed the canonical customer phone');
+      assert.deepEqual(body.lines, [{ serviceId: SERVICE, staffId: null }], 'F14-05 public create lost the canonical service request');
+      assert.ok(request.headers['idempotency-key'], 'F14-05 public create omitted Idempotency-Key');
+      assert.equal(typeof body.managementToken, 'string');
+      assert.equal(typeof body.recoveryId, 'string');
+      const group = publicCreatedGroup(body.startsAt);
+      publicBookingCreated = true;
+      publicCreateRequest = {
+        groupId: group.groupId,
+        appointmentId: group.lines[0].appointmentId,
+        customerId: group.customerId,
+        idempotencyKey: request.headers['idempotency-key'],
+      };
+      return sendJson(response, 201, {
+        group,
+        appointmentId: APPOINTMENT,
+        notification: { channel: 'email', status: 'queued' },
+        management: { url: `/m#${body.managementToken}` },
+        recovery: { expiresAt: '2026-09-24T07:00:00.000Z' },
+      });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/public/business/salon-a') {
+      return sendJson(response, 200, {
+        business: {
+          name: 'Salon A',
+          slug: 'salon-a',
+          timezone: 'Europe/Istanbul',
+          local_date: '2026-09-21',
+          max_date: '2026-11-20',
+          step_minutes: 15,
+          min_notice_minutes: 60,
+          horizon_days: 60,
+        },
+        services: [],
+        bookingClock: {
+          serverNowEpochSeconds: Math.floor(Date.now() / 1000),
+          submitWindowSeconds: 300,
+        },
+      });
+    }
 
     if (request.method === 'GET' && url.pathname === '/api/session') return sendJson(response, 200, session());
     if (request.method === 'GET' && url.pathname === '/api/csrf') return sendJson(response, 200, { csrfToken: CSRF });
@@ -465,8 +617,22 @@ try {
       if (activeBusinessId !== BUSINESS_A) return sendJson(response, 404, { error: { code: 'TICKET_NOT_FOUND', message: 'Adisyon bulunamadı.' } });
       return sendJson(response, 200, { ticket: ticketProjection() });
     }
+    if (request.method === 'POST' && url.pathname === `/api/tickets/${TICKET}/service-lines`) {
+      assert.equal(activeBusinessId, BUSINESS_A, 'service-line mutation escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'service-line mutation omitted Idempotency-Key');
+      assert.equal(body.serviceId, SERVICE, 'service-line mutation changed the service identity');
+      if (Number(body.expectedVersion) !== ticketVersion) {
+        return sendJson(response, 409, { error: { code: 'VERSION_CONFLICT', message: 'Adisyon başka bir cihazda güncellendi. Güncel hali yeniden yüklendi.' } });
+      }
+      ticketVersion += 1;
+      ticketServiceLineWrites += 1;
+      return sendJson(response, 201, { ticket: ticketProjection() });
+    }
     if (request.method === 'POST' && url.pathname === `/api/tickets/${TICKET}/payments`) {
       assert.equal(activeBusinessId, BUSINESS_A, 'payment escaped active business A');
+      if (!paymentsWriteAllowed) {
+        return sendJson(response, 403, { error: { code: 'PAYMENTS_PERMISSION_REQUIRED', message: 'Tahsilat yetkiniz kaldırıldı. Güncel yetkiyle yeniden deneyin.' } });
+      }
       const key = request.headers['idempotency-key'];
       assert.ok(key, 'payment omitted Idempotency-Key');
       if (ticketPaymentReplays.has(key)) {
@@ -533,6 +699,67 @@ try {
   }, 'F13-04 Chrome did not expose a debugging port');
   const debugUrl = `http://127.0.0.1:${port}`;
 
+  const publicPage = await newPage(debugUrl, origin, '/r/salon-a', 390);
+  await waitFor(
+    () => publicPage.evaluate(`document.querySelectorAll('.public-service-choice').length === 1`),
+    'F14-05 public customer catalog did not load the canonical service',
+  );
+  await publicPage.evaluate(`document.querySelector('.public-service-choice').click()`);
+  await waitFor(
+    () => publicPage.evaluate(`document.querySelectorAll('.public-selected-line').length === 1`),
+    'F14-05 public customer service selection did not become a group plan',
+  );
+  await publicPage.evaluate(`[...document.querySelectorAll('button')].find((node) => node.textContent.includes('Birlikte uygun saatleri bul')).click()`);
+  await waitFor(
+    () => publicPage.evaluate(`Boolean(document.querySelector('.public-group-slot'))`),
+    'F14-05 public customer group availability did not load',
+  );
+  await publicPage.evaluate(`document.querySelector('.public-group-slot').click()`);
+  await waitFor(
+    () => publicPage.evaluate(`Boolean(document.querySelector('input[name="customerName"]'))`),
+    'F14-05 public customer contact form did not open',
+  );
+  await waitFor(
+    () => publicPage.evaluate(`Boolean([...document.querySelectorAll('button')].find((node) => node.textContent.includes('Planı onayla') && !node.disabled))`),
+    'F14-05 public booking remained blocked by incomplete booking information',
+  );
+  await publicPage.evaluate(`(() => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    const name = document.querySelector('input[name="customerName"]');
+    const phone = document.querySelector('input[name="customerPhone"]');
+    setter.call(name, 'Ada Public');
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    setter.call(phone, '05550001122');
+    phone.dispatchEvent(new Event('input', { bubbles: true }));
+    [...document.querySelectorAll('button')].find((node) => node.textContent.includes('Planı onayla')).click();
+  })()`);
+  await waitFor(
+    () => publicPage.evaluate(`document.body.innerText.includes('RANDEVU OLUŞTURULDU')`),
+    'F14-05 public customer booking did not produce a committed confirmation',
+  );
+  const publicResult = await publicPage.evaluate(`(() => ({
+    text: document.body.innerText,
+    overflow: document.documentElement.scrollWidth - innerWidth,
+    manage: document.querySelector('a.public-primary')?.getAttribute('href') ?? null,
+  }))()`);
+  assert.equal(publicResult.overflow <= 1, true, 'F14-05 public customer booking overflowed the 390px viewport');
+  assert.match(publicResult.text, /Ada Public|Salon A/);
+  assert.match(publicResult.text, /Kesim/);
+  assert.match(publicResult.manage ?? '', /^\/m#[A-Za-z0-9_-]{43}$/);
+  assert.equal(publicBookingCreated, true, 'F14-05 fixture never observed the public create');
+  assert.deepEqual(
+    {
+      groupId: publicCreateRequest?.groupId,
+      appointmentId: publicCreateRequest?.appointmentId,
+      customerId: publicCreateRequest?.customerId,
+    },
+    { groupId: GROUP, appointmentId: APPOINTMENT, customerId: CUSTOMER },
+    'F14-05 public create did not bind the canonical private identities',
+  );
+  assert.ok(publicCreateRequest?.idempotencyKey, 'F14-05 public create did not retain an idempotency identity');
+  publicPage.close();
+  console.log('F14-05 public customer create bound canonical group/appointment/customer identities.');
+
   const page = await newPage(debugUrl, origin, '/', 390);
   await waitFor(
     () => page.evaluate(`location.pathname === '/app' && document.body.innerText.includes('OPERASYON TAKVİMİ') && document.body.innerText.includes('Ada Public')`),
@@ -595,6 +822,31 @@ try {
     () => page.evaluate(`location.pathname === '/app/mobile' && Boolean(document.querySelector('.kolay-bottom-nav')) && document.body.innerText.includes('Ada Public')`),
     'KolayApp appointments route did not reuse the canonical calendar data',
   );
+
+  const appManifest = await page.send('Page.getAppManifest');
+  assert.match(appManifest.url ?? '', /\/manifest\.webmanifest$/, 'F14-05 browser did not discover the KolayApp manifest');
+  assert.equal(appManifest.errors?.length ?? 0, 0, `F14-05 manifest parse errors: ${JSON.stringify(appManifest.errors ?? [])}`);
+  const parsedManifest = JSON.parse(appManifest.data);
+  assert.equal(parsedManifest.start_url, '/app/mobile');
+  assert.equal(parsedManifest.scope, '/app/');
+  assert.equal(parsedManifest.display, 'standalone');
+  assert.ok(parsedManifest.icons.some((icon) => icon.sizes === '192x192'));
+  assert.ok(parsedManifest.icons.some((icon) => icon.sizes === '512x512'));
+  await waitFor(async () => {
+    const installability = await page.send('Page.getInstallabilityErrors');
+    const errors = installability.installabilityErrors ?? [];
+    if (errors.length) throw new Error(JSON.stringify(errors));
+    return installability;
+  }, 'F14-05 Chrome installability errors did not clear');
+
+  const pwaRuntime = await page.evaluate(`(async () => ({
+    secure: window.isSecureContext,
+    serviceWorkers: 'serviceWorker' in navigator ? (await navigator.serviceWorker.getRegistrations()).length : 0,
+    cacheKeys: 'caches' in window ? await caches.keys() : [],
+  }))()`);
+  assert.equal(pwaRuntime.secure, true, 'F14-05 browser fixture is not a secure localhost context');
+  assert.equal(pwaRuntime.serviceWorkers, 0, 'F14-05 unexpectedly registered a service worker');
+  assert.deepEqual(pwaRuntime.cacheKeys, [], 'F14-05 unexpectedly persisted application responses in Cache Storage');
 
   const kolay390 = await page.evaluate(`(() => {
     const labels=[...document.querySelectorAll('.kolay-bottom-nav__label')].map((node)=>node.textContent.trim());
@@ -659,6 +911,22 @@ try {
   assert.match(ticket390.totals, /600/);
   assert.match(ticket390.totals, /0/);
 
+  paymentsWriteAllowed = false;
+  const financialEventsBeforeRevocation = ticketPaymentEvents.length;
+  await page.evaluate(`(() => {
+    const form=document.querySelector('.ticket-payment');
+    form.querySelector('select[name="method"]').value='cash';
+    form.querySelector('input[name="amount"]').value='50';
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Tahsilat yetkiniz kaldırıldı')`),
+    'F14-05 revoked payments_write did not surface the server denial in the open cashier',
+  );
+  assert.equal(ticketPaymentEvents.length, financialEventsBeforeRevocation, 'F14-05 revoked payment mutated the ledger fixture');
+  assert.equal(ticketPaidMinor, 0, 'F14-05 revoked payment changed the server paid total');
+  paymentsWriteAllowed = true;
+
   await page.evaluate(`(() => {
     const form=document.querySelector('.ticket-payment');
     form.querySelector('select[name="method"]').value='cash';
@@ -672,6 +940,13 @@ try {
   const ambiguousTotals = await page.evaluate(`document.querySelector('.ticket-totals').innerText`);
   assert.match(ambiguousTotals, /Tahsil/);
   assert.ok(!/200[^\n]*Kalan[^\n]*400/s.test(ambiguousTotals), 'ambiguous write was shown as locally paid');
+
+  await page.send('Page.reload', { ignoreCache: true });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.body.innerText.includes('Sonucu belirsiz mali işlem korunuyor') && [...document.querySelectorAll('.ticket-notice button')].some((node) => node.textContent.includes('Belirsiz işlemi doğrula'))`),
+    'F14-05 full application reload lost the persisted ambiguous financial request',
+  );
+  assert.equal(ticketPaymentEvents.filter((item) => item.method === 'cash').length, 1, 'F14-05 reload duplicated the server-committed ambiguous cash event');
 
   const walkInPostsBeforeAmbiguitySwitch = requests.filter((item) => item.method === 'POST' && item.path === '/api/tickets').length;
   await page.evaluate(`(() => {
@@ -719,15 +994,17 @@ try {
     'F14-04 same-key ambiguous payment recovery after business remount did not restore server projection',
   );
 
-  const cashRequests = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'cash');
+  const cashRequests = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'cash' && item.body.amountMinor === 20000);
   assert.equal(cashRequests.length, 2, 'F14-04 ambiguous cash payment was not retried exactly once');
   assert.equal(cashRequests[0].idempotencyKey, cashRequests[1].idempotencyKey, 'F14-04 ambiguity remount changed Idempotency-Key');
   assert.equal(ticketPaymentEvents.filter((item) => item.method === 'cash').length, 1, 'F14-04 same-key retry duplicated cash event');
 
+  const cardRequestsBeforeDoubleSubmit = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'card').length;
   await page.evaluate(`(() => {
     const form=document.querySelector('.ticket-payment');
     form.querySelector('select[name="method"]').value='card';
     form.querySelector('input[name="amount"]').value='400';
+    form.requestSubmit();
     form.requestSubmit();
   })()`);
   await waitFor(
@@ -736,6 +1013,50 @@ try {
   );
   assert.equal(ticketPaidMinor, 60000, 'F14-04 fixture did not preserve server paid total');
   assert.equal(ticketPaymentEvents.length, 2, 'F14-04 fixture created an unexpected payment count');
+  const cardRequests = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'card' && item.body.amountMinor === 40000);
+  assert.equal(cardRequests.length - cardRequestsBeforeDoubleSubmit, 2, 'F14-05 double-submit did not issue the intended repeated request pair');
+  assert.equal(cardRequests.at(-1).idempotencyKey, cardRequests.at(-2).idempotencyKey, 'F14-05 repeated card submit changed Idempotency-Key');
+  assert.equal(ticketPaymentEvents.filter((item) => item.method === 'card').length, 1, 'F14-05 repeated card submit duplicated the card ledger event');
+
+  const secondClient = await newPage(debugUrl, origin, `/app/mobile/tickets?ticketId=${TICKET}`, 390);
+  await waitFor(
+    () => secondClient.evaluate(`location.pathname === '/app/mobile/tickets' && document.querySelector('.ticket-totals')?.innerText.includes('600') && document.querySelector('.ticket-totals')?.innerText.includes('0')`),
+    'F14-05 second client did not re-read the server-authoritative paid 600 / balance 0 projection',
+  );
+  const secondClientState = await secondClient.evaluate(`(() => ({
+    text: document.querySelector('.ticket-totals')?.innerText ?? '',
+    cacheKeys: null,
+  }))()`);
+  assert.match(secondClientState.text, /600/);
+  assert.match(secondClientState.text, /0/);
+
+  const secondDeviceWrite = await secondClient.evaluate(`fetch('/api/tickets/${TICKET}/service-lines', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'f14-05-second-device-service-line' },
+    body: JSON.stringify({ serviceId: '${SERVICE}', staffId: null, expectedVersion: 1 }),
+  }).then(async (response) => ({ status: response.status, body: await response.json() }))`);
+  assert.equal(secondDeviceWrite.status, 201, 'F14-05 second device did not advance the ticket version');
+  assert.equal(ticketVersion, 2, 'F14-05 second device did not create a newer server ticket version');
+  assert.equal(ticketServiceLineWrites, 1, 'F14-05 second device did not produce exactly one accepted versioned write');
+
+  await page.evaluate(`(() => {
+    const form = document.querySelector('.ticket-add-line');
+    const service = form.querySelector('select[name="serviceId"]');
+    service.value = '${SERVICE}';
+    service.dispatchEvent(new Event('change', { bubbles: true }));
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Adisyon başka bir cihazda güncellendi')`),
+    'F14-05 stale first-device write did not surface the version conflict',
+  );
+  assert.equal(ticketServiceLineWrites, 1, 'F14-05 stale first-device write mutated the ticket despite version conflict');
+  await waitFor(
+    () => page.evaluate(`document.querySelector('.ticket-detail')?.innerText.includes('Ada Public')`),
+    'F14-05 stale-version recovery did not re-read the authoritative ticket',
+  );
+  secondClient.close();
+  console.log('F14-05 permission revoke, reload ambiguity, double-submit, second-device and stale-version acceptance passed.');
 
   await page.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 1, mobile: true });
   await sleep(100);
@@ -840,6 +1161,38 @@ try {
     'KolayApp business switch did not restore the verified A context',
   );
   console.log('F14-01 KolayApp mobile route/back-forward/business-switch acceptance passed.');
+
+  await page.send('Network.enable');
+  await page.send('Network.emulateNetworkConditions', {
+    offline: true,
+    latency: 0,
+    downloadThroughput: 0,
+    uploadThroughput: 0,
+  });
+  const offlineNavigation = await page.send('Page.navigate', { url: `${origin}/app/mobile` });
+  assert.match(
+    String(offlineNavigation.errorText ?? ''),
+    /ERR_INTERNET_DISCONNECTED|ERR_FAILED/,
+    `F14-05 private app unexpectedly navigated from an offline persistent shell: ${JSON.stringify(offlineNavigation)}`,
+  );
+  await page.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: 0,
+    downloadThroughput: -1,
+    uploadThroughput: -1,
+  });
+  await page.send('Page.navigate', { url: `${origin}/app/mobile` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile' && document.body.innerText.includes('Ada Public')`),
+    'F14-05 KolayApp did not recover from an offline navigation with the current network version',
+  );
+  const pwaRuntimeAfterReconnect = await page.evaluate(`(async () => ({
+    serviceWorkers: 'serviceWorker' in navigator ? (await navigator.serviceWorker.getRegistrations()).length : 0,
+    cacheKeys: 'caches' in window ? await caches.keys() : [],
+  }))()`);
+  assert.equal(pwaRuntimeAfterReconnect.serviceWorkers, 0, 'F14-05 reconnect unexpectedly registered a service worker');
+  assert.deepEqual(pwaRuntimeAfterReconnect.cacheKeys, [], 'F14-05 reconnect populated persistent Cache Storage');
+  console.log('F14-05 manifest/installability and no-offline-private-cache acceptance passed.');
 
   // Return the shared F13 harness to its canonical workspace before continuing
   // the pre-existing desktop/legacy-route acceptance below.
