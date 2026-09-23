@@ -257,7 +257,7 @@ products.get('/products/:id/stock-movements', async (context) => {
 products.post('/products', async (context) => {
   const access = await requireCreatePermissions(context);
   if ('error' in access) return access.error;
-  const body = await readJson<Record<string, unknown>>(context);
+  const body = (await readJson(context)) ?? {};
   const key = idempotencyKey(context.req.header('Idempotency-Key'));
   const name = text(body.name, 1, 120);
   const code = body.code === null || body.code === undefined || body.code === '' ? null : text(body.code, 1, 64);
@@ -284,7 +284,7 @@ products.put('/products/:id', async (context) => {
   const access = await requireInventoryWrite(context);
   if ('error' in access) return access.error;
   const productId = context.req.param('id');
-  const body = await readJson<Record<string, unknown>>(context);
+  const body = (await readJson(context)) ?? {};
   const key = idempotencyKey(context.req.header('Idempotency-Key'));
   const name = text(body.name, 1, 120);
   const code = body.code === null || body.code === undefined || body.code === '' ? null : text(body.code, 1, 64);
@@ -312,7 +312,7 @@ products.post('/products/:id/archive', async (context) => {
   const access = await requireInventoryWrite(context);
   if ('error' in access) return access.error;
   const productId = context.req.param('id');
-  const body = await readJson<Record<string, unknown>>(context);
+  const body = (await readJson(context)) ?? {};
   const key = idempotencyKey(context.req.header('Idempotency-Key'));
   if (!isUuid(productId) || !key || !integer(body.expectedVersion, 1, 2_147_483_647)) {
     return context.json({ error: { code: 'INVALID_PRODUCT', message: 'Ürün bilgileri geçerli değil.' } }, 400);
@@ -331,7 +331,7 @@ products.post('/products/:id/stock-movements', async (context) => {
   const access = await requireInventoryWrite(context);
   if ('error' in access) return access.error;
   const productId = context.req.param('id');
-  const body = await readJson<Record<string, unknown>>(context);
+  const body = (await readJson(context)) ?? {};
   const key = idempotencyKey(context.req.header('Idempotency-Key'));
   const kind = body.kind === 'receipt' || body.kind === 'adjustment' ? body.kind : null;
   const reason = body.reason === undefined || body.reason === null || body.reason === '' ? null : text(body.reason, 2, 240);
@@ -356,7 +356,7 @@ products.post('/products/:id/stock-movements/:movementId/reverse', async (contex
   if ('error' in access) return access.error;
   const productId = context.req.param('id');
   const movementId = context.req.param('movementId');
-  const body = await readJson<Record<string, unknown>>(context);
+  const body = (await readJson(context)) ?? {};
   const key = idempotencyKey(context.req.header('Idempotency-Key'));
   const reason = text(body.reason, 2, 240);
   if (!isUuid(productId) || !isUuid(movementId) || !key || !reason || !integer(body.expectedVersion, 1, 2_147_483_647)) {
