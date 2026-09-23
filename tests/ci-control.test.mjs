@@ -229,6 +229,8 @@ test('GitHub CI avoids unconditional PostgreSQL setup cost and overlaps containe
   assert.match(workflow, /if ! command -v psql/);
   assert.match(workflow, /Verify disposable PostgreSQL 17 readiness/);
   assert.match(workflow, /show server_version_num/);
+  assert.match(workflow, /if server_version_num="\$\(psql [^\n]+show server_version_num[^\n]+\)"; then/);
+  assert.match(workflow, /Test PostgreSQL did not become reachable from the host within 30 seconds/);
   assert.doesNotMatch(workflow, /- name: Install PostgreSQL client/);
 });
 
