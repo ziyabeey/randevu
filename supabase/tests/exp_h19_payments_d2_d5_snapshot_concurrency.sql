@@ -74,7 +74,11 @@ begin
 
   perform dblink_exec(
     'h19_pay_d2d5_blocker',
-    format('select 1 from public.tickets where business_id=%L::uuid and id=%L::uuid for update',v_business,v_ticket)
+    format(
+      'do $block$ begin perform 1 from public.tickets where business_id=%L::uuid and id=%L::uuid for update; end $block$;',
+      v_business,
+      v_ticket
+    )
   );
 
   if dblink_send_query(
