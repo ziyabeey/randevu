@@ -1,5 +1,3 @@
-create extension if not exists dblink;
-
 -- H19 prospective coverage test: D0 x D5 (tenant isolation x concurrency).
 --
 -- Two independent tenants intentionally reuse the same group idempotency key.
@@ -79,29 +77,10 @@ declare
   v_sql_a text;
   v_sql_b text;
 begin
-  perform dblink_connect(
-    'h19_d0d5_a',
-    'host=127.0.0.1 port=5432 dbname='||current_database()
-      ||' user=postgres password=postgres application_name=h19_d0d5_a'
-  );
-  perform dblink_connect(
-    'h19_d0d5_b',
-    'host=127.0.0.1 port=5432 dbname='||current_database()
-      ||' user=postgres password=postgres application_name=h19_d0d5_b'
-  );
-
-  foreach v_sql_a in array array['h19_d0d5_a','h19_d0d5_b'] loop
-    perform dblink_exec(v_sql_a,'set statement_timeout=30000');
-    perform dblink_exec(v_sql_a,'begin');
-  end loop;
-
-  perform dblink_exec('h19_d0d5_a','set local role authenticated');
-  perform dblink_exec('h19_d0d5_a','set local "request.jwt.claim.sub" = '''||v_owner_a::text||'''');
-  perform dblink_exec('h19_d0d5_a',$q$set local "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
-
-  perform dblink_exec('h19_d0d5_b','set local role authenticated');
-  perform dblink_exec('h19_d0d5_b','set local "request.jwt.claim.sub" = '''||v_owner_b::text||'''');
-  perform dblink_exec('h19_d0d5_b',$q$set local "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  perform pg_temp.h19_connect('h19_d0d5_a',true);
+  perform pg_temp.h19_connect('h19_d0d5_b',true);
+  perform pg_temp.h19_set_authenticated('h19_d0d5_a',v_owner_a,true);
+  perform pg_temp.h19_set_authenticated('h19_d0d5_b',v_owner_b,true);
 
   -- Park tenant A later in customer resolution. By the time A waits here,
   -- its group-command advisory lock is already held by the remote transaction.
@@ -125,17 +104,9 @@ begin
     raise exception 'H19 D0xD5 could not start tenant A writer';
   end if;
 
-  for i in 1..500 loop
-    perform pg_stat_clear_snapshot();
-    if exists(
-      select 1 from pg_stat_activity
-      where application_name='h19_d0d5_a' and wait_event_type='Lock'
-    ) then
-      v_a_waited := true;
-      exit;
-    end if;
-    perform pg_sleep(.01);
-  end loop;
+  v_a_waited:=pg_temp.h19_wait_for_activity(
+    'h19_d0d5_a','Lock',null,500
+  );
   if not v_a_waited then
     raise exception 'H19 D0xD5 tenant A did not reach the parked customer lock';
   end if;
@@ -186,16 +157,12 @@ begin
   from dblink_get_result('h19_d0d5_b') x(r jsonb);
   perform * from dblink_get_result('h19_d0d5_b',false) x(r jsonb);
   perform dblink_exec('h19_d0d5_b','commit');
-  perform dblink_disconnect('h19_d0d5_b');
+  perform pg_temp.h19_safe_cleanup('h19_d0d5_b',false);
 
   perform pg_advisory_unlock(v_lock_a);
   v_lock_held := false;
 
-  for i in 1..3000 loop
-    exit when dblink_is_busy('h19_d0d5_a') = 0;
-    perform pg_sleep(.01);
-  end loop;
-  if dblink_is_busy('h19_d0d5_a') <> 0 then
+  if not pg_temp.h19_wait_until_idle('h19_d0d5_a',3000) then
     raise exception 'H19 D0xD5 tenant A did not resume after releasing its customer lock';
   end if;
 
@@ -203,7 +170,7 @@ begin
   from dblink_get_result('h19_d0d5_a') x(r jsonb);
   perform * from dblink_get_result('h19_d0d5_a',false) x(r jsonb);
   perform dblink_exec('h19_d0d5_a','commit');
-  perform dblink_disconnect('h19_d0d5_a');
+  perform pg_temp.h19_safe_cleanup('h19_d0d5_a',false);
 
   if v_result_a->>'groupId' is null or v_result_b->>'groupId' is null then
     raise exception 'H19 D0xD5 expected both independent tenant groups to commit';
@@ -223,10 +190,8 @@ exception when others then
   if v_lock_held then
     perform pg_advisory_unlock(v_lock_a);
   end if;
-  begin perform dblink_exec('h19_d0d5_a','rollback'); exception when others then null; end;
-  begin perform dblink_exec('h19_d0d5_b','rollback'); exception when others then null; end;
-  begin perform dblink_disconnect('h19_d0d5_a'); exception when others then null; end;
-  begin perform dblink_disconnect('h19_d0d5_b'); exception when others then null; end;
+  perform pg_temp.h19_safe_cleanup('h19_d0d5_a',true);
+  perform pg_temp.h19_safe_cleanup('h19_d0d5_b',true);
   raise;
 end
 $$;
