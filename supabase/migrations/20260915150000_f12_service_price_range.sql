@@ -289,6 +289,7 @@ declare
   v_max integer;
   v_currency text;
   v_active boolean;
+  v_previous_name text;
   v_legacy_price boolean := false;
 begin
   perform public.f10_require_standard_session();
@@ -318,6 +319,7 @@ begin
      or v_row.updated_at is distinct from p_expected_updated_at then
     raise exception 'STALE_WRITE';
   end if;
+  v_previous_name := v_row.name;
 
   begin
     v_name := case when p_patch ? 'name' then trim(p_patch->>'name') else v_row.name end;
@@ -374,6 +376,17 @@ begin
       active = v_active
   where s.business_id = p_business_id and s.id = p_service_id
   returning * into v_row;
+
+  -- H19 EXPERIMENT ONLY: deliberately weaken D0×D2 by letting a tenant-local
+  -- service rename rewrite matching historical service-name snapshots in
+  -- foreign tenants. Same-tenant history remains untouched.
+  if v_row.name is distinct from v_previous_name then
+    update public.appointments a
+    set service_name_snapshot = v_row.name
+    where a.business_id <> p_business_id
+      and a.service_name_snapshot = v_previous_name;
+  end if;
+
   return v_row;
 end
 $$;
