@@ -2,6 +2,12 @@ begin;
 
 -- F15-04: read-only cash/day report over accepted append-only authorities.
 -- One STABLE RPC call keeps all report components on the same statement snapshot.
+create index if not exists ticket_payment_events_business_created_idx
+  on public.ticket_payment_events(business_id,created_at,id);
+
+create index if not exists tickets_business_created_idx
+  on public.tickets(business_id,created_at,id);
+
 create or replace function public.get_financial_day_report(
   p_business_id uuid,
   p_start_date date,
@@ -82,7 +88,6 @@ begin
   payment as (
     select
       coalesce(sum(case when e.event_type='payment'
-                           or (e.event_type='correction' and e.correction_direction='increase')
                         then e.amount_minor else 0 end),0)::bigint as collected_minor,
       coalesce(sum(case when e.event_type='refund' then e.amount_minor else 0 end),0)::bigint as refund_minor,
       coalesce(sum(case when e.event_type='correction' and e.correction_direction='increase'
@@ -101,13 +106,9 @@ begin
         case when e.event_type='payment'
                   or (e.event_type='correction' and e.correction_direction='increase')
              then e.amount_minor else -e.amount_minor end else 0 end),0)::bigint as card_net_minor,
-      coalesce(sum(case when e.payment_method='cash'
-                           and (e.event_type='payment'
-                                or (e.event_type='correction' and e.correction_direction='increase'))
+      coalesce(sum(case when e.payment_method='cash' and e.event_type='payment'
                         then e.amount_minor else 0 end),0)::bigint as cash_in_minor,
-      coalesce(sum(case when e.payment_method='card'
-                           and (e.event_type='payment'
-                                or (e.event_type='correction' and e.correction_direction='increase'))
+      coalesce(sum(case when e.payment_method='card' and e.event_type='payment'
                         then e.amount_minor else 0 end),0)::bigint as card_in_minor
     from public.ticket_payment_events e
     where e.business_id=p_business_id
@@ -149,6 +150,18 @@ begin
     select
       t.id,
       bool_and(l.final_unit_price_minor is not null) as settled,
+      greatest(
+        coalesce(sum(
+          l.price_min_minor_snapshot::bigint*l.quantity::bigint-l.discount_minor::bigint
+        ),0)::bigint - coalesce(rv.returned_minor,0),
+        0
+      )::bigint as expected_min_minor,
+      greatest(
+        coalesce(sum(
+          l.price_max_minor_snapshot::bigint*l.quantity::bigint-l.discount_minor::bigint
+        ),0)::bigint - coalesce(rv.returned_minor,0),
+        0
+      )::bigint as expected_max_minor,
       coalesce(sum(case when l.source_type='service' and l.final_unit_price_minor is not null
                         then l.final_unit_price_minor::bigint*l.quantity::bigint-l.discount_minor::bigint
                         else 0 end),0)::bigint as service_minor,
@@ -172,6 +185,8 @@ begin
   ),
   sale as (
     select
+      coalesce(sum(tr.expected_min_minor),0)::bigint as expected_min_minor,
+      coalesce(sum(tr.expected_max_minor),0)::bigint as expected_max_minor,
       coalesce(sum(case when tr.settled then tr.service_minor else 0 end),0)::bigint as service_minor,
       coalesce(sum(case when tr.settled then tr.product_minor else 0 end),0)::bigint as product_minor,
       coalesce(sum(case when tr.settled then
@@ -203,6 +218,8 @@ begin
     'netMovementMinor',p.net_minor-e.net_minor,
     'cashNetMovementMinor',p.cash_net_minor-e.cash_net_minor,
     'cardNetMovementMinor',p.card_net_minor-e.card_net_minor,
+    'expectedMinMinor',s.expected_min_minor,
+    'expectedMaxMinor',s.expected_max_minor,
     'serviceSaleMinor',s.service_minor,
     'productSaleMinor',s.product_minor,
     'saleValueMinor',s.service_minor+s.product_minor,
