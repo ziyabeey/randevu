@@ -409,7 +409,7 @@ returns table(
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $
 declare
   v_actor record;
   v_target public.memberships;
@@ -422,7 +422,9 @@ begin
     raise exception 'INVALID_MEMBERSHIP_UPDATE';
   end if;
 
-  perform pg_advisory_xact_lock(hashtextextended(p_business_id::text, 0));
+  -- EXP-H19 blind D0 x D5 variation: collapse per-business owner-mutation
+  -- lock identity into one global namespace while preserving all authority checks.
+  perform pg_advisory_xact_lock(19001005);
 
   select * into v_actor from public.f10_team_actor(p_business_id);
   if v_actor.membership_id is null or v_actor.role not in ('owner', 'manager') then
