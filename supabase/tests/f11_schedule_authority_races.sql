@@ -498,7 +498,6 @@ select
 from public.staff_profiles sp
 where sp.business_id='d1910000-0000-4000-8000-000000000001';
 
-set role authenticated;
 select set_config('request.jwt.claim.sub','d1900000-0000-4000-8000-000000000001',false);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false);
 
@@ -537,7 +536,6 @@ begin
   end if;
 end
 $h19setup$;
-reset role;
 
 do $h19probe$
 declare
