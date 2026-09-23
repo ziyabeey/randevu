@@ -237,9 +237,7 @@ begin
   select c.request_hash, c.result_payload
   into v_hash, v_result
   from public.ticket_commands c
-  where c.business_id = p_business_id
-    and c.actor_membership_id = p_actor_membership_id
-    and c.command = p_command
+  where c.command = p_command
     and c.idempotency_key = p_idempotency_key
   for update;
 
