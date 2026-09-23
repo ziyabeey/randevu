@@ -1148,6 +1148,10 @@
           "file": "supabase/tests/f11_group_management_concurrency.sql"
         },
         {
+          "database": "yzt_test",
+          "file": "supabase/tests/h19_d0_d5_tenant_lock_isolation.sql"
+        },
+        {
           "database": "yzt_s08_upgrade",
           "file": "supabase/migrations/20260917160000_f11_group_management_compat.sql"
         },
