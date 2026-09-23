@@ -5,6 +5,7 @@ create table public.expense_events (
   business_id uuid not null references public.businesses(id),
   event_type text not null check (event_type in ('expense','reversal')),
   source_expense_event_id uuid,
+  correction_of_event_id uuid,
   category text not null,
   description text,
   amount_minor integer not null check (amount_minor between 1 and 100000000),
@@ -23,8 +24,14 @@ create table public.expense_events (
   constraint expense_events_source_fk
     foreign key (business_id, source_expense_event_id)
     references public.expense_events(business_id, id),
+  constraint expense_events_correction_fk
+    foreign key (business_id, correction_of_event_id)
+    references public.expense_events(business_id, id),
   constraint expense_events_not_self_source
-    check (source_expense_event_id is null or source_expense_event_id <> id),
+    check (
+      (source_expense_event_id is null or source_expense_event_id <> id)
+      and (correction_of_event_id is null or correction_of_event_id <> id)
+    ),
   constraint expense_events_category_shape
     check (category = btrim(category) and char_length(category) between 1 and 80),
   constraint expense_events_description_shape
@@ -34,15 +41,28 @@ create table public.expense_events (
     check (reason is null or (reason = btrim(reason) and char_length(reason) between 2 and 240)),
   constraint expense_events_shape
     check (
-      (event_type='expense' and source_expense_event_id is null and reason is null)
+      (
+        event_type='expense'
+        and source_expense_event_id is null
+        and reason is null
+      )
       or
-      (event_type='reversal' and source_expense_event_id is not null and reason is not null)
+      (
+        event_type='reversal'
+        and source_expense_event_id is not null
+        and correction_of_event_id is null
+        and reason is not null
+      )
     )
 );
 
 create unique index expense_events_one_reversal_idx
   on public.expense_events(business_id, source_expense_event_id)
   where source_expense_event_id is not null;
+
+create unique index expense_events_one_replacement_idx
+  on public.expense_events(business_id, correction_of_event_id)
+  where correction_of_event_id is not null;
 
 create index expense_events_business_occurred_idx
   on public.expense_events(business_id, occurred_at desc, id desc);
@@ -237,6 +257,7 @@ as $$
     'businessId',e.business_id,
     'eventType',e.event_type,
     'sourceExpenseEventId',e.source_expense_event_id,
+    'correctionOfEventId',e.correction_of_event_id,
     'category',e.category,
     'description',e.description,
     'amountMinor',e.amount_minor,
@@ -349,11 +370,11 @@ begin
   v_occurred_at:=p_occurred_local at time zone v_timezone;
 
   insert into public.expense_events(
-    business_id,event_type,source_expense_event_id,category,description,
+    business_id,event_type,source_expense_event_id,correction_of_event_id,category,description,
     amount_minor,currency,payment_method,occurred_at,business_date,timezone_snapshot,
     reason,actor_membership_id
   ) values (
-    p_business_id,'expense',null,v_category,v_description,
+    p_business_id,'expense',null,null,v_category,v_description,
     p_amount_minor,v_currency,p_payment_method,v_occurred_at,p_occurred_local::date,v_timezone,
     null,v_actor.id
   )
@@ -421,11 +442,11 @@ begin
   end if;
 
   insert into public.expense_events(
-    business_id,event_type,source_expense_event_id,category,description,
+    business_id,event_type,source_expense_event_id,correction_of_event_id,category,description,
     amount_minor,currency,payment_method,occurred_at,business_date,timezone_snapshot,
     reason,actor_membership_id
   ) values (
-    p_business_id,'reversal',v_source.id,v_source.category,v_source.description,
+    p_business_id,'reversal',v_source.id,null,v_source.category,v_source.description,
     v_source.amount_minor,v_source.currency,v_source.payment_method,v_occurred_at,p_occurred_local::date,v_timezone,
     v_reason,v_actor.id
   )
@@ -521,11 +542,11 @@ begin
   returning * into v_reversal;
 
   insert into public.expense_events(
-    business_id,event_type,source_expense_event_id,category,description,
+    business_id,event_type,source_expense_event_id,correction_of_event_id,category,description,
     amount_minor,currency,payment_method,occurred_at,business_date,timezone_snapshot,
     reason,actor_membership_id
   ) values (
-    p_business_id,'expense',null,v_category,v_description,
+    p_business_id,'expense',null,v_source.id,v_category,v_description,
     p_amount_minor,v_currency,p_payment_method,v_occurred_at,p_occurred_local::date,v_timezone,
     null,v_actor.id
   )
