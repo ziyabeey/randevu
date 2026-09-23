@@ -6,15 +6,16 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
-test('F15-03 activates expense flows without pulling F15-04 cash report forward',()=>{
+test('F15-03 expense flows remain canonical when F15-04 report navigation is enabled',()=>{
   const kolay=readFileSync(path.join(root,'src/kolayapp/KolayAppSurface.tsx'),'utf8');
   const routes=readFileSync(path.join(root,'src/workspace-route.ts'),'utf8');
   const shell=readFileSync(path.join(root,'src/WorkspaceShell.tsx'),'utf8');
 
   assert.match(kolay,/AppLink href="\/app\/expenses"><strong>Yeni masraf<\/strong>/);
   assert.match(kolay,/AppLink href="\/app\/expenses"><strong>Masraflar<\/strong>/);
-  assert.match(kolay,/DisabledAction title="Kasa"/);
+  assert.match(kolay,/AppLink href="\/app\/reports"><strong>Kasa<\/strong>/);
   assert.match(routes,/'\/app\/expenses': 'expenses'/);
+  assert.match(routes,/'\/app\/reports': 'reports'/);
   assert.match(shell,/lazy\(\(\) => import\('\.\/ExpensesPage'\)\)/);
 });
 
