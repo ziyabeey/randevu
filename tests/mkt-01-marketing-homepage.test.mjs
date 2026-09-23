@@ -97,6 +97,8 @@ test('MKT-01 booking demo uses a scroll-owned phone scene with a reduced-motion 
   assert.match(bookingScrollCss, /height:\s*250svh/);
   assert.match(bookingScrollCss, /position:\s*sticky/);
   assert.match(bookingScrollCss, /\.mkt-booking-sticky::before[\s\S]*?background:\s*var\(--mkt-cobalt\)/);
+  assert.match(bookingScrollCss, /scroll-margin-top:\s*0/);
+  assert.match(bookingScrollCss, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.mkt-booking-sticky::before[\s\S]*?display:\s*none/);
   assert.match(marketingPolishCss, /\.mkt-product-story:not\(\.mkt-booking-scene\)/);
   assert.match(bookingScrollCss, /@media \(prefers-reduced-motion: reduce\)/);
 });
