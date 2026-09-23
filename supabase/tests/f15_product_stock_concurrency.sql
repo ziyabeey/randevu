@@ -106,29 +106,45 @@ $$;
 -- The synthetic row lock above is released when its statement transaction
 -- completes. Wait for both asynchronous writers, tolerating one expected
 -- STALE_WRITE/negative transaction failure.
-do $$
+do $
 declare
-  v_conn text;
-  v_done integer := 0;
+  v_done_a boolean := false;
+  v_done_b boolean := false;
 begin
-  while v_done < 2 loop
-    for v_conn in select unnest(array['f1501_stock_a','f1501_stock_b']) loop
-      if dblink_is_busy(v_conn)=0 then
-        begin
-          perform * from dblink_get_result(v_conn,false) as t(result jsonb);
-        exception when others then null;
-        end;
-        begin perform dblink_exec(v_conn,'commit'); exception when others then
-          begin perform dblink_exec(v_conn,'rollback'); exception when others then null; end;
-        end;
-        perform dblink_disconnect(v_conn);
-        v_done := v_done + 1;
-      end if;
-    end loop;
-    if v_done<2 then perform pg_sleep(0.01); end if;
+  for i in 1..3000 loop
+    if not v_done_a and dblink_is_busy('f1501_stock_a')=0 then
+      begin
+        perform * from dblink_get_result('f1501_stock_a',false) as t(result jsonb);
+      exception when others then null;
+      end;
+      begin perform dblink_exec('f1501_stock_a','commit'); exception when others then
+        begin perform dblink_exec('f1501_stock_a','rollback'); exception when others then null; end;
+      end;
+      perform dblink_disconnect('f1501_stock_a');
+      v_done_a := true;
+    end if;
+
+    if not v_done_b and dblink_is_busy('f1501_stock_b')=0 then
+      begin
+        perform * from dblink_get_result('f1501_stock_b',false) as t(result jsonb);
+      exception when others then null;
+      end;
+      begin perform dblink_exec('f1501_stock_b','commit'); exception when others then
+        begin perform dblink_exec('f1501_stock_b','rollback'); exception when others then null; end;
+      end;
+      perform dblink_disconnect('f1501_stock_b');
+      v_done_b := true;
+    end if;
+
+    exit when v_done_a and v_done_b;
+    perform pg_sleep(0.01);
   end loop;
+
+  if not (v_done_a and v_done_b) then
+    raise exception 'F15 timed out waiting for concurrent stock writers';
+  end if;
 end
-$$;
+$;
 
 do $$
 declare
