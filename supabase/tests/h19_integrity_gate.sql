@@ -2,7 +2,7 @@
 
 -- H19 Integrity Gate
 --
--- Single canonical CI entry point for permanent H19 interaction regressions.
+-- Single canonical repo-level CI entry point for permanent H19 interaction regressions.
 -- Scenario files remain independently readable evidence, but CI invokes H19
 -- through this gate only. New permanent H19 scenarios should be registered
 -- here rather than added as separate ci-postgres-plan.json steps.
@@ -31,6 +31,15 @@
 
 \echo 'H19 Integrity Gate: D4xD5 cross-day authority/version'
 \ir h19_d4_d5_cross_day_authority.sql
+
+\echo 'H19 Integrity Gate: D0xD3 tenant/capacity isolation'
+\ir h19_d0_d3_tenant_capacity.sql
+
+\echo 'H19 Integrity Gate: D3xD4 staff-hours fallback'
+\ir h19_d3_d4_staff_hours_fallback.sql
+
+\echo 'H19 Integrity Gate: F15 D0xD1 actor/idempotency scope'
+\ir h19_f15_d0_d1_actor_idempotency.sql
 
 do $$
 begin
