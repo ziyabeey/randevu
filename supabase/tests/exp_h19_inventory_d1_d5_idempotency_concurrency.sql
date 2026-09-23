@@ -242,7 +242,3 @@ exception when others then
 end
 $probe$;
 
-delete from public.businesses
-where id='f1d10000-0000-4000-8000-000000000001';
-delete from auth.users
-where id='f1d00000-0000-4000-8000-000000000001';
