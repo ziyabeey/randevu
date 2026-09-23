@@ -45,7 +45,7 @@ await test('F15 expense create derives business and enforces expenses_write',asy
   let calls=0;
   globalThis.fetch=baseFetch({role:'staff',permission:false,rpc:async()=>{calls+=1;throw new Error('unexpected');}});
   try{
-    const r=await app.request('http://localhost/api/expenses',{method:'POST',headers:headers('f1503-denied'),body:JSON.stringify({businessId:otherBusinessId,category:'Malzeme',amountMinor:15000,currency:'TRY',paymentMethod:'cash',occurredAt:'2026-09-23T07:00:00.000Z'})},env);
+    const r=await app.request('http://localhost/api/expenses',{method:'POST',headers:headers('f1503-denied'),body:JSON.stringify({businessId:otherBusinessId,category:'Malzeme',amountMinor:15000,currency:'TRY',paymentMethod:'cash',occurredAt:'2026-09-23T10:00'})},env);
     assert.equal(r.status,403); assert.equal((await r.json()).error?.code,'EXPENSES_PERMISSION_REQUIRED'); assert.equal(calls,0);
   }finally{globalThis.fetch=real;}
 
@@ -56,12 +56,13 @@ await test('F15 expense create derives business and enforces expenses_write',asy
     return json({eventId,businessId,eventType:'expense',amountMinor:15000,effectMinor:15000,paymentMethod:'cash'});
   }});
   try{
-    const r=await app.request('http://localhost/api/expenses',{method:'POST',headers:headers('f1503-create'),body:JSON.stringify({businessId:otherBusinessId,category:' Malzeme ',description:' Eldiven ',amountMinor:15000,currency:'try',paymentMethod:'cash',occurredAt:'2026-09-23T07:00:00.000Z'})},env);
+    const r=await app.request('http://localhost/api/expenses',{method:'POST',headers:headers('f1503-create'),body:JSON.stringify({businessId:otherBusinessId,category:' Malzeme ',description:' Eldiven ',amountMinor:15000,currency:'try',paymentMethod:'cash',occurredAt:'2026-09-23T10:00'})},env);
     assert.equal(r.status,201);
     assert.equal(rpcBody.p_business_id,businessId);
     assert.equal(rpcBody.p_category,'Malzeme');
     assert.equal(rpcBody.p_description,'Eldiven');
     assert.equal(rpcBody.p_currency,'TRY');
+    assert.equal(rpcBody.p_occurred_local,'2026-09-23T10:00');
     assert.equal(JSON.stringify(rpcBody).includes(otherBusinessId),false);
   }finally{globalThis.fetch=real;}
 });
@@ -76,9 +77,9 @@ await test('F15 expense reversal and correction bind source to selected tenant',
     throw new Error('unexpected');
   }});
   try{
-    let r=await app.request(`http://localhost/api/expenses/${eventId}/reverse`,{method:'POST',headers:headers('f1503-reverse'),body:JSON.stringify({businessId:otherBusinessId,reason:'Yanlış kayıt',occurredAt:'2026-09-23T08:00:00.000Z'})},env);
+    let r=await app.request(`http://localhost/api/expenses/${eventId}/reverse`,{method:'POST',headers:headers('f1503-reverse'),body:JSON.stringify({businessId:otherBusinessId,reason:'Yanlış kayıt',occurredAt:'2026-09-23T11:00'})},env);
     assert.equal(r.status,201);
-    r=await app.request(`http://localhost/api/expenses/${eventId}/correct`,{method:'POST',headers:headers('f1503-correct'),body:JSON.stringify({businessId:otherBusinessId,reason:'Tutar düzeltmesi',category:'Malzeme',description:'Eldiven',amountMinor:12000,currency:'TRY',paymentMethod:'card',occurredAt:'2026-09-23T07:00:00.000Z',correctionOccurredAt:'2026-09-23T08:05:00.000Z'})},env);
+    r=await app.request(`http://localhost/api/expenses/${eventId}/correct`,{method:'POST',headers:headers('f1503-correct'),body:JSON.stringify({businessId:otherBusinessId,reason:'Tutar düzeltmesi',category:'Malzeme',description:'Eldiven',amountMinor:12000,currency:'TRY',paymentMethod:'card',occurredAt:'2026-09-23T10:00',correctionOccurredAt:'2026-09-23T11:05'})},env);
     assert.equal(r.status,201);
     assert.equal(seen.length,2);
     assert.ok(seen.every(x=>x.body.p_business_id===businessId));
@@ -94,7 +95,7 @@ await test('F15 expense list is membership-scoped and paginated',async()=>{
     if(url.pathname==='/rest/v1/memberships') return json([member('staff')]);
     assert.equal(url.pathname,'/rest/v1/rpc/list_expense_events_page');
     const body=JSON.parse(init.body); assert.equal(body.p_business_id,businessId); assert.equal(body.p_limit,26);
-    return json([{event:{eventId,businessId,eventType:'expense',amountMinor:15000,effectMinor:15000},sort_occurred_at:'2026-09-23T07:00:00.000Z',sort_id:eventId}]);
+    return json([{event:{eventId,businessId,eventType:'expense',amountMinor:15000,effectMinor:15000},sort_occurred_at:'2026-09-23T10:00',sort_id:eventId}]);
   };
   try{
     const r=await app.request('http://localhost/api/expenses',{headers:{Cookie:cookie()}},env);
