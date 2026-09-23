@@ -1,0 +1,12 @@
+html[data-mkt-reduced-motion="true"] .mkt-root *,
+html[data-mkt-reduced-motion="true"] .mkt-root *::before,
+html[data-mkt-reduced-motion="true"] .mkt-root *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+html[data-mkt-reduced-motion="true"] .mkt-final-lockup {
+  animation: none !important;
+}

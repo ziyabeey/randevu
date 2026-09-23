@@ -1,0 +1,60 @@
+.mkt-final-cta {
+  background: var(--mkt-cobalt);
+  color: white;
+}
+
+.mkt-final-cta .mkt-eyebrow {
+  color: var(--mkt-lime);
+}
+
+.mkt-final-cta h2,
+.mkt-final-cta > p:not(.mkt-eyebrow) {
+  color: white;
+}
+
+.mkt-final-cta .mkt-button--dark {
+  background: var(--mkt-lime);
+  color: var(--mkt-cobalt-deep) !important;
+  box-shadow: 0 14px 34px rgba(198, 232, 0, 0.18);
+}
+
+.mkt-contact-pending {
+  display: inline-grid;
+  gap: 0.35rem;
+  max-width: min(100%, 34rem);
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.mkt-contact-pending strong {
+  color: var(--mkt-lime);
+  font-size: 0.98rem;
+}
+
+.mkt-contact-pending span {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+/* Copy contract §16: the final stage always offers a second, honest action. */
+.mkt-final-secondary {
+  margin-top: 24px;
+  color: var(--mkt-lime) !important;
+}
+
+.mkt-final-orb {
+  background: var(--mkt-cobalt-deep);
+  opacity: 0.55;
+}
+
+.mkt-final-lockup {
+  color: white;
+}
+
+.mkt-final-lockup > small {
+  color: var(--mkt-cobalt-deep);
+}

@@ -1,0 +1,1 @@
+export { MarketingHome } from "./MarketingHome";

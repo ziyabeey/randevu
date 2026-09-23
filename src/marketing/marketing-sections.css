@@ -1,0 +1,509 @@
+.mkt-product-story,
+.mkt-today,
+.mkt-proof-before-pilot,
+.mkt-faq {
+  width: min(1240px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.mkt-product-story {
+  min-height: 86svh;
+  padding: clamp(96px, 11vw, 150px) 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(420px, 0.82fr);
+  align-items: center;
+  gap: clamp(44px, 8vw, 120px);
+}
+
+.mkt-section-copy h2,
+.mkt-calendar-copy h2,
+.mkt-proof-before-pilot h2,
+.mkt-faq h2,
+.mkt-today h2 {
+  margin: 0;
+  color: var(--mkt-cobalt-deep);
+  font-size: clamp(3.4rem, 6.4vw, 7.2rem);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+}
+
+.mkt-section-copy > p:not(.mkt-eyebrow),
+.mkt-calendar-copy > p:not(.mkt-eyebrow),
+.mkt-proof-before-pilot > div > p:not(.mkt-eyebrow),
+.mkt-today .mkt-section-copy > p:not(.mkt-eyebrow) {
+  width: min(560px, 100%);
+  margin: 26px 0 0;
+  color: #5f7395;
+  font-size: clamp(1.05rem, 1.55vw, 1.32rem);
+  line-height: 1.55;
+  letter-spacing: -0.025em;
+}
+
+.mkt-inline-note {
+  width: fit-content;
+  margin-top: 28px;
+  padding: 11px 15px;
+  border-radius: 999px;
+  background: rgba(198, 232, 0, 0.2);
+  color: var(--mkt-cobalt-deep);
+  font-size: 0.86rem;
+  font-weight: 820;
+}
+
+.mkt-booking-proof {
+  padding: clamp(20px, 3vw, 34px);
+  border: 1px solid rgba(51, 102, 204, 0.12);
+  border-radius: 34px;
+  background: white;
+  box-shadow: 0 34px 90px rgba(21, 56, 109, 0.12);
+  transform: rotate(1.4deg);
+}
+
+.mkt-proof-header {
+  padding-bottom: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--mkt-border);
+}
+
+.mkt-proof-header strong,
+.mkt-proof-header span {
+  color: var(--mkt-cobalt-deep);
+  font-weight: 900;
+}
+
+.mkt-proof-header small {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--mkt-powder);
+  color: var(--mkt-cobalt);
+  font-weight: 800;
+}
+
+.mkt-proof-step {
+  padding: 20px 0;
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid var(--mkt-border);
+}
+
+.mkt-proof-step:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.mkt-proof-step > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef4ff;
+  color: var(--mkt-cobalt);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.mkt-proof-step div {
+  min-width: 0;
+}
+
+.mkt-proof-step small,
+.mkt-proof-step strong {
+  display: block;
+}
+
+.mkt-proof-step small {
+  margin-bottom: 5px;
+  color: #788aa7;
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+.mkt-proof-step strong {
+  color: var(--mkt-cobalt-deep);
+  font-size: 1.05rem;
+}
+
+.mkt-proof-step b {
+  color: var(--mkt-cobalt);
+  font-size: 1.15rem;
+}
+
+.mkt-time-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.mkt-time-pills i {
+  padding: 7px 9px;
+  border: 1px solid var(--mkt-border);
+  border-radius: 10px;
+  color: #657998;
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 760;
+}
+
+.mkt-time-pills .is-picked {
+  border-color: var(--mkt-cobalt);
+  background: var(--mkt-cobalt);
+  color: white;
+}
+
+.mkt-calendar-stage {
+  min-height: 100svh;
+  padding: clamp(90px, 10vw, 140px) max(6vw, 28px);
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(440px, 0.88fr);
+  align-items: center;
+  gap: clamp(44px, 7vw, 100px);
+  background: var(--mkt-cobalt);
+  color: white;
+}
+
+.mkt-calendar-copy .mkt-eyebrow,
+.mkt-calendar-copy h2,
+.mkt-calendar-copy > p:not(.mkt-eyebrow) {
+  color: white;
+}
+
+.mkt-calendar-copy .mkt-eyebrow {
+  opacity: 0.78;
+}
+
+.mkt-calendar-board {
+  width: min(650px, 100%);
+  justify-self: end;
+  padding: 18px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--mkt-cobalt-deep);
+  box-shadow: 0 36px 110px rgba(3, 24, 65, 0.34);
+}
+
+.mkt-calendar-head {
+  padding: 10px 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.mkt-calendar-head strong {
+  font-size: 1.35rem;
+}
+
+.mkt-calendar-head span {
+  color: #7184a3;
+  font-size: 0.82rem;
+}
+
+.mkt-calendar-row {
+  min-height: 78px;
+  margin-top: 8px;
+  padding: 13px 15px;
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(21, 56, 109, 0.08);
+  border-radius: 18px;
+  background: #f6f8fc;
+}
+
+.mkt-calendar-row time {
+  color: var(--mkt-cobalt);
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.mkt-calendar-row div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.mkt-calendar-row div span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.mkt-calendar-row.is-busy div span {
+  background: #e9eef7;
+  color: #7184a3;
+}
+
+.mkt-calendar-row.is-free {
+  background: rgba(198, 232, 0, 0.1);
+}
+
+.mkt-calendar-row.is-free div span {
+  background: var(--mkt-lime);
+  color: var(--mkt-cobalt-deep);
+}
+
+.mkt-calendar-row.is-highlighted {
+  border-color: rgba(198, 232, 0, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(198, 232, 0, 0.55);
+}
+
+/* Operations scene (handoff 6.9): night-blue full-bleed stage between the transformation and the proof. */
+.mkt-today {
+  width: 100%;
+  padding: clamp(100px, 11vw, 160px) max(6vw, 28px);
+  background: var(--mkt-cobalt-deep);
+  color: white;
+  display: grid;
+  grid-template-columns: minmax(0, 0.84fr) minmax(420px, 0.76fr);
+  align-items: center;
+  gap: clamp(44px, 8vw, 110px);
+}
+
+.mkt-today .mkt-eyebrow {
+  color: var(--mkt-lime);
+}
+
+.mkt-today h2 {
+  color: white;
+}
+
+.mkt-today .mkt-section-copy > p:not(.mkt-eyebrow) {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.mkt-today-list {
+  width: min(560px, 100%);
+  justify-self: end;
+  display: grid;
+  gap: 10px;
+}
+
+.mkt-today-list article {
+  color: var(--mkt-cobalt-deep);
+  min-height: 84px;
+  padding: 15px 18px;
+  display: grid;
+  grid-template-columns: 78px 1fr 38px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--mkt-border);
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(21, 56, 109, 0.06);
+}
+
+.mkt-today-list time {
+  color: var(--mkt-cobalt);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.mkt-today-list div {
+  display: grid;
+  gap: 3px;
+}
+
+.mkt-today-list div span {
+  color: #7688a6;
+  font-size: 0.76rem;
+}
+
+.mkt-today-list i {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(198, 232, 0, 0.22);
+  color: var(--mkt-cobalt-deep);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.mkt-proof-before-pilot {
+  padding: clamp(90px, 10vw, 140px) 0;
+}
+
+.mkt-proof-before-pilot > div:first-child {
+  max-width: 900px;
+}
+
+.mkt-proof-points {
+  margin-top: 54px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.mkt-proof-points article {
+  min-height: 196px;
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border-radius: 28px;
+  background: #eef4ff;
+}
+
+.mkt-proof-points article:nth-child(2) {
+  background: rgba(198, 232, 0, 0.18);
+}
+
+.mkt-proof-points article:nth-child(3) {
+  background: #f3edff;
+}
+
+.mkt-proof-points span {
+  margin-bottom: auto;
+  color: var(--mkt-cobalt);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.mkt-proof-points strong {
+  color: var(--mkt-cobalt-deep);
+  font-size: 1.45rem;
+  letter-spacing: -0.035em;
+}
+
+.mkt-proof-points p {
+  margin: 9px 0 0;
+  color: #647896;
+  line-height: 1.45;
+}
+
+.mkt-faq {
+  padding: clamp(90px, 10vw, 150px) 0;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.62fr) minmax(0, 1fr);
+  gap: clamp(40px, 8vw, 120px);
+}
+
+.mkt-faq-list {
+  border-top: 1px solid var(--mkt-border);
+}
+
+.mkt-faq-list details {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--mkt-border);
+}
+
+.mkt-faq-list summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--mkt-cobalt-deep);
+  font-size: clamp(1.08rem, 1.5vw, 1.3rem);
+  font-weight: 850;
+  letter-spacing: -0.025em;
+}
+
+.mkt-faq-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.mkt-faq-list summary::after {
+  content: "+";
+  float: right;
+  color: var(--mkt-cobalt);
+  font-size: 1.3em;
+}
+
+.mkt-faq-list details[open] summary::after {
+  content: "–";
+}
+
+.mkt-faq-list p {
+  max-width: 720px;
+  margin: 16px 0 0;
+  color: #607492;
+  line-height: 1.6;
+}
+
+@media (max-width: 980px) {
+  .mkt-product-story,
+  .mkt-today,
+  .mkt-faq {
+    grid-template-columns: 1fr;
+  }
+
+  .mkt-calendar-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .mkt-calendar-board {
+    justify-self: stretch;
+  }
+
+  .mkt-proof-points {
+    grid-template-columns: 1fr;
+  }
+
+  .mkt-proof-points article {
+    min-height: 190px;
+  }
+}
+
+@media (max-width: 680px) {
+  .mkt-product-story,
+  .mkt-proof-before-pilot,
+  .mkt-faq {
+    width: calc(100% - 32px);
+  }
+
+  .mkt-today {
+    padding-inline: 16px;
+  }
+
+  .mkt-product-story,
+  .mkt-today,
+  .mkt-proof-before-pilot,
+  .mkt-faq {
+    padding-block: 82px;
+  }
+
+  .mkt-section-copy h2,
+  .mkt-calendar-copy h2,
+  .mkt-proof-before-pilot h2,
+  .mkt-faq h2,
+  .mkt-today h2 {
+    font-size: clamp(3rem, 15vw, 5.2rem);
+  }
+
+  .mkt-booking-proof {
+    padding: 16px;
+    border-radius: 24px;
+    transform: none;
+  }
+
+  .mkt-proof-step {
+    grid-template-columns: 34px 1fr auto;
+  }
+
+  .mkt-calendar-stage {
+    min-height: auto;
+    padding: 86px 16px;
+  }
+
+  .mkt-calendar-row {
+    grid-template-columns: 62px 1fr;
+  }
+
+  .mkt-calendar-row div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mkt-today-list article {
+    grid-template-columns: 66px 1fr 32px;
+  }
+}
