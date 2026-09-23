@@ -20,21 +20,22 @@
 
 -- Canonical scenario manifest. Axis pairs may repeat across domains when the
 -- same interaction geometry protects a distinct authority model.
--- Each permanent scenario also carries its frozen three-arm evidence:
--- baseline/current-suite PASS, prospective-probe FAIL, clean-control PASS.
-select pg_temp.h19_expect('booking.d0d1.tenant_idempotency','booking','D0','D1',2131,2135,2136);
-select pg_temp.h19_expect('booking.d1d5.idempotency_concurrency','booking','D1','D5',2197,2200,2202);
-select pg_temp.h19_expect('booking.d0d4.tenant_time_boundary','booking','D0','D4',2152,2174,2175);
-select pg_temp.h19_expect('booking.d0d5.tenant_lock_isolation','booking','D0','D5',2177,2181,2249);
-select pg_temp.h19_expect('booking.d4d5.cross_day_authority','booking','D4','D5',2216,2232,2233);
-select pg_temp.h19_expect('booking.d0d3.tenant_capacity','booking','D0','D3',2207,2212,2213);
-select pg_temp.h19_expect('booking.d3d4.staff_hours_fallback','booking','D3','D4',2162,2164,2285);
-select pg_temp.h19_expect('inventory.d0d1.actor_idempotency','inventory','D0','D1',2283,2287,2288);
-select pg_temp.h19_expect('inventory.d1d5.idempotency_concurrency','inventory','D1','D5',2355,2359,2360);
-select pg_temp.h19_expect('booking.d2d3.snapshot_staff_coherence','booking','D2','D3',2106,2107,2098);
-select pg_temp.h19_expect('payments.d1d2.replay_snapshot','payments','D1','D2',2386,2389,2390);
+-- Each permanent scenario also carries its selection origin plus frozen three-arm evidence:
+-- origin is prospective or holdout; evidence is baseline/current-suite PASS,
+-- prospective-probe FAIL, clean-control PASS.
+select pg_temp.h19_expect('booking.d0d1.tenant_idempotency','booking','D0','D1','prospective',2131,2135,2136);
+select pg_temp.h19_expect('booking.d1d5.idempotency_concurrency','booking','D1','D5','prospective',2197,2200,2202);
+select pg_temp.h19_expect('booking.d0d4.tenant_time_boundary','booking','D0','D4','prospective',2152,2174,2175);
+select pg_temp.h19_expect('booking.d0d5.tenant_lock_isolation','booking','D0','D5','prospective',2177,2181,2249);
+select pg_temp.h19_expect('booking.d4d5.cross_day_authority','booking','D4','D5','prospective',2216,2232,2233);
+select pg_temp.h19_expect('booking.d0d3.tenant_capacity','booking','D0','D3','holdout',2207,2212,2213);
+select pg_temp.h19_expect('booking.d3d4.staff_hours_fallback','booking','D3','D4','prospective',2162,2164,2285);
+select pg_temp.h19_expect('inventory.d0d1.actor_idempotency','inventory','D0','D1','prospective',2283,2287,2288);
+select pg_temp.h19_expect('inventory.d1d5.idempotency_concurrency','inventory','D1','D5','prospective',2355,2359,2360);
+select pg_temp.h19_expect('booking.d2d3.snapshot_staff_coherence','booking','D2','D3','prospective',2106,2107,2098);
+select pg_temp.h19_expect('payments.d1d2.replay_snapshot','payments','D1','D2','prospective',2386,2389,2390);
 -- HOLDOUT CONTROL: D2xD5 is a frozen antipodal pair; keep regression evidence but exclude it from H19 geometry-selection scoring.
-select pg_temp.h19_expect('payments.d2d5.snapshot_concurrency','payments','D2','D5',2436,2441,2444);
+select pg_temp.h19_expect('payments.d2d5.snapshot_concurrency','payments','D2','D5','holdout',2436,2441,2444);
 
 \echo 'H19 Integrity Gate: D0xD1 tenant/idempotency'
 \ir h19_d0_d1_tenant_idempotency.sql
