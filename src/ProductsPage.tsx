@@ -33,6 +33,64 @@ type Movement = {
 type PageInfo = { limit: number; hasMore: boolean; nextCursor: string | null };
 type ProductList = { products: Product[]; page: PageInfo };
 type MovementList = { movements: Movement[]; page: PageInfo };
+type PendingProductWrite = {
+  businessId: string;
+  action: string;
+  idempotencyKey: string;
+  path: string;
+  method: string;
+  body: string | null;
+};
+
+const PENDING_PRODUCT_WRITE_KEY = 'randevu:products:pending-write:v1';
+
+function samePending(left: PendingProductWrite | null, right: PendingProductWrite) {
+  return Boolean(left
+    && left.businessId === right.businessId
+    && left.action === right.action
+    && left.idempotencyKey === right.idempotencyKey
+    && left.path === right.path
+    && left.method === right.method
+    && left.body === right.body);
+}
+
+function readPendingProductWrite(): PendingProductWrite | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(PENDING_PRODUCT_WRITE_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<PendingProductWrite>;
+    if (typeof value.businessId !== 'string'
+      || typeof value.action !== 'string'
+      || typeof value.idempotencyKey !== 'string'
+      || typeof value.path !== 'string'
+      || typeof value.method !== 'string'
+      || (value.body !== null && typeof value.body !== 'string')
+      || !value.businessId
+      || !value.action
+      || value.idempotencyKey.length < 8
+      || value.idempotencyKey.length > 128
+      || !value.path.startsWith('/api/products')
+      || !['POST', 'PUT'].includes(value.method)) {
+      window.sessionStorage.removeItem(PENDING_PRODUCT_WRITE_KEY);
+      return null;
+    }
+    return value as PendingProductWrite;
+  } catch {
+    return null;
+  }
+}
+
+function writePendingProductWrite(value: PendingProductWrite) {
+  try { window.sessionStorage.setItem(PENDING_PRODUCT_WRITE_KEY, JSON.stringify(value)); } catch { /* in-memory state still guards this mount */ }
+}
+
+function clearPendingProductWrite(expected: PendingProductWrite) {
+  try {
+    const current = readPendingProductWrite();
+    if (!current || samePending(current, expected)) window.sessionStorage.removeItem(PENDING_PRODUCT_WRITE_KEY);
+  } catch { /* definitive server result remains authoritative */ }
+}
 
 function money(minor: number, currency: string) {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
@@ -69,6 +127,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [pendingWrite, setPendingWrite] = useState<PendingProductWrite | null>(() => readPendingProductWrite());
   const keys = useRef(new Map<string, string>());
   const generation = useRef(0);
 
@@ -117,6 +176,7 @@ export default function ProductsPage() {
   useEffect(() => {
     generation.current += 1;
     keys.current.clear();
+    setPendingWrite(readPendingProductWrite());
     setProducts([]);
     setPage(null);
     setSelectedId(null);
@@ -134,16 +194,34 @@ export default function ProductsPage() {
   }, [loadMovements, selectedId]);
 
   async function mutate(action: string, path: string, init: RequestInit) {
+    const method = String(init.method ?? 'POST').toUpperCase();
+    const body = typeof init.body === 'string' ? init.body : null;
+    const matchesPending = Boolean(pendingWrite
+      && pendingWrite.businessId === activeBusinessId
+      && pendingWrite.action === action
+      && pendingWrite.path === path
+      && pendingWrite.method === method
+      && pendingWrite.body === body);
+    if (pendingWrite && !matchesPending) {
+      setNotice(pendingWrite.businessId === activeBusinessId
+        ? 'Önce sonucu belirsiz ürün/stok işlemini doğrulayın. Yeni işlem başlatılmadı.'
+        : 'Başka işletmede sonucu belirsiz ürün/stok işlemi var. Önce o işletmede doğrulayın.');
+      return null;
+    }
+
     setBusy(true);
     setNotice('');
-    const key = keys.current.get(action) ?? crypto.randomUUID();
+    const key = matchesPending ? pendingWrite!.idempotencyKey : (keys.current.get(action) ?? crypto.randomUUID());
     keys.current.set(action, key);
+    const identity: PendingProductWrite = { businessId: activeBusinessId, action, idempotencyKey: key, path, method, body };
     try {
       const result = await api<{ product: Product }>(path, {
         ...init,
         headers: { ...(init.headers ?? {}), 'Idempotency-Key': key },
       });
       keys.current.delete(action);
+      clearPendingProductWrite(identity);
+      setPendingWrite((current) => samePending(current, identity) ? null : current);
       if (result.product.businessId !== activeBusinessId) throw new Error('Sunucu farklı işletme ürünü döndürdü.');
       setProducts((items) => {
         const exists = items.some((item) => item.productId === result.product.productId);
@@ -155,17 +233,37 @@ export default function ProductsPage() {
       await loadMovements(result.product.productId);
       return result.product;
     } catch (error) {
-      if (!ambiguous(error)) keys.current.delete(action);
-      setNotice(ambiguous(error)
-        ? 'İşlemin sonucu belirsiz. Aynı formu tekrar gönderirseniz aynı işlem anahtarı kullanılacak.'
-        : error instanceof Error ? error.message : 'İşlem tamamlanamadı.');
-      if (!ambiguous(error) && selectedId) {
-        try { await loadProduct(selectedId); } catch { /* preserve mutation error */ }
+      if (ambiguous(error)) {
+        writePendingProductWrite(identity);
+        setPendingWrite(identity);
+        setNotice('İşlemin sonucu belirsiz. Kayıtlı istek aynı anahtarla doğrulanana kadar başka ürün/stok işlemi başlatılmayacak.');
+      } else {
+        keys.current.delete(action);
+        clearPendingProductWrite(identity);
+        setPendingWrite((current) => samePending(current, identity) ? null : current);
+        setNotice(error instanceof Error ? error.message : 'İşlem tamamlanamadı.');
+        if (selectedId) {
+          try { await loadProduct(selectedId); } catch { /* preserve mutation error */ }
+        }
       }
       return null;
     } finally {
       setBusy(false);
     }
+  }
+
+  async function retryPendingWrite() {
+    if (!pendingWrite) return;
+    if (pendingWrite.businessId !== activeBusinessId) {
+      setNotice('Belirsiz işlemi doğrulamak için önce işlemin başladığı işletmeye dönün.');
+      return;
+    }
+    const result = await mutate(
+      pendingWrite.action,
+      pendingWrite.path,
+      { method: pendingWrite.method, body: pendingWrite.body ?? undefined },
+    );
+    if (result) setNotice('Belirsiz ürün/stok işlemi sunucuda doğrulandı.');
   }
 
   async function createProduct(event: FormEvent<HTMLFormElement>) {
@@ -260,6 +358,12 @@ export default function ProductsPage() {
       </header>
 
       {notice && <div className="products-notice" role="status">{notice}</div>}
+      {pendingWrite && <div className="products-notice" role="alert">
+        <strong>Sonucu belirsiz işlem korunuyor.</strong>{' '}
+        {pendingWrite.businessId === activeBusinessId
+          ? <button disabled={busy} onClick={() => void retryPendingWrite()}>Kayıtlı isteği doğrula</button>
+          : <span>İşlemin başladığı işletmeye dönün.</span>}
+      </div>}
 
       <section className="products-grid">
         <article className="products-card products-create">
