@@ -311,7 +311,8 @@ begin
      or (v_reversal->>'effectMinor')::int<>-15000
      or (v_replacement->>'eventType')<>'expense'
      or (v_replacement->>'effectMinor')::int<>12000
-     or v_replacement->>'paymentMethod'<>'card' then
+     or v_replacement->>'paymentMethod'<>'card'
+     or (v_replacement->>'correctionOfEventId')::uuid<>current_setting('f1503.expense_id')::uuid then
     raise exception 'F15-03 correction projection wrong: %',v_result;
   end if;
 
@@ -329,6 +330,15 @@ begin
       and e.event_type='reversal'
   )<>1 then
     raise exception 'F15-03 correction did not create exactly one reversal';
+  end if;
+
+  if (
+    select count(*) from public.expense_events e
+    where e.business_id='f1810000-0000-4000-8000-000000000001'
+      and e.correction_of_event_id=current_setting('f1503.expense_id')::uuid
+      and e.event_type='expense'
+  )<>1 then
+    raise exception 'F15-03 correction replacement lost source lineage';
   end if;
 end
 $correction_persisted$;
