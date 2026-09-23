@@ -165,8 +165,8 @@ test('current green CI plus clean R0 routes only the stale required R2 receipt',
   assert.equal(built.observation.task.id, 'F12-05');
   assert.equal(built.observation.ci.run, '100');
   assert.equal(built.observation.ci.job, '200');
-  assert.equal(built.observation.ci.testedCheckoutSha, merge);
-  assert.equal(built.observation.ci.explicitlyBoundToHead, true);
+  assert.equal(built.observation.ci.testedCheckoutSha, head);
+  assert.equal(built.observation.ci.explicitlyBoundToHead, false);
   assert.equal(built.observation.r0.freeze, 'none');
   assert.equal(built.observation.reviews.r1.requirement, 'not_required');
   assert.equal(built.observation.reviews.r2.reviewedHeadSha, oldHead);
@@ -253,6 +253,16 @@ test('prose or unallowlisted commenters cannot forge an independent review recei
   const strangerBuilt = buildDevelopmentReviewObservation(input({ prComments: [r2Launch(head), stranger] }));
   assert.equal(strangerBuilt.observation.reviews.r2.receipt, 'missing');
   assert.equal(strangerBuilt.dispatcher.recommendation.suggestedAction, 'request_required_reviews');
+});
+
+test('Issue #65 coordination comments cannot satisfy independent review receipts', () => {
+  const built = buildDevelopmentReviewObservation(input({
+    prComments: [r2Launch(head)],
+    coordinationComments: [r2Receipt(head)],
+  }));
+  assert.equal(built.observation.reviews.r2.receipt, 'missing');
+  assert.equal(built.observation.reviews.r2.verdict, 'pending');
+  assert.equal(built.dispatcher.recommendation.suggestedAction, 'request_required_reviews');
 });
 
 test('same-head receipt from an older base remains stale and cannot suppress review', () => {
