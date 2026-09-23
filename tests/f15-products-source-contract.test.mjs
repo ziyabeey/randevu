@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+test('F15-01 exposes stock setup without activating product sale', () => {
+  const kolay = readFileSync(path.join(root, 'src/kolayapp/KolayAppSurface.tsx'), 'utf8');
+  const routes = readFileSync(path.join(root, 'src/workspace-route.ts'), 'utf8');
+  const shell = readFileSync(path.join(root, 'src/WorkspaceShell.tsx'), 'utf8');
+
+  assert.match(kolay, /DisabledAction title="Yeni ürün satışı"/);
+  assert.match(kolay, /AppLink href="\/app\/products"><strong>Ürün ve stok<\/strong>/);
+  assert.match(routes, /'\/app\/products': 'products'/);
+  assert.match(shell, /lazy\(\(\) => import\('\.\/ProductsPage'\)\)/);
+});
+
+test('F15-01 persists only bounded exact product write contracts on ambiguity', () => {
+  const source = readFileSync(path.join(root, 'src/ProductsPage.tsx'), 'utf8');
+
+  assert.match(source, /randevu:products:pending-write:v1/);
+  assert.match(source, /value\.path\.startsWith\('\/api\/products'\)/);
+  assert.match(source, /!\['POST', 'PUT'\]\.includes\(value\.method\)/);
+  assert.match(source, /idempotencyKey/);
+  assert.match(source, /writePendingProductWrite\(identity\)/);
+  assert.match(source, /Kayıtlı isteği doğrula/);
+  assert.match(source, /pendingWrite\.businessId === activeBusinessId/);
+});
