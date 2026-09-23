@@ -7,6 +7,8 @@
 -- through this gate only. New permanent H19 scenarios should be registered
 -- here rather than added as separate ci-postgres-plan.json steps.
 --
+\ir h19_test_support.sql
+
 -- Axis model:
 --   D0 tenant / authorization
 --   D1 atomicity / idempotency

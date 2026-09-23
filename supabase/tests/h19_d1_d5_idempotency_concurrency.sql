@@ -1,5 +1,3 @@
-create extension if not exists dblink;
-
 -- H19 prospective D1 x D5 coverage probe: idempotency x concurrency.
 --
 -- Two physical PostgreSQL sessions submit the same first booking-command claim
@@ -53,25 +51,10 @@ begin
     v_business,v_key,'create',v_hash
   );
 
-  perform dblink_connect(
-    'h19_d1d5_a',
-    'host=127.0.0.1 port=5432 dbname='||current_database()
-      ||' user=postgres password=postgres application_name=h19_d1d5_a'
-  );
-  perform dblink_connect(
-    'h19_d1d5_b',
-    'host=127.0.0.1 port=5432 dbname='||current_database()
-      ||' user=postgres password=postgres application_name=h19_d1d5_b'
-  );
-
-  for v_conn in select unnest(array['h19_d1d5_a','h19_d1d5_b']) loop
-    perform dblink_exec(v_conn,'set statement_timeout=30000');
-    perform dblink_exec(v_conn,'begin');
-    perform dblink_exec(
-      v_conn,
-      'set local "request.jwt.claim.sub" = '''||v_user::text||''''
-    );
-  end loop;
+  perform pg_temp.h19_connect('h19_d1d5_a',true);
+  perform pg_temp.h19_connect('h19_d1d5_b',true);
+  perform pg_temp.h19_set_subject('h19_d1d5_a',v_user,true);
+  perform pg_temp.h19_set_subject('h19_d1d5_b',v_user,true);
 
   -- A establishes the first claim, then remains active for two seconds so B can
   -- reach the same unique command identity while A's row is still uncommitted.
@@ -83,20 +66,9 @@ begin
     raise exception 'H19 D1xD5 session A did not start';
   end if;
 
-  for i in 1..200 loop
-    perform pg_stat_clear_snapshot();
-    if exists (
-      select 1
-      from pg_stat_activity
-      where application_name='h19_d1d5_a'
-        and wait_event_type='Timeout'
-        and wait_event='PgSleep'
-    ) then
-      v_a_waited:=true;
-      exit;
-    end if;
-    perform pg_sleep(0.01);
-  end loop;
+  v_a_waited:=pg_temp.h19_wait_for_activity(
+    'h19_d1d5_a','Timeout','PgSleep',200
+  );
   if not v_a_waited then
     raise exception 'H19 D1xD5 session A did not hold the active claim window';
   end if;
@@ -105,19 +77,9 @@ begin
     raise exception 'H19 D1xD5 session B did not start';
   end if;
 
-  for i in 1..200 loop
-    perform pg_stat_clear_snapshot();
-    if exists (
-      select 1
-      from pg_stat_activity
-      where application_name='h19_d1d5_b'
-        and wait_event_type='Lock'
-    ) then
-      v_b_waited:=true;
-      exit;
-    end if;
-    perform pg_sleep(0.01);
-  end loop;
+  v_b_waited:=pg_temp.h19_wait_for_activity(
+    'h19_d1d5_b','Lock',null,200
+  );
   if not v_b_waited then
     raise exception 'H19 D1xD5 session B did not wait on the active claim';
   end if;
@@ -163,8 +125,8 @@ begin
       coalesce(v_b_error,'<no error>');
   end if;
 
-  perform dblink_disconnect('h19_d1d5_a');
-  perform dblink_disconnect('h19_d1d5_b');
+  perform pg_temp.h19_safe_cleanup('h19_d1d5_a',false);
+  perform pg_temp.h19_safe_cleanup('h19_d1d5_b',false);
 
   if (
     select count(*)
@@ -177,10 +139,8 @@ begin
   raise notice
     'H19 D1xD5 prospective invariant accepted: concurrent same-key claims remain one command identity';
 exception when others then
-  begin perform dblink_exec('h19_d1d5_a','rollback'); exception when others then null; end;
-  begin perform dblink_disconnect('h19_d1d5_a'); exception when others then null; end;
-  begin perform dblink_exec('h19_d1d5_b','rollback'); exception when others then null; end;
-  begin perform dblink_disconnect('h19_d1d5_b'); exception when others then null; end;
+  perform pg_temp.h19_safe_cleanup('h19_d1d5_a',true);
+  perform pg_temp.h19_safe_cleanup('h19_d1d5_b',true);
   raise;
 end
 $$;
