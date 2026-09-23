@@ -412,6 +412,69 @@ test('MKT-01 desktop preview preserves nav, layout, reduced motion, and skip-lin
         && document.activeElement === document.querySelector('#mkt-main')`),
       'Skip link did not navigate and move focus to main content',
     );
+
+    await page.send('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+    });
+    await page.send('Page.navigate', { url });
+    await waitFor(
+      () => page.evaluate(`document.readyState === "complete"
+        && Boolean(document.querySelector('.mkt-booking-scene'))
+        && matchMedia('(prefers-reduced-motion: no-preference)').matches`),
+      'Animated marketing preview did not become ready',
+    );
+
+    const bookingBeats = await page.evaluate(`(async () => {
+      const section = document.querySelector('.mkt-booking-scene');
+      const phone = document.querySelector('.mkt-booking-phone');
+      const proof = document.querySelector('.mkt-booking-proof');
+      const finalStep = document.querySelector('.mkt-proof-step.is-final');
+      const overlay = document.querySelector('.mkt-booking-sticky')?.querySelector('::before');
+      if (!section || !phone || !proof || !finalStep) return null;
+
+      const top = window.scrollY + section.getBoundingClientRect().top;
+      const range = Math.max(1, section.offsetHeight - window.innerHeight);
+      const settle = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      const sample = async (progress) => {
+        window.scrollTo(0, top + (range * progress));
+        window.dispatchEvent(new Event('scroll'));
+        await settle();
+        const sticky = document.querySelector('.mkt-booking-sticky');
+        return {
+          requested: progress,
+          progress: Number(section.dataset.bookingProgress ?? '-1'),
+          phoneTransform: getComputedStyle(phone).transform,
+          phoneOpacity: Number(getComputedStyle(phone).opacity),
+          proofTransform: getComputedStyle(proof).transform,
+          finalOpacity: Number(getComputedStyle(finalStep).opacity),
+          overlayOpacity: sticky ? Number(getComputedStyle(sticky, '::before').opacity) : -1,
+        };
+      };
+
+      return {
+        enter: await sample(0.18),
+        flow: await sample(0.52),
+        zoom: await sample(0.78),
+        exit: await sample(0.95),
+      };
+    })()`);
+
+    assert.ok(bookingBeats, 'Booking scroll scene could not be sampled');
+    for (const beat of Object.values(bookingBeats)) {
+      assert.ok(Math.abs(beat.progress - beat.requested) < 0.03,
+        `Booking progress drifted: requested ${beat.requested}, got ${beat.progress}`);
+    }
+    assert.notEqual(bookingBeats.enter.phoneTransform, bookingBeats.flow.phoneTransform,
+      'Phone did not move from its entry pose');
+    assert.ok(bookingBeats.flow.finalOpacity > bookingBeats.enter.finalOpacity,
+      'Booking steps did not reveal as scroll advanced');
+    assert.notEqual(bookingBeats.flow.proofTransform, bookingBeats.zoom.proofTransform,
+      'Phone screen did not refocus during the zoom beat');
+    assert.ok(bookingBeats.exit.overlayOpacity > 0.65,
+      `Full-bleed cobalt transition is too faint: ${bookingBeats.exit.overlayOpacity}`);
+    assert.ok(bookingBeats.exit.phoneOpacity < 0.7,
+      `Phone did not begin clearing for the next scene: ${bookingBeats.exit.phoneOpacity}`);
   } finally {
     page?.close();
     if (chrome && chrome.exitCode === null) chrome.kill('SIGKILL');
