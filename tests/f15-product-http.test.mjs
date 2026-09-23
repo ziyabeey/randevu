@@ -267,3 +267,62 @@ await test('F15 reversal binds product and movement to server-selected business'
     assert.equal(JSON.stringify(rpcBody).includes(otherBusinessId), false);
   } finally { globalThis.fetch = realFetch; }
 });
+
+await test('F15 inventory-only staff can rename/recode but DB remains pricing authority for price changes', async () => {
+  const realFetch = globalThis.fetch;
+  const seen = [];
+  globalThis.fetch = baseFetch({
+    role: 'staff',
+    permissions: { inventory_write: true, pricing_adjustments_write: false },
+    rpc: async (url, init) => {
+      assert.equal(url.pathname, '/rest/v1/rpc/update_product_guarded');
+      const body = JSON.parse(init.body);
+      seen.push(body);
+      if (body.p_sale_price_minor === 26000) return json({ message: 'PRICING_PERMISSION_REQUIRED' }, 400);
+      return json({
+        productId,
+        businessId,
+        name: body.p_name,
+        code: body.p_code,
+        unit: 'piece',
+        salePriceMinor: body.p_sale_price_minor,
+        currency: body.p_currency,
+        stockOnHand: 5,
+        version: body.p_expected_version + 1,
+        active: true,
+      });
+    },
+  });
+  try {
+    const rename = await app.request(`http://localhost/api/products/${productId}`, {
+      method: 'PUT',
+      headers: mutationHeaders('f1501-rename-inventory-only'),
+      body: JSON.stringify({
+        name: 'Şampuan Plus',
+        code: 'SAMP-PLUS',
+        unit: 'piece',
+        salePriceMinor: 25000,
+        currency: 'TRY',
+        expectedVersion: 1,
+      }),
+    }, env);
+    assert.equal(rename.status, 200);
+    assert.equal((await rename.json()).product.name, 'Şampuan Plus');
+
+    const price = await app.request(`http://localhost/api/products/${productId}`, {
+      method: 'PUT',
+      headers: mutationHeaders('f1501-price-inventory-only'),
+      body: JSON.stringify({
+        name: 'Şampuan Plus',
+        code: 'SAMP-PLUS',
+        unit: 'piece',
+        salePriceMinor: 26000,
+        currency: 'TRY',
+        expectedVersion: 2,
+      }),
+    }, env);
+    assert.equal(price.status, 403);
+    assert.equal((await price.json()).error?.code, 'PRICING_PERMISSION_REQUIRED');
+    assert.equal(seen.length, 2);
+  } finally { globalThis.fetch = realFetch; }
+});
