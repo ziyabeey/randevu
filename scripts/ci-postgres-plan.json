@@ -1426,6 +1426,10 @@
         },
         {
           "database": "yzt_test",
+          "file": "supabase/tests/h19_f15_d0_d1_actor_idempotency.sql"
+        },
+        {
+          "database": "yzt_test",
           "file": "supabase/tests/f15_product_stock_concurrency.sql"
         },
         {
