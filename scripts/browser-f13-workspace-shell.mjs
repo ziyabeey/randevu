@@ -254,6 +254,7 @@ function contentType(filePath) {
     case '.css': return 'text/css; charset=utf-8';
     case '.json':
     case '.map': return 'application/json; charset=utf-8';
+    case '.webmanifest': return 'application/manifest+json; charset=utf-8';
     case '.svg': return 'image/svg+xml';
     case '.png': return 'image/png';
     case '.webp': return 'image/webp';
@@ -387,6 +388,7 @@ try {
   });
 
   const bundleRoot = path.resolve(bundleDir);
+  const publicRoot = path.resolve(root, 'public');
   const appJs = readFileSync(path.join(bundleDir, 'app.js'));
   const cssFile = readdirSync(bundleDir).find((name) => name.endsWith('.css'));
   assert.ok(cssFile, 'F13-04 production build did not emit CSS');
@@ -407,16 +409,21 @@ try {
       let relative;
       try { relative = decodeURIComponent(url.pathname).replace(/^\/+/, ''); }
       catch { response.writeHead(400); response.end('bad asset'); return; }
-      const assetPath = path.resolve(bundleRoot, relative);
-      if (!assetPath.startsWith(`${bundleRoot}${path.sep}`) || !existsSync(assetPath) || !statSync(assetPath).isFile()) {
+      const candidates = [
+        { root: bundleRoot, target: path.resolve(bundleRoot, relative) },
+        { root: publicRoot, target: path.resolve(publicRoot, relative) },
+      ];
+      const found = candidates.find(({ root: candidateRoot, target }) =>
+        target.startsWith(`${candidateRoot}${path.sep}`) && existsSync(target) && statSync(target).isFile());
+      if (!found) {
         response.writeHead(404); response.end('asset not found'); return;
       }
-      response.writeHead(200, { 'Content-Type': contentType(assetPath), 'Cache-Control': 'no-store' });
-      response.end(readFileSync(assetPath)); return;
+      response.writeHead(200, { 'Content-Type': contentType(found.target), 'Cache-Control': 'no-store' });
+      response.end(readFileSync(found.target)); return;
     }
     if (!url.pathname.startsWith('/api/')) {
       response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-      response.end('<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>');
+      response.end('<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#2456e8"><link rel="manifest" href="/manifest.webmanifest"><link rel="apple-touch-icon" href="/kolayapp-192.png"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>');
       return;
     }
 
