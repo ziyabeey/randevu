@@ -29,3 +29,12 @@ test('F15-03 source keeps expense history append-only and permission-bound',()=>
   assert.match(worker,/p_business_id: access\.membership\.business_id/);
   assert.doesNotMatch(worker,/body\.businessId/);
 });
+
+test('F15-03 persists only exact expense write intents after ambiguous network results',()=>{
+  const source=readFileSync(path.join(root,'src/ExpensesPage.tsx'),'utf8');
+  assert.match(source,/randevu:expenses:pending-write:v1/);
+  assert.match(source,/v\.path\.startsWith\('\/api\/expenses'\)/);
+  assert.match(source,/writePendingExpense\(identity\)/);
+  assert.match(source,/Kayıtlı isteği doğrula/);
+  assert.match(source,/pendingWrite\.businessId===activeBusinessId/);
+});
