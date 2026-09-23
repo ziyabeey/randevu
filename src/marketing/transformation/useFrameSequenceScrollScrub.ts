@@ -69,6 +69,7 @@ export function useFrameSequenceScrollScrub(
     let observerNear = false;
     let disposed = false;
     let geometryFrame: number | null = null;
+    let scrollFrame: number | null = null;
     let targetIndex = 0;
     let requestedIndex = -1;
     let drawnIndex = -1;
@@ -204,6 +205,14 @@ export function useFrameSequenceScrollScrub(
       if (nextIndex !== drawnIndex) drawIndex(nextIndex);
     };
 
+    const scheduleScroll = () => {
+      if (scrollFrame !== null || disposed) return;
+      scrollFrame = window.requestAnimationFrame(() => {
+        scrollFrame = null;
+        if (!disposed) schedule();
+      });
+    };
+
     const scheduleGeometry = () => {
       if (geometryFrame !== null || disposed) return;
       geometryFrame = window.requestAnimationFrame(() => {
@@ -222,12 +231,18 @@ export function useFrameSequenceScrollScrub(
     updateMetrics();
     schedule();
 
-    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("scroll", scheduleScroll, { passive: true });
     window.addEventListener("resize", scheduleGeometry, { passive: true });
 
-    const resizeObserver = new ResizeObserver(scheduleGeometry);
-    resizeObserver.observe(section);
-    resizeObserver.observe(document.body);
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(scheduleGeometry);
+    resizeObserver?.observe(section);
+    resizeObserver?.observe(document.body);
+
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", scheduleGeometry, { passive: true });
+    window.addEventListener("orientationchange", scheduleGeometry, { passive: true });
 
     void document.fonts?.ready.then(() => {
       if (!disposed) scheduleGeometry();
@@ -246,10 +261,13 @@ export function useFrameSequenceScrollScrub(
 
     return () => {
       disposed = true;
-      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("scroll", scheduleScroll);
       window.removeEventListener("resize", scheduleGeometry);
-      resizeObserver.disconnect();
+      visualViewport?.removeEventListener("resize", scheduleGeometry);
+      window.removeEventListener("orientationchange", scheduleGeometry);
+      resizeObserver?.disconnect();
       intersectionObserver.disconnect();
+      if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame);
       if (geometryFrame !== null) window.cancelAnimationFrame(geometryFrame);
       loader.dispose();
       delete section.dataset.mktRenderer;
