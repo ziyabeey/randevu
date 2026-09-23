@@ -41,6 +41,9 @@
 \echo 'H19 Integrity Gate: F15 D0xD1 actor/idempotency scope'
 \ir h19_f15_d0_d1_actor_idempotency.sql
 
+\echo 'H19 Integrity Gate: D2xD3 snapshot/staff coherence'
+\ir h19_d2_d3_snapshot_staff_coherence.sql
+
 do $$
 begin
   raise notice 'H19 INTEGRITY GATE PASS: registered interaction invariants accepted';
