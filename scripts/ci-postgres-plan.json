@@ -95,6 +95,10 @@
         {
           "database": "yzt_test",
           "file": "supabase/tests/h19_d0_d1_tenant_idempotency.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/h19_d1_d5_idempotency_concurrency.sql"
         }
       ]
     },
