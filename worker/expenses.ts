@@ -49,9 +49,17 @@ function integer(value: unknown, min: number, max: number): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= min && value <= max;
 }
 
-function timestamp(value: unknown) {
-  if (typeof value !== 'string' || value.length < 20 || value.length > 40) return null;
-  return Number.isFinite(Date.parse(value)) ? value : null;
+function localWallClock(value: unknown) {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(text)) return null;
+  const [datePart, timePart] = text.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour, minute, second = 0] = timePart.split(':').map(Number);
+  const probe = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day
+      || probe.getUTCHours() !== hour || probe.getUTCMinutes() !== minute || probe.getUTCSeconds() !== second) return null;
+  return text;
 }
 
 async function sha256Hex(value: string) {
@@ -182,7 +190,7 @@ expenses.post('/expenses', async (context) => {
   const description = cleanOptional(body.description, 2, 240);
   const currency = cleanText(body.currency, 3, 3)?.toUpperCase() ?? null;
   const paymentMethod = body.paymentMethod === 'cash' || body.paymentMethod === 'card' ? body.paymentMethod : null;
-  const occurredAt = timestamp(body.occurredAt);
+  const occurredAt = localWallClock(body.occurredAt);
   if (!key || !category || !currency || !paymentMethod || !occurredAt || !integer(body.amountMinor, 1, 100_000_000)) {
     return context.json({ error: { code: 'INVALID_EXPENSE', message: 'Masraf bilgileri geçerli değil.' } }, 400);
   }
@@ -194,7 +202,7 @@ expenses.post('/expenses', async (context) => {
     p_amount_minor: body.amountMinor,
     p_currency: currency,
     p_payment_method: paymentMethod,
-    p_occurred_at: occurredAt,
+    p_occurred_local: occurredAt,
     p_idempotency_key: key,
     p_request_hash: await requestHash('create_expense', payload),
   }, 201);
@@ -207,7 +215,7 @@ expenses.post('/expenses/:id/reverse', async (context) => {
   const body = (await readJson(context)) ?? {};
   const key = idempotencyKey(context.req.header('Idempotency-Key'));
   const reason = cleanText(body.reason, 2, 240);
-  const occurredAt = timestamp(body.occurredAt);
+  const occurredAt = localWallClock(body.occurredAt);
   if (!isUuid(sourceId) || !key || !reason || !occurredAt) {
     return context.json({ error: { code: 'INVALID_EXPENSE', message: 'Masraf iptal isteği geçerli değil.' } }, 400);
   }
@@ -216,7 +224,7 @@ expenses.post('/expenses/:id/reverse', async (context) => {
     p_business_id: access.membership.business_id,
     p_source_event_id: sourceId,
     p_reason: reason,
-    p_occurred_at: occurredAt,
+    p_occurred_local: occurredAt,
     p_idempotency_key: key,
     p_request_hash: await requestHash('reverse_expense', payload),
   }, 201);
@@ -233,8 +241,8 @@ expenses.post('/expenses/:id/correct', async (context) => {
   const description = cleanOptional(body.description, 2, 240);
   const currency = cleanText(body.currency, 3, 3)?.toUpperCase() ?? null;
   const paymentMethod = body.paymentMethod === 'cash' || body.paymentMethod === 'card' ? body.paymentMethod : null;
-  const occurredAt = timestamp(body.occurredAt);
-  const correctionOccurredAt = timestamp(body.correctionOccurredAt);
+  const occurredAt = localWallClock(body.occurredAt);
+  const correctionOccurredAt = localWallClock(body.correctionOccurredAt);
   if (!isUuid(sourceId) || !key || !reason || !category || !currency || !paymentMethod
       || !occurredAt || !correctionOccurredAt || !integer(body.amountMinor, 1, 100_000_000)) {
     return context.json({ error: { code: 'INVALID_EXPENSE', message: 'Masraf düzeltme isteği geçerli değil.' } }, 400);
@@ -252,8 +260,8 @@ expenses.post('/expenses/:id/correct', async (context) => {
     p_amount_minor: body.amountMinor,
     p_currency: currency,
     p_payment_method: paymentMethod,
-    p_occurred_at: occurredAt,
-    p_correction_occurred_at: correctionOccurredAt,
+    p_occurred_local: occurredAt,
+    p_correction_occurred_local: correctionOccurredAt,
     p_idempotency_key: key,
     p_request_hash: await requestHash('correct_expense', payload),
   }, 201);
