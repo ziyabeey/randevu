@@ -54,9 +54,10 @@ launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/ai.yzt.qwen-coord
 60 saniye, yalnız canlı TASKS'e bağlı aktif GitHub/Depot CI varken 30 saniye
 cache/poll aralığı uygular. GraphQL rate limiti 1000'in altına inerse 5 dakika,
 250'nin altına inerse 15 dakika geri çekilir.
-Koordinasyon issue'sundaki eski yorum sayfaları kesikse bu durum yalnız R1/R2
-receipt'i gerektiren PR'ları bloke eder; R0-only PR'lar için ilgisiz geçmiş
-sayfaları her poll'da çekilmez.
+Issue #65 review receipt kaynağı değildir; yalnız geçici koordinasyon içindir.
+R1/R2 acceptance yalnız ilgili PR'ın exact-head native review veya PR-local
+yapılandırılmış receipt kanıtından okunur. Böylece Issue #65 büyüse de eski yorum
+pagination'ı merge kararını bloke etmez ve koordinatör bu geçmişi snapshot'a çekmez.
 
 Masaüstü bildirimleri PR + exact head + karar anahtarıyla kalıcı olarak
 tekilleştirilir. İlgisiz bir PR veya rapor fingerprint'i değiştiğinde aynı uyarı
@@ -108,10 +109,26 @@ allowlist'ine; Depot yorumunun GitHub'a yazılması hem capability allowlist'ine
 de `writeActionsEnabled=true` değerine bağlıdır. Otomatik merge en son
 etkinleştirilecek ayrı bir opt-in'dir.
 
+## Repo hijyeni / Janitor
+
+Yerel koordinatör aynı GitHub snapshot'ından düşük maliyetli bir repo-hijyeni
+katmanı da üretir. Son birleşen PR'ların yalnız numara, başlık, zaman ve dosya
+metadata'sı alınır; diff veya tam geçmiş modele taşınmaz.
+
+Janitor deterministik olarak superseded/duplicate docs adaylarını ve code-review
+quota sinyallerini çıkarır. Qwen yalnız candidate fingerprint değiştiğinde ve
+varsayılan olarak en fazla 5 dakikada bir küçük JSON paketini değerlendirir.
+`CLOSE_CANDIDATE` veya `REBASE_CANDIDATE` yalnız rapor önerisidir: Janitor'ın
+PR kapatma, branch güncelleme, merge veya başka GitHub yazma yetkisi yoktur.
+Mevcut config installer tarafından korunursa yeni ayarlar güvenli varsayılanlarla
+çalışır; `janitorEnabled=false` veya `janitorQwenEnabled=false` ile ayrıca
+kapatılabilir.
+
 ## Test
 
 ```bash
 node --check scripts/qwen-coordinator/lease.mjs
+node --check scripts/qwen-coordinator/janitor.mjs
 node --check scripts/qwen-coordinator/run-once.mjs
 node --check scripts/qwen-coordinator/install-local.mjs
 node --test tests/qwen-coordinator-*.test.mjs

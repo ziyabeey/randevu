@@ -13,7 +13,7 @@ task ownership, CI, review, readiness or merge gates.
 | Role | Discovery label / output | Contribution | Never does |
 | --- | --- | --- | --- |
 | P1: Product Integrity Scout | `product-gap:triage` issue | Finds one concrete mismatch between approved PRODUCT_SPEC/ROADMAP behavior and the implemented/planned three-surface product, after duplicate search. | Coding, TASKS edits, product decisions, prioritization, writer assignment, acceptance. |
-| D1: Documentation Steward | `docs-drift` issue or one docs-only draft PR | Repairs factual drift in non-authoritative documentation after merged code/contract changes when the correction is unambiguous. | Editing TASKS/AGENTS/PRODUCT_SPEC/ROADMAP/DECISIONS without explicit coordinator assignment, changing behavior, inventing policy. |
+| D1: Documentation Steward | `docs-drift` rollup issue only | Reports factual drift in non-authoritative documentation after merged code/contract changes. | Opening branches/PRs, editing TASKS/AGENTS/PRODUCT_SPEC/ROADMAP/DECISIONS, changing behavior, inventing policy. |
 | B1: Ready Queue Scout | `## READY QUEUE SUGGESTION` on Issue #65 | Detects a TASKS item whose explicit dependencies are durably satisfied and which has no active owner/PR/hold, then surfaces that fact once. | Choosing business priority, assigning a writer, opening implementation, changing TASKS, interpreting ambiguous dependencies as ready. |
 
 These are support roles, not sequential gates. A useful run produces one bounded
@@ -62,21 +62,22 @@ explanations. It must first determine that the source of truth is already settle
 in merged code/contracts and that the textual correction is mechanical rather
 than a new policy decision.
 
-D1 may either:
+D1 is report-only. It does **not** open branches or pull requests. Before writing,
+search for an existing open `[DOCS-DRIFT] rollup` issue. Reuse that issue when it
+exists; otherwise create exactly one rollup issue with `docs-drift`. Add at most
+one new factual drift item per run, with merged source evidence and the affected
+non-authoritative document.
 
-1. open a `[DOCS-DRIFT]` issue with `docs-drift` when correction requires a
-   coordinator/product decision; or
-2. create one short-lived docs branch and one draft docs-only PR when the correction
-   is unambiguous and limited to non-authoritative text.
+A post-merge text difference that only restates “accepted”, “merged”, “closed”,
+the current TASKS state, or a volatile PR/head/CI value is **not documentation
+drift**. `main:TASKS.md` and live PR/check state already own those facts; historical
+handoffs stay historical. D1 therefore produces no artifact for status-only
+closeout churn.
 
-Automatic docs PRs must not modify `TASKS.md`, `AGENTS.md`, `PRODUCT_SPEC.md`,
-`ROADMAP.md`, `DECISIONS.md`, application code, tests, migrations, workflow/CI,
-settings or secrets. They must preserve existing terminology and link to the merged
-source evidence. A docs-only PR still follows repository CI policy and cannot be
-self-approved, marked ready or merged by D1.
-
-Before opening a new issue/PR, search for an existing docs-drift issue or docs-only
-PR covering the same source change. One factual drift per run maximum.
+If a real operational instruction is stale, D1 records it in the rollup and stops.
+The coordinator may fold the correction into an already-active task PR or explicitly
+assign a bounded documentation-maintenance PR. Without that assignment there is no
+branch, no PR and no GitHub review/CI load from D1.
 
 ## B1 Ready Queue Scout
 

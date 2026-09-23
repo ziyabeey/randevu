@@ -52,7 +52,7 @@ npm run build
 
 GitHub CI içindeki tüm PostgreSQL migration/gerileme testleri de geçmelidir. Görevin riski auth, yetki, idempotency, concurrency, para, ağ hatası veya gerçek UI davranışıysa ilgili negatif/entegrasyon/tarayıcı kanıtı eklenir. Uygulamayı kopyalayan düşük değerli test yazılmaz. Aynı hipotez 2–3 kez başarısız olursa yeni varyasyon denemek yerine koordinatör incelemesi istenir. Somut yeni risk yoksa tüm test paketi tekrar tekrar çalıştırılmaz.
 
-Yalnız doküman değişikliğinde bağlantılar, bağımlılıklar, durum tutarlılığı ve diff doğrulanır; repo politikası ayrıca gerektiriyorsa mevcut CI çalıştırılır. Test kapsamı dışındaki canlı kullanım hazır diye raporlanmaz.
+Yalnız doküman değişikliğinde bağlantılar, bağımlılıklar, durum tutarlılığı ve diff doğrulanır; repo politikası ayrıca gerektiriyorsa mevcut CI çalıştırılır. Test kapsamı dışındaki canlı kullanım hazır diye raporlanmaz. Tamamlanmış bir görevin yalnız “accepted/merged/closed” durumunu tarihsel handoff veya README'ye yeniden yazmak için standalone PR açılmaz; TASKS ve canlı PR/check kanıtı bu durumu zaten taşır. Otomatik doküman gözlemcileri drift'i raporlar, branch/PR üretmez.
 
 ## Devir
 

@@ -87,6 +87,7 @@ function main() {
     'policy.mjs',
     'depot.mjs',
     'lease.mjs',
+    'janitor.mjs',
     'run-once.mjs',
     'build-ci-image.mjs',
     'depot-full-ci.yml',

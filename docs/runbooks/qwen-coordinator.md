@@ -27,10 +27,17 @@ tanımlar. Bu araç bir ürün özelliği veya ikinci görev/veri otoritesi değ
    check'ler hızlı modu açmaz.
 3. Canlı `TASKS.md` satırıyla eşleşen, docs-only olmayan exact PR head için en
    fazla bir Depot shadow koşusu başlatılır.
-4. GitHub ve Depot terminal sonucuna gelene kadar Qwen çağrılmaz.
-5. Dual-green candidate için Qwen A/B/C/D seçimi üretir; deterministic policy bu
-   seçimi daha güvenli bir seviyeye sınırlayabilir.
-6. `shadow` modda yalnız yerel rapor yazılır. `guarded` modda bile dış yazım,
+4. Karar-değer kod PR'larında GitHub ve Depot terminal sonucuna gelene kadar
+   merge/review Qwen çağrılmaz.
+5. Repo-hijyeni Janitor aynı snapshot'tan son merge metadata'sını kullanarak
+   superseded/duplicate docs adaylarını ve review-quota sinyallerini çıkarır.
+   Janitor Qwen yalnız candidate fingerprint değiştiğinde, varsayılan olarak en
+   fazla 5 dakikada bir çağrılır.
+6. Dual-green candidate için ana Qwen A/B/C/D seçimi üretir; deterministic policy
+   bu seçimi daha güvenli bir seviyeye sınırlayabilir. Janitor'ın
+   CLOSE_CANDIDATE/REBASE_CANDIDATE sonucu yalnız advisory'dir ve action queue'ya
+   giremez.
+7. `shadow` modda yalnız yerel rapor yazılır. `guarded` modda bile dış yazım,
    genel ve eylem-bazlı opt-in bayrakları olmadan kapalıdır.
 
 ## Kurulum ve güncelleme
@@ -119,6 +126,12 @@ doğrulaması her candidate'da korunur.
 | `autoMergeEnabled` | `false` | En son; tüm exact-head receipt ve ruleset kanıtı doğrulanırsa |
 | `coordinationCommitsEnabled` | `false` | Post-main closeout akışı ayrıca kabul edilirse |
 
+Janitor varsayılanları: `janitorEnabled=true`, `janitorQwenEnabled=true`,
+`janitorRetrySeconds=300`, `janitorTimeoutSeconds=60` ve son 20 merged PR
+metadata penceresi. Bunlar mevcut config dosyasında bulunmasa da runtime güvenli
+fallback değerlerini kullanır. Janitor hiçbir automatic-action capability'ye
+bağlı değildir ve GitHub write path'ine sahip değildir.
+
 Bir eylem için `mode=guarded`, `writeActionsEnabled=true`, ilgili eylem bayrağı
 ve `allowedAutomaticActions` girdisi birlikte gerekir. Bir turda en fazla
 `maxActionsPerRun=1` korunur.
@@ -147,9 +160,11 @@ içinde en fazla 200 olaylık ledger'da tekilleştirilir. Aynı head aynı karar
 kaldığı sürece raporun başka kısmı değişse bile tekrar bildirim verilmez.
 `rateLimitRemaining <= 1000` olduğunda GitHub poll aralığı en az 5 dakikaya,
 `<= 250` olduğunda en az 15 dakikaya çıkar. Eşikler config ile ayarlanabilir.
-Koordinasyon issue'sunun eski yorum sayfaları her tur yeniden indirilmez: geçmiş
-kesikse yalnız bu kaynaktan R1/R2 receipt'i tüketebilecek PR'lar fail-closed
-kalır; R0-only PR'lar ilgisiz yorum geçmişi yüzünden ek API sayfası tüketmez.
+Issue #65 yalnız geçici claim/conflict/dispatch koordinasyon kanalıdır ve bağımsız
+R1/R2 receipt otoritesi değildir. Koordinatör acceptance için yalnız ilgili PR'ın
+exact-head native review'larını ve PR-local yapılandırılmış receipt yorumlarını
+tüketir. Bu nedenle Issue #65 yorum geçmişinin büyümesi veya pagination kesilmesi
+merge kanıtını eksik saydıramaz ve her tur ek yorum sayfası tüketmez.
 
 Qwen ulaşılamazsa deterministik gözlem sürer ve AI aksiyonu üretilmez. Depot
 identity uyuşmazsa kanıt geçersizleşir. GitHub/Depot çelişkisinde sonuç `WAIT`
@@ -181,6 +196,7 @@ kurucunun oluşturduğu `config.json.backup-*` dosyasından ayar elle geri alın
 ```bash
 node --check scripts/qwen-coordinator/policy.mjs
 node --check scripts/qwen-coordinator/depot.mjs
+node --check scripts/qwen-coordinator/janitor.mjs
 node --check scripts/qwen-coordinator/lease.mjs
 node --check scripts/qwen-coordinator/run-once.mjs
 node --check scripts/qwen-coordinator/install-local.mjs
