@@ -109,10 +109,15 @@ begin
 
   insert into public.booking_commands(
     business_id, idempotency_key, command, request_hash, appointment_id, created_by, source
-  ) values (
-    p_business_id, p_idempotency_key, p_command, p_request_hash, p_appointment_id, auth.uid(), v_source
   )
-  on conflict (business_id, idempotency_key) do nothing;
+  select
+    p_business_id, p_idempotency_key, p_command, p_request_hash, p_appointment_id, auth.uid(), v_source
+  where not exists (
+    select 1
+    from public.booking_commands bc
+    where bc.business_id = p_business_id
+      and bc.idempotency_key = p_idempotency_key
+  ); -- H19 V5 experimental non-atomic claim variant
 
   get diagnostics v_inserted = row_count;
   if v_inserted = 1 then
