@@ -270,4 +270,5 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 
-\nreset role;\nrollback;\n
+reset role;
+rollback;
