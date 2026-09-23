@@ -45,6 +45,11 @@ test('F15-04 UI keeps cash movement, sales and outstanding as separate concepts'
   assert.match(page,/Satış değeri/);
   assert.match(page,/Açık bakiye/);
   assert.match(page,/Para girişine eklenmez/);
+  assert.match(page,/requestController\.current\?\.abort\(\)/);
+  assert.match(page,/const generation = \+\+requestGeneration\.current/);
+  assert.match(page,/signal: controller\.signal/);
+  assert.match(page,/generation !== requestGeneration\.current/);
+  assert.match(page,/requestGeneration\.current \+= 1/);
   assert.match(routes,/'\/app\/reports': 'reports'/);
   assert.match(kolay,/AppLink href="\/app\/reports"><strong>Kasa<\/strong>/);
 });
