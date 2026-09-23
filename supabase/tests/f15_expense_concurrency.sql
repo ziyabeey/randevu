@@ -80,6 +80,9 @@ begin
     raise exception 'F15-03 holder query did not start';
   end if;
   perform * from dblink_get_result('f1503_holder') as t(id uuid);
+  -- Async dblink results must be fully drained before issuing COMMIT on the
+  -- same connection; otherwise libpq still reports an in-progress command.
+  perform * from dblink_get_result('f1503_holder',false) as t(id uuid);
 
   for v_conn in select unnest(array['f1503_correct','f1503_reverse']) loop
     perform dblink_connect(
@@ -148,6 +151,7 @@ begin
   begin
     select t.result into strict v_result
     from dblink_get_result('f1503_correct') as t(result jsonb);
+    perform * from dblink_get_result('f1503_correct',false) as t(result jsonb);
     if v_result->'reversal' is null or v_result->'replacement' is null then
       raise exception 'F15-03 correction winner returned malformed result: %',v_result;
     end if;
@@ -164,6 +168,7 @@ begin
   begin
     select t.result into strict v_result
     from dblink_get_result('f1503_reverse') as t(result jsonb);
+    perform * from dblink_get_result('f1503_reverse',false) as t(result jsonb);
     if v_result->>'eventType'<>'reversal' then
       raise exception 'F15-03 reversal winner returned malformed result: %',v_result;
     end if;
