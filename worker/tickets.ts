@@ -154,7 +154,43 @@ function ticketError(message: string) {
     return { code: 'TICKET_CANCELLED', message: 'İptal edilmiş adisyona yeni tahsilat eklenemez.', status: 409 as const };
   }
   if (message.includes('TICKET_HAS_FINANCIAL_EVENTS')) {
-    return { code: 'TICKET_HAS_FINANCIAL_EVENTS', message: 'Tahsilat başladıktan sonra adisyona yeni hizmet satırı eklenemez.', status: 409 as const };
+    return { code: 'TICKET_HAS_FINANCIAL_EVENTS', message: 'Tahsilat başladıktan sonra adisyona yeni satış satırı eklenemez veya adisyon iptal edilemez.', status: 409 as const };
+  }
+  if (message.includes('INVENTORY_PERMISSION_REQUIRED')) {
+    return { code: 'INVENTORY_PERMISSION_REQUIRED', message: 'Ürün/stok işlemi için stok yetkiniz yok.', status: 403 as const };
+  }
+  if (message.includes('PRICING_PERMISSION_REQUIRED')) {
+    return { code: 'PRICING_PERMISSION_REQUIRED', message: 'Ürün satış fiyatı işlemi için fiyat yetkiniz yok.', status: 403 as const };
+  }
+  if (message.includes('PRODUCT_LINE_NOT_FOUND')) {
+    return { code: 'PRODUCT_LINE_NOT_FOUND', message: 'Ürün satış satırı bulunamadı.', status: 404 as const };
+  }
+  if (message.includes('PRODUCT_NOT_FOUND')) {
+    return { code: 'PRODUCT_NOT_FOUND', message: 'Ürün bulunamadı veya bu işletmeye ait değil.', status: 404 as const };
+  }
+  if (message.includes('PRODUCT_ARCHIVED')) {
+    return { code: 'PRODUCT_ARCHIVED', message: 'Arşivlenmiş ürün satılamaz.', status: 409 as const };
+  }
+  if (message.includes('STALE_PRODUCT_WRITE')) {
+    return { code: 'STALE_PRODUCT_WRITE', message: 'Ürün stoğu başka bir işlemde değişti. Güncel stoğu yükleyip tekrar deneyin.', status: 409 as const };
+  }
+  if (message.includes('INSUFFICIENT_STOCK')) {
+    return { code: 'INSUFFICIENT_STOCK', message: 'Satılabilir stok bu miktar için yeterli değil.', status: 409 as const };
+  }
+  if (message.includes('RETURN_EXCEEDS_SOLD_QUANTITY')) {
+    return { code: 'RETURN_EXCEEDS_SOLD_QUANTITY', message: 'İade miktarı satılan kalan miktarı aşamaz.', status: 409 as const };
+  }
+  if (message.includes('REFUND_EXCEEDS_RETURN_VALUE')) {
+    return { code: 'REFUND_EXCEEDS_RETURN_VALUE', message: 'İade tutarı iade edilen ürünlerin satış değerini aşamaz.', status: 409 as const };
+  }
+  if (message.includes('RETURN_REFUND_BELOW_REQUIRED')) {
+    return { code: 'RETURN_REFUND_BELOW_REQUIRED', message: 'İade sonrası net tahsilat adisyon toplamını aşamaz; iade tutarını iade edilen ürün değerine göre artırın.', status: 409 as const };
+  }
+  if (message.includes('RETURN_REQUIRES_FINAL_TOTAL')) {
+    return { code: 'RETURN_REQUIRES_FINAL_TOTAL', message: 'Kesin tutarı belirlenmemiş hizmet varken ürün iadesi kaydedilemez.', status: 409 as const };
+  }
+  if (message.includes('PRODUCT_SALE_MOVEMENT_NOT_FOUND')) {
+    return { code: 'PRODUCT_SALE_MOVEMENT_NOT_FOUND', message: 'Ürün satış stok hareketi bulunamadı.', status: 409 as const };
   }
   if (message.includes('INVALID_')) {
     return { code: 'INVALID_TICKET', message: 'Adisyon isteği geçerli değil.', status: 400 as const };
@@ -242,6 +278,54 @@ async function requirePaymentsWrite(context: TicketContext) {
     } as const;
   }
 
+  return access;
+}
+
+async function requireProductSaleWrite(context: TicketContext) {
+  const access = await requirePricingWrite(context);
+  if ('error' in access) return access;
+  const permission = await supabaseRequest<boolean>(
+    context.env,
+    'rest/v1/rpc/has_financial_permission',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_business_id: access.membership.business_id,
+        p_permission: 'inventory_write',
+      }),
+    },
+    access.auth.accessToken,
+  );
+  if (upstreamUnavailable(permission.status)) {
+    return { error: context.json({ error: { code: 'INVENTORY_PERMISSION_UNAVAILABLE', message: 'Stok yetkisi şu anda doğrulanamıyor. Lütfen tekrar deneyin.' } }, 503) } as const;
+  }
+  if (!permission.ok || permission.data !== true) {
+    return { error: context.json({ error: { code: 'INVENTORY_PERMISSION_REQUIRED', message: 'Ürün satışı için stok yetkiniz yok.' } }, 403) } as const;
+  }
+  return access;
+}
+
+async function requireProductReturnWrite(context: TicketContext) {
+  const access = await requirePaymentsWrite(context);
+  if ('error' in access) return access;
+  const permission = await supabaseRequest<boolean>(
+    context.env,
+    'rest/v1/rpc/has_financial_permission',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_business_id: access.membership.business_id,
+        p_permission: 'inventory_write',
+      }),
+    },
+    access.auth.accessToken,
+  );
+  if (upstreamUnavailable(permission.status)) {
+    return { error: context.json({ error: { code: 'INVENTORY_PERMISSION_UNAVAILABLE', message: 'Stok yetkisi şu anda doğrulanamıyor. Lütfen tekrar deneyin.' } }, 503) } as const;
+  }
+  if (!permission.ok || permission.data !== true) {
+    return { error: context.json({ error: { code: 'INVENTORY_PERMISSION_REQUIRED', message: 'Ürün iadesi için stok yetkiniz yok.' } }, 403) } as const;
+  }
   return access;
 }
 
@@ -388,6 +472,102 @@ tickets.post('/tickets', async (context) => {
     p_customer_id: body.customerId,
     p_idempotency_key: key,
     p_request_hash: hash,
+  }, 201);
+});
+
+tickets.post('/tickets/product-sales', async (context) => {
+  const access = await requireProductSaleWrite(context);
+  if ('error' in access) return access.error;
+  const key = idempotencyKey(context.req.header('Idempotency-Key'));
+  const body = (await readJson(context)) ?? {};
+  if (!key || !isUuid(body.customerId) || !isUuid(body.productId)
+      || !integerIn(body.quantity, 1, 1000)
+      || !integerIn(body.expectedProductVersion, 1, 2147483647)) {
+    return context.json({ error: { code: 'INVALID_PRODUCT_SALE', message: 'Müşteri, ürün, miktar veya stok sürümü geçerli değil.' } }, 400);
+  }
+  const payload = {
+    customerId: body.customerId,
+    productId: body.productId,
+    quantity: body.quantity,
+    expectedProductVersion: body.expectedProductVersion,
+  };
+  return rpcWrite(context, access, 'open_product_sale_guarded', {
+    p_business_id: access.membership.business_id,
+    p_customer_id: body.customerId,
+    p_product_id: body.productId,
+    p_quantity: body.quantity,
+    p_expected_product_version: body.expectedProductVersion,
+    p_idempotency_key: key,
+    p_request_hash: await requestHash('open_product_sale', payload),
+  }, 201);
+});
+
+tickets.post('/tickets/:id/product-lines', async (context) => {
+  const access = await requireProductSaleWrite(context);
+  if ('error' in access) return access.error;
+  const key = idempotencyKey(context.req.header('Idempotency-Key'));
+  const ticketId = context.req.param('id');
+  const body = (await readJson(context)) ?? {};
+  if (!key || !isUuid(ticketId) || !isUuid(body.productId)
+      || !integerIn(body.quantity, 1, 1000)
+      || !integerIn(body.expectedVersion, 1, 2147483647)
+      || !integerIn(body.expectedProductVersion, 1, 2147483647)) {
+    return context.json({ error: { code: 'INVALID_PRODUCT_SALE', message: 'Adisyon, ürün, miktar veya sürüm bilgisi geçerli değil.' } }, 400);
+  }
+  const payload = {
+    ticketId,
+    productId: body.productId,
+    quantity: body.quantity,
+    expectedVersion: body.expectedVersion,
+    expectedProductVersion: body.expectedProductVersion,
+  };
+  return rpcWrite(context, access, 'add_ticket_product_line_guarded', {
+    p_business_id: access.membership.business_id,
+    p_ticket_id: ticketId,
+    p_product_id: body.productId,
+    p_quantity: body.quantity,
+    p_expected_ticket_version: body.expectedVersion,
+    p_expected_product_version: body.expectedProductVersion,
+    p_idempotency_key: key,
+    p_request_hash: await requestHash('add_product_line', payload),
+  }, 201);
+});
+
+tickets.post('/tickets/:id/lines/:lineId/product-return-refund', async (context) => {
+  const access = await requireProductReturnWrite(context);
+  if ('error' in access) return access.error;
+  const key = idempotencyKey(context.req.header('Idempotency-Key'));
+  const ticketId = context.req.param('id');
+  const lineId = context.req.param('lineId');
+  const body = (await readJson(context)) ?? {};
+  const reason = cleanReason(body.reason);
+  if (!key || !isUuid(ticketId) || !isUuid(lineId) || !isUuid(body.sourcePaymentEventId)
+      || !integerIn(body.quantity, 1, 1000)
+      || !integerIn(body.amountMinor, 1, 100000000)
+      || typeof body.returnToStock !== 'boolean'
+      || !reason) {
+    return context.json({ error: { code: 'INVALID_PRODUCT_RETURN', message: 'Ürün iadesi, tutar, fiziksel dönüş veya gerekçe geçerli değil.' } }, 400);
+  }
+  const payload = {
+    ticketId,
+    lineId,
+    sourcePaymentEventId: body.sourcePaymentEventId,
+    quantity: body.quantity,
+    amountMinor: body.amountMinor,
+    returnToStock: body.returnToStock,
+    reason,
+  };
+  return rpcWrite(context, access, 'record_product_return_refund_guarded', {
+    p_business_id: access.membership.business_id,
+    p_ticket_id: ticketId,
+    p_line_id: lineId,
+    p_source_payment_event_id: body.sourcePaymentEventId,
+    p_quantity: body.quantity,
+    p_amount_minor: body.amountMinor,
+    p_return_to_stock: body.returnToStock,
+    p_reason: reason,
+    p_idempotency_key: key,
+    p_request_hash: await requestHash('product_return_refund', payload),
   }, 201);
 });
 

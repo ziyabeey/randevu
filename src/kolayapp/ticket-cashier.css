@@ -7,6 +7,7 @@
 
 .ticket-toolbar,
 .ticket-walkin,
+.ticket-product-sale,
 .ticket-detail,
 .ticket-list,
 .ticket-notice {
@@ -30,7 +31,8 @@
 }
 
 .ticket-toolbar label,
-.ticket-walkin label {
+.ticket-walkin label,
+.ticket-product-sale label {
   display: grid;
   gap: .25rem;
   font-size: .75rem;
@@ -39,7 +41,9 @@
 
 .ticket-toolbar select,
 .ticket-walkin select,
+.ticket-product-sale select,
 .ticket-add-line select,
+.ticket-add-product select,
 .ticket-payment select,
 .ticket-page input,
 .ticket-page select,
@@ -87,6 +91,14 @@
 .ticket-walkin {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  gap: .65rem;
+  padding: .75rem;
+  align-items: end;
+}
+
+.ticket-product-sale {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1.2fr) minmax(10rem, 1fr) minmax(5rem, .45fr) auto;
   gap: .65rem;
   padding: .75rem;
   align-items: end;
@@ -191,6 +203,8 @@
 .ticket-lines form,
 .ticket-event-actions form,
 .ticket-add-line,
+.ticket-add-product,
+.ticket-product-return,
 .ticket-payment {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -232,7 +246,10 @@
   .ticket-lines form,
   .ticket-event-actions form,
   .ticket-add-line,
-  .ticket-payment {
+  .ticket-add-product,
+  .ticket-product-return,
+  .ticket-payment,
+  .ticket-product-sale {
     grid-template-columns: 1fr;
   }
 }
@@ -244,7 +261,8 @@
 
   .ticket-toolbar,
   .ticket-detail > header,
-  .ticket-walkin {
+  .ticket-walkin,
+  .ticket-product-sale {
     grid-template-columns: 1fr;
     display: grid;
     align-items: stretch;
@@ -252,6 +270,7 @@
 
   .ticket-toolbar select,
   .ticket-walkin select,
+  .ticket-product-sale select,
   .ticket-page input,
   .ticket-page select,
   .ticket-page button {

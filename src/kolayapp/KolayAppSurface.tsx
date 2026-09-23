@@ -35,7 +35,7 @@ function NewActions() {
         <div className="kolay-action-list">
           <AppLink href="/app/bookings"><strong>Yeni randevu</strong><span>Mevcut güvenli randevu oluşturma akışını aç</span></AppLink>
           <AppLink href="/app/mobile/tickets"><strong>Yeni adisyon</strong><span>Randevusuz adisyon aç veya mevcut adisyona dön</span></AppLink>
-          <DisabledAction title="Yeni ürün satışı" description="Henüz kullanıma açık değil." />
+          <AppLink href="/app/mobile/tickets?newProductSale=1"><strong>Yeni ürün satışı</strong><span>Ürün seç, miktarı belirle ve stoktan güvenle düş</span></AppLink>
           <DisabledAction title="Yeni paket satışı" description="Henüz kullanıma açık değil." />
           <AppLink href="/app/expenses"><strong>Yeni masraf</strong><span>Masraf kaydı oluştur</span></AppLink>
         </div>
