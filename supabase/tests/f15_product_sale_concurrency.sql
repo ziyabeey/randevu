@@ -45,6 +45,7 @@ declare
   v_fail integer:=0;
   v_ticket_a jsonb;
   v_ticket_b jsonb;
+  v_conn text;
 begin
   perform dblink_connect(
     'f1502_sale_a',
@@ -57,11 +58,11 @@ begin
       ||' user=postgres password=postgres application_name=f1502_sale_b'
   );
 
-  for conn in select unnest(array['f1502_sale_a','f1502_sale_b']) loop
-    perform dblink_exec(conn,'begin');
-    perform dblink_exec(conn,'set local role authenticated');
-    perform dblink_exec(conn,'set local "request.jwt.claim.sub" = '''||v_user::text||'''');
-    perform dblink_exec(conn,$q$set local "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  for v_conn in select unnest(array['f1502_sale_a','f1502_sale_b']) loop
+    perform dblink_exec(v_conn,'begin');
+    perform dblink_exec(v_conn,'set local role authenticated');
+    perform dblink_exec(v_conn,'set local "request.jwt.claim.sub" = '''||v_user::text||'''');
+    perform dblink_exec(v_conn,$q$set local "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
   end loop;
 
   v_sql_a:=format($q$
