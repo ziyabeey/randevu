@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   applyDepotEvidence,
@@ -62,6 +64,22 @@ test('Depot custom image runner is explicit, safe and opt-in', () => {
     () => depotRunnerSpec({ depotOrgId: 'bad:yaml', depotCustomImageEnabled: true }),
     /safe non-empty depotOrgId/,
   );
+});
+
+test('Depot prewarm builder and snapshot template stay syntactically and contract valid', () => {
+  const checked = spawnSync(process.execPath, ['--check', 'scripts/qwen-coordinator/build-ci-image.mjs'], {
+    encoding: 'utf8',
+  });
+  assert.equal(checked.status, 0, checked.stderr);
+  const template = readFileSync('scripts/qwen-coordinator/depot-build-ci-image.yml', 'utf8');
+  assert.match(template, /depot\/snapshot-action@v1/);
+  assert.match(template, /__DEPOT_CI_IMAGE__/);
+  assert.match(template, /postgresql-client/);
+  assert.match(template, /docker pull postgres:17/);
+
+  const shadow = readFileSync('scripts/qwen-coordinator/depot-full-ci.yml', 'utf8');
+  assert.match(shadow, /runs-on: __DEPOT_RUNNER__/);
+  assert.match(shadow, /if command -v psql/);
 });
 
 test('Depot starts only for an exact, mapped, non-doc PR while GitHub CI is pending', () => {
