@@ -27,7 +27,7 @@ test('MKT-01 frame sequence keeps the 121-frame timeline with bounded fetch and 
 test('MKT-01 frame sequence maps normalized scroll directly to frame index and fails closed', () => {
   assert.match(loader, /Math\.round\(clamp01\(progress\) \* \(TRANSFORMATION_FRAME_COUNT - 1\)\)/);
   assert.match(hook, /new TransformationFrameLoader\(variant\)/);
-  assert.match(hook, /getTransformationFrameIndex\(getProgress\(\)\)/);
+  assert.match(hook, /getTransformationFrameIndex\(mediaProgress\)/);
   assert.match(hook, /rootMargin: "75% 0px 75% 0px"/);
   assert.match(hook, /resizeObserver\.observe\(document\.body\)/);
   assert.match(hook, /document\.fonts\?\.ready\.then/);
@@ -78,22 +78,39 @@ test('MKT-01 production renderer is the WebP sequence; explicit overrides win; c
   assert.equal(contract.MARKETING_ASSET_CONTRACT['/marketing/transformation/randevu-transformation-master.mp4'].required, false);
 });
 
-test('MKT-01 scroll pacing maps scroll to video time monotonically and lands on the Kling beats', async () => {
+test('MKT-01 scroll pacing is monotonic, holds hero frames, and lets story progress stay scroll-owned', async () => {
   const timeline = await import('../src/marketing/transformation/timeline.ts');
   const ease = timeline.easeTransformationScroll;
   assert.equal(ease(0), 0);
   assert.equal(ease(1), 1);
   assert.equal(ease(-1), 0);
   assert.equal(ease(2), 1);
+
   let previous = 0;
   for (let step = 0; step <= 200; step++) {
     const value = ease(step / 200);
     assert.ok(value >= previous, `easing must be monotonic at ${step / 200}`);
     previous = value;
   }
-  assert.ok(Math.abs(ease(0.42) - 1.8 / timeline.TRANSFORMATION_VIDEO_DURATION) < 1e-6, 'cut ends at the camera drop beat');
-  assert.ok(Math.abs(ease(0.8) - 4.15 / timeline.TRANSFORMATION_VIDEO_DURATION) < 1e-6, 'seated reveal keeps the last fifth of the scroll');
-  assert.equal(timeline.getTransformationPhase(ease(0.9)), 'pricing');
-  assert.match(hook, /easeTransformationScroll\(clamp01\(\(window\.scrollY - sectionTop\) \/ scrollRange\)\)/);
+
+  const progress = (time) => time / timeline.TRANSFORMATION_VIDEO_DURATION;
+  assert.ok(Math.abs(ease(0.30) - progress(timeline.TRANSFORMATION_VIDEO_TIMES.cameraDrops)) < 1e-6);
+  assert.ok(Math.abs(ease(0.37) - progress(timeline.TRANSFORMATION_VIDEO_TIMES.cameraDrops)) < 1e-6, 'camera-drop frame holds while copy advances');
+  assert.ok(Math.abs(ease(0.48) - progress(timeline.TRANSFORMATION_VIDEO_TIMES.hairOnFloor)) < 1e-6);
+  assert.ok(Math.abs(ease(0.56) - progress(timeline.TRANSFORMATION_VIDEO_TIMES.hairOnFloor)) < 1e-6, 'hair-on-floor frame holds for the friction beat');
+  assert.ok(Math.abs(ease(0.82) - progress(timeline.TRANSFORMATION_VIDEO_TIMES.seatedReveal)) < 1e-6);
+  assert.ok(Math.abs(ease(0.90) - progress(timeline.TRANSFORMATION_VIDEO_TIMES.seatedReveal)) < 1e-6, 'seated reveal holds before the final push');
+
+  assert.equal(timeline.getTransformationScrollPhase(0.20), 'reminder');
+  assert.equal(timeline.getTransformationScrollPhase(0.50), 'friction');
+  assert.equal(timeline.getTransformationScrollPhase(0.70), 'sweep');
+  assert.equal(timeline.getTransformationScrollPhase(0.90), 'pricing');
+  assert.equal(timeline.getTransformationScrollPhaseProgress(timeline.TRANSFORMATION_SCROLL_PHASES.sweep.start, 'sweep'), 0);
+  assert.equal(timeline.getTransformationScrollPhaseProgress(timeline.TRANSFORMATION_SCROLL_PHASES.sweep.end, 'sweep'), 1);
+
+  assert.match(hook, /const scrollProgress = getScrollProgress\(\)/);
+  assert.match(hook, /const mediaProgress = easeTransformationScroll\(scrollProgress\)/);
+  assert.match(hook, /getTransformationScrollPhase\(scrollProgress\)/);
+  assert.match(hook, /--mkt-scroll-progress/);
   assert.match(loader, /imageSmoothingQuality = "high"/);
 });

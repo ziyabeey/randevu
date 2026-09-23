@@ -15,6 +15,8 @@ const mobileNavCss = read('src/marketing/mobile-nav.css');
 const marketingPolishCss = read('src/marketing/marketing-polish.css');
 const transformation = read('src/marketing/transformation/TransformationSection.tsx');
 const transformationTuning = read('src/marketing/transformation/transformation-tuning.css');
+const bookingScrollCss = read('src/marketing/booking-scroll.css');
+const bookingScrollHook = read('src/marketing/useScrollScene.ts');
 const scrubHook = read('src/marketing/transformation/useVideoScrollScrub.ts');
 const releaseGates = read('src/marketing/releaseGates.ts');
 const assets = read('src/marketing/assets.ts');
@@ -76,6 +78,20 @@ test('MKT-01 keeps the approved homepage story spine and navigation contract', (
   assert.match(mobileNavCss, /\.mkt-mobile-nav-panel a \{[\s\S]*?min-height:\s*44px/);
   assert.match(mobileNavCss, /\.mkt-nav-actions \.mkt-nav-cta \{[\s\S]*?min-height:\s*44px/);
   assert.match(marketingPolishCss, /\.mkt-skip-link:focus,[\s\S]*?\.mkt-skip-link:focus-visible/);
+});
+
+test('MKT-01 booking demo uses a scroll-owned phone scene with a reduced-motion escape hatch', () => {
+  assert.match(home, /import "\.\/booking-scroll\.css"/);
+  assert.match(productStories, /useScrollScene\(bookingSectionRef/);
+  assert.match(productStories, /className="mkt-booking-sticky"/);
+  assert.match(productStories, /className="mkt-booking-phone"/);
+  assert.match(productStories, /className="mkt-booking-proof" aria-label="Online rezervasyon akışı örneği"/);
+  assert.match(bookingScrollHook, /requestAnimationFrame/);
+  assert.match(bookingScrollHook, /ResizeObserver/);
+  assert.match(bookingScrollCss, /--mkt-booking-progress/);
+  assert.match(bookingScrollCss, /height:\s*250svh/);
+  assert.match(bookingScrollCss, /position:\s*sticky/);
+  assert.match(bookingScrollCss, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
 test('MKT-DOMAIN-01 keeps Randevu Kolay outward while separating public and private origins', () => {
