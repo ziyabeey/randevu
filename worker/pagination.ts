@@ -1,6 +1,6 @@
 import { base64UrlToText, textToBase64Url } from '../shared/base64.ts';
 
-export type PageKind = 'bookings' | 'booking_groups' | 'events' | 'customers' | 'customer_history' | 'customer_group_history';
+export type PageKind = 'bookings' | 'booking_groups' | 'events' | 'customers' | 'customer_history' | 'customer_group_history' | 'tickets';
 
 export type PageCursor = {
   at: string;

@@ -26,17 +26,19 @@ test('F13-03 operator composer keeps the required field order and uses the atomi
   assert.doesNotMatch(booking.slice(createStart, createEnd), /customerId/);
 });
 
-test('F13-03 close-time stays adjacent to create and detail future tabs are truthful placeholders', () => {
+test('F13-03 close-time stays adjacent while F14-04 owns the live ticket connection point', () => {
   assert.match(booking, /closeOpen \? 'Kapat' : 'Saat kapat'/);
   assert.match(booking, /api\('\/api\/availability\/blocks'/);
   assert.match(booking, /<span aria-disabled="true">Fotoğraf<\/span>/);
-  assert.match(booking, /<span aria-disabled="true">Adisyon<\/span>/);
-  assert.match(booking, /Fotoğraf ve Adisyon bölümleri henüz kullanıma açık değil\./);
+  assert.match(booking, /openTicketForBooking/);
+  assert.match(booking, /\/api\/tickets\/from-booking-group/);
+  assert.match(booking, /Idempotency-Key/);
+  assert.match(booking, /\/app\/mobile\/tickets\?ticketId=/);
   const detailStart = booking.indexOf('booking-detail-tabs');
   const detailEnd = booking.indexOf('{rescheduleTarget', detailStart);
   const detailSurface = booking.slice(detailStart, detailEnd);
   assert.doesNotMatch(detailSurface, /F14|F16-03|backend|\bFaz\b|\bRPC\b|\btenant\b/i);
-  assert.doesNotMatch(booking, /api\([^\n]*photo|api\([^\n]*ticket|api\([^\n]*adisyon/i);
+  assert.doesNotMatch(booking, /api\([^\n]*photo/i);
   assert.match(css, /\.booking-close-panel/);
   assert.match(css, /\.booking-detail-tabs/);
 });

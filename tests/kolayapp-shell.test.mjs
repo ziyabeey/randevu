@@ -24,6 +24,8 @@ const previewSource = readFileSync(path.join(root, 'src/kolayapp/KolayAppSpikePr
 const productionSource = readFileSync(path.join(root, 'src/kolayapp/KolayAppSurface.tsx'), 'utf8');
 const workspaceShellSource = readFileSync(path.join(root, 'src/WorkspaceShell.tsx'), 'utf8');
 const workspaceBrowserSource = readFileSync(path.join(root, 'scripts/browser-f13-workspace-shell.mjs'), 'utf8');
+const ticketCashierSource = readFileSync(path.join(root, 'src/kolayapp/TicketCashierPage.tsx'), 'utf8');
+const ticketCashierCss = readFileSync(path.join(root, 'src/kolayapp/ticket-cashier.css'), 'utf8');
 
 await test('KOLAY-SPIKE-01 fixes the canonical five-tab order and keyboard adjacency', () => {
   assert.deepEqual(KOLAY_APP_TABS.map((tab) => tab.label), [
@@ -76,14 +78,13 @@ await test('F14-01 production surface consumes canonical workspace authority and
   assert.match(workspaceShellSource, /options\.to \?\? '\/app\/calendar'/);
 });
 
-await test('F14-01 future financial actions stay explicitly unavailable', () => {
-  assert.match(productionSource, /title="Adisyonlar"/);
-  assert.match(productionSource, /Adisyon ve tahsilat işlemleri henüz kullanıma açık değil/);
+await test('F14-01 keeps only still-future mobile actions unavailable', () => {
+  assert.match(productionSource, /TicketCashierPage/);
+  assert.match(productionSource, /Yeni adisyon/);
   assert.match(productionSource, /Yeni randevu/);
-  for (const label of ['Yeni adisyon', 'Yeni ürün satışı', 'Yeni paket satışı', 'Yeni masraf']) {
+  for (const label of ['Yeni ürün satışı', 'Yeni paket satışı', 'Yeni masraf']) {
     assert.match(productionSource, new RegExp(label));
   }
-  assert.doesNotMatch(productionSource, /ödendi|tahsil edildi|başarılı tahsilat/i);
   assert.doesNotMatch(previewSource, /F14-01|F14 mali akışı/);
 });
 
@@ -112,6 +113,36 @@ await test('F14-01 real-browser acceptance remains wired into the required works
   assert.match(workspaceBrowserSource, /width: 390/);
   assert.match(workspaceBrowserSource, /width: 360/);
   assert.match(workspaceBrowserSource, /kolay-business-select select/);
+});
+
+await test('F14-04 cashier UI consumes server financial projection and stable ambiguity keys', () => {
+  for (const field of ['subtotalMinor', 'discountMinor', 'totalMinor', 'paidMinor', 'balanceMinor', 'paymentStatus']) {
+    assert.match(ticketCashierSource, new RegExp(field));
+  }
+  assert.match(ticketCashierSource, /Idempotency-Key/);
+  assert.match(ticketCashierSource, /PENDING_AMBIGUITY_STORAGE_KEY/);
+  assert.match(ticketCashierSource, /sessionStorage/);
+  assert.match(ticketCashierSource, /path: string/);
+  assert.match(ticketCashierSource, /body: string \| null/);
+  assert.match(ticketCashierSource, /pending\.path/);
+  assert.match(ticketCashierSource, /pending\.body/);
+  assert.match(ticketCashierSource, /Belirsiz işlemi doğrula/);
+  assert.match(ticketCashierSource, /REQUEST_TIMEOUT/);
+  assert.match(ticketCashierSource, /NETWORK_UNAVAILABLE/);
+  assert.match(ticketCashierSource, /status === 503/);
+  assert.match(ticketCashierSource, /await loadTicket\(id\)/);
+  assert.match(ticketCashierSource, /record.*cash|Nakit/i);
+  assert.match(ticketCashierSource, /Kart tahsilatı/);
+  assert.match(ticketCashierSource, /Düzelt/);
+  assert.match(ticketCashierSource, /İade/);
+  assert.doesNotMatch(ticketCashierSource, /paidMinor\s*\+|balanceMinor\s*-|totalMinor\s*-/);
+  assert.match(productionSource, /<TicketCashierPage \/>/);
+  assert.match(workspaceBrowserSource, /F14-04 ticket cashier payment\/idempotency\/mobile acceptance passed/);
+  assert.match(workspaceBrowserSource, /allowed a different ticket mutation while a payment result was ambiguous/);
+  assert.match(workspaceBrowserSource, /ambiguity remount changed Idempotency-Key/);
+  assert.match(workspaceBrowserSource, /Belirsiz işlemi doğrula/);
+  assert.match(ticketCashierCss, /@media \(max-width:\s*420px\)/);
+  assert.match(ticketCashierCss, /min-height:\s*44px/);
 });
 
 await test('KOLAY-SPIKE-01 mobile CSS protects touch, safe-area and keyboard-resized viewport contracts', () => {
