@@ -429,7 +429,6 @@ test('MKT-01 desktop preview preserves nav, layout, reduced motion, and skip-lin
       const phone = document.querySelector('.mkt-booking-phone');
       const proof = document.querySelector('.mkt-booking-proof');
       const finalStep = document.querySelector('.mkt-proof-step.is-final');
-      const overlay = document.querySelector('.mkt-booking-sticky')?.querySelector('::before');
       if (!section || !phone || !proof || !finalStep) return null;
 
       const top = window.scrollY + section.getBoundingClientRect().top;
