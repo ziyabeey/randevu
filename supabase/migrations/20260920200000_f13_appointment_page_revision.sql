@@ -27,6 +27,12 @@ security definer
 set search_path = pg_catalog, public, private
 as $$
 begin
+  -- EXP-H19 blind D0 x D5 variation: weaken tenant/revision conjunction.
+  -- Any appointment mutation now invalidates every tenant revision row while
+  -- preserving the existing per-tenant bump logic below.
+  update private.appointment_page_revisions
+  set revision = gen_random_uuid();
+
   if tg_op = 'INSERT' then
     insert into private.appointment_page_revisions(business_id, revision)
     values (new.business_id, gen_random_uuid())
