@@ -91,7 +91,7 @@ TASKS yalnız gerçek durum geçişinde (sahiplik, inceleme, blocker, kabul, mer
 
 | Kimlik | İş | Durum | Sahip | Kanıt / sonraki kapı |
 | --- | --- | --- | --- | --- |
-| [MKT-01](https://github.com/ziyabeey1-ai/randevu/issues/70) | Randevu marketing homepage — scroll-motion implementation | Çalışılıyor | Ziya / ürün sahibi + FRONTEND 2 | [PR #69](https://github.com/ziyabeey1-ai/randevu/pull/69) brand/motion docs main'de; [PR #77](https://github.com/ziyabeey1-ai/randevu/pull/77) draft. Production renderer gerçek Kling binary/perf + real-phone/cellular ve shared route cutover kapısını bekler. |
+| [MKT-01](https://github.com/ziyabeey1-ai/randevu/issues/70) | Randevu marketing homepage — scroll-motion implementation | Çalışılıyor | Ziya / ürün sahibi + FRONTEND 2 | [PR #69](https://github.com/ziyabeey1-ai/randevu/pull/69) brand/motion docs main'de; [PR #451](https://github.com/ziyabeey/randevu/pull/451) draft, [PR #77](https://github.com/ziyabeey1-ai/randevu/pull/77) closed/superseded. Production renderer gerçek Kling binary/perf + real-phone/cellular ve shared route cutover kapısını bekler. |
 
 ## Kepenk Core / KC platform track — 54 MVP görevinin dışında
 
