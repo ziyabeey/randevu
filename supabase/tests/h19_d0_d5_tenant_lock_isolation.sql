@@ -52,9 +52,9 @@ values
   ('a1b10000-0000-4000-8000-000000000002','a1b40000-0000-4000-8000-000000000002','a1b30000-0000-4000-8000-000000000002',true);
 
 insert into public.business_hours(business_id,weekday,starts_local,ends_local,active)
-select 'a1b10000-0000-4000-8000-000000000001',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true
+select 'a1b10000-0000-4000-8000-000000000001'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true
 union all
-select 'a1b10000-0000-4000-8000-000000000002',extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
+select 'a1b10000-0000-4000-8000-000000000002'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true;
 
 insert into public.staff_hours(business_id,staff_id,weekday,starts_local,ends_local,active)
 select 'a1b10000-0000-4000-8000-000000000001'::uuid,'a1b40000-0000-4000-8000-000000000001'::uuid,extract(dow from (date_trunc('week',current_date)::date+7))::smallint,time '09:00',time '18:00',true
