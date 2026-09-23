@@ -162,6 +162,27 @@ create table public.ticket_product_returns (
 create index ticket_product_returns_line_idx
   on public.ticket_product_returns(business_id, ticket_line_id, created_at, id);
 
+create or replace function public.f15_guard_product_return_change()
+returns trigger
+language plpgsql
+set search_path = ''
+as $f1502returnguard$
+begin
+  if tg_op = 'UPDATE' then raise exception 'PRODUCT_RETURN_IMMUTABLE'; end if;
+  raise exception 'PRODUCT_RETURN_DELETE_FORBIDDEN';
+end
+$f1502returnguard$;
+
+drop trigger if exists ticket_product_returns_update_guard on public.ticket_product_returns;
+create trigger ticket_product_returns_update_guard
+before update on public.ticket_product_returns
+for each row execute function public.f15_guard_product_return_change();
+
+drop trigger if exists ticket_product_returns_delete_guard on public.ticket_product_returns;
+create trigger ticket_product_returns_delete_guard
+before delete on public.ticket_product_returns
+for each row execute function public.f15_guard_product_return_change();
+
 alter table public.ticket_product_returns enable row level security;
 alter table public.ticket_product_returns force row level security;
 revoke all on table public.ticket_product_returns from public, anon, authenticated;
@@ -894,6 +915,16 @@ begin
     where e.business_id=p_business_id and e.ticket_id=p_ticket_id
   ) then raise exception 'TICKET_HAS_FINANCIAL_EVENTS'; end if;
 
+  if exists (
+    select 1 from public.ticket_lines l
+    where l.business_id=p_business_id and l.ticket_id=p_ticket_id and l.source_type='product'
+  ) and not public.has_financial_permission(
+    p_business_id,
+    'inventory_write'::public.financial_permission_key
+  ) then
+    raise exception 'INVENTORY_PERMISSION_REQUIRED' using errcode='42501';
+  end if;
+
   for v_line in
     select l.id,l.product_id,l.quantity
     from public.ticket_lines l
@@ -945,6 +976,7 @@ begin
 end
 $f1502cancel$;
 
+revoke all on function public.f15_guard_product_return_change() from public,anon,authenticated;
 revoke all on function public.f15_product_sale_actor(uuid) from public,anon,authenticated;
 revoke all on function public.f15_product_return_actor(uuid) from public,anon,authenticated;
 revoke all on function public.add_ticket_product_line_guarded(uuid,uuid,uuid,integer,integer,integer,text,text) from public,anon,authenticated;
