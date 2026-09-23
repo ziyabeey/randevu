@@ -52,10 +52,14 @@ function integer(value: unknown, min: number, max: number): value is number {
 function localWallClock(value: unknown) {
   if (typeof value !== 'string') return null;
   const text = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(text)) return null;
-  const [datePart, timePart] = text.split('T');
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hour, minute, second = 0] = timePart.split(':').map(Number);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(text);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6] ?? '0');
   const probe = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
   if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== month - 1 || probe.getUTCDate() !== day
       || probe.getUTCHours() !== hour || probe.getUTCMinutes() !== minute || probe.getUTCSeconds() !== second) return null;
