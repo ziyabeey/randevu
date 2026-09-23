@@ -301,3 +301,117 @@ begin
   raise notice 'F15-03 concurrent correction vs cancellation produced one atomic winner';
 end
 $$;
+
+
+-- Same idempotency key + same payload issued concurrently must converge to one
+-- durable expense event and one finalized command result.
+do $$
+declare
+  v_business uuid:='f1910000-0000-4000-8000-000000000001';
+  v_user uuid:='f1900000-0000-4000-8000-000000000001';
+  v_first_conn text;
+  v_result_a jsonb;
+  v_result_b jsonb;
+  v_result jsonb;
+  v_conn text;
+begin
+  for v_conn in select unnest(array['f1503_dup_a','f1503_dup_b']) loop
+    perform dblink_connect(
+      v_conn,
+      'host=127.0.0.1 port=5432 dbname='||current_database()
+        ||' user=postgres password=postgres application_name='||v_conn
+    );
+    perform dblink_exec(v_conn,'set statement_timeout=30000');
+    perform dblink_exec(v_conn,'begin');
+    perform dblink_exec(v_conn,'set local role authenticated');
+    perform dblink_exec(v_conn,'set local "request.jwt.claim.sub" = '''||v_user::text||'''');
+    perform dblink_exec(v_conn,$q$set local "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  end loop;
+
+  if dblink_send_query('f1503_dup_a',format($q$
+    select public.create_expense_guarded(
+      %L::uuid,'Concurrent duplicate','Same intent',7000,'TRY','cash',
+      '2026-09-23 12:00:00'::timestamp,'f1503-race-duplicate',%L
+    )
+  $q$,v_business,repeat('d',64)))<>1
+  or dblink_send_query('f1503_dup_b',format($q$
+    select public.create_expense_guarded(
+      %L::uuid,'Concurrent duplicate','Same intent',7000,'TRY','cash',
+      '2026-09-23 12:00:00'::timestamp,'f1503-race-duplicate',%L
+    )
+  $q$,v_business,repeat('d',64)))<>1 then
+    raise exception 'F15-03 duplicate writers did not start';
+  end if;
+
+  v_first_conn:=null;
+  for i in 1..3000 loop
+    if dblink_is_busy('f1503_dup_a')=0 then
+      v_first_conn:='f1503_dup_a';
+      exit;
+    elsif dblink_is_busy('f1503_dup_b')=0 then
+      v_first_conn:='f1503_dup_b';
+      exit;
+    end if;
+    perform pg_sleep(0.01);
+  end loop;
+  if v_first_conn is null then
+    raise exception 'F15-03 timed out waiting for duplicate winner';
+  end if;
+
+  select t.result into strict v_result
+  from dblink_get_result(v_first_conn) as t(result jsonb);
+  perform * from dblink_get_result(v_first_conn,false) as t(result jsonb);
+  if v_first_conn='f1503_dup_a' then v_result_a:=v_result; else v_result_b:=v_result; end if;
+  perform dblink_exec(v_first_conn,'commit');
+  perform dblink_disconnect(v_first_conn);
+
+  if v_first_conn='f1503_dup_a' then
+    for i in 1..3000 loop exit when dblink_is_busy('f1503_dup_b')=0; perform pg_sleep(0.01); end loop;
+    if dblink_is_busy('f1503_dup_b')<>0 then raise exception 'F15-03 duplicate replay B timed out'; end if;
+    select t.result into strict v_result_b from dblink_get_result('f1503_dup_b') as t(result jsonb);
+    perform * from dblink_get_result('f1503_dup_b',false) as t(result jsonb);
+    perform dblink_exec('f1503_dup_b','commit');
+    perform dblink_disconnect('f1503_dup_b');
+  else
+    for i in 1..3000 loop exit when dblink_is_busy('f1503_dup_a')=0; perform pg_sleep(0.01); end loop;
+    if dblink_is_busy('f1503_dup_a')<>0 then raise exception 'F15-03 duplicate replay A timed out'; end if;
+    select t.result into strict v_result_a from dblink_get_result('f1503_dup_a') as t(result jsonb);
+    perform * from dblink_get_result('f1503_dup_a',false) as t(result jsonb);
+    perform dblink_exec('f1503_dup_a','commit');
+    perform dblink_disconnect('f1503_dup_a');
+  end if;
+
+  if v_result_a->>'eventId' is null or v_result_a->>'eventId'<>v_result_b->>'eventId' then
+    raise exception 'F15-03 concurrent duplicate did not replay same event: % vs %',v_result_a,v_result_b;
+  end if;
+
+  if (
+    select count(*) from public.expense_events
+    where business_id=v_business
+      and event_type='expense'
+      and category='Concurrent duplicate'
+      and description='Same intent'
+      and amount_minor=7000
+  )<>1 then
+    raise exception 'F15-03 concurrent duplicate persisted more than one expense';
+  end if;
+
+  if (
+    select count(*) from public.expense_commands
+    where business_id=v_business
+      and command='create_expense'
+      and idempotency_key='f1503-race-duplicate'
+      and result_payload is not null
+  )<>1 then
+    raise exception 'F15-03 concurrent duplicate command ledger is not singular/finalized';
+  end if;
+
+  raise notice 'F15-03 concurrent duplicate command converged to one durable expense';
+exception when others then
+  for v_conn in select unnest(array['f1503_dup_a','f1503_dup_b']) loop
+    begin perform dblink_exec(v_conn,'rollback'); exception when others then null; end;
+    begin perform dblink_disconnect(v_conn); exception when others then null; end;
+  end loop;
+  raise;
+end
+$$;
