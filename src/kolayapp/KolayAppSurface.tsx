@@ -78,7 +78,7 @@ function MoreActions() {
           <AppLink href="/app/services"><strong>Hizmetler</strong><span>Hizmet ve personel eşleşmeleri</span></AppLink>
           <AppLink href="/app/services"><strong>Süreler ve fiyatlar</strong><span>Hizmet süre ve fiyat ayarları</span></AppLink>
           <AppLink href="/app/public-booking"><strong>Randevu ayarları</strong><span>Online randevu davranışı ve salon görünümü</span></AppLink>
-          <DisabledAction title="Ürün ve stok" description="Henüz kullanıma açık değil." />
+          <AppLink href="/app/products"><strong>Ürün ve stok</strong><span>Katalog, fiyat ve stok hareketlerini yönet</span></AppLink>
           <AppLink href="/app/public-booking"><strong>Salon fotoğrafları</strong><span>Yayınlanan salon görselleri</span></AppLink>
           <DisabledAction title="Promosyonlar" description="Henüz kullanıma açık değil." />
         </div>
