@@ -6,9 +6,12 @@ const booking = await readFile(new URL('../src/PublicBookingPage.tsx', import.me
 const selection = await readFile(new URL('../src/PublicMultiServiceSelection.tsx', import.meta.url), 'utf8');
 const salon = await readFile(new URL('../src/PublicSalonPage.tsx', import.meta.url), 'utf8');
 const entry = await readFile(new URL('../src/main.tsx', import.meta.url), 'utf8');
+const appRouter = await readFile(new URL('../src/AppRouter.tsx', import.meta.url), 'utf8');
+const workspaceShell = await readFile(new URL('../src/WorkspaceShell.tsx', import.meta.url), 'utf8');
 const browserEntry = await readFile(new URL('./browser/f12-public-group-booking.tsx', import.meta.url), 'utf8');
 const browserRunner = await readFile(new URL('../scripts/browser-f12-public-group-booking.mjs', import.meta.url), 'utf8');
 const css = await readFile(new URL('../src/public-booking.css', import.meta.url), 'utf8');
+const notificationStatus = await readFile(new URL('../src/PublicNotificationStatus.tsx', import.meta.url), 'utf8');
 
 test('F12-05 consumes the accepted group create contract with the durable v2 intent', () => {
   assert.match(booking, /isGroupMode \? 'group-book' : 'book'/);
@@ -41,8 +44,10 @@ test('F12-05 validates ordered group results, range estimates and the exact mana
   assert.match(booking, /estimateMaxMinor/);
   assert.match(booking, /Kesin tahsilat tutarı değildir\./);
   assert.match(booking, /Kayıt durumu:/);
-  assert.match(booking, /Mesaj durumu:/);
-  assert.match(booking, /Bu ekran SMS veya e-posta teslimini doğrulamaz\./);
+  assert.match(booking, /<PublicNotificationStatus notification=\{confirmation\.notification\} \/>/);
+  assert.doesNotMatch(booking, /Bu ekran SMS veya e-posta teslimini doğrulamaz\./);
+  assert.match(notificationStatus, /Bildirim durumu:/);
+  assert.match(notificationStatus, /Gelen kutusuna teslim edildiği doğrulanmaz\./);
   assert.match(booking, /RANDEVU İPTAL EDİLDİ/);
   assert.match(booking, /RANDEVU PLANI KISMEN DEĞİŞTİ/);
   assert.match(booking, /Randevu ayrıntılarını aç/);
@@ -97,10 +102,10 @@ test('F12-05 keeps one booking-state owner and lazy-loads private/operator page 
   assert.match(salon, /onAvailabilityChange=\{setGroupPlannerAvailable\}/);
   assert.match(salon, /groupMode=\{groupPlannerAvailable\}/);
   assert.match(booking, /const isGroupMode = groupMode;/);
-  assert.match(entry, /lazy\(\(\) => import\('\.\/PublicSalonPage'\)\)/);
-  assert.match(entry, /lazy\(\(\) => import\('\.\/ManageAppointmentPage'\)\)/);
-  assert.match(entry, /lazy\(\(\) => import\('\.\/CalendarPage'\)\)/);
-  assert.doesNotMatch(entry, /^import (?:App|CalendarPage|CustomersPage|BookingPage) from/m);
+  assert.match(appRouter, /lazy\(\(\) => import\('\.\/PublicSalonPage'\)\)/);
+  assert.match(appRouter, /lazy\(\(\) => import\('\.\/ManageAppointmentPage'\)\)/);
+  assert.match(workspaceShell, /lazy\(\(\) => import\('\.\/CalendarPage'\)\)/);
+  assert.doesNotMatch(entry, /^import (?:App|CalendarPage|CustomersPage|BookingPage|PublicSalonPage|ManageAppointmentPage) from/m);
   assert.match(browserEntry, /import '\.\.\/\.\.\/src\/main';/);
   assert.match(browserRunner, /PublicSalonPage-\.\*\\\.js/);
   assert.match(browserRunner, /ManageAppointmentPage-\.\*\\\.js/);

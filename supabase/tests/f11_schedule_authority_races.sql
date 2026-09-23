@@ -474,5 +474,5 @@ begin
   end if;
 end $$;
 
-do $$ begin raise notice 'F11-04 schedule authority races accepted: create/group/line vs hours, blocks, assignment, service/staff mutations plus shared-parent booking writers'; end $$;
+do $f1104done$ begin raise notice 'F11-04 schedule authority races accepted: create/group/line vs hours, blocks, assignment, service/staff mutations plus shared-parent booking writers'; end $f1104done$;
 delete from public.businesses where id='d1910000-0000-4000-8000-000000000001';

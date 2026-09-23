@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import BrowserWorkspaceProvider from './workspace-provider';
 import OnboardingPage from '../../src/OnboardingPage';
 
 type Control = {
@@ -73,5 +74,5 @@ window.__f10 = {
 
 const root = document.getElementById('root');
 if (!root) throw new Error('F10 browser harness root missing');
-createRoot(root).render(<OnboardingPage />);
+createRoot(root).render(<BrowserWorkspaceProvider><OnboardingPage /></BrowserWorkspaceProvider>);
 document.documentElement.dataset.f10Ready = 'true';

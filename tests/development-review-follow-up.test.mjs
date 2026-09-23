@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 import { verifyDevelopmentReviewLiveState } from '../scripts/verify-development-review-live-state.mjs';
 
-const repository = 'ziyabeey1-ai/randevu';
+const repository = 'ziyabeey/randevu';
 const head = 'a'.repeat(40), base = 'b'.repeat(40), oldHead = 'c'.repeat(40);
 const publisher = 'claude[bot]';
 const allowlist = { R1: [publisher], R2: [publisher] };

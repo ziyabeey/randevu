@@ -162,7 +162,7 @@ jobs:
       id-token: write
       issues: read
       pull-requests: write
-    uses: ziyabeey1-ai/randevu/.github/workflows/development-escalation-router.yml@main
+    uses: ziyabeey/randevu/.github/workflows/development-escalation-router.yml@main
     with:
       observation_json: ${{ needs.prepare.outputs.observation_json }}
       evidence_json: ${{ needs.prepare.outputs.evidence_json }}

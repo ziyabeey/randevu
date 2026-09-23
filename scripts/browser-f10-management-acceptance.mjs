@@ -604,6 +604,28 @@ export async function runManagementAcceptance(options = {}) {
       assert.equal(clicked, true, `button containing ${text} was not found`);
     }
 
+    async function selectWorkspaceBusiness(page, businessId, businessName) {
+      await waitFor(
+        () => page.evaluate(`(() => {
+          const select = document.querySelector('select[aria-label="Aktif işletme"]');
+          if (!(select instanceof HTMLSelectElement)) return false;
+          const option = [...select.options].find((item) => item.value === ${JSON.stringify(businessId)});
+          return Boolean(option && option.textContent?.trim() === ${JSON.stringify(businessName)});
+        })()`),
+        `workspace business ${businessName} option did not render`,
+      );
+      const selected = await page.evaluate(`(() => {
+        const select = document.querySelector('select[aria-label="Aktif işletme"]');
+        if (!(select instanceof HTMLSelectElement)) return false;
+        const option = [...select.options].find((item) => item.value === ${JSON.stringify(businessId)});
+        if (!option || option.textContent?.trim() !== ${JSON.stringify(businessName)}) return false;
+        select.value = option.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()`);
+      assert.equal(selected, true, `workspace business ${businessName} was not selectable`);
+    }
+
     async function clickAnchor(page, href) {
       const clicked = await page.evaluate(`(() => {
         const target = document.querySelector(${JSON.stringify(`a[href="${href}"]`)});
@@ -654,7 +676,7 @@ export async function runManagementAcceptance(options = {}) {
       }
     }
 
-    const pageA = await openPage('/setup');
+    const pageA = await openPage('/app/setup');
     const missingAssetStatus = await pageA.evaluate(`fetch('/missing-chunk.js', { cache: 'no-store' }).then((response) => response.status)`);
     assert.equal(missingAssetStatus, 404, 'missing emitted-asset request fell through to the app HTML');
     await waitText(pageA, 'Salon A');
@@ -663,22 +685,34 @@ export async function runManagementAcceptance(options = {}) {
     await assertSafeSurface(pageA, 'setup/A');
 
     await clickButtonContaining(pageA, 'Salon B');
-    await waitPath(pageA, '/setup');
+    await waitFor(() => state.selected === ids.businessB, 'business switch did not select Salon B');
+    await waitPath(pageA, '/app/calendar');
+    await waitFor(
+      () => pageA.evaluate(`(() => {
+        const select = document.querySelector('select[aria-label="Aktif işletme"]');
+        if (!(select instanceof HTMLSelectElement)) return false;
+        return select.value === '${ids.businessB}'
+          && select.selectedOptions[0]?.textContent?.trim() === 'Salon B';
+      })()`),
+      'workspace header did not verify Salon B after switch',
+    );
+    await navigate(pageA, '/app/setup');
+    await waitPath(pageA, '/app/setup');
     await waitFor(async () => {
       const text = await bodyText(pageA);
       return text.includes('Salon B') && text.includes('Yönetici') && text.includes('Şu an seçili');
-    }, 'business switch did not settle on Salon B manager state');
+    }, 'setup did not render verified Salon B manager state');
     assert.equal(state.selected, ids.businessB);
     await assertSafeSurface(pageA, 'setup/B');
 
-    await clickAnchor(pageA, '/team');
-    await waitPath(pageA, '/team');
+    await clickAnchor(pageA, '/app/team');
+    await waitPath(pageA, '/app/team');
     await waitText(pageA, 'Yönetici');
     await waitText(pageA, 'Davet oluştur');
     await assertSafeSurface(pageA, 'team/B manager');
 
     await pageA.evaluate('history.back()');
-    await waitPath(pageA, '/setup');
+    await waitPath(pageA, '/app/setup');
     await waitText(pageA, 'Yönetici');
     assert.equal(state.selected, ids.businessB, 'browser back changed selected business');
     const backText = await bodyText(pageA);
@@ -686,11 +720,11 @@ export async function runManagementAcceptance(options = {}) {
     assert.ok(!backText.includes('Salon A Hizmeti'), 'browser back exposed stale Salon A domain data');
 
     await pageA.evaluate('history.forward()');
-    await waitPath(pageA, '/team');
+    await waitPath(pageA, '/app/team');
     await waitText(pageA, 'Yönetici');
     await assertSafeSurface(pageA, 'team/B forward');
 
-    const pageB = await openPage('/team');
+    const pageB = await openPage('/app/team');
     await waitText(pageB, 'Yönetici');
     await waitText(pageB, 'Davet oluştur');
     assert.notEqual(await pageA.evaluate('location.href'), 'about:blank');
@@ -718,11 +752,13 @@ export async function runManagementAcceptance(options = {}) {
 
     state.memberships[ids.businessB].active = false;
     await reload(pageB);
-    await waitText(pageB, 'Ekip alanı açılamadı');
+    await waitText(pageB, 'Hangi işletmede çalışacağız?');
     const inactiveText = await bodyText(pageB);
+    assert.ok(inactiveText.includes('Salon A'), 'workspace gate did not retain the remaining active membership');
     assert.ok(!inactiveText.includes('Davet oluştur'));
     assert.ok(!inactiveText.includes('Salon B Çalışanı'));
-    await assertSafeSurface(pageB, 'team/B inactive');
+    assert.ok(!inactiveText.includes('Salon B'), 'inactive business remained selectable in the workspace gate');
+    await assertSafeSurface(pageB, 'workspace/B inactive');
 
     state.memberships[ids.businessB].active = true;
     state.memberships[ids.businessB].role = 'manager';
@@ -746,8 +782,15 @@ export async function runManagementAcceptance(options = {}) {
       );
     }
 
-    const pageC = await openPage('/');
-    await waitText(pageC, 'Yönetici');
+    const pageC = await openPage('/app');
+    await waitFor(
+      () => pageC.evaluate(`(() => {
+        const select = document.querySelector('select[aria-label="Aktif işletme"]');
+        return select instanceof HTMLSelectElement
+          && select.selectedOptions[0]?.textContent?.trim() === 'Salon B';
+      })()`),
+      'root workspace did not retain verified Salon B selection',
+    );
     await waitText(pageC, 'Çıkış yap');
     state.sessionFailureOnce = true;
     await reload(pageC);
@@ -763,7 +806,14 @@ export async function runManagementAcceptance(options = {}) {
     await assertSafeSurface(pageC, 'root/session-503');
 
     await reload(pageC);
-    await waitText(pageC, 'Yönetici');
+    await waitFor(
+      () => pageC.evaluate(`(() => {
+        const select = document.querySelector('select[aria-label="Aktif işletme"]');
+        return select instanceof HTMLSelectElement
+          && select.selectedOptions[0]?.textContent?.trim() === 'Salon B';
+      })()`),
+      'root workspace did not retain verified Salon B selection',
+    );
 
     // Cross-tab tenant drift. Two tabs show Salon B; tab 1 switches the shared
     // selection to Salon A through the real UI; the person returns to tab 2
@@ -773,10 +823,10 @@ export async function runManagementAcceptance(options = {}) {
     await reload(pageB);
     await waitText(pageB, 'Salon B Çalışanı');
     await waitText(pageB, 'Davet oluştur');
-    await navigate(pageA, '/setup');
-    await waitText(pageA, 'Salon A');
-    await clickButtonContaining(pageA, 'Salon A');
+    await navigate(pageA, '/app/setup');
+    await selectWorkspaceBusiness(pageA, ids.businessA, 'Salon A');
     await waitFor(() => state.selected === ids.businessA, 'tab 1 did not switch the shared selection to Salon A');
+    await waitPath(pageA, '/app/calendar');
     await returnToTab(pageB);
     await sleep(750);
     const driftShown = await bodyText(pageB);
@@ -812,10 +862,10 @@ export async function runManagementAcceptance(options = {}) {
     await reload(pageB);
     await waitText(pageB, 'Salon A Çalışanı');
     await waitText(pageB, 'Davet oluştur');
-    await navigate(pageA, '/setup');
-    await waitText(pageA, 'Salon B');
-    await clickButtonContaining(pageA, 'Salon B');
+    await navigate(pageA, '/app/setup');
+    await selectWorkspaceBusiness(pageA, ids.businessB, 'Salon B');
     await waitFor(() => state.selected === ids.businessB, 'tab 1 did not switch the shared selection back to Salon B');
+    await waitPath(pageA, '/app/calendar');
     const silentShown = await bodyText(pageB);
     const silentWritesBefore = state.invitationWrites.length;
     await submitInvite(pageB, 'cross-tab-silent@example.test');
@@ -867,13 +917,13 @@ export async function runManagementAcceptance(options = {}) {
       );
     }
 
-    await navigate(pageA, '/setup');
-    await waitText(pageA, 'Önce giriş yapın');
+    await navigate(pageA, '/app/setup');
+    await waitText(pageA, 'Çalışma alanına girin');
     const expiredSetupText = await bodyText(pageA);
     assert.ok(!expiredSetupText.includes('Salon B Hizmeti'));
 
     await reload(pageB);
-    await waitText(pageB, 'Ekip alanı açılamadı');
+    await waitText(pageB, 'Çalışma alanına girin');
     const expiredTeamText = await bodyText(pageB);
     assert.ok(!expiredTeamText.includes('Davet oluştur'));
     assert.ok(!expiredTeamText.includes('Salon B Çalışanı'));

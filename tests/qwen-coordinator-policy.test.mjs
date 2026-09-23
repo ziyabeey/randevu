@@ -340,9 +340,9 @@ test('review-sourced independent receipt requires native commit identity', () =>
       url: 'https://github.com/example/repo/pull/7#pullrequestreview-2',
     }],
   });
-  assert.equal(reviewReceipts(r2Pull, [], config).r2.status, 'missing');
+  assert.equal(reviewReceipts(r2Pull, config).r2.status, 'missing');
   r2Pull.reviews[0].commitOid = head;
-  assert.equal(reviewReceipts(r2Pull, [], config).r2.status, 'accepted');
+  assert.equal(reviewReceipts(r2Pull, config).r2.status, 'accepted');
 });
 
 test('stale, prose-only and generic-bot specialist receipts fail closed', () => {
@@ -355,7 +355,7 @@ test('stale, prose-only and generic-bot specialist receipts fail closed', () => 
     })} -->`,
     url: 'https://github.com/example/repo/pull/7#issuecomment-3',
   });
-  assert.equal(reviewReceipts(stale, [], config).r2.status, 'missing');
+  assert.equal(reviewReceipts(stale, config).r2.status, 'missing');
 
   const prose = pull({ files: [{ path: 'scripts/browser-flow.mjs' }] });
   prose.comments.push({
@@ -364,7 +364,7 @@ test('stale, prose-only and generic-bot specialist receipts fail closed', () => 
     body: `VERDICT: R2 = ACCEPTABLE\nREVIEWED SHA: ${head}`,
     url: 'https://github.com/example/repo/pull/7#issuecomment-4',
   });
-  assert.equal(reviewReceipts(prose, [], config).r2.status, 'missing');
+  assert.equal(reviewReceipts(prose, config).r2.status, 'missing');
 
   const generic = pull({ files: [{ path: 'scripts/browser-flow.mjs' }] });
   generic.comments.push({
@@ -375,7 +375,7 @@ test('stale, prose-only and generic-bot specialist receipts fail closed', () => 
     })} -->`,
     url: 'https://github.com/example/repo/pull/7#issuecomment-5',
   });
-  assert.equal(reviewReceipts(generic, [], {
+  assert.equal(reviewReceipts(generic, {
     ...config,
     trustedReceiptActorsByRole: {
       R1: ['security-reviewer'],
@@ -402,10 +402,10 @@ test('a newer exact-head blocker supersedes an older independent acceptance', ()
     createdAt: '2026-01-03T00:00:00Z',
     url: 'https://github.com/example/repo/pull/7#issuecomment-7',
   });
-  assert.equal(reviewReceipts(reviewed, [], config).r2.status, 'missing');
+  assert.equal(reviewReceipts(reviewed, config).r2.status, 'missing');
 
   reviewed.comments[1].createdAt = '2026-01-01T00:00:00Z';
-  assert.equal(reviewReceipts(reviewed, [], config).r2.status, 'accepted');
+  assert.equal(reviewReceipts(reviewed, config).r2.status, 'accepted');
 });
 
 test('latest exact-head native R0 findings supersede an older clean review', () => {
@@ -422,11 +422,11 @@ test('latest exact-head native R0 findings supersede an older clean review', () 
     body: '**Findings:** 1 high',
     submittedAt: '2026-01-02T00:00:00Z',
   }] });
-  assert.equal(reviewReceipts(reviewed, [], config).r0.status, 'missing');
+  assert.equal(reviewReceipts(reviewed, config).r0.status, 'missing');
   reviewed.reviews[1].body = 'Three unresolved findings remain.\n**Findings:** None';
-  assert.equal(reviewReceipts(reviewed, [], config).r0.status, 'missing');
+  assert.equal(reviewReceipts(reviewed, config).r0.status, 'missing');
   reviewed.reviews[1].body = '**Findings:** None';
-  assert.equal(reviewReceipts(reviewed, [], config).r0.status, 'accepted');
+  assert.equal(reviewReceipts(reviewed, config).r0.status, 'accepted');
 });
 
 test('review-sourced independent blocker requires native commit identity', () => {
@@ -447,9 +447,9 @@ test('review-sourced independent blocker requires native commit identity', () =>
     submittedAt: '2026-01-02T00:00:00Z',
     url: 'https://github.com/example/repo/pull/7#pullrequestreview-13',
   });
-  assert.equal(reviewReceipts(reviewed, [], config).r2.status, 'accepted');
+  assert.equal(reviewReceipts(reviewed, config).r2.status, 'accepted');
   reviewed.reviews.at(-1).commitOid = head;
-  assert.equal(reviewReceipts(reviewed, [], config).r2.status, 'missing');
+  assert.equal(reviewReceipts(reviewed, config).r2.status, 'missing');
 });
 
 test('truncated remote evidence blocks an otherwise merge-eligible pull', () => {
@@ -464,29 +464,40 @@ test('truncated remote evidence blocks an otherwise merge-eligible pull', () => 
   assert.equal(result.mergeEligible, false);
 });
 
-test('truncated coordination history blocks only roles that consume it', () => {
-  const r0Only = classifyPull(pull(), {
-    config,
-    mainSha: main,
-    task,
-    remoteComplete: true,
-    coordinationCommentsComplete: false,
-  });
-  assert.equal(r0Only.choice, 'D');
-  assert.ok(!r0Only.gaps.includes('REMOTE_EVIDENCE_INCOMPLETE'));
-
-  const r2Required = classifyPull(pull({
+test('coordination issue history is never independent review authority', () => {
+  const issueReceipt = {
+    id: 99,
+    author: 'integration-reviewer',
+    body: `<!-- development-review-receipt ${JSON.stringify({
+      role: 'R2', prNumber: 7, headSha: head, baseSha: main,
+    })} -->`,
+    createdAt: '2026-01-02',
+    url: 'https://github.com/example/repo/issues/65#issuecomment-99',
+  };
+  const r2Required = pull({
     files: [{ path: 'scripts/browser-flow.mjs' }],
-  }), {
+  });
+  const fromCoordinationOnly = classifyPull(r2Required, {
     config,
     mainSha: main,
     task,
     remoteComplete: true,
+    coordinationComments: [issueReceipt],
     coordinationCommentsComplete: false,
   });
-  assert.equal(r2Required.choice, 'A');
-  assert.ok(r2Required.gaps.includes('REMOTE_EVIDENCE_INCOMPLETE'));
-  assert.equal(r2Required.mergeEligible, false);
+  assert.equal(fromCoordinationOnly.choice, 'C');
+  assert.deepEqual(fromCoordinationOnly.missingReviews, ['R2']);
+  assert.ok(!fromCoordinationOnly.gaps.includes('REMOTE_EVIDENCE_INCOMPLETE'));
+
+  r2Required.comments.push(issueReceipt);
+  const fromPrLocalReceipt = classifyPull(r2Required, {
+    config,
+    mainSha: main,
+    task,
+    remoteComplete: true,
+  });
+  assert.equal(fromPrLocalReceipt.choice, 'D');
+  assert.deepEqual(fromPrLocalReceipt.missingReviews, []);
 });
 
 test('Qwen response must cover every PR exactly once', () => {

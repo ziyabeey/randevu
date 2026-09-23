@@ -8,7 +8,7 @@ import {
   selectCurrentSuccessfulCiRun,
 } from '../scripts/prepare-development-review-observation.mjs';
 
-const repository = 'ziyabeey1-ai/randevu';
+const repository = 'ziyabeey/randevu';
 const sha = (char) => char.repeat(40);
 const head = sha('a');
 const main = sha('b');

@@ -7,6 +7,7 @@ import {
   type AuthEnv,
 } from './auth.ts';
 import { publicOperation } from './public-rpc.ts';
+import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
 import {
   publicGateUnavailableBody,
   publicRateLimitedBody,
@@ -21,6 +22,7 @@ type GroupPayload = Record<string, unknown> & { version?: number };
 type ManagedAppointment = Record<string, unknown> & {
   appointment_id?: string;
   group_payload?: GroupPayload;
+  notification_status?: unknown;
 };
 type ManagedSlot = Record<string, unknown>;
 type ManagedGroupRow = { group_payload?: GroupPayload };
@@ -374,8 +376,11 @@ router.post('/manage/view', async (context) => {
   if (!managed) {
     return context.json({ error: { code: 'MANAGEMENT_NOT_FOUND', message: 'Bu randevu yönetim bağlantısı geçerli değil.' } }, 404);
   }
-  const { group_payload: group, ...appointment } = managed;
-  return group ? context.json({ appointment, group }) : context.json({ appointment });
+  const { group_payload: group, notification_status: rawNotification, ...appointment } = managed;
+  const notification = customerNotificationStatus(rawNotification);
+  return group
+    ? context.json({ appointment, group, notification })
+    : context.json({ appointment, notification });
 });
 
 router.post('/manage/slots', async (context) => {

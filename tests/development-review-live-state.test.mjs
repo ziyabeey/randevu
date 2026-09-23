@@ -52,7 +52,7 @@ function reviewReceipt({
   requestFingerprint = requestFp,
   dispatcherCaseFingerprint = caseFp,
   receiptChallenge = challenge,
-  url = 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-300',
+  url = 'https://github.com/ziyabeey/randevu/pull/183#issuecomment-300',
   timestamp = '2026-09-20T00:03:00Z',
   review = false,
 } = {}) {
@@ -79,7 +79,7 @@ function reviewLaunch({
   id = 250,
   requestFingerprint = requestFp,
   dispatcherCaseFingerprint = caseFp,
-  url = 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-250',
+  url = 'https://github.com/ziyabeey/randevu/pull/183#issuecomment-250',
 } = {}) {
   return {
     id,
@@ -103,7 +103,7 @@ function tasks(pr = 183) {
   return [
     '| Kimlik | İş | Önkoşullar | Durum | Sahip | Kanıt |',
     '| --- | --- | --- | --- | --- | --- |',
-    `| [F13-01](docs/plan/phase-13.md#f13-01) | Takvim | F11-03 | İncelemede | Koordinatör | [PR #${pr}](https://github.com/ziyabeey1-ai/randevu/pull/${pr}) |`,
+    `| [F13-01](docs/plan/phase-13.md#f13-01) | Takvim | F11-03 | İncelemede | Koordinatör | [PR #${pr}](https://github.com/ziyabeey/randevu/pull/${pr}) |`,
   ].join('\n');
 }
 
@@ -188,25 +188,25 @@ test('normalization keeps exact task candidate and CI identity', () => {
 
 test('canonical TASKS must bind the exact task to the exact PR', () => {
   const identity = normalizeLiveReviewIdentity(request());
-  assert.match(verifyTaskBinding(tasks(), identity, 'ziyabeey1-ai/randevu'), /F13-01/);
-  assert.deepEqual(taskPrNumbersFromRow(tasks(), 'ziyabeey1-ai/randevu'), [183]);
+  assert.match(verifyTaskBinding(tasks(), identity, 'ziyabeey/randevu'), /F13-01/);
+  assert.deepEqual(taskPrNumbersFromRow(tasks(), 'ziyabeey/randevu'), [183]);
   assert.deepEqual(
-    taskPrNumbersFromRow('| [F13-01](x) | https://github.com/ziyabeey1-ai/randevu/pull/1830 |', 'ziyabeey1-ai/randevu'),
+    taskPrNumbersFromRow('| [F13-01](x) | https://github.com/ziyabeey/randevu/pull/1830 |', 'ziyabeey/randevu'),
     [1830],
   );
   assert.throws(
-    () => verifyTaskBinding(tasks(999), identity, 'ziyabeey1-ai/randevu'),
+    () => verifyTaskBinding(tasks(999), identity, 'ziyabeey/randevu'),
     /TASK_PR_BINDING_MISSING/,
   );
   assert.throws(
-    () => verifyTaskBinding('| [F13-02](x) | other |', identity, 'ziyabeey1-ai/randevu'),
+    () => verifyTaskBinding('| [F13-02](x) | other |', identity, 'ziyabeey/randevu'),
     /TASK_NOT_IN_CANONICAL_TASKS/,
   );
 });
 
 test('live verifier accepts only matching task PR main and successful exact CI', async () => {
   const result = await verifyDevelopmentReviewLiveState(request(), {
-    repository: 'ziyabeey1-ai/randevu',
+    repository: 'ziyabeey/randevu',
     token: 'test-token',
     tasksText: tasks(),
     fetchImpl: liveFetch(),
@@ -220,7 +220,7 @@ test('live verifier accepts only matching task PR main and successful exact CI',
 test('live verifier rejects stale PR identity and failed CI', async () => {
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request(), {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       fetchImpl: liveFetch({ liveHead: sha('d') }),
@@ -229,7 +229,7 @@ test('live verifier rejects stale PR identity and failed CI', async () => {
   );
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request(), {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       fetchImpl: liveFetch({ runConclusion: 'failure' }),
@@ -242,7 +242,7 @@ test('live verifier rejects stale PR identity and failed CI', async () => {
 test('live verifier rejects manually dispatched or wrong-PR CI evidence', async () => {
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request(), {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       fetchImpl: liveFetch({ runEvent: 'workflow_dispatch' }),
@@ -251,7 +251,7 @@ test('live verifier rejects manually dispatched or wrong-PR CI evidence', async 
   );
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request(), {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       fetchImpl: liveFetch({ pullRequests: [{ number: 999 }] }),
@@ -263,7 +263,7 @@ test('live verifier rejects manually dispatched or wrong-PR CI evidence', async 
 test('live verifier binds the CI gate job to the requested run attempt', async () => {
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request(), {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       fetchImpl: liveFetch({ jobAttempt: 2 }),
@@ -276,7 +276,7 @@ test('canonical task binding refuses a second open PR referenced by the same tas
   const taskText = [
     '| Kimlik | İş | Önkoşullar | Durum | Sahip | Kanıt |',
     '| --- | --- | --- | --- | --- | --- |',
-    '| [F13-01](docs/plan/phase-13.md#f13-01) | Takvim | F11-03 | İncelemede | Koordinatör | [PR #183](https://github.com/ziyabeey1-ai/randevu/pull/183) · [old PR #190](https://github.com/ziyabeey1-ai/randevu/pull/190) |',
+    '| [F13-01](docs/plan/phase-13.md#f13-01) | Takvim | F11-03 | İncelemede | Koordinatör | [PR #183](https://github.com/ziyabeey/randevu/pull/183) · [old PR #190](https://github.com/ziyabeey/randevu/pull/190) |',
   ].join('\n');
   const fetchImpl = async (url) => {
     if (url.endsWith('/pulls/190')) return response({ state: 'open', head: { sha: sha('e') }, base: { sha: main } });
@@ -284,7 +284,7 @@ test('canonical task binding refuses a second open PR referenced by the same tas
   };
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request(), {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: taskText,
       fetchImpl,
@@ -298,7 +298,7 @@ test('bound merge-ref checkout is revalidated against the live PR merge ref', as
   const result = await verifyDevelopmentReviewLiveState(request({
     ci: { testedCheckoutSha: merge, explicitlyBoundToHead: true },
   }), {
-    repository: 'ziyabeey1-ai/randevu',
+    repository: 'ziyabeey/randevu',
     token: 'test-token',
     tasksText: tasks(),
     fetchImpl: liveFetch({ checkoutSha: merge }),
@@ -318,7 +318,7 @@ test('claimed tested checkout must equal the checkout recorded by the cited CI j
     verifyDevelopmentReviewLiveState(request({
       ci: { testedCheckoutSha: merge, explicitlyBoundToHead: true },
     }), {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       fetchImpl: liveFetch({ checkoutSha: head }),
@@ -331,7 +331,7 @@ test('a current authenticated same-role receipt stops Routine spend before reser
   const receipt = reviewReceipt();
   await assert.rejects(
     verifyDevelopmentReviewLiveState(request(), {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
@@ -353,7 +353,7 @@ test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but n
     previousReceiptId: represented.id,
   };
   const result = await verifyDevelopmentReviewLiveState(followUp, {
-    repository: 'ziyabeey1-ai/randevu',
+    repository: 'ziyabeey/randevu',
     token: 'test-token',
     tasksText: tasks(),
     reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
@@ -368,11 +368,11 @@ test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but n
     verdict: 'ACCEPTABLE',
     requestFingerprint: newerRequest,
     timestamp: '2026-09-20T00:04:00Z',
-    url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-301',
+    url: 'https://github.com/ziyabeey/randevu/pull/183#issuecomment-301',
   });
   await assert.rejects(
     verifyDevelopmentReviewLiveState(followUp, {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
@@ -390,11 +390,11 @@ test('represented current INCOMPLETE receipt does not block its FOLLOW_UP, but n
 test('coordination Issue #65 cannot satisfy the v1 final review authority', async () => {
   const receipt = reviewReceipt({
     id: 400,
-    url: 'https://github.com/ziyabeey1-ai/randevu/issues/65#issuecomment-400',
+    url: 'https://github.com/ziyabeey/randevu/issues/65#issuecomment-400',
     timestamp: '2026-09-20T00:05:00Z',
   });
   const result = await verifyDevelopmentReviewLiveState(request(), {
-    repository: 'ziyabeey1-ai/randevu',
+    repository: 'ziyabeey/randevu',
     token: 'test-token',
     tasksText: tasks(),
     reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
@@ -408,7 +408,7 @@ test('equal-time additional current receipt blocks follow-up without comparing c
   const represented = reviewReceipt({
     id: 900,
     verdict: 'INCOMPLETE',
-    url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#issuecomment-900',
+    url: 'https://github.com/ziyabeey/randevu/pull/183#issuecomment-900',
     timestamp: '2026-09-20T00:06:00Z',
   });
   const secondRequest = '1'.repeat(64);
@@ -416,7 +416,7 @@ test('equal-time additional current receipt blocks follow-up without comparing c
     id: 2,
     verdict: 'ACCEPTABLE',
     requestFingerprint: secondRequest,
-    url: 'https://github.com/ziyabeey1-ai/randevu/pull/183#pullrequestreview-2',
+    url: 'https://github.com/ziyabeey/randevu/pull/183#pullrequestreview-2',
     timestamp: represented.created_at,
     review: true,
   });
@@ -431,7 +431,7 @@ test('equal-time additional current receipt blocks follow-up without comparing c
   };
   await assert.rejects(
     verifyDevelopmentReviewLiveState(followUp, {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
@@ -450,7 +450,7 @@ test('equal-time additional current receipt blocks follow-up without comparing c
 
 test('receipt without a matching triggered launch never stops spend', async () => {
   const result = await verifyDevelopmentReviewLiveState(request(), {
-    repository: 'ziyabeey1-ai/randevu',
+    repository: 'ziyabeey/randevu',
     token: 'test-token',
     tasksText: tasks(),
     reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
@@ -462,7 +462,7 @@ test('receipt without a matching triggered launch never stops spend', async () =
 
 test('receipt with the wrong hidden challenge cannot stop spend', async () => {
   const result = await verifyDevelopmentReviewLiveState(request(), {
-    repository: 'ziyabeey1-ai/randevu',
+    repository: 'ziyabeey/randevu',
     token: 'test-token',
     tasksText: tasks(),
     reviewerAllowlist: { R1: ['claude[bot]'], R2: ['claude[bot]'] },
@@ -482,7 +482,7 @@ test('merge-ref mismatch fails closed before model spend', async () => {
     verifyDevelopmentReviewLiveState(request({
       ci: { testedCheckoutSha: merge, explicitlyBoundToHead: true },
     }), {
-      repository: 'ziyabeey1-ai/randevu',
+      repository: 'ziyabeey/randevu',
       token: 'test-token',
       tasksText: tasks(),
       fetchImpl: liveFetch({ checkoutSha: merge }),

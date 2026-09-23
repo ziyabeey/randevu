@@ -24,8 +24,10 @@ await test('F10-04 settings reads cancel stale tenant responses and verify retur
   assert.match(page, /requestController\.current\?\.abort\(\)/);
   assert.match(page, /const generation = \+\+requestGeneration\.current/);
   assert.match(page, /generation !== requestGeneration\.current/);
-  assert.match(page, /nextCatalog\.membership\.business_id !== nextSession\.activeBusinessId/);
-  assert.match(page, /nextSetup\.membership\.business_id !== nextSession\.activeBusinessId/);
+  assert.match(page, /nextCatalog\.membership\.business_id !== activeBusinessId/);
+  assert.match(page, /nextSetup\.membership\.business_id !== activeBusinessId/);
+  assert.match(page, /useWorkspace/);
+  assert.doesNotMatch(page, /\/api\/session/);
   assert.match(page, /signal: controller\.signal/);
 });
 
@@ -49,7 +51,7 @@ await test('F10-04 mutation success is distinct from authoritative refresh succe
   assert.match(page, /const \[loadState, setLoadState\] = useState<LoadState>\('loading'\)/);
   assert.match(page, /loadState === 'error'/);
   assert.match(page, /Tekrar yükle/);
-  assert.match(page, /loadState === 'no-workspace'/);
+  assert.doesNotMatch(page, /loadState === 'no-workspace'/);
 });
 
 await test('F10-04 stale writes reload authoritative state without retrying the mutation', () => {

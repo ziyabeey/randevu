@@ -123,9 +123,11 @@ içinde en fazla 200 olaylık ledger'da tekilleştirilir. Aynı head aynı karar
 kaldığı sürece raporun başka kısmı değişse bile tekrar bildirim verilmez.
 `rateLimitRemaining <= 1000` olduğunda GitHub poll aralığı en az 5 dakikaya,
 `<= 250` olduğunda en az 15 dakikaya çıkar. Eşikler config ile ayarlanabilir.
-Koordinasyon issue'sunun eski yorum sayfaları her tur yeniden indirilmez: geçmiş
-kesikse yalnız bu kaynaktan R1/R2 receipt'i tüketebilecek PR'lar fail-closed
-kalır; R0-only PR'lar ilgisiz yorum geçmişi yüzünden ek API sayfası tüketmez.
+Issue #65 yalnız geçici claim/conflict/dispatch koordinasyon kanalıdır ve bağımsız
+R1/R2 receipt otoritesi değildir. Koordinatör acceptance için yalnız ilgili PR'ın
+exact-head native review'larını ve PR-local yapılandırılmış receipt yorumlarını
+tüketir. Bu nedenle Issue #65 yorum geçmişinin büyümesi veya pagination kesilmesi
+merge kanıtını eksik saydıramaz ve her tur ek yorum sayfası tüketmez.
 
 Qwen ulaşılamazsa deterministik gözlem sürer ve AI aksiyonu üretilmez. Depot
 identity uyuşmazsa kanıt geçersizleşir. GitHub/Depot çelişkisinde sonuç `WAIT`

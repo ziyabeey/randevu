@@ -18,6 +18,8 @@ import { randomBase64Url } from '../shared/base64.ts';
 import { derivePublicBookingIntentV2, sha256Hex } from '../shared/public-booking-intent';
 import type { PublicMultiServiceSelectionState } from './PublicMultiServiceSelection';
 import PublicBookingInformation, { hasPublicBookingInformation, type BookingInformationContact } from './PublicBookingInformation';
+import PublicNotificationStatus from './PublicNotificationStatus';
+import { customerNotificationStatus, type CustomerNotificationStatus } from '../shared/customer-notification-status';
 
 type PublicBusiness = { name: string; slug: string; timezone: string; local_date: string; max_date: string; step_minutes: number; min_notice_minutes: number; horizon_days: number };
 type PublicService = { service_id: string; name: string; duration_minutes: number; price_minor: number; currency: string };
@@ -62,11 +64,11 @@ type GroupConfirmation = {
   estimateMaxMinor: number;
   lines: GroupLine[];
 };
-type ConfirmedResult = { appointment: Confirmation; group?: GroupConfirmation; manageUrl: string };
+type ConfirmedResult = { appointment: Confirmation; group?: GroupConfirmation; manageUrl: string; notification: CustomerNotificationStatus };
 type BookingClock = { serverNowEpochSeconds: number; submitWindowSeconds: number };
 type PagePayload = { business: PublicBusiness; services: PublicService[]; bookingClock: BookingClock };
 type ClockSample = BookingClock & { sampledAtMonotonicMs: number };
-type ResolveResponse = { resolution: 'committed' | 'exists_nolink' | 'closed_absent'; recoveryId: string; appointment?: Confirmation; group?: GroupConfirmation; management?: { url: string }; recovery?: { expiresAt: string } };
+type ResolveResponse = { resolution: 'committed' | 'exists_nolink' | 'closed_absent'; recoveryId: string; appointment?: Confirmation; group?: GroupConfirmation; notification?: unknown; management?: { url: string }; recovery?: { expiresAt: string } };
 type UnpersistedConfirmation = { id: string; expectedStatuses: readonly ('submitting' | 'unresolved' | 'legacy_pending')[] };
 type Props = {
   slug: string;
@@ -483,6 +485,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     expectedStatuses: readonly ('submitting' | 'unresolved' | 'legacy_pending')[],
     appointment: Confirmation,
     managementUrl: string,
+    notification: unknown,
     businessName?: string,
     group?: GroupConfirmation,
   ) {
@@ -490,6 +493,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       appointment: { ...appointment, business_name: appointment.business_name ?? businessName },
       ...(group ? { group } : {}),
       manageUrl: managementUrl,
+      notification: customerNotificationStatus(notification),
     });
     setConfirmationRecordId(null);
     setUnpersistedConfirmation({ id: record.id, expectedStatuses });
@@ -565,12 +569,12 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     setRecoveryBusy(true);
     try {
       if (record.source === 'legacy_v1') {
-        const result = await api<{ appointment: Confirmation; management: { url: string }; recovery: { expiresAt: string } }>('/api/public/booking/recover', {
+        const result = await api<{ appointment: Confirmation; notification?: unknown; management: { url: string }; recovery: { expiresAt: string } }>('/api/public/booking/recover', {
           method: 'POST', csrf: 'skip', timeoutMs: HTTP_TIMEOUT_MS,
           body: JSON.stringify({ recoveryId: record.recoveryId, idempotencyKey: record.idempotencyKey, recoverySecret: record.recoverySecret }),
         });
         if (!validConfirmation(result.appointment) || !validManagementUrl(result.management?.url, true)) throw new Error('Randevu sonucu doğrulanamadı.');
-        await keepConfirmedResult(record, ['legacy_pending'], result.appointment, result.management.url);
+        await keepConfirmedResult(record, ['legacy_pending'], result.appointment, result.management.url, result.notification);
         setNotice('');
       } else {
         const expectsGroup = record.bookingKind === 'group';
@@ -595,7 +599,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           throw new Error('Randevu sonucu doğrulanamadı.');
         }
         if (result.resolution === 'committed') {
-          await keepConfirmedResult(record, ['submitting', 'unresolved'], result.appointment!, result.management!.url, undefined, result.group);
+          await keepConfirmedResult(record, ['submitting', 'unresolved'], result.appointment!, result.management!.url, result.notification, undefined, result.group);
           setNotice('');
         } else {
           const completed = await completePublicBookingIntent(record.id, ['submitting', 'unresolved'], result.resolution);
@@ -688,6 +692,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         appointment?: Confirmation;
         appointmentId?: string;
         group?: GroupConfirmation;
+        notification?: unknown;
         management: { url: string };
         recovery: { expiresAt: string };
       }>(endpoint, {
@@ -716,10 +721,10 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           price_minor: anchor.priceMinor,
           currency: result.group.currency,
         };
-        await keepConfirmedResult(pending, ['submitting', 'unresolved'], appointment, result.management.url, page?.business.name, result.group);
+        await keepConfirmedResult(pending, ['submitting', 'unresolved'], appointment, result.management.url, result.notification, page?.business.name, result.group);
       } else {
         if (!validConfirmation(result.appointment) || result.group !== undefined || result.appointmentId !== undefined) throw new Error('Randevu sonucu doğrulanamadı.');
-        await keepConfirmedResult(pending, ['submitting', 'unresolved'], result.appointment, result.management.url, page?.business.name);
+        await keepConfirmedResult(pending, ['submitting', 'unresolved'], result.appointment, result.management.url, result.notification, page?.business.name);
       }
       setNotice('');
     } catch (error) {
@@ -783,7 +788,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         <dl className="public-confirmation-list"><div><dt>Başlangıç</dt><dd>{formatDateTime(confirmation.group.startsAt, confirmation.group.timezone)}</dd></div><div><dt>Fiyat</dt><dd>{estimateMoney(confirmation.group.estimateMinMinor, confirmation.group.estimateMaxMinor, confirmation.group.currency)}</dd></div></dl>
         <p className="public-confirmation-note">Bu tutar rezervasyon tahminidir. Kesin tahsilat tutarı değildir.</p>
       </> : <dl className="public-confirmation-list"><div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div><div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div><div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div><div><dt>Ücret</dt><dd>{appointment.price_minor === null ? 'İşletmede netleşecek' : money(appointment.price_minor, appointment.currency)}</dd></div></dl>}
-      <div className={`public-result-status is-${outcome.tone}`} aria-label="Rezervasyon ve mesaj durumu"><p><strong>Kayıt durumu:</strong> {outcome.state}</p><p><strong>Mesaj durumu:</strong> Bu ekran SMS veya e-posta teslimini doğrulamaz.</p></div>
+      <div className={`public-result-status is-${outcome.tone}`} aria-label="Rezervasyon ve bildirim durumu"><p><strong>Kayıt durumu:</strong> {outcome.state}</p><PublicNotificationStatus notification={confirmation.notification} /></div>
       <p className="public-confirmation-note">{outcome.active ? 'Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.' : 'Randevu ayrıntılarınızı yönetim bağlantısından görüntüleyebilirsiniz.'}</p>
       <PublicBookingInformation slug={slug} contact={informationContact} prefix="result" />
       <a className="public-primary" href={confirmation.manageUrl}>{outcome.active ? 'Randevumu yönet' : 'Randevu ayrıntılarını aç'}</a>

@@ -24,6 +24,12 @@ function unique(values) {
   return [...new Set(values)];
 }
 
+export function janitorMergedHistoryLimit(value) {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return 20;
+  return Math.min(parsed, 20);
+}
+
 function filesFor(pull) {
   return (pull?.files ?? []).map((file) => text(file?.path)).filter(Boolean);
 }
@@ -268,19 +274,28 @@ export function janitorFingerprintInput(candidates = [], promptVersion = 1) {
     promptVersion,
     candidates: candidates.map((item) => ({
       prNumber: item.prNumber,
+      title: item.title,
       headSha: item.headSha,
       status: item.status,
       taskKey: item.taskKey,
+      reason: item.reason,
+      confidence: item.confidence ?? null,
       allowedChoices: unique(item.allowedChoices).sort(),
       mergedEvidence: item.mergedEvidence
         ? {
           prNumber: item.mergedEvidence.prNumber,
+          title: item.mergedEvidence.title,
           mergedAt: item.mergedEvidence.mergedAt,
           overlapFiles: [...item.mergedEvidence.overlapFiles].sort(),
+          url: item.mergedEvidence.url ?? null,
         }
         : null,
       duplicateEvidence: item.duplicateEvidence
-        ? { prNumber: item.duplicateEvidence.prNumber }
+        ? {
+          prNumber: item.duplicateEvidence.prNumber,
+          title: item.duplicateEvidence.title,
+          url: item.duplicateEvidence.url ?? null,
+        }
         : null,
     })),
   };

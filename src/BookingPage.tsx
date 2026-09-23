@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
+import { navigateApp } from './workspace-route';
+import { useWorkspace } from './workspace-context';
 
 type Role = 'owner' | 'manager' | 'staff';
-type Session = {
-  user: null | { id: string; email: string | null; fullName: string | null };
-  memberships: Array<{ id: string; business_id: string; role: Role; active: boolean }>;
-  activeBusinessId: string | null;
-};
 type Service = {
   id: string; name: string; duration_minutes: number; buffer_before_minutes: number;
   buffer_after_minutes: number; price_minor: number; currency: string; active: boolean;
@@ -165,7 +162,7 @@ const statusText: Record<GroupStatus, string> = {
 };
 
 export default function BookingPage() {
-  const [session, setSession] = useState<Session | null>(null);
+  const { activeBusinessId, scopeEpoch } = useWorkspace();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [timezone, setTimezone] = useState('Europe/Istanbul');
   const [bookings, setBookings] = useState<BookingGroup[]>([]);
@@ -217,16 +214,14 @@ export default function BookingPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const nextSession = await api<Session>('/api/session');
-      setSession(nextSession);
-      if (!nextSession.user || !nextSession.activeBusinessId) {
-        setCatalog(null); setBookings([]); setBookingsNextCursor(null); return;
-      }
       const [nextCatalog, nextSetup, nextBookings] = await Promise.all([
         api<Catalog>('/api/catalog'),
         api<Setup>('/api/availability/setup'),
         api<{ bookings: BookingGroup[]; page: PageInfo }>('/api/bookings/groups?limit=25'),
       ]);
+      if (nextCatalog.membership.business_id !== activeBusinessId) {
+        throw new Error('Randevu verileri güncel işletme bağlamıyla eşleşmiyor.');
+      }
       setCatalog(nextCatalog);
       setTimezone(nextSetup.timezone);
       setBookings(nextBookings.bookings);
@@ -245,9 +240,9 @@ export default function BookingPage() {
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Randevu ekranı yüklenemedi.');
     } finally { setLoading(false); }
-  }, []);
+  }, [activeBusinessId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, scopeEpoch]);
   useEffect(() => () => createSlotController.current?.abort(), []);
 
   const activeServices = useMemo(() => catalog?.services.filter((item) => item.active) ?? [], [catalog]);
@@ -289,6 +284,36 @@ export default function BookingPage() {
     setDetailFor(null);
     await load();
     setNotice(message);
+  }
+
+  async function openTicketForBooking(booking: BookingGroup) {
+    const fingerprint = `ticket:${booking.groupId}`;
+    const key = stableMutationKey(fingerprint);
+    setBusy(true);
+    setNotice('');
+    try {
+      const result = await api<{ ticket: { ticketId: string } }>('/api/tickets/from-booking-group', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': key },
+        body: JSON.stringify({ bookingGroupId: booking.groupId }),
+        timeoutMs: 12_000,
+      });
+      mutationKeys.current.delete(fingerprint);
+      navigateApp(`/app/mobile/tickets?ticketId=${encodeURIComponent(result.ticket.ticketId)}`);
+    } catch (error) {
+      const ambiguous = error instanceof Error
+        && ('code' in error)
+        && ((error as { code?: string }).code === 'NETWORK_UNAVAILABLE'
+          || (error as { code?: string }).code === 'REQUEST_TIMEOUT');
+      if (ambiguous) {
+        setNotice('Adisyon açma sonucu henüz doğrulanamadı. Tekrar deneyin; aynı işlem anahtarı kullanılacak.');
+      } else {
+        mutationKeys.current.delete(fingerprint);
+        setNotice(error instanceof Error ? error.message : 'Adisyon açılamadı.');
+      }
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function loadMoreBookings() {
@@ -599,8 +624,8 @@ export default function BookingPage() {
   }
 
   if (loading) return <main className="booking-page"><section className="booking-card"><p>Booking motoru hazırlanıyor…</p></section></main>;
-  if (!session?.user || !session.activeBusinessId || !catalog) {
-    return <main className="booking-page"><section className="booking-card"><p className="eyebrow">RANDEVU</p><h1>Önce çalışma alanını seçin.</h1><p className="muted">Giriş ve işletme seçimi ana çalışma alanında yapılır.</p><a className="primary-link" href="/">Çalışma alanına dön</a></section></main>;
+  if (!catalog) {
+    return <main className="booking-page"><section className="booking-card"><p className="eyebrow">RANDEVU</p><h1>Randevular doğrulanamadı.</h1><p className="muted">Güncel işletme verilerini yeniden yükleyin.</p><button className="primary-button" type="button" onClick={() => void load()}>Tekrar yükle</button></section></main>;
   }
 
   return <div className="booking-page">
@@ -732,8 +757,8 @@ export default function BookingPage() {
       <div className="section-head"><div><p className="eyebrow">RANDEVU DETAYI</p><h2>{detailFor.customerName}</h2></div><button type="button" onClick={() => setDetailFor(null)}>Kapat</button></div>
       <div className="booking-detail-tabs" aria-label="Randevu bölümleri">
         <span className="is-active">Detay</span>
-        <span aria-disabled="true">Fotoğraf <small>F16-03</small></span>
-        <span aria-disabled="true">Adisyon <small>F14</small></span>
+        <span aria-disabled="true">Fotoğraf</span>
+        <button type="button" disabled={busy} onClick={() => void openTicketForBooking(detailFor)}>Adisyon</button>
       </div>
       <dl className="booking-detail-grid">
         <div><dt>Zaman</dt><dd>{formatDateTime(detailFor.startsAt, detailFor.timezone)} – {formatTime(detailFor.endsAt, detailFor.timezone)}</dd></div>
@@ -757,7 +782,7 @@ export default function BookingPage() {
           {detailFor.canCancelGroup && <button disabled={busy} onClick={() => void cancelGroup(detailFor)}>Tümünü iptal et</button>}
         </>}
       </div>
-      <p className="muted booking-detail-future">Fotoğraf ve Adisyon bağlantıları yerini korur; ilgili backend fazları tamamlanmadan çalışıyormuş gibi sunulmaz.</p>
+      <p className="muted booking-detail-future">Fotoğraf bölümü henüz kullanıma açık değil. Adisyon aynı randevu kaynağından güvenli biçimde açılır veya yeniden kullanılır.</p>
     </section>}
 
     {rescheduleTarget && <section className="booking-card booking-modal-card">

@@ -41,6 +41,7 @@ import { acquireDirectoryLease, releaseDirectoryLease } from './lease.mjs';
 import {
   buildJanitorCandidates,
   janitorFingerprintInput,
+  janitorMergedHistoryLimit,
   janitorSystemPrompt,
   validateJanitorChoices,
 } from './janitor.mjs';
@@ -202,7 +203,7 @@ async function githubJson(url, token, options = {}) {
 }
 
 const PROJECT_QUERY = `
-query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$mergedLimit:Int!,$coordinationIssue:Int!,$tasksExpression:String!){
+query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$mergedLimit:Int!,$tasksExpression:String!){
   rateLimit{cost remaining resetAt}
   repository(owner:$owner,name:$name){
     defaultBranchRef{
@@ -256,9 +257,6 @@ query CoordinatorSnapshot($owner:String!,$name:String!,$limit:Int!,$mergedLimit:
         number title url createdAt updatedAt mergedAt
         files(first:20){totalCount pageInfo{hasNextPage} nodes{path additions deletions changeType}}
       }
-    }
-    issue(number:$coordinationIssue){
-      comments(last:100){pageInfo{hasPreviousPage} nodes{databaseId body createdAt updatedAt url author{login}}}
     }
   }
 }`;
@@ -372,8 +370,7 @@ async function fetchSnapshot(config, token) {
         owner,
         name,
         limit: config.maxOpenPullRequests,
-        mergedLimit: config.janitorRecentMergedPullRequests ?? 20,
-        coordinationIssue: config.coordinationIssueNumber,
+        mergedLimit: janitorMergedHistoryLimit(config.janitorRecentMergedPullRequests),
         tasksExpression: `${config.defaultBranch}:TASKS.md`,
       },
     },
@@ -387,7 +384,7 @@ async function fetchSnapshot(config, token) {
   const taskSnapshot = parseTasksSnapshot(taskSource, config.maxTaskRows);
   const mainRollup = repository.defaultBranchRef.target.statusCheckRollup ?? null;
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     available: true,
     complete: repository.pullRequests?.pageInfo?.hasNextPage !== true
       && repository.taskBlob?.isTruncated !== true
@@ -410,8 +407,6 @@ async function fetchSnapshot(config, token) {
     taskRowCount: taskSnapshot.totalRows,
     pulls: (repository.pullRequests?.nodes ?? []).map(compactPull),
     recentMergedPulls: (repository.recentMergedPullRequests?.nodes ?? []).map(compactMergedPull),
-    coordinationComments: (repository.issue?.comments?.nodes ?? []).map(compactComment),
-    coordinationCommentsTruncated: repository.issue?.comments?.pageInfo?.hasPreviousPage === true,
     errors: taskSnapshot.truncated ? ['TASKS row limit exceeded; snapshot is incomplete'] : [],
   };
 }
@@ -422,19 +417,18 @@ async function gatherRemote(config, previousState, options = {}) {
   const pollSeconds = githubPollIntervalSeconds(previousState, config);
   const due = options.force === true
     || !previous
-    || previous.schemaVersion !== 4
+    || previous.schemaVersion !== 5
     || Date.now() - lastFetchMs >= pollSeconds * 1000;
   if (!due) return { ...previous, refreshed: false };
   const token = getGithubToken();
   try {
     return await fetchSnapshot(config, token);
   } catch (error) {
-    const fallback = previous?.schemaVersion === 4 ? previous : {
-      schemaVersion: 4,
+    const fallback = previous?.schemaVersion === 5 ? previous : {
+      schemaVersion: 5,
       pulls: [],
       recentMergedPulls: [],
       tasks: [],
-      coordinationComments: [],
       mainChecks: [],
     };
     log('snapshot-failed', { error: error.message });
@@ -476,8 +470,6 @@ function buildDecisions(config, remote, state) {
       config,
       mainSha: remote.mainSha,
       task,
-      coordinationComments: remote.coordinationComments,
-      coordinationCommentsComplete: remote.coordinationCommentsTruncated !== true,
       remoteComplete: remote.available === true
         && remote.complete === true
         && pullEvidenceComplete,
@@ -1160,7 +1152,6 @@ function compactRemoteForReport(remote, config) {
     mainCi: remote.mainChecks ? mainCi(remote, config).status : 'unknown',
     tasksCount: remote.tasks?.length ?? 0,
     tasksTruncated: remote.tasksTruncated === true,
-    coordinationCommentsTruncated: remote.coordinationCommentsTruncated === true,
     recentMergedPullsCount: remote.recentMergedPulls?.length ?? 0,
     pulls: (remote.pulls ?? []).map((pr) => ({
       number: pr.number,

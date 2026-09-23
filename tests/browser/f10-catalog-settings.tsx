@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import BrowserWorkspaceProvider from './workspace-provider';
 import AvailabilityPage from '../../src/AvailabilityPage';
 
 type Control = {
@@ -103,5 +104,5 @@ window.__f10settings = {
 
 const root = document.getElementById('root');
 if (!root) throw new Error('F10-04 browser harness root missing');
-createRoot(root).render(<AvailabilityPage />);
+createRoot(root).render(<BrowserWorkspaceProvider><AvailabilityPage /></BrowserWorkspaceProvider>);
 document.documentElement.dataset.f10SettingsReady = 'true';

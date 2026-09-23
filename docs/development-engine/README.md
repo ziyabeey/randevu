@@ -4,7 +4,7 @@ Repo-native guidance for `task/contract -> implementer -> exact-head CI ->
 independent R1/R2 -> coordinator merge -> post-main CI`. This is tooling, not a
 product feature, authority database, automatic merge system or new required gate.
 
-Historical implementation task **DEV-ENGINE-01 / [#119](https://github.com/ziyabeey1-ai/randevu/issues/119)** is **accepted and closed**.
+Historical implementation task **DEV-ENGINE-01 / [#119](https://github.com/ziyabeey/randevu/issues/119)** is **accepted and closed**.
 PR #120 merged at main `02d0a2a6605e9ade1c526cf5f1542ceefa523936`;
 post-main CI #1220 / `35312768868` succeeded. Its original 21-path scope and
 starting SHA are provenance only, not current execution state. Current durable task
@@ -18,7 +18,7 @@ coordination evidence, but they do not override TASKS.
 | Permanent rules / handoff | [AGENTS](../../AGENTS.md), [CONTRIBUTING](../../CONTRIBUTING.md), [workflow](../plan/agent-workflow.md) |
 | Live task / accepted-main status | [TASKS](../../TASKS.md) only |
 | Product boundary / planned sequence | [PRODUCT_SPEC](../../PRODUCT_SPEC.md), [ROADMAP](../../ROADMAP.md) and actual main ref |
-| Temporary writer claim / conflict / dispatch | open PRs and [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65); never a second durable status source |
+| Temporary writer claim / conflict / dispatch | open PRs and [Issue #65](https://github.com/ziyabeey/randevu/issues/65); never a second durable status source |
 | Task scope / refresh | [Context Pack protocol](../plan/context-packs.md) and the assigned contract |
 | Review mode / lineage / decision-first receipts | [Review lineage kernel](../plan/agent-workflow.md#review-lineage-kernel); role prompts/Skills extend it instead of redefining it |
 | Executor wait-mode | [Shadow Validation Mode](../plan/shadow-validation-mode.md) |
@@ -71,9 +71,9 @@ This is a dated inventory, not a continuously accurate settings claim.
 | Active implementation/setup | Native R0 behavior is observed; durable bounded-R0 contract is being updated in PR #136. Other activation/setup remains governed by Issue #121. |
 
 Historical evidence: the initial main CI
-[35264446487](https://github.com/ziyabeey1-ai/randevu/actions/runs/35264446487)
+[35264446487](https://github.com/ziyabeey/randevu/actions/runs/35264446487)
 succeeded at the original starting SHA. Separately, F11-04 #117
-[job/check 105480417908](https://github.com/ziyabeey1-ai/randevu/actions/runs/35306324484/job/105480417908)
+[job/check 105480417908](https://github.com/ziyabeey/randevu/actions/runs/35306324484/job/105480417908)
 at `227b7698a70821a02bb8dfd45b9180194d4e301a` had `runner_id=0`, `steps=[]`
 and a runner/account billing annotation before checkout. That receipt is fenced to
 that historical run. DEV-ENGINE-01/#119 later completed successfully and is closed;

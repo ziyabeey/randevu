@@ -2,8 +2,8 @@
 
 ## Kimlik ve kapsam
 
-- Görev: [DEV-ENGINE-08 / Issue #264](https://github.com/ziyabeey1-ai/randevu/issues/264)
-- PR: [#265](https://github.com/ziyabeey1-ai/randevu/pull/265)
+- Görev: [DEV-ENGINE-08 / Issue #264](https://github.com/ziyabeey/randevu/issues/264)
+- PR: [#265](https://github.com/ziyabeey/randevu/pull/265)
 - Branch: `dev-engine/qwen-janitor-v0`
 - Bağımlılık: DEV-ENGINE-07 kabul edilmiş yerel Qwen koordinatörü.
 - Amaç: aynı daemon içinde düşük-yük, advisory-only repo hijyeni / Janitor katmanı.
@@ -47,7 +47,7 @@ Action queue, merge, ready, close, comment veya branch mutation üretmez.
 ## Kabul durumu
 
 Semantic code head `6760bec98619b63f5dc737b6d4a0878e4668cd69` için
-[CI #1946](https://github.com/ziyabeey1-ai/randevu/actions/runs/35586259231)
+[CI #1946](https://github.com/ziyabeey/randevu/actions/runs/35586259231)
 **SUCCESS**: full-code 11/11 aşama ve CI gate geçti.
 
 ### Canlı Mac shadow smoke (2026-09-21)
@@ -67,7 +67,22 @@ LaunchAgent tikleri (15 sn) izlendi. Model: `qwen2.5-coder-3b-instruct-q4_k_m`.
    değişmedi ve yeni `janitor-qwen-*` log satırı oluşmadı; önceki sonuç yeniden kullanıldı.
 5. `coordinator.err.log` boş; LaunchAgent son çıkış kodu 0.
 
-Bekleyen kanıt: prompt/timeout düzeltmesini içeren yeni head için exact-head CI.
+### Kök hijyen repair'i (2026-09-23)
 
-Bu kanıtlar gelmeden DEV-ENGINE-08 tamamlandı sayılmaz ve write capability
-eklenmez.
+Açık PR yığılmasının kaynağı olan iki sözleşme de aynı candidate içinde daraltıldı:
+
+- Janitor model fingerprint'i artık Qwen'e görünen başlık, neden, güven, merged ve
+  duplicate evidence alanlarının tamamını kapsar; değişmiş prompt girdisi eski
+  cache sonucunu kullanamaz.
+- Merged-history GraphQL penceresi local config ne yazarsa yazsın güvenli biçimde
+  normalize edilir ve **20** ile hard-cap edilir.
+- Issue #65 bağımsız review receipt kaynağı olmaktan çıkarıldı. R1/R2 acceptance
+  yalnız PR-local exact-head native review veya yapılandırılmış PR yorumu ile
+  kapanır; Issue #65 pagination'ı merge kararını bloke etmez.
+- D1 Documentation Steward artık branch/PR açmaz. Status-only post-merge
+  “accepted/merged/closed” drift'i artifact üretmez; gerçek drift tek rollup
+  issue'da raporlanır. Böylece sahipsiz docs PR fabrikası kaynağında kapanır.
+
+Önceki canlı smoke kanıtı korunur ancak yeni root-repair head'i için fresh
+exact-head CI ve açık review thread'lerinin doğrulanması gerekir. Bu kanıtlar
+gelmeden DEV-ENGINE-08 tamamlandı sayılmaz ve write capability eklenmez.

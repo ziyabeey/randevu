@@ -391,16 +391,12 @@ function negativeReceipt(item, role, pr, config) {
   return independentNegative(item, role, pr, config.trustedReceiptActorsByRole);
 }
 
-export function reviewReceipts(pr, coordinationComments, config) {
+export function reviewReceipts(pr, config) {
+  // Independent acceptance is PR-local by design. Issue #65 is a temporary
+  // coordination channel and must never become durable review authority.
   const items = [
     ...(pr.reviews ?? []).map((item) => ({ ...item, source: 'review' })),
     ...(pr.comments ?? []).map((item) => ({ ...item, source: 'pr-comment' })),
-    ...(coordinationComments ?? [])
-      .filter((item) => {
-        const body = text(item.body);
-        return body.includes(`#${pr.number}`) || body.toLowerCase().includes(text(pr.headSha).toLowerCase());
-      })
-      .map((item) => ({ ...item, source: 'coordination-issue' })),
   ];
 
   const result = {};
@@ -462,13 +458,11 @@ export function classifyPull(pr, context) {
     config,
     mainSha,
     task,
-    coordinationComments = [],
-    coordinationCommentsComplete = true,
     remoteComplete = true,
   } = context;
   const ci = ciForPull(pr, config.requiredCheckName);
   const surface = changedSurface(pr, config);
-  const receipts = reviewReceipts(pr, coordinationComments, config);
+  const receipts = reviewReceipts(pr, config);
   const taskRequirements = taskReviewRequirements(task);
   const required = {
     r0: !surface.docsOnly,
@@ -482,9 +476,6 @@ export function classifyPull(pr, context) {
     .map(([role]) => role.toUpperCase());
   const gaps = [];
   if (!remoteComplete) gaps.push('REMOTE_EVIDENCE_INCOMPLETE');
-  if (!coordinationCommentsComplete && (required.r1 || required.r2)) {
-    gaps.push('REMOTE_EVIDENCE_INCOMPLETE');
-  }
   if (!task) gaps.push('TASK_NOT_MAPPED');
   if (surface.incomplete) gaps.push('FILES_TRUNCATED');
   if (pr.threadsTruncated) gaps.push('THREADS_TRUNCATED');
@@ -499,9 +490,7 @@ export function classifyPull(pr, context) {
   const taskReviewState = task?.status === 'İncelemede';
   const cleanMergeState = pr.mergeable === 'MERGEABLE' && pr.mergeStateStatus === 'CLEAN';
   const threadsClear = Number.isInteger(pr.unresolvedThreads) && pr.unresolvedThreads === 0 && !pr.threadsTruncated;
-  const evidenceComplete = remoteComplete
-    && (coordinationCommentsComplete || (!required.r1 && !required.r2))
-    && !surface.incomplete;
+  const evidenceComplete = remoteComplete && !surface.incomplete;
 
   let choice = 'A';
   let reason = 'Kanıt veya beklenen dış koşul henüz tamamlanmadı.';

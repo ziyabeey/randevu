@@ -6,6 +6,8 @@ import {
   buildJanitorCandidates,
   hasReviewQuotaSignal,
   janitorDocsOnly,
+  janitorFingerprintInput,
+  janitorMergedHistoryLimit,
   janitorSystemPrompt,
   janitorTaskKey,
   validateJanitorChoices,
@@ -187,6 +189,66 @@ test('Qwen janitor response must cover every candidate and cannot exceed determi
     () => validateJanitorChoices({ choices: { 248: 'KEEP' } }, candidates),
     /1\/2 choices/,
   );
+});
+
+test('Janitor fingerprint covers every model-visible candidate field', () => {
+  const base = {
+    prNumber: 248,
+    title: 'docs: close F13-03',
+    headSha: '1'.repeat(40),
+    taskKey: 'F13-03',
+    status: 'SUPERSEDED_CANDIDATE',
+    reason: 'newer merged evidence',
+    confidence: 'high',
+    allowedChoices: ['KEEP', 'CLOSE_CANDIDATE'],
+    mergedEvidence: {
+      prNumber: 257,
+      title: 'F13-03 accepted',
+      mergedAt: '2026-09-21T05:52:40Z',
+      overlapFiles: ['docs/handoffs/F13-03.md'],
+      url: 'https://github.com/example/repo/pull/257',
+    },
+    duplicateEvidence: null,
+  };
+  const fingerprint = (candidate) => JSON.stringify(janitorFingerprintInput([candidate]));
+  const original = fingerprint(base);
+  for (const changed of [
+    { ...base, title: 'docs: close F13-03 corrected' },
+    { ...base, reason: 'different deterministic reason' },
+    { ...base, mergedEvidence: { ...base.mergedEvidence, title: 'different merged title' } },
+    { ...base, mergedEvidence: { ...base.mergedEvidence, url: 'https://github.com/example/repo/pull/999' } },
+  ]) {
+    assert.notEqual(fingerprint(changed), original);
+  }
+
+  const duplicate = {
+    ...base,
+    mergedEvidence: null,
+    duplicateEvidence: {
+      prNumber: 264,
+      title: 'newer duplicate',
+      url: 'https://github.com/example/repo/pull/264',
+    },
+  };
+  const duplicateOriginal = fingerprint(duplicate);
+  assert.notEqual(
+    fingerprint({ ...duplicate, duplicateEvidence: { ...duplicate.duplicateEvidence, title: 'renamed duplicate' } }),
+    duplicateOriginal,
+  );
+  assert.notEqual(
+    fingerprint({ ...duplicate, duplicateEvidence: { ...duplicate.duplicateEvidence, url: 'https://github.com/example/repo/pull/265' } }),
+    duplicateOriginal,
+  );
+});
+
+test('Janitor merged-history window is normalized and hard-capped at 20', () => {
+  assert.equal(janitorMergedHistoryLimit(20), 20);
+  assert.equal(janitorMergedHistoryLimit(7), 7);
+  assert.equal(janitorMergedHistoryLimit(1000), 20);
+  assert.equal(janitorMergedHistoryLimit(0), 20);
+  assert.equal(janitorMergedHistoryLimit(-1), 20);
+  assert.equal(janitorMergedHistoryLimit('invalid'), 20);
+  assert.equal(janitorMergedHistoryLimit(2.5), 20);
 });
 
 test('integrated coordinator source remains syntactically valid', () => {

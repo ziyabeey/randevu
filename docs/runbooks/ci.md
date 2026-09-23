@@ -23,7 +23,7 @@ Tam kolun tek yürütücüsü `scripts/ci-code.mjs` şu sırayı uygular: çalı
 
 - Belge: `npm run test:docs` (npm kurulumu gerektirmeyen karşılığı `node scripts/ci-docs.mjs`). Yeni dosyaları Git'e ekle; çalışma dizininde olup izlenmeyen link hedefi geçmez.
 - Kod: `npm ci`, `npm run typecheck`, `npm run build`, ilgili davranış testleri. Yerel `build` ve `build:staging` kendi typecheck korumasını sürdürür. `build:ci` / `build:staging:ci` yalnız öncesinde typecheck çalıştıran CI içindir.
-- Yeni SQL dosyası: `scripts/ci-postgres-plan.json` içine doğru database ve upgrade aşamasında gerçek adımı ekle; `npm run test:ci-coverage` çalıştır. Yalnız YAML yorumuna isim eklemek geçmez. Birleştirilmiş migration içeriği değişmez.
+- Yeni SQL dosyası: normal migration/acceptance testleri için `scripts/ci-postgres-plan.json` içine doğru database ve upgrade aşamasında gerçek adımı ekle. **Kalıcı H19 interaction regression senaryosu ayrı plan adımı açmaz**; tek repo-level `supabase/tests/h19_integrity_gate.sql` içinde manifest kaydı (`h19_expect`), scenario include (`\\ir`) ve pass kaydı (`h19_pass`) ile tanımlanır. `h19_assert_complete` kayıtlı senaryo sayısı ile geçen senaryoların birebir eşleşmesini zorlar. Gate, kayıtlı senaryoların ihtiyaç duyduğu en geç kabul edilmiş şema aşamasından sonra konumlanır. `npm run test:ci-coverage` çalıştır. Yalnız YAML yorumuna isim eklemek geçmez. Birleştirilmiş migration içeriği değişmez.
 - Yeni Node testi: `tests/` altında `.test.mjs`; alt dizinler dahil gerçek runner keşfeder. Elle wildcard veya ayrı isim listesi tutulmaz.
 - SQL yerel tam çalıştırma yalnız **atılabilir test PostgreSQL 17** üzerinde yapılır; plan `yzt_upgrade` ve `yzt_s03_upgrade` test DB'lerini yeniden oluşturur. Hosted Supabase/staging/production bağlantısı verilmez.
 - Herhangi bir CI altyapısı değişimi aynı PR'ın kod incelemesine tabidir. Repo içindeki testler, kendi dosyalarının kasıtlı değiştirilmesine karşı harici güvenlik sınırı değildir; bu değişikliklerde bağımsız ajan incelemesi ve kanıt kaydı proje protokolünde sürer. Tek kişilik GitHub hesabında bu inceleme ayrı bir insan onayı olarak zorlanmaz.
@@ -46,18 +46,18 @@ Tam kolun tek yürütücüsü `scripts/ci-code.mjs` şu sırayı uygular: çalı
 Repo sahibi `Settings → Rules → Rulesets → New ruleset → Import a ruleset` üzerinden JSON'u içe aktarabilir. Yetkili yönetici CLI alternatifi (değerler secret içermez):
 
 ```bash
-gh api --method POST repos/ziyabeey1-ai/randevu/rulesets --input .github/main-ruleset.json
+gh api --method POST repos/ziyabeey/randevu/rulesets --input .github/main-ruleset.json
 ```
 
-Aynı kural varsa ikinci kez oluşturma; mevcut ID'nin ayarını karşılaştırıp güncelle. Yönetici erişimi bağlı uygulamada yoktur; ilk branch-protection okuması `403 Resource not accessible by integration` döndü. Repo sahibinin kurulumu sonrası 13 Eylül 2026'da [23159972 numaralı ruleset](https://github.com/ziyabeey1-ai/randevu/rules/23159972) etkin ve main `protected:true` doğrulandı. Kapsam main, bypass yok, insan onayı 0, last-push approval false, konuşma çözümü ve strict CI gate / Actions 15368 zorunludur. Koruma ruleset ile sağlandığından eski branch-protection alanlarının boş olması korumasızlık anlamına gelmez.
+Aynı kural varsa ikinci kez oluşturma; mevcut ID'nin ayarını karşılaştırıp güncelle. Yönetici erişimi bağlı uygulamada yoktur; ilk branch-protection okuması `403 Resource not accessible by integration` döndü. Repo sahibinin kurulumu sonrası 13 Eylül 2026'da [23159972 numaralı ruleset](https://github.com/ziyabeey/randevu/rules/23159972) etkin ve main `protected:true` doğrulandı. Kapsam main, bypass yok, insan onayı 0, last-push approval false, konuşma çözümü ve strict CI gate / Actions 15368 zorunludur. Koruma ruleset ile sağlandığından eski branch-protection alanlarının boş olması korumasızlık anlamına gelmez.
 
 Uygulamadan sonra geri oku:
 
 ```bash
-gh api repos/ziyabeey1-ai/randevu/rulesets
-gh api repos/ziyabeey1-ai/randevu/rules/branches/main
-gh api repos/ziyabeey1-ai/randevu/pulls/PR_NUMBER
-gh api repos/ziyabeey1-ai/randevu/commits/HEAD_SHA/check-runs
+gh api repos/ziyabeey/randevu/rulesets
+gh api repos/ziyabeey/randevu/rules/branches/main
+gh api repos/ziyabeey/randevu/pulls/PR_NUMBER
+gh api repos/ziyabeey/randevu/commits/HEAD_SHA/check-runs
 ```
 
 Aktif main kapsamı, bypass yokluğu, insan onayı sayısı 0, son-push approval false ve strict required `CI gate`/GitHub Actions kaynağı doğrulanır. PR'ın güncel head/merge sonucu ile bağımsız ajan inceleme kaydı birlikte değerlendirilir. Yeşil eski commit yeterli değildir. Başarısız veya eksik CI birleşmeyi engellemelidir; başka insan hesabının bulunmaması engel değildir. Aktif koruma ve güncel CI doğrulanmadan S06 tamamlanmış sayılmaz.

@@ -9,6 +9,7 @@ import {
 } from './auth.ts';
 import { publicOperation } from './public-rpc.ts';
 import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';
+import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
 import {
   publicGateUnavailableBody,
   publicRateLimitedBody,
@@ -35,6 +36,7 @@ type PublicGroupCreateRow = {
   appointment_id: string;
   group_payload: Record<string, unknown>;
   recovery_expires_at: string;
+  notification_status?: unknown;
 };
 
 const groups = new Hono<{ Bindings: Env }>();
@@ -395,6 +397,7 @@ groups.post('/public/business/:slug/group-book', async (context) => {
   return context.json({
     group: created.group_payload,
     appointmentId: created.appointment_id,
+    notification: customerNotificationStatus(created.notification_status),
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: created.recovery_expires_at },
   }, 201);
