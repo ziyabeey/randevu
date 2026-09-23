@@ -4,8 +4,10 @@ import {
   applyDepotEvidence,
   createDepotLaunchReservation,
   depotCommentBody,
+  depotCustomImageRef,
   depotEligible,
   depotFetchRef,
+  depotRunnerSpec,
   isDepotTerminal,
   normalizeDepotStatus,
   parseDepotRunId,
@@ -43,6 +45,23 @@ test('Depot run identity parsing rejects ambiguous output', () => {
   assert.equal(parseDepotRunId('{"run_id":"39ccx70t42"}'), '39ccx70t42');
   assert.equal(parseDepotRunId('ambiguous 39ccx70t42 and z177hxw1tj'), null);
   assert.equal(workflowHash('abc').length, 64);
+});
+
+test('Depot custom image runner is explicit, safe and opt-in', () => {
+  const config = { depotOrgId: 'xk7m4hnp2q', depotCustomImageEnabled: false };
+  assert.equal(depotRunnerSpec(config), 'depot-ubuntu-24.04-16');
+  assert.equal(
+    depotCustomImageRef(config),
+    'xk7m4hnp2q.registry.depot.dev/randevu-ci:node24-pg17-v1',
+  );
+  assert.equal(
+    depotRunnerSpec({ ...config, depotCustomImageEnabled: true }),
+    '{ size: 16x64, image: "xk7m4hnp2q.registry.depot.dev/randevu-ci:node24-pg17-v1" }',
+  );
+  assert.throws(
+    () => depotRunnerSpec({ depotOrgId: 'bad:yaml', depotCustomImageEnabled: true }),
+    /safe non-empty depotOrgId/,
+  );
 });
 
 test('Depot starts only for an exact, mapped, non-doc PR while GitHub CI is pending', () => {
