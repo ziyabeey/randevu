@@ -16,6 +16,8 @@ test('F15-04 report is a read-only single-snapshot projection over accepted sour
   assert.match(migration,/\(p_end_date \+ 1\)::timestamp at time zone v_timezone/);
   assert.match(migration,/from public\.ticket_payment_events/);
   assert.match(migration,/from public\.expense_events/);
+  assert.match(migration,/from public\.appointments/);
+  assert.match(migration,/a\.starts_at>=v_from and a\.starts_at<v_to/);
   assert.match(migration,/from public\.ticket_product_returns/);
   assert.match(migration,/'asOf',statement_timestamp\(\)/);
   assert.doesNotMatch(migration,/create table .*report/i);
@@ -39,6 +41,7 @@ test('F15-04 UI keeps cash movement, sales and outstanding as separate concepts'
   assert.match(page,/Net hareket/);
   assert.match(page,/Tahsilat/);
   assert.match(page,/Masraf/);
+  assert.match(page,/Beklenen randevu bedeli/);
   assert.match(page,/Satış değeri/);
   assert.match(page,/Açık bakiye/);
   assert.match(page,/Para girişine eklenmez/);
