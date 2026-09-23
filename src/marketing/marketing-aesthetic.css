@@ -367,11 +367,11 @@
 
 @media (min-width: 981px) {
   .mkt-proof-points article:nth-child(2) {
-    transform: translateY(18px);
+    top: 18px;
   }
 
   .mkt-proof-points article:nth-child(3) {
-    transform: translateY(-8px);
+    top: -8px;
   }
 }
 
@@ -390,6 +390,10 @@
 
   .mkt-today-list article {
     transform: none !important;
+  }
+
+  .mkt-proof-points article {
+    top: auto;
   }
 
   .mkt-faq-list details {
