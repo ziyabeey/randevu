@@ -67,9 +67,15 @@ export function useScrollScene(
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", scheduleGeometry, { passive: true });
 
-    const resizeObserver = new ResizeObserver(scheduleGeometry);
-    resizeObserver.observe(section);
-    resizeObserver.observe(document.body);
+    const resizeObserver = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(scheduleGeometry);
+    resizeObserver?.observe(section);
+    resizeObserver?.observe(document.body);
+
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", scheduleGeometry, { passive: true });
+    window.addEventListener("orientationchange", scheduleGeometry, { passive: true });
 
     void document.fonts?.ready.then(() => {
       if (!disposed) scheduleGeometry();
@@ -79,7 +85,9 @@ export function useScrollScene(
       disposed = true;
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", scheduleGeometry);
-      resizeObserver.disconnect();
+      visualViewport?.removeEventListener("resize", scheduleGeometry);
+      window.removeEventListener("orientationchange", scheduleGeometry);
+      resizeObserver?.disconnect();
       if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame);
       if (geometryFrame !== null) window.cancelAnimationFrame(geometryFrame);
       section.style.removeProperty(cssProperty);
