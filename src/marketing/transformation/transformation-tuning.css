@@ -68,3 +68,74 @@
     will-change: auto;
   }
 }
+
+
+/* Apple-style pacing: media can pause while copy keeps moving on raw scroll time. */
+.mkt-transformation {
+  --mkt-scroll-progress: 0;
+}
+
+.mkt-transformation-frame-canvas,
+.mkt-transformation-video {
+  transform: scale(calc(1 + (var(--mkt-scroll-progress) * 0.028)));
+  transform-origin: 65% center;
+  transition: none;
+  will-change: transform;
+}
+
+.mkt-story[aria-hidden="false"] > .mkt-eyebrow,
+.mkt-story[aria-hidden="false"] > h2,
+.mkt-story[aria-hidden="false"] > .mkt-story-copy {
+  opacity: clamp(0, calc(var(--mkt-phase-progress) * 6), 1);
+  transform: translate3d(0, calc((1 - clamp(0, calc(var(--mkt-phase-progress) * 6), 1)) * 18px), 0);
+  transition: none;
+  will-change: transform, opacity;
+}
+
+.mkt-story:not(.mkt-story--pricing)[aria-hidden="false"] > .mkt-eyebrow,
+.mkt-story:not(.mkt-story--pricing)[aria-hidden="false"] > h2,
+.mkt-story:not(.mkt-story--pricing)[aria-hidden="false"] > .mkt-story-copy {
+  opacity: clamp(
+    0,
+    min(
+      calc(var(--mkt-phase-progress) * 6),
+      calc((1 - var(--mkt-phase-progress)) * 7)
+    ),
+    1
+  );
+}
+
+.mkt-story--reminder .mkt-proof-card {
+  transition: none;
+  will-change: transform, opacity;
+}
+
+.mkt-story--reminder .mkt-proof-card:nth-child(1) {
+  opacity: clamp(0, calc((var(--mkt-phase-progress) - 0.12) * 7), 1);
+  transform: translate3d(calc((1 - clamp(0, calc((var(--mkt-phase-progress) - 0.12) * 7), 1)) * 28px), 0, 0);
+}
+
+.mkt-story--reminder .mkt-proof-card:nth-child(2) {
+  opacity: clamp(0, calc((var(--mkt-phase-progress) - 0.30) * 7), 1);
+  transform: translate3d(calc((1 - clamp(0, calc((var(--mkt-phase-progress) - 0.30) * 7), 1)) * 34px), 0, 0);
+}
+
+@media (max-width: 680px) {
+  .mkt-transformation-frame-canvas,
+  .mkt-transformation-video {
+    transform-origin: 62% center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-transformation-frame-canvas,
+  .mkt-transformation-video,
+  .mkt-story[aria-hidden="false"] > .mkt-eyebrow,
+  .mkt-story[aria-hidden="false"] > h2,
+  .mkt-story[aria-hidden="false"] > .mkt-story-copy,
+  .mkt-story--reminder .mkt-proof-card {
+    opacity: 1;
+    transform: none;
+    will-change: auto;
+  }
+}
