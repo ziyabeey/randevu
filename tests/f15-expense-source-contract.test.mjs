@@ -26,6 +26,8 @@ test('F15-03 source keeps expense history append-only and permission-bound',()=>
   assert.match(migration,/'expenses_write'::public\.financial_permission_key/);
   assert.match(migration,/correct_expense_guarded/);
   assert.match(migration,/'reversal'/);
+  assert.match(migration,/correction_of_event_id/);
+  assert.match(migration,/'correctionOfEventId',e\.correction_of_event_id/);
   assert.match(worker,/p_business_id: access\.membership\.business_id/);
   assert.doesNotMatch(worker,/body\.businessId/);
 });
