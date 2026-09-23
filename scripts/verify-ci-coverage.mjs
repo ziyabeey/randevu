@@ -31,7 +31,7 @@ function isH19ScenarioFile(file) {
 }
 
 function parseH19ExpectRows(source) {
-  return [...source.matchAll(/^\s*select\s+pg_temp\.h19_expect\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'(D[0-5])'\s*,\s*'(D[0-5])'\)\s*;\s*$/gm)]
+  return [...source.matchAll(/^\s*select\s+pg_temp\.h19_expect\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'(D[0-5])'\s*,\s*'(D[0-5])'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)\s*;\s*$/gm)]
     .map((match) => match.slice(1));
 }
 
@@ -67,6 +67,9 @@ function verifyH19Manifest(root, sqlTests, planFiles) {
 
   const expectRows = parseH19ExpectRows(gateSource);
   const expectedIds = expectRows.map(([id]) => id);
+  const missingEvidence = expectRows
+    .filter(([, , , , baselineCi, probeCi, cleanCi]) => [baselineCi, probeCi, cleanCi].some((value) => Number(value) < 1))
+    .map(([id]) => id);
   const passedIds = parseH19PassIds(gateSource);
   const duplicateExpectedIds = expectedIds.filter((id, index) => expectedIds.indexOf(id) !== index);
   const duplicatePassedIds = passedIds.filter((id, index) => passedIds.indexOf(id) !== index);
@@ -87,6 +90,7 @@ function verifyH19Manifest(root, sqlTests, planFiles) {
   if (duplicateIncludes.length > 0) problems.push('H19 scenario files included more than once: ' + duplicateIncludes.join(', '));
   if (unknownIncludes.length > 0) problems.push('unknown H19 scenario includes: ' + unknownIncludes.join(', '));
   if (duplicateExpectedIds.length > 0) problems.push('duplicate H19 manifest IDs: ' + [...new Set(duplicateExpectedIds)].join(', '));
+  if (missingEvidence.length > 0) problems.push('H19 manifest entries missing valid evidence receipts: ' + missingEvidence.join(', '));
   if (duplicatePassedIds.length > 0) problems.push('duplicate H19 pass IDs: ' + [...new Set(duplicatePassedIds)].join(', '));
   if (missingPasses.length > 0) problems.push('H19 manifest IDs missing pass registration: ' + missingPasses.join(', '));
   if (unknownPasses.length > 0) problems.push('H19 pass IDs without manifest registration: ' + unknownPasses.join(', '));
