@@ -122,6 +122,42 @@ test('coverage accepts recursively discovered SQL and Node tests from a valid ex
   }
 });
 
+test('coverage follows transitive psql relative includes from a planned integrity gate', async () => {
+  const { root, planPath } = await makeFixture();
+  try {
+    await mkdir(path.join(root, 'supabase/seeds'), { recursive: true });
+    await writeFile(path.join(root, 'supabase/tests/nested/child.sql'), '\\ir grandchild.sql\n');
+    await writeFile(path.join(root, 'supabase/tests/nested/grandchild.sql'), '-- transitive scenario\n');
+    await writeFile(path.join(root, 'supabase/seeds/support.sql'), '-- support fixture, not part of coverage discovery\n');
+    await writeFile(
+      path.join(root, 'supabase/tests/nested/acceptance.sql'),
+      '\\ir child.sql\n\\ir ../../seeds/support.sql\n',
+    );
+
+    assert.deepEqual(await verifyCiCoverage({ root, planPath }), {
+      sqlFiles: 4,
+      sqlInvocations: 2,
+      inlineSqlSteps: 0,
+      nodeTests: 1,
+    });
+  } finally {
+    await removeFixture(root);
+  }
+});
+
+test('coverage fails closed when a psql relative include points at an unknown SQL file', async () => {
+  const { root, planPath } = await makeFixture();
+  try {
+    await writeFile(path.join(root, 'supabase/tests/nested/acceptance.sql'), '\\ir missing.sql\n');
+    await assert.rejects(
+      verifyCiCoverage({ root, planPath }),
+      /included SQL file does not exist: supabase\/tests\/nested\/missing\.sql/,
+    );
+  } finally {
+    await removeFixture(root);
+  }
+});
+
 test('missing, malformed, and unknown PostgreSQL plan files fail closed', async (t) => {
   const { root, planPath } = await makeFixture();
   try {
