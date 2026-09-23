@@ -1093,7 +1093,7 @@ begin
 
   select * into v_bootstrap
   from public.public_booking_recoveries r
-  where r.business_id=v_business_id and r.idempotency_key=p_idempotency_key;
+  where r.idempotency_key=p_idempotency_key;
 
   if v_bootstrap.recovery_id is null
      or v_bootstrap.recovery_id <> p_recovery_id
