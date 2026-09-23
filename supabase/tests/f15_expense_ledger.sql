@@ -127,14 +127,37 @@ begin
 end
 $staff_denied$;
 
+do $staff_read_denied$
+declare v_denied boolean:=false;
+begin
+  begin
+    perform * from public.list_expense_events_page(
+      'f1810000-0000-4000-8000-000000000001',
+      25,null,null
+    );
+  exception when others then
+    if position('FINANCIAL_REPORTS_PERMISSION_REQUIRED' in sqlerrm)>0 then v_denied:=true; else raise; end if;
+  end;
+  if not v_denied then raise exception 'F15-03 staff read expenses without financial_reports_read'; end if;
+end
+$staff_read_denied$;
+
 reset role;
 
 insert into public.membership_financial_permissions(
   business_id,membership_id,permission,active,granted_by_membership_id
-) values (
+) values
+(
   'f1810000-0000-4000-8000-000000000001',
   'f1820000-0000-4000-8000-000000000002',
   'expenses_write',
+  true,
+  'f1820000-0000-4000-8000-000000000001'
+),
+(
+  'f1810000-0000-4000-8000-000000000001',
+  'f1820000-0000-4000-8000-000000000002',
+  'financial_reports_read',
   true,
   'f1820000-0000-4000-8000-000000000001'
 );
@@ -144,8 +167,17 @@ select set_config('request.jwt.claim.sub','f1800000-0000-4000-8000-000000000002'
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 
 do $staff_allowed$
-declare v_event jsonb;
+declare
+  v_event jsonb;
+  v_read_count integer;
 begin
+  select count(*)::integer into v_read_count
+  from public.list_expense_events_page(
+    'f1810000-0000-4000-8000-000000000001',
+    25,null,null
+  );
+  if v_read_count < 1 then raise exception 'F15-03 granted staff could not read expense ledger'; end if;
+
   v_event:=public.create_expense_guarded(
     'f1810000-0000-4000-8000-000000000001',
     'Temizlik',null,2000,'TRY','card','2026-09-23 10:40:00',
