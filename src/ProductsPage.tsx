@@ -398,7 +398,7 @@ export default function ProductsPage() {
             <div className="products-detail-head"><div><p className="products-eyebrow">{selected.code ?? 'KODSUZ'}</p><h2>{selected.name}</h2></div><strong>{selected.stockOnHand} adet</strong></div>
 
             {selected.active && <>
-              <form className="products-form products-edit" onSubmit={updateProduct}>
+              <form key={`edit-${selected.productId}-${selected.version}`} className="products-form products-edit" onSubmit={updateProduct}>
                 <label>Ürün adı<input name="name" defaultValue={selected.name} required maxLength={120} /></label>
                 <label>Ürün kodu<input name="code" defaultValue={selected.code ?? ''} maxLength={64} /></label>
                 <label>Satış fiyatı<input name="price" inputMode="decimal" defaultValue={(selected.salePriceMinor / 100).toFixed(2)} required /></label>
