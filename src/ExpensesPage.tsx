@@ -38,6 +38,15 @@ function writePendingExpense(v:PendingExpenseWrite){try{window.sessionStorage.se
 function clearPendingExpense(v:PendingExpenseWrite){try{const c=readPendingExpense();if(!c||samePending(c,v))window.sessionStorage.removeItem(PENDING_EXPENSE_KEY);}catch{}}
 
 function money(minor:number,currency:string){return new Intl.NumberFormat('tr-TR',{style:'currency',currency}).format(minor/100);}
+function expenseDateTime(instant:string,timeZone:string){
+  const date=new Date(instant);
+  if(!Number.isFinite(date.getTime()))return instant;
+  return new Intl.DateTimeFormat('tr-TR',{
+    timeZone,
+    dateStyle:'short',
+    timeStyle:'short',
+  }).format(date);
+}
 function parseMoneyMinor(value:FormDataEntryValue|null){
   const raw=String(value??'').trim().replace(',','.');
   const m=raw.match(/^(\d{1,9})(?:\.(\d{1,2}))?$/); if(!m) return null;
@@ -166,6 +175,8 @@ export default function ExpensesPage(){
     if(await mutate(`correct:${expense.eventId}:${JSON.stringify(body)}`,`/api/expenses/${expense.eventId}/correct`,body)) setNotice('Masraf düzeltmesi reversal + yeni kayıt olarak kaydedildi.');
   }
 
+  const reversedSourceIds=new Set(events.filter((event)=>event.eventType==='reversal'&&event.sourceExpenseEventId).map((event)=>event.sourceExpenseEventId as string));
+
   return <main className="expenses-shell">
     <header className="expenses-hero"><div><p className="expenses-eyebrow">MASRAFLAR</p><h1>Gider kayıtları</h1><p>Geçmiş mali kayıtlar silinmez; düzeltmeler yeni hareket olarak eklenir.</p></div></header>
     {notice&&<div className="expenses-notice" role="status">{notice}</div>}
@@ -189,8 +200,8 @@ export default function ExpensesPage(){
       <article className="expenses-card">
         <h2>Hareketler</h2>
         {loading?<p>Masraflar yükleniyor…</p>:events.length===0?<p>Henüz masraf hareketi yok.</p>:<ol className="expenses-list">{events.map(e=><li key={e.eventId}>
-          <div><strong>{e.eventType==='expense'?e.category:'Reversal'}</strong><span>{new Date(e.occurredAt).toLocaleString('tr-TR')} · {e.paymentMethod==='cash'?'Nakit':'Kart'}</span>{e.description&&<small>{e.description}</small>}{e.reason&&<small>{e.reason}</small>}</div>
-          <div><strong className={e.effectMinor<0?'negative':'positive'}>{e.effectMinor<0?'-':''}{money(Math.abs(e.effectMinor),e.currency)}</strong>{e.eventType==='expense'&&<><button disabled={busy} onClick={()=>void correct(e)}>Düzelt</button><button disabled={busy} onClick={()=>void reverse(e.eventId)}>İptal / reversal</button></>}</div>
+          <div><strong>{e.eventType==='expense'?e.category:'Reversal'}</strong><span>{expenseDateTime(e.occurredAt,e.timezone)} · {e.paymentMethod==='cash'?'Nakit':'Kart'}</span>{e.description&&<small>{e.description}</small>}{e.reason&&<small>{e.reason}</small>}</div>
+          <div><strong className={e.effectMinor<0?'negative':'positive'}>{e.effectMinor<0?'-':''}{money(Math.abs(e.effectMinor),e.currency)}</strong>{e.eventType==='expense'&&!reversedSourceIds.has(e.eventId)&&<><button disabled={busy} onClick={()=>void correct(e)}>Düzelt</button><button disabled={busy} onClick={()=>void reverse(e.eventId)}>İptal / reversal</button></>}{e.eventType==='expense'&&reversedSourceIds.has(e.eventId)&&<small>Düzeltildi / iptal edildi</small>}</div>
         </li>)}</ol>}
         {page?.hasMore&&<button className="expenses-more" disabled={busy} onClick={()=>void load(page.nextCursor,true)}>Daha fazla</button>}
       </article>
