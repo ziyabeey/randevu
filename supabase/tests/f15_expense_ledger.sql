@@ -106,6 +106,36 @@ begin
 end
 $immutable$;
 
+do $command_immutable$
+declare
+  v_update boolean:=false;
+  v_delete boolean:=false;
+begin
+  begin
+    update public.expense_commands
+    set request_hash=repeat('9',64)
+    where business_id='f1810000-0000-4000-8000-000000000001'
+      and actor_membership_id='f1820000-0000-4000-8000-000000000001'
+      and command='create_expense'
+      and idempotency_key='f1503-create-0001';
+  exception when others then
+    if position('EXPENSE_COMMAND_IMMUTABLE' in sqlerrm)>0 then v_update:=true; else raise; end if;
+  end;
+  if not v_update then raise exception 'F15-03 finalized expense command UPDATE allowed'; end if;
+
+  begin
+    delete from public.expense_commands
+    where business_id='f1810000-0000-4000-8000-000000000001'
+      and actor_membership_id='f1820000-0000-4000-8000-000000000001'
+      and command='create_expense'
+      and idempotency_key='f1503-create-0001';
+  exception when others then
+    if position('EXPENSE_COMMAND_IMMUTABLE' in sqlerrm)>0 then v_delete:=true; else raise; end if;
+  end;
+  if not v_delete then raise exception 'F15-03 finalized expense command DELETE allowed'; end if;
+end
+$command_immutable$;
+
 -- Staff default deny.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f1800000-0000-4000-8000-000000000002',true);
