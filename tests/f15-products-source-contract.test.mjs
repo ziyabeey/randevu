@@ -27,4 +27,5 @@ test('F15-01 persists only bounded exact product write contracts on ambiguity', 
   assert.match(source, /writePendingProductWrite\(identity\)/);
   assert.match(source, /Kayıtlı isteği doğrula/);
   assert.match(source, /pendingWrite\.businessId === activeBusinessId/);
+  assert.match(source, /key=\{\`edit-\$\{selected\.productId\}-\$\{selected\.version\}\`\}/);
 });
