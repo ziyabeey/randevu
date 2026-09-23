@@ -18,7 +18,9 @@ test('F15-04 report is a read-only single-snapshot projection over accepted sour
   assert.match(migration,/from public\.expense_events/);
   assert.match(migration,/from public\.appointments/);
   assert.match(migration,/a\.starts_at>=v_from and a\.starts_at<v_to/);
-  assert.match(migration,/from public\.ticket_product_returns/);
+  assert.match(migration,/from ticket_scope ts\s+join public\.ticket_product_returns r/s);
+  assert.match(migration,/from ticket_scope ts\s+join public\.ticket_payment_events e/s);
+  assert.match(migration,/t\.created_at>=v_from and t\.created_at<v_to/);
   assert.match(migration,/'asOf',statement_timestamp\(\)/);
   assert.doesNotMatch(migration,/create table .*report/i);
   assert.doesNotMatch(migration,/update public\.ticket_payment_events|delete from public\.ticket_payment_events/i);
