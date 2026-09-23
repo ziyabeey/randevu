@@ -171,7 +171,11 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  transform: none;
+  transform:
+    translate3d(0, calc(var(--mkt-booking-zoom) * -42px), 0)
+    scale(calc(1 + (var(--mkt-booking-zoom) * 0.055)));
+  transform-origin: 50% 72%;
+  will-change: transform;
 }
 
 .mkt-booking-scene .mkt-proof-header {
@@ -275,6 +279,9 @@
 
   .mkt-booking-scene .mkt-booking-proof {
     padding: 60px 16px 18px;
+    transform:
+      translate3d(0, calc(var(--mkt-booking-zoom) * -28px), 0)
+      scale(calc(1 + (var(--mkt-booking-zoom) * 0.04)));
   }
 
   .mkt-booking-scene .mkt-proof-step {
@@ -335,6 +342,7 @@
 
   .mkt-booking-copy,
   .mkt-booking-phone,
+  .mkt-booking-scene .mkt-booking-proof,
   .mkt-booking-scene .mkt-proof-header,
   .mkt-booking-scene .mkt-proof-step,
   .mkt-booking-complete-glow {
