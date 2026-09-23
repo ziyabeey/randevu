@@ -102,6 +102,9 @@ begin
       raise exception 'F15 first writer returned wrong projection: %',v_result;
     end if;
     v_successes := v_successes + 1;
+    -- Drain the terminal empty libpq result before issuing COMMIT on the same
+    -- asynchronous dblink connection.
+    perform * from dblink_get_result(v_ready,false) as t(result jsonb);
     perform dblink_exec(v_ready,'commit');
   exception when others then
     begin perform dblink_exec(v_ready,'rollback'); exception when others then null; end;
