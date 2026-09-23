@@ -19,9 +19,9 @@ function parseMoneyMinor(value:FormDataEntryValue|null){
   const n=Number(m[1])*100+Number((m[2]??'').padEnd(2,'0'));
   return Number.isSafeInteger(n)&&n>0&&n<=100000000?n:null;
 }
-function isoFromLocal(value:FormDataEntryValue|null){
-  const raw=String(value??'').trim(); if(!raw) return null;
-  const d=new Date(raw); return Number.isFinite(d.getTime())?d.toISOString():null;
+function localWallClock(value:FormDataEntryValue|null){
+  const raw=String(value??'').trim();
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)?raw:null;
 }
 function ambiguous(error:unknown){
   return error instanceof ApiRequestError && (error.status===0||error.status===408||error.status===503);
@@ -69,7 +69,7 @@ export default function ExpensesPage(){
 
   async function createExpense(event:FormEvent<HTMLFormElement>){
     event.preventDefault(); const form=event.currentTarget; const data=new FormData(form);
-    const amountMinor=parseMoneyMinor(data.get('amount')); const occurredAt=isoFromLocal(data.get('occurredAt'));
+    const amountMinor=parseMoneyMinor(data.get('amount')); const occurredAt=localWallClock(data.get('occurredAt'));
     if(amountMinor===null||!occurredAt)return setNotice('Tutar ve tarih/saat geçerli olmalı.');
     const body={category:String(data.get('category')??'').trim(),description:String(data.get('description')??'').trim()||null,amountMinor,currency:'TRY',paymentMethod:data.get('paymentMethod'),occurredAt};
     if(await mutate(`create:${JSON.stringify(body)}`,'/api/expenses',body)){form.reset();setNotice('Masraf kaydedildi.');}
@@ -77,7 +77,7 @@ export default function ExpensesPage(){
 
   async function reverse(eventId:string){
     const reason=window.prompt('İptal/düzeltme gerekçesi'); if(!reason?.trim())return;
-    if(await mutate(`reverse:${eventId}:${reason.trim()}`,`/api/expenses/${eventId}/reverse`,{reason:reason.trim(),occurredAt:new Date().toISOString()})) setNotice('Masraf reversal hareketi kaydedildi.');
+    if(await mutate(`reverse:${eventId}:${reason.trim()}`,`/api/expenses/${eventId}/reverse`,{reason:reason.trim(),occurredAt:new Intl.DateTimeFormat('sv-SE',{dateStyle:'short',timeStyle:'short'}).format(new Date()).replace(' ','T')})) setNotice('Masraf reversal hareketi kaydedildi.');
   }
 
   return <main className="expenses-shell">
