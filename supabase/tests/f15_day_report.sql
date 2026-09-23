@@ -43,6 +43,39 @@ insert into public.services(
   'Rapor Hizmet',30,0,0,'Genel',10,20000,'fixed',20000,20000,'TRY',true
 );
 
+insert into public.staff_profiles(id,business_id,membership_id,name,active)
+values (
+  'f1a42000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001',
+  'f1a20000-0000-4000-8000-000000000001','Rapor Personel',true
+);
+
+insert into public.appointment_groups(
+  id,business_id,customer_id,status,source,version,created_by,created_at,updated_at
+) values (
+  'f1a43000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001',
+  'f1a30000-0000-4000-8000-000000000001','scheduled','operator',1,
+  'f1a00000-0000-4000-8000-000000000001','2026-09-23 08:00+03','2026-09-23 08:00+03'
+);
+
+insert into public.appointments(
+  id,business_id,customer_id,service_id,staff_id,status,
+  starts_at,ends_at,occupied_starts_at,occupied_ends_at,timezone,
+  customer_name_snapshot,customer_phone_snapshot,customer_email_snapshot,
+  service_name_snapshot,staff_name_snapshot,duration_minutes_snapshot,
+  buffer_before_minutes_snapshot,buffer_after_minutes_snapshot,price_minor_snapshot,
+  currency_snapshot,notes,created_by,created_at,updated_at,source,
+  group_id,line_ordinal,price_type_snapshot,price_min_minor_snapshot,
+  price_max_minor_snapshot,price_policy_version_snapshot
+) values (
+  'f1a44000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001',
+  'f1a30000-0000-4000-8000-000000000001','f1a41000-0000-4000-8000-000000000001',
+  'f1a42000-0000-4000-8000-000000000001','scheduled',
+  '2026-09-23 11:00+03','2026-09-23 11:30+03','2026-09-23 11:00+03','2026-09-23 11:30+03',
+  'Europe/Istanbul','Rapor Müşteri',null,null,'Rapor Hizmet','Rapor Personel',30,0,0,20000,
+  'TRY',null,'f1a00000-0000-4000-8000-000000000001','2026-09-23 08:00+03','2026-09-23 08:00+03',
+  'operator','f1a43000-0000-4000-8000-000000000001',1,'fixed',20000,20000,1
+);
+
 insert into public.products(
   id,business_id,name,code,unit,sale_price_minor,currency,stock_on_hand,version,active,created_by_membership_id
 ) values
@@ -158,6 +191,9 @@ begin
 
   if (v->>'expectedMinMinor')::bigint<>140000
      or (v->>'expectedMaxMinor')::bigint<>140000
+     or (v->>'expectedAppointmentMinMinor')::bigint<>20000
+     or (v->>'expectedAppointmentMaxMinor')::bigint<>20000
+     or (v->>'appointmentCount')::integer<>1
      or (v->>'serviceSaleMinor')::bigint<>20000
      or (v->>'productSaleMinor')::bigint<>120000
      or (v->>'saleValueMinor')::bigint<>140000
