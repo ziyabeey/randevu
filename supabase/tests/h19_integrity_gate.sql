@@ -24,6 +24,9 @@
 \echo 'H19 Integrity Gate: D0xD4 tenant/time-boundary'
 \ir h19_d0_d4_tenant_time_boundary.sql
 
+\echo 'H19 Integrity Gate: D0xD5 tenant/concurrency lock isolation'
+\ir h19_d0_d5_tenant_lock_isolation.sql
+
 do $$
 begin
   raise notice 'H19 INTEGRITY GATE PASS: registered interaction invariants accepted';
