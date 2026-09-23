@@ -272,40 +272,6 @@ async function requirePaymentsWrite(context: TicketContext) {
   return access;
 }
 
-async function requireInventoryWrite(context: TicketContext) {
-  const access = await requireStandardMember(context);
-  if ('error' in access) return access;
-
-  const permission = await supabaseRequest<boolean>(
-    context.env,
-    'rest/v1/rpc/has_financial_permission',
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        p_business_id: access.membership.business_id,
-        p_permission: 'inventory_write',
-      }),
-    },
-    access.auth.accessToken,
-  );
-
-  if (upstreamUnavailable(permission.status)) {
-    return {
-      error: context.json({
-        error: { code: 'INVENTORY_PERMISSION_UNAVAILABLE', message: 'Stok yetkisi şu anda doğrulanamıyor. Lütfen tekrar deneyin.' },
-      }, 503),
-    } as const;
-  }
-  if (!permission.ok || permission.data !== true) {
-    return {
-      error: context.json({
-        error: { code: 'INVENTORY_PERMISSION_REQUIRED', message: 'Ürün/stok işlemi için stok yetkiniz yok.' },
-      }, 403),
-    } as const;
-  }
-  return access;
-}
-
 async function requireProductSaleWrite(context: TicketContext) {
   const access = await requirePricingWrite(context);
   if ('error' in access) return access;
