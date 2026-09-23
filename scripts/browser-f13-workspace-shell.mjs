@@ -32,6 +32,9 @@ const TICKET = 'f3480000-0000-4000-8000-000000000001';
 const PAYMENT_CASH = 'f3490000-0000-4000-8000-000000000001';
 const PAYMENT_CARD = 'f3490000-0000-4000-8000-000000000002';
 const PRODUCT = 'f34a0000-0000-4000-8000-000000000001';
+const PRODUCT_TICKET = 'f34c0000-0000-4000-8000-000000000001';
+const PRODUCT_LINE = 'f34d0000-0000-4000-8000-000000000001';
+const PRODUCT_PAYMENT = 'f34e0000-0000-4000-8000-000000000001';
 const TOKEN = 'T'.repeat(48);
 const CSRF = 'C'.repeat(43);
 
@@ -48,6 +51,91 @@ let publicCreateRequest = null;
 let paymentsWriteAllowed = true;
 let productState = null;
 let productMovements = [];
+let productSaleTicket = null;
+let productSalePaidMinor = 0;
+let productSaleReturns = 0;
+
+function productSaleProjection() {
+  if (!productSaleTicket) return null;
+  const totalMinor = productSaleTicket.quantity * productSaleTicket.unitPriceMinor;
+  const refunds = Array.from({ length: productSaleReturns }, (_, index) => ({
+    eventId: `f34e0000-0000-4000-8000-${String(index + 2).padStart(12, '0')}`,
+    eventType: 'refund',
+    sourcePaymentEventId: PRODUCT_PAYMENT,
+    method: 'cash',
+    correctionDirection: null,
+    amountMinor: 25000,
+    effectMinor: -25000,
+    reason: index === 0 ? 'Hasarlı ürün' : 'Satılabilir iade',
+    actorMembershipId: MEMBERSHIP_A,
+    createdAt: `2026-09-23T05:2${index + 2}:00.000Z`,
+  }));
+  return {
+    ticketId: PRODUCT_TICKET,
+    businessId: BUSINESS_A,
+    bookingGroupId: null,
+    customerId: CUSTOMER,
+    source: 'walk_in',
+    status: 'open',
+    version: productSaleTicket.version,
+    currency: 'TRY',
+    customerName: 'Ada Public',
+    customerPhone: '+905550001122',
+    customerEmail: 'customer@example.test',
+    settlementReady: true,
+    estimateMinMinor: totalMinor,
+    estimateMaxMinor: totalMinor,
+    subtotalMinor: totalMinor,
+    discountMinor: 0,
+    totalMinor,
+    paymentStatus: productSalePaidMinor === 0 ? 'unpaid' : productSalePaidMinor < totalMinor ? 'partial' : 'paid',
+    paidMinor: productSalePaidMinor,
+    balanceMinor: totalMinor - productSalePaidMinor,
+    createdAt: '2026-09-23T05:20:00.000Z',
+    updatedAt: '2026-09-23T05:20:00.000Z',
+    closedAt: null,
+    cancelledAt: null,
+    cancellationReason: null,
+    lines: [{
+      lineId: PRODUCT_LINE,
+      ordinal: 1,
+      sourceType: 'product',
+      sourceAppointmentLineId: null,
+      serviceId: null,
+      staffId: null,
+      serviceName: null,
+      staffName: null,
+      productId: PRODUCT,
+      productName: productState?.name ?? 'Şampuan',
+      productCode: productState?.code ?? 'SAMP-001',
+      quantity: productSaleTicket.quantity,
+      priceType: 'fixed',
+      priceMinMinor: productSaleTicket.unitPriceMinor,
+      priceMaxMinor: productSaleTicket.unitPriceMinor,
+      currency: 'TRY',
+      pricePolicyVersion: productSaleTicket.productVersion,
+      finalUnitPriceMinor: productSaleTicket.unitPriceMinor,
+      discountMinor: 0,
+      netMinor: totalMinor,
+      finalizedAt: '2026-09-23T05:20:00.000Z',
+      finalizationReason: 'product_catalog_snapshot',
+      discountAt: null,
+      discountReason: null,
+    }],
+    paymentEvents: productSalePaidMinor > 0 ? [{
+      eventId: PRODUCT_PAYMENT,
+      eventType: 'payment',
+      sourcePaymentEventId: null,
+      method: 'cash',
+      correctionDirection: null,
+      amountMinor: 50000,
+      effectMinor: 50000,
+      reason: null,
+      actorMembershipId: MEMBERSHIP_A,
+      createdAt: '2026-09-23T05:21:00.000Z',
+    }, ...refunds] : [],
+  };
+}
 
 function productProjection() {
   return productState ? { ...productState } : null;
@@ -690,9 +778,74 @@ try {
       return sendJson(response, 201, { product: productProjection() });
     }
 
+    if (request.method === 'POST' && url.pathname === '/api/tickets/product-sales') {
+      assert.equal(activeBusinessId, BUSINESS_A, 'product sale escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'product sale omitted Idempotency-Key');
+      assert.equal(body.customerId, CUSTOMER);
+      assert.equal(body.productId, PRODUCT);
+      assert.equal(body.quantity, 2);
+      assert.equal(body.expectedProductVersion, productState.version);
+      assert.ok(productState.stockOnHand >= body.quantity, 'product sale exceeded stock');
+      productState = {
+        ...productState,
+        stockOnHand: productState.stockOnHand - body.quantity,
+        version: productState.version + 1,
+      };
+      productSaleTicket = {
+        quantity: body.quantity,
+        unitPriceMinor: productState.salePriceMinor,
+        productVersion: body.expectedProductVersion,
+        version: 1,
+      };
+      productSalePaidMinor = 0;
+      productSaleReturns = 0;
+      productMovements = [{
+        movementId: 'f34b0000-0000-4000-8000-000000000003',
+        productId: PRODUCT,
+        kind: 'sale',
+        quantityDelta: -body.quantity,
+        balanceAfter: productState.stockOnHand,
+        reason: 'product_sale',
+        reversesMovementId: null,
+        ticketLineId: PRODUCT_LINE,
+        sourceSaleMovementId: null,
+        createdAt: '2026-09-23T05:20:00.000Z',
+      }, ...productMovements];
+      return sendJson(response, 201, { ticket: productSaleProjection() });
+    }
+    if (request.method === 'GET' && url.pathname === `/api/tickets/${PRODUCT_TICKET}`) {
+      if (activeBusinessId !== BUSINESS_A || !productSaleTicket) return sendJson(response, 404, { error: { code: 'TICKET_NOT_FOUND', message: 'Adisyon bulunamadı.' } });
+      return sendJson(response, 200, { ticket: productSaleProjection() });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/tickets/${PRODUCT_TICKET}/payments`) {
+      assert.ok(productSaleTicket, 'product ticket payment before sale');
+      assert.equal(body.method, 'cash');
+      assert.equal(body.amountMinor, 50000);
+      assert.equal(productSalePaidMinor, 0, 'product ticket duplicate payment');
+      productSalePaidMinor = 50000;
+      return sendJson(response, 201, { ticket: productSaleProjection() });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/tickets/${PRODUCT_TICKET}/lines/${PRODUCT_LINE}/product-return-refund`) {
+      assert.ok(productSaleTicket, 'product return before sale');
+      assert.equal(body.sourcePaymentEventId, PRODUCT_PAYMENT);
+      assert.equal(body.quantity, 1);
+      assert.equal(body.amountMinor, 25000);
+      assert.ok(productSaleReturns < 2, 'product return exceeded sold quantity');
+      productSaleReturns += 1;
+      productSalePaidMinor -= body.amountMinor;
+      if (body.returnToStock) {
+        productState = {
+          ...productState,
+          stockOnHand: productState.stockOnHand + body.quantity,
+          version: productState.version + 1,
+        };
+      }
+      return sendJson(response, 201, { ticket: productSaleProjection() });
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/tickets') {
       return sendJson(response, 200, {
-        tickets: activeBusinessId === BUSINESS_A ? [ticketProjection()] : [],
+        tickets: activeBusinessId === BUSINESS_A ? [ticketProjection(), ...(productSaleTicket ? [productSaleProjection()] : [])] : [],
         page: { limit: 25, hasMore: false, nextCursor: null },
       });
     }
@@ -1357,6 +1510,99 @@ try {
     'F15-01 returning to business A did not re-read its product stock',
   );
   console.log('F15-01 product create, stock movement, 390px and tenant-switch acceptance passed.');
+
+  await page.send('Page.navigate', { url: `${origin}/app/mobile/new` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/new' && document.body.innerText.includes('Yeni ürün satışı')`),
+    'F15-02 KolayApp New surface did not expose product sale action',
+  );
+  await page.evaluate(`[...document.querySelectorAll('a')].find((node) => node.textContent.includes('Yeni ürün satışı')).click()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && location.search.includes('newProductSale=1') && Boolean(document.querySelector('.ticket-product-sale'))`),
+    'F15-02 standalone product sale form did not open',
+  );
+  await page.evaluate(`(() => {
+    const form = document.querySelector('.ticket-product-sale');
+    const customer = form.querySelector('select[name="customerId"]');
+    customer.value='f3470000-0000-4000-8000-000000000001';
+    customer.dispatchEvent(new Event('change',{bubbles:true}));
+    const product = form.querySelector('select[name="productId"]');
+    product.value='f34a0000-0000-4000-8000-000000000001';
+    product.dispatchEvent(new Event('change',{bubbles:true}));
+    const quantity = form.querySelector('input[name="quantity"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+    setter.call(quantity,'2');
+    quantity.dispatchEvent(new Event('input',{bubbles:true}));
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Ürün satışı adisyona dönüştürüldü.') && document.body.innerText.includes('SAMP-001') && document.body.innerText.includes('2 adet')`),
+    'F15-02 standalone product sale did not render the product ticket',
+  );
+  assert.equal(productState.stockOnHand, 6, 'F15-02 product sale did not atomically reduce stock from 8 to 6');
+
+  await page.evaluate(`(() => {
+    const form=document.querySelector('.ticket-payment');
+    form.querySelector('select[name="method"]').value='cash';
+    const amount=form.querySelector('input[name="amount"]');
+    const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+    setter.call(amount,'500');
+    amount.dispatchEvent(new Event('input',{bubbles:true}));
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Tahsilat sunucuda doğrulandı.') && document.querySelector('.ticket-totals')?.innerText.includes('500')`),
+    'F15-02 product ticket payment did not reach paid state',
+  );
+
+  await page.evaluate(`(() => {
+    const form=document.querySelector('.ticket-product-return');
+    const payment=form.querySelector('select[name="sourcePaymentEventId"]');
+    payment.value='f34e0000-0000-4000-8000-000000000001';
+    payment.dispatchEvent(new Event('change',{bubbles:true}));
+    const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+    const qty=form.querySelector('input[name="quantity"]');
+    setter.call(qty,'1'); qty.dispatchEvent(new Event('input',{bubbles:true}));
+    const amount=form.querySelector('input[name="amount"]');
+    setter.call(amount,'250'); amount.dispatchEvent(new Event('input',{bubbles:true}));
+    const reason=form.querySelector('input[name="reason"]');
+    setter.call(reason,'Hasarlı ürün'); reason.dispatchEvent(new Event('input',{bubbles:true}));
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Finansal iade kaydedildi; ürün stoğa geri alınmadı.')`),
+    'F15-02 damaged product refund did not preserve no-stock-return policy',
+  );
+  assert.equal(productState.stockOnHand, 6, 'F15-02 damaged refund silently increased saleable stock');
+
+  await page.evaluate(`(() => {
+    const form=document.querySelector('.ticket-product-return');
+    const payment=form.querySelector('select[name="sourcePaymentEventId"]');
+    payment.value='f34e0000-0000-4000-8000-000000000001';
+    payment.dispatchEvent(new Event('change',{bubbles:true}));
+    const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+    const qty=form.querySelector('input[name="quantity"]');
+    setter.call(qty,'1'); qty.dispatchEvent(new Event('input',{bubbles:true}));
+    const amount=form.querySelector('input[name="amount"]');
+    setter.call(amount,'250'); amount.dispatchEvent(new Event('input',{bubbles:true}));
+    const reason=form.querySelector('input[name="reason"]');
+    setter.call(reason,'Satılabilir iade'); reason.dispatchEvent(new Event('input',{bubbles:true}));
+    form.querySelector('input[name="returnToStock"]').click();
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Ürün iadesi ve stoğa geri dönüş birlikte doğrulandı.')`),
+    'F15-02 resellable product return did not couple refund and stock return',
+  );
+  assert.equal(productState.stockOnHand, 7, 'F15-02 explicit resellable return did not restore exactly one stock unit');
+
+  const sale390 = await page.evaluate(`(() => ({
+    overflow: document.documentElement.scrollWidth - innerWidth,
+    text: document.body.innerText,
+  }))()`);
+  assert.equal(sale390.overflow <= 1, true, 'F15-02 product sale/refund UI overflowed at 390px');
+  assert.match(sale390.text, /İade/);
+  console.log('F15-02 standalone sale, payment, damaged refund, resellable return and 390px acceptance passed.');
 
   // Return the shared F13 harness to its canonical workspace before continuing
   // the pre-existing desktop/legacy-route acceptance below.
