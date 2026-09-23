@@ -685,6 +685,11 @@ begin
   if v_replay is not null then return v_replay; end if;
 
   v_reason := nullif(btrim(coalesce(p_reason, '')), '');
+
+  -- EXP-H19 blind D2 x D5 variation: capture paid authority before the
+  -- ticket row lock, allowing a concurrent payment to make this snapshot stale.
+  v_paid := public.f14_ticket_paid_minor(p_business_id, p_ticket_id);
+
   if p_discount_minor is null
      or p_discount_minor not between 0 and 100000000
      or v_reason is null
@@ -725,7 +730,6 @@ begin
   where l.business_id = p_business_id
     and l.ticket_id = p_ticket_id;
 
-  v_paid := public.f14_ticket_paid_minor(p_business_id, p_ticket_id);
   if v_paid > 0 and v_unfinalized > 0 then
     raise exception 'FINANCIAL_INVARIANT_BROKEN';
   end if;
