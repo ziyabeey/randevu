@@ -25,7 +25,7 @@ function token(){
 function cookie(){return `yzt_access=${token()}; yzt_refresh=f15-expense; yzt_business=${businessId}; yzt_csrf=${csrf}`;}
 function headers(key='f1503-http-key-0001'){return {Origin:'http://localhost',Cookie:cookie(),'X-YZT-CSRF':csrf,'Content-Type':'application/json','Idempotency-Key':key};}
 function member(role='owner'){return {id:membershipId,business_id:businessId,role,active:true};}
-function baseFetch({role='owner',permission=true,rpc}){
+function baseFetch({role='owner',permission=true,permissions={},rpc}){
   return async (input,init={})=>{
     const url=new URL(String(input));
     if(url.pathname==='/auth/v1/user') return json(user);
@@ -33,8 +33,7 @@ function baseFetch({role='owner',permission=true,rpc}){
     if(url.pathname==='/rest/v1/rpc/has_financial_permission'){
       const body=JSON.parse(init.body);
       assert.equal(body.p_business_id,businessId);
-      assert.equal(body.p_permission,'expenses_write');
-      return json(permission);
+      return json(Object.hasOwn(permissions,body.p_permission) ? permissions[body.p_permission] : permission);
     }
     return rpc(url,init);
   };
@@ -87,19 +86,40 @@ await test('F15 expense reversal and correction bind source to selected tenant',
   }finally{globalThis.fetch=real;}
 });
 
-await test('F15 expense list is membership-scoped and paginated',async()=>{
+await test('F15 expense list requires financial_reports_read and stays tenant-scoped',async()=>{
   const real=globalThis.fetch;
-  globalThis.fetch=async(input,init={})=>{
-    const url=new URL(String(input));
-    if(url.pathname==='/auth/v1/user') return json(user);
-    if(url.pathname==='/rest/v1/memberships') return json([member('staff')]);
-    assert.equal(url.pathname,'/rest/v1/rpc/list_expense_events_page');
-    const body=JSON.parse(init.body); assert.equal(body.p_business_id,businessId); assert.equal(body.p_limit,26);
-    return json([{event:{eventId,businessId,eventType:'expense',amountMinor:15000,effectMinor:15000},sort_occurred_at:'2026-09-23T10:00',sort_id:eventId}]);
-  };
+  let listCalls=0;
+
+  globalThis.fetch=baseFetch({
+    role:'staff',
+    permissions:{financial_reports_read:false},
+    rpc:async()=>{listCalls+=1;throw new Error('unexpected list RPC');},
+  });
+  try{
+    const denied=await app.request('http://localhost/api/expenses',{headers:{Cookie:cookie()}},env);
+    assert.equal(denied.status,403);
+    assert.equal((await denied.json()).error?.code,'FINANCIAL_REPORTS_PERMISSION_REQUIRED');
+    assert.equal(listCalls,0);
+  }finally{globalThis.fetch=real;}
+
+  globalThis.fetch=baseFetch({
+    role:'staff',
+    permissions:{financial_reports_read:true},
+    rpc:async(url,init={})=>{
+      listCalls+=1;
+      assert.equal(url.pathname,'/rest/v1/rpc/list_expense_events_page');
+      const body=JSON.parse(init.body);
+      assert.equal(body.p_business_id,businessId);
+      assert.equal(body.p_limit,26);
+      return json([{event:{eventId,businessId,eventType:'expense',amountMinor:15000,effectMinor:15000},sort_occurred_at:'2026-09-23T10:00',sort_id:eventId}]);
+    },
+  });
   try{
     const r=await app.request('http://localhost/api/expenses',{headers:{Cookie:cookie()}},env);
     assert.equal(r.status,200);
-    const p=await r.json(); assert.equal(p.events[0].eventId,eventId); assert.equal(p.page.hasMore,false);
+    const p=await r.json();
+    assert.equal(p.events[0].eventId,eventId);
+    assert.equal(p.page.hasMore,false);
+    assert.equal(listCalls,1);
   }finally{globalThis.fetch=real;}
 });
