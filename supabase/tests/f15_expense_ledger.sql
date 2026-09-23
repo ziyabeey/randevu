@@ -21,6 +21,8 @@ values
 do $acl$
 begin
   if has_table_privilege('authenticated','public.expense_events','SELECT')
+     or has_table_privilege('authenticated','public.expense_events','UPDATE')
+     or has_table_privilege('authenticated','public.expense_events','DELETE')
      or has_table_privilege('authenticated','public.expense_commands','SELECT')
      or has_table_privilege('anon','public.expense_events','SELECT') then
     raise exception 'F15-03 expense tables unexpectedly exposed';
@@ -78,6 +80,8 @@ begin
   if not v_conflict then raise exception 'F15-03 same key accepted different payload'; end if;
 end
 $create$;
+
+reset role;
 
 do $immutable$
 declare
