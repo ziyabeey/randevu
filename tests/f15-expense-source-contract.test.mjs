@@ -38,3 +38,12 @@ test('F15-03 persists only exact expense write intents after ambiguous network r
   assert.match(source,/Kayıtlı isteği doğrula/);
   assert.match(source,/pendingWrite\.businessId===activeBusinessId/);
 });
+
+
+test('F15-03 expense UI renders business-local time and retires reversed source actions',()=>{
+  const source=readFileSync(path.join(root,'src/ExpensesPage.tsx'),'utf8');
+  assert.match(source,/new Intl\.DateTimeFormat\('tr-TR',\{\s*timeZone,/s);
+  assert.match(source,/const reversedSourceIds=new Set\(/);
+  assert.match(source,/!reversedSourceIds\.has\(e\.eventId\)/);
+  assert.match(source,/Düzeltildi \/ iptal edildi/);
+});
