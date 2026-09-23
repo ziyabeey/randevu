@@ -146,7 +146,7 @@ begin
 end
 $drain$;
 
-do $
+do $assert$
 declare
   v_product uuid := current_setting('f1501.race_product')::uuid;
   v_balance bigint;
@@ -174,4 +174,4 @@ begin
 
   raise notice 'F15-01 concurrent writers serialized; exactly one stale-version decrement committed';
 end
-$$;
+$assert$;
