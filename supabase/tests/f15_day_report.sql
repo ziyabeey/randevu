@@ -1,0 +1,200 @@
+begin;
+
+insert into auth.users(id,email,raw_user_meta_data)
+values
+  ('f1a00000-0000-4000-8000-000000000001','f1504-owner@example.invalid','{}'::jsonb),
+  ('f1a00000-0000-4000-8000-000000000002','f1504-staff@example.invalid','{}'::jsonb),
+  ('f1a00000-0000-4000-8000-000000000003','f1504-other@example.invalid','{}'::jsonb),
+  ('f1a00000-0000-4000-8000-000000000004','f1504-berlin@example.invalid','{}'::jsonb)
+on conflict(id) do nothing;
+
+insert into public.businesses(id,name,slug,timezone,created_by)
+values
+  ('f1a10000-0000-4000-8000-000000000001','F15-04 Salon','f1504-salon','Europe/Istanbul','f1a00000-0000-4000-8000-000000000001'),
+  ('f1a10000-0000-4000-8000-000000000002','F15-04 Other','f1504-other','Europe/Istanbul','f1a00000-0000-4000-8000-000000000003'),
+  ('f1a10000-0000-4000-8000-000000000003','F15-04 Berlin','f1504-berlin','Europe/Berlin','f1a00000-0000-4000-8000-000000000004');
+
+insert into public.memberships(id,business_id,user_id,role,active)
+values
+  ('f1a20000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001','f1a00000-0000-4000-8000-000000000001','owner',true),
+  ('f1a20000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000001','f1a00000-0000-4000-8000-000000000002','staff',true),
+  ('f1a20000-0000-4000-8000-000000000003','f1a10000-0000-4000-8000-000000000002','f1a00000-0000-4000-8000-000000000003','owner',true),
+  ('f1a20000-0000-4000-8000-000000000004','f1a10000-0000-4000-8000-000000000003','f1a00000-0000-4000-8000-000000000004','owner',true);
+
+insert into public.membership_financial_permissions(
+  business_id,membership_id,permission,active,granted_by_membership_id,granted_at
+) values (
+  'f1a10000-0000-4000-8000-000000000001',
+  'f1a20000-0000-4000-8000-000000000002',
+  'financial_reports_read',true,
+  'f1a20000-0000-4000-8000-000000000001',now()
+);
+
+insert into public.customers(id,business_id,name,phone,email,created_by)
+values
+  ('f1a30000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001','Rapor Müşteri',null,null,'f1a00000-0000-4000-8000-000000000001'),
+  ('f1a30000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000003','Berlin Müşteri',null,null,'f1a00000-0000-4000-8000-000000000004');
+
+insert into public.products(
+  id,business_id,name,code,unit,sale_price_minor,currency,stock_on_hand,version,active,created_by_membership_id
+) values
+  ('f1a40000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001','Rapor Ürün','RPR-1','piece',10000,'TRY',90,1,true,'f1a20000-0000-4000-8000-000000000001'),
+  ('f1a40000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000001','Açık Bakiye','RPR-2','piece',30000,'TRY',9,1,true,'f1a20000-0000-4000-8000-000000000001');
+
+insert into public.tickets(
+  id,business_id,appointment_group_id,customer_id,source,status,currency,version,
+  customer_name_snapshot,customer_phone_snapshot,customer_email_snapshot,
+  created_by_membership_id,created_at,updated_at
+) values
+  ('f1a50000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001',null,'f1a30000-0000-4000-8000-000000000001','walk_in','open','TRY',1,'Rapor Müşteri',null,null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:00+03','2026-09-23 09:00+03'),
+  ('f1a50000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000001',null,'f1a30000-0000-4000-8000-000000000001','walk_in','open','TRY',1,'Rapor Müşteri',null,null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:30+03','2026-09-23 09:30+03'),
+  ('f1a50000-0000-4000-8000-000000000003','f1a10000-0000-4000-8000-000000000003',null,'f1a30000-0000-4000-8000-000000000002','walk_in','open','EUR',1,'Berlin Müşteri',null,null,'f1a20000-0000-4000-8000-000000000004','2026-10-25 00:15+00','2026-10-25 00:15+00');
+
+insert into public.ticket_lines(
+  id,business_id,ticket_id,line_ordinal,source_type,source_appointment_line_id,
+  service_id,staff_id,service_name_snapshot,staff_name_snapshot,
+  product_id,product_name_snapshot,product_code_snapshot,
+  quantity,price_type_snapshot,price_min_minor_snapshot,price_max_minor_snapshot,
+  currency_snapshot,price_policy_version_snapshot,final_unit_price_minor,
+  finalized_by_membership_id,finalized_at,finalization_reason,discount_minor,
+  created_by_membership_id,created_at
+) values
+  ('f1a60000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000001',1,'product',null,
+   null,null,null,null,'f1a40000-0000-4000-8000-000000000001','Rapor Ürün','RPR-1',
+   10,'fixed',10000,10000,'TRY',1,10000,'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:00+03','product_catalog_snapshot',0,
+   'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:00+03'),
+  ('f1a60000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000002',1,'product',null,
+   null,null,null,null,'f1a40000-0000-4000-8000-000000000002','Açık Bakiye','RPR-2',
+   1,'fixed',30000,30000,'TRY',1,30000,'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:30+03','product_catalog_snapshot',0,
+   'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:30+03');
+
+insert into public.product_stock_movements(
+  id,business_id,product_id,kind,quantity_delta,balance_after,reason,
+  reverses_movement_id,ticket_line_id,source_sale_movement_id,created_by_membership_id,created_at
+) values (
+  'f1a70000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001',
+  'f1a40000-0000-4000-8000-000000000001','sale',-10,90,'product_sale',
+  null,'f1a60000-0000-4000-8000-000000000001',null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:00+03'
+);
+
+insert into public.ticket_payment_events(
+  id,business_id,ticket_id,event_type,source_payment_event_id,payment_method,
+  correction_direction,amount_minor,reason,actor_membership_id,created_at
+) values
+  ('f1a80000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000001','payment',null,'cash',null,60000,null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 10:00+03'),
+  ('f1a80000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000001','payment',null,'card',null,40000,null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 10:05+03'),
+  ('f1a80000-0000-4000-8000-000000000003','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000001','refund','f1a80000-0000-4000-8000-000000000001','cash',null,10000,'İade','f1a20000-0000-4000-8000-000000000001','2026-09-23 10:10+03'),
+  ('f1a80000-0000-4000-8000-000000000004','f1a10000-0000-4000-8000-000000000003','f1a50000-0000-4000-8000-000000000003','payment',null,'cash',null,10000,null,'f1a20000-0000-4000-8000-000000000004','2026-10-25 00:30+00'),
+  ('f1a80000-0000-4000-8000-000000000005','f1a10000-0000-4000-8000-000000000003','f1a50000-0000-4000-8000-000000000003','payment',null,'card',null,20000,null,'f1a20000-0000-4000-8000-000000000004','2026-10-25 01:30+00'),
+  ('f1a80000-0000-4000-8000-000000000006','f1a10000-0000-4000-8000-000000000003','f1a50000-0000-4000-8000-000000000003','payment',null,'cash',null,40000,null,'f1a20000-0000-4000-8000-000000000004','2026-10-25 23:30+00');
+
+insert into public.ticket_product_returns(
+  id,business_id,ticket_id,ticket_line_id,product_id,sale_movement_id,refund_event_id,
+  quantity,return_to_stock,stock_return_movement_id,reason,actor_membership_id,created_at
+) values (
+  'f1a90000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001',
+  'f1a50000-0000-4000-8000-000000000001','f1a60000-0000-4000-8000-000000000001',
+  'f1a40000-0000-4000-8000-000000000001','f1a70000-0000-4000-8000-000000000001',
+  'f1a80000-0000-4000-8000-000000000003',1,false,null,'Hasarlı ürün',
+  'f1a20000-0000-4000-8000-000000000001','2026-09-23 10:10+03'
+);
+
+insert into public.expense_events(
+  id,business_id,event_type,source_expense_event_id,correction_of_event_id,category,
+  description,amount_minor,currency,payment_method,occurred_at,business_date,
+  timezone_snapshot,reason,actor_membership_id,created_at
+) values
+  ('f1aa0000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001','expense',null,null,'Malzeme',
+   null,15000,'TRY','cash','2026-09-23 12:00+03','2026-09-23','Europe/Istanbul',null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 12:00+03'),
+  ('f1aa0000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000002','expense',null,null,'Başka tenant',
+   null,999999,'TRY','cash','2026-09-23 12:00+03','2026-09-23','Europe/Istanbul',null,'f1a20000-0000-4000-8000-000000000003','2026-09-23 12:00+03');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1a00000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+
+do $f1504_summary$
+declare
+  v jsonb;
+begin
+  v:=public.get_financial_day_report(
+    'f1a10000-0000-4000-8000-000000000001','2026-09-23','2026-09-23'
+  );
+
+  if (v->>'collectedMinor')::bigint<>100000
+     or (v->>'cashCollectedMinor')::bigint<>60000
+     or (v->>'cardCollectedMinor')::bigint<>40000
+     or (v->>'refundMinor')::bigint<>10000
+     or (v->>'expenseMinor')::bigint<>15000
+     or (v->>'netMovementMinor')::bigint<>75000
+     or (v->>'cashNetMovementMinor')::bigint<>35000
+     or (v->>'cardNetMovementMinor')::bigint<>40000 then
+    raise exception 'F15-04 source reconciliation wrong: %',v;
+  end if;
+
+  if (v->>'productSaleMinor')::bigint<>120000
+     or (v->>'saleValueMinor')::bigint<>120000
+     or (v->>'outstandingMinor')::bigint<>30000 then
+    raise exception 'F15-04 sale/outstanding separation wrong: %',v;
+  end if;
+
+  if v->>'currency'<>'TRY' or v->>'timezone'<>'Europe/Istanbul' then
+    raise exception 'F15-04 currency/timezone projection wrong: %',v;
+  end if;
+end
+$f1504_summary$;
+
+-- A staff grant is checked on every read; revocation affects the next call.
+select set_config('request.jwt.claim.sub','f1a00000-0000-4000-8000-000000000002',true);
+do $f1504_staff_allowed$
+begin
+  perform public.get_financial_day_report(
+    'f1a10000-0000-4000-8000-000000000001','2026-09-23','2026-09-23'
+  );
+end
+$f1504_staff_allowed$;
+
+reset role;
+update public.membership_financial_permissions
+set active=false,
+    revoked_by_membership_id='f1a20000-0000-4000-8000-000000000001',
+    revoked_at=now()
+where business_id='f1a10000-0000-4000-8000-000000000001'
+  and membership_id='f1a20000-0000-4000-8000-000000000002'
+  and permission='financial_reports_read';
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1a00000-0000-4000-8000-000000000002',true);
+do $f1504_staff_revoked$
+declare v_error text;
+begin
+  begin
+    perform public.get_financial_day_report(
+      'f1a10000-0000-4000-8000-000000000001','2026-09-23','2026-09-23'
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('FINANCIAL_REPORTS_PERMISSION_REQUIRED' in coalesce(v_error,''))=0 then
+    raise exception 'F15-04 revoked staff report permission still worked: %',v_error;
+  end if;
+end
+$f1504_staff_revoked$;
+
+-- Europe/Berlin 2026-10-25 contains both 02:30 instants during DST fall-back.
+select set_config('request.jwt.claim.sub','f1a00000-0000-4000-8000-000000000004',true);
+do $f1504_dst$
+declare v jsonb;
+begin
+  v:=public.get_financial_day_report(
+    'f1a10000-0000-4000-8000-000000000003','2026-10-25','2026-10-25'
+  );
+  if (v->>'collectedMinor')::bigint<>30000
+     or (v->>'cashCollectedMinor')::bigint<>10000
+     or (v->>'cardCollectedMinor')::bigint<>20000 then
+    raise exception 'F15-04 DST day boundary lost/duplicated an event: %',v;
+  end if;
+end
+$f1504_dst$;
+
+reset role;
+rollback;
