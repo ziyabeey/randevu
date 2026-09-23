@@ -1,10 +1,10 @@
 .mkt-booking-scene {
   --mkt-booking-progress: 0;
-  --mkt-booking-enter: clamp(0, calc(var(--mkt-booking-progress) * 3.125), 1);
-  --mkt-booking-flow: clamp(0, calc((var(--mkt-booking-progress) - 0.22) * 2.5), 1);
-  --mkt-booking-zoom: clamp(0, calc((var(--mkt-booking-progress) - 0.64) * 3.846), 1);
-  --mkt-booking-exit: clamp(0, calc((var(--mkt-booking-progress) - 0.90) * 10), 1);
-  --mkt-booking-copy-out: clamp(0, calc((var(--mkt-booking-progress) - 0.28) * 5), 1);
+  --mkt-booking-enter: clamp(0, calc(var(--mkt-booking-progress) * 4.545), 1);
+  --mkt-booking-flow: clamp(0, calc((var(--mkt-booking-progress) - 0.28) * 2.941), 1);
+  --mkt-booking-zoom: clamp(0, calc((var(--mkt-booking-progress) - 0.68) * 4.545), 1);
+  --mkt-booking-exit: clamp(0, calc((var(--mkt-booking-progress) - 0.91) * 11.111), 1);
+  --mkt-booking-copy-out: clamp(0, calc((var(--mkt-booking-progress) - 0.46) * 5.556), 1);
   position: relative;
   width: 100%;
   height: 250svh;
@@ -35,7 +35,7 @@
   z-index: 1;
   inset: 0;
   background: var(--mkt-cobalt);
-  opacity: clamp(0, calc((var(--mkt-booking-progress) - 0.82) * 5.56), 1);
+  opacity: clamp(0, calc((var(--mkt-booking-progress) - 0.84) * 6.25), 1);
   pointer-events: none;
   will-change: opacity;
 }
@@ -115,9 +115,16 @@
     0 0 0 1px rgba(9, 27, 54, 0.16);
   opacity: calc(1 - var(--mkt-booking-exit));
   transform:
-    translate3d(calc((1 - var(--mkt-booking-enter)) * 26vw), 0, 0)
-    rotate(calc((1 - var(--mkt-booking-enter)) * 5deg))
-    scale(calc(0.78 + (var(--mkt-booking-enter) * 0.32) + (var(--mkt-booking-zoom) * 2.15)));
+    translate3d(
+      calc(
+        ((1 - var(--mkt-booking-enter)) * 28vw)
+        + ((1 - var(--mkt-booking-zoom)) * 10vw)
+      ),
+      0,
+      0
+    )
+    rotate(calc((1 - var(--mkt-booking-enter)) * 4deg))
+    scale(calc(0.82 + (var(--mkt-booking-enter) * 0.18) + (var(--mkt-booking-zoom) * 1.65)));
   transform-origin: 50% 55%;
   transition: none;
   will-change: transform, opacity;
@@ -136,7 +143,9 @@
   justify-content: space-between;
   border-radius: 999px;
   background: #071327;
-  transform: translateX(-50%);
+  opacity: calc(1 - (var(--mkt-booking-zoom) * 0.92));
+  transform: translate3d(-50%, calc(var(--mkt-booking-zoom) * -10px), 0);
+  will-change: transform, opacity;
 }
 
 .mkt-booking-phone-bar span {
@@ -172,8 +181,8 @@
   background: transparent;
   box-shadow: none;
   transform:
-    translate3d(0, calc(var(--mkt-booking-zoom) * -42px), 0)
-    scale(calc(1 + (var(--mkt-booking-zoom) * 0.055)));
+    translate3d(0, calc(var(--mkt-booking-zoom) * -30px), 0)
+    scale(calc(1 + (var(--mkt-booking-zoom) * 0.035)));
   transform-origin: 50% 72%;
   will-change: transform;
 }
@@ -269,19 +278,24 @@
     bottom: -4%;
   }
 
+  .mkt-booking-phone-wrap {
+    place-items: end center;
+    padding-bottom: 4vh;
+  }
+
   .mkt-booking-phone {
     width: min(72vw, 270px);
     transform:
-      translate3d(0, calc((1 - var(--mkt-booking-enter)) * 12vh), 0)
+      translate3d(0, calc((1 - var(--mkt-booking-enter)) * 16vh), 0)
       rotate(calc((1 - var(--mkt-booking-enter)) * 3deg))
-      scale(calc(0.82 + (var(--mkt-booking-enter) * 0.28) + (var(--mkt-booking-zoom) * 1.28)));
+      scale(calc(0.84 + (var(--mkt-booking-enter) * 0.16) + (var(--mkt-booking-zoom) * 1.15)));
   }
 
   .mkt-booking-scene .mkt-booking-proof {
     padding: 60px 16px 18px;
     transform:
-      translate3d(0, calc(var(--mkt-booking-zoom) * -28px), 0)
-      scale(calc(1 + (var(--mkt-booking-zoom) * 0.04)));
+      translate3d(0, calc(var(--mkt-booking-zoom) * -22px), 0)
+      scale(calc(1 + (var(--mkt-booking-zoom) * 0.025)));
   }
 
   .mkt-booking-scene .mkt-proof-step {
