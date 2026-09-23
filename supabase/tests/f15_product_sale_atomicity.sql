@@ -192,6 +192,85 @@ begin
 end
 $payment_and_returns$;
 
+-- Generic inventory reversal must not undo ticket-coupled sale/return movements.
+-- Those stock effects are owned by cancel_ticket_guarded / product return.
+do $coupled_reverse_fence$
+declare
+  v_product uuid := current_setting('f1502.product')::uuid;
+  v_sale uuid := current_setting('f1502.sale_movement')::uuid;
+  v_return uuid;
+  v_before bigint;
+  v_version integer;
+  v_error text;
+begin
+  execute 'reset role';
+  select p.stock_on_hand,p.version into v_before,v_version
+  from public.products p
+  where p.business_id='f15a1000-0000-4000-8000-000000000001'
+    and p.id=v_product;
+
+  select m.id into v_return
+  from public.product_stock_movements m
+  where m.business_id='f15a1000-0000-4000-8000-000000000001'
+    and m.product_id=v_product
+    and m.source_sale_movement_id=v_sale
+    and m.kind='return'
+  order by m.created_at,m.id
+  limit 1;
+  if v_return is null then raise exception 'F15-02 resellable return movement missing'; end if;
+
+  execute 'set local role authenticated';
+  v_error := null;
+  begin
+    perform public.reverse_product_stock_movement_guarded(
+      'f15a1000-0000-4000-8000-000000000001',v_product,v_sale,
+      'Generic sale reversal blocked',v_version,
+      'f1502-reverse-sale-blocked',repeat('b',63)||'1'
+    );
+  exception when others then v_error := sqlerrm;
+  end;
+  if position('STOCK_REVERSAL_SOURCE_INVALID' in coalesce(v_error,''))=0 then
+    raise exception 'F15-02 generic sale reversal was not fenced: %',v_error;
+  end if;
+
+  execute 'reset role';
+  if (select stock_on_hand from public.products where id=v_product)<>v_before then
+    raise exception 'F15-02 rejected sale reversal changed stock';
+  end if;
+  if exists (
+    select 1 from public.product_stock_movements
+    where business_id='f15a1000-0000-4000-8000-000000000001'
+      and product_id=v_product and reverses_movement_id=v_sale
+  ) then raise exception 'F15-02 rejected sale reversal wrote a reversal movement'; end if;
+  select version into v_version from public.products where id=v_product;
+
+  execute 'set local role authenticated';
+  v_error := null;
+  begin
+    perform public.reverse_product_stock_movement_guarded(
+      'f15a1000-0000-4000-8000-000000000001',v_product,v_return,
+      'Generic return reversal blocked',v_version,
+      'f1502-reverse-return-blocked',repeat('b',63)||'2'
+    );
+  exception when others then v_error := sqlerrm;
+  end;
+  if position('STOCK_REVERSAL_SOURCE_INVALID' in coalesce(v_error,''))=0 then
+    raise exception 'F15-02 generic return reversal was not fenced: %',v_error;
+  end if;
+
+  execute 'reset role';
+  if (select stock_on_hand from public.products where id=v_product)<>v_before then
+    raise exception 'F15-02 rejected return reversal changed stock';
+  end if;
+  if exists (
+    select 1 from public.product_stock_movements
+    where business_id='f15a1000-0000-4000-8000-000000000001'
+      and product_id=v_product and reverses_movement_id=v_return
+  ) then raise exception 'F15-02 rejected return reversal wrote a reversal movement'; end if;
+  execute 'set local role authenticated';
+end
+$coupled_reverse_fence$;
+
 -- Refund bounds: never above the returned value, never leaving net paid above
 -- the reduced total; a fully returned ticket closes, and a return on a closed
 -- ticket keeps it settled.
