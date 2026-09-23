@@ -40,6 +40,8 @@ let ticketPaidMinor = 0;
 let ticketPaymentEvents = [];
 let ambiguousCashCommitted = false;
 const ticketPaymentReplays = new Map();
+let publicBookingCreated = false;
+let publicCreateRequest = null;
 
 function business(id) {
   return id === BUSINESS_A
@@ -189,6 +191,59 @@ function manageView() {
       booking_terms_text: 'Test randevu koşulları.',
     },
     notification: { channel: 'email', status: 'accepted' },
+  };
+}
+
+function publicGroupSlot(startsAt = isoAt(0)) {
+  const endsAt = new Date(Date.parse(startsAt) + 30 * 60_000).toISOString();
+  return {
+    startsAt,
+    endsAt,
+    timezone: 'Europe/Istanbul',
+    currency: 'TRY',
+    estimateMinMinor: 60000,
+    estimateMaxMinor: 60000,
+    lines: [{
+      lineOrdinal: 1,
+      serviceId: SERVICE,
+      serviceName: 'Kesim',
+      staffId: STAFF,
+      staffName: 'Deniz',
+      startsAt,
+      endsAt,
+      priceType: 'fixed',
+      priceMinMinor: 60000,
+      priceMaxMinor: 60000,
+    }],
+  };
+}
+
+function publicCreatedGroup(startsAt = isoAt(0)) {
+  const slot = publicGroupSlot(startsAt);
+  return {
+    groupId: GROUP,
+    status: 'scheduled',
+    source: 'public',
+    version: 1,
+    customerId: CUSTOMER,
+    startsAt: slot.startsAt,
+    endsAt: slot.endsAt,
+    timezone: slot.timezone,
+    currency: slot.currency,
+    estimateMinMinor: slot.estimateMinMinor,
+    estimateMaxMinor: slot.estimateMaxMinor,
+    lines: slot.lines.map((line) => ({
+      ...line,
+      appointmentId: APPOINTMENT,
+      status: 'scheduled',
+      occupiedStartsAt: line.startsAt,
+      occupiedEndsAt: line.endsAt,
+      processingCapacityPolicy: 'HOLD',
+      passiveWaitMinutes: 0,
+      processingPolicyVersion: 1,
+      priceMinor: 60000,
+      pricePolicyVersion: 1,
+    })),
   };
 }
 
@@ -438,6 +493,92 @@ try {
       idempotencyKey: request.headers['idempotency-key'] ?? null,
     });
 
+    if (request.method === 'GET' && url.pathname === '/api/public/business/salon-a/profile') {
+      return sendJson(response, 200, { profile: {
+        public_name: 'Salon A',
+        short_description: 'F14-05 üç yüzey kabul salonu',
+        long_description: null,
+        public_phone: '+905550001122',
+        public_email: 'salon-a@example.test',
+        public_website: null,
+        public_whatsapp: '+905550001122',
+        address_text: 'İstanbul',
+        show_work_hours: false,
+        cover_media_id: null,
+        work_hours: [],
+        media: [],
+        kvkk_notice_text: 'F14-05 test aydınlatma metni.',
+        kvkk_notice_url: null,
+        privacy_policy_url: null,
+        booking_terms_text: 'F14-05 test randevu koşulları.',
+        booking_terms_url: null,
+      } });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/public/business/salon-a/services-v2') {
+      return sendJson(response, 200, { services: [{
+        service_id: SERVICE,
+        name: 'Kesim',
+        category: 'Saç',
+        sort_order: 10,
+        duration_minutes: 30,
+        price_type: 'fixed',
+        price_min_minor: 60000,
+        price_max_minor: 60000,
+        currency: 'TRY',
+        price_policy_version: 1,
+      }] });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/public/business/salon-a/staff') {
+      assert.equal(url.searchParams.get('serviceId'), SERVICE, 'F14-05 public staff lookup used another service identity');
+      return sendJson(response, 200, { staff: [{ staff_id: STAFF, staff_name: 'Deniz' }] });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/public/business/salon-a/group-slots') {
+      assert.deepEqual(body.lines, [{ serviceId: SERVICE, staffId: null }], 'F14-05 public availability lost the canonical service request');
+      return sendJson(response, 200, { slots: [publicGroupSlot()] });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/public/business/salon-a/group-book') {
+      assert.equal(body.customerName, 'Ada Public', 'F14-05 public create changed the canonical customer name');
+      assert.equal(body.customerPhone, '05550001122', 'F14-05 public create changed the canonical customer phone');
+      assert.deepEqual(body.lines, [{ serviceId: SERVICE, staffId: null }], 'F14-05 public create lost the canonical service request');
+      assert.ok(request.headers['idempotency-key'], 'F14-05 public create omitted Idempotency-Key');
+      assert.equal(typeof body.managementToken, 'string');
+      assert.equal(typeof body.recoveryId, 'string');
+      const group = publicCreatedGroup(body.startsAt);
+      publicBookingCreated = true;
+      publicCreateRequest = {
+        groupId: group.groupId,
+        appointmentId: group.lines[0].appointmentId,
+        customerId: group.customerId,
+        idempotencyKey: request.headers['idempotency-key'],
+      };
+      return sendJson(response, 201, {
+        group,
+        appointmentId: APPOINTMENT,
+        notification: { channel: 'email', status: 'queued' },
+        management: { url: `/m#${body.managementToken}` },
+        recovery: { expiresAt: '2026-09-24T07:00:00.000Z' },
+      });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/public/business/salon-a') {
+      return sendJson(response, 200, {
+        business: {
+          name: 'Salon A',
+          slug: 'salon-a',
+          timezone: 'Europe/Istanbul',
+          local_date: '2026-09-21',
+          max_date: '2026-11-20',
+          step_minutes: 15,
+          min_notice_minutes: 60,
+          horizon_days: 60,
+        },
+        services: [],
+        bookingClock: {
+          serverNowEpochSeconds: Math.floor(Date.now() / 1000),
+          submitWindowSeconds: 300,
+        },
+      });
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/session') return sendJson(response, 200, session());
     if (request.method === 'GET' && url.pathname === '/api/csrf') return sendJson(response, 200, { csrfToken: CSRF });
     if (request.method === 'POST' && url.pathname === '/api/businesses/select') {
@@ -540,10 +681,67 @@ try {
   }, 'F13-04 Chrome did not expose a debugging port');
   const debugUrl = `http://127.0.0.1:${port}`;
 
+  const publicPage = await newPage(debugUrl, origin, '/r/salon-a', 390);
+  await waitFor(
+    () => publicPage.evaluate(`document.querySelectorAll('.public-service-choice').length === 1`),
+    'F14-05 public customer catalog did not load the canonical service',
+  );
+  await publicPage.evaluate(`document.querySelector('.public-service-choice').click()`);
+  await waitFor(
+    () => publicPage.evaluate(`document.querySelectorAll('.public-selected-line').length === 1`),
+    'F14-05 public customer service selection did not become a group plan',
+  );
+  await publicPage.evaluate(`[...document.querySelectorAll('button')].find((node) => node.textContent.includes('Birlikte uygun saatleri bul')).click()`);
+  await waitFor(
+    () => publicPage.evaluate(`Boolean(document.querySelector('.public-group-slot'))`),
+    'F14-05 public customer group availability did not load',
+  );
+  await publicPage.evaluate(`document.querySelector('.public-group-slot').click()`);
+  await waitFor(
+    () => publicPage.evaluate(`Boolean(document.querySelector('input[name="customerName"]'))`),
+    'F14-05 public customer contact form did not open',
+  );
+  await publicPage.evaluate(`(() => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    const name = document.querySelector('input[name="customerName"]');
+    const phone = document.querySelector('input[name="customerPhone"]');
+    setter.call(name, 'Ada Public');
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    setter.call(phone, '05550001122');
+    phone.dispatchEvent(new Event('input', { bubbles: true }));
+    [...document.querySelectorAll('button')].find((node) => node.textContent.includes('Planı onayla')).click();
+  })()`);
+  await waitFor(
+    () => publicPage.evaluate(`document.body.innerText.includes('RANDEVU OLUŞTURULDU')`),
+    'F14-05 public customer booking did not produce a committed confirmation',
+  );
+  const publicResult = await publicPage.evaluate(`(() => ({
+    text: document.body.innerText,
+    overflow: document.documentElement.scrollWidth - innerWidth,
+    manage: document.querySelector('a.public-primary')?.getAttribute('href') ?? null,
+  }))()`);
+  assert.equal(publicResult.overflow <= 1, true, 'F14-05 public customer booking overflowed the 390px viewport');
+  assert.match(publicResult.text, /Ada Public|Salon A/);
+  assert.match(publicResult.text, /Kesim/);
+  assert.match(publicResult.manage ?? '', /^\/m#[A-Za-z0-9_-]{43}$/);
+  assert.equal(publicBookingCreated, true, 'F14-05 fixture never observed the public create');
+  assert.deepEqual(
+    {
+      groupId: publicCreateRequest?.groupId,
+      appointmentId: publicCreateRequest?.appointmentId,
+      customerId: publicCreateRequest?.customerId,
+    },
+    { groupId: GROUP, appointmentId: APPOINTMENT, customerId: CUSTOMER },
+    'F14-05 public create did not bind the canonical private identities',
+  );
+  assert.ok(publicCreateRequest?.idempotencyKey, 'F14-05 public create did not retain an idempotency identity');
+  publicPage.close();
+  console.log('F14-05 public customer create bound canonical group/appointment/customer identities.');
+
   const page = await newPage(debugUrl, origin, '/', 390);
   await waitFor(
     () => page.evaluate(`location.pathname === '/app' && document.body.innerText.includes('OPERASYON TAKVİMİ') && document.body.innerText.includes('Ada Public')`),
-    'root compatibility did not land on mobile calendar workspace',
+    'F14-05 public booking did not appear in the canonical private Panel calendar',
   );
 
   const mobile = await page.evaluate(`(() => ({
