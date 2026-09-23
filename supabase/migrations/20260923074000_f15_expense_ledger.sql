@@ -531,11 +531,11 @@ begin
   end if;
 
   insert into public.expense_events(
-    business_id,event_type,source_expense_event_id,category,description,
+    business_id,event_type,source_expense_event_id,correction_of_event_id,category,description,
     amount_minor,currency,payment_method,occurred_at,business_date,timezone_snapshot,
     reason,actor_membership_id
   ) values (
-    p_business_id,'reversal',v_source.id,v_source.category,v_source.description,
+    p_business_id,'reversal',v_source.id,null,v_source.category,v_source.description,
     v_source.amount_minor,v_source.currency,v_source.payment_method,v_correction_occurred_at,p_correction_occurred_local::date,v_timezone,
     v_reason,v_actor.id
   )
