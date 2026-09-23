@@ -375,4 +375,85 @@ end
 $$;
 reset role;
 
+
+-- H19 blind discovery #4 frozen D2 x D4 prospective probe.
+-- Current service duration may change; an already-created appointment keeps
+-- the authoritative timing captured when it was created.
+insert into public.services(
+  id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,
+  price_minor,currency,active,updated_at
+) values (
+  'b8310000-0000-4000-8000-000000000001',
+  'b8100000-0000-4000-8000-000000000002',
+  'H19 D2D4 Service',60,0,0,10000,'TRY',true,now() - interval '1 second'
+);
+
+insert into public.customers(id,business_id,name,phone,email,created_by)
+values (
+  'b8710000-0000-4000-8000-000000000001',
+  'b8100000-0000-4000-8000-000000000002',
+  'H19 D2D4 Customer','5559090909','h19-d2d4@example.invalid',
+  'b8000000-0000-4000-8000-000000000004'
+);
+
+insert into public.appointments(
+  id,business_id,customer_id,service_id,staff_id,status,
+  starts_at,ends_at,occupied_starts_at,occupied_ends_at,timezone,
+  customer_name_snapshot,customer_phone_snapshot,customer_email_snapshot,
+  service_name_snapshot,staff_name_snapshot,duration_minutes_snapshot,
+  buffer_before_minutes_snapshot,buffer_after_minutes_snapshot,
+  price_minor_snapshot,currency_snapshot,created_by
+) values (
+  'b8810000-0000-4000-8000-000000000001',
+  'b8100000-0000-4000-8000-000000000002',
+  'b8710000-0000-4000-8000-000000000001',
+  'b8310000-0000-4000-8000-000000000001',
+  'b8400000-0000-4000-8000-000000000002',
+  'confirmed',
+  '2026-10-06T10:00:00+03','2026-10-06T11:00:00+03',
+  '2026-10-06T10:00:00+03','2026-10-06T11:00:00+03',
+  'Europe/Istanbul',
+  'H19 D2D4 Customer','5559090909','h19-d2d4@example.invalid',
+  'H19 D2D4 Service','B Staff',60,0,0,10000,'TRY',
+  'b8000000-0000-4000-8000-000000000004'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','b8000000-0000-4000-8000-000000000004',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $h19d2d4$
+declare
+  v_old timestamptz;
+  v_service public.services;
+  v_start timestamptz;
+  v_end timestamptz;
+begin
+  select updated_at into v_old
+  from public.services
+  where id='b8310000-0000-4000-8000-000000000001';
+
+  select * into v_service
+  from public.update_service_guarded(
+    'b8100000-0000-4000-8000-000000000002',
+    'b8310000-0000-4000-8000-000000000001',
+    v_old,
+    '{"durationMinutes":90}'::jsonb
+  );
+
+  if v_service.duration_minutes <> 90 then
+    raise exception 'H19 D2xD4 probe setup failed: service duration did not update';
+  end if;
+
+  select starts_at,ends_at into v_start,v_end
+  from public.appointments
+  where id='b8810000-0000-4000-8000-000000000001';
+
+  if v_start <> '2026-10-06T10:00:00+03'::timestamptz
+     or v_end <> '2026-10-06T11:00:00+03'::timestamptz then
+    raise exception 'H19 D2xD4 appointment timing snapshot changed: start %, end %',v_start,v_end;
+  end if;
+end
+$h19d2d4$;
+reset role;
+
 rollback;
