@@ -106,7 +106,7 @@ $$;
 -- The synthetic row lock above is released when its statement transaction
 -- completes. Wait for both asynchronous writers, tolerating one expected
 -- STALE_WRITE/negative transaction failure.
-do $
+do $drain$
 declare
   v_done_a boolean := false;
   v_done_b boolean := false;
@@ -144,9 +144,9 @@ begin
     raise exception 'F15 timed out waiting for concurrent stock writers';
   end if;
 end
-$;
+$drain$;
 
-do $$
+do $
 declare
   v_product uuid := current_setting('f1501.race_product')::uuid;
   v_balance bigint;
