@@ -498,7 +498,6 @@ jobs:
           gh api "repos/${REPOSITORY}/actions/runs?per_page=100"             > .audit-evidence/workflow-runs.json
           gh api "repos/${REPOSITORY}/pulls?state=all&sort=updated&direction=desc&per_page=100"             > .audit-evidence/pulls.json
           gh api "repos/${REPOSITORY}/issues?state=all&since=${since}&per_page=100"             > .audit-evidence/issues.json
-          gh api --paginate "repos/${REPOSITORY}/issues/65/comments?per_page=100"             | jq -s 'add | .[-100:]' > .audit-evidence/coordination-comments.json
 
       - name: Run Gemini Development Telemetry Review
         id: gemini
