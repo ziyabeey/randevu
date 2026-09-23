@@ -366,8 +366,7 @@ begin
 
   select m.id, m.active into v_membership_id, v_existing_active
   from public.memberships m
-  where m.business_id = v_invitation.business_id
-    and m.user_id = v_user_id
+  where m.user_id = v_user_id
   for update;
 
   if v_membership_id is not null and v_existing_active then
