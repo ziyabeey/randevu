@@ -222,6 +222,41 @@ begin
 end
 $f1403pay$;
 
+-- H19 blind D1 x D2 prospective probe: a later valid payment must not
+-- rewrite the frozen result of the earlier idempotent command.
+do $h19_f14_d1d2$
+declare
+  v_replay jsonb;
+  v_event_count integer;
+begin
+  v_replay := public.record_ticket_payment_guarded(
+    'f1610000-0000-4000-8000-000000000001',
+    current_setting('f1403.main_ticket')::uuid,
+    'cash',
+    20000,
+    'f1403-cash-0001',
+    repeat('3',64)
+  );
+
+  if v_replay->>'paymentStatus' <> 'partial'
+     or (v_replay->>'paidMinor')::int <> 20000
+     or (v_replay->>'balanceMinor')::int <> 40000
+     or jsonb_array_length(v_replay->'paymentEvents') <> 1 then
+    raise exception 'H19 D1xD2 payment replay snapshot drifted after later payment: %', v_replay;
+  end if;
+
+  select count(*)::integer
+  into v_event_count
+  from public.ticket_payment_events e
+  where e.business_id='f1610000-0000-4000-8000-000000000001'
+    and e.ticket_id=current_setting('f1403.main_ticket')::uuid;
+
+  if v_event_count <> 2 then
+    raise exception 'H19 D1xD2 payment replay changed durable event count: %', v_event_count;
+  end if;
+end
+$h19_f14_d1d2$;
+
 -- Fully paid ticket closes. Refund/payment can continue append-only after close, without reopen.
 do $f1403closed$
 declare
