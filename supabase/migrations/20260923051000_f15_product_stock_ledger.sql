@@ -151,6 +151,50 @@ create table public.product_commands (
     )
 );
 
+create or replace function public.f15_guard_product_command_update()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  if old.business_id is distinct from new.business_id
+     or old.actor_membership_id is distinct from new.actor_membership_id
+     or old.command is distinct from new.command
+     or old.idempotency_key is distinct from new.idempotency_key
+     or old.request_hash is distinct from new.request_hash
+     or old.created_at is distinct from new.created_at then
+    raise exception 'PRODUCT_COMMAND_IMMUTABLE';
+  end if;
+
+  if old.product_id is null and old.result_payload is null
+     and new.product_id is not null and new.result_payload is not null then
+    return new;
+  end if;
+
+  raise exception 'PRODUCT_COMMAND_IMMUTABLE';
+end
+$;
+
+create or replace function public.f15_block_product_command_delete()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  raise exception 'PRODUCT_COMMAND_DELETE_FORBIDDEN';
+end
+$;
+
+drop trigger if exists product_commands_f15_update_guard on public.product_commands;
+create trigger product_commands_f15_update_guard
+before update on public.product_commands
+for each row execute function public.f15_guard_product_command_update();
+
+drop trigger if exists product_commands_f15_delete_guard on public.product_commands;
+create trigger product_commands_f15_delete_guard
+before delete on public.product_commands
+for each row execute function public.f15_block_product_command_delete();
+
 alter table public.products enable row level security;
 alter table public.product_stock_movements enable row level security;
 alter table public.product_commands enable row level security;
@@ -860,6 +904,8 @@ begin
 end
 $$;
 
+revoke all on function public.f15_guard_product_command_update() from public, anon, authenticated;
+revoke all on function public.f15_block_product_command_delete() from public, anon, authenticated;
 revoke all on function public.f15_reject_stock_movement_mutation() from public, anon, authenticated;
 revoke all on function public.f15_reject_product_delete() from public, anon, authenticated;
 revoke all on function public.f15_inventory_actor(uuid) from public, anon, authenticated;
