@@ -763,7 +763,7 @@ try {
   const page = await newPage(debugUrl, origin, '/', 390);
   await waitFor(
     () => page.evaluate(`location.pathname === '/app' && document.body.innerText.includes('OPERASYON TAKVİMİ') && document.body.innerText.includes('Ada Public')`),
-    'F14-05 public booking did not appear in the canonical private Panel calendar',
+    'root compatibility did not land on mobile calendar workspace',
   );
 
   const mobile = await page.evaluate(`(() => ({
