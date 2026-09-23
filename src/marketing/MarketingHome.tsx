@@ -8,6 +8,7 @@ import "./marketing-polish.css";
 import "./mobile-nav.css";
 import "./final-cta.css";
 import "./skip-link.css";
+import "./marketing-aesthetic.css";
 
 import { MarketingHero } from "./MarketingHero";
 import { ProductStorySections, TrustSections } from "./ProductStorySections";
