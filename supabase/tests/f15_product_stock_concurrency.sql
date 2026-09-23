@@ -176,3 +176,21 @@ exception when others then
   raise;
 end
 $race$;
+
+-- Keep this committed dblink race self-contained. Later phases deliberately
+-- reuse the F14 fixture IDs to replay accepted money-authority proofs after
+-- forward migrations; persistent F15-01 race rows must not poison those checks.
+delete from public.product_commands
+where business_id='f1610000-0000-4000-8000-000000000001';
+
+delete from public.product_stock_movements
+where business_id='f1610000-0000-4000-8000-000000000001';
+
+delete from public.products
+where business_id='f1610000-0000-4000-8000-000000000001';
+
+delete from public.memberships
+where business_id='f1610000-0000-4000-8000-000000000001';
+
+delete from public.businesses
+where id='f1610000-0000-4000-8000-000000000001';
