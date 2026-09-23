@@ -29,7 +29,11 @@ test('MKT-01 frame sequence maps normalized scroll directly to frame index and f
   assert.match(hook, /new TransformationFrameLoader\(variant\)/);
   assert.match(hook, /getTransformationFrameIndex\(mediaProgress\)/);
   assert.match(hook, /rootMargin: "75% 0px 75% 0px"/);
-  assert.match(hook, /resizeObserver\.observe\(document\.body\)/);
+  assert.match(hook, /const scheduleScroll = \(\) =>/);
+  assert.match(hook, /scrollFrame = window\.requestAnimationFrame/);
+  assert.match(hook, /window\.addEventListener\("scroll", scheduleScroll/);
+  assert.match(hook, /resizeObserver\?\.observe\(document\.body\)/);
+  assert.match(hook, /visualViewport\?\.addEventListener\("resize"/);
   assert.match(hook, /document\.fonts\?\.ready\.then/);
   assert.match(hook, /if \(!section \|\| !canvas \|\| disabled\) return undefined/);
   assert.match(hook, /setFailed\(true\)/);
