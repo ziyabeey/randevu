@@ -11,6 +11,31 @@ type ExpenseEvent = {
 };
 type PageInfo={limit:number;hasMore:boolean;nextCursor:string|null};
 type ExpenseList={events:ExpenseEvent[];page:PageInfo};
+type PendingExpenseWrite={
+  businessId:string;action:string;idempotencyKey:string;path:string;method:string;body:string|null;
+};
+const PENDING_EXPENSE_KEY='randevu:expenses:pending-write:v1';
+function samePending(left:PendingExpenseWrite|null,right:PendingExpenseWrite){
+  return Boolean(left&&left.businessId===right.businessId&&left.action===right.action
+    &&left.idempotencyKey===right.idempotencyKey&&left.path===right.path
+    &&left.method===right.method&&left.body===right.body);
+}
+function readPendingExpense():PendingExpenseWrite|null{
+  if(typeof window==='undefined')return null;
+  try{
+    const raw=window.sessionStorage.getItem(PENDING_EXPENSE_KEY);if(!raw)return null;
+    const v=JSON.parse(raw) as Partial<PendingExpenseWrite>;
+    if(typeof v.businessId!=='string'||typeof v.action!=='string'||typeof v.idempotencyKey!=='string'
+      ||typeof v.path!=='string'||typeof v.method!=='string'||(v.body!==null&&typeof v.body!=='string')
+      ||!v.businessId||!v.action||v.idempotencyKey.length<8||v.idempotencyKey.length>128
+      ||!v.path.startsWith('/api/expenses')||v.method!=='POST'){
+      window.sessionStorage.removeItem(PENDING_EXPENSE_KEY);return null;
+    }
+    return v as PendingExpenseWrite;
+  }catch{return null;}
+}
+function writePendingExpense(v:PendingExpenseWrite){try{window.sessionStorage.setItem(PENDING_EXPENSE_KEY,JSON.stringify(v));}catch{}}
+function clearPendingExpense(v:PendingExpenseWrite){try{const c=readPendingExpense();if(!c||samePending(c,v))window.sessionStorage.removeItem(PENDING_EXPENSE_KEY);}catch{}}
 
 function money(minor:number,currency:string){return new Intl.NumberFormat('tr-TR',{style:'currency',currency}).format(minor/100);}
 function parseMoneyMinor(value:FormDataEntryValue|null){
@@ -43,6 +68,7 @@ export default function ExpensesPage(){
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(true);
   const [notice,setNotice]=useState('');
+  const [pendingWrite,setPendingWrite]=useState<PendingExpenseWrite|null>(()=>readPendingExpense());
   const keys=useRef(new Map<string,string>());
   const generation=useRef(0);
 
@@ -61,19 +87,49 @@ export default function ExpensesPage(){
     }finally{if(g===generation.current)setLoading(false);}
   },[activeBusinessId]);
 
-  useEffect(()=>{keys.current.clear();setEvents([]);setPage(null);setNotice('');void load();},[activeBusinessId,scopeEpoch,load]);
+  useEffect(()=>{keys.current.clear();setPendingWrite(readPendingExpense());setEvents([]);setPage(null);setNotice('');void load();},[activeBusinessId,scopeEpoch,load]);
 
-  async function mutate(action:string,path:string,body:Record<string,unknown>){
+  async function mutate(action:string,path:string,payload:Record<string,unknown>){
+    const method='POST';
+    const body=JSON.stringify(payload);
+    const matches=Boolean(pendingWrite&&pendingWrite.businessId===activeBusinessId&&pendingWrite.action===action
+      &&pendingWrite.path===path&&pendingWrite.method===method&&pendingWrite.body===body);
+    if(pendingWrite&&!matches){
+      setNotice(pendingWrite.businessId===activeBusinessId
+        ?'Önce sonucu belirsiz masraf işlemini doğrulayın. Yeni mali işlem başlatılmadı.'
+        :'Başka işletmede sonucu belirsiz masraf işlemi var. Önce o işletmede doğrulayın.');
+      return false;
+    }
+
     setBusy(true);setNotice('');
-    const key=keys.current.get(action)??crypto.randomUUID(); keys.current.set(action,key);
+    const key=matches?pendingWrite!.idempotencyKey:(keys.current.get(action)??crypto.randomUUID());
+    keys.current.set(action,key);
+    const identity:PendingExpenseWrite={businessId:activeBusinessId,action,idempotencyKey:key,path,method,body};
     try{
-      await api(path,{method:'POST',headers:{'Idempotency-Key':key},body:JSON.stringify(body)});
-      keys.current.delete(action); await load(); return true;
+      await api(path,{method,headers:{'Idempotency-Key':key},body});
+      keys.current.delete(action);
+      clearPendingExpense(identity);
+      setPendingWrite(current=>samePending(current,identity)?null:current);
+      await load(); return true;
     }catch(error){
-      if(!ambiguous(error))keys.current.delete(action);
-      setNotice(ambiguous(error)?'İşlemin sonucu doğrulanamadı. Aynı formu tekrar gönderirseniz aynı işlem anahtarı kullanılacak.':error instanceof Error?error.message:'Masraf işlemi tamamlanamadı.');
+      if(ambiguous(error)){
+        writePendingExpense(identity);setPendingWrite(identity);
+        setNotice('Masraf işleminin sonucu belirsiz. Kayıtlı istek doğrulanana kadar başka mali işlem başlatılmayacak.');
+      }else{
+        keys.current.delete(action);clearPendingExpense(identity);
+        setPendingWrite(current=>samePending(current,identity)?null:current);
+        setNotice(error instanceof Error?error.message:'Masraf işlemi tamamlanamadı.');
+      }
       return false;
     }finally{setBusy(false);}
+  }
+
+  async function retryPending(){
+    if(!pendingWrite)return;
+    if(pendingWrite.businessId!==activeBusinessId){setNotice('Belirsiz işlemi doğrulamak için önce işlemin başladığı işletmeye dönün.');return;}
+    let payload:Record<string,unknown>;
+    try{payload=pendingWrite.body?JSON.parse(pendingWrite.body):{};}catch{setNotice('Kayıtlı masraf isteği bozuk; yeni işlem başlatılmadı.');return;}
+    if(await mutate(pendingWrite.action,pendingWrite.path,payload))setNotice('Belirsiz masraf işlemi sunucuda doğrulandı.');
   }
 
   async function createExpense(event:FormEvent<HTMLFormElement>){
@@ -113,6 +169,11 @@ export default function ExpensesPage(){
   return <main className="expenses-shell">
     <header className="expenses-hero"><div><p className="expenses-eyebrow">MASRAFLAR</p><h1>Gider kayıtları</h1><p>Geçmiş mali kayıtlar silinmez; düzeltmeler yeni hareket olarak eklenir.</p></div></header>
     {notice&&<div className="expenses-notice" role="status">{notice}</div>}
+    {pendingWrite&&<div className="expenses-notice" role="alert"><strong>Sonucu belirsiz masraf işlemi korunuyor.</strong>{' '}
+      {pendingWrite.businessId===activeBusinessId
+        ?<button disabled={busy} onClick={()=>void retryPending()}>Kayıtlı isteği doğrula</button>
+        :<span>İşlemin başladığı işletmeye dönün.</span>}
+    </div>}
     <section className="expenses-grid">
       <article className="expenses-card">
         <h2>Yeni masraf</h2>
