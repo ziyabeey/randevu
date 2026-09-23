@@ -6,11 +6,11 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
-test('F15-02 activates product sale without pulling package or expense scope forward', () => {
+test('F15-02 activates product sale while preserving accepted expense scope and keeping package sale closed', () => {
   const kolay=readFileSync(path.join(root,'src/kolayapp/KolayAppSurface.tsx'),'utf8');
   assert.match(kolay,/AppLink href="\/app\/mobile\/tickets\?newProductSale=1"><strong>Yeni ürün satışı<\/strong>/);
   assert.match(kolay,/DisabledAction title="Yeni paket satışı"/);
-  assert.match(kolay,/DisabledAction title="Yeni masraf"/);
+  assert.match(kolay,/AppLink href="\/app\/expenses"><strong>Yeni masraf<\/strong>/);
 });
 
 test('F15-02 keeps financial refund and physical stock return explicit', () => {
