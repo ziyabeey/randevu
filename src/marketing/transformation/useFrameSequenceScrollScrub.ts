@@ -6,14 +6,13 @@ import {
   drawTransformationFrameCover,
   getTransformationFrameFocusX,
   getTransformationFrameIndex,
-  getTransformationFrameProgress,
   type TransformationFrameVariant,
 } from "./frameSequence";
 import {
   clamp01,
   easeTransformationScroll,
-  getTransformationPhase,
-  getTransformationPhaseProgress,
+  getTransformationScrollPhase,
+  getTransformationScrollPhaseProgress,
   type TransformationPhase,
 } from "./timeline";
 
@@ -102,7 +101,7 @@ export function useFrameSequenceScrollScrub(
       scrollRange = Math.max(1, section.offsetHeight - window.innerHeight);
     };
 
-    const getProgress = () => easeTransformationScroll(clamp01((window.scrollY - sectionTop) / scrollRange));
+    const getScrollProgress = () => clamp01((window.scrollY - sectionTop) / scrollRange);
     const isSynchronouslyNearSection = () => {
       const rect = section.getBoundingClientRect();
       const margin = window.innerHeight * 0.75;
@@ -116,13 +115,13 @@ export function useFrameSequenceScrollScrub(
       )
     );
 
-    const writePhase = (index: number) => {
-      const normalized = getTransformationFrameProgress(index);
-      const nextPhase = getTransformationPhase(normalized);
-      const phaseProgress = getTransformationPhaseProgress(normalized, nextPhase);
+    const writeScrollState = (scrollProgress: number, mediaProgress: number) => {
+      const nextPhase = getTransformationScrollPhase(scrollProgress);
+      const phaseProgress = getTransformationScrollPhaseProgress(scrollProgress, nextPhase);
 
       section.dataset.phase = nextPhase;
-      section.style.setProperty("--mkt-progress", normalized.toFixed(4));
+      section.style.setProperty("--mkt-progress", mediaProgress.toFixed(4));
+      section.style.setProperty("--mkt-scroll-progress", scrollProgress.toFixed(4));
       section.style.setProperty("--mkt-phase-progress", phaseProgress.toFixed(4));
 
       if (nextPhase !== phaseRef.current) {
@@ -178,7 +177,6 @@ export function useFrameSequenceScrollScrub(
           }
 
           drawnIndex = index;
-          writePhase(index);
           if (firstDrawMs === null && firstNearAt !== null) {
             firstDrawMs = performance.now() - firstNearAt;
           }
@@ -193,8 +191,12 @@ export function useFrameSequenceScrollScrub(
     };
 
     const schedule = () => {
-      const nextIndex = getTransformationFrameIndex(getProgress());
+      const scrollProgress = getScrollProgress();
+      const mediaProgress = easeTransformationScroll(scrollProgress);
+      const nextIndex = getTransformationFrameIndex(mediaProgress);
       targetIndex = nextIndex;
+      writeScrollState(scrollProgress, mediaProgress);
+
       const near = observerNear || isSynchronouslyNearSection();
       if (!near || sequenceFailed) return;
 
