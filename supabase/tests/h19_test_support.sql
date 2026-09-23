@@ -131,3 +131,128 @@ begin
   end;
 end
 $$;
+
+
+-- Structured result registry for the single H19 Integrity Gate.
+-- Scenario files stay focused on behavior; the gate owns registration/reporting.
+create temporary table if not exists h19_gate_results (
+  scenario_id text primary key,
+  domain text not null,
+  axis_a text not null check (axis_a ~ '^D[0-5]$'),
+  axis_b text not null check (axis_b ~ '^D[0-5]$'),
+  baseline_ci integer not null check (baseline_ci > 0),
+  probe_ci integer not null check (probe_ci > 0),
+  clean_ci integer not null check (clean_ci > 0),
+  status text not null default 'pending' check (status in ('pending','pass'))
+) on commit preserve rows;
+
+truncate table h19_gate_results;
+
+create or replace function pg_temp.h19_expect(
+  p_scenario_id text,
+  p_domain text,
+  p_axis_a text,
+  p_axis_b text,
+  p_baseline_ci integer,
+  p_probe_ci integer,
+  p_clean_ci integer
+)
+returns void
+language plpgsql
+as $$
+begin
+  if p_scenario_id is null or btrim(p_scenario_id)=''
+     or p_domain is null or btrim(p_domain)=''
+     or p_axis_a !~ '^D[0-5]$'
+     or p_axis_b !~ '^D[0-5]$'
+     or p_axis_a=p_axis_b
+     or p_baseline_ci is null or p_baseline_ci<1
+     or p_probe_ci is null or p_probe_ci<1
+     or p_clean_ci is null or p_clean_ci<1 then
+    raise exception 'H19_INVALID_MANIFEST_ENTRY';
+  end if;
+
+  insert into pg_temp.h19_gate_results(
+    scenario_id,domain,axis_a,axis_b,baseline_ci,probe_ci,clean_ci,status
+  ) values (
+    p_scenario_id,p_domain,p_axis_a,p_axis_b,
+    p_baseline_ci,p_probe_ci,p_clean_ci,'pending'
+  );
+exception when unique_violation then
+  raise exception 'H19_DUPLICATE_SCENARIO_ID: %',p_scenario_id;
+end
+$$;
+
+create or replace function pg_temp.h19_pass(p_scenario_id text)
+returns void
+language plpgsql
+as $$
+begin
+  update pg_temp.h19_gate_results
+  set status='pass'
+  where scenario_id=p_scenario_id and status='pending';
+
+  if not found then
+    raise exception 'H19_UNKNOWN_OR_DUPLICATE_PASS: %',p_scenario_id;
+  end if;
+end
+$$;
+
+create or replace function pg_temp.h19_assert_complete(p_expected integer)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v_total integer;
+  v_passed integer;
+  v_pending text;
+  v_summary jsonb;
+begin
+  select count(*)::integer,
+         count(*) filter (where status='pass')::integer
+  into v_total,v_passed
+  from pg_temp.h19_gate_results;
+
+  select string_agg(scenario_id,', ' order by scenario_id)
+  into v_pending
+  from pg_temp.h19_gate_results
+  where status<>'pass';
+
+  if p_expected is null or p_expected<1 or v_total<>p_expected then
+    raise exception
+      'H19_MANIFEST_COUNT_MISMATCH expected=% registered=%',
+      p_expected,v_total;
+  end if;
+
+  if v_passed<>p_expected then
+    raise exception
+      'H19_INTEGRITY_GATE_INCOMPLETE passed=% expected=% pending=%',
+      v_passed,p_expected,coalesce(v_pending,'<none>');
+  end if;
+
+  select jsonb_build_object(
+    'passed',v_passed,
+    'expected',p_expected,
+    'scenarios',
+      jsonb_agg(
+        jsonb_build_object(
+          'id',scenario_id,
+          'domain',domain,
+          'axes',jsonb_build_array(axis_a,axis_b),
+          'evidence',jsonb_build_object(
+            'baselineCi',baseline_ci,
+            'probeCi',probe_ci,
+            'cleanCi',clean_ci
+          ),
+          'status',status
+        )
+        order by scenario_id
+      )
+  )
+  into v_summary
+  from pg_temp.h19_gate_results;
+
+  raise notice 'H19 INTEGRITY GATE SUMMARY: %',v_summary::text;
+  return v_summary;
+end
+$$;
