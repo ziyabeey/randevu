@@ -832,12 +832,12 @@ try {
   assert.equal(parsedManifest.display, 'standalone');
   assert.ok(parsedManifest.icons.some((icon) => icon.sizes === '192x192'));
   assert.ok(parsedManifest.icons.some((icon) => icon.sizes === '512x512'));
-  const installability = await page.send('Page.getInstallabilityErrors');
-  assert.deepEqual(
-    installability.installabilityErrors ?? [],
-    [],
-    `F14-05 Chrome reported installability errors: ${JSON.stringify(installability.installabilityErrors ?? [])}`,
-  );
+  await waitFor(async () => {
+    const installability = await page.send('Page.getInstallabilityErrors');
+    const errors = installability.installabilityErrors ?? [];
+    if (errors.length) throw new Error(JSON.stringify(errors));
+    return installability;
+  }, 'F14-05 Chrome installability errors did not clear');
 
   const pwaRuntime = await page.evaluate(`(async () => ({
     secure: window.isSecureContext,
