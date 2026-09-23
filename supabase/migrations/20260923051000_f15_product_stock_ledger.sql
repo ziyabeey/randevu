@@ -651,10 +651,11 @@ begin
   );
   if v_replay is not null then return v_replay; end if;
 
+  -- EXP-H19 blind D2xD5 variation: read the price/policy snapshot without
+  -- holding product version authority across the subsequent update.
   select * into v_product
   from public.products p
-  where p.business_id = p_business_id and p.id = p_product_id
-  for update;
+  where p.business_id = p_business_id and p.id = p_product_id;
 
   if v_product.id is null then raise exception 'PRODUCT_NOT_FOUND'; end if;
   if not v_product.active then raise exception 'PRODUCT_ARCHIVED'; end if;
