@@ -440,11 +440,18 @@ test('MKT-01 desktop preview preserves nav, layout, reduced motion, and skip-lin
         window.dispatchEvent(new Event('scroll'));
         await settle();
         const sticky = document.querySelector('.mkt-booking-sticky');
+        const copy = document.querySelector('.mkt-booking-copy');
+        const phoneBar = document.querySelector('.mkt-booking-phone-bar');
+        const phoneRect = phone.getBoundingClientRect();
         return {
           requested: progress,
           progress: Number(section.dataset.bookingProgress ?? '-1'),
           phoneTransform: getComputedStyle(phone).transform,
           phoneOpacity: Number(getComputedStyle(phone).opacity),
+          phoneCenterX: phoneRect.left + (phoneRect.width / 2),
+          phoneWidth: phoneRect.width,
+          phoneBarOpacity: phoneBar ? Number(getComputedStyle(phoneBar).opacity) : -1,
+          copyOpacity: copy ? Number(getComputedStyle(copy).opacity) : -1,
           proofTransform: getComputedStyle(proof).transform,
           finalOpacity: Number(getComputedStyle(finalStep).opacity),
           overlayOpacity: sticky ? Number(getComputedStyle(sticky, '::before').opacity) : -1,
@@ -465,9 +472,19 @@ test('MKT-01 desktop preview preserves nav, layout, reduced motion, and skip-lin
         `Booking progress drifted: requested ${beat.requested}, got ${beat.progress}`);
     }
     assert.notEqual(bookingBeats.enter.phoneTransform, bookingBeats.flow.phoneTransform,
-      'Phone did not move from its entry pose');
+      'Phone did not settle from its entry pose');
     assert.ok(bookingBeats.flow.finalOpacity > bookingBeats.enter.finalOpacity,
       'Booking steps did not reveal as scroll advanced');
+    assert.ok(bookingBeats.flow.phoneCenterX > 800,
+      `Phone should hold on the right while copy is readable, got center ${bookingBeats.flow.phoneCenterX}`);
+    assert.ok(bookingBeats.zoom.phoneCenterX < bookingBeats.flow.phoneCenterX - 40,
+      `Phone did not travel toward center for screen focus: flow ${bookingBeats.flow.phoneCenterX}, zoom ${bookingBeats.zoom.phoneCenterX}`);
+    assert.ok(bookingBeats.zoom.phoneWidth > bookingBeats.flow.phoneWidth * 1.5,
+      `Phone zoom is too weak: flow ${bookingBeats.flow.phoneWidth}, zoom ${bookingBeats.zoom.phoneWidth}`);
+    assert.ok(bookingBeats.zoom.copyOpacity < bookingBeats.flow.copyOpacity,
+      'Copy did not yield to the focused phone screen');
+    assert.ok(bookingBeats.zoom.phoneBarOpacity < bookingBeats.flow.phoneBarOpacity,
+      'Phone chrome did not recede during the screen-focus beat');
     assert.notEqual(bookingBeats.flow.proofTransform, bookingBeats.zoom.proofTransform,
       'Phone screen did not refocus during the zoom beat');
     assert.ok(bookingBeats.exit.overlayOpacity > 0.65,
