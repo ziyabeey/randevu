@@ -311,12 +311,12 @@ begin
   -- schedule/catalog authority to the final durable state. Acquire every F10-04
   -- advisory family before row locks so guarded writes that later take FK key
   -- shares cannot form a row-lock/advisory-lock inversion with this trigger.
+  -- H19 D4xD5 Phase 1 experimental variant:
+  -- narrow business-hours authority acquisition to the row that fired this
+  -- deferred check instead of every active day represented by the group.
+  -- No H19 probe is added in this phase.
   for v_weekday in
-    select distinct extract(dow from (a.starts_at at time zone v_timezone)::date)::smallint
-    from public.appointments a
-    where a.business_id=new.business_id and a.group_id=new.group_id
-      and a.status in ('scheduled','confirmed')
-    order by 1
+    select extract(dow from (new.starts_at at time zone v_timezone)::date)::smallint
   loop
     perform pg_advisory_xact_lock(hashtextextended(
       'f10-04:business-hours:'||new.business_id::text||':'||v_weekday::text,0
