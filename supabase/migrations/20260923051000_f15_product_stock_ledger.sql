@@ -733,7 +733,8 @@ begin
   if p_kind not in ('receipt'::public.stock_movement_kind, 'adjustment'::public.stock_movement_kind) then
     raise exception 'INVALID_STOCK_KIND';
   end if;
-  if p_quantity_delta is null or p_quantity_delta = 0 or abs(p_quantity_delta) > 1000000000 then
+  if p_quantity_delta is null or p_quantity_delta = 0
+     or p_quantity_delta < -1000000000 or p_quantity_delta > 1000000000 then
     raise exception 'INVALID_STOCK_QUANTITY';
   end if;
   if p_kind = 'receipt' and p_quantity_delta < 1 then raise exception 'INVALID_STOCK_QUANTITY'; end if;
