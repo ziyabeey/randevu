@@ -247,6 +247,34 @@ begin
 end
 $immutable$;
 
+do $command_immutable$
+declare
+  v_update_blocked boolean := false;
+  v_delete_blocked boolean := false;
+begin
+  begin
+    update public.product_commands
+    set request_hash=repeat('9',64)
+    where business_id='f1510000-0000-4000-8000-000000000001'
+      and command='create_product'
+      and idempotency_key='f1501-create-product-0001';
+  exception when others then
+    if position('PRODUCT_COMMAND_IMMUTABLE' in sqlerrm)>0 then v_update_blocked:=true; else raise; end if;
+  end;
+  if not v_update_blocked then raise exception 'F15-01 product command UPDATE was allowed'; end if;
+
+  begin
+    delete from public.product_commands
+    where business_id='f1510000-0000-4000-8000-000000000001'
+      and command='create_product'
+      and idempotency_key='f1501-create-product-0001';
+  exception when others then
+    if position('PRODUCT_COMMAND_DELETE_FORBIDDEN' in sqlerrm)>0 then v_delete_blocked:=true; else raise; end if;
+  end;
+  if not v_delete_blocked then raise exception 'F15-01 product command DELETE was allowed'; end if;
+end
+$command_immutable$;
+
 -- Create a real product in business B so cross-tenant negatives use an existing foreign row.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f1500000-0000-4000-8000-000000000003',true);
