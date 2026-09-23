@@ -1771,7 +1771,7 @@ try {
   await page.evaluate(`(() => {
     const form=document.querySelector('.ticket-product-return');
     const payment=form.querySelector('select[name="sourcePaymentEventId"]');
-    payment.value='f34e0000-0000-4000-8000-000000000001';
+    payment.value='${PRODUCT_PAYMENT}';
     payment.dispatchEvent(new Event('change',{bubbles:true}));
     const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
     const qty=form.querySelector('input[name="quantity"]');
@@ -1791,7 +1791,7 @@ try {
   await page.evaluate(`(() => {
     const form=document.querySelector('.ticket-product-return');
     const payment=form.querySelector('select[name="sourcePaymentEventId"]');
-    payment.value='f34e0000-0000-4000-8000-000000000001';
+    payment.value='${PRODUCT_PAYMENT}';
     payment.dispatchEvent(new Event('change',{bubbles:true}));
     const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
     const qty=form.querySelector('input[name="quantity"]');
