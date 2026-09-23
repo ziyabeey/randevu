@@ -1024,6 +1024,10 @@
         },
         {
           "database": "yzt_test",
+          "file": "supabase/tests/h19_d0_d4_tenant_time_boundary.sql"
+        },
+        {
+          "database": "yzt_test",
           "file": "supabase/migrations/20260917150100_f11_group_recovery_repair.sql"
         },
         {
