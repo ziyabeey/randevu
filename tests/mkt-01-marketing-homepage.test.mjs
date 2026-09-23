@@ -13,6 +13,7 @@ const productStories = read('src/marketing/ProductStorySections.tsx');
 const marketingCss = read('src/marketing/marketing.css');
 const mobileNavCss = read('src/marketing/mobile-nav.css');
 const marketingPolishCss = read('src/marketing/marketing-polish.css');
+const marketingAestheticCss = read('src/marketing/marketing-aesthetic.css');
 const transformation = read('src/marketing/transformation/TransformationSection.tsx');
 const transformationTuning = read('src/marketing/transformation/transformation-tuning.css');
 const bookingScrollCss = read('src/marketing/booking-scroll.css');
@@ -78,6 +79,16 @@ test('MKT-01 keeps the approved homepage story spine and navigation contract', (
   assert.match(mobileNavCss, /\.mkt-mobile-nav-panel a \{[\s\S]*?min-height:\s*44px/);
   assert.match(mobileNavCss, /\.mkt-nav-actions \.mkt-nav-cta \{[\s\S]*?min-height:\s*44px/);
   assert.match(marketingPolishCss, /\.mkt-skip-link:focus,[\s\S]*?\.mkt-skip-link:focus-visible/);
+});
+
+test('MKT-01 keeps aesthetic polish isolated and brand-native', () => {
+  assert.match(home, /import "\.\/marketing-aesthetic\.css"/);
+  assert.match(marketingAestheticCss, /\.mkt-calendar-stage \{[\s\S]*?radial-gradient/);
+  assert.match(marketingAestheticCss, /\.mkt-calendar-board::before/);
+  assert.match(marketingAestheticCss, /\.mkt-today \{[\s\S]*?var\(--mkt-cobalt-deep\)/);
+  assert.match(marketingAestheticCss, /\.mkt-proof-points article::before/);
+  assert.match(marketingAestheticCss, /\.mkt-final-cta \{[\s\S]*?var\(--mkt-cobalt\)/);
+  assert.doesNotMatch(marketingAestheticCss, /url\(/);
 });
 
 test('MKT-01 booking demo uses a scroll-owned phone scene with a reduced-motion escape hatch', () => {
