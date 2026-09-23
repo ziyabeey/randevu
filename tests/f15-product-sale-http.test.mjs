@@ -184,3 +184,35 @@ await test('F15-02 product return refuses missing inventory permission before re
     assert.equal(guarded, 0);
   } finally { globalThis.fetch = realFetch; }
 });
+
+await test('F15-02 product return maps return-value refund bounds to explicit 409 codes', async () => {
+  for (const code of ['REFUND_EXCEEDS_RETURN_VALUE', 'RETURN_REFUND_BELOW_REQUIRED', 'RETURN_REQUIRES_FINAL_TOTAL']) {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = withFetch({
+      permissions: { payments_write: true, inventory_write: true },
+      rpc: async (url) => {
+        assert.equal(url.pathname, '/rest/v1/rpc/record_product_return_refund_guarded');
+        return json({ message: code }, 400);
+      },
+    });
+    try {
+      const response = await app.request(
+        `http://localhost/api/tickets/${ticketId}/lines/${lineId}/product-return-refund`,
+        {
+          method: 'POST',
+          headers: headers(`f1502-http-bound-${code.toLowerCase()}`.slice(0, 64)),
+          body: JSON.stringify({
+            sourcePaymentEventId: paymentId,
+            quantity: 1,
+            amountMinor: 10000,
+            returnToStock: false,
+            reason: 'Sınır kontrolü',
+          }),
+        },
+        env,
+      );
+      assert.equal(response.status, 409, code);
+      assert.equal((await response.json()).error?.code, code);
+    } finally { globalThis.fetch = realFetch; }
+  }
+});

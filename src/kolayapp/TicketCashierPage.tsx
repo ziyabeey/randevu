@@ -27,6 +27,7 @@ type TicketLine = {
   finalUnitPriceMinor: number | null;
   discountMinor: number;
   netMinor: number | null;
+  returnedQuantity?: number;
   finalizedAt: string | null;
   finalizationReason: string | null;
   discountAt: string | null;
@@ -61,6 +62,7 @@ export type TicketContract = {
   estimateMaxMinor: number;
   subtotalMinor: number | null;
   discountMinor: number | null;
+  returnedMinor?: number;
   totalMinor: number | null;
   paymentStatus: 'unpaid' | 'partial' | 'paid';
   paidMinor: number;
@@ -684,6 +686,9 @@ export default function TicketCashierPage() {
               <div className="ticket-totals" aria-label="Sunucu mali özeti">
                 <div><span>Ara toplam</span><strong>{money(selected.subtotalMinor, selected.currency)}</strong></div>
                 <div><span>İskonto</span><strong>{money(selected.discountMinor, selected.currency)}</strong></div>
+                {(selected.returnedMinor ?? 0) > 0 && (
+                  <div><span>İade</span><strong>{money(selected.returnedMinor ?? 0, selected.currency)}</strong></div>
+                )}
                 <div><span>Toplam</span><strong>{money(selected.totalMinor, selected.currency)}</strong></div>
                 <div><span>Tahsil</span><strong>{money(selected.paidMinor, selected.currency)}</strong></div>
                 <div><span>Kalan</span><strong>{money(selected.balanceMinor, selected.currency)}</strong></div>
@@ -695,7 +700,7 @@ export default function TicketCashierPage() {
                     <div>
                       <strong>{line.sourceType === 'product' ? (line.productName ?? 'Ürün') : line.serviceName}</strong>
                       <span>{line.sourceType === 'product'
-                        ? `${line.productCode ?? 'Kodsuz'} · ${line.quantity} adet · ${money(line.netMinor, line.currency)}`
+                        ? `${line.productCode ?? 'Kodsuz'} · ${line.quantity} adet${(line.returnedQuantity ?? 0) > 0 ? ` · ${line.returnedQuantity} iade` : ''} · ${money(line.netMinor, line.currency)}`
                         : `${line.staffName ?? 'Personel seçilmedi'} · ${money(line.netMinor, line.currency)}`}</span>
                     </div>
                     {selected.status === 'open' && line.sourceType === 'service' && line.priceType === 'range' && line.finalUnitPriceMinor === null && (
@@ -712,7 +717,7 @@ export default function TicketCashierPage() {
                         <button disabled={busy}>İskontoyu kaydet</button>
                       </form>
                     )}
-                    {line.sourceType === 'product' && selected.paymentEvents.some((event) => event.eventType === 'payment') && (
+                    {line.sourceType === 'product' && line.quantity - (line.returnedQuantity ?? 0) > 0 && selected.paymentEvents.some((event) => event.eventType === 'payment') && (
                       <form className="ticket-product-return" onSubmit={(event) => void productReturnRefund(event, line)}>
                         <select name="sourcePaymentEventId" required defaultValue="">
                           <option value="" disabled>Tahsilat seçin</option>
@@ -720,8 +725,8 @@ export default function TicketCashierPage() {
                             <option key={event.eventId} value={event.eventId}>{event.method === 'cash' ? 'Nakit' : 'Kart'} · {money(event.amountMinor, line.currency)}</option>
                           ))}
                         </select>
-                        <input name="quantity" type="number" inputMode="numeric" min="1" max={line.quantity} defaultValue="1" required />
-                        <input name="amount" inputMode="decimal" placeholder="İade tutarı" required />
+                        <input name="quantity" type="number" inputMode="numeric" min="1" max={line.quantity - (line.returnedQuantity ?? 0)} defaultValue="1" required />
+                        <input name="amount" inputMode="decimal" placeholder={`İade tutarı · birim ${money(line.finalUnitPriceMinor, line.currency)}`} required />
                         <input name="reason" placeholder="İade gerekçesi" minLength={2} required />
                         <label><input name="returnToStock" type="checkbox" /> Satılabilir stoğa geri al</label>
                         <button disabled={busy}>Ürün iadesini kaydet</button>

@@ -318,6 +318,7 @@ declare
   v_subtotal bigint;
   v_discount bigint;
   v_total bigint;
+  v_returned bigint;
   v_paid bigint;
   v_balance bigint;
   v_ready boolean;
@@ -348,6 +349,11 @@ begin
       'productName', l.product_name_snapshot,
       'productCode', l.product_code_snapshot,
       'quantity', l.quantity,
+      'returnedQuantity', (
+        select coalesce(sum(r.quantity), 0)::integer
+        from public.ticket_product_returns r
+        where r.business_id = l.business_id and r.ticket_line_id = l.id
+      ),
       'priceType', l.price_type_snapshot,
       'priceMinMinor', l.price_min_minor_snapshot,
       'priceMaxMinor', l.price_max_minor_snapshot,
@@ -368,8 +374,18 @@ begin
   from public.ticket_lines l
   where l.business_id = p_business_id and l.ticket_id = p_ticket_id;
 
+  -- A product return takes the goods back, so it lowers what the ticket owes by
+  -- the returned quantity at the immutable sale price snapshot (product lines
+  -- carry no discount). Sale lines and stock movements are never rewritten.
+  select coalesce(sum(r.quantity::bigint * l.final_unit_price_minor::bigint), 0)
+  into v_returned
+  from public.ticket_product_returns r
+  join public.ticket_lines l
+    on l.business_id = r.business_id and l.id = r.ticket_line_id
+  where r.business_id = p_business_id and r.ticket_id = p_ticket_id;
+
   v_ready := v_count > 0 and v_count = v_final_count;
-  v_total := case when v_ready then v_subtotal - v_discount else null end;
+  v_total := case when v_ready then v_subtotal - v_discount - v_returned else null end;
   v_paid := public.f14_ticket_paid_minor(p_business_id, p_ticket_id);
 
   if v_paid < 0 then raise exception 'FINANCIAL_INVARIANT_BROKEN'; end if;
@@ -419,6 +435,7 @@ begin
     'estimateMaxMinor', v_estimate_max,
     'subtotalMinor', case when v_ready then v_subtotal else null end,
     'discountMinor', case when v_ready then v_discount else null end,
+    'returnedMinor', v_returned,
     'totalMinor', v_total,
     'paymentStatus', v_payment_status,
     'paidMinor', v_paid,
@@ -775,6 +792,8 @@ declare
   v_returned integer;
   v_source_net bigint;
   v_new_balance bigint;
+  v_return_value bigint;
+  v_before jsonb;
 begin
   v_actor := public.f15_product_return_actor(p_business_id);
   v_replay := public.f14_claim_ticket_command(
@@ -830,6 +849,17 @@ begin
 
   v_source_net := public.f14_source_payment_net(p_business_id,p_ticket_id,p_source_payment_event_id);
   if p_amount_minor::bigint > v_source_net then raise exception 'REFUND_EXCEEDS_SOURCE'; end if;
+
+  -- The return lowers the total by its value; the refund may not exceed that
+  -- value and must bring net paid back within the reduced total.
+  v_return_value := p_quantity::bigint * v_line.final_unit_price_minor::bigint;
+  if p_amount_minor::bigint > v_return_value then raise exception 'REFUND_EXCEEDS_RETURN_VALUE'; end if;
+  v_before := public.f14_ticket_projection(p_business_id,p_ticket_id);
+  if (v_before->>'totalMinor') is null then raise exception 'RETURN_REQUIRES_FINAL_TOTAL'; end if;
+  if (v_before->>'paidMinor')::bigint - p_amount_minor::bigint
+     > (v_before->>'totalMinor')::bigint - v_return_value then
+    raise exception 'RETURN_REFUND_BELOW_REQUIRED';
+  end if;
 
   insert into public.ticket_payment_events(
     business_id,ticket_id,event_type,source_payment_event_id,payment_method,

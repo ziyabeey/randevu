@@ -180,6 +180,15 @@ function ticketError(message: string) {
   if (message.includes('RETURN_EXCEEDS_SOLD_QUANTITY')) {
     return { code: 'RETURN_EXCEEDS_SOLD_QUANTITY', message: 'İade miktarı satılan kalan miktarı aşamaz.', status: 409 as const };
   }
+  if (message.includes('REFUND_EXCEEDS_RETURN_VALUE')) {
+    return { code: 'REFUND_EXCEEDS_RETURN_VALUE', message: 'İade tutarı iade edilen ürünlerin satış değerini aşamaz.', status: 409 as const };
+  }
+  if (message.includes('RETURN_REFUND_BELOW_REQUIRED')) {
+    return { code: 'RETURN_REFUND_BELOW_REQUIRED', message: 'İade sonrası net tahsilat adisyon toplamını aşamaz; iade tutarını iade edilen ürün değerine göre artırın.', status: 409 as const };
+  }
+  if (message.includes('RETURN_REQUIRES_FINAL_TOTAL')) {
+    return { code: 'RETURN_REQUIRES_FINAL_TOTAL', message: 'Kesin tutarı belirlenmemiş hizmet varken ürün iadesi kaydedilemez.', status: 409 as const };
+  }
   if (message.includes('PRODUCT_SALE_MOVEMENT_NOT_FOUND')) {
     return { code: 'PRODUCT_SALE_MOVEMENT_NOT_FOUND', message: 'Ürün satış stok hareketi bulunamadı.', status: 409 as const };
   }

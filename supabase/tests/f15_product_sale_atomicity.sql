@@ -143,6 +143,14 @@ begin
     raise exception 'F15-02 financial refund silently returned damaged product to stock';
   end if;
   if (v_result->>'paidMinor')::bigint<>25000 then raise exception 'F15-02 refund total wrong'; end if;
+  -- The damaged unit came back, so the ticket owes one unit less.
+  if (v_result->>'returnedMinor')::bigint<>25000
+     or (v_result->>'totalMinor')::bigint<>25000
+     or (v_result->>'balanceMinor')::bigint<>0
+     or ((v_result->'lines')->0->>'returnedQuantity')::int<>1
+     or ((v_result->'lines')->0->>'netMinor')::bigint<>50000 then
+    raise exception 'F15-02 damaged return did not lower the owed total: %',v_result;
+  end if;
 
   v_result := public.record_product_return_refund_guarded(
     'f1710000-0000-4000-8000-000000000001',
@@ -158,6 +166,11 @@ begin
     raise exception 'F15-02 explicit resellable return did not restore stock';
   end if;
   if (v_result->>'paidMinor')::bigint<>0 then raise exception 'F15-02 second refund total wrong'; end if;
+  if (v_result->>'returnedMinor')::bigint<>50000
+     or (v_result->>'totalMinor')::bigint<>0
+     or (v_result->>'balanceMinor')::bigint<>0 then
+    raise exception 'F15-02 full return left a receivable balance: %',v_result;
+  end if;
 
   if (
     select count(*) from public.ticket_product_returns
@@ -166,6 +179,129 @@ begin
   )<>2 then raise exception 'F15-02 product return audit count wrong'; end if;
 end
 $payment_and_returns$;
+
+-- Refund bounds: never above the returned value, never leaving net paid above
+-- the reduced total; a fully returned ticket closes, and a return on a closed
+-- ticket keeps it settled.
+do $return_value_bounds$
+declare
+  v_sale jsonb;
+  v_ticket uuid;
+  v_line uuid;
+  v_payment uuid;
+  v_result jsonb;
+  v_error text;
+begin
+  v_sale := public.open_product_sale_guarded(
+    'f1710000-0000-4000-8000-000000000001',
+    'f1730000-0000-4000-8000-000000000001',
+    current_setting('f1502.product')::uuid,
+    2,
+    (select version from public.products where id=current_setting('f1502.product')::uuid),
+    'f1502-bounds-sale',repeat('3',64)
+  );
+  v_ticket := (v_sale->>'ticketId')::uuid;
+  v_line := ((v_sale->'lines')->0->>'lineId')::uuid;
+  v_result := public.record_ticket_payment_guarded(
+    'f1710000-0000-4000-8000-000000000001',v_ticket,'card',50000,
+    'f1502-bounds-pay',repeat('4',64)
+  );
+  select (event->>'eventId')::uuid into v_payment
+  from jsonb_array_elements(v_result->'paymentEvents') event
+  where event->>'eventType'='payment';
+
+  v_error := null;
+  begin
+    perform public.record_product_return_refund_guarded(
+      'f1710000-0000-4000-8000-000000000001',v_ticket,v_line,v_payment,
+      1,30000,false,'Fazla iade','f1502-bounds-over',repeat('5',64)
+    );
+  exception when others then v_error := sqlerrm;
+  end;
+  if position('REFUND_EXCEEDS_RETURN_VALUE' in coalesce(v_error,''))=0 then
+    raise exception 'F15-02 refund above returned value was accepted: %',v_error;
+  end if;
+
+  v_error := null;
+  begin
+    perform public.record_product_return_refund_guarded(
+      'f1710000-0000-4000-8000-000000000001',v_ticket,v_line,v_payment,
+      1,10000,false,'Eksik iade','f1502-bounds-under',repeat('6',64)
+    );
+  exception when others then v_error := sqlerrm;
+  end;
+  if position('RETURN_REFUND_BELOW_REQUIRED' in coalesce(v_error,''))=0 then
+    raise exception 'F15-02 refund leaving the ticket overpaid was accepted: %',v_error;
+  end if;
+  if exists (
+    select 1 from public.ticket_product_returns where ticket_line_id=v_line
+  ) then raise exception 'F15-02 rejected return left a half-written return row'; end if;
+
+  v_result := public.record_product_return_refund_guarded(
+    'f1710000-0000-4000-8000-000000000001',v_ticket,v_line,v_payment,
+    1,25000,false,'Hasarlı ürün','f1502-bounds-exact',repeat('7',64)
+  );
+  if (v_result->>'balanceMinor')::bigint<>0 or (v_result->>'totalMinor')::bigint<>25000 then
+    raise exception 'F15-02 exact-value return did not settle: %',v_result;
+  end if;
+
+  v_result := public.close_ticket_guarded(
+    'f1710000-0000-4000-8000-000000000001',v_ticket,(v_result->>'version')::integer,
+    'f1502-bounds-close',repeat('8',64)
+  );
+  if v_result->>'status'<>'closed' then raise exception 'F15-02 returned product ticket could not close: %',v_result; end if;
+
+  v_result := public.record_product_return_refund_guarded(
+    'f1710000-0000-4000-8000-000000000001',v_ticket,v_line,v_payment,
+    1,25000,true,'Kapalı adisyonda iade','f1502-bounds-closed',repeat('9',64)
+  );
+  if v_result->>'status'<>'closed'
+     or (v_result->>'balanceMinor')::bigint<>0
+     or (v_result->>'totalMinor')::bigint<>0 then
+    raise exception 'F15-02 return on a closed ticket reopened a receivable: %',v_result;
+  end if;
+end
+$return_value_bounds$;
+
+-- Partially paid ticket: the unpaid remainder absorbs part of the return value.
+do $partial_paid_return$
+declare
+  v_sale jsonb;
+  v_ticket uuid;
+  v_line uuid;
+  v_payment uuid;
+  v_result jsonb;
+begin
+  v_sale := public.open_product_sale_guarded(
+    'f1710000-0000-4000-8000-000000000001',
+    'f1730000-0000-4000-8000-000000000001',
+    current_setting('f1502.product')::uuid,
+    2,
+    (select version from public.products where id=current_setting('f1502.product')::uuid),
+    'f1502-partial-sale',repeat('a',63)||'1'
+  );
+  v_ticket := (v_sale->>'ticketId')::uuid;
+  v_line := ((v_sale->'lines')->0->>'lineId')::uuid;
+  v_result := public.record_ticket_payment_guarded(
+    'f1710000-0000-4000-8000-000000000001',v_ticket,'cash',30000,
+    'f1502-partial-pay',repeat('a',63)||'2'
+  );
+  select (event->>'eventId')::uuid into v_payment
+  from jsonb_array_elements(v_result->'paymentEvents') event
+  where event->>'eventType'='payment';
+
+  -- 500 owed, 300 paid; returning one 250 unit needs at least 50 back.
+  v_result := public.record_product_return_refund_guarded(
+    'f1710000-0000-4000-8000-000000000001',v_ticket,v_line,v_payment,
+    1,5000,false,'Kısmi ödeme iadesi','f1502-partial-return',repeat('a',63)||'3'
+  );
+  if (v_result->>'totalMinor')::bigint<>25000
+     or (v_result->>'paidMinor')::bigint<>25000
+     or (v_result->>'balanceMinor')::bigint<>0 then
+    raise exception 'F15-02 partial-paid return math wrong: %',v_result;
+  end if;
+end
+$partial_paid_return$;
 
 -- A paid ticket cannot be cancelled as a shortcut around refund semantics.
 do $paid_cancel$
