@@ -2,7 +2,7 @@
 
 > **SOURCE OF TRUTH:** Projenin canlı görev durumu, sahiplik, bağımlılık, kabul kapıları, main kabulü ve açık engeller için **tek otorite bu dosyadır**. Başka bir dosya veya Issue gövdesi paralel durum tablosu tutamaz.
 
-**Plan v3 · güncel ana tablo 23 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 36 `Tamamlandı`, 18 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
+**Plan v3 · güncel ana tablo 23 Eylül 2026.** Korunan 46 MVP işi + S01…S08 teknik düzeltmeleriyle toplam **54 MVP ürün/teknik görevi** vardır. Main'deki mevcut satır dağılımı 40 `Tamamlandı`, 14 henüz main'de tamamlanmamış görevdir. Bu sayı ürün tamamlanma yüzdesi değildir.
 
 **GS stabilization kapısı kapalıdır.** S01…S08 kabul edildi; GS artık yeni özellikleri engelleyen bir önkoşul değildir. [GS kapanış devri](docs/handoffs/GS.md) tarihsel kanıt kaynağıdır.
 
