@@ -513,7 +513,7 @@ try {
         media: [],
         kvkk_notice_text: 'F14-05 test aydınlatma metni.',
         kvkk_notice_url: null,
-        privacy_policy_url: null,
+        privacy_policy_url: 'https://example.test/privacy',
         booking_terms_text: 'F14-05 test randevu koşulları.',
         booking_terms_url: null,
       } });
@@ -718,6 +718,10 @@ try {
   await waitFor(
     () => publicPage.evaluate(`Boolean(document.querySelector('input[name="customerName"]'))`),
     'F14-05 public customer contact form did not open',
+  );
+  await waitFor(
+    () => publicPage.evaluate(`Boolean([...document.querySelectorAll('button')].find((node) => node.textContent.includes('Planı onayla') && !node.disabled))`),
+    'F14-05 public booking remained blocked by incomplete booking information',
   );
   await publicPage.evaluate(`(() => {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
