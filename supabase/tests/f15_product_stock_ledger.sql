@@ -77,12 +77,14 @@ begin
   end if;
 
   if (
-    select count(*) from public.product_stock_movements m
-    where m.business_id='f1510000-0000-4000-8000-000000000001'
-      and m.product_id=v_product_id
-      and m.kind='initial'
-      and m.quantity_delta=10
-      and m.balance_after=10
+    select count(*)
+    from public.list_product_stock_movements_page(
+      'f1510000-0000-4000-8000-000000000001',
+      v_product_id,101,null,null
+    ) m
+    where m.movement->>'kind'='initial'
+      and (m.movement->>'quantityDelta')::bigint=10
+      and (m.movement->>'balanceAfter')::bigint=10
   ) <> 1 then
     raise exception 'F15-01 initial stock movement missing';
   end if;
@@ -143,9 +145,10 @@ begin
   end if;
 
   select count(*) into v_before_count
-  from public.product_stock_movements
-  where business_id='f1510000-0000-4000-8000-000000000001'
-    and product_id=current_setting('f1501.product_id')::uuid;
+  from public.list_product_stock_movements_page(
+    'f1510000-0000-4000-8000-000000000001',
+    current_setting('f1501.product_id')::uuid,101,null,null
+  );
 
   begin
     perform public.record_product_stock_movement_guarded(
@@ -164,27 +167,31 @@ begin
   if not v_negative then raise exception 'F15-01 negative stock was accepted'; end if;
 
   if (
-    select stock_on_hand from public.products
-    where business_id='f1510000-0000-4000-8000-000000000001'
-      and id=current_setting('f1501.product_id')::uuid
-  ) <> 12 then
+    public.get_product_contract(
+      'f1510000-0000-4000-8000-000000000001',
+      current_setting('f1501.product_id')::uuid
+    )->>'stockOnHand'
+  )::bigint <> 12 then
     raise exception 'F15-01 rejected negative write changed balance projection';
   end if;
 
   if (
-    select count(*) from public.product_stock_movements
-    where business_id='f1510000-0000-4000-8000-000000000001'
-      and product_id=current_setting('f1501.product_id')::uuid
+    select count(*)
+    from public.list_product_stock_movements_page(
+      'f1510000-0000-4000-8000-000000000001',
+      current_setting('f1501.product_id')::uuid,101,null,null
+    )
   ) <> v_before_count then
     raise exception 'F15-01 rejected negative write created a movement';
   end if;
 
-  select id into v_movement_id
-  from public.product_stock_movements
-  where business_id='f1510000-0000-4000-8000-000000000001'
-    and product_id=current_setting('f1501.product_id')::uuid
-    and kind='receipt'
-  order by created_at desc,id desc
+  select (m.movement->>'movementId')::uuid into v_movement_id
+  from public.list_product_stock_movements_page(
+    'f1510000-0000-4000-8000-000000000001',
+    current_setting('f1501.product_id')::uuid,101,null,null
+  ) m
+  where m.movement->>'kind'='receipt'
+  order by m.sort_created_at desc,m.sort_id desc
   limit 1;
 
   v_result := public.reverse_product_stock_movement_guarded(
@@ -361,9 +368,10 @@ declare
   v_movements bigint;
 begin
   select count(*) into v_movements
-  from public.product_stock_movements
-  where business_id='f1510000-0000-4000-8000-000000000001'
-    and product_id=current_setting('f1501.product_id')::uuid;
+  from public.list_product_stock_movements_page(
+    'f1510000-0000-4000-8000-000000000001',
+    current_setting('f1501.product_id')::uuid,101,null,null
+  );
 
   v_result := public.archive_product_guarded(
     'f1510000-0000-4000-8000-000000000001',
@@ -378,9 +386,11 @@ begin
   end if;
 
   if (
-    select count(*) from public.product_stock_movements
-    where business_id='f1510000-0000-4000-8000-000000000001'
-      and product_id=current_setting('f1501.product_id')::uuid
+    select count(*)
+    from public.list_product_stock_movements_page(
+      'f1510000-0000-4000-8000-000000000001',
+      current_setting('f1501.product_id')::uuid,101,null,null
+    )
   ) <> v_movements then
     raise exception 'F15-01 archive changed stock history';
   end if;
