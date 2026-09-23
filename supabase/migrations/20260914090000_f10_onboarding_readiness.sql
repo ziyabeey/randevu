@@ -583,8 +583,7 @@ begin
     from eligible_staff es
     cross join service_cfg sc
     join public.business_hours bh
-      on bh.business_id = v_business_id
-     and bh.weekday = extract(dow from p_date)::smallint
+      on bh.weekday = extract(dow from p_date)::smallint
      and bh.active
     join public.staff_hours sh
       on sh.business_id = v_business_id
