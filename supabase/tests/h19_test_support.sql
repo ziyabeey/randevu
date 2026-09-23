@@ -140,6 +140,7 @@ create temporary table if not exists h19_gate_results (
   domain text not null,
   axis_a text not null check (axis_a ~ '^D[0-5]$'),
   axis_b text not null check (axis_b ~ '^D[0-5]$'),
+  origin text not null check (origin in ('prospective','holdout')),
   baseline_ci integer not null check (baseline_ci > 0),
   probe_ci integer not null check (probe_ci > 0),
   clean_ci integer not null check (clean_ci > 0),
@@ -153,6 +154,7 @@ create or replace function pg_temp.h19_expect(
   p_domain text,
   p_axis_a text,
   p_axis_b text,
+  p_origin text,
   p_baseline_ci integer,
   p_probe_ci integer,
   p_clean_ci integer
@@ -166,6 +168,8 @@ begin
      or p_axis_a !~ '^D[0-5]$'
      or p_axis_b !~ '^D[0-5]$'
      or p_axis_a=p_axis_b
+     or p_origin is null
+     or p_origin not in ('prospective','holdout')
      or p_baseline_ci is null or p_baseline_ci<1
      or p_probe_ci is null or p_probe_ci<1
      or p_clean_ci is null or p_clean_ci<1 then
@@ -173,9 +177,9 @@ begin
   end if;
 
   insert into pg_temp.h19_gate_results(
-    scenario_id,domain,axis_a,axis_b,baseline_ci,probe_ci,clean_ci,status
+    scenario_id,domain,axis_a,axis_b,origin,baseline_ci,probe_ci,clean_ci,status
   ) values (
-    p_scenario_id,p_domain,p_axis_a,p_axis_b,
+    p_scenario_id,p_domain,p_axis_a,p_axis_b,p_origin,
     p_baseline_ci,p_probe_ci,p_clean_ci,'pending'
   );
 exception when unique_violation then
@@ -239,6 +243,7 @@ begin
           'id',scenario_id,
           'domain',domain,
           'axes',jsonb_build_array(axis_a,axis_b),
+          'origin',origin,
           'evidence',jsonb_build_object(
             'baselineCi',baseline_ci,
             'probeCi',probe_ci,
