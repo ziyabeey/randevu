@@ -453,6 +453,77 @@ begin
 end
 $f1502lineguard$;
 
+create or replace function public.set_ticket_service_discount_guarded(
+  p_business_id uuid,
+  p_ticket_id uuid,
+  p_line_id uuid,
+  p_discount_minor integer,
+  p_reason text,
+  p_expected_version integer,
+  p_idempotency_key text,
+  p_request_hash text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $f1502discount$
+declare
+  v_actor public.memberships;
+  v_ticket public.tickets;
+  v_line public.ticket_lines;
+  v_reason text;
+  v_replay jsonb;
+  v_result jsonb;
+begin
+  v_actor := public.f14_financial_actor(p_business_id);
+  v_replay := public.f14_claim_ticket_command(
+    p_business_id,v_actor.id,'set_service_discount',p_idempotency_key,p_request_hash
+  );
+  if v_replay is not null then return v_replay; end if;
+
+  v_reason:=nullif(btrim(coalesce(p_reason,'')),'');
+  if p_discount_minor is null
+     or p_discount_minor not between 0 and 100000000
+     or v_reason is null or char_length(v_reason)>240 then
+    raise exception 'INVALID_DISCOUNT';
+  end if;
+
+  select * into v_ticket
+  from public.tickets t
+  where t.business_id=p_business_id and t.id=p_ticket_id
+  for update;
+  if v_ticket.id is null then raise exception 'TICKET_NOT_FOUND'; end if;
+  if v_ticket.status<>'open' then raise exception 'TICKET_NOT_OPEN'; end if;
+  if p_expected_version is null or v_ticket.version<>p_expected_version then raise exception 'STALE_WRITE'; end if;
+
+  select * into v_line
+  from public.ticket_lines l
+  where l.business_id=p_business_id and l.ticket_id=p_ticket_id and l.id=p_line_id
+  for update;
+  if v_line.id is null then raise exception 'TICKET_LINE_NOT_FOUND'; end if;
+  if v_line.source_type<>'service' then raise exception 'PRODUCT_LINE_PRICE_IMMUTABLE'; end if;
+  if v_line.final_unit_price_minor is null then raise exception 'SERVICE_PRICE_NOT_FINAL'; end if;
+  if p_discount_minor>v_line.final_unit_price_minor then raise exception 'DISCOUNT_EXCEEDS_LINE'; end if;
+
+  update public.ticket_lines
+  set discount_minor=p_discount_minor,
+      discount_by_membership_id=case when p_discount_minor>0 then v_actor.id else null end,
+      discount_at=case when p_discount_minor>0 then now() else null end,
+      discount_reason=case when p_discount_minor>0 then v_reason else null end
+  where business_id=p_business_id and id=p_line_id;
+
+  update public.tickets set version=version+1
+  where business_id=p_business_id and id=p_ticket_id;
+
+  v_result:=public.f14_ticket_projection(p_business_id,p_ticket_id);
+  perform public.f14_finish_ticket_command(
+    p_business_id,v_actor.id,'set_service_discount',p_idempotency_key,p_ticket_id,v_result
+  );
+  return v_result;
+end
+$f1502discount$;
+
 create or replace function public.add_ticket_product_line_guarded(
   p_business_id uuid,
   p_ticket_id uuid,
