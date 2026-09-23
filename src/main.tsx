@@ -13,6 +13,7 @@ import './public-booking.css';
 import './public-profile.css';
 import './customer-manage.css';
 import './customers.css';
+import './products.css';
 import './team.css';
 import './onboarding.css';
 
