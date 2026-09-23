@@ -1,5 +1,10 @@
 .mkt-booking-scene {
   --mkt-booking-progress: 0;
+  --mkt-booking-enter: clamp(0, calc(var(--mkt-booking-progress) * 3.125), 1);
+  --mkt-booking-flow: clamp(0, calc((var(--mkt-booking-progress) - 0.22) * 2.5), 1);
+  --mkt-booking-zoom: clamp(0, calc((var(--mkt-booking-progress) - 0.64) * 3.846), 1);
+  --mkt-booking-exit: clamp(0, calc((var(--mkt-booking-progress) - 0.90) * 10), 1);
+  --mkt-booking-copy-out: clamp(0, calc((var(--mkt-booking-progress) - 0.28) * 5), 1);
   position: relative;
   width: 100%;
   height: 250svh;
@@ -23,6 +28,17 @@
   isolation: isolate;
 }
 
+.mkt-booking-sticky::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: var(--mkt-cobalt);
+  opacity: clamp(0, calc((var(--mkt-booking-progress) - 0.82) * 5.56), 1);
+  pointer-events: none;
+  will-change: opacity;
+}
+
 .mkt-booking-scene .mkt-booking-copy,
 .mkt-booking-scene .mkt-booking-proof {
   animation: none;
@@ -34,10 +50,10 @@
   top: 50%;
   left: 0;
   width: min(560px, 44%);
-  opacity: clamp(0, calc(1.24 - (var(--mkt-booking-progress) * 1.58)), 1);
+  opacity: calc(1 - var(--mkt-booking-copy-out));
   transform: translate3d(
-    calc(var(--mkt-booking-progress) * -34px),
-    calc(-50% + (var(--mkt-booking-progress) * -12px)),
+    calc(var(--mkt-booking-copy-out) * -40px),
+    calc(-50% + (var(--mkt-booking-copy-out) * -14px)),
     0
   );
   transition: none;
@@ -56,8 +72,8 @@
   display: block;
   border-radius: 50%;
   border: 1px solid rgba(51, 102, 204, 0.13);
-  opacity: clamp(0, calc(0.8 - (var(--mkt-booking-progress) * 0.55)), 0.8);
-  transform: scale(calc(0.78 + (var(--mkt-booking-progress) * 0.42)));
+  opacity: clamp(0, calc(0.8 - (var(--mkt-booking-zoom) * 0.8)), 0.8);
+  transform: scale(calc(0.78 + (var(--mkt-booking-enter) * 0.22)));
   will-change: transform, opacity;
 }
 
@@ -96,13 +112,14 @@
   box-shadow:
     0 42px 110px rgba(12, 38, 79, 0.28),
     0 0 0 1px rgba(9, 27, 54, 0.16);
+  opacity: calc(1 - var(--mkt-booking-exit));
   transform:
-    translate3d(calc(26vw - (var(--mkt-booking-progress) * 26vw)), 0, 0)
-    rotate(calc(5deg - (var(--mkt-booking-progress) * 5deg)))
-    scale(calc(0.78 + (var(--mkt-booking-progress) * 0.92)));
-  transform-origin: center center;
+    translate3d(calc((1 - var(--mkt-booking-enter)) * 26vw), 0, 0)
+    rotate(calc((1 - var(--mkt-booking-enter)) * 5deg))
+    scale(calc(0.78 + (var(--mkt-booking-enter) * 0.32) + (var(--mkt-booking-zoom) * 2.15)));
+  transform-origin: 50% 55%;
   transition: none;
-  will-change: transform;
+  will-change: transform, opacity;
 }
 
 .mkt-booking-phone-bar {
@@ -157,7 +174,7 @@
 }
 
 .mkt-booking-scene .mkt-proof-header {
-  opacity: clamp(0.45, calc(var(--mkt-booking-progress) * 4), 1);
+  opacity: clamp(0.45, calc(var(--mkt-booking-flow) * 1.6), 1);
 }
 
 .mkt-booking-scene .mkt-proof-step {
@@ -166,18 +183,18 @@
 }
 
 .mkt-booking-scene .mkt-proof-step:nth-of-type(2) {
-  opacity: clamp(0.24, calc((var(--mkt-booking-progress) - 0.08) * 6), 1);
-  transform: translate3d(0, calc((1 - clamp(0, calc((var(--mkt-booking-progress) - 0.08) * 6), 1)) * 18px), 0);
+  opacity: clamp(0.24, calc((var(--mkt-booking-flow) - 0.05) * 5.2), 1);
+  transform: translate3d(0, calc((1 - clamp(0, calc((var(--mkt-booking-flow) - 0.05) * 6), 1)) * 18px), 0);
 }
 
 .mkt-booking-scene .mkt-proof-step:nth-of-type(3) {
-  opacity: clamp(0.18, calc((var(--mkt-booking-progress) - 0.30) * 6), 1);
-  transform: translate3d(0, calc((1 - clamp(0, calc((var(--mkt-booking-progress) - 0.30) * 6), 1)) * 22px), 0);
+  opacity: clamp(0.18, calc((var(--mkt-booking-flow) - 0.34) * 5), 1);
+  transform: translate3d(0, calc((1 - clamp(0, calc((var(--mkt-booking-flow) - 0.34) * 6), 1)) * 22px), 0);
 }
 
 .mkt-booking-scene .mkt-proof-step:nth-of-type(4) {
-  opacity: clamp(0.12, calc((var(--mkt-booking-progress) - 0.54) * 7), 1);
-  transform: translate3d(0, calc((1 - clamp(0, calc((var(--mkt-booking-progress) - 0.54) * 7), 1)) * 26px), 0);
+  opacity: clamp(0.12, calc((var(--mkt-booking-flow) - 0.67) * 5.5), 1);
+  transform: translate3d(0, calc((1 - clamp(0, calc((var(--mkt-booking-flow) - 0.67) * 7), 1)) * 26px), 0);
 }
 
 .mkt-booking-complete-glow {
@@ -188,8 +205,8 @@
   border-radius: 50%;
   background: rgba(198, 232, 0, 0.32);
   filter: blur(26px);
-  opacity: clamp(0, calc((var(--mkt-booking-progress) - 0.68) * 5), 0.78);
-  transform: scale(calc(0.82 + (var(--mkt-booking-progress) * 0.22)));
+  opacity: clamp(0, calc((var(--mkt-booking-flow) - 0.72) * 3.7), 0.78);
+  transform: scale(calc(0.82 + (var(--mkt-booking-flow) * 0.22)));
   pointer-events: none;
 }
 
@@ -218,8 +235,8 @@
     right: 0;
     left: 0;
     width: auto;
-    transform: translate3d(0, calc(var(--mkt-booking-progress) * -20px), 0);
-    opacity: clamp(0, calc(1.18 - (var(--mkt-booking-progress) * 1.68)), 1);
+    transform: translate3d(0, calc(var(--mkt-booking-copy-out) * -20px), 0);
+    opacity: calc(1 - var(--mkt-booking-copy-out));
   }
 
   .mkt-booking-copy h2 {
@@ -250,9 +267,9 @@
   .mkt-booking-phone {
     width: min(72vw, 270px);
     transform:
-      translate3d(0, calc(12vh - (var(--mkt-booking-progress) * 12vh)), 0)
-      rotate(calc(3deg - (var(--mkt-booking-progress) * 3deg)))
-      scale(calc(0.82 + (var(--mkt-booking-progress) * 0.56)));
+      translate3d(0, calc((1 - var(--mkt-booking-enter)) * 12vh), 0)
+      rotate(calc((1 - var(--mkt-booking-enter)) * 3deg))
+      scale(calc(0.82 + (var(--mkt-booking-enter) * 0.28) + (var(--mkt-booking-zoom) * 1.28)));
   }
 
   .mkt-booking-scene .mkt-booking-proof {
