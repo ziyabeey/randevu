@@ -134,13 +134,21 @@ begin
     where e.business_id=p_business_id
       and e.occurred_at>=v_from and e.occurred_at<v_to
   ),
+  ticket_scope as (
+    select t.id,t.business_id
+    from public.tickets t
+    where t.business_id=p_business_id
+      and t.status<>'cancelled'
+      and t.created_at>=v_from and t.created_at<v_to
+  ),
   return_value as (
     select r.ticket_id,
            coalesce(sum(r.quantity::bigint*l.final_unit_price_minor::bigint),0)::bigint as returned_minor
-    from public.ticket_product_returns r
+    from ticket_scope ts
+    join public.ticket_product_returns r
+      on r.business_id=ts.business_id and r.ticket_id=ts.id
     join public.ticket_lines l
       on l.business_id=r.business_id and l.id=r.ticket_line_id
-    where r.business_id=p_business_id
     group by r.ticket_id
   ),
   payment_all_time as (
@@ -149,8 +157,9 @@ begin
              when e.event_type='payment' then e.amount_minor
              when e.event_type='correction' and e.correction_direction='increase' then e.amount_minor
              else -e.amount_minor end),0)::bigint as paid_minor
-    from public.ticket_payment_events e
-    where e.business_id=p_business_id
+    from ticket_scope ts
+    join public.ticket_payment_events e
+      on e.business_id=ts.business_id and e.ticket_id=ts.id
     group by e.ticket_id
   ),
   appointment_expected as (
@@ -165,7 +174,7 @@ begin
   ),
   ticket_rollup as (
     select
-      t.id,
+      ts.id,
       bool_and(l.final_unit_price_minor is not null) as settled,
       greatest(
         coalesce(sum(
@@ -190,15 +199,12 @@ begin
         0
       )::bigint as product_minor,
       coalesce(pa.paid_minor,0)::bigint as paid_minor
-    from public.tickets t
+    from ticket_scope ts
     join public.ticket_lines l
-      on l.business_id=t.business_id and l.ticket_id=t.id
-    left join return_value rv on rv.ticket_id=t.id
-    left join payment_all_time pa on pa.ticket_id=t.id
-    where t.business_id=p_business_id
-      and t.status<>'cancelled'
-      and t.created_at>=v_from and t.created_at<v_to
-    group by t.id,rv.returned_minor,pa.paid_minor
+      on l.business_id=ts.business_id and l.ticket_id=ts.id
+    left join return_value rv on rv.ticket_id=ts.id
+    left join payment_all_time pa on pa.ticket_id=ts.id
+    group by ts.id,rv.returned_minor,pa.paid_minor
   ),
   sale as (
     select
