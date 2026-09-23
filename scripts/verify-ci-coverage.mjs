@@ -22,6 +22,11 @@ function parseRelativePsqlIncludes(source) {
 
 const h19GatePath = 'supabase/tests/h19_integrity_gate.sql';
 const h19SupportPath = 'supabase/tests/h19_test_support.sql';
+const frozenH19HoldoutPairs = new Set(['D0xD3', 'D1xD4', 'D2xD5']);
+
+function normalizeH19Pair(axisA, axisB) {
+  return [axisA, axisB].sort((left, right) => left.localeCompare(right, 'en')).join('x');
+}
 
 function isH19ScenarioFile(file) {
   return file.startsWith('supabase/tests/h19_')
@@ -31,8 +36,17 @@ function isH19ScenarioFile(file) {
 }
 
 function parseH19ExpectRows(source) {
-  return [...source.matchAll(/^\s*select\s+pg_temp\.h19_expect\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'(D[0-5])'\s*,\s*'(D[0-5])'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)\s*;\s*$/gm)]
-    .map((match) => match.slice(1));
+  const pattern = /^\s*select\s+pg_temp\.h19_expect\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'(D[0-5])'\s*,\s*'(D[0-5])'(?:\s*,\s*'([^']+)')?(?:\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+))?\s*\)\s*;\s*$/gm;
+  return [...source.matchAll(pattern)].map((match) => ({
+    id: match[1],
+    domain: match[2],
+    axisA: match[3],
+    axisB: match[4],
+    origin: match[5] ?? null,
+    baselineCi: match[6] ?? null,
+    probeCi: match[7] ?? null,
+    cleanCi: match[8] ?? null,
+  }));
 }
 
 function parseH19PassIds(source) {
@@ -66,10 +80,31 @@ function verifyH19Manifest(root, sqlTests, planFiles) {
   const gatePlanCount = planFiles.filter((file) => file === h19GatePath).length;
 
   const expectRows = parseH19ExpectRows(gateSource);
-  const expectedIds = expectRows.map(([id]) => id);
+  const expectedIds = expectRows.map(({ id }) => id);
+  const missingOrigin = expectRows
+    .filter(({ origin }) => origin === null)
+    .map(({ id }) => id);
+  const invalidOrigin = expectRows
+    .filter(({ origin }) => origin !== null && !['prospective', 'holdout'].includes(origin))
+    .map(({ id, origin }) => id + '=' + origin);
+  const originMismatches = expectRows
+    .filter(({ axisA, axisB, origin }) => {
+      if (!['prospective', 'holdout'].includes(origin)) return false;
+      const expectedOrigin = frozenH19HoldoutPairs.has(normalizeH19Pair(axisA, axisB))
+        ? 'holdout'
+        : 'prospective';
+      return origin !== expectedOrigin;
+    })
+    .map(({ id, axisA, axisB, origin }) => {
+      const expectedOrigin = frozenH19HoldoutPairs.has(normalizeH19Pair(axisA, axisB))
+        ? 'holdout'
+        : 'prospective';
+      return id + ' ' + axisA + 'x' + axisB + ' expected=' + expectedOrigin + ' actual=' + origin;
+    });
   const missingEvidence = expectRows
-    .filter(([, , , , baselineCi, probeCi, cleanCi]) => [baselineCi, probeCi, cleanCi].some((value) => Number(value) < 1))
-    .map(([id]) => id);
+    .filter(({ baselineCi, probeCi, cleanCi }) => [baselineCi, probeCi, cleanCi]
+      .some((value) => value === null || Number(value) < 1))
+    .map(({ id }) => id);
   const passedIds = parseH19PassIds(gateSource);
   const duplicateExpectedIds = expectedIds.filter((id, index) => expectedIds.indexOf(id) !== index);
   const duplicatePassedIds = passedIds.filter((id, index) => passedIds.indexOf(id) !== index);
@@ -90,6 +125,9 @@ function verifyH19Manifest(root, sqlTests, planFiles) {
   if (duplicateIncludes.length > 0) problems.push('H19 scenario files included more than once: ' + duplicateIncludes.join(', '));
   if (unknownIncludes.length > 0) problems.push('unknown H19 scenario includes: ' + unknownIncludes.join(', '));
   if (duplicateExpectedIds.length > 0) problems.push('duplicate H19 manifest IDs: ' + [...new Set(duplicateExpectedIds)].join(', '));
+  if (missingOrigin.length > 0) problems.push('H19 manifest entries missing origin classification: ' + missingOrigin.join(', '));
+  if (invalidOrigin.length > 0) problems.push('invalid H19 origin classification: ' + invalidOrigin.join(', '));
+  if (originMismatches.length > 0) problems.push('H19 frozen holdout origin mismatch: ' + originMismatches.join(', '));
   if (missingEvidence.length > 0) problems.push('H19 manifest entries missing valid evidence receipts: ' + missingEvidence.join(', '));
   if (duplicatePassedIds.length > 0) problems.push('duplicate H19 pass IDs: ' + [...new Set(duplicatePassedIds)].join(', '));
   if (missingPasses.length > 0) problems.push('H19 manifest IDs missing pass registration: ' + missingPasses.join(', '));
