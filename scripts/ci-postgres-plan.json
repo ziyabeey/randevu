@@ -1379,6 +1379,10 @@
           "file": "supabase/tests/f14_payment_concurrency.sql"
         },
         {
+          "database": "yzt_test",
+          "file": "supabase/tests/exp_h19_payments_d2_d5_snapshot_concurrency.sql"
+        },
+        {
           "database": "yzt_s08_upgrade",
           "file": "supabase/migrations/20260922144500_f14_payment_ledger.sql"
         },
