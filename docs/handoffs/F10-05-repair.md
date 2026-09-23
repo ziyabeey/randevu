@@ -1,15 +1,22 @@
 # F10-05 — Customer authority forward repair
 
-**Durum:** Main'de / kabul açık — implementation repair tamamlandı; R1 → R2 bağımsız kabul kapısı açık.  
+**Durum:** Tamamlandı / accepted on main — R1 ve R2 kabulü tamamlandı; repair PR #87 merge edildi.  
 **Base:** `main@5e789ad06ffc46e9bed62004ed098f4e09a4640d`  
 **Branch:** `f10-05-customer-authority-repair`  
-**Draft repair PR:** #87  
+**Repair PR:** #87 — merged  
 **Önceki merge:** PR #74 / main `6c522893655ab1cdfb8da2a9b8d2974772a1c2ae`  
 **R1 blocker receipt:** Issue #65 `5664935223`  
 **R2 browser receipt:** Issue #65 `5665241722` + mobile addendum `5665499575`  
 **Coordinator split-contact blocker:** PR #87 comment `5666667860`  
 **Repair implementation head:** `58d57f08622d823dbedc0a79da0e5fdec7707a25`  
-**Implementation CI:** #849 / run `34865722043` — success
+**Implementation CI:** #849 / run `34865722043` — success  
+**Final semantic head:** `0f503e6`  
+**Final test head:** `08be2296bea585f30b9ea4db537ac070edbe7230`  
+**Final CI:** #938 / run `34878556411` — success  
+**R1 final:** `5667991719` — ACCEPTABLE  
+**R2 final:** `5673736447` — ACCEPTABLE  
+**Merged main:** `56ef3be734369e329a30406ea8a66a5eb9ef5993`  
+**Main CI:** #948 / run `34921413177` — success
 
 Bu dosya mevcut `docs/handoffs/F10-05.md` tarihsel teslim kaydını silmez. Merge sonrası bulunan blocker'ların forward-repair kapsamını izole eder.
 
@@ -44,7 +51,7 @@ Implementation head `58d57f08622d823dbedc0a79da0e5fdec7707a25` için CI #849 ba�
 - gerçek dblink customer concurrency receipt'i canonical customer reuse/serialization sözleşmesini geçti,
 - split-contact ve legacy duplicate SQL negatifleri appointment/master mutation olmadan fail-closed geçti.
 
-Bu handoff ile `TASKS.md` marker değişikliği yeni bir review-marker head oluşturur. R1'e devir yalnız o final marker head'in kendi exact-head full CI'ı success olduktan sonra Issue #65'e exact SHA + run receipt ile yapılır.
+Bu handoff ile `TASKS.md` marker değişikliğinin açtığı review zinciri tarihsel olarak tamamlandı. Final test head `08be2296bea585f30b9ea4db537ac070edbe7230` CI #938'den geçti; ardından R1 ve R2 ACCEPTABLE receipt'leri alındı, PR #87 main `56ef3be734369e329a30406ea8a66a5eb9ef5993` olarak merge edildi ve main CI #948 başarılı oldu.
 
 ## Değişmezler
 
@@ -55,12 +62,7 @@ Bu handoff ile `TASKS.md` marker değişikliği yeni bir review-marker head olu�
 - Aynı canonical contact farklı tenantlarda bağımsızdır.
 - Split/legacy ambiguity fail-closed olur; arbitrary customer winner seçilmez.
 - `PROJECT_STATE.md` implementer tarafından değiştirilmez.
-- F10-05 final `Tamamlandı` ancak final marker head full CI + R1 ACCEPTABLE + R2 ACCEPTABLE + coordinator kabulü + repair merge sonrası geri gelir.
 
-## Kalan kabul sırası
+## Kabul kapanış receipt'i
 
-1. final marker head exact-head full CI success,
-2. R1 security/database/access-control review,
-3. yalnız R1 ACCEPTABLE ise R2 browser/integration/accessibility review,
-4. coordinator gerek görürse exact-head staging,
-5. coordinator ready/merge + main CI + state-doc sync.
+F10-05 için daha önce açık olan final marker CI → R1 → R2 → coordinator merge zinciri tamamlandı. Durable canlı durum `main:TASKS.md` içinde **Tamamlandı** olarak kayıtlıdır; bu dosyadaki eski açık-kapı talimatları tarihsel candidate sürecine aittir.
