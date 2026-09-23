@@ -42,6 +42,7 @@ let ambiguousCashCommitted = false;
 const ticketPaymentReplays = new Map();
 let publicBookingCreated = false;
 let publicCreateRequest = null;
+let paymentsWriteAllowed = true;
 
 function business(id) {
   return id === BUSINESS_A
@@ -615,6 +616,9 @@ try {
     }
     if (request.method === 'POST' && url.pathname === `/api/tickets/${TICKET}/payments`) {
       assert.equal(activeBusinessId, BUSINESS_A, 'payment escaped active business A');
+      if (!paymentsWriteAllowed) {
+        return sendJson(response, 403, { error: { code: 'PAYMENTS_PERMISSION_REQUIRED', message: 'Tahsilat yetkiniz kaldırıldı. Güncel yetkiyle yeniden deneyin.' } });
+      }
       const key = request.headers['idempotency-key'];
       assert.ok(key, 'payment omitted Idempotency-Key');
       if (ticketPaymentReplays.has(key)) {
@@ -883,6 +887,22 @@ try {
   assert.match(ticket390.totals, /600/);
   assert.match(ticket390.totals, /0/);
 
+  paymentsWriteAllowed = false;
+  const financialEventsBeforeRevocation = ticketPaymentEvents.length;
+  await page.evaluate(`(() => {
+    const form=document.querySelector('.ticket-payment');
+    form.querySelector('select[name="method"]').value='cash';
+    form.querySelector('input[name="amount"]').value='50';
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Tahsilat yetkiniz kaldırıldı')`),
+    'F14-05 revoked payments_write did not surface the server denial in the open cashier',
+  );
+  assert.equal(ticketPaymentEvents.length, financialEventsBeforeRevocation, 'F14-05 revoked payment mutated the ledger fixture');
+  assert.equal(ticketPaidMinor, 0, 'F14-05 revoked payment changed the server paid total');
+  paymentsWriteAllowed = true;
+
   await page.evaluate(`(() => {
     const form=document.querySelector('.ticket-payment');
     form.querySelector('select[name="method"]').value='cash';
@@ -896,6 +916,13 @@ try {
   const ambiguousTotals = await page.evaluate(`document.querySelector('.ticket-totals').innerText`);
   assert.match(ambiguousTotals, /Tahsil/);
   assert.ok(!/200[^\n]*Kalan[^\n]*400/s.test(ambiguousTotals), 'ambiguous write was shown as locally paid');
+
+  await page.send('Page.reload', { ignoreCache: true });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/mobile/tickets' && document.body.innerText.includes('Sonucu belirsiz mali işlem korunuyor') && [...document.querySelectorAll('.ticket-notice button')].some((node) => node.textContent.includes('Belirsiz işlemi doğrula'))`),
+    'F14-05 full application reload lost the persisted ambiguous financial request',
+  );
+  assert.equal(ticketPaymentEvents.filter((item) => item.method === 'cash').length, 1, 'F14-05 reload duplicated the server-committed ambiguous cash event');
 
   const walkInPostsBeforeAmbiguitySwitch = requests.filter((item) => item.method === 'POST' && item.path === '/api/tickets').length;
   await page.evaluate(`(() => {
@@ -943,15 +970,17 @@ try {
     'F14-04 same-key ambiguous payment recovery after business remount did not restore server projection',
   );
 
-  const cashRequests = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'cash');
+  const cashRequests = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'cash' && item.body.amountMinor === 20000);
   assert.equal(cashRequests.length, 2, 'F14-04 ambiguous cash payment was not retried exactly once');
   assert.equal(cashRequests[0].idempotencyKey, cashRequests[1].idempotencyKey, 'F14-04 ambiguity remount changed Idempotency-Key');
   assert.equal(ticketPaymentEvents.filter((item) => item.method === 'cash').length, 1, 'F14-04 same-key retry duplicated cash event');
 
+  const cardRequestsBeforeDoubleSubmit = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'card').length;
   await page.evaluate(`(() => {
     const form=document.querySelector('.ticket-payment');
     form.querySelector('select[name="method"]').value='card';
     form.querySelector('input[name="amount"]').value='400';
+    form.requestSubmit();
     form.requestSubmit();
   })()`);
   await waitFor(
@@ -960,6 +989,24 @@ try {
   );
   assert.equal(ticketPaidMinor, 60000, 'F14-04 fixture did not preserve server paid total');
   assert.equal(ticketPaymentEvents.length, 2, 'F14-04 fixture created an unexpected payment count');
+  const cardRequests = requests.filter((item) => item.method === 'POST' && item.path === `/api/tickets/${TICKET}/payments` && item.body.method === 'card' && item.body.amountMinor === 40000);
+  assert.equal(cardRequests.length - cardRequestsBeforeDoubleSubmit, 2, 'F14-05 double-submit did not issue the intended repeated request pair');
+  assert.equal(cardRequests.at(-1).idempotencyKey, cardRequests.at(-2).idempotencyKey, 'F14-05 repeated card submit changed Idempotency-Key');
+  assert.equal(ticketPaymentEvents.filter((item) => item.method === 'card').length, 1, 'F14-05 repeated card submit duplicated the card ledger event');
+
+  const secondClient = await newPage(debugUrl, origin, `/app/mobile/tickets?ticketId=${TICKET}`, 390);
+  await waitFor(
+    () => secondClient.evaluate(`location.pathname === '/app/mobile/tickets' && document.querySelector('.ticket-totals')?.innerText.includes('600') && document.querySelector('.ticket-totals')?.innerText.includes('0')`),
+    'F14-05 second client did not re-read the server-authoritative paid 600 / balance 0 projection',
+  );
+  const secondClientState = await secondClient.evaluate(`(() => ({
+    text: document.querySelector('.ticket-totals')?.innerText ?? '',
+    cacheKeys: null,
+  }))()`);
+  assert.match(secondClientState.text, /600/);
+  assert.match(secondClientState.text, /0/);
+  secondClient.close();
+  console.log('F14-05 permission revoke, reload ambiguity, double-submit and second-client acceptance passed.');
 
   await page.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 640, deviceScaleFactor: 1, mobile: true });
   await sleep(100);
