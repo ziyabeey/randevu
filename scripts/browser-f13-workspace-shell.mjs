@@ -53,11 +53,16 @@ let productState = null;
 let productMovements = [];
 let productSaleTicket = null;
 let productSalePaidMinor = 0;
+let productSalePaymentRecorded = false;
 let productSaleReturns = 0;
 
 function productSaleProjection() {
   if (!productSaleTicket) return null;
-  const totalMinor = productSaleTicket.quantity * productSaleTicket.unitPriceMinor;
+  // Mirrors f14_ticket_projection: returned goods lower what the ticket owes,
+  // while the sale line keeps its immutable quantity/price snapshot.
+  const subtotalMinor = productSaleTicket.quantity * productSaleTicket.unitPriceMinor;
+  const returnedMinor = productSaleReturns * productSaleTicket.unitPriceMinor;
+  const totalMinor = subtotalMinor - returnedMinor;
   const refunds = Array.from({ length: productSaleReturns }, (_, index) => ({
     eventId: `f34e0000-0000-4000-8000-${String(index + 2).padStart(12, '0')}`,
     eventType: 'refund',
@@ -83,10 +88,11 @@ function productSaleProjection() {
     customerPhone: '+905550001122',
     customerEmail: 'customer@example.test',
     settlementReady: true,
-    estimateMinMinor: totalMinor,
-    estimateMaxMinor: totalMinor,
-    subtotalMinor: totalMinor,
+    estimateMinMinor: subtotalMinor,
+    estimateMaxMinor: subtotalMinor,
+    subtotalMinor,
     discountMinor: 0,
+    returnedMinor,
     totalMinor,
     paymentStatus: productSalePaidMinor === 0 ? 'unpaid' : productSalePaidMinor < totalMinor ? 'partial' : 'paid',
     paidMinor: productSalePaidMinor,
@@ -109,6 +115,7 @@ function productSaleProjection() {
       productName: productState?.name ?? 'Şampuan',
       productCode: productState?.code ?? 'SAMP-001',
       quantity: productSaleTicket.quantity,
+      returnedQuantity: productSaleReturns,
       priceType: 'fixed',
       priceMinMinor: productSaleTicket.unitPriceMinor,
       priceMaxMinor: productSaleTicket.unitPriceMinor,
@@ -116,13 +123,13 @@ function productSaleProjection() {
       pricePolicyVersion: productSaleTicket.productVersion,
       finalUnitPriceMinor: productSaleTicket.unitPriceMinor,
       discountMinor: 0,
-      netMinor: totalMinor,
+      netMinor: subtotalMinor,
       finalizedAt: '2026-09-23T05:20:00.000Z',
       finalizationReason: 'product_catalog_snapshot',
       discountAt: null,
       discountReason: null,
     }],
-    paymentEvents: productSalePaidMinor > 0 ? [{
+    paymentEvents: productSalePaymentRecorded ? [{
       eventId: PRODUCT_PAYMENT,
       eventType: 'payment',
       sourcePaymentEventId: null,
@@ -798,6 +805,7 @@ try {
         version: 1,
       };
       productSalePaidMinor = 0;
+      productSalePaymentRecorded = false;
       productSaleReturns = 0;
       productMovements = [{
         movementId: 'f34b0000-0000-4000-8000-000000000003',
@@ -823,6 +831,7 @@ try {
       assert.equal(body.amountMinor, 50000);
       assert.equal(productSalePaidMinor, 0, 'product ticket duplicate payment');
       productSalePaidMinor = 50000;
+      productSalePaymentRecorded = true;
       return sendJson(response, 201, { ticket: productSaleProjection() });
     }
     if (request.method === 'POST' && url.pathname === `/api/tickets/${PRODUCT_TICKET}/lines/${PRODUCT_LINE}/product-return-refund`) {
@@ -1602,6 +1611,13 @@ try {
   }))()`);
   assert.equal(sale390.overflow <= 1, true, 'F15-02 product sale/refund UI overflowed at 390px');
   assert.match(sale390.text, /İade/);
+  const settled390 = await page.evaluate(`(() => ({
+    totals: document.querySelector('.ticket-totals')?.innerText ?? '',
+    closeEnabled: [...document.querySelectorAll('button')].some((button) => button.textContent.trim() === 'Adisyonu kapat' && !button.disabled),
+  }))()`);
+  assert.match(settled390.totals, /İade\s*₺500,00/, 'F15-02 returned goods value is not shown in the ticket totals');
+  assert.match(settled390.totals, /Kalan\s*₺0,00/, 'F15-02 fully refunded product return left a receivable balance');
+  assert.equal(settled390.closeEnabled, true, 'F15-02 fully returned product ticket cannot be closed');
   console.log('F15-02 standalone sale, payment, damaged refund, resellable return and 390px acceptance passed.');
 
   // Return the shared F13 harness to its canonical workspace before continuing
