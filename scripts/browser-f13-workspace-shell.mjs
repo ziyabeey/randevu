@@ -31,6 +31,7 @@ const CUSTOMER = 'f3470000-0000-4000-8000-000000000001';
 const TICKET = 'f3480000-0000-4000-8000-000000000001';
 const PAYMENT_CASH = 'f3490000-0000-4000-8000-000000000001';
 const PAYMENT_CARD = 'f3490000-0000-4000-8000-000000000002';
+const PRODUCT = 'f34a0000-0000-4000-8000-000000000001';
 const TOKEN = 'T'.repeat(48);
 const CSRF = 'C'.repeat(43);
 
@@ -45,6 +46,12 @@ const ticketPaymentReplays = new Map();
 let publicBookingCreated = false;
 let publicCreateRequest = null;
 let paymentsWriteAllowed = true;
+let productState = null;
+let productMovements = [];
+
+function productProjection() {
+  return productState ? { ...productState } : null;
+}
 
 function business(id) {
   return id === BUSINESS_A
@@ -607,6 +614,82 @@ try {
       });
     }
     if (request.method === 'GET' && url.pathname === '/api/customers') return sendJson(response, 200, customers());
+    if (request.method === 'GET' && url.pathname === '/api/products') {
+      return sendJson(response, 200, {
+        products: activeBusinessId === BUSINESS_A && productState ? [productProjection()] : [],
+        page: { limit: 25, hasMore: false, nextCursor: null },
+      });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/products') {
+      assert.equal(activeBusinessId, BUSINESS_A, 'product create escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'product create omitted Idempotency-Key');
+      assert.equal(body.name, 'Şampuan');
+      assert.equal(body.code, 'SAMP-001');
+      assert.equal(body.salePriceMinor, 25000);
+      assert.equal(body.initialQuantity, 5);
+      productState = {
+        productId: PRODUCT,
+        businessId: BUSINESS_A,
+        name: body.name,
+        code: body.code,
+        unit: 'piece',
+        salePriceMinor: body.salePriceMinor,
+        currency: 'TRY',
+        stockOnHand: body.initialQuantity,
+        version: 1,
+        active: true,
+        createdAt: '2026-09-23T05:00:00.000Z',
+        updatedAt: '2026-09-23T05:00:00.000Z',
+        archivedAt: null,
+      };
+      productMovements = [{
+        movementId: 'f34b0000-0000-4000-8000-000000000001',
+        productId: PRODUCT,
+        kind: 'initial',
+        quantityDelta: 5,
+        balanceAfter: 5,
+        reason: null,
+        reversesMovementId: null,
+        createdAt: '2026-09-23T05:00:00.000Z',
+      }];
+      return sendJson(response, 201, { product: productProjection() });
+    }
+    if (request.method === 'GET' && url.pathname === `/api/products/${PRODUCT}`) {
+      if (activeBusinessId !== BUSINESS_A || !productState) return sendJson(response, 404, { error: { code: 'PRODUCT_NOT_FOUND', message: 'Ürün bulunamadı.' } });
+      return sendJson(response, 200, { product: productProjection() });
+    }
+    if (request.method === 'GET' && url.pathname === `/api/products/${PRODUCT}/stock-movements`) {
+      if (activeBusinessId !== BUSINESS_A || !productState) return sendJson(response, 404, { error: { code: 'PRODUCT_NOT_FOUND', message: 'Ürün bulunamadı.' } });
+      return sendJson(response, 200, {
+        movements: productMovements,
+        page: { limit: 25, hasMore: false, nextCursor: null },
+      });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/products/${PRODUCT}/stock-movements`) {
+      assert.equal(activeBusinessId, BUSINESS_A, 'stock movement escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'stock movement omitted Idempotency-Key');
+      assert.equal(body.kind, 'receipt');
+      assert.equal(body.quantityDelta, 3);
+      assert.equal(body.expectedVersion, productState.version);
+      productState = {
+        ...productState,
+        stockOnHand: productState.stockOnHand + body.quantityDelta,
+        version: productState.version + 1,
+        updatedAt: '2026-09-23T05:05:00.000Z',
+      };
+      productMovements = [{
+        movementId: 'f34b0000-0000-4000-8000-000000000002',
+        productId: PRODUCT,
+        kind: 'receipt',
+        quantityDelta: 3,
+        balanceAfter: productState.stockOnHand,
+        reason: body.reason ?? null,
+        reversesMovementId: null,
+        createdAt: '2026-09-23T05:05:00.000Z',
+      }, ...productMovements];
+      return sendJson(response, 201, { product: productProjection() });
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/tickets') {
       return sendJson(response, 200, {
         tickets: activeBusinessId === BUSINESS_A ? [ticketProjection()] : [],
@@ -1193,6 +1276,87 @@ try {
   assert.equal(pwaRuntimeAfterReconnect.serviceWorkers, 0, 'F14-05 reconnect unexpectedly registered a service worker');
   assert.deepEqual(pwaRuntimeAfterReconnect.cacheKeys, [], 'F14-05 reconnect populated persistent Cache Storage');
   console.log('F14-05 manifest/installability and no-offline-private-cache acceptance passed.');
+
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 740, deviceScaleFactor: 1, mobile: true });
+  await page.send('Page.navigate', { url: `${origin}/app/products` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/products' && document.body.innerText.includes('Ürün kataloğu')`),
+    'F15-01 product workspace route did not render',
+  );
+  await page.evaluate(`(() => {
+    const form = document.querySelector('.products-create form');
+    const set = (name, value) => {
+      const node = form.querySelector('[name="' + name + '"]');
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      setter.call(node, value);
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    set('name', 'Şampuan');
+    set('code', 'SAMP-001');
+    set('price', '250,00');
+    set('initialQuantity', '5');
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Ürün oluşturuldu.') && document.body.innerText.includes('5 adet')`),
+    'F15-01 product create did not render the authoritative initial stock',
+  );
+  const product390 = await page.evaluate(`(() => ({
+    overflow: document.documentElement.scrollWidth - innerWidth,
+    text: document.body.innerText,
+  }))()`);
+  assert.equal(product390.overflow <= 1, true, 'F15-01 product workspace overflowed at 390px');
+  assert.match(product390.text, /Şampuan/);
+  assert.match(product390.text, /250/);
+
+  await page.evaluate(`(() => {
+    const form = document.querySelector('.products-stock-form');
+    const kind = form.querySelector('select[name="kind"]');
+    kind.value = 'receipt';
+    kind.dispatchEvent(new Event('change', { bubbles: true }));
+    const quantity = form.querySelector('input[name="quantity"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(quantity, '3');
+    quantity.dispatchEvent(new Event('input', { bubbles: true }));
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Stok hareketi kaydedildi.') && document.body.innerText.includes('8 adet')`),
+    'F15-01 stock receipt did not re-read the authoritative balance',
+  );
+  assert.equal(productState.stockOnHand, 8, 'F15-01 fixture did not preserve server stock balance');
+  assert.equal(productState.version, 2, 'F15-01 stock receipt did not advance server product version');
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.workspace-business select');
+    select.value='f3410000-0000-4000-8000-000000000002';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar' && document.body.innerText.includes('Salon B')`),
+    'F15-01 business switch did not leave the product route in verified B context',
+  );
+  await page.send('Page.navigate', { url: `${origin}/app/products` });
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Henüz ürün yok.') && !document.body.innerText.includes('SAMP-001')`),
+    'F15-01 product state leaked across businesses',
+  );
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.workspace-business select');
+    select.value='f3410000-0000-4000-8000-000000000001';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar' && document.body.innerText.includes('Salon A')`),
+    'F15-01 business switch did not restore verified A context',
+  );
+  await page.send('Page.navigate', { url: `${origin}/app/products` });
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('SAMP-001') && document.body.innerText.includes('8 adet')`),
+    'F15-01 returning to business A did not re-read its product stock',
+  );
+  console.log('F15-01 product create, stock movement, 390px and tenant-switch acceptance passed.');
 
   // Return the shared F13 harness to its canonical workspace before continuing
   // the pre-existing desktop/legacy-route acceptance below.

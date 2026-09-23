@@ -12,6 +12,7 @@ const CalendarPage = lazy(() => import('./CalendarPage'));
 const BookingPage = lazy(() => import('./BookingPage'));
 const CustomersPage = lazy(() => import('./CustomersPage'));
 const ServicesPage = lazy(() => import('./ServicesPage'));
+const ProductsPage = lazy(() => import('./ProductsPage'));
 const AvailabilityPage = lazy(() => import('./AvailabilityPage'));
 const OnboardingPage = lazy(() => import('./OnboardingPage'));
 const TeamPage = lazy(() => import('./TeamPage'));
@@ -25,6 +26,7 @@ const NAV_ITEMS: Array<{ page: Exclude<WorkspacePage, 'not-found'>; label: strin
   { page: 'bookings', label: 'Randevular' },
   { page: 'customers', label: 'Müşteriler' },
   { page: 'services', label: 'Hizmetler' },
+  { page: 'products', label: 'Ürün ve stok' },
   { page: 'team', label: 'Ekip' },
   { page: 'availability', label: 'Müsaitlik' },
   { page: 'setup', label: 'Kurulum' },
@@ -50,6 +52,7 @@ function WorkspaceOutlet({ page }: { page: WorkspacePage }) {
   if (page === 'bookings') return <BookingPage />;
   if (page === 'customers') return <CustomersPage />;
   if (page === 'services') return <ServicesPage />;
+  if (page === 'products') return <ProductsPage />;
   if (page === 'availability') return <AvailabilityPage />;
   if (page === 'setup') return <OnboardingPage />;
   if (page === 'team') return <TeamPage />;

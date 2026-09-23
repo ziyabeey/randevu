@@ -329,6 +329,11 @@ const cookieMutations = [
   ['POST', '/api/tickets/:id/payments'],
   ['POST', '/api/tickets/:id/payments/:paymentId/corrections'],
   ['POST', '/api/tickets/:id/payments/:paymentId/refunds'],
+  ['POST', '/api/products'],
+  ['PUT', '/api/products/:id'],
+  ['POST', '/api/products/:id/archive'],
+  ['POST', '/api/products/:id/stock-movements'],
+  ['POST', '/api/products/:id/stock-movements/:movementId/reverse'],
 ];
 const exceptions = [
   '/api/public/business/:slug/book',
