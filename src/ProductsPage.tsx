@@ -90,10 +90,6 @@ export default function ProductsPage() {
       }
       setProducts((existing) => append ? [...existing, ...result.products] : result.products);
       setPage(result.page);
-      if (!append && selectedId && !result.products.some((product) => product.productId === selectedId)) {
-        setSelectedId(null);
-        setMovements([]);
-      }
     } catch (error) {
       if (current !== generation.current) return;
       setNotice(error instanceof Error ? error.message : 'Ürünler yüklenemedi.');
@@ -104,7 +100,7 @@ export default function ProductsPage() {
     } finally {
       if (current === generation.current) setLoading(false);
     }
-  }, [activeBusinessId, includeArchived, selectedId]);
+  }, [activeBusinessId, includeArchived]);
 
   const loadProduct = useCallback(async (productId: string) => {
     const result = await api<{ product: Product }>(`/api/products/${productId}`);
