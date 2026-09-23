@@ -38,6 +38,7 @@ declare
   v_key text := 'h19-d1d5-shared-0001';
   v_hash text := md5('h19-d1d5-same-request');
   v_command text;
+  v_conn text;
   v_a_waited boolean := false;
   v_b_waited boolean := false;
   v_a_new boolean;
