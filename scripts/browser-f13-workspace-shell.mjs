@@ -243,6 +243,7 @@ function publicCreatedGroup(startsAt = isoAt(0)) {
       passiveWaitMinutes: 0,
       processingPolicyVersion: 1,
       priceMinor: 60000,
+      currency: 'TRY',
       pricePolicyVersion: 1,
     })),
   };
