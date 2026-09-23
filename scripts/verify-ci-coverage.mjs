@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverFiles } from './ci-files.mjs';
@@ -21,8 +21,8 @@ function parseRelativePsqlIncludes(source) {
 }
 
 function expandExecutableSql(root, planFiles, discoveredSet) {
-  const executable = new Set(planFiles);
-  const pending = planFiles.filter((file) => discoveredSet.has(file));
+  const executable = new Set(planFiles.filter((file) => discoveredSet.has(file)));
+  const pending = [...planFiles];
   const parsed = new Set();
 
   while (pending.length > 0) {
@@ -30,7 +30,10 @@ function expandExecutableSql(root, planFiles, discoveredSet) {
     if (parsed.has(file)) continue;
     parsed.add(file);
 
-    const source = readFileSync(path.resolve(root, file), 'utf8');
+    const absoluteFile = path.resolve(root, file);
+    if (!existsSync(absoluteFile)) continue;
+    const source = readFileSync(absoluteFile, 'utf8');
+
     for (const include of parseRelativePsqlIncludes(source)) {
       if (path.posix.isAbsolute(include)) {
         throw new Error(`CI coverage gate failed: absolute \\ir include is not allowed: ${include}`);
@@ -39,8 +42,14 @@ function expandExecutableSql(root, planFiles, discoveredSet) {
       if (resolved === '..' || resolved.startsWith('../')) {
         throw new Error(`CI coverage gate failed: \\ir include must stay inside the repository: ${include}`);
       }
-      if (!executable.has(resolved)) executable.add(resolved);
-      if (discoveredSet.has(resolved) && !parsed.has(resolved)) pending.push(resolved);
+
+      const absoluteInclude = path.resolve(root, resolved);
+      if (!existsSync(absoluteInclude)) {
+        throw new Error(`CI coverage gate failed: included SQL file does not exist: ${resolved}`);
+      }
+
+      if (discoveredSet.has(resolved)) executable.add(resolved);
+      if (!parsed.has(resolved)) pending.push(resolved);
     }
   }
 
@@ -63,7 +72,7 @@ export async function verifyCiCoverage(options = {}) {
   const discoveredSet = new Set(discoveredSql);
   const executableSql = expandExecutableSql(root, planFiles, discoveredSet);
   const missing = discoveredSql.filter((file) => !executableSql.has(file));
-  const unknown = [...executableSql].filter((file) => !discoveredSet.has(file)).sort((left, right) => left.localeCompare(right, 'en'));
+  const unknown = [...new Set(planFiles)].filter((file) => !discoveredSet.has(file)).sort((left, right) => left.localeCompare(right, 'en'));
 
   if (missing.length > 0 || unknown.length > 0) {
     const lines = ['CI coverage gate failed.'];
