@@ -30,36 +30,14 @@ function isH19ScenarioFile(file) {
     && file !== h19SupportPath;
 }
 
-function parseH19Calls(source, functionName, argumentPattern) {
-  const values = [];
-  const regex = new RegExp(
-    `^\\\\s*select\\\\s+pg_temp\\\\.${functionName}\\\\(${argumentPattern}\\\\)\\\\s*;\\\\s*import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { discoverFiles } from './ci-files.mjs';
-import {
-  defaultPostgresPlanPath,
-  flattenPostgresPlan,
-  readPostgresPlan,
-} from './ci-postgres.mjs';
-
-const modulePath = fileURLToPath(import.meta.url);
-const repoRoot = path.resolve(path.dirname(modulePath), '..');
-
-function parseRelativePsqlIncludes(source) {
-  const includes = [];
-  for (const line of source.split(/\r?\n/)) {
-    const match = line.match(/^\s*\\ir\s+(?:"([^"]+)"|'([^']+)'|(\S+))\s*$/);
-    if (match) includes.push(match[1] ?? match[2] ?? match[3]);
-  }
-  return includes;
+function parseH19ExpectRows(source) {
+  return [...source.matchAll(/^\s*select\s+pg_temp\.h19_expect\('([^']+)'\s*,\s*'([^']+)'\s*,\s*'(D[0-5])'\s*,\s*'(D[0-5])'\)\s*;\s*$/gm)]
+    .map((match) => match.slice(1));
 }
 
-,
-    'gm',
-  );
-  for (const match of source.matchAll(regex)) values.push(match.slice(1));
-  return values;
+function parseH19PassIds(source) {
+  return [...source.matchAll(/^\s*select\s+pg_temp\.h19_pass\('([^']+)'\)\s*;\s*$/gm)]
+    .map((match) => match[1]);
 }
 
 function verifyH19Manifest(root, sqlTests, planFiles) {
@@ -82,19 +60,14 @@ function verifyH19Manifest(root, sqlTests, planFiles) {
   const missingFromGate = scenarioFiles.filter((file) => !includeCounts.has(file));
   const duplicateIncludes = [...includeCounts.entries()]
     .filter(([, count]) => count !== 1)
-    .map(([file, count]) => `${file} (${count} includes)`);
+    .map(([file, count]) => file + ' (' + count + ' includes)');
   const unknownIncludes = [...includeCounts.keys()].filter((file) => !scenarioFiles.includes(file));
   const standalonePlanSteps = planFiles.filter(isH19ScenarioFile);
   const gatePlanCount = planFiles.filter((file) => file === h19GatePath).length;
 
-  const expectRows = parseH19Calls(
-    gateSource,
-    'h19_expect',
-    "'([^']+)'\\\\s*,\\\\s*'([^']+)'\\\\s*,\\\\s*'(D[0-5])'\\\\s*,\\\\s*'(D[0-5])'",
-  );
-  const passRows = parseH19Calls(gateSource, 'h19_pass', "'([^']+)'");
+  const expectRows = parseH19ExpectRows(gateSource);
   const expectedIds = expectRows.map(([id]) => id);
-  const passedIds = passRows.map(([id]) => id);
+  const passedIds = parseH19PassIds(gateSource);
   const duplicateExpectedIds = expectedIds.filter((id, index) => expectedIds.indexOf(id) !== index);
   const duplicatePassedIds = passedIds.filter((id, index) => passedIds.indexOf(id) !== index);
   const expectedSet = new Set(expectedIds);
@@ -106,31 +79,30 @@ function verifyH19Manifest(root, sqlTests, planFiles) {
   const declaredCount = countMatches.length === 1 ? Number(countMatches[0][1]) : null;
 
   const problems = [];
-  if (gatePlanCount !== 1) problems.push(`canonical H19 gate must appear exactly once in PostgreSQL plan (found ${gatePlanCount})`);
+  if (gatePlanCount !== 1) problems.push('canonical H19 gate must appear exactly once in PostgreSQL plan (found ' + gatePlanCount + ')');
   if (standalonePlanSteps.length > 0) {
-    problems.push(`H19 scenarios must not have standalone PostgreSQL plan steps: ${[...new Set(standalonePlanSteps)].join(', ')}`);
+    problems.push('H19 scenarios must not have standalone PostgreSQL plan steps: ' + [...new Set(standalonePlanSteps)].join(', '));
   }
-  if (missingFromGate.length > 0) problems.push(`H19 scenario files missing from canonical gate: ${missingFromGate.join(', ')}`);
-  if (duplicateIncludes.length > 0) problems.push(`H19 scenario files included more than once: ${duplicateIncludes.join(', ')}`);
-  if (unknownIncludes.length > 0) problems.push(`unknown H19 scenario includes: ${unknownIncludes.join(', ')}`);
-  if (duplicateExpectedIds.length > 0) problems.push(`duplicate H19 manifest IDs: ${[...new Set(duplicateExpectedIds)].join(', ')}`);
-  if (duplicatePassedIds.length > 0) problems.push(`duplicate H19 pass IDs: ${[...new Set(duplicatePassedIds)].join(', ')}`);
-  if (missingPasses.length > 0) problems.push(`H19 manifest IDs missing pass registration: ${missingPasses.join(', ')}`);
-  if (unknownPasses.length > 0) problems.push(`H19 pass IDs without manifest registration: ${unknownPasses.join(', ')}`);
+  if (missingFromGate.length > 0) problems.push('H19 scenario files missing from canonical gate: ' + missingFromGate.join(', '));
+  if (duplicateIncludes.length > 0) problems.push('H19 scenario files included more than once: ' + duplicateIncludes.join(', '));
+  if (unknownIncludes.length > 0) problems.push('unknown H19 scenario includes: ' + unknownIncludes.join(', '));
+  if (duplicateExpectedIds.length > 0) problems.push('duplicate H19 manifest IDs: ' + [...new Set(duplicateExpectedIds)].join(', '));
+  if (duplicatePassedIds.length > 0) problems.push('duplicate H19 pass IDs: ' + [...new Set(duplicatePassedIds)].join(', '));
+  if (missingPasses.length > 0) problems.push('H19 manifest IDs missing pass registration: ' + missingPasses.join(', '));
+  if (unknownPasses.length > 0) problems.push('H19 pass IDs without manifest registration: ' + unknownPasses.join(', '));
   if (expectedIds.length !== scenarioFiles.length) {
-    problems.push(`H19 manifest/scenario count mismatch: manifest=${expectedIds.length} files=${scenarioFiles.length}`);
+    problems.push('H19 manifest/scenario count mismatch: manifest=' + expectedIds.length + ' files=' + scenarioFiles.length);
   }
   if (declaredCount === null) {
-    problems.push(`H19 gate must contain exactly one h19_assert_complete(N) call (found ${countMatches.length})`);
+    problems.push('H19 gate must contain exactly one h19_assert_complete(N) call (found ' + countMatches.length + ')');
   } else if (declaredCount !== scenarioFiles.length) {
-    problems.push(`H19 assert_complete count mismatch: declared=${declaredCount} files=${scenarioFiles.length}`);
+    problems.push('H19 assert_complete count mismatch: declared=' + declaredCount + ' files=' + scenarioFiles.length);
   }
 
   if (problems.length > 0) {
-    throw new Error(['CI coverage gate failed: H19 manifest integrity violation.', ...problems.map((problem) => `- ${problem}`)].join('\n'));
+    throw new Error(['CI coverage gate failed: H19 manifest integrity violation.', ...problems.map((problem) => '- ' + problem)].join('\n'));
   }
 }
-
 function expandExecutableSql(root, planFiles, discoveredSet) {
   const executable = new Set(planFiles.filter((file) => discoveredSet.has(file)));
   const pending = [...planFiles];
