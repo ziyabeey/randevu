@@ -32,6 +32,9 @@ select pg_temp.h19_expect('booking.d3d4.staff_hours_fallback','booking','D3','D4
 select pg_temp.h19_expect('inventory.d0d1.actor_idempotency','inventory','D0','D1',2283,2287,2288);
 select pg_temp.h19_expect('inventory.d1d5.idempotency_concurrency','inventory','D1','D5',2355,2359,2360);
 select pg_temp.h19_expect('booking.d2d3.snapshot_staff_coherence','booking','D2','D3',2106,2107,2098);
+select pg_temp.h19_expect('payments.d1d2.replay_snapshot','payments','D1','D2',2386,2389,2390);
+-- HOLDOUT CONTROL: D2xD5 is a frozen antipodal pair; keep regression evidence but exclude it from H19 geometry-selection scoring.
+select pg_temp.h19_expect('payments.d2d5.snapshot_concurrency','payments','D2','D5',2436,2441,2444);
 
 \echo 'H19 Integrity Gate: D0xD1 tenant/idempotency'
 \ir h19_d0_d1_tenant_idempotency.sql
@@ -73,10 +76,18 @@ select pg_temp.h19_pass('inventory.d1d5.idempotency_concurrency');
 \ir h19_d2_d3_snapshot_staff_coherence.sql
 select pg_temp.h19_pass('booking.d2d3.snapshot_staff_coherence');
 
-select pg_temp.h19_assert_complete(10);
+\echo 'H19 Integrity Gate: F14 D1xD2 replay snapshot'
+\ir h19_f14_d1_d2_replay_snapshot.sql
+select pg_temp.h19_pass('payments.d1d2.replay_snapshot');
+
+\echo 'H19 Integrity Gate: F14 D2xD5 snapshot concurrency'
+\ir h19_f14_d2_d5_snapshot_concurrency.sql
+select pg_temp.h19_pass('payments.d2d5.snapshot_concurrency');
+
+select pg_temp.h19_assert_complete(12);
 
 do $h19done$
 begin
-  raise notice 'H19 INTEGRITY GATE PASS: 10/10 registered interaction invariants accepted';
+  raise notice 'H19 INTEGRITY GATE PASS: 12/12 registered interaction invariants accepted';
 end
 $h19done$;
