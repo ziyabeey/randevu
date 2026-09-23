@@ -27,6 +27,9 @@ type FinancialReport = {
   cardNetMovementMinor: number;
   expectedMinMinor: number;
   expectedMaxMinor: number;
+  expectedAppointmentMinMinor: number;
+  expectedAppointmentMaxMinor: number;
+  appointmentCount: number;
   serviceSaleMinor: number;
   productSaleMinor: number;
   saleValueMinor: number;
@@ -174,6 +177,11 @@ export default function FinancialReportsPage() {
               <span>Beklenen tutar</span>
               <strong>{moneyRange(report.expectedMinMinor, report.expectedMaxMinor, currency)}</strong>
               <small>Kesinleşmemiş adisyonlar dahil snapshot aralığı</small>
+            </article>
+            <article className="financial-report-card">
+              <span>Beklenen randevu bedeli</span>
+              <strong>{moneyRange(report.expectedAppointmentMinMinor, report.expectedAppointmentMaxMinor, currency)}</strong>
+              <small>{report.appointmentCount} randevu · gerçekleşen satıştan ayrıdır</small>
             </article>
             <article className="financial-report-card">
               <span>Satış değeri</span>
