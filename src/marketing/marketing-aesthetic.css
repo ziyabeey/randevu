@@ -1,0 +1,409 @@
+/* MKT-01 aesthetic pass: editorial rhythm, depth and brand continuity.
+ * Kept isolated so the layer can be tuned or removed without touching behavior.
+ */
+
+.mkt-root {
+  --mkt-shadow-soft: 0 24px 70px rgba(21, 56, 109, 0.10);
+  --mkt-shadow-card: 0 28px 80px rgba(9, 35, 72, 0.16);
+  --mkt-highlight: rgba(255, 255, 255, 0.72);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(217, 236, 255, 0.48), transparent 27rem),
+    var(--mkt-cream);
+}
+
+.mkt-root ::selection {
+  background: var(--mkt-cobalt);
+  color: white;
+}
+
+.mkt-root :is(h1, h2) {
+  text-wrap: balance;
+  font-kerning: normal;
+}
+
+.mkt-root :is(p, summary) {
+  text-wrap: pretty;
+}
+
+/* Glass without looking like a generic glassmorphism preset. */
+.mkt-nav {
+  border-color: rgba(255, 255, 255, 0.78);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0)),
+    rgba(248, 249, 250, 0.91);
+  box-shadow:
+    0 18px 52px rgba(21, 56, 109, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+.mkt-brand > small {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 5px 14px rgba(21, 56, 109, 0.06);
+}
+
+/* Hero gets optical hierarchy instead of more decoration. */
+.mkt-hero h1 {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.mkt-hero-lead {
+  max-width: 34rem;
+  color: rgba(16, 41, 79, 0.88);
+}
+
+.mkt-hero-pills li {
+  position: relative;
+}
+
+.mkt-hero-pills i {
+  border: 1px solid rgba(51, 102, 204, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 8px 22px rgba(21, 56, 109, 0.07);
+}
+
+.mkt-demo-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.88);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.99), rgba(248, 251, 255, 0.94));
+  box-shadow:
+    0 38px 100px rgba(10, 38, 78, 0.20),
+    0 8px 24px rgba(21, 56, 109, 0.08),
+    inset 0 1px 0 white;
+  transform: rotate(1.2deg);
+}
+
+.mkt-demo-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 92% -8%, rgba(198, 232, 0, 0.16), transparent 30%),
+    linear-gradient(120deg, rgba(217, 236, 255, 0.13), transparent 34%);
+}
+
+.mkt-demo-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mkt-demo-select {
+  border-color: rgba(21, 56, 109, 0.10);
+  background: rgba(250, 252, 255, 0.92);
+  box-shadow: inset 0 1px 0 white;
+}
+
+.mkt-demo-slots .is-selected {
+  box-shadow: 0 8px 18px rgba(51, 102, 204, 0.20);
+}
+
+.mkt-demo-confirm {
+  box-shadow: 0 14px 30px rgba(51, 102, 204, 0.22);
+}
+
+.mkt-hero-note {
+  box-shadow: 0 16px 36px rgba(21, 56, 109, 0.13);
+  transform: rotate(-3deg);
+}
+
+/* The phrase strip acts as the visual hinge between campaign and product. */
+.mkt-ease-strip--phrases {
+  border-color: rgba(21, 56, 109, 0.10);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.78));
+  box-shadow:
+    0 34px 90px rgba(21, 56, 109, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.mkt-ease-strip--phrases strong {
+  position: relative;
+  isolation: isolate;
+}
+
+.mkt-ease-strip--phrases strong::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 22px;
+  bottom: 16px;
+  width: 26px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--mkt-cobalt);
+  opacity: 0.18;
+}
+
+.mkt-ease-strip--phrases strong:nth-child(3)::after,
+.mkt-ease-strip--phrases strong:nth-child(4)::after {
+  background: #93ad00;
+  opacity: 0.28;
+}
+
+/* Phone scene: a quieter physical object with stronger screen presence. */
+.mkt-booking-phone {
+  border-color: rgba(255, 255, 255, 0.30);
+  background: linear-gradient(155deg, #17335c, #081a35 76%);
+  box-shadow:
+    0 46px 120px rgba(8, 31, 65, 0.30),
+    0 10px 26px rgba(8, 31, 65, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.mkt-booking-screen {
+  box-shadow: inset 0 0 0 1px rgba(10, 39, 79, 0.05);
+}
+
+/* Cobalt scene gains depth while keeping the same brand color contract. */
+.mkt-calendar-stage {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 82% 20%, rgba(217, 236, 255, 0.15), transparent 28rem),
+    radial-gradient(circle at 14% 88%, rgba(198, 232, 0, 0.10), transparent 25rem),
+    var(--mkt-cobalt);
+}
+
+.mkt-calendar-stage::before {
+  content: "";
+  position: absolute;
+  right: -8vw;
+  top: 10%;
+  width: min(40vw, 560px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.mkt-calendar-stage > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mkt-calendar-board {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.99), rgba(245, 249, 255, 0.97));
+  box-shadow:
+    0 44px 120px rgba(3, 24, 65, 0.30),
+    0 12px 32px rgba(3, 24, 65, 0.12),
+    inset 0 1px 0 white;
+  transform: rotate(0.7deg);
+}
+
+.mkt-calendar-board::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 16px -16px -16px 16px;
+  border: 1px solid rgba(198, 232, 0, 0.42);
+  border-radius: inherit;
+  background: rgba(198, 232, 0, 0.08);
+}
+
+.mkt-calendar-row {
+  border-color: rgba(21, 56, 109, 0.07);
+  background: linear-gradient(180deg, #f9fbfe, #f3f6fb);
+  box-shadow: inset 0 1px 0 white;
+}
+
+.mkt-calendar-row.is-free {
+  background: linear-gradient(90deg, rgba(198, 232, 0, 0.12), rgba(198, 232, 0, 0.045));
+}
+
+.mkt-calendar-row.is-highlighted {
+  box-shadow:
+    inset 0 0 0 1px rgba(198, 232, 0, 0.48),
+    0 10px 24px rgba(84, 105, 0, 0.08);
+}
+
+/* Daily operations becomes a night counterpart to the cobalt calendar scene. */
+.mkt-today {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 76% 22%, rgba(51, 102, 204, 0.34), transparent 30rem),
+    radial-gradient(circle at 5% 92%, rgba(198, 232, 0, 0.07), transparent 22rem),
+    var(--mkt-cobalt-deep);
+}
+
+.mkt-today::after {
+  content: "";
+  position: absolute;
+  right: 7%;
+  bottom: -16rem;
+  width: 32rem;
+  height: 32rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.mkt-today > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mkt-today-list article {
+  border-color: rgba(255, 255, 255, 0.58);
+  background: linear-gradient(145deg, #ffffff, #f7faff);
+  box-shadow:
+    0 18px 45px rgba(3, 20, 48, 0.14),
+    inset 0 1px 0 white;
+}
+
+.mkt-today-list article:nth-child(1) {
+  transform: translateX(-10px);
+}
+
+.mkt-today-list article:nth-child(2) {
+  transform: translateX(8px);
+}
+
+.mkt-today-list article:nth-child(3) {
+  transform: translateX(-3px);
+}
+
+/* Proof cards become editorial tiles instead of three identical SaaS cards. */
+.mkt-proof-points {
+  gap: clamp(14px, 2vw, 24px);
+}
+
+.mkt-proof-points article {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(21, 56, 109, 0.07);
+  box-shadow: 0 22px 58px rgba(21, 56, 109, 0.07);
+}
+
+.mkt-proof-points article::before {
+  content: "";
+  position: absolute;
+  top: -54px;
+  right: -42px;
+  width: 118px;
+  height: 118px;
+  border: 1px solid rgba(51, 102, 204, 0.10);
+  border-radius: 50%;
+}
+
+.mkt-proof-points article:nth-child(2)::before {
+  border-color: rgba(117, 137, 0, 0.16);
+}
+
+.mkt-proof-points article:nth-child(3)::before {
+  border-color: rgba(90, 56, 160, 0.12);
+}
+
+.mkt-proof-points strong,
+.mkt-proof-points p,
+.mkt-proof-points span {
+  position: relative;
+}
+
+/* FAQ gets a magazine-like reading rail rather than a plain accordion stack. */
+.mkt-faq-list details {
+  margin-inline: -18px;
+  padding: 24px 18px;
+  border-radius: 18px;
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.mkt-faq-list details:hover,
+.mkt-faq-list details[open] {
+  background: rgba(217, 236, 255, 0.28);
+}
+
+.mkt-faq-list details[open] {
+  transform: translateX(6px);
+}
+
+.mkt-faq-list summary {
+  letter-spacing: -0.035em;
+}
+
+/* Final stage closes with light coming from the same lime accent used throughout. */
+.mkt-final-cta {
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 76% 26%, rgba(198, 232, 0, 0.18), transparent 25rem),
+    radial-gradient(circle at 16% 92%, rgba(217, 236, 255, 0.11), transparent 22rem),
+    var(--mkt-cobalt);
+}
+
+.mkt-final-cta::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -8rem;
+  bottom: -13rem;
+  width: 32rem;
+  height: 32rem;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 50%;
+}
+
+.mkt-final-orb {
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.10), transparent 32%),
+    var(--mkt-cobalt-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.mkt-final-lockup > small {
+  box-shadow:
+    0 16px 44px rgba(4, 25, 59, 0.16),
+    inset 0 1px 0 white;
+}
+
+@media (min-width: 981px) {
+  .mkt-proof-points article:nth-child(2) {
+    transform: translateY(18px);
+  }
+
+  .mkt-proof-points article:nth-child(3) {
+    transform: translateY(-8px);
+  }
+}
+
+@media (max-width: 680px) {
+  .mkt-demo-card {
+    transform: none;
+  }
+
+  .mkt-calendar-board {
+    transform: none;
+  }
+
+  .mkt-calendar-board::before {
+    inset: 10px -8px -10px 8px;
+  }
+
+  .mkt-today-list article {
+    transform: none !important;
+  }
+
+  .mkt-faq-list details {
+    margin-inline: -10px;
+    padding-inline: 10px;
+  }
+
+  .mkt-faq-list details[open] {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-faq-list details {
+    transition: none;
+  }
+}
