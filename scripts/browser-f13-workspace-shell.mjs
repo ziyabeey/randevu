@@ -33,6 +33,7 @@ const PAYMENT_CASH = 'f3490000-0000-4000-8000-000000000001';
 const PAYMENT_CARD = 'f3490000-0000-4000-8000-000000000002';
 const PRODUCT = 'f34a0000-0000-4000-8000-000000000001';
 const EXPENSE = 'f34c0000-0000-4000-8000-000000000001';
+const EXPENSE_REPLACEMENT = 'f34c0000-0000-4000-8000-000000000003';
 const TOKEN = 'T'.repeat(48);
 const CSRF = 'C'.repeat(43);
 
@@ -717,6 +718,8 @@ try {
         currency: body.currency,
         paymentMethod: body.paymentMethod,
         occurredAt: body.occurredAt,
+        businessDate: body.occurredAt.slice(0, 10),
+        timezone: 'Europe/Istanbul',
         reason: null,
         actorMembershipId: MEMBERSHIP_A,
         createdAt: '2026-09-23T07:45:00.000Z',
@@ -724,21 +727,66 @@ try {
       expenseEvents = [event, ...expenseEvents];
       return sendJson(response, 201, { result: event });
     }
-    if (request.method === 'POST' && url.pathname === `/api/expenses/${EXPENSE}/reverse`) {
-      assert.equal(activeBusinessId, BUSINESS_A, 'expense reversal escaped active business A');
-      assert.ok(request.headers['idempotency-key'], 'expense reversal omitted Idempotency-Key');
-      assert.equal(body.reason, 'Yanlış kayıt');
+    if (request.method === 'POST' && url.pathname === `/api/expenses/${EXPENSE}/correct`) {
+      assert.equal(activeBusinessId, BUSINESS_A, 'expense correction escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'expense correction omitted Idempotency-Key');
+      assert.equal(body.reason, 'Tutar düzeltmesi');
+      assert.equal(body.amountMinor, 12000);
       const source = expenseEvents.find((item) => item.eventId === EXPENSE);
-      assert.ok(source, 'expense reversal source missing');
+      assert.ok(source, 'expense correction source missing');
+      assert.equal(expenseEvents.some((item) => item.eventType === 'reversal' && item.sourceExpenseEventId === EXPENSE), false, 'expense source already reversed before correction');
       const reversal = {
         ...source,
         eventId: 'f34c0000-0000-4000-8000-000000000002',
         eventType: 'reversal',
         sourceExpenseEventId: EXPENSE,
         effectMinor: -source.amountMinor,
-        occurredAt: body.occurredAt,
+        occurredAt: body.correctionOccurredAt,
+        businessDate: body.correctionOccurredAt.slice(0, 10),
         reason: body.reason,
         createdAt: '2026-09-23T07:50:00.000Z',
+      };
+      const replacement = {
+        ...source,
+        eventId: EXPENSE_REPLACEMENT,
+        eventType: 'expense',
+        sourceExpenseEventId: null,
+        amountMinor: body.amountMinor,
+        effectMinor: body.amountMinor,
+        category: body.category,
+        description: body.description ?? null,
+        currency: body.currency,
+        paymentMethod: body.paymentMethod,
+        occurredAt: body.occurredAt,
+        businessDate: body.occurredAt.slice(0, 10),
+        reason: null,
+        createdAt: '2026-09-23T07:50:01.000Z',
+      };
+      expenseEvents = [replacement, reversal, ...expenseEvents];
+      return sendJson(response, 201, { result: { reversal, replacement } });
+    }
+    if (request.method === 'POST'
+        && (url.pathname === `/api/expenses/${EXPENSE}/reverse`
+          || url.pathname === `/api/expenses/${EXPENSE_REPLACEMENT}/reverse`)) {
+      assert.equal(activeBusinessId, BUSINESS_A, 'expense reversal escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'expense reversal omitted Idempotency-Key');
+      assert.equal(body.reason, 'Yanlış kayıt');
+      const sourceId = url.pathname.includes(EXPENSE_REPLACEMENT) ? EXPENSE_REPLACEMENT : EXPENSE;
+      const source = expenseEvents.find((item) => item.eventId === sourceId);
+      assert.ok(source, 'expense reversal source missing');
+      assert.equal(expenseEvents.some((item) => item.eventType === 'reversal' && item.sourceExpenseEventId === sourceId), false, 'expense source was reversed twice');
+      const reversal = {
+        ...source,
+        eventId: sourceId === EXPENSE_REPLACEMENT
+          ? 'f34c0000-0000-4000-8000-000000000004'
+          : 'f34c0000-0000-4000-8000-000000000005',
+        eventType: 'reversal',
+        sourceExpenseEventId: sourceId,
+        effectMinor: -source.amountMinor,
+        occurredAt: body.occurredAt,
+        businessDate: body.occurredAt.slice(0, 10),
+        reason: body.reason,
+        createdAt: '2026-09-23T07:55:00.000Z',
       };
       expenseEvents = [reversal, ...expenseEvents];
       return sendJson(response, 201, { result: reversal });
@@ -1447,15 +1495,36 @@ try {
   assert.match(expense390.text, /Nakit/);
 
   await page.evaluate(`(() => {
-    window.prompt = () => 'Yanlış kayıt';
-    [...document.querySelectorAll('.expenses-list button')].find((node) => node.textContent.includes('reversal')).click();
+    const answers = ['120,00', 'Tutar düzeltmesi'];
+    window.prompt = () => answers.shift() ?? null;
+    [...document.querySelectorAll('.expenses-list button')].find((node) => node.textContent.trim() === 'Düzelt').click();
   })()`);
   await waitFor(
-    () => page.evaluate(`document.body.innerText.includes('Masraf reversal hareketi kaydedildi.') && document.body.innerText.includes('Reversal')`),
-    'F15-03 expense reversal did not render append-only correction',
+    () => page.evaluate(`document.body.innerText.includes('Masraf düzeltmesi reversal + yeni kayıt olarak kaydedildi.') && document.body.innerText.includes('120') && document.body.innerText.includes('Düzeltildi / iptal edildi')`),
+    'F15-03 expense correction did not render reversal + replacement',
   );
-  assert.equal(expenseEvents.length, 2, 'F15-03 fixture did not preserve source + reversal events');
-  assert.equal(expenseEvents[0].effectMinor, -15000, 'F15-03 reversal effect is wrong');
+  assert.equal(expenseEvents.length, 3, 'F15-03 fixture did not preserve source + correction reversal + replacement');
+  assert.equal(expenseEvents.filter((item) => item.eventType === 'reversal' && item.sourceExpenseEventId === EXPENSE).length, 1, 'F15-03 correction did not create exactly one source reversal');
+  assert.equal(expenseEvents.find((item) => item.eventId === EXPENSE_REPLACEMENT)?.amountMinor, 12000, 'F15-03 correction replacement amount is wrong');
+  const correctionUi = await page.evaluate(`(() => ({
+    actionCount: [...document.querySelectorAll('.expenses-list button')].filter((node) => node.textContent.trim() === 'Düzelt').length,
+    retiredCount: [...document.querySelectorAll('.expenses-list li')].filter((node) => node.textContent.includes('Düzeltildi / iptal edildi')).length,
+  }))()`);
+  assert.equal(correctionUi.actionCount, 1, 'F15-03 reversed source still exposed a correction action');
+  assert.equal(correctionUi.retiredCount, 1, 'F15-03 reversed source did not render retired state');
+
+  await page.evaluate(`(() => {
+    window.prompt = () => 'Yanlış kayıt';
+    const rows = [...document.querySelectorAll('.expenses-list li')];
+    const replacement = rows.find((node) => node.textContent.includes('120'));
+    [...replacement.querySelectorAll('button')].find((node) => node.textContent.includes('reversal')).click();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Masraf reversal hareketi kaydedildi.') && [...document.querySelectorAll('.expenses-list li')].filter((node) => node.textContent.includes('Düzeltildi / iptal edildi')).length === 2`),
+    'F15-03 replacement reversal did not retire the corrected expense',
+  );
+  assert.equal(expenseEvents.length, 4, 'F15-03 fixture did not preserve full append-only correction/cancel chain');
+  assert.equal(expenseEvents.reduce((sum, item) => sum + item.effectMinor, 0), 0, 'F15-03 correction/cancel chain did not reconcile to zero');
 
   await page.evaluate(`(() => {
     const select=document.querySelector('.workspace-business select');
