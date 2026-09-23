@@ -7,10 +7,12 @@ depends_on canonical refs/receipts and reinforces Context Refresh.
 ## Prompt
 
 Use the [effective-state-audit Skill](../../../.github/skills/effective-state-audit/SKILL.md)
-for the supplied task/PR. Read live main, verified-main docs, current PR/head/CI,
-Context Pack and latest binding Issue #65 decisions through native tools.
-Manifests are optional disposable inputs, not authority. Bound the audit to the
-task and one direct dependency hop; do not read all issue history by default.
+for the supplied task/PR. Read live main, verified-main docs, current PR/head/CI
+and the current Context Pack through native tools. Issue #65 is a temporary
+coordination channel, not review/acceptance authority; do not read its history by
+default. If the current PR/task explicitly links one live assignment/claim there,
+read only that directly referenced item. Manifests are optional disposable inputs,
+not authority. Bound the audit to the task and one direct dependency hop.
 
 Produce the shape below, separating verified main, live overlay and proposed
 state within the relevant fields. Report contradictory sources with references,

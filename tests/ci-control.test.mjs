@@ -219,6 +219,12 @@ test('CI receipt lookup is anonymous, authoritative and requires prior full-code
   assert.match(scopeSection, /TRUSTED_CI_RECEIPTS_FILE/);
 });
 
+test('pull-request CI checks out the exact candidate head instead of the synthetic merge ref', () => {
+  const workflow = readFileSync(path.resolve('.github/workflows/ci.yml'), 'utf8');
+  assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+  assert.match(workflow, /Pull-request CI is exact-head evidence/);
+});
+
 test('GitHub CI avoids unconditional PostgreSQL setup cost and overlaps container launch with npm ci', () => {
   const workflow = readFileSync(path.resolve('.github/workflows/ci.yml'), 'utf8');
   assert.match(workflow, /Install dependencies while launching PostgreSQL 17/);
