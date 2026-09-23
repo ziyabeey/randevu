@@ -68,8 +68,8 @@ select pg_temp.h19_pass('booking.d2d3.snapshot_staff_coherence');
 
 select pg_temp.h19_assert_complete(9);
 
-do $
+do $h19done$
 begin
   raise notice 'H19 INTEGRITY GATE PASS: 9/9 registered interaction invariants accepted';
 end
-$;
+$h19done$;
