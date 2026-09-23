@@ -11,6 +11,8 @@ create table public.expense_events (
   currency text not null check (currency ~ '^[A-Z]{3}$'),
   payment_method text not null check (payment_method in ('cash','card')),
   occurred_at timestamptz not null,
+  business_date date not null,
+  timezone_snapshot text not null,
   reason text,
   actor_membership_id uuid not null,
   created_at timestamptz not null default now(),
@@ -27,6 +29,7 @@ create table public.expense_events (
     check (category = btrim(category) and char_length(category) between 1 and 80),
   constraint expense_events_description_shape
     check (description is null or (description = btrim(description) and char_length(description) between 2 and 240)),
+  constraint expense_events_timezone_shape check (char_length(timezone_snapshot) between 1 and 64),
   constraint expense_events_reason_shape
     check (reason is null or (reason = btrim(reason) and char_length(reason) between 2 and 240)),
   constraint expense_events_shape
@@ -43,6 +46,9 @@ create unique index expense_events_one_reversal_idx
 
 create index expense_events_business_occurred_idx
   on public.expense_events(business_id, occurred_at desc, id desc);
+
+create index expense_events_business_date_idx
+  on public.expense_events(business_id, business_date, occurred_at desc, id desc);
 
 create index expense_events_business_method_idx
   on public.expense_events(business_id, payment_method, occurred_at desc, id desc);
@@ -89,7 +95,10 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  if tg_op='DELETE' or old.result_payload is not null or new.business_id<>old.business_id
+  if tg_op='DELETE' then
+    raise exception 'EXPENSE_COMMAND_IMMUTABLE';
+  end if;
+  if old.result_payload is not null or new.business_id<>old.business_id
      or new.actor_membership_id<>old.actor_membership_id or new.command<>old.command
      or new.idempotency_key<>old.idempotency_key or new.request_hash<>old.request_hash
      or new.created_at<>old.created_at or new.result_payload is null then
@@ -235,6 +244,8 @@ as $$
     'currency',e.currency,
     'paymentMethod',e.payment_method,
     'occurredAt',e.occurred_at,
+    'businessDate',e.business_date,
+    'timezone',e.timezone_snapshot,
     'reason',e.reason,
     'actorMembershipId',e.actor_membership_id,
     'createdAt',e.created_at
@@ -294,7 +305,7 @@ create or replace function public.create_expense_guarded(
   p_amount_minor integer,
   p_currency text,
   p_payment_method text,
-  p_occurred_at timestamptz,
+  p_occurred_local timestamp without time zone,
   p_idempotency_key text,
   p_request_hash text
 )
@@ -305,6 +316,8 @@ set search_path = ''
 as $$
 declare
   v_actor public.memberships;
+  v_timezone text;
+  v_occurred_at timestamptz;
   v_category text:=btrim(coalesce(p_category,''));
   v_description text:=nullif(btrim(coalesce(p_description,'')),'');
   v_currency text:=upper(btrim(coalesce(p_currency,'')));
@@ -323,14 +336,20 @@ begin
   if p_amount_minor is null or p_amount_minor not between 1 and 100000000 then raise exception 'INVALID_EXPENSE_AMOUNT'; end if;
   if v_currency !~ '^[A-Z]{3}$' then raise exception 'INVALID_CURRENCY'; end if;
   if p_payment_method not in ('cash','card') then raise exception 'INVALID_PAYMENT_METHOD'; end if;
-  if p_occurred_at is null then raise exception 'INVALID_EXPENSE_TIME'; end if;
+  if p_occurred_local is null then raise exception 'INVALID_EXPENSE_TIME'; end if;
+
+  select b.timezone into v_timezone from public.businesses b where b.id=p_business_id;
+  if v_timezone is null then raise exception 'BUSINESS_NOT_FOUND'; end if;
+  v_occurred_at:=p_occurred_local at time zone v_timezone;
 
   insert into public.expense_events(
     business_id,event_type,source_expense_event_id,category,description,
-    amount_minor,currency,payment_method,occurred_at,reason,actor_membership_id
+    amount_minor,currency,payment_method,occurred_at,business_date,timezone_snapshot,
+    reason,actor_membership_id
   ) values (
     p_business_id,'expense',null,v_category,v_description,
-    p_amount_minor,v_currency,p_payment_method,p_occurred_at,null,v_actor.id
+    p_amount_minor,v_currency,p_payment_method,v_occurred_at,p_occurred_local::date,v_timezone,
+    null,v_actor.id
   )
   returning * into v_event;
 
@@ -346,7 +365,7 @@ create or replace function public.reverse_expense_guarded(
   p_business_id uuid,
   p_source_event_id uuid,
   p_reason text,
-  p_occurred_at timestamptz,
+  p_occurred_local timestamp without time zone,
   p_idempotency_key text,
   p_request_hash text
 )
@@ -358,6 +377,8 @@ as $$
 declare
   v_actor public.memberships;
   v_source public.expense_events;
+  v_timezone text;
+  v_occurred_at timestamptz;
   v_reason text:=btrim(coalesce(p_reason,''));
   v_event public.expense_events;
   v_replay jsonb;
@@ -370,14 +391,18 @@ begin
   if v_replay is not null then return v_replay; end if;
 
   if char_length(v_reason) not between 2 and 240 then raise exception 'INVALID_EXPENSE_REASON'; end if;
-  if p_occurred_at is null then raise exception 'INVALID_EXPENSE_TIME'; end if;
+  if p_occurred_local is null then raise exception 'INVALID_EXPENSE_TIME'; end if;
+
+  select b.timezone into v_timezone from public.businesses b where b.id=p_business_id;
+  if v_timezone is null then raise exception 'BUSINESS_NOT_FOUND'; end if;
+  v_occurred_at:=p_occurred_local at time zone v_timezone;
 
   select * into v_source
   from public.expense_events e
   where e.business_id=p_business_id
     and e.id=p_source_event_id
     and e.event_type='expense'
-  for share;
+  for update;
 
   if v_source.id is null then raise exception 'EXPENSE_NOT_FOUND'; end if;
   if exists (
@@ -391,10 +416,12 @@ begin
 
   insert into public.expense_events(
     business_id,event_type,source_expense_event_id,category,description,
-    amount_minor,currency,payment_method,occurred_at,reason,actor_membership_id
+    amount_minor,currency,payment_method,occurred_at,business_date,timezone_snapshot,
+    reason,actor_membership_id
   ) values (
     p_business_id,'reversal',v_source.id,v_source.category,v_source.description,
-    v_source.amount_minor,v_source.currency,v_source.payment_method,p_occurred_at,v_reason,v_actor.id
+    v_source.amount_minor,v_source.currency,v_source.payment_method,v_occurred_at,p_occurred_local::date,v_timezone,
+    v_reason,v_actor.id
   )
   returning * into v_event;
 
@@ -415,8 +442,8 @@ create or replace function public.correct_expense_guarded(
   p_amount_minor integer,
   p_currency text,
   p_payment_method text,
-  p_occurred_at timestamptz,
-  p_correction_occurred_at timestamptz,
+  p_occurred_local timestamp without time zone,
+  p_correction_occurred_local timestamp without time zone,
   p_idempotency_key text,
   p_request_hash text
 )
@@ -428,6 +455,9 @@ as $$
 declare
   v_actor public.memberships;
   v_source public.expense_events;
+  v_timezone text;
+  v_occurred_at timestamptz;
+  v_correction_occurred_at timestamptz;
   v_reason text:=btrim(coalesce(p_reason,''));
   v_category text:=btrim(coalesce(p_category,''));
   v_description text:=nullif(btrim(coalesce(p_description,'')),'');
@@ -449,7 +479,12 @@ begin
   if p_amount_minor is null or p_amount_minor not between 1 and 100000000 then raise exception 'INVALID_EXPENSE_AMOUNT'; end if;
   if v_currency !~ '^[A-Z]{3}$' then raise exception 'INVALID_CURRENCY'; end if;
   if p_payment_method not in ('cash','card') then raise exception 'INVALID_PAYMENT_METHOD'; end if;
-  if p_occurred_at is null or p_correction_occurred_at is null then raise exception 'INVALID_EXPENSE_TIME'; end if;
+  if p_occurred_local is null or p_correction_occurred_local is null then raise exception 'INVALID_EXPENSE_TIME'; end if;
+
+  select b.timezone into v_timezone from public.businesses b where b.id=p_business_id;
+  if v_timezone is null then raise exception 'BUSINESS_NOT_FOUND'; end if;
+  v_occurred_at:=p_occurred_local at time zone v_timezone;
+  v_correction_occurred_at:=p_correction_occurred_local at time zone v_timezone;
 
   select * into v_source
   from public.expense_events e
@@ -470,19 +505,23 @@ begin
 
   insert into public.expense_events(
     business_id,event_type,source_expense_event_id,category,description,
-    amount_minor,currency,payment_method,occurred_at,reason,actor_membership_id
+    amount_minor,currency,payment_method,occurred_at,business_date,timezone_snapshot,
+    reason,actor_membership_id
   ) values (
     p_business_id,'reversal',v_source.id,v_source.category,v_source.description,
-    v_source.amount_minor,v_source.currency,v_source.payment_method,p_correction_occurred_at,v_reason,v_actor.id
+    v_source.amount_minor,v_source.currency,v_source.payment_method,v_correction_occurred_at,p_correction_occurred_local::date,v_timezone,
+    v_reason,v_actor.id
   )
   returning * into v_reversal;
 
   insert into public.expense_events(
     business_id,event_type,source_expense_event_id,category,description,
-    amount_minor,currency,payment_method,occurred_at,reason,actor_membership_id
+    amount_minor,currency,payment_method,occurred_at,business_date,timezone_snapshot,
+    reason,actor_membership_id
   ) values (
     p_business_id,'expense',null,v_category,v_description,
-    p_amount_minor,v_currency,p_payment_method,p_occurred_at,null,v_actor.id
+    p_amount_minor,v_currency,p_payment_method,v_occurred_at,p_occurred_local::date,v_timezone,
+    null,v_actor.id
   )
   returning * into v_replacement;
 
@@ -505,13 +544,13 @@ revoke all on function public.f15_finish_expense_command(uuid,uuid,text,text,jso
 revoke all on function public.f15_expense_event_projection(uuid,uuid) from public,anon,authenticated;
 
 revoke all on function public.list_expense_events_page(uuid,integer,timestamptz,uuid) from public,anon,authenticated;
-revoke all on function public.create_expense_guarded(uuid,text,text,integer,text,text,timestamptz,text,text) from public,anon,authenticated;
-revoke all on function public.reverse_expense_guarded(uuid,uuid,text,timestamptz,text,text) from public,anon,authenticated;
-revoke all on function public.correct_expense_guarded(uuid,uuid,text,text,text,integer,text,text,timestamptz,timestamptz,text,text) from public,anon,authenticated;
+revoke all on function public.create_expense_guarded(uuid,text,text,integer,text,text,timestamp without time zone,text,text) from public,anon,authenticated;
+revoke all on function public.reverse_expense_guarded(uuid,uuid,text,timestamp without time zone,text,text) from public,anon,authenticated;
+revoke all on function public.correct_expense_guarded(uuid,uuid,text,text,text,integer,text,text,timestamp without time zone,timestamp without time zone,text,text) from public,anon,authenticated;
 
 grant execute on function public.list_expense_events_page(uuid,integer,timestamptz,uuid) to authenticated;
-grant execute on function public.create_expense_guarded(uuid,text,text,integer,text,text,timestamptz,text,text) to authenticated;
-grant execute on function public.reverse_expense_guarded(uuid,uuid,text,timestamptz,text,text) to authenticated;
-grant execute on function public.correct_expense_guarded(uuid,uuid,text,text,text,integer,text,text,timestamptz,timestamptz,text,text) to authenticated;
+grant execute on function public.create_expense_guarded(uuid,text,text,integer,text,text,timestamp without time zone,text,text) to authenticated;
+grant execute on function public.reverse_expense_guarded(uuid,uuid,text,timestamp without time zone,text,text) to authenticated;
+grant execute on function public.correct_expense_guarded(uuid,uuid,text,text,text,integer,text,text,timestamp without time zone,timestamp without time zone,text,text) to authenticated;
 
 commit;
