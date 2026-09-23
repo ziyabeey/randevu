@@ -78,6 +78,13 @@ begin
       and t.status<>'cancelled'
       and t.created_at>=v_from and t.created_at<v_to
       and t.currency is not null
+    union all
+    select a.currency_snapshot
+    from public.appointments a
+    where a.business_id=p_business_id
+      and a.status<>'cancelled'
+      and a.starts_at>=v_from and a.starts_at<v_to
+      and a.currency_snapshot is not null
   ) x;
 
   if v_currency_count > 1 then
@@ -145,6 +152,16 @@ begin
     from public.ticket_payment_events e
     where e.business_id=p_business_id
     group by e.ticket_id
+  ),
+  appointment_expected as (
+    select
+      coalesce(sum(a.price_min_minor_snapshot::bigint),0)::bigint as min_minor,
+      coalesce(sum(a.price_max_minor_snapshot::bigint),0)::bigint as max_minor,
+      count(*)::integer as appointment_count
+    from public.appointments a
+    where a.business_id=p_business_id
+      and a.status<>'cancelled'
+      and a.starts_at>=v_from and a.starts_at<v_to
   ),
   ticket_rollup as (
     select
@@ -220,6 +237,9 @@ begin
     'cardNetMovementMinor',p.card_net_minor-e.card_net_minor,
     'expectedMinMinor',s.expected_min_minor,
     'expectedMaxMinor',s.expected_max_minor,
+    'expectedAppointmentMinMinor',a.min_minor,
+    'expectedAppointmentMaxMinor',a.max_minor,
+    'appointmentCount',a.appointment_count,
     'serviceSaleMinor',s.service_minor,
     'productSaleMinor',s.product_minor,
     'saleValueMinor',s.service_minor+s.product_minor,
@@ -228,7 +248,7 @@ begin
     'unsettledTicketCount',s.unsettled_ticket_count
   )
   into v_result
-  from payment p cross join expense e cross join sale s;
+  from payment p cross join expense e cross join appointment_expected a cross join sale s;
 
   return v_result;
 end
