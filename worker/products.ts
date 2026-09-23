@@ -281,7 +281,7 @@ products.post('/products', async (context) => {
 });
 
 products.put('/products/:id', async (context) => {
-  const access = await requireInventoryWrite(context);
+  const access = await requireCreatePermissions(context);
   if ('error' in access) return access.error;
   const productId = context.req.param('id');
   const body = (await readJson(context)) ?? {};
