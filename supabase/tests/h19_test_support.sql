@@ -168,6 +168,7 @@ begin
      or p_axis_a !~ '^D[0-5]$'
      or p_axis_b !~ '^D[0-5]$'
      or p_axis_a=p_axis_b
+     or p_origin is null
      or p_origin not in ('prospective','holdout')
      or p_baseline_ci is null or p_baseline_ci<1
      or p_probe_ci is null or p_probe_ci<1
