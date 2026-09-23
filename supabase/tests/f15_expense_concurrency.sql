@@ -257,6 +257,7 @@ declare
   v_source uuid:=current_setting('f1503.race_expense')::uuid;
   v_reversals integer;
   v_replacements integer;
+  v_linked_replacements integer;
   v_finalized_commands integer;
 begin
   select count(*)::integer into v_reversals
@@ -271,6 +272,12 @@ begin
     and event_type='expense'
     and id<>v_source;
 
+  select count(*)::integer into v_linked_replacements
+  from public.expense_events
+  where business_id='f1910000-0000-4000-8000-000000000001'
+    and event_type='expense'
+    and correction_of_event_id=v_source;
+
   select count(*)::integer into v_finalized_commands
   from public.expense_commands
   where business_id='f1910000-0000-4000-8000-000000000001'
@@ -282,6 +289,10 @@ begin
   end if;
   if v_replacements not in (0,1) then
     raise exception 'F15-03 concurrent correct/reverse persisted % replacements',v_replacements;
+  end if;
+  if v_linked_replacements<>v_replacements then
+    raise exception 'F15-03 correction winner lost replacement lineage: replacements %, linked %',
+      v_replacements,v_linked_replacements;
   end if;
   if v_finalized_commands<>1 then
     raise exception 'F15-03 concurrent correct/reverse finalized % command receipts',v_finalized_commands;
