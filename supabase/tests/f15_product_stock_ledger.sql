@@ -240,6 +240,26 @@ begin
 end
 $immutable$;
 
+-- Create a real product in business B so cross-tenant negatives use an existing foreign row.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1500000-0000-4000-8000-000000000003',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+
+do $business_b_product$
+declare
+  v_product jsonb;
+begin
+  v_product := public.create_product_guarded(
+    'f1510000-0000-4000-8000-000000000002',
+    'Salon B Ürünü','B-001','piece',9900,'TRY',4,
+    'f1501-business-b-create',repeat('6',64)
+  );
+  perform set_config('f1501.business_b_product',v_product->>'productId',false);
+end
+$business_b_product$;
+
+reset role;
+
 -- Staff without inventory permission cannot write.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f1500000-0000-4000-8000-000000000002',true);
@@ -317,7 +337,7 @@ begin
   begin
     perform public.record_product_stock_movement_guarded(
       'f1510000-0000-4000-8000-000000000001',
-      'f1530000-0000-4000-8000-000000000099',
+      current_setting('f1501.business_b_product')::uuid,
       'receipt',1,null,5,
       'f1501-cross-tenant-0001',repeat('4',64)
     );
