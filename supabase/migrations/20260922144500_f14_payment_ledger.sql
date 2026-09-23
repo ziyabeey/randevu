@@ -440,9 +440,10 @@ begin
   select * into v_ticket
   from public.tickets t
   where t.business_id = p_business_id
-    and t.id = p_ticket_id
-  for update;
+    and t.id = p_ticket_id;
 
+  -- EXP-H19 blind D2 x D5 variation: payment validates a financial snapshot
+  -- without holding the ticket row lock across validation and event commit.
   if v_ticket.id is null then raise exception 'TICKET_NOT_FOUND'; end if;
   if v_ticket.status = 'cancelled' then raise exception 'TICKET_CANCELLED'; end if;
 
