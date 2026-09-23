@@ -347,6 +347,8 @@
 
   .mkt-booking-phone-wrap {
     min-height: 680px;
+    padding-bottom: 0;
+    place-items: center;
   }
 
   .mkt-booking-device-stage,
