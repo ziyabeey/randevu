@@ -1,22 +1,22 @@
 create extension if not exists dblink;
 
 insert into auth.users(id,email,raw_user_meta_data)
-values ('f1800000-0000-4000-8000-000000000001','f1502-race-owner@example.invalid','{}'::jsonb)
+values ('f15b0000-0000-4000-8000-000000000001','f1502-race-owner@example.invalid','{}'::jsonb)
 on conflict(id) do nothing;
 
 insert into public.businesses(id,name,slug,timezone,created_by)
-values ('f1810000-0000-4000-8000-000000000001','F15-02 Race Salon','f1502-race','Europe/Istanbul','f1800000-0000-4000-8000-000000000001');
+values ('f15b1000-0000-4000-8000-000000000001','F15-02 Race Salon','f1502-race','Europe/Istanbul','f15b0000-0000-4000-8000-000000000001');
 
 insert into public.memberships(id,business_id,user_id,role,active)
-values ('f1820000-0000-4000-8000-000000000001','f1810000-0000-4000-8000-000000000001','f1800000-0000-4000-8000-000000000001','owner',true);
+values ('f15b2000-0000-4000-8000-000000000001','f15b1000-0000-4000-8000-000000000001','f15b0000-0000-4000-8000-000000000001','owner',true);
 
 insert into public.customers(id,business_id,name,phone,email,created_by)
 values
-  ('f1830000-0000-4000-8000-000000000001','f1810000-0000-4000-8000-000000000001','Race A','05551110001','race-a@example.invalid','f1800000-0000-4000-8000-000000000001'),
-  ('f1830000-0000-4000-8000-000000000002','f1810000-0000-4000-8000-000000000001','Race B','05551110002','race-b@example.invalid','f1800000-0000-4000-8000-000000000001');
+  ('f15b3000-0000-4000-8000-000000000001','f15b1000-0000-4000-8000-000000000001','Race A','05551110001','race-a@example.invalid','f15b0000-0000-4000-8000-000000000001'),
+  ('f15b3000-0000-4000-8000-000000000002','f15b1000-0000-4000-8000-000000000001','Race B','05551110002','race-b@example.invalid','f15b0000-0000-4000-8000-000000000001');
 
 set role authenticated;
-select set_config('request.jwt.claim.sub','f1800000-0000-4000-8000-000000000001',false);
+select set_config('request.jwt.claim.sub','f15b0000-0000-4000-8000-000000000001',false);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false);
 
 do $$
@@ -24,7 +24,7 @@ declare
   v_product jsonb;
 begin
   v_product:=public.create_product_guarded(
-    'f1810000-0000-4000-8000-000000000001',
+    'f15b1000-0000-4000-8000-000000000001',
     'Son Ürün','LAST-1','piece',10000,'TRY',1,
     'f1502-race-product',repeat('a',64)
   );
@@ -36,8 +36,8 @@ reset role;
 
 do $$
 declare
-  v_business uuid:='f1810000-0000-4000-8000-000000000001';
-  v_user uuid:='f1800000-0000-4000-8000-000000000001';
+  v_business uuid:='f15b1000-0000-4000-8000-000000000001';
+  v_user uuid:='f15b0000-0000-4000-8000-000000000001';
   v_product uuid:=current_setting('f1502.race_product')::uuid;
   v_sql_a text;
   v_sql_b text;
@@ -69,13 +69,13 @@ begin
     select public.open_product_sale_guarded(
       %L::uuid,%L::uuid,%L::uuid,1,1,%L,%L
     )
-  $q$,v_business,'f1830000-0000-4000-8000-000000000001',v_product,'f1502-race-sale-a',repeat('b',64));
+  $q$,v_business,'f15b3000-0000-4000-8000-000000000001',v_product,'f1502-race-sale-a',repeat('b',64));
 
   v_sql_b:=format($q$
     select public.open_product_sale_guarded(
       %L::uuid,%L::uuid,%L::uuid,1,1,%L,%L
     )
-  $q$,v_business,'f1830000-0000-4000-8000-000000000002',v_product,'f1502-race-sale-b',repeat('c',64));
+  $q$,v_business,'f15b3000-0000-4000-8000-000000000002',v_product,'f1502-race-sale-b',repeat('c',64));
 
   if dblink_send_query('f1502_sale_a',v_sql_a)<>1
      or dblink_send_query('f1502_sale_b',v_sql_b)<>1 then
