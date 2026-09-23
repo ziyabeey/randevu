@@ -37,6 +37,7 @@ select pg_temp.h19_expect('payments.d1d2.replay_snapshot','payments','D1','D2','
 -- HOLDOUT CONTROL: D2xD5 is a frozen antipodal pair; keep regression evidence but exclude it from H19 geometry-selection scoring.
 select pg_temp.h19_expect('payments.d2d5.snapshot_concurrency','payments','D2','D5','holdout',2436,2441,2444);
 select pg_temp.h19_expect('team.d0d1.invite_scope','team','D0','D1','prospective',2513,2518,2519);
+select pg_temp.h19_expect('catalog.d0d2.history_scope','catalog','D0','D2','prospective',2544,2551,2552);
 
 \echo 'H19 Integrity Gate: D0xD1 tenant/idempotency'
 \ir h19_d0_d1_tenant_idempotency.sql
@@ -90,10 +91,14 @@ select pg_temp.h19_pass('payments.d2d5.snapshot_concurrency');
 \ir h19_team_d0_d1_invite_scope.sql
 select pg_temp.h19_pass('team.d0d1.invite_scope');
 
-select pg_temp.h19_assert_complete(13);
+\echo 'H19 Integrity Gate: F10/F12 catalog D0xD2 history scope'
+\ir h19_catalog_d0_d2_history_scope.sql
+select pg_temp.h19_pass('catalog.d0d2.history_scope');
+
+select pg_temp.h19_assert_complete(14);
 
 do $h19done$
 begin
-  raise notice 'H19 INTEGRITY GATE PASS: 13/13 registered interaction invariants accepted';
+  raise notice 'H19 INTEGRITY GATE PASS: 14/14 registered interaction invariants accepted';
 end
 $h19done$;
