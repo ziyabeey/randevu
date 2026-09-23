@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   applyDepotEvidence,
   createDepotLaunchReservation,
   depotCommentBody,
+  depotCustomImageRef,
   depotEligible,
   depotFetchRef,
+  depotRunnerSpec,
   isDepotTerminal,
   normalizeDepotStatus,
   parseDepotRunId,
@@ -43,6 +47,39 @@ test('Depot run identity parsing rejects ambiguous output', () => {
   assert.equal(parseDepotRunId('{"run_id":"39ccx70t42"}'), '39ccx70t42');
   assert.equal(parseDepotRunId('ambiguous 39ccx70t42 and z177hxw1tj'), null);
   assert.equal(workflowHash('abc').length, 64);
+});
+
+test('Depot custom image runner is explicit, safe and opt-in', () => {
+  const config = { depotOrgId: 'xk7m4hnp2q', depotCustomImageEnabled: false };
+  assert.equal(depotRunnerSpec(config), 'depot-ubuntu-24.04-16');
+  assert.equal(
+    depotCustomImageRef(config),
+    'xk7m4hnp2q.registry.depot.dev/randevu-ci:node24-pg17-v1',
+  );
+  assert.equal(
+    depotRunnerSpec({ ...config, depotCustomImageEnabled: true }),
+    '{ size: 16x64, image: "xk7m4hnp2q.registry.depot.dev/randevu-ci:node24-pg17-v1" }',
+  );
+  assert.throws(
+    () => depotRunnerSpec({ depotOrgId: 'bad:yaml', depotCustomImageEnabled: true }),
+    /safe non-empty depotOrgId/,
+  );
+});
+
+test('Depot prewarm builder and snapshot template stay syntactically and contract valid', () => {
+  const checked = spawnSync(process.execPath, ['--check', 'scripts/qwen-coordinator/build-ci-image.mjs'], {
+    encoding: 'utf8',
+  });
+  assert.equal(checked.status, 0, checked.stderr);
+  const template = readFileSync('scripts/qwen-coordinator/depot-build-ci-image.yml', 'utf8');
+  assert.match(template, /depot\/snapshot-action@v1/);
+  assert.match(template, /__DEPOT_CI_IMAGE__/);
+  assert.match(template, /postgresql-client/);
+  assert.match(template, /docker pull postgres:17/);
+
+  const shadow = readFileSync('scripts/qwen-coordinator/depot-full-ci.yml', 'utf8');
+  assert.match(shadow, /runs-on: __DEPOT_RUNNER__/);
+  assert.match(shadow, /if command -v psql/);
 });
 
 test('Depot starts only for an exact, mapped, non-doc PR while GitHub CI is pending', () => {

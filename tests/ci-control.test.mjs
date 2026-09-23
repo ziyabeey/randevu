@@ -219,6 +219,19 @@ test('CI receipt lookup is anonymous, authoritative and requires prior full-code
   assert.match(scopeSection, /TRUSTED_CI_RECEIPTS_FILE/);
 });
 
+test('GitHub CI avoids unconditional PostgreSQL setup cost and overlaps container launch with npm ci', () => {
+  const workflow = readFileSync(path.resolve('.github/workflows/ci.yml'), 'utf8');
+  assert.match(workflow, /Install dependencies while launching PostgreSQL 17/);
+  assert.match(workflow, /docker run --detach --name randevu-ci-postgres/);
+  assert.match(workflow, /pg_launch_pid=\$!/);
+  assert.match(workflow, /npm ci/);
+  assert.match(workflow, /wait "\$\{pg_launch_pid\}"/);
+  assert.match(workflow, /if ! command -v psql/);
+  assert.match(workflow, /Verify disposable PostgreSQL 17 readiness/);
+  assert.match(workflow, /show server_version_num/);
+  assert.doesNotMatch(workflow, /- name: Install PostgreSQL client/);
+});
+
 test('aggregate gate rejects every failed/cancelled/missing/unexpectedly skipped required result', () => {
   const statuses = ['success', 'failure', 'cancelled', 'skipped', undefined];
   for (const mode of ['docs', 'code', '', undefined]) for (const scope of statuses)

@@ -1,0 +1,37 @@
+name: Build Qwen coordinator CI image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-image:
+    name: Snapshot Node 24 + PostgreSQL CI image
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install stable CI tooling
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          npm install --global npm@11.9.0
+          node --version
+          npm --version
+          psql --version
+
+      - name: Pre-pull PostgreSQL 17 layers
+        run: |
+          set -euo pipefail
+          docker pull postgres:17
+          docker image inspect postgres:17 >/dev/null
+
+      - uses: depot/snapshot-action@v1
+        with:
+          image: "__DEPOT_CI_IMAGE__"

@@ -69,6 +69,25 @@ ulaşılamazken çalışan shadow koşular iptal edilmez.
 Depot API çağrısından önce diske yazılan launch reservation crash penceresinde
 ikinci koşuyu engeller; çağrı sonucu belirsizse otomatik retry yapılmaz.
 
+## Hızlı CI image'ı
+
+Tekrarlanan Depot hazırlık maliyetini azaltmak için opsiyonel prewarmed image
+oluşturulabilir. Kurulumdan sonra:
+
+```bash
+qwen-coordinator-build-ci-image
+```
+
+Komut önce Depot Code Access preflight çalıştırır. Repo transferinden sonra
+`ziyabeey/randevu` yetkisi eksikse Depot'un verdiği yetkilendirme bağlantısı
+tamamlanmadan devam etmez. Preflight geçince Node 24 toolcache, PostgreSQL client
+ve `postgres:17` Docker katmanları snapshot'a alınır; başarılı build sonrasında
+local config'te `depotCustomImageEnabled=true` açılır.
+
+Bu image uygulama `node_modules` içeriğini taşımaz. `npm ci`, exact SHA/tree
+kontrolü ve disposable PostgreSQL veritabanı her shadow koşuda yeniden çalışır.
+Image kapalıyken standart `depot-ubuntu-24.04-16` fallback'i aynen korunur.
+
 ## Güvenli etkinleştirme sırası
 
 1. Shadow raporlarını ve exact PR/head/base eşleşmesini doğrula.
