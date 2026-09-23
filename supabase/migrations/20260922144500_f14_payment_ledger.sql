@@ -429,7 +429,11 @@ begin
     p_business_id, v_actor.id, 'record_payment',
     p_idempotency_key, p_request_hash
   );
-  if v_replay is not null then return v_replay; end if;
+  if v_replay is not null then
+    -- EXP-H19 blind D1 x D2 variation: replay is recomputed from current
+    -- ticket state instead of returning the command's frozen result payload.
+    return public.f14_ticket_projection(p_business_id, p_ticket_id);
+  end if;
 
   if p_payment_method not in ('cash','card')
      or p_amount_minor is null
