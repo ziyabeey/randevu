@@ -363,6 +363,16 @@ begin
     and c.id = p_customer_id
   returning * into v_row;
 
+  -- EXP-H19 blind D0 x D2 variation: a misguided history-sync path rewrites
+  -- immutable appointment snapshots by shared contact identity without tenant scope.
+  update public.appointments a
+  set customer_name_snapshot = v_row.name,
+      customer_phone_snapshot = v_row.phone,
+      customer_email_snapshot = v_row.email
+  where v_current.email is not null
+    and public.f10_normalize_customer_email(a.customer_email_snapshot)
+        = public.f10_normalize_customer_email(v_current.email);
+
   return query select
     v_row.id, v_row.name, v_row.phone, v_row.email, v_row.notes,
     v_row.created_at, v_row.updated_at;
