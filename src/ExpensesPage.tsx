@@ -7,7 +7,7 @@ type ExpenseEvent = {
   eventId: string; businessId: string; eventType: 'expense'|'reversal';
   sourceExpenseEventId: string|null; category: string; description: string|null;
   amountMinor: number; effectMinor: number; currency: string; paymentMethod: 'cash'|'card';
-  occurredAt: string; reason: string|null; actorMembershipId: string; createdAt: string;
+  occurredAt: string; businessDate: string; timezone: string; reason: string|null; actorMembershipId: string; createdAt: string;
 };
 type PageInfo={limit:number;hasMore:boolean;nextCursor:string|null};
 type ExpenseList={events:ExpenseEvent[];page:PageInfo};
@@ -23,12 +23,21 @@ function localWallClock(value:FormDataEntryValue|null){
   const raw=String(value??'').trim();
   return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)?raw:null;
 }
+function localWallFromInstant(instant:string,timeZone:string){
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(instant));
+  const part=(type:string)=>parts.find((item)=>item.type===type)?.value??'';
+  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
+}
+function nowLocalInZone(timeZone:string){
+  return localWallFromInstant(new Date().toISOString(),timeZone);
+}
+
 function ambiguous(error:unknown){
   return error instanceof ApiRequestError && (error.status===0||error.status===408||error.status===503);
 }
 
 export default function ExpensesPage(){
-  const {activeBusinessId,scopeEpoch}=useWorkspace();
+  const {activeBusinessId,activeBusiness,scopeEpoch}=useWorkspace();
   const [events,setEvents]=useState<ExpenseEvent[]>([]);
   const [page,setPage]=useState<PageInfo|null>(null);
   const [busy,setBusy]=useState(false);
@@ -76,8 +85,29 @@ export default function ExpensesPage(){
   }
 
   async function reverse(eventId:string){
-    const reason=window.prompt('İptal/düzeltme gerekçesi'); if(!reason?.trim())return;
-    if(await mutate(`reverse:${eventId}:${reason.trim()}`,`/api/expenses/${eventId}/reverse`,{reason:reason.trim(),occurredAt:new Intl.DateTimeFormat('sv-SE',{dateStyle:'short',timeStyle:'short'}).format(new Date()).replace(' ','T')})) setNotice('Masraf reversal hareketi kaydedildi.');
+    const reason=window.prompt('İptal gerekçesi'); if(!reason?.trim())return;
+    const timeZone=activeBusiness?.timezone??'Europe/Istanbul';
+    if(await mutate(`reverse:${eventId}:${reason.trim()}`,`/api/expenses/${eventId}/reverse`,{reason:reason.trim(),occurredAt:nowLocalInZone(timeZone)})) setNotice('Masraf reversal hareketi kaydedildi.');
+  }
+
+  async function correct(expense:ExpenseEvent){
+    const amount=window.prompt('Yeni tutar (TL)',String(expense.amountMinor/100).replace('.',','));
+    if(amount===null)return;
+    const amountMinor=parseMoneyMinor(amount);
+    const reason=window.prompt('Düzeltme gerekçesi');
+    if(amountMinor===null||!reason?.trim())return setNotice('Yeni tutar ve düzeltme gerekçesi gerekli.');
+    const timeZone=expense.timezone||activeBusiness?.timezone||'Europe/Istanbul';
+    const body={
+      reason:reason.trim(),
+      category:expense.category,
+      description:expense.description,
+      amountMinor,
+      currency:expense.currency,
+      paymentMethod:expense.paymentMethod,
+      occurredAt:localWallFromInstant(expense.occurredAt,timeZone),
+      correctionOccurredAt:nowLocalInZone(timeZone),
+    };
+    if(await mutate(`correct:${expense.eventId}:${JSON.stringify(body)}`,`/api/expenses/${expense.eventId}/correct`,body)) setNotice('Masraf düzeltmesi reversal + yeni kayıt olarak kaydedildi.');
   }
 
   return <main className="expenses-shell">
@@ -99,7 +129,7 @@ export default function ExpensesPage(){
         <h2>Hareketler</h2>
         {loading?<p>Masraflar yükleniyor…</p>:events.length===0?<p>Henüz masraf hareketi yok.</p>:<ol className="expenses-list">{events.map(e=><li key={e.eventId}>
           <div><strong>{e.eventType==='expense'?e.category:'Reversal'}</strong><span>{new Date(e.occurredAt).toLocaleString('tr-TR')} · {e.paymentMethod==='cash'?'Nakit':'Kart'}</span>{e.description&&<small>{e.description}</small>}{e.reason&&<small>{e.reason}</small>}</div>
-          <div><strong className={e.effectMinor<0?'negative':'positive'}>{e.effectMinor<0?'-':''}{money(Math.abs(e.effectMinor),e.currency)}</strong>{e.eventType==='expense'&&<button disabled={busy} onClick={()=>void reverse(e.eventId)}>İptal / reversal</button>}</div>
+          <div><strong className={e.effectMinor<0?'negative':'positive'}>{e.effectMinor<0?'-':''}{money(Math.abs(e.effectMinor),e.currency)}</strong>{e.eventType==='expense'&&<><button disabled={busy} onClick={()=>void correct(e)}>Düzelt</button><button disabled={busy} onClick={()=>void reverse(e.eventId)}>İptal / reversal</button></>}</div>
         </li>)}</ol>}
         {page?.hasMore&&<button className="expenses-more" disabled={busy} onClick={()=>void load(page.nextCursor,true)}>Daha fazla</button>}
       </article>
