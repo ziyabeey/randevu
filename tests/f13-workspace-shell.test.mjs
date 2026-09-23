@@ -35,7 +35,8 @@ test('F13-04 panel navigation keeps calendar primary and does not masquerade as 
   assert.match(shell, /page: 'services'/);
   assert.match(shell, /page: 'team'/);
   assert.match(shell, /page: 'setup'/);
-  assert.doesNotMatch(shell, /Adisyonlar|Yeni paket|Masraf/);
+  assert.doesNotMatch(shell, /Adisyonlar|Yeni paket|Yeni masraf/);
+  assert.match(shell, /page: 'expenses', label: 'Masraflar'/);
 });
 
 test('F13-04 private domain pages do not create parallel session authorities', () => {

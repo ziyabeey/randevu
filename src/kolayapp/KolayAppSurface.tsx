@@ -37,7 +37,7 @@ function NewActions() {
           <AppLink href="/app/mobile/tickets"><strong>Yeni adisyon</strong><span>Randevusuz adisyon aç veya mevcut adisyona dön</span></AppLink>
           <AppLink href="/app/mobile/tickets?newProductSale=1"><strong>Yeni ürün satışı</strong><span>Ürün seç, miktarı belirle ve stoktan güvenle düş</span></AppLink>
           <DisabledAction title="Yeni paket satışı" description="Henüz kullanıma açık değil." />
-          <DisabledAction title="Yeni masraf" description="Henüz kullanıma açık değil." />
+          <AppLink href="/app/expenses"><strong>Yeni masraf</strong><span>Masraf kaydı oluştur</span></AppLink>
         </div>
       </section>
     </>
@@ -62,7 +62,7 @@ function MoreActions() {
         <div className="kolay-action-list">
           <DisabledAction title="Kasa" description="Henüz kullanıma açık değil." />
           <DisabledAction title="Çalışan primleri" description="Henüz kullanıma açık değil." />
-          <DisabledAction title="Masraflar" description="Henüz kullanıma açık değil." />
+          <AppLink href="/app/expenses"><strong>Masraflar</strong><span>Gider hareketlerini görüntüle ve düzelt</span></AppLink>
           <DisabledAction title="Ürün satışları" description="Henüz kullanıma açık değil." />
           <DisabledAction title="Gelir-gider" description="Henüz kullanıma açık değil." />
           <DisabledAction title="Detaylı çalışan raporu" description="Henüz kullanıma açık değil." />
