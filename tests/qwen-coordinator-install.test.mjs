@@ -42,8 +42,17 @@ test('installer creates a portable shadow-default layout and preserves config', 
   assert.equal(config.writeActionsEnabled, false);
   assert.equal(config.autoMergeEnabled, false);
   assert.equal(config.depotShadowEnabled, false);
+  assert.equal(config.depotCustomImageEnabled, false);
   assert.equal(config.repoRoot, repoRoot);
   assert.equal(config.depotOrgId, 'example-org');
+  assert.equal(
+    config.depotBuildImageWorkflowFile,
+    path.join(coordinatorHome, 'depot-build-ci-image.yml'),
+  );
+  assert.match(
+    await readFile(path.join(userHome, '.local', 'bin', 'qwen-coordinator-build-ci-image'), 'utf8'),
+    /build-ci-image\.mjs.*--enable/,
+  );
 
   const plist = await readFile(
     path.join(userHome, 'Library', 'LaunchAgents', 'ai.yzt.qwen-coordinator.plist'),
@@ -84,6 +93,10 @@ test('generated wrapper paths are shell-quoted literally', async (context) => {
   const config = JSON.parse(await readFile(path.join(coordinatorHome, 'config.json'), 'utf8'));
   assert.equal(config.repoRoot, repoRoot);
   assert.equal(config.depotWorkflowFile, path.join(coordinatorHome, 'depot-full-ci.yml'));
+  assert.equal(
+    config.depotBuildImageWorkflowFile,
+    path.join(coordinatorHome, 'depot-build-ci-image.yml'),
+  );
   const nowWrapper = await readFile(path.join(binRoot, 'qwen-coordinator-now'), 'utf8');
   assert.match(nowWrapper, /export QWEN_COORDINATOR_HOME=/);
   assert.ok(nowWrapper.includes(`'${coordinatorHome.replaceAll("'", `'"'"'`)}'`));
