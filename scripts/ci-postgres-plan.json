@@ -1476,6 +1476,10 @@
         },
         {
           "database": "yzt_test",
+          "file": "supabase/tests/f14_payment_ledger.sql"
+        },
+        {
+          "database": "yzt_test",
           "file": "supabase/tests/f15_product_sale_atomicity.sql"
         },
         {
@@ -1489,6 +1493,10 @@
         {
           "database": "yzt_s08_upgrade",
           "file": "supabase/migrations/20260923113600_f15_product_sale_atomicity.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f14_payment_ledger.sql"
         },
         {
           "database": "yzt_s08_upgrade",
