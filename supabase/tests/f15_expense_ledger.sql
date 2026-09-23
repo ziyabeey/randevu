@@ -315,6 +315,13 @@ begin
     raise exception 'F15-03 correction projection wrong: %',v_result;
   end if;
 
+end
+$correct$;
+
+reset role;
+
+do $correction_persisted$
+begin
   if (
     select count(*) from public.expense_events e
     where e.business_id='f1810000-0000-4000-8000-000000000001'
@@ -324,7 +331,11 @@ begin
     raise exception 'F15-03 correction did not create exactly one reversal';
   end if;
 end
-$correct$;
+$correction_persisted$;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1800000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 
 do $double_reverse$
 declare v_blocked boolean:=false;
