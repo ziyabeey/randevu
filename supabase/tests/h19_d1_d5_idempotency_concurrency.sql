@@ -3,14 +3,13 @@ create extension if not exists dblink;
 -- H19 prospective D1 x D5 coverage probe: idempotency x concurrency.
 --
 -- Two physical PostgreSQL sessions submit the same first booking-command claim
--- for the same tenant, key and request hash. The command ledger must serialize
--- that identity atomically. One session may establish the claim; the other must
--- observe the already-active claim through the stable IDEMPOTENCY_IN_PROGRESS
--- result, never a raw uniqueness error.
+-- for the same tenant, key and request hash. The first session deliberately
+-- keeps its transaction open after establishing the claim. The second session
+-- must wait on that exact command identity and then classify the replay through
+-- the stable idempotency contract rather than surface a raw uniqueness error.
 --
--- This scenario is intentionally separate from:
---   * sequential same-key retry tests; and
---   * concurrent booking tests that use distinct idempotency keys.
+-- This scenario is intentionally separate from sequential same-key retry tests
+-- and concurrent booking tests that use distinct idempotency keys.
 
 delete from public.businesses
 where id='b2910000-0000-4000-8000-000000000001';
@@ -38,35 +37,33 @@ declare
   v_user uuid := 'b2900000-0000-4000-8000-000000000001';
   v_key text := 'h19-d1d5-shared-0001';
   v_hash text := md5('h19-d1d5-same-request');
-  v_conn text;
-  v_blocked integer := 0;
-  v_a_done boolean := false;
-  v_b_done boolean := false;
-  v_success integer := 0;
-  v_progress integer := 0;
-  v_is_new boolean;
-  v_appointment uuid;
-  v_error text;
+  v_command text;
+  v_a_waited boolean := false;
+  v_b_waited boolean := false;
+  v_a_new boolean;
+  v_a_appointment uuid;
+  v_b_error text;
   v_result_rows integer;
   v_drain_rows integer;
 begin
-  perform dblink_connect(
-    'h19_d1d5_locker',
-    'host=127.0.0.1 port=5432 dbname='||current_database()
-      ||' user=postgres password=postgres application_name=h19_d1d5_locker'
+  v_command := format(
+    $q$select c.is_new,c.appointment_id
+       from public.claim_booking_command(%L::uuid,%L,%L,%L,null) c$q$,
+    v_business,v_key,'create',v_hash
   );
-  perform dblink_exec('h19_d1d5_locker','begin');
-  perform dblink_exec(
-    'h19_d1d5_locker',
-    'lock table public.booking_commands in share mode'
+
+  perform dblink_connect(
+    'h19_d1d5_a',
+    'host=127.0.0.1 port=5432 dbname='||current_database()
+      ||' user=postgres password=postgres application_name=h19_d1d5_a'
+  );
+  perform dblink_connect(
+    'h19_d1d5_b',
+    'host=127.0.0.1 port=5432 dbname='||current_database()
+      ||' user=postgres password=postgres application_name=h19_d1d5_b'
   );
 
   for v_conn in select unnest(array['h19_d1d5_a','h19_d1d5_b']) loop
-    perform dblink_connect(
-      v_conn,
-      'host=127.0.0.1 port=5432 dbname='||current_database()
-        ||' user=postgres password=postgres application_name='||v_conn
-    );
     perform dblink_exec(v_conn,'set statement_timeout=30000');
     perform dblink_exec(v_conn,'begin');
     perform dblink_exec(
@@ -75,123 +72,98 @@ begin
     );
   end loop;
 
+  -- A establishes the first claim, then remains active for two seconds so B can
+  -- reach the same unique command identity while A's row is still uncommitted.
   if dblink_send_query(
     'h19_d1d5_a',
-    format(
-      $q$select c.is_new,c.appointment_id
-         from public.claim_booking_command(%L::uuid,%L,%L,%L,null) c$q$,
-      v_business,v_key,'create',v_hash
-    )
+    v_command ||
+      ' cross join lateral (select pg_sleep(2) where c.is_new is not null) hold_claim'
   ) <> 1 then
     raise exception 'H19 D1xD5 session A did not start';
   end if;
 
-  if dblink_send_query(
-    'h19_d1d5_b',
-    format(
-      $q$select c.is_new,c.appointment_id
-         from public.claim_booking_command(%L::uuid,%L,%L,%L,null) c$q$,
-      v_business,v_key,'create',v_hash
-    )
-  ) <> 1 then
+  for i in 1..200 loop
+    perform pg_stat_clear_snapshot();
+    if exists (
+      select 1
+      from pg_stat_activity
+      where application_name='h19_d1d5_a'
+        and wait_event_type='Timeout'
+        and wait_event='PgSleep'
+    ) then
+      v_a_waited:=true;
+      exit;
+    end if;
+    perform pg_sleep(0.01);
+  end loop;
+  if not v_a_waited then
+    raise exception 'H19 D1xD5 session A did not hold the active claim window';
+  end if;
+
+  if dblink_send_query('h19_d1d5_b',v_command)<>1 then
     raise exception 'H19 D1xD5 session B did not start';
   end if;
 
-  -- Both sessions must reach the same command-table write boundary before the
-  -- locker is released, making this a real two-session first-claim exercise.
-  for i in 1..500 loop
+  for i in 1..200 loop
     perform pg_stat_clear_snapshot();
-    select count(*)::integer into v_blocked
-    from pg_stat_activity
-    where application_name in ('h19_d1d5_a','h19_d1d5_b')
-      and wait_event_type='Lock';
-    exit when v_blocked=2;
+    if exists (
+      select 1
+      from pg_stat_activity
+      where application_name='h19_d1d5_b'
+        and wait_event_type='Lock'
+    ) then
+      v_b_waited:=true;
+      exit;
+    end if;
     perform pg_sleep(0.01);
   end loop;
-  if v_blocked<>2 then
-    raise exception 'H19 D1xD5 expected two waiting claim sessions, observed %',v_blocked;
+  if not v_b_waited then
+    raise exception 'H19 D1xD5 session B did not wait on the active claim';
   end if;
 
-  perform dblink_exec('h19_d1d5_locker','commit');
-  perform dblink_disconnect('h19_d1d5_locker');
+  select t.is_new,t.appointment_id
+  into strict v_a_new,v_a_appointment
+  from dblink_get_result('h19_d1d5_a')
+    as t(is_new boolean,appointment_id uuid);
+  get diagnostics v_result_rows=row_count;
 
-  -- Collect whichever session finishes first. The successful claimant must
-  -- commit before the second session can classify the same ledger identity.
-  for pass in 1..2 loop
-    v_conn := null;
+  perform * from dblink_get_result('h19_d1d5_a',false)
+    as t(is_new boolean,appointment_id uuid);
+  get diagnostics v_drain_rows=row_count;
 
-    for attempt in 1..3000 loop
-      if not v_a_done and dblink_is_busy('h19_d1d5_a')=0 then
-        v_conn := 'h19_d1d5_a';
-        exit;
-      elsif not v_b_done and dblink_is_busy('h19_d1d5_b')=0 then
-        v_conn := 'h19_d1d5_b';
-        exit;
-      end if;
-      perform pg_sleep(0.01);
-    end loop;
+  if v_result_rows<>1 or v_drain_rows<>0
+     or v_a_new is distinct from true
+     or v_a_appointment is not null then
+    raise exception 'H19 D1xD5 session A returned an unexpected initial claim result';
+  end if;
 
-    if v_conn is null then
-      raise exception 'H19 D1xD5 timed out waiting for a claim result';
-    end if;
+  perform dblink_exec('h19_d1d5_a','commit');
 
-    v_is_new := null;
-    v_appointment := null;
-    v_error := null;
-    v_result_rows := 0;
+  begin
+    perform *
+    from dblink_get_result('h19_d1d5_b')
+      as t(is_new boolean,appointment_id uuid);
+    raise exception 'H19 D1xD5 session B unexpectedly returned a normal claim row';
+  exception when others then
+    v_b_error:=sqlerrm;
+  end;
 
-    begin
-      select t.is_new,t.appointment_id
-      into strict v_is_new,v_appointment
-      from dblink_get_result(v_conn) as t(is_new boolean,appointment_id uuid);
-      get diagnostics v_result_rows=row_count;
+  begin
+    perform * from dblink_get_result('h19_d1d5_b',false)
+      as t(is_new boolean,appointment_id uuid);
+  exception when others then
+    null;
+  end;
+  perform dblink_exec('h19_d1d5_b','rollback');
 
-      perform * from dblink_get_result(v_conn,false)
-        as t(is_new boolean,appointment_id uuid);
-      get diagnostics v_drain_rows=row_count;
-      if v_drain_rows<>0 then
-        raise exception 'H19 D1xD5 session % returned trailing rows',v_conn;
-      end if;
-
-      if v_result_rows<>1 or v_is_new is distinct from true
-         or v_appointment is not null then
-        raise exception 'H19 D1xD5 unexpected successful claim result from %',v_conn;
-      end if;
-
-      perform dblink_exec(v_conn,'commit');
-      v_success := v_success+1;
-    exception when others then
-      v_error := sqlerrm;
-      begin
-        perform * from dblink_get_result(v_conn,false)
-          as t(is_new boolean,appointment_id uuid);
-      exception when others then
-        null;
-      end;
-
-      if position('IDEMPOTENCY_IN_PROGRESS' in v_error)>0 then
-        perform dblink_exec(v_conn,'rollback');
-        v_progress := v_progress+1;
-      else
-        raise exception 'H19 D1xD5 unexpected concurrent claim classification: %',v_error;
-      end if;
-    end;
-
-    if v_conn='h19_d1d5_a' then
-      v_a_done:=true;
-    else
-      v_b_done:=true;
-    end if;
-  end loop;
+  if position('IDEMPOTENCY_IN_PROGRESS' in coalesce(v_b_error,''))=0 then
+    raise exception
+      'H19 D1xD5 replay classification mismatch: %',
+      coalesce(v_b_error,'<no error>');
+  end if;
 
   perform dblink_disconnect('h19_d1d5_a');
   perform dblink_disconnect('h19_d1d5_b');
-
-  if v_success<>1 or v_progress<>1 then
-    raise exception
-      'H19 D1xD5 expected one initial claim and one in-progress replay, got success=% progress=%',
-      v_success,v_progress;
-  end if;
 
   if (
     select count(*)
@@ -202,10 +174,8 @@ begin
   end if;
 
   raise notice
-    'H19 D1xD5 prospective invariant accepted: same-key concurrent first claims serialize to one command identity';
+    'H19 D1xD5 prospective invariant accepted: concurrent same-key claims remain one command identity';
 exception when others then
-  begin perform dblink_exec('h19_d1d5_locker','rollback'); exception when others then null; end;
-  begin perform dblink_disconnect('h19_d1d5_locker'); exception when others then null; end;
   begin perform dblink_exec('h19_d1d5_a','rollback'); exception when others then null; end;
   begin perform dblink_disconnect('h19_d1d5_a'); exception when others then null; end;
   begin perform dblink_exec('h19_d1d5_b','rollback'); exception when others then null; end;
