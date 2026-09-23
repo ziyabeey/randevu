@@ -74,18 +74,24 @@ npm run dev
 
 | Yol | İşlev |
 | --- | --- |
-| `/` | Giriş ve temel işletme alanı |
-| `/setup` | İşletme seçimi ve onboarding |
-| `/team` | Davet, üyelik ve rol yönetimi |
-| `/account` | Hesap/parola akışları |
-| `/calendar` | Gün/hafta takvimi |
-| `/bookings` | Randevu oluşturma ve taşıma |
-| `/availability` | Mesai, kapanış ve müsaitlik |
-| `/public-booking` | Public rezervasyon ayarları |
+| `/` | Bekleyen davet varsa davet akışı; aksi halde `/app` yönlendirmesi |
+| `/app` / `/app/calendar` | Gün/hafta/liste takvimi |
+| `/app/bookings` | Randevu oluşturma ve taşıma |
+| `/app/customers` | İşletmenin müşteri kayıtları |
+| `/app/services` | Hizmet/personel/atama yönetimi |
+| `/app/availability` | Mesai, kapanış ve müsaitlik |
+| `/app/setup` | İşletme seçimi ve onboarding |
+| `/app/team` | Davet, üyelik ve rol yönetimi |
+| `/app/public-booking` | Public rezervasyon ayarları |
+| `/app/mobile` / `/app/mobile/appointments` | KolayApp Randevular sekmesi |
+| `/app/mobile/tickets` | KolayApp Adisyonlar sekmesi |
+| `/app/mobile/new` | KolayApp Yeni sekmesi |
+| `/app/mobile/customers` | KolayApp Müşteriler sekmesi |
+| `/app/mobile/more` | KolayApp Diğer sekmesi |
 | `/r/:slug` | Müşteri rezervasyonu |
 | `/m#<token>` | Tek randevuyu veya rezervasyon grubunu güvenli bağlantıyla yönetme |
 
-`/customers` F10-05 PR #74 içindedir; main'e merge edilmeden çalışan main route'u sayılmaz. Marketing homepage runtime'ı da PR #77 merge edilmeden main işlevi sayılmaz. SalonApp/adisyon yolları F14 ile gelir.
+Eski private yollar (`/calendar`, `/bookings`, `/customers`, `/services`, `/availability`, `/setup`, `/team`, `/public-booking`) karşılık gelen kanonik `/app/*` yoluna; `/account` ise `/app` yoluna yönlendirilir. Marketing homepage runtime'ı PR #77 merge edilmeden main işlevi sayılmaz.
 
 ## Korunan teknik sınırlar
 

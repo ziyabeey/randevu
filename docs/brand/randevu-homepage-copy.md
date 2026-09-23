@@ -454,7 +454,7 @@ Bu bölüm de teknik destek makalesi gibi değil, konuşma diliyle yazılır.
 
 ## “Telefondan kullanabilir miyim?”
 
-> Responsive/PWA kabulü tamamlandıktan sonra: “Evet. Randevu telefon ve bilgisayarda çalışır.”
+> Evet. Randevu telefon ve bilgisayarda çalışır.
 
 ## “Fiyat sonradan değişiyor mu?”
 
