@@ -25,8 +25,8 @@ begin
      or has_table_privilege('anon','public.expense_events','SELECT') then
     raise exception 'F15-03 expense tables unexpectedly exposed';
   end if;
-  if not has_function_privilege('authenticated','public.create_expense_guarded(uuid,text,text,integer,text,text,timestamptz,text,text)','EXECUTE')
-     or has_function_privilege('anon','public.create_expense_guarded(uuid,text,text,integer,text,text,timestamptz,text,text)','EXECUTE') then
+  if not has_function_privilege('authenticated','public.create_expense_guarded(uuid,text,text,integer,text,text,timestamp without time zone,text,text)','EXECUTE')
+     or has_function_privilege('anon','public.create_expense_guarded(uuid,text,text,integer,text,text,timestamp without time zone,text,text)','EXECUTE') then
     raise exception 'F15-03 RPC grants wrong';
   end if;
 end
@@ -45,7 +45,7 @@ declare
 begin
   v_event:=public.create_expense_guarded(
     'f1810000-0000-4000-8000-000000000001',
-    'Malzeme','Eldiven',15000,'TRY','cash','2026-09-23T07:00:00Z',
+    'Malzeme','Eldiven',15000,'TRY','cash','2026-09-23 10:00:00',
     'f1503-create-0001',repeat('a',64)
   );
   v_id:=(v_event->>'eventId')::uuid;
@@ -53,13 +53,15 @@ begin
 
   if v_event->>'eventType'<>'expense'
      or (v_event->>'effectMinor')::int<>15000
-     or v_event->>'paymentMethod'<>'cash' then
+     or v_event->>'paymentMethod'<>'cash'
+     or v_event->>'businessDate'<>'2026-09-23'
+     or v_event->>'timezone'<>'Europe/Istanbul' then
     raise exception 'F15-03 expense projection wrong: %',v_event;
   end if;
 
   v_replay:=public.create_expense_guarded(
     'f1810000-0000-4000-8000-000000000001',
-    'Malzeme','Eldiven',15000,'TRY','cash','2026-09-23T07:00:00Z',
+    'Malzeme','Eldiven',15000,'TRY','cash','2026-09-23 10:00:00',
     'f1503-create-0001',repeat('a',64)
   );
   if v_replay<>v_event then raise exception 'F15-03 same-key replay changed result'; end if;
@@ -67,7 +69,7 @@ begin
   begin
     perform public.create_expense_guarded(
       'f1810000-0000-4000-8000-000000000001',
-      'Malzeme','Eldiven',16000,'TRY','cash','2026-09-23T07:00:00Z',
+      'Malzeme','Eldiven',16000,'TRY','cash','2026-09-23 10:00:00',
       'f1503-create-0001',repeat('b',64)
     );
   exception when others then
@@ -111,7 +113,7 @@ begin
   begin
     perform public.create_expense_guarded(
       'f1810000-0000-4000-8000-000000000001',
-      'Diğer',null,1000,'TRY','card','2026-09-23T07:30:00Z',
+      'Diğer',null,1000,'TRY','card','2026-09-23 10:30:00',
       'f1503-staff-denied',repeat('c',64)
     );
   exception when others then
@@ -142,7 +144,7 @@ declare v_event jsonb;
 begin
   v_event:=public.create_expense_guarded(
     'f1810000-0000-4000-8000-000000000001',
-    'Temizlik',null,2000,'TRY','card','2026-09-23T07:40:00Z',
+    'Temizlik',null,2000,'TRY','card','2026-09-23 10:40:00',
     'f1503-staff-allowed',repeat('d',64)
   );
   if v_event->>'actorMembershipId'<>'f1820000-0000-4000-8000-000000000002' then
@@ -171,7 +173,7 @@ begin
   begin
     perform public.create_expense_guarded(
       'f1810000-0000-4000-8000-000000000001',
-      'Diğer',null,1000,'TRY','cash','2026-09-23T07:50:00Z',
+      'Diğer',null,1000,'TRY','cash','2026-09-23 10:50:00',
       'f1503-staff-revoked',repeat('e',64)
     );
   exception when others then
@@ -192,7 +194,7 @@ declare v_event jsonb;
 begin
   v_event:=public.create_expense_guarded(
     'f1810000-0000-4000-8000-000000000002',
-    'Kira',null,50000,'TRY','card','2026-09-23T06:00:00Z',
+    'Kira',null,50000,'TRY','card','2026-09-23 09:00:00',
     'f1503-business-b',repeat('f',64)
   );
   perform set_config('f1503.business_b_event',v_event->>'eventId',false);
@@ -212,7 +214,7 @@ begin
     perform public.reverse_expense_guarded(
       'f1810000-0000-4000-8000-000000000001',
       current_setting('f1503.business_b_event')::uuid,
-      'Yanlış tenant','2026-09-23T08:00:00Z',
+      'Yanlış tenant','2026-09-23 11:00:00',
       'f1503-cross',repeat('1',64)
     );
   exception when others then
@@ -233,7 +235,7 @@ begin
     current_setting('f1503.expense_id')::uuid,
     'Tutar düzeltmesi',
     'Malzeme','Eldiven',12000,'TRY','card',
-    '2026-09-23T07:00:00Z','2026-09-23T08:05:00Z',
+    '2026-09-23 10:00:00','2026-09-23 11:05:00',
     'f1503-correct-0001',repeat('2',64)
   );
   v_reversal:=v_result->'reversal';
@@ -265,7 +267,7 @@ begin
     perform public.reverse_expense_guarded(
       'f1810000-0000-4000-8000-000000000001',
       current_setting('f1503.expense_id')::uuid,
-      'İkinci reversal','2026-09-23T08:10:00Z',
+      'İkinci reversal','2026-09-23 11:10:00',
       'f1503-double-reverse',repeat('3',64)
     );
   exception when others then
