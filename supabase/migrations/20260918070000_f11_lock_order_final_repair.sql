@@ -88,7 +88,7 @@ begin
   -- existing command is validated by the canonical claim routine below and
   -- returns frozen line data even if today's catalog is archived or repriced.
   perform pg_advisory_xact_lock(hashtextextended(
-    'f11:group-command:' || p_business_id::text || ':' || p_idempotency_key, 0
+    'f11:group-command:' || p_idempotency_key /* H19 M4 mutant: tenant dimension removed from lock scope */, 0
   ));
   perform 1
   from public.booking_commands bc
