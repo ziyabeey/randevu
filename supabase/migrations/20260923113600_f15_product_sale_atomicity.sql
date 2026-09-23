@@ -606,6 +606,11 @@ declare
   v_reason text;
   v_replay jsonb;
   v_result jsonb;
+  v_paid bigint;
+  v_current_total bigint;
+  v_new_total bigint;
+  v_returned bigint;
+  v_unfinalized integer;
 begin
   v_actor := public.f14_financial_actor(p_business_id);
   v_replay := public.f14_claim_ticket_command(
@@ -636,6 +641,40 @@ begin
   if v_line.source_type<>'service' then raise exception 'PRODUCT_LINE_PRICE_IMMUTABLE'; end if;
   if v_line.final_unit_price_minor is null then raise exception 'SERVICE_PRICE_NOT_FINAL'; end if;
   if p_discount_minor>v_line.final_unit_price_minor then raise exception 'DISCOUNT_EXCEEDS_LINE'; end if;
+
+  -- Preserve the accepted F14-03 payment guards while extending the ticket
+  -- model with product quantities and product-return value.
+  select
+    count(*) filter (where l.final_unit_price_minor is null)::integer,
+    coalesce(sum(
+      case
+        when l.final_unit_price_minor is null then 0::bigint
+        else (l.final_unit_price_minor::bigint * l.quantity::bigint) - l.discount_minor::bigint
+      end
+    ),0::bigint)
+  into v_unfinalized,v_current_total
+  from public.ticket_lines l
+  where l.business_id=p_business_id and l.ticket_id=p_ticket_id;
+
+  v_paid:=public.f14_ticket_paid_minor(p_business_id,p_ticket_id);
+  if v_paid>0 and v_unfinalized>0 then
+    raise exception 'FINANCIAL_INVARIANT_BROKEN';
+  end if;
+
+  select coalesce(sum(r.quantity::bigint * l.final_unit_price_minor::bigint),0::bigint)
+  into v_returned
+  from public.ticket_product_returns r
+  join public.ticket_lines l
+    on l.business_id=r.business_id and l.id=r.ticket_line_id
+  where r.business_id=p_business_id and r.ticket_id=p_ticket_id;
+
+  v_new_total:=v_current_total
+    + v_line.discount_minor::bigint
+    - p_discount_minor::bigint
+    - v_returned;
+  if v_new_total<v_paid then
+    raise exception 'TICKET_TOTAL_BELOW_PAID';
+  end if;
 
   update public.ticket_lines
   set discount_minor=p_discount_minor,
