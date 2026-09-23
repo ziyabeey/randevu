@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from './api';
 import { useWorkspace } from './workspace-context';
@@ -82,20 +82,31 @@ export default function FinancialReportsPage() {
   const [report, setReport] = useState<FinancialReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState('');
+  const requestController = useRef<AbortController | null>(null);
+  const requestGeneration = useRef(0);
 
   const load = useCallback(async (from = startDate, to = endDate) => {
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
+    const generation = ++requestGeneration.current;
     setLoading(true);
     setNotice('');
     try {
       const params = new URLSearchParams({ startDate: from, endDate: to });
-      const result = await api<{ report: FinancialReport }>(`/api/reports/financial?${params}`);
+      const result = await api<{ report: FinancialReport }>(`/api/reports/financial?${params}`, {
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted || generation !== requestGeneration.current) return;
       if (result.report.businessId !== activeBusinessId) throw new Error('Rapor güncel işletmeyle eşleşmiyor.');
       setReport(result.report);
     } catch (error) {
+      if (controller.signal.aborted || generation !== requestGeneration.current) return;
       setReport(null);
       setNotice(error instanceof Error ? error.message : 'Mali rapor hazırlanamadı.');
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
+      if (requestController.current === controller) requestController.current = null;
     }
   }, [activeBusinessId, endDate, startDate]);
 
@@ -106,6 +117,11 @@ export default function FinancialReportsPage() {
     setReport(null);
     setNotice('');
     void load(next, next);
+    return () => {
+      requestGeneration.current += 1;
+      requestController.current?.abort();
+      requestController.current = null;
+    };
   // load intentionally runs against explicit dates during workspace reset.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBusinessId, scopeEpoch, timeZone]);
