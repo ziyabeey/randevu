@@ -21,6 +21,8 @@ values
   ('f15a3000-0000-4000-8000-000000000001','f15a1000-0000-4000-8000-000000000001','F15 Müşteri A','05550000001','f15-a@example.invalid','f15a0000-0000-4000-8000-000000000001'),
   ('f15a3000-0000-4000-8000-000000000002','f15a1000-0000-4000-8000-000000000002','F15 Müşteri B','05550000002','f15-b@example.invalid','f15a0000-0000-4000-8000-000000000002');
 
+-- RPCs run as authenticated; direct ledger/table assertions switch to the test
+-- owner with `reset role` and back, as in f11_schedule_authority_races.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f15a0000-0000-4000-8000-000000000001',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
@@ -70,6 +72,7 @@ begin
     raise exception 'F15-02 product snapshot line wrong: %',v_line;
   end if;
   perform set_config('f1502.line',v_line->>'lineId',false);
+  execute 'reset role';
 
   if (
     select stock_on_hand from public.products
@@ -85,6 +88,7 @@ begin
     and kind='sale';
   if v_sale_movement is null then raise exception 'F15-02 sale movement missing'; end if;
   perform set_config('f1502.sale_movement',v_sale_movement::text,false);
+  execute 'set local role authenticated';
 
   v_replay := public.open_product_sale_guarded(
     'f15a1000-0000-4000-8000-000000000001',
@@ -94,6 +98,7 @@ begin
     'f1502-open-sale-0001',repeat('b',64)
   );
   if v_replay<>v_sale then raise exception 'F15-02 same-key sale replay changed result'; end if;
+  execute 'reset role';
 
   if (
     select count(*) from public.product_stock_movements
@@ -101,6 +106,7 @@ begin
       and ticket_line_id=current_setting('f1502.line')::uuid
       and kind='sale'
   )<>1 then raise exception 'F15-02 same-key replay duplicated stock-out'; end if;
+  execute 'set local role authenticated';
 end
 $standalone$;
 
@@ -124,10 +130,12 @@ begin
   if v_payment is null then raise exception 'F15-02 payment event missing'; end if;
   perform set_config('f1502.payment',v_payment::text,false);
 
+  execute 'reset role';
   select stock_on_hand into v_stock_before
   from public.products
   where business_id='f15a1000-0000-4000-8000-000000000001'
     and id=current_setting('f1502.product')::uuid;
+  execute 'set local role authenticated';
 
   v_result := public.record_product_return_refund_guarded(
     'f15a1000-0000-4000-8000-000000000001',
@@ -135,6 +143,7 @@ begin
     1,25000,false,'Hasarlı ürün',
     'f1502-damaged-return',repeat('d',64)
   );
+  execute 'reset role';
   if (
     select stock_on_hand from public.products
     where business_id='f15a1000-0000-4000-8000-000000000001'
@@ -142,6 +151,7 @@ begin
   )<>v_stock_before then
     raise exception 'F15-02 financial refund silently returned damaged product to stock';
   end if;
+  execute 'set local role authenticated';
   if (v_result->>'paidMinor')::bigint<>25000 then raise exception 'F15-02 refund total wrong'; end if;
   -- The damaged unit came back, so the ticket owes one unit less.
   if (v_result->>'returnedMinor')::bigint<>25000
@@ -158,6 +168,7 @@ begin
     1,25000,true,'Satılabilir iade',
     'f1502-resellable-return',repeat('e',64)
   );
+  execute 'reset role';
   if (
     select stock_on_hand from public.products
     where business_id='f15a1000-0000-4000-8000-000000000001'
@@ -177,6 +188,7 @@ begin
     where business_id='f15a1000-0000-4000-8000-000000000001'
       and ticket_line_id=current_setting('f1502.line')::uuid
   )<>2 then raise exception 'F15-02 product return audit count wrong'; end if;
+  execute 'set local role authenticated';
 end
 $payment_and_returns$;
 
@@ -191,13 +203,16 @@ declare
   v_payment uuid;
   v_result jsonb;
   v_error text;
+  v_version integer;
 begin
+  execute 'reset role';
+  select version into v_version from public.products where id=current_setting('f1502.product')::uuid;
+  execute 'set local role authenticated';
   v_sale := public.open_product_sale_guarded(
     'f15a1000-0000-4000-8000-000000000001',
     'f15a3000-0000-4000-8000-000000000001',
     current_setting('f1502.product')::uuid,
-    2,
-    (select version from public.products where id=current_setting('f1502.product')::uuid),
+    2,v_version,
     'f1502-bounds-sale',repeat('3',64)
   );
   v_ticket := (v_sale->>'ticketId')::uuid;
@@ -233,9 +248,11 @@ begin
   if position('RETURN_REFUND_BELOW_REQUIRED' in coalesce(v_error,''))=0 then
     raise exception 'F15-02 refund leaving the ticket overpaid was accepted: %',v_error;
   end if;
+  execute 'reset role';
   if exists (
     select 1 from public.ticket_product_returns where ticket_line_id=v_line
   ) then raise exception 'F15-02 rejected return left a half-written return row'; end if;
+  execute 'set local role authenticated';
 
   v_result := public.record_product_return_refund_guarded(
     'f15a1000-0000-4000-8000-000000000001',v_ticket,v_line,v_payment,
@@ -271,13 +288,16 @@ declare
   v_line uuid;
   v_payment uuid;
   v_result jsonb;
+  v_version integer;
 begin
+  execute 'reset role';
+  select version into v_version from public.products where id=current_setting('f1502.product')::uuid;
+  execute 'set local role authenticated';
   v_sale := public.open_product_sale_guarded(
     'f15a1000-0000-4000-8000-000000000001',
     'f15a3000-0000-4000-8000-000000000001',
     current_setting('f1502.product')::uuid,
-    2,
-    (select version from public.products where id=current_setting('f1502.product')::uuid),
+    2,v_version,
     'f1502-partial-sale',repeat('a',63)||'1'
   );
   v_ticket := (v_sale->>'ticketId')::uuid;
@@ -309,7 +329,9 @@ declare
   v_blocked boolean:=false;
   v_version integer;
 begin
+  execute 'reset role';
   select version into v_version from public.tickets where id=current_setting('f1502.ticket')::uuid;
+  execute 'set local role authenticated';
   begin
     perform public.cancel_ticket_guarded(
       'f15a1000-0000-4000-8000-000000000001',
@@ -331,20 +353,24 @@ declare
   v_ticket uuid;
   v_after_sale bigint;
   v_cancel jsonb;
+  v_version integer;
 begin
-  select stock_on_hand into v_before from public.products
+  execute 'reset role';
+  select stock_on_hand,version into v_before,v_version from public.products
   where id=current_setting('f1502.product')::uuid;
+  execute 'set local role authenticated';
 
   v_sale := public.open_product_sale_guarded(
     'f15a1000-0000-4000-8000-000000000001',
     'f15a3000-0000-4000-8000-000000000001',
     current_setting('f1502.product')::uuid,
-    1,
-    (select version from public.products where id=current_setting('f1502.product')::uuid),
+    1,v_version,
     'f1502-cancel-sale',repeat('1',64)
   );
   v_ticket := (v_sale->>'ticketId')::uuid;
+  execute 'reset role';
   select stock_on_hand into v_after_sale from public.products where id=current_setting('f1502.product')::uuid;
+  execute 'set local role authenticated';
   if v_after_sale<>v_before-1 then raise exception 'F15-02 pre-cancel sale did not reduce stock'; end if;
 
   v_cancel := public.cancel_ticket_guarded(
@@ -353,9 +379,11 @@ begin
     'f1502-cancel-ticket',repeat('2',64)
   );
   if v_cancel->>'status'<>'cancelled' then raise exception 'F15-02 ticket cancel failed'; end if;
+  execute 'reset role';
   if (
     select stock_on_hand from public.products where id=current_setting('f1502.product')::uuid
   )<>v_before then raise exception 'F15-02 ticket cancel did not atomically restore stock'; end if;
+  execute 'set local role authenticated';
 end
 $cancel_unpaid$;
 
