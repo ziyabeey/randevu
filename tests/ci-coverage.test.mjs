@@ -151,7 +151,7 @@ test('coverage fails closed when a psql relative include points at an unknown SQ
     await writeFile(path.join(root, 'supabase/tests/nested/acceptance.sql'), '\\ir missing.sql\n');
     await assert.rejects(
       verifyCiCoverage({ root, planPath }),
-      /included SQL file does not exist: supabase\\/tests\\/nested\\/missing\\.sql/,
+      /included SQL file does not exist: supabase\/tests\/nested\/missing\.sql/,
     );
   } finally {
     await removeFixture(root);
