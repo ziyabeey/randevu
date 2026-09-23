@@ -6,6 +6,39 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function assertPng(name, size) {
+  const png = readFileSync(path.join(root, 'public', name));
+  assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(png.readUInt32BE(16), size);
+  assert.equal(png.readUInt32BE(20), size);
+  let offset = 8;
+  let sawIend = false;
+  while (offset + 12 <= png.length) {
+    const length = png.readUInt32BE(offset);
+    const type = png.subarray(offset + 4, offset + 8).toString('ascii');
+    const dataEnd = offset + 8 + length;
+    assert.ok(dataEnd + 4 <= png.length, `${name} contains a truncated ${type} chunk`);
+    const stored = png.readUInt32BE(dataEnd);
+    const calculated = crc32(png.subarray(offset + 4, dataEnd));
+    assert.equal(stored, calculated, `${name} has an invalid ${type} CRC`);
+    offset = dataEnd + 4;
+    if (type === 'IEND') {
+      sawIend = true;
+      break;
+    }
+  }
+  assert.equal(sawIend, true, `${name} is missing IEND`);
+}
+
 function sourceFiles(directory) {
   const result = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -15,6 +48,12 @@ function sourceFiles(directory) {
   }
   return result;
 }
+
+
+test('F14-05 KolayApp icon binaries match their manifest sizes and have valid PNG CRCs', () => {
+  assertPng('kolayapp-192.png', 192);
+  assertPng('kolayapp-512.png', 512);
+});
 
 test('F14-05 KolayApp manifest is installable and private-app scoped', () => {
   const manifest = JSON.parse(readFileSync(path.join(root, 'public/manifest.webmanifest'), 'utf8'));
