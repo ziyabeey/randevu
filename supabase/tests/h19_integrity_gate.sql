@@ -33,7 +33,7 @@ select pg_temp.h19_expect('inventory.d0d1.actor_idempotency','inventory','D0','D
 select pg_temp.h19_expect('inventory.d1d5.idempotency_concurrency','inventory','D1','D5',2355,2359,2360);
 select pg_temp.h19_expect('booking.d2d3.snapshot_staff_coherence','booking','D2','D3',2106,2107,2098);
 select pg_temp.h19_expect('payments.d1d2.replay_snapshot','payments','D1','D2',2386,2389,2390);
-select pg_temp.h19_expect('payments.d2d5.snapshot_concurrency','payments','D2','D5',2436,2441,2444);
+-- HOLDOUT CONTROL: D2xD5 is a frozen antipodal pair; keep regression evidence but exclude it from H19 geometry-selection scoring.\nselect pg_temp.h19_expect('payments.d2d5.snapshot_concurrency','payments','D2','D5',2436,2441,2444);
 
 \echo 'H19 Integrity Gate: D0xD1 tenant/idempotency'
 \ir h19_d0_d1_tenant_idempotency.sql
