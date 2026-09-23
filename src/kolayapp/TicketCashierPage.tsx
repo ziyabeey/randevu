@@ -9,12 +9,15 @@ type PageInfo = { limit: number; hasMore: boolean; nextCursor: string | null };
 type TicketLine = {
   lineId: string;
   ordinal: number;
-  sourceType: 'service';
+  sourceType: 'service' | 'product';
   sourceAppointmentLineId: string | null;
-  serviceId: string;
+  serviceId: string | null;
   staffId: string | null;
-  serviceName: string;
+  serviceName: string | null;
   staffName: string | null;
+  productId: string | null;
+  productName: string | null;
+  productCode: string | null;
   quantity: number;
   priceType: 'fixed' | 'range';
   priceMinMinor: number;
@@ -77,6 +80,18 @@ type Customer = {
   email: string | null;
 };
 type CustomerList = { customers: Customer[]; page: PageInfo };
+type StockProduct = {
+  productId: string;
+  businessId: string;
+  name: string;
+  code: string | null;
+  salePriceMinor: number;
+  currency: string;
+  stockOnHand: number;
+  version: number;
+  active: boolean;
+};
+type ProductList = { products: StockProduct[]; page: PageInfo };
 type TicketList = { tickets: TicketContract[]; page: PageInfo };
 type PendingAmbiguity = {
   businessId: string;
@@ -200,6 +215,7 @@ export default function TicketCashierPage() {
   const [selected, setSelected] = useState<TicketContract | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [catalog, setCatalog] = useState<ManagedCatalog | null>(null);
+  const [products, setProducts] = useState<StockProduct[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
@@ -207,6 +223,7 @@ export default function TicketCashierPage() {
   const initialParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const initialTicketId = initialParams.get('ticketId');
   const initialCustomerId = initialParams.get('customerId');
+  const showStandaloneProductSale = initialParams.get('newProductSale') === '1';
   const keys = useRef(new Map<string, string>());
   const listGeneration = useRef(0);
 
@@ -236,13 +253,18 @@ export default function TicketCashierPage() {
   }, [initialCustomerId, status]);
 
   const loadLookups = useCallback(async () => {
-    const [customerResult, nextCatalog] = await Promise.all([
+    const [customerResult, nextCatalog, productResult] = await Promise.all([
       api<CustomerList>('/api/customers?limit=100'),
       api<ManagedCatalog>('/api/catalog'),
+      api<ProductList>('/api/products?limit=100&includeArchived=false'),
     ]);
     if (nextCatalog.membership.business_id !== activeBusinessId) throw new Error('Katalog seçili işletmeyle eşleşmiyor.');
+    if (productResult.products.some((product) => product.businessId !== activeBusinessId)) {
+      throw new Error('Ürün kataloğu seçili işletmeyle eşleşmiyor.');
+    }
     setCustomers(customerResult.customers);
     setCatalog(nextCatalog);
+    setProducts(productResult.products.filter((product) => product.active));
   }, [activeBusinessId]);
 
   const load = useCallback(async () => {
@@ -371,6 +393,107 @@ export default function TicketCashierPage() {
       'Yeni adisyon açıldı.',
     );
     if (ticket) setSelected(ticket);
+  }
+
+  async function createProductSale(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const customerId = String(data.get('customerId') ?? '');
+    const productId = String(data.get('productId') ?? '');
+    const quantity = Number(data.get('quantity'));
+    const product = products.find((item) => item.productId === productId);
+    if (!customerId || !product || !Number.isInteger(quantity) || quantity < 1 || quantity > 1000) {
+      return setNotice('Müşteri, ürün ve satış miktarı gerekli.');
+    }
+    const ticket = await mutation(
+      `product-sale:${customerId}:${productId}:${product.version}:${quantity}`,
+      '/api/tickets/product-sales',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          customerId,
+          productId,
+          quantity,
+          expectedProductVersion: product.version,
+        }),
+      },
+      'Ürün satışı adisyona dönüştürüldü.',
+    );
+    if (ticket) {
+      setSelected(ticket);
+      form.reset();
+      await loadLookups();
+    }
+  }
+
+  async function addProduct(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const productId = String(data.get('productId') ?? '');
+    const quantity = Number(data.get('quantity'));
+    const product = products.find((item) => item.productId === productId);
+    if (!product || !Number.isInteger(quantity) || quantity < 1 || quantity > 1000) {
+      return setNotice('Ürün ve satış miktarı gerekli.');
+    }
+    const ticket = await mutation(
+      `product-line:${selected.ticketId}:${selected.version}:${productId}:${product.version}:${quantity}`,
+      `/api/tickets/${selected.ticketId}/product-lines`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          productId,
+          quantity,
+          expectedVersion: selected.version,
+          expectedProductVersion: product.version,
+        }),
+      },
+      'Ürün adisyona eklendi ve stok sunucuda düşüldü.',
+      selected.ticketId,
+    );
+    if (ticket) {
+      form.reset();
+      await loadLookups();
+    }
+  }
+
+  async function productReturnRefund(event: FormEvent<HTMLFormElement>, line: TicketLine) {
+    event.preventDefault();
+    if (!selected || line.sourceType !== 'product') return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const sourcePaymentEventId = String(data.get('sourcePaymentEventId') ?? '');
+    const quantity = Number(data.get('quantity'));
+    const amountMinor = parseMoney(data.get('amount'));
+    const reason = String(data.get('reason') ?? '').trim();
+    const returnToStock = data.get('returnToStock') === 'on';
+    if (!sourcePaymentEventId || !Number.isInteger(quantity) || quantity < 1 || amountMinor === null || reason.length < 2) {
+      return setNotice('İade kaynağı, miktarı, tutarı ve gerekçesi gerekli.');
+    }
+    const ticket = await mutation(
+      `product-return:${selected.ticketId}:${line.lineId}:${sourcePaymentEventId}:${quantity}:${amountMinor}:${returnToStock}`,
+      `/api/tickets/${selected.ticketId}/lines/${line.lineId}/product-return-refund`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          sourcePaymentEventId,
+          quantity,
+          amountMinor,
+          returnToStock,
+          reason,
+        }),
+      },
+      returnToStock
+        ? 'Ürün iadesi ve stoğa geri dönüş birlikte doğrulandı.'
+        : 'Finansal iade kaydedildi; ürün stoğa geri alınmadı.',
+      selected.ticketId,
+    );
+    if (ticket) {
+      form.reset();
+      await loadLookups();
+    }
   }
 
   async function addService(event: FormEvent<HTMLFormElement>) {
@@ -511,6 +634,23 @@ export default function TicketCashierPage() {
         </div>
       )}
 
+      {showStandaloneProductSale && (
+        <form className="ticket-product-sale" onSubmit={createProductSale}>
+          <label>Yeni ürün satışı
+            <select name="customerId" required defaultValue="">
+              <option value="" disabled>Müşteri seçin</option>
+              {customers.map((customer) => <option key={customer.customer_id} value={customer.customer_id}>{customer.name}</option>)}
+            </select>
+          </label>
+          <select name="productId" required defaultValue="">
+            <option value="" disabled>Ürün seçin</option>
+            {products.map((product) => <option key={product.productId} value={product.productId}>{product.name} · stok {product.stockOnHand}</option>)}
+          </select>
+          <input name="quantity" inputMode="numeric" type="number" min="1" max="1000" defaultValue="1" required />
+          <button disabled={busy}>Ürün satışını oluştur</button>
+        </form>
+      )}
+
       <form className="ticket-walkin" onSubmit={createWalkIn}>
         <label>Randevusuz adisyon
           <select name="customerId" required defaultValue="">
@@ -552,24 +692,52 @@ export default function TicketCashierPage() {
               <div className="ticket-lines">
                 {selected.lines.map((line) => (
                   <article key={line.lineId}>
-                    <div><strong>{line.serviceName}</strong><span>{line.staffName ?? 'Personel seçilmedi'} · {money(line.netMinor, line.currency)}</span></div>
-                    {selected.status === 'open' && line.priceType === 'range' && line.finalUnitPriceMinor === null && (
+                    <div>
+                      <strong>{line.sourceType === 'product' ? (line.productName ?? 'Ürün') : line.serviceName}</strong>
+                      <span>{line.sourceType === 'product'
+                        ? `${line.productCode ?? 'Kodsuz'} · ${line.quantity} adet · ${money(line.netMinor, line.currency)}`
+                        : `${line.staffName ?? 'Personel seçilmedi'} · ${money(line.netMinor, line.currency)}`}</span>
+                    </div>
+                    {selected.status === 'open' && line.sourceType === 'service' && line.priceType === 'range' && line.finalUnitPriceMinor === null && (
                       <form onSubmit={(event) => void finalizePrice(event, line)}>
                         <input name="amount" inputMode="decimal" placeholder="Kesin tutar" required />
                         <input name="reason" placeholder="Gerekçe" minLength={2} required />
                         <button disabled={busy}>Tutarı kesinleştir</button>
                       </form>
                     )}
-                    {selected.status === 'open' && line.finalUnitPriceMinor !== null && (
+                    {selected.status === 'open' && line.sourceType === 'service' && line.finalUnitPriceMinor !== null && (
                       <form onSubmit={(event) => void discount(event, line)}>
                         <input name="amount" inputMode="decimal" placeholder="İskonto" required />
                         <input name="reason" placeholder="Gerekçe" minLength={2} required />
                         <button disabled={busy}>İskontoyu kaydet</button>
                       </form>
                     )}
+                    {line.sourceType === 'product' && selected.paymentEvents.some((event) => event.eventType === 'payment') && (
+                      <form className="ticket-product-return" onSubmit={(event) => void productReturnRefund(event, line)}>
+                        <select name="sourcePaymentEventId" required defaultValue="">
+                          <option value="" disabled>Tahsilat seçin</option>
+                          {selected.paymentEvents.filter((event) => event.eventType === 'payment').map((event) => (
+                            <option key={event.eventId} value={event.eventId}>{event.method === 'cash' ? 'Nakit' : 'Kart'} · {money(event.amountMinor, line.currency)}</option>
+                          ))}
+                        </select>
+                        <input name="quantity" type="number" inputMode="numeric" min="1" max={line.quantity} defaultValue="1" required />
+                        <input name="amount" inputMode="decimal" placeholder="İade tutarı" required />
+                        <input name="reason" placeholder="İade gerekçesi" minLength={2} required />
+                        <label><input name="returnToStock" type="checkbox" /> Satılabilir stoğa geri al</label>
+                        <button disabled={busy}>Ürün iadesini kaydet</button>
+                      </form>
+                    )}
                   </article>
                 ))}
               </div>
+
+              {selected.status === 'open' && (
+                <form className="ticket-add-product" onSubmit={addProduct}>
+                  <select name="productId" required defaultValue=""><option value="" disabled>Ürün seçin</option>{products.map((product) => <option key={product.productId} value={product.productId}>{product.name} · stok {product.stockOnHand}</option>)}</select>
+                  <input name="quantity" type="number" inputMode="numeric" min="1" max="1000" defaultValue="1" required />
+                  <button disabled={busy}>Ürün ekle</button>
+                </form>
+              )}
 
               {selected.status === 'open' && (
                 <form className="ticket-add-line" onSubmit={addService}>
