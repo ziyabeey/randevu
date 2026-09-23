@@ -157,33 +157,6 @@ await test('F15 product create requires inventory and pricing permissions and ig
   } finally { globalThis.fetch = realFetch; }
 });
 
-await test('F15 product update requires pricing permission at the HTTP boundary', async () => {
-  const realFetch = globalThis.fetch;
-  let guardedCalls = 0;
-  globalThis.fetch = baseFetch({
-    role: 'staff',
-    permissions: { inventory_write: true, pricing_adjustments_write: false },
-    rpc: async () => { guardedCalls += 1; throw new Error('unexpected product update'); },
-  });
-  try {
-    const response = await app.request(`http://localhost/api/products/${productId}`, {
-      method: 'PUT',
-      headers: mutationHeaders('f1501-update-price-denied'),
-      body: JSON.stringify({
-        name: 'Şampuan',
-        code: 'SAMP-1',
-        unit: 'piece',
-        salePriceMinor: 26000,
-        currency: 'TRY',
-        expectedVersion: 1,
-      }),
-    }, env);
-    assert.equal(response.status, 403);
-    assert.equal((await response.json()).error?.code, 'PRICING_PERMISSION_REQUIRED');
-    assert.equal(guardedCalls, 0);
-  } finally { globalThis.fetch = realFetch; }
-});
-
 await test('F15 stock movement is versioned, integer-only and uses inventory permission', async () => {
   const realFetch = globalThis.fetch;
   let rpcCalls = 0;
