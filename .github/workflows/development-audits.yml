@@ -115,7 +115,6 @@ jobs:
           printf '{"pr_number":%s,"main_sha":"%s","head_sha":"%s","base_sha":"%s","event":"%s","run_id":%s,"run_attempt":%s}\n' \
             "${PR_NUMBER}" "${main_sha}" "${head_sha}" "${base_sha}" "${GITHUB_EVENT_NAME}" "${GITHUB_RUN_ID}" "${GITHUB_RUN_ATTEMPT}" \
             > .audit-evidence/identity.json
-          gh api --paginate "repos/${REPOSITORY}/issues/65/comments?per_page=100"             | jq -s 'add | .[-40:]' > .audit-evidence/coordination-comments.json
           gh api --paginate "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100"             | jq -s 'add | .[-60:]' > .audit-evidence/pr-comments.json
           gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/reviews?per_page=100"             | jq -s 'add | .[-60:]' > .audit-evidence/pr-reviews.json
           gh api --paginate "repos/${REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100"             | jq -s 'add | map({filename,status,additions,deletions,changes,sha})'             > .audit-evidence/changed-files.json
@@ -206,7 +205,6 @@ jobs:
 
           const prRaw = readJson('.audit-evidence/pr.json') ?? {};
           const taskRaw = readJson('.audit-evidence/task-issue.json');
-          const coordination = readJson('.audit-evidence/coordination-comments.json') ?? [];
           const prComments = readJson('.audit-evidence/pr-comments.json') ?? [];
           const taskComments = readJson('.audit-evidence/task-issue-comments.json') ?? [];
           const reviews = readJson('.audit-evidence/pr-reviews.json') ?? [];
@@ -246,7 +244,6 @@ jobs:
             } : null,
             task_issue_comments: Array.isArray(taskComments) ? taskComments.slice(-4).map(compactComment) : [],
             changed_files: readJson('.audit-evidence/changed-files.json') ?? [],
-            coordination_comments: Array.isArray(coordination) ? coordination.slice(-6).map(compactComment) : [],
             pr_comments: Array.isArray(prComments) ? prComments.slice(-10).map(compactComment) : [],
             pr_reviews: Array.isArray(reviews) ? reviews.slice(-10).map((item) => ({
               id: item?.id ?? null,
@@ -501,7 +498,6 @@ jobs:
           gh api "repos/${REPOSITORY}/actions/runs?per_page=100"             > .audit-evidence/workflow-runs.json
           gh api "repos/${REPOSITORY}/pulls?state=all&sort=updated&direction=desc&per_page=100"             > .audit-evidence/pulls.json
           gh api "repos/${REPOSITORY}/issues?state=all&since=${since}&per_page=100"             > .audit-evidence/issues.json
-          gh api --paginate "repos/${REPOSITORY}/issues/65/comments?per_page=100"             | jq -s 'add | .[-100:]' > .audit-evidence/coordination-comments.json
 
       - name: Run Gemini Development Telemetry Review
         id: gemini

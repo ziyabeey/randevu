@@ -164,11 +164,10 @@ function receiptUrl(repository, prNumber, item, kind) {
   return `https://github.com/${repository}/pull/${prNumber}#issuecomment-${item.id}`;
 }
 
-function receiptCandidates({ repository, pr, prReviews, prComments, coordinationComments }) {
-  const comments = [
-    ...asArray(prComments).map((item) => ({ ...item, kind: 'comment' })),
-    ...asArray(coordinationComments).map((item) => ({ ...item, kind: 'coordination-comment' })),
-  ];
+function receiptCandidates({ repository, pr, prReviews, prComments }) {
+  // Independent review authority is PR-local. Issue #65 remains temporary
+  // coordination and cannot supply acceptance receipts.
+  const comments = asArray(prComments).map((item) => ({ ...item, kind: 'comment' }));
   const reviews = asArray(prReviews).map((item) => ({ ...item, kind: 'review' }));
   return [...comments, ...reviews].map((item) => ({
     ...item,
@@ -368,11 +367,10 @@ export function buildDevelopmentReviewObservation({
   const prNumber = positiveInteger(pr?.number);
   const head = pr?.head?.sha;
   const base = pr?.base?.sha;
-  const testedCheckout = pr?.merge_commit_sha;
   const liveMain = main?.commit?.sha;
   if (!prNumber || pr?.state !== 'open' || pr?.draft === true) fail('PR_NOT_ACTIVE');
   if (pr?.head?.repo?.full_name !== repository || pr?.base?.ref !== 'main') fail('PR_TRUST_BOUNDARY_INVALID');
-  if (![head, base, testedCheckout, liveMain].every((value) => SHA_RE.test(value ?? ''))) {
+  if (![head, base, liveMain].every((value) => SHA_RE.test(value ?? ''))) {
     fail('PR_OR_MAIN_SHA_INVALID');
   }
 
@@ -395,7 +393,6 @@ export function buildDevelopmentReviewObservation({
     pr,
     prReviews,
     prComments,
-    coordinationComments,
   });
   const authenticated = authenticatedReceipts(candidates.map((item) => ({
     ...item,
@@ -439,9 +436,9 @@ export function buildDevelopmentReviewObservation({
     ci: {
       status: 'pass',
       exactHeadSha: run.head_sha,
-      testedCheckoutSha: testedCheckout,
+      testedCheckoutSha: head,
       baseMainSha: base,
-      explicitlyBoundToHead: true,
+      explicitlyBoundToHead: false,
       run: String(run.id),
       job: String(ciJob.id),
       attempt,
@@ -521,7 +518,6 @@ function readEvidenceDirectory(directory, repository, tasksFile) {
     jobs: read('jobs.json'),
     prReviews: read('pr-reviews.json'),
     prComments: read('pr-comments.json'),
-    coordinationComments: read('coordination-comments.json'),
     reviewThreads: read('review-threads.json'),
   });
 }

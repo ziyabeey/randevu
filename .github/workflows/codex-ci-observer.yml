@@ -1,0 +1,62 @@
+name: Codex CI Observer
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: codex-ci-observer-${{ github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.id }}
+  cancel-in-progress: true
+
+jobs:
+  observe:
+    name: CI evidence through canonical Dispatcher
+    if: >-
+      ${{ github.event.workflow_run.event == 'pull_request' &&
+          github.event.workflow_run.head_repository.full_name == github.repository &&
+          github.event.workflow_run.pull_requests[0].number != null }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      REPOSITORY: ${{ github.repository }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+    steps:
+      - name: Checkout trusted adapter only
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Gather exact run and attempt evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .ci-observer
+          gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" > .ci-observer/pr.json
+          gh api "repos/${REPOSITORY}/branches/main" > .ci-observer/main.json
+          gh api "repos/${REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}" > .ci-observer/run.json
+          gh api --paginate "repos/${REPOSITORY}/actions/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}/jobs?per_page=100" \
+            | jq -s '[.[].jobs[]]' > .ci-observer/jobs.json
+          gh api "repos/${REPOSITORY}/pulls/${PR_NUMBER}" > .ci-observer/final-pr.json
+          gh api "repos/${REPOSITORY}/branches/main" > .ci-observer/final-main.json
+      - name: Derive recommendation with existing Dispatcher
+        run: node scripts/run-ci-observer.mjs .ci-observer
+      - name: Preserve bounded observation
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-observation-${{ env.RUN_ID }}-${{ env.RUN_ATTEMPT }}
+          path: .ci-observer/observation.json
+          if-no-files-found: error
+          retention-days: 7
