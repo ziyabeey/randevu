@@ -87,10 +87,17 @@ test('MKT-01 booking demo uses a scroll-owned phone scene with a reduced-motion 
   assert.match(productStories, /className="mkt-booking-phone"/);
   assert.match(productStories, /className="mkt-booking-proof" aria-label="Online rezervasyon akışı örneği"/);
   assert.match(bookingScrollHook, /requestAnimationFrame/);
-  assert.match(bookingScrollHook, /ResizeObserver/);
+  assert.match(bookingScrollHook, /typeof ResizeObserver === "undefined"/);
+  assert.match(bookingScrollHook, /visualViewport\?\.addEventListener\("resize"/);
   assert.match(bookingScrollCss, /--mkt-booking-progress/);
+  assert.match(bookingScrollCss, /--mkt-booking-enter/);
+  assert.match(bookingScrollCss, /--mkt-booking-flow/);
+  assert.match(bookingScrollCss, /--mkt-booking-zoom/);
+  assert.match(bookingScrollCss, /--mkt-booking-exit/);
   assert.match(bookingScrollCss, /height:\s*250svh/);
   assert.match(bookingScrollCss, /position:\s*sticky/);
+  assert.match(bookingScrollCss, /\.mkt-booking-sticky::before[\s\S]*?background:\s*var\(--mkt-cobalt\)/);
+  assert.match(marketingPolishCss, /\.mkt-product-story:not\(\.mkt-booking-scene\)/);
   assert.match(bookingScrollCss, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
