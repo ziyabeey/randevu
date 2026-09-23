@@ -32,6 +32,8 @@ const TICKET = 'f3480000-0000-4000-8000-000000000001';
 const PAYMENT_CASH = 'f3490000-0000-4000-8000-000000000001';
 const PAYMENT_CARD = 'f3490000-0000-4000-8000-000000000002';
 const PRODUCT = 'f34a0000-0000-4000-8000-000000000001';
+const EXPENSE = 'f34c0000-0000-4000-8000-000000000001';
+const EXPENSE_REPLACEMENT = 'f34c0000-0000-4000-8000-000000000003';
 const TOKEN = 'T'.repeat(48);
 const CSRF = 'C'.repeat(43);
 
@@ -48,6 +50,7 @@ let publicCreateRequest = null;
 let paymentsWriteAllowed = true;
 let productState = null;
 let productMovements = [];
+let expenseEvents = [];
 
 function productProjection() {
   return productState ? { ...productState } : null;
@@ -688,6 +691,109 @@ try {
         createdAt: '2026-09-23T05:05:00.000Z',
       }, ...productMovements];
       return sendJson(response, 201, { product: productProjection() });
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/expenses') {
+      return sendJson(response, 200, {
+        events: activeBusinessId === BUSINESS_A ? expenseEvents : [],
+        page: { limit: 25, hasMore: false, nextCursor: null },
+      });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/expenses') {
+      assert.equal(activeBusinessId, BUSINESS_A, 'expense create escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'expense create omitted Idempotency-Key');
+      assert.equal(body.category, 'Malzeme');
+      assert.equal(body.amountMinor, 15000);
+      assert.equal(body.currency, 'TRY');
+      assert.equal(body.paymentMethod, 'cash');
+      const event = {
+        eventId: EXPENSE,
+        businessId: BUSINESS_A,
+        eventType: 'expense',
+        sourceExpenseEventId: null,
+        correctionOfEventId: null,
+        category: body.category,
+        description: body.description ?? null,
+        amountMinor: body.amountMinor,
+        effectMinor: body.amountMinor,
+        currency: body.currency,
+        paymentMethod: body.paymentMethod,
+        occurredAt: body.occurredAt,
+        businessDate: body.occurredAt.slice(0, 10),
+        timezone: 'Europe/Istanbul',
+        reason: null,
+        actorMembershipId: MEMBERSHIP_A,
+        createdAt: '2026-09-23T07:45:00.000Z',
+      };
+      expenseEvents = [event, ...expenseEvents];
+      return sendJson(response, 201, { result: event });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/expenses/${EXPENSE}/correct`) {
+      assert.equal(activeBusinessId, BUSINESS_A, 'expense correction escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'expense correction omitted Idempotency-Key');
+      assert.equal(body.reason, 'Tutar düzeltmesi');
+      assert.equal(body.amountMinor, 12000);
+      const source = expenseEvents.find((item) => item.eventId === EXPENSE);
+      assert.ok(source, 'expense correction source missing');
+      assert.equal(expenseEvents.some((item) => item.eventType === 'reversal' && item.sourceExpenseEventId === EXPENSE), false, 'expense source already reversed before correction');
+      const reversal = {
+        ...source,
+        eventId: 'f34c0000-0000-4000-8000-000000000002',
+        eventType: 'reversal',
+        sourceExpenseEventId: EXPENSE,
+        correctionOfEventId: null,
+        effectMinor: -source.amountMinor,
+        occurredAt: body.correctionOccurredAt,
+        businessDate: body.correctionOccurredAt.slice(0, 10),
+        reason: body.reason,
+        createdAt: '2026-09-23T07:50:00.000Z',
+      };
+      const replacement = {
+        ...source,
+        eventId: EXPENSE_REPLACEMENT,
+        eventType: 'expense',
+        sourceExpenseEventId: null,
+        correctionOfEventId: EXPENSE,
+        amountMinor: body.amountMinor,
+        effectMinor: body.amountMinor,
+        category: body.category,
+        description: body.description ?? null,
+        currency: body.currency,
+        paymentMethod: body.paymentMethod,
+        occurredAt: body.occurredAt,
+        businessDate: body.occurredAt.slice(0, 10),
+        reason: null,
+        createdAt: '2026-09-23T07:50:01.000Z',
+      };
+      expenseEvents = [replacement, reversal, ...expenseEvents];
+      return sendJson(response, 201, { result: { reversal, replacement } });
+    }
+    if (request.method === 'POST'
+        && (url.pathname === `/api/expenses/${EXPENSE}/reverse`
+          || url.pathname === `/api/expenses/${EXPENSE_REPLACEMENT}/reverse`)) {
+      assert.equal(activeBusinessId, BUSINESS_A, 'expense reversal escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'expense reversal omitted Idempotency-Key');
+      assert.equal(body.reason, 'Yanlış kayıt');
+      const sourceId = url.pathname.includes(EXPENSE_REPLACEMENT) ? EXPENSE_REPLACEMENT : EXPENSE;
+      const source = expenseEvents.find((item) => item.eventId === sourceId);
+      assert.ok(source, 'expense reversal source missing');
+      assert.equal(expenseEvents.some((item) => item.eventType === 'reversal' && item.sourceExpenseEventId === sourceId), false, 'expense source was reversed twice');
+      const reversal = {
+        ...source,
+        eventId: sourceId === EXPENSE_REPLACEMENT
+          ? 'f34c0000-0000-4000-8000-000000000004'
+          : 'f34c0000-0000-4000-8000-000000000005',
+        eventType: 'reversal',
+        sourceExpenseEventId: sourceId,
+        correctionOfEventId: null,
+        effectMinor: -source.amountMinor,
+        occurredAt: body.occurredAt,
+        businessDate: body.occurredAt.slice(0, 10),
+        reason: body.reason,
+        createdAt: '2026-09-23T07:55:00.000Z',
+      };
+      expenseEvents = [reversal, ...expenseEvents];
+      return sendJson(response, 201, { result: reversal });
     }
 
     if (request.method === 'GET' && url.pathname === '/api/tickets') {
@@ -1357,6 +1463,104 @@ try {
     'F15-01 returning to business A did not re-read its product stock',
   );
   console.log('F15-01 product create, stock movement, 390px and tenant-switch acceptance passed.');
+
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 740, deviceScaleFactor: 1, mobile: true });
+  await page.send('Page.navigate', { url: `${origin}/app/expenses` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/expenses' && document.body.innerText.includes('Gider kayıtları')`),
+    'F15-03 expenses workspace route did not render',
+  );
+  await page.evaluate(`(() => {
+    const form = document.querySelector('.expenses-form');
+    const set = (name, value) => {
+      const node = form.querySelector('[name="' + name + '"]');
+      const proto = node instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+      setter.call(node, value);
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+      node.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    set('category', 'Malzeme');
+    set('description', 'Eldiven');
+    set('amount', '150,00');
+    set('paymentMethod', 'cash');
+    set('occurredAt', '2026-09-23T10:45');
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Masraf kaydedildi.') && document.body.innerText.includes('Malzeme') && document.body.innerText.includes('150')`),
+    'F15-03 expense create did not render the authoritative event',
+  );
+  const expense390 = await page.evaluate(`(() => ({
+    overflow: document.documentElement.scrollWidth - innerWidth,
+    text: document.body.innerText,
+  }))()`);
+  assert.equal(expense390.overflow <= 1, true, 'F15-03 expense workspace overflowed at 390px');
+  assert.match(expense390.text, /Nakit/);
+
+  await page.evaluate(`(() => {
+    const answers = ['120,00', 'Tutar düzeltmesi'];
+    window.prompt = () => answers.shift() ?? null;
+    [...document.querySelectorAll('.expenses-list button')].find((node) => node.textContent.trim() === 'Düzelt').click();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Masraf düzeltmesi reversal + yeni kayıt olarak kaydedildi.') && document.body.innerText.includes('120') && document.body.innerText.includes('Düzeltildi / iptal edildi') && document.body.innerText.includes('Düzeltme kaydı')`),
+    'F15-03 expense correction did not render reversal + replacement',
+  );
+  assert.equal(expenseEvents.length, 3, 'F15-03 fixture did not preserve source + correction reversal + replacement');
+  assert.equal(expenseEvents.filter((item) => item.eventType === 'reversal' && item.sourceExpenseEventId === EXPENSE).length, 1, 'F15-03 correction did not create exactly one source reversal');
+  assert.equal(expenseEvents.find((item) => item.eventId === EXPENSE_REPLACEMENT)?.amountMinor, 12000, 'F15-03 correction replacement amount is wrong');
+  assert.equal(expenseEvents.find((item) => item.eventId === EXPENSE_REPLACEMENT)?.correctionOfEventId, EXPENSE, 'F15-03 correction replacement lost source lineage');
+  const correctionUi = await page.evaluate(`(() => ({
+    actionCount: [...document.querySelectorAll('.expenses-list button')].filter((node) => node.textContent.trim() === 'Düzelt').length,
+    retiredCount: [...document.querySelectorAll('.expenses-list li')].filter((node) => node.textContent.includes('Düzeltildi / iptal edildi')).length,
+  }))()`);
+  assert.equal(correctionUi.actionCount, 1, 'F15-03 reversed source still exposed a correction action');
+  assert.equal(correctionUi.retiredCount, 1, 'F15-03 reversed source did not render retired state');
+
+  await page.evaluate(`(() => {
+    window.prompt = () => 'Yanlış kayıt';
+    const rows = [...document.querySelectorAll('.expenses-list li')];
+    const replacement = rows.find((node) => node.textContent.includes('120'));
+    [...replacement.querySelectorAll('button')].find((node) => node.textContent.includes('reversal')).click();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Masraf reversal hareketi kaydedildi.') && [...document.querySelectorAll('.expenses-list li')].filter((node) => node.textContent.includes('Düzeltildi / iptal edildi')).length === 2`),
+    'F15-03 replacement reversal did not retire the corrected expense',
+  );
+  assert.equal(expenseEvents.length, 4, 'F15-03 fixture did not preserve full append-only correction/cancel chain');
+  assert.equal(expenseEvents.reduce((sum, item) => sum + item.effectMinor, 0), 0, 'F15-03 correction/cancel chain did not reconcile to zero');
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.workspace-business select');
+    select.value='f3410000-0000-4000-8000-000000000002';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar' && document.body.innerText.includes('Salon B')`),
+    'F15-03 business switch did not enter verified B context',
+  );
+  await page.send('Page.navigate', { url: `${origin}/app/expenses` });
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Henüz masraf hareketi yok.') && !document.body.innerText.includes('Eldiven')`),
+    'F15-03 expense state leaked across businesses',
+  );
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.workspace-business select');
+    select.value='f3410000-0000-4000-8000-000000000001';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar' && document.body.innerText.includes('Salon A')`),
+    'F15-03 business switch did not restore verified A context',
+  );
+  await page.send('Page.navigate', { url: `${origin}/app/expenses` });
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Malzeme') && document.body.innerText.includes('Reversal')`),
+    'F15-03 returning to business A did not re-read expense ledger',
+  );
+  console.log('F15-03 expense create, reversal, 390px and tenant-switch acceptance passed.');
 
   // Return the shared F13 harness to its canonical workspace before continuing
   // the pre-existing desktop/legacy-route acceptance below.
