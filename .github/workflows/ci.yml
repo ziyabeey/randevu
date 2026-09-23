@@ -172,16 +172,19 @@ jobs:
           set -euo pipefail
           for attempt in {1..30}; do
             if [ "$(docker inspect --format '{{.State.Health.Status}}' randevu-ci-postgres)" = healthy ]; then
-              server_version_num="$(psql -h 127.0.0.1 -U postgres -d yzt_test -Atqc 'show server_version_num')"
-              case "${server_version_num}" in
-                17*) exit 0 ;;
-                *) echo "Expected PostgreSQL 17, got server_version_num=${server_version_num}" >&2; exit 1 ;;
-              esac
+              if server_version_num="$(psql -h 127.0.0.1 -U postgres -d yzt_test -Atqc 'show server_version_num' 2>/dev/null)"; then
+                case "${server_version_num}" in
+                  17*) exit 0 ;;
+                  *) echo "Expected PostgreSQL 17, got server_version_num=${server_version_num}" >&2; exit 1 ;;
+                esac
+              fi
             fi
             sleep 1
           done
+          docker inspect randevu-ci-postgres >&2 || true
+          docker logs randevu-ci-postgres >&2 || true
           cat "${RUNNER_TEMP}/postgres-launch.log" >&2 || true
-          echo 'Test PostgreSQL did not become healthy.'
+          echo 'Test PostgreSQL did not become reachable from the host within 30 seconds.'
           exit 1
       - name: Run all required code checks
         id: verify
