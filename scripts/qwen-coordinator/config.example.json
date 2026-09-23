@@ -23,6 +23,8 @@
   "depotBinary": "__DEPOT_BINARY__",
   "depotOrgId": "__DEPOT_ORG_ID__",
   "depotWorkflowFile": "__COORDINATOR_HOME__/depot-full-ci.yml",
+  "depotBuildImageWorkflowFile": "__COORDINATOR_HOME__/depot-build-ci-image.yml",
+  "depotCustomImageEnabled": false,
   "depotWorkflowName": "qwen-coordinator-full-ci-shadow-v1",
   "depotCommentSchemaVersion": 2,
   "depotJob": "verify",

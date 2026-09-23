@@ -31,6 +31,7 @@ import {
   depotCommentBody,
   depotEligible,
   depotFetchRef,
+  depotRunnerSpec,
   isDepotTerminal,
   normalizeDepotStatus,
   qwenEligibleDecisions,
@@ -515,11 +516,14 @@ async function startDepotRun(config, pr, beforeLaunch = () => {}) {
   }
   const template = readFileSync(config.depotWorkflowFile, 'utf8');
   if (!template.includes('__EXPECTED_HEAD_SHA__') || !template.includes('__EXPECTED_BASE_SHA__')
-    || !template.includes('__EXPECTED_TREE_SHA__')) throw new Error('Depot workflow identity placeholders are missing');
+    || !template.includes('__EXPECTED_TREE_SHA__') || !template.includes('__DEPOT_RUNNER__')) {
+    throw new Error('Depot workflow identity/runner placeholders are missing');
+  }
   const source = template
     .replaceAll('__EXPECTED_HEAD_SHA__', pr.headSha)
     .replaceAll('__EXPECTED_BASE_SHA__', pr.baseSha)
-    .replaceAll('__EXPECTED_TREE_SHA__', expectedTree.stdout);
+    .replaceAll('__EXPECTED_TREE_SHA__', expectedTree.stdout)
+    .replaceAll('__DEPOT_RUNNER__', depotRunnerSpec(config));
   const runtimeWorkflow = path.join(root, 'state', `depot-workflow-${pr.headSha}.yml`);
   writeAtomic(runtimeWorkflow, source);
   const hash = workflowHash(source);

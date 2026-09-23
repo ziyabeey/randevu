@@ -14,7 +14,7 @@ env:
 jobs:
   verify:
     name: Full gate shadow (Depot 16-core)
-    runs-on: depot-ubuntu-24.04-16
+    runs-on: __DEPOT_RUNNER__
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -48,8 +48,15 @@ jobs:
         continue-on-error: true
         run: npm audit --audit-level=high
 
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Ensure PostgreSQL client
+        run: |
+          set -euo pipefail
+          if command -v psql >/dev/null 2>&1; then
+            psql --version
+          else
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
 
       - name: Start disposable PostgreSQL 17
         timeout-minutes: 2
