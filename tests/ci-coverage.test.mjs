@@ -155,8 +155,8 @@ test('H19 manifest integrity accepts one canonical gate with matched expect/incl
       path.join(root, 'supabase/tests/h19_integrity_gate.sql'),
       [
         '\\ir h19_test_support.sql',
-        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1');",
-        "select pg_temp.h19_expect('inventory.beta','inventory','D2','D5');",
+        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1',1001,1002,1003);",
+        "select pg_temp.h19_expect('inventory.beta','inventory','D2','D5',2001,2002,2003);",
         '\\ir h19_alpha.sql',
         "select pg_temp.h19_pass('booking.alpha');",
         '\\ir h19_beta.sql',
@@ -184,7 +184,7 @@ test('H19 manifest integrity rejects orphan scenarios and standalone scenario pl
       path.join(root, 'supabase/tests/h19_integrity_gate.sql'),
       [
         '\\ir h19_test_support.sql',
-        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1');",
+        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1',1001,1002,1003);",
         '\\ir h19_alpha.sql',
         "select pg_temp.h19_pass('booking.alpha');",
         'select pg_temp.h19_assert_complete(1);',
@@ -215,7 +215,7 @@ test('H19 manifest integrity rejects expect/pass/count drift', async () => {
       path.join(root, 'supabase/tests/h19_integrity_gate.sql'),
       [
         '\\ir h19_test_support.sql',
-        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1');",
+        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1',1001,1002,1003);",
         '\\ir h19_alpha.sql',
         "select pg_temp.h19_pass('booking.other');",
         'select pg_temp.h19_assert_complete(2);',
@@ -228,6 +228,34 @@ test('H19 manifest integrity rejects expect/pass/count drift', async () => {
     await assert.rejects(
       verifyCiCoverage({ root, planPath }),
       /missing pass registration[\s\S]*pass IDs without manifest registration[\s\S]*assert_complete count mismatch/,
+    );
+  } finally {
+    await removeFixture(root);
+  }
+});
+
+test('H19 manifest integrity rejects entries without frozen three-arm evidence receipts', async () => {
+  const { root, planPath } = await makeFixture();
+  try {
+    await writeFile(path.join(root, 'supabase/tests/h19_test_support.sql'), '-- support\n');
+    await writeFile(path.join(root, 'supabase/tests/h19_alpha.sql'), '-- scenario alpha\n');
+    await writeFile(
+      path.join(root, 'supabase/tests/h19_integrity_gate.sql'),
+      [
+        '\\ir h19_test_support.sql',
+        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1');",
+        '\\ir h19_alpha.sql',
+        "select pg_temp.h19_pass('booking.alpha');",
+        'select pg_temp.h19_assert_complete(1);',
+        '',
+      ].join('\n'),
+    );
+    const plan = fixturePlan([{ database: 'fixture', file: 'supabase/tests/h19_integrity_gate.sql' }]);
+    await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`);
+
+    await assert.rejects(
+      verifyCiCoverage({ root, planPath }),
+      /H19 manifest\/scenario count mismatch/,
     );
   } finally {
     await removeFixture(root);
