@@ -1,5 +1,3 @@
-create extension if not exists dblink;
-
 -- H19 permanent interaction scenario: D4 x D5 (time/boundary x concurrency/version).
 --
 -- This fixture is intentionally minimal and self-contained so the canonical
@@ -169,22 +167,8 @@ begin
   from public.appointment_groups
   where business_id=v_b and id=v_g;
 
-  perform dblink_connect(
-    'h19_d4d5_hours',
-    'host=127.0.0.1 port=5432 dbname='||current_database()
-      ||' user=postgres password=postgres application_name=h19_d4d5_hours'
-  );
-  perform dblink_exec('h19_d4d5_hours','set statement_timeout=30000');
-  perform dblink_exec('h19_d4d5_hours','begin');
-  perform dblink_exec('h19_d4d5_hours','set local role authenticated');
-  perform dblink_exec(
-    'h19_d4d5_hours',
-    'set local "request.jwt.claim.sub" = '''||v_u::text||''''
-  );
-  perform dblink_exec(
-    'h19_d4d5_hours',
-    'set local "request.jwt.claims" = ''{"amr":[{"method":"password"}]}'''
-  );
+  perform pg_temp.h19_connect('h19_d4d5_hours',true);
+  perform pg_temp.h19_set_authenticated('h19_d4d5_hours',v_u,true);
 
   perform *
   from dblink(
@@ -202,21 +186,8 @@ begin
     )
   ) as t(n bigint);
 
-  perform dblink_connect(
-    'h19_d4d5_line',
-    'host=127.0.0.1 port=5432 dbname='||current_database()
-      ||' user=postgres password=postgres application_name=h19_d4d5_line'
-  );
-  perform dblink_exec('h19_d4d5_line','set statement_timeout=30000');
-  perform dblink_exec('h19_d4d5_line','set role authenticated');
-  perform dblink_exec(
-    'h19_d4d5_line',
-    'set "request.jwt.claim.sub" = '''||v_u::text||''''
-  );
-  perform dblink_exec(
-    'h19_d4d5_line',
-    'set "request.jwt.claims" = ''{"amr":[{"method":"password"}]}'''
-  );
+  perform pg_temp.h19_connect('h19_d4d5_line',false);
+  perform pg_temp.h19_set_authenticated('h19_d4d5_line',v_u,false);
 
   v_q:=format(
     $q$
@@ -259,9 +230,8 @@ begin
       exception when others then null; end;
     end if;
 
-    begin perform dblink_exec('h19_d4d5_hours','rollback'); exception when others then null; end;
-    begin perform dblink_disconnect('h19_d4d5_hours'); exception when others then null; end;
-    begin perform dblink_disconnect('h19_d4d5_line'); exception when others then null; end;
+    perform pg_temp.h19_safe_cleanup('h19_d4d5_hours',true);
+    perform pg_temp.h19_safe_cleanup('h19_d4d5_line',false);
 
     if v_err is not null then
       raise exception 'H19 D4xD5 day-1 edit returned an unexpected pre-serialization result: %',v_err;
@@ -274,11 +244,7 @@ begin
 
   perform dblink_exec('h19_d4d5_hours','commit');
 
-  for i in 1..3000 loop
-    exit when dblink_is_busy('h19_d4d5_line')=0;
-    perform pg_sleep(0.01);
-  end loop;
-  if dblink_is_busy('h19_d4d5_line')<>0 then
+  if not pg_temp.h19_wait_until_idle('h19_d4d5_line',3000) then
     raise exception 'H19 D4xD5 day-1 edit did not resolve after day-2 authority commit';
   end if;
 
@@ -292,8 +258,8 @@ begin
   begin perform * from dblink_get_result('h19_d4d5_line',false) x(r jsonb);
   exception when others then null; end;
 
-  perform dblink_disconnect('h19_d4d5_hours');
-  perform dblink_disconnect('h19_d4d5_line');
+  perform pg_temp.h19_safe_cleanup('h19_d4d5_hours',false);
+  perform pg_temp.h19_safe_cleanup('h19_d4d5_line',false);
 
   if v_err is null or position('SLOT_UNAVAILABLE' in v_err)=0 then
     raise exception 'H19 D4xD5 expected SLOT_UNAVAILABLE after day-2 closure, got %',
@@ -315,10 +281,8 @@ begin
 
   raise notice 'H19 D4xD5 prospective invariant accepted: sibling-day authority serialized before group-version movement';
 exception when others then
-  begin perform dblink_exec('h19_d4d5_hours','rollback'); exception when others then null; end;
-  begin perform dblink_exec('h19_d4d5_line','rollback'); exception when others then null; end;
-  begin perform dblink_disconnect('h19_d4d5_hours'); exception when others then null; end;
-  begin perform dblink_disconnect('h19_d4d5_line'); exception when others then null; end;
+  perform pg_temp.h19_safe_cleanup('h19_d4d5_hours',true);
+  perform pg_temp.h19_safe_cleanup('h19_d4d5_line',false);
   raise;
 end
 $h19probe$;
