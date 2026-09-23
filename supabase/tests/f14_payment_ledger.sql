@@ -227,7 +227,6 @@ $f1403pay$;
 do $h19_f14_d1d2$
 declare
   v_replay jsonb;
-  v_event_count integer;
 begin
   v_replay := public.record_ticket_payment_guarded(
     'f1610000-0000-4000-8000-000000000001',
@@ -244,7 +243,17 @@ begin
      or jsonb_array_length(v_replay->'paymentEvents') <> 1 then
     raise exception 'H19 D1xD2 payment replay snapshot drifted after later payment: %', v_replay;
   end if;
+end
+$h19_f14_d1d2$;
 
+-- Instrumentation-only receipt check. Raw ledger ACL is intentionally closed
+-- to authenticated, so inspect durable count as the postgres session user.
+reset role;
+
+do $h19_f14_d1d2_count$
+declare
+  v_event_count integer;
+begin
   select count(*)::integer
   into v_event_count
   from public.ticket_payment_events e
@@ -255,7 +264,11 @@ begin
     raise exception 'H19 D1xD2 payment replay changed durable event count: %', v_event_count;
   end if;
 end
-$h19_f14_d1d2$;
+$h19_f14_d1d2_count$;
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 
 -- Fully paid ticket closes. Refund/payment can continue append-only after close, without reopen.
 do $f1403closed$
