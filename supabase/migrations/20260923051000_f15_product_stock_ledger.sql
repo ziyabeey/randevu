@@ -155,7 +155,7 @@ create or replace function public.f15_guard_product_command_update()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $f15cmd$
 begin
   if old.business_id is distinct from new.business_id
      or old.actor_membership_id is distinct from new.actor_membership_id
@@ -173,17 +173,17 @@ begin
 
   raise exception 'PRODUCT_COMMAND_IMMUTABLE';
 end
-$;
+$f15cmd$;
 
 create or replace function public.f15_block_product_command_delete()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $f15cmddel$
 begin
   raise exception 'PRODUCT_COMMAND_DELETE_FORBIDDEN';
 end
-$;
+$f15cmddel$;
 
 drop trigger if exists product_commands_f15_update_guard on public.product_commands;
 create trigger product_commands_f15_update_guard
