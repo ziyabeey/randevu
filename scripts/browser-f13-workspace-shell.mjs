@@ -32,6 +32,7 @@ const TICKET = 'f3480000-0000-4000-8000-000000000001';
 const PAYMENT_CASH = 'f3490000-0000-4000-8000-000000000001';
 const PAYMENT_CARD = 'f3490000-0000-4000-8000-000000000002';
 const PRODUCT = 'f34a0000-0000-4000-8000-000000000001';
+const EXPENSE = 'f34c0000-0000-4000-8000-000000000001';
 const TOKEN = 'T'.repeat(48);
 const CSRF = 'C'.repeat(43);
 
@@ -48,6 +49,7 @@ let publicCreateRequest = null;
 let paymentsWriteAllowed = true;
 let productState = null;
 let productMovements = [];
+let expenseEvents = [];
 
 function productProjection() {
   return productState ? { ...productState } : null;
@@ -688,6 +690,58 @@ try {
         createdAt: '2026-09-23T05:05:00.000Z',
       }, ...productMovements];
       return sendJson(response, 201, { product: productProjection() });
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/expenses') {
+      return sendJson(response, 200, {
+        events: activeBusinessId === BUSINESS_A ? expenseEvents : [],
+        page: { limit: 25, hasMore: false, nextCursor: null },
+      });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/expenses') {
+      assert.equal(activeBusinessId, BUSINESS_A, 'expense create escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'expense create omitted Idempotency-Key');
+      assert.equal(body.category, 'Malzeme');
+      assert.equal(body.amountMinor, 15000);
+      assert.equal(body.currency, 'TRY');
+      assert.equal(body.paymentMethod, 'cash');
+      const event = {
+        eventId: EXPENSE,
+        businessId: BUSINESS_A,
+        eventType: 'expense',
+        sourceExpenseEventId: null,
+        category: body.category,
+        description: body.description ?? null,
+        amountMinor: body.amountMinor,
+        effectMinor: body.amountMinor,
+        currency: body.currency,
+        paymentMethod: body.paymentMethod,
+        occurredAt: body.occurredAt,
+        reason: null,
+        actorMembershipId: MEMBERSHIP_A,
+        createdAt: '2026-09-23T07:45:00.000Z',
+      };
+      expenseEvents = [event, ...expenseEvents];
+      return sendJson(response, 201, { result: event });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/expenses/${EXPENSE}/reverse`) {
+      assert.equal(activeBusinessId, BUSINESS_A, 'expense reversal escaped active business A');
+      assert.ok(request.headers['idempotency-key'], 'expense reversal omitted Idempotency-Key');
+      assert.equal(body.reason, 'Yanlış kayıt');
+      const source = expenseEvents.find((item) => item.eventId === EXPENSE);
+      assert.ok(source, 'expense reversal source missing');
+      const reversal = {
+        ...source,
+        eventId: 'f34c0000-0000-4000-8000-000000000002',
+        eventType: 'reversal',
+        sourceExpenseEventId: EXPENSE,
+        effectMinor: -source.amountMinor,
+        occurredAt: body.occurredAt,
+        reason: body.reason,
+        createdAt: '2026-09-23T07:50:00.000Z',
+      };
+      expenseEvents = [reversal, ...expenseEvents];
+      return sendJson(response, 201, { result: reversal });
     }
 
     if (request.method === 'GET' && url.pathname === '/api/tickets') {
@@ -1357,6 +1411,82 @@ try {
     'F15-01 returning to business A did not re-read its product stock',
   );
   console.log('F15-01 product create, stock movement, 390px and tenant-switch acceptance passed.');
+
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 740, deviceScaleFactor: 1, mobile: true });
+  await page.send('Page.navigate', { url: `${origin}/app/expenses` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/expenses' && document.body.innerText.includes('Gider kayıtları')`),
+    'F15-03 expenses workspace route did not render',
+  );
+  await page.evaluate(`(() => {
+    const form = document.querySelector('.expenses-form');
+    const set = (name, value) => {
+      const node = form.querySelector('[name="' + name + '"]');
+      const proto = node instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+      setter.call(node, value);
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+      node.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    set('category', 'Malzeme');
+    set('description', 'Eldiven');
+    set('amount', '150,00');
+    set('paymentMethod', 'cash');
+    set('occurredAt', '2026-09-23T10:45');
+    form.requestSubmit();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Masraf kaydedildi.') && document.body.innerText.includes('Malzeme') && document.body.innerText.includes('150')`),
+    'F15-03 expense create did not render the authoritative event',
+  );
+  const expense390 = await page.evaluate(`(() => ({
+    overflow: document.documentElement.scrollWidth - innerWidth,
+    text: document.body.innerText,
+  }))()`);
+  assert.equal(expense390.overflow <= 1, true, 'F15-03 expense workspace overflowed at 390px');
+  assert.match(expense390.text, /Nakit/);
+
+  await page.evaluate(`(() => {
+    window.prompt = () => 'Yanlış kayıt';
+    [...document.querySelectorAll('.expenses-list button')].find((node) => node.textContent.includes('reversal')).click();
+  })()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Masraf reversal hareketi kaydedildi.') && document.body.innerText.includes('Reversal')`),
+    'F15-03 expense reversal did not render append-only correction',
+  );
+  assert.equal(expenseEvents.length, 2, 'F15-03 fixture did not preserve source + reversal events');
+  assert.equal(expenseEvents[0].effectMinor, -15000, 'F15-03 reversal effect is wrong');
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.workspace-business select');
+    select.value='f3410000-0000-4000-8000-000000000002';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar' && document.body.innerText.includes('Salon B')`),
+    'F15-03 business switch did not enter verified B context',
+  );
+  await page.send('Page.navigate', { url: `${origin}/app/expenses` });
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Henüz masraf hareketi yok.') && !document.body.innerText.includes('Eldiven')`),
+    'F15-03 expense state leaked across businesses',
+  );
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.workspace-business select');
+    select.value='f3410000-0000-4000-8000-000000000001';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar' && document.body.innerText.includes('Salon A')`),
+    'F15-03 business switch did not restore verified A context',
+  );
+  await page.send('Page.navigate', { url: `${origin}/app/expenses` });
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Malzeme') && document.body.innerText.includes('Reversal')`),
+    'F15-03 returning to business A did not re-read expense ledger',
+  );
+  console.log('F15-03 expense create, reversal, 390px and tenant-switch acceptance passed.');
 
   // Return the shared F13 harness to its canonical workspace before continuing
   // the pre-existing desktop/legacy-route acceptance below.
