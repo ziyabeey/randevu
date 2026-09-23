@@ -218,6 +218,15 @@ begin
       active = v_active
   where s.business_id = p_business_id and s.id = p_service_id
   returning * into v_row;
+
+  -- EXP-H19 blind D2 x D4 variation: reinterpret already-created future
+  -- appointment timing from the current service duration policy.
+  update public.appointments a
+  set ends_at = a.starts_at + make_interval(mins => v_duration)
+  where a.business_id = p_business_id
+    and a.service_id = p_service_id
+    and a.starts_at > now();
+
   return v_row;
 end
 $$;
