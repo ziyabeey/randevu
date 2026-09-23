@@ -275,6 +275,12 @@ begin
   if not public.is_active_member(p_business_id) then
     raise exception 'NOT_ALLOWED' using errcode='42501';
   end if;
+  if not public.has_financial_permission(
+    p_business_id,
+    'financial_reports_read'::public.financial_permission_key
+  ) then
+    raise exception 'FINANCIAL_REPORTS_PERMISSION_REQUIRED' using errcode='42501';
+  end if;
   if p_limit is null or p_limit<1 or p_limit>101 then
     raise exception 'INVALID_PAGE';
   end if;
