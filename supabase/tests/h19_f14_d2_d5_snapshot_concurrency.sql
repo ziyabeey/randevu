@@ -1,6 +1,6 @@
 -- Permanent H19 F14 D2 x D5 regression. Evidence: 2436 / 2441 / 2444.
-
-\ir h19_test_support.sql
+-- Shared H19 helpers are loaded once by h19_integrity_gate.sql; do not re-include
+-- h19_test_support.sql here because it resets the structured manifest registry.
 
 insert into auth.users(id,email,raw_user_meta_data)
 values ('f19c0000-0000-4000-8000-000000000001','h19-pay-d2d5@example.invalid','{}'::jsonb)
