@@ -35,6 +35,14 @@ values
   ('f1a30000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001','Rapor Müşteri',null,null,'f1a00000-0000-4000-8000-000000000001'),
   ('f1a30000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000003','Berlin Müşteri',null,null,'f1a00000-0000-4000-8000-000000000004');
 
+insert into public.services(
+  id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,
+  category,sort_order,price_minor,price_type,price_min_minor,price_max_minor,currency,active
+) values (
+  'f1a41000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001',
+  'Rapor Hizmet',30,0,0,'Genel',10,20000,'fixed',20000,20000,'TRY',true
+);
+
 insert into public.products(
   id,business_id,name,code,unit,sale_price_minor,currency,stock_on_hand,version,active,created_by_membership_id
 ) values
@@ -48,6 +56,7 @@ insert into public.tickets(
 ) values
   ('f1a50000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001',null,'f1a30000-0000-4000-8000-000000000001','walk_in','open','TRY',1,'Rapor Müşteri',null,null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:00+03','2026-09-23 09:00+03'),
   ('f1a50000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000001',null,'f1a30000-0000-4000-8000-000000000001','walk_in','open','TRY',1,'Rapor Müşteri',null,null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:30+03','2026-09-23 09:30+03'),
+  ('f1a50000-0000-4000-8000-000000000004','f1a10000-0000-4000-8000-000000000001',null,'f1a30000-0000-4000-8000-000000000001','walk_in','open','TRY',1,'Rapor Müşteri',null,null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 10:00+03','2026-09-23 10:00+03'),
   ('f1a50000-0000-4000-8000-000000000003','f1a10000-0000-4000-8000-000000000003',null,'f1a30000-0000-4000-8000-000000000002','walk_in','open','EUR',1,'Berlin Müşteri',null,null,'f1a20000-0000-4000-8000-000000000004','2026-10-25 00:15+00','2026-10-25 00:15+00');
 
 insert into public.ticket_lines(
@@ -66,7 +75,11 @@ insert into public.ticket_lines(
   ('f1a60000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000002',1,'product',null,
    null,null,null,null,'f1a40000-0000-4000-8000-000000000002','Açık Bakiye','RPR-2',
    1,'fixed',30000,30000,'TRY',1,30000,'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:30+03','product_catalog_snapshot',0,
-   'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:30+03');
+   'f1a20000-0000-4000-8000-000000000001','2026-09-23 09:30+03'),
+  ('f1a60000-0000-4000-8000-000000000004','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000004',1,'service',null,
+   'f1a41000-0000-4000-8000-000000000001',null,'Rapor Hizmet',null,null,null,null,
+   1,'fixed',20000,20000,'TRY',1,20000,'f1a20000-0000-4000-8000-000000000001','2026-09-23 10:00+03','manual final',0,
+   'f1a20000-0000-4000-8000-000000000001','2026-09-23 10:00+03');
 
 insert into public.product_stock_movements(
   id,business_id,product_id,kind,quantity_delta,balance_after,reason,
@@ -84,6 +97,9 @@ insert into public.ticket_payment_events(
   ('f1a80000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000001','payment',null,'cash',null,60000,null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 10:00+03'),
   ('f1a80000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000001','payment',null,'card',null,40000,null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 10:05+03'),
   ('f1a80000-0000-4000-8000-000000000003','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000001','refund','f1a80000-0000-4000-8000-000000000001','cash',null,10000,'İade','f1a20000-0000-4000-8000-000000000001','2026-09-23 10:10+03'),
+  ('f1a80000-0000-4000-8000-000000000007','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000001','correction','f1a80000-0000-4000-8000-000000000002','card','increase',5000,'Kart artış düzeltmesi','f1a20000-0000-4000-8000-000000000001','2026-09-23 10:11+03'),
+  ('f1a80000-0000-4000-8000-000000000008','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000001','correction','f1a80000-0000-4000-8000-000000000002','card','decrease',5000,'Kart azalış düzeltmesi','f1a20000-0000-4000-8000-000000000001','2026-09-23 10:12+03'),
+  ('f1a80000-0000-4000-8000-000000000009','f1a10000-0000-4000-8000-000000000001','f1a50000-0000-4000-8000-000000000004','payment',null,'card',null,20000,null,'f1a20000-0000-4000-8000-000000000001','2026-09-24 09:00+03'),
   ('f1a80000-0000-4000-8000-000000000004','f1a10000-0000-4000-8000-000000000003','f1a50000-0000-4000-8000-000000000003','payment',null,'cash',null,10000,null,'f1a20000-0000-4000-8000-000000000004','2026-10-25 00:30+00'),
   ('f1a80000-0000-4000-8000-000000000005','f1a10000-0000-4000-8000-000000000003','f1a50000-0000-4000-8000-000000000003','payment',null,'card',null,20000,null,'f1a20000-0000-4000-8000-000000000004','2026-10-25 01:30+00'),
   ('f1a80000-0000-4000-8000-000000000006','f1a10000-0000-4000-8000-000000000003','f1a50000-0000-4000-8000-000000000003','payment',null,'cash',null,40000,null,'f1a20000-0000-4000-8000-000000000004','2026-10-25 23:30+00');
@@ -107,7 +123,13 @@ insert into public.expense_events(
   ('f1aa0000-0000-4000-8000-000000000001','f1a10000-0000-4000-8000-000000000001','expense',null,null,'Malzeme',
    null,15000,'TRY','cash','2026-09-23 12:00+03','2026-09-23','Europe/Istanbul',null,'f1a20000-0000-4000-8000-000000000001','2026-09-23 12:00+03'),
   ('f1aa0000-0000-4000-8000-000000000002','f1a10000-0000-4000-8000-000000000002','expense',null,null,'Başka tenant',
-   null,999999,'TRY','cash','2026-09-23 12:00+03','2026-09-23','Europe/Istanbul',null,'f1a20000-0000-4000-8000-000000000003','2026-09-23 12:00+03');
+   null,999999,'TRY','cash','2026-09-23 12:00+03','2026-09-23','Europe/Istanbul',null,'f1a20000-0000-4000-8000-000000000003','2026-09-23 12:00+03'),
+  ('f1aa0000-0000-4000-8000-000000000003','f1a10000-0000-4000-8000-000000000003','expense',null,null,'DST',
+   'Spring first',110,'EUR','cash','2026-03-28 23:30+00','2026-03-29','Europe/Berlin',null,'f1a20000-0000-4000-8000-000000000004','2026-03-28 23:30+00'),
+  ('f1aa0000-0000-4000-8000-000000000004','f1a10000-0000-4000-8000-000000000003','expense',null,null,'DST',
+   'Spring last',220,'EUR','cash','2026-03-29 21:30+00','2026-03-29','Europe/Berlin',null,'f1a20000-0000-4000-8000-000000000004','2026-03-29 21:30+00'),
+  ('f1aa0000-0000-4000-8000-000000000005','f1a10000-0000-4000-8000-000000000003','expense',null,null,'DST',
+   'Spring after',440,'EUR','cash','2026-03-29 22:30+00','2026-03-30','Europe/Berlin',null,'f1a20000-0000-4000-8000-000000000004','2026-03-29 22:30+00');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f1a00000-0000-4000-8000-000000000001',true);
@@ -125,6 +147,8 @@ begin
      or (v->>'cashCollectedMinor')::bigint<>60000
      or (v->>'cardCollectedMinor')::bigint<>40000
      or (v->>'refundMinor')::bigint<>10000
+     or (v->>'correctionIncreaseMinor')::bigint<>5000
+     or (v->>'correctionDecreaseMinor')::bigint<>5000
      or (v->>'expenseMinor')::bigint<>15000
      or (v->>'netMovementMinor')::bigint<>75000
      or (v->>'cashNetMovementMinor')::bigint<>35000
@@ -132,8 +156,11 @@ begin
     raise exception 'F15-04 source reconciliation wrong: %',v;
   end if;
 
-  if (v->>'productSaleMinor')::bigint<>120000
-     or (v->>'saleValueMinor')::bigint<>120000
+  if (v->>'expectedMinMinor')::bigint<>140000
+     or (v->>'expectedMaxMinor')::bigint<>140000
+     or (v->>'serviceSaleMinor')::bigint<>20000
+     or (v->>'productSaleMinor')::bigint<>120000
+     or (v->>'saleValueMinor')::bigint<>140000
      or (v->>'outstandingMinor')::bigint<>30000 then
     raise exception 'F15-04 sale/outstanding separation wrong: %',v;
   end if;
@@ -195,6 +222,33 @@ begin
   end if;
 end
 $f1504_dst$;
+
+do $f1504_spring$
+declare v jsonb;
+begin
+  v:=public.get_financial_day_report(
+    'f1a10000-0000-4000-8000-000000000003','2026-03-29','2026-03-29'
+  );
+  if (v->>'expenseMinor')::bigint<>330 then
+    raise exception 'F15-04 DST spring-forward boundary lost/duplicated an event: %',v;
+  end if;
+end
+$f1504_spring$;
+
+do $f1504_range$
+declare v_error text;
+begin
+  begin
+    perform public.get_financial_day_report(
+      'f1a10000-0000-4000-8000-000000000003','2026-01-01','2026-06-01'
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('INVALID_REPORT_RANGE' in coalesce(v_error,''))=0 then
+    raise exception 'F15-04 oversized range was not rejected: %',v_error;
+  end if;
+end
+$f1504_range$;
 
 reset role;
 rollback;
