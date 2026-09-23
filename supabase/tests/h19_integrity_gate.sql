@@ -32,6 +32,12 @@
 \echo 'H19 Integrity Gate: D4xD5 cross-day authority/version'
 \ir h19_d4_d5_cross_day_authority.sql
 
+\echo 'H19 Integrity Gate: D0xD3 tenant/capacity isolation'
+\ir h19_d0_d3_tenant_capacity.sql
+
+\echo 'H19 Integrity Gate: D3xD4 staff-hours fallback'
+\ir h19_d3_d4_staff_hours_fallback.sql
+
 do $$
 begin
   raise notice 'H19 INTEGRITY GATE PASS: registered interaction invariants accepted';
