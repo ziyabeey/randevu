@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { easeTransformationScroll } from '../../src/marketing/transformation/timeline';
 import { useVideoScrollScrub } from '../../src/marketing/transformation/useVideoScrollScrub';
 
 const DURATION = 5.041667;
@@ -77,7 +78,8 @@ function GeometryShiftHarness() {
       await settleBrowser();
       if (cancelled) return;
 
-      const expectedTime = DURATION * 0.5;
+      const expectedProgress = easeTransformationScroll(0.5);
+      const expectedTime = DURATION * expectedProgress;
       const before = video.currentTime;
 
       spacer.style.height = '720px';
@@ -92,7 +94,7 @@ function GeometryShiftHarness() {
       const cssProgress = Number(section.style.getPropertyValue('--mkt-progress'));
       const passed = Math.abs(before - expectedTime) < 0.22
         && Math.abs(after - expectedTime) < 0.22
-        && Math.abs(cssProgress - 0.5) < 0.035;
+        && Math.abs(cssProgress - expectedProgress) < 0.035;
 
       setDetail(`before=${before.toFixed(4)} after=${after.toFixed(4)} progress=${cssProgress.toFixed(4)}`);
       setStatus(passed ? 'pass' : 'fail');
