@@ -39,6 +39,12 @@ test('Effective State audit never paginates Issue #65 or treats it as review aut
   assert.match(prompt, /do not read its history by\s+default/);
 });
 
+test('Independent review automation never paginates Issue #65', () => {
+  const workflow = read('.github/workflows/development-review-automation.yml');
+  assert.doesNotMatch(workflow, /issues\/65\/comments/);
+  assert.doesNotMatch(workflow, /coordination-comments\.json/);
+});
+
 test('required artifact-test path reports extra advisories without failing, but rejects static errors', async () => {
   const fixture = mkdtempSync(path.join(tmpdir(), 'randevu-engine-advisory-'));
   const env = { ...process.env };
