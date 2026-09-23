@@ -11,6 +11,14 @@ const env = {
   PUBLIC_APP_ORIGIN: 'http://localhost',
 };
 
+const publishedInformation = {
+  kvkk_notice_text: 'Test işletmesi aydınlatma metni.',
+  kvkk_notice_url: 'https://example.test/kvkk',
+  privacy_policy_url: 'https://example.test/privacy',
+  booking_terms_text: 'Test işletmesi randevu koşulları.',
+  booking_terms_url: 'https://example.test/terms',
+};
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -225,6 +233,7 @@ await test('S07 legacy first-create cutover error is mapped without another requ
   t.mock.method(globalThis, 'fetch', async (_input, init) => {
     calls += 1;
     const wire = JSON.parse(String(init.body));
+    if (wire.p_action === 'profile') return json({ ok: true, data: [publishedInformation] });
     assert.equal(wire.p_action, 'book');
     assert.equal(wire.p_args.p_idempotency_key, key);
     return json({ ok: false, error: { message: 'BOOKING_CLIENT_UPDATE_REQUIRED' } });
@@ -239,7 +248,7 @@ await test('S07 legacy first-create cutover error is mapped without another requ
     },
     body: JSON.stringify({
       customerName: 'Legacy Client',
-      customerPhone: null,
+      customerPhone: '05550000230',
       customerEmail: 'legacy-cutover@example.test',
       notes: null,
       serviceId: '6c000000-0000-4000-8000-000000000230',
@@ -253,5 +262,5 @@ await test('S07 legacy first-create cutover error is mapped without another requ
 
   assert.equal(response.status, 409);
   assert.equal((await response.json()).error?.code, 'BOOKING_CLIENT_UPDATE_REQUIRED');
-  assert.equal(calls, 1, 'cutover response retried the create');
+  assert.equal(calls, 2, 'cutover response retried the profile/create sequence');
 });

@@ -291,7 +291,7 @@ await test('S02 refresh rotation happens once and refreshed authority reaches th
   try {
     const response = await app.request('http://localhost/api/bookings', { headers: { Cookie: cookieHeader() } }, env);
     assert.equal(response.status, 200);
-    assert.deepEqual(calls, ['/auth/v1/user', '/auth/v1/token', '/rest/v1/memberships', '/rest/v1/rpc/list_appointments_page']);
+    assert.deepEqual(calls, ['/auth/v1/user', '/auth/v1/token', '/rest/v1/memberships', '/rest/v1/rpc/list_appointments_page_v3']);
     assert.match(setCookieValues(response).join('\n'), /yzt_refresh=rotated-refresh/);
     assert.deepEqual((await response.json()).appointments, []);
   } finally { globalThis.fetch = realFetch; }
@@ -304,7 +304,7 @@ const cookieMutations = [
   ['POST', '/api/services'], ['PATCH', '/api/services/:id'],
   ['POST', '/api/staff'], ['PATCH', '/api/staff/:id'], ['PUT', '/api/staff/:staffId/services/:serviceId'],
   ['POST', '/api/bookings'], ['POST', '/api/bookings/groups'],
-  ['POST', '/api/bookings/groups/:groupId/reschedule'], ['POST', '/api/bookings/groups/:groupId/cancel'],
+  ['POST', '/api/bookings/groups/:groupId/reschedule'], ['POST', '/api/bookings/groups/:groupId/status'], ['POST', '/api/bookings/groups/:groupId/cancel'],
   ['POST', '/api/bookings/groups/:groupId/lines/:lineId/cancel'],
   ['POST', '/api/bookings/groups/:groupId/lines/:lineId/service'],
   ['POST', '/api/bookings/groups/:groupId/lines/:lineId/reschedule'],
@@ -314,11 +314,29 @@ const cookieMutations = [
   ['POST', '/api/availability/blocks'], ['DELETE', '/api/availability/blocks/:id'],
   ['POST', '/api/availability/group-slots'],
   ['PUT', '/api/public/settings'],
-  ['PUT', '/api/public/profile'], ['POST', '/api/public/profile/media'],
+  ['PUT', '/api/public/profile'], ['PUT', '/api/public/profile/information'], ['POST', '/api/public/profile/media'],
   ['POST', '/api/public/profile/media/cleanup'], ['DELETE', '/api/public/profile/media/:mediaId'],
   ['POST', '/api/team/invitations'], ['POST', '/api/team/invitations/accept'], ['POST', '/api/team/invitations/:id/revoke'],
   ['PATCH', '/api/team/members/:id'], ['PUT', '/api/team/staff/:staffId/membership'],
   ['PUT', '/api/team/members/:id/financial-permissions/:permission'],
+  ['POST', '/api/tickets/from-booking-group'],
+  ['POST', '/api/tickets'],
+  ['POST', '/api/tickets/:id/service-lines'],
+  ['POST', '/api/tickets/:id/lines/:lineId/finalize-price'],
+  ['PUT', '/api/tickets/:id/lines/:lineId/discount'],
+  ['POST', '/api/tickets/:id/close'],
+  ['POST', '/api/tickets/:id/cancel'],
+  ['POST', '/api/tickets/:id/payments'],
+  ['POST', '/api/tickets/:id/payments/:paymentId/corrections'],
+  ['POST', '/api/tickets/:id/payments/:paymentId/refunds'],
+  ['POST', '/api/products'],
+  ['PUT', '/api/products/:id'],
+  ['POST', '/api/products/:id/archive'],
+  ['POST', '/api/products/:id/stock-movements'],
+  ['POST', '/api/products/:id/stock-movements/:movementId/reverse'],
+  ['POST', '/api/expenses'],
+  ['POST', '/api/expenses/:id/reverse'],
+  ['POST', '/api/expenses/:id/correct'],
 ];
 const exceptions = [
   '/api/public/business/:slug/book',

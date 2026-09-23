@@ -21,7 +21,7 @@ function recordMetrics() {
   document.documentElement.dataset.f12Overflow = String(document.documentElement.scrollWidth > window.innerWidth + 1);
   document.documentElement.dataset.f12Touch = String(anchors.length > 0 && anchors.every((node) => node.getBoundingClientRect().height >= 44));
   document.documentElement.dataset.f12Width = String(window.innerWidth);
-  if (document.body.innerText.includes('Şu anda online randevuya açık hizmet bulunmuyor.')) {
+  if (document.body.innerText.includes('Şu anda seçilebilecek hizmet bulunmuyor.')) {
     document.documentElement.dataset.f12Ready = 'true';
   }
 }

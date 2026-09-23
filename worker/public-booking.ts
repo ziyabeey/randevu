@@ -91,7 +91,7 @@ function rpcError(data: unknown, fallback: string) {
     return { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.', status: 404 as const };
   }
   if (message.includes('PUBLIC_BOOKING_NOT_READY')) {
-    return { code: 'PUBLIC_BOOKING_NOT_READY', message: 'Yayınlamadan önce hizmet, personel ve çalışma saatlerini tamamlayın.', status: 409 as const };
+    return { code: 'PUBLIC_BOOKING_NOT_READY', message: 'Yayınlamadan önce hizmet, personel, çalışma saatleri ve en az bir destek iletişim kanalını tamamlayın.', status: 409 as const };
   }
   if (message.includes('PASSWORD_UPDATE_REQUIRED')) {
     return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
@@ -106,7 +106,7 @@ function rpcError(data: unknown, fallback: string) {
     return { code: 'DATE_OUT_OF_RANGE', message: 'Seçilen tarih rezervasyon aralığının dışında.', status: 400 as const };
   }
   if (message.includes('PUBLIC_CONTACT_REQUIRED')) {
-    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon veya e-posta bilgilerinden en az biri gerekli.', status: 400 as const };
+    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.', status: 400 as const };
   }
   if (message.includes('INVALID_CUSTOMER') || message.includes('NOTES_TOO_LONG') || message.includes('INVALID_START')) {
     return { code: 'INVALID_BOOKING', message: 'Rezervasyon bilgileri geçerli değil.', status: 400 as const };

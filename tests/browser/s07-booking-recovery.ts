@@ -199,7 +199,7 @@ async function uiSubmit() {
     'customer form',
   );
   setValue(form.elements.namedItem('customerName') as HTMLInputElement, 'Browser Customer');
-  setValue(form.elements.namedItem('customerEmail') as HTMLInputElement, 'browser@example.test');
+  setValue(form.elements.namedItem('customerPhone') as HTMLInputElement, '05550000707');
   await until(() => {
     const button = form.querySelector<HTMLButtonElement>('.public-book-button');
     return button && !button.disabled ? button : null;
@@ -244,6 +244,18 @@ Object.defineProperty(window, '__s07', { value: testApi, configurable: true });
 const params = new URLSearchParams(location.search);
 if (params.get('mode') === 'ui') {
   const slug = params.get('slug') ?? 'browser-salon';
-  createRoot(document.getElementById('root')!).render(createElement(PublicBookingPage, { slug }));
+  createRoot(document.getElementById('root')!).render(createElement(PublicBookingPage, {
+    slug,
+    informationContact: {
+      businessName: 'Browser Recovery Salon',
+      phone: '+905550007070',
+      email: 'destek@recovery.example.test',
+      kvkkNoticeText: 'S07 Chrome fixture işletmesinin yayınladığı test aydınlatma metni.',
+      kvkkNoticeUrl: 'https://recovery.example.test/kvkk',
+      privacyPolicyUrl: 'https://recovery.example.test/privacy',
+      bookingTermsText: 'S07 Chrome fixture işletmesinin yayınladığı test randevu koşulları.',
+      bookingTermsUrl: 'https://recovery.example.test/terms',
+    },
+  }));
 }
 document.documentElement.dataset.s07Ready = 'true';

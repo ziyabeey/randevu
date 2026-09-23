@@ -1,4 +1,5 @@
 import { publicOperation } from './public-rpc.ts';
+import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
 import { Hono, type Context } from 'hono';
 import { publicGateUnavailableBody, publicRateLimitedBody, rateLimitFromRpcError, resolvePublicAbuseIdentity, type PublicAbuseEnv } from './public-abuse.ts';
 
@@ -22,6 +23,13 @@ type ManagedAppointment = {
   can_cancel?: boolean;
   local_date?: string;
   max_date?: string;
+  support_slug?: string;
+  support_phone?: string | null;
+  support_email?: string | null;
+  support_website?: string | null;
+  support_whatsapp?: string | null;
+  support_address?: string | null;
+  notification_status?: unknown;
 };
 type ManagedSlot = {
   staff_id: string;
@@ -129,7 +137,10 @@ customerManage.post('/view', async (context) => {
   if (!appointment) {
     return context.json({ error: { code: 'MANAGEMENT_NOT_FOUND', message: 'Bu randevu yönetim bağlantısı geçerli değil.' } }, 404);
   }
-  return context.json({ appointment });
+  const notification = customerNotificationStatus(appointment.notification_status);
+  const publicAppointment = { ...appointment };
+  delete publicAppointment.notification_status;
+  return context.json({ appointment: publicAppointment, notification });
 });
 
 customerManage.post('/slots', async (context) => {

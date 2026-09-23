@@ -41,6 +41,14 @@ type PublicProfile = {
   work_hours: BusinessHour[];
   media: PublicMedia[];
 };
+type PublicInformation = {
+  business_id: string;
+  kvkk_notice_text: string | null;
+  kvkk_notice_url: string | null;
+  privacy_policy_url: string | null;
+  booking_terms_text: string | null;
+  booking_terms_url: string | null;
+};
 type MediaObject = { storage_path: string; mime_type: string };
 type PendingMedia = MediaObject & PublicMedia & {
   status: 'pending' | 'ready' | 'deleting' | 'cleanup';
@@ -138,6 +146,8 @@ function profileError(message: string) {
   if (message.includes('PUBLIC_MEDIA_LIMIT_EXCEEDED')) return { code: 'PUBLIC_MEDIA_LIMIT_EXCEEDED', message: 'En fazla 20 public salon görseli yükleyebilirsiniz.', status: 409 as const };
   if (message.includes('INVALID_PUBLIC_MEDIA')) return { code: 'INVALID_PUBLIC_MEDIA', message: 'Görsel yalnız WebP, en fazla 5 MB ve 2000 px uzun kenar olabilir.', status: 400 as const };
   if (message.includes('INVALID_PUBLIC_PROFILE')) return { code: 'INVALID_PUBLIC_PROFILE', message: 'Salon profilindeki alanlardan biri geçerli değil.', status: 400 as const };
+  if (message.includes('INVALID_PUBLIC_INFORMATION')) return { code: 'INVALID_PUBLIC_INFORMATION', message: 'Bilgilendirme alanlarından biri geçerli değil.', status: 400 as const };
+  if (message.includes('PUBLIC_INFORMATION_REQUIRED')) return { code: 'PUBLIC_INFORMATION_REQUIRED', message: 'Aktif rezervasyonlar varken zorunlu bilgilendirme alanları boş bırakılamaz.', status: 409 as const };
   if (message.includes('PUBLIC_MEDIA_NOT_FOUND')) return { code: 'PUBLIC_MEDIA_NOT_FOUND', message: 'Görsel bulunamadı.', status: 404 as const };
   if (message.includes('PASSWORD_UPDATE_REQUIRED')) return { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Devam etmeden önce yeni parolanızı belirleyin.', status: 403 as const };
   if (message.includes('NOT_ALLOWED')) return { code: 'NOT_ALLOWED', message: 'Bu işletmenin public profilini değiştirme yetkiniz yok.', status: 403 as const };
@@ -198,6 +208,47 @@ publicProfile.put('/profile', async (context) => {
     return context.json({ error: { code: error.code, message: error.message } }, error.status);
   }
   return context.json({ profile: first(result.data) });
+});
+
+publicProfile.get('/profile/information', async (context) => {
+  const access = await requireMember(context);
+  if ('error' in access) return access.error;
+  const result = await supabaseRequest<PublicInformation[]>(context.env, 'rest/v1/rpc/get_business_public_information', {
+    method: 'POST', body: JSON.stringify({ p_business_id: access.membership.business_id }),
+  }, access.auth.accessToken);
+  if (!result.ok) {
+    const error = profileError(rpcMessage(result.data));
+    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+  }
+  return context.json({ information: first(result.data) });
+});
+
+publicProfile.put('/profile/information', async (context) => {
+  const access = await requireMember(context);
+  if ('error' in access) return access.error;
+  if (!canManage(access.membership)) {
+    return context.json({ error: { code: 'NOT_ALLOWED', message: 'Bilgilendirme alanlarını owner veya manager değiştirebilir.' } }, 403);
+  }
+  const body = await readJson(context);
+  if (!body) {
+    return context.json({ error: { code: 'INVALID_PUBLIC_INFORMATION', message: 'Bilgilendirme alanları geçerli değil.' } }, 400);
+  }
+  const result = await supabaseRequest<PublicInformation[]>(context.env, 'rest/v1/rpc/update_business_public_information', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_business_id: access.membership.business_id,
+      p_kvkk_notice_text: stringOrNull(body.kvkkNoticeText),
+      p_kvkk_notice_url: stringOrNull(body.kvkkNoticeUrl),
+      p_privacy_policy_url: stringOrNull(body.privacyPolicyUrl),
+      p_booking_terms_text: stringOrNull(body.bookingTermsText),
+      p_booking_terms_url: stringOrNull(body.bookingTermsUrl),
+    }),
+  }, access.auth.accessToken);
+  if (!result.ok) {
+    const error = profileError(rpcMessage(result.data));
+    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+  }
+  return context.json({ information: first(result.data) });
 });
 
 publicProfile.post('/profile/media/cleanup', async (context) => {

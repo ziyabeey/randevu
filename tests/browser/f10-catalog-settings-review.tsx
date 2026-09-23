@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import BrowserWorkspaceProvider from './workspace-provider';
 import AvailabilityPage from '../../src/AvailabilityPage';
 import '../../src/styles.css';
 import '../../src/phase4.css';
@@ -20,6 +21,7 @@ type Control = {
   setInSection(title: string, name: string, value: string): boolean;
   submitInSection(title: string, buttonText: string): boolean;
   clickInSection(title: string, buttonText: string): boolean;
+  switchBusiness(businessId: string): Promise<boolean>;
   metrics(): Promise<Metrics>;
 };
 
@@ -124,6 +126,11 @@ window.__f10settingsReview = {
     button.click();
     return true;
   },
+  switchBusiness: async (businessId) => {
+    if (!window.__browserWorkspace) return false;
+    await window.__browserWorkspace.selectBusiness(businessId);
+    return true;
+  },
   metrics: async () => {
     const deviceWidth = screen.width;
     if (deviceWidth > 0 && deviceWidth <= 500 && window.innerWidth !== deviceWidth) {
@@ -148,5 +155,5 @@ window.__f10settingsReview = {
 
 const root = document.getElementById('root');
 if (!root) throw new Error('F10-04 review browser harness root missing');
-createRoot(root).render(<AvailabilityPage />);
+createRoot(root).render(<BrowserWorkspaceProvider><AvailabilityPage /></BrowserWorkspaceProvider>);
 document.documentElement.dataset.f10SettingsReviewReady = 'true';

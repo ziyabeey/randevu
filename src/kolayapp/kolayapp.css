@@ -297,3 +297,72 @@ button.kolay-business-switch { cursor: pointer; }
   .kolay-app-shell *::before,
   .kolay-app-shell *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+
+.kolay-business-select {
+  display: grid;
+  gap: .18rem;
+  min-width: 7rem;
+}
+.kolay-business-select span {
+  color: var(--kolay-muted);
+  font-size: .62rem;
+  font-weight: 750;
+}
+.kolay-business-select select {
+  min-height: 44px;
+  max-width: 10rem;
+  border: 1px solid var(--kolay-border);
+  border-radius: .7rem;
+  background: var(--kolay-surface);
+  color: var(--kolay-ink);
+  padding: .45rem .55rem;
+  font: inherit;
+}
+.kolay-surface-notice {
+  margin: 0 0 .75rem;
+  padding: .7rem .8rem;
+  border: 1px solid var(--kolay-border);
+  border-radius: .75rem;
+  background: var(--kolay-surface);
+  color: var(--kolay-muted);
+  font-size: .82rem;
+}
+.kolay-action-list { display: grid; gap: .65rem; }
+.kolay-action-link,
+.kolay-action-disabled {
+  width: 100%;
+  min-height: 3.25rem;
+  display: grid;
+  gap: .12rem;
+  align-content: center;
+  padding: .7rem .8rem;
+  border: 1px solid var(--kolay-border);
+  border-radius: .85rem;
+  background: var(--kolay-surface);
+  color: var(--kolay-ink);
+  text-decoration: none;
+  text-align: left;
+}
+.kolay-action-link { cursor: pointer; }
+.kolay-action-link strong,
+.kolay-action-disabled strong { font-size: .86rem; }
+.kolay-action-link span,
+.kolay-action-disabled span { color: var(--kolay-muted); font-size: .74rem; }
+.kolay-action-disabled { opacity: .72; }
+.kolay-action-group { display: grid; gap: .7rem; }
+.kolay-action-group + .kolay-action-group { margin-top: 1rem; }
+.kolay-action-group h2 { margin: 0; font-size: 1rem; }
+.kolay-app-content > .calendar-shell,
+.kolay-app-content > .customers-shell {
+  width: 100%;
+  min-height: auto;
+  margin: 0;
+}
+
+
+/* KolayApp owns the mobile header/business selector; embedded customer content keeps only its domain body. */
+.kolay-app-content > .customers-shell .customers-hero,
+.kolay-app-content > .customers-shell .customers-businesses {
+  display: none;
+}

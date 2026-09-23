@@ -53,6 +53,14 @@ function makeTenant(key) {
       min_notice_minutes: 60,
       horizon_days: 60,
     },
+    information: {
+      business_id: a ? ids.businessA : ids.businessB,
+      kvkk_notice_text: 'Bu metin yalnız browser fixture işletmesi tarafından yayınlanan test aydınlatma içeriğidir.',
+      kvkk_notice_url: 'https://example.invalid/kvkk',
+      privacy_policy_url: 'https://example.invalid/privacy',
+      booking_terms_text: 'Browser fixture işletmesinin test randevu, iptal ve değişiklik koşulları.',
+      booking_terms_url: 'https://example.invalid/terms',
+    },
   };
 }
 
@@ -124,6 +132,10 @@ const server = createServer(async (request, response) => {
       if (state.recovery) return sendJson(response, 403, { error: { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Şifre güncellemesi gerekli.' } });
       return sendJson(response, 200, settingsPayload(tenant));
     }
+    if (request.method === 'GET' && url.pathname === '/api/public/profile/information') {
+      if (state.recovery) return sendJson(response, 403, { error: { code: 'PASSWORD_UPDATE_REQUIRED', message: 'Şifre güncellemesi gerekli.' } });
+      return sendJson(response, 200, { information: tenant.information });
+    }
     if (request.method === 'GET' && url.pathname === '/api/public/profile') {
       const capturedKey = selectedKey;
       const captured = state.tenants[capturedKey];
@@ -141,6 +153,17 @@ const server = createServer(async (request, response) => {
     }
 
     const body = request.method === 'GET' || request.method === 'HEAD' ? {} : await readJson(request);
+    if (request.method === 'PUT' && url.pathname === '/api/public/profile/information') {
+      tenant.information = {
+        ...tenant.information,
+        kvkk_notice_text: String(body.kvkkNoticeText || '') || null,
+        kvkk_notice_url: String(body.kvkkNoticeUrl || '') || null,
+        privacy_policy_url: String(body.privacyPolicyUrl || '') || null,
+        booking_terms_text: String(body.bookingTermsText || '') || null,
+        booking_terms_url: String(body.bookingTermsUrl || '') || null,
+      };
+      return sendJson(response, 200, { information: tenant.information });
+    }
     if (request.method === 'PUT' && url.pathname === '/api/public/profile') {
       const profile = tenant.profile;
       if ('publicName' in body) profile.public_name = String(body.publicName);
@@ -195,7 +218,6 @@ const server = createServer(async (request, response) => {
         services: [], bookingClock: { serverNowEpochSeconds: 1789440000, submitWindowSeconds: 300 },
       });
     }
-
     return sendJson(response, 404, { error: { code: 'NOT_FOUND', message: 'Fixture route missing.' } });
   } catch (error) {
     sendJson(response, 500, { error: { code: 'FIXTURE_ERROR', message: error instanceof Error ? error.message : String(error) } });
@@ -319,7 +341,8 @@ try {
 
   const focusPath = [];
   await page.evaluate('document.activeElement instanceof HTMLElement && document.activeElement.blur()');
-  for (let index = 0; index < 18; index += 1) {
+  const focusableCount = await page.evaluate('document.querySelectorAll("a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex=\\\"-1\\\"])").length');
+  for (let index = 0; index < Math.min(Number(focusableCount) + 2, 48); index += 1) {
     const focused = await pressTab(page);
     if (focused.label) focusPath.push(focused);
     if (focusPath.some((item) => item.label.includes('Müşteri görünümünü aç'))) break;
@@ -426,5 +449,10 @@ try {
   await new Promise((resolve) => server.close(resolve));
   if (chrome && chrome.exitCode === null) chrome.kill('SIGTERM');
   if (chromeFd !== undefined) closeSync(chromeFd);
-  rmSync(work, { recursive: true, force: true });
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try { rmSync(work, { recursive: true, force: true }); break; } catch (error) {
+      if (error?.code !== 'ENOTEMPTY' || attempt === 5) throw error;
+      await sleep(100 * (attempt + 1));
+    }
+  }
 }

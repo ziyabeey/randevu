@@ -7,6 +7,7 @@ import {
   type AuthEnv,
 } from './auth.ts';
 import { publicOperation } from './public-rpc.ts';
+import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
 import {
   publicGateUnavailableBody,
   publicRateLimitedBody,
@@ -21,6 +22,7 @@ type GroupPayload = Record<string, unknown> & { version?: number };
 type ManagedAppointment = Record<string, unknown> & {
   appointment_id?: string;
   group_payload?: GroupPayload;
+  notification_status?: unknown;
 };
 type ManagedSlot = Record<string, unknown>;
 type ManagedGroupRow = { group_payload?: GroupPayload };
@@ -86,6 +88,12 @@ function operatorError(message: string) {
   }
   if (message.includes('BOOKING_GROUP_NOT_CANCELLABLE')) {
     return { code: 'BOOKING_GROUP_NOT_CANCELLABLE', message: 'Bu rezervasyon grubu artık topluca iptal edilemez.', status: 409 as const };
+  }
+  if (message.includes('BOOKING_GROUP_PARTIAL_STATUS')) {
+    return { code: 'BOOKING_GROUP_PARTIAL_STATUS', message: 'Kısmi durumdaki rezervasyon topluca tamamlandı veya gelmedi yapılamaz.', status: 409 as const };
+  }
+  if (message.includes('INVALID_GROUP_STATUS_TRANSITION')) {
+    return { code: 'INVALID_GROUP_STATUS_TRANSITION', message: 'Rezervasyonun mevcut durumunda bu toplu durum değişikliği yapılamaz.', status: 409 as const };
   }
   if (message.includes('BOOKING_GROUP_LINE_NOT_CANCELLABLE')) {
     return { code: 'BOOKING_GROUP_LINE_NOT_CANCELLABLE', message: 'Bu hizmet satırı artık iptal edilemez.', status: 409 as const };
@@ -253,6 +261,38 @@ router.post('/bookings/groups/:groupId/reschedule', async (context) => {
   return context.json({ group: result.data });
 });
 
+router.post('/bookings/groups/:groupId/status', async (context) => {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  const groupId = context.req.param('groupId');
+  const key = idempotencyKey(context.req.header('Idempotency-Key'));
+  const body = await readJson(context);
+  const status = body?.status;
+  if (!isUuid(groupId) || !key || !isVersion(body?.expectedVersion)
+      || !['confirmed','completed','no_show'].includes(String(status))) {
+    return context.json({ error: { code: 'INVALID_GROUP_STATUS', message: 'Grup durum isteği geçerli değil.' } }, 400);
+  }
+
+  const result = await supabaseRequest<GroupPayload>(context.env, 'rest/v1/rpc/set_appointment_group_status', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_business_id: access.membership.business_id,
+      p_group_id: groupId,
+      p_idempotency_key: key,
+      p_expected_version: body.expectedVersion,
+      p_status: status,
+    }),
+  }, access.auth.accessToken);
+  if (!result.ok) {
+    if (upstreamUnavailable(result.status)) {
+      return context.json({ error: { code: 'GROUP_MANAGEMENT_UNAVAILABLE', message: 'Grup durum sonucu şu anda doğrulanamıyor. Aynı işlem anahtarıyla tekrar deneyin.' } }, 503);
+    }
+    const error = operatorError(rpcMessage(result.data));
+    return context.json({ error: { code: error.code, message: error.message } }, error.status);
+  }
+  return context.json({ group: result.data });
+});
+
 router.post('/bookings/groups/:groupId/cancel', async (context) => {
   const access = await requireStandardMember(context);
   if ('error' in access) return access.error;
@@ -336,8 +376,11 @@ router.post('/manage/view', async (context) => {
   if (!managed) {
     return context.json({ error: { code: 'MANAGEMENT_NOT_FOUND', message: 'Bu randevu yönetim bağlantısı geçerli değil.' } }, 404);
   }
-  const { group_payload: group, ...appointment } = managed;
-  return group ? context.json({ appointment, group }) : context.json({ appointment });
+  const { group_payload: group, notification_status: rawNotification, ...appointment } = managed;
+  const notification = customerNotificationStatus(rawNotification);
+  return group
+    ? context.json({ appointment, group, notification })
+    : context.json({ appointment, notification });
 });
 
 router.post('/manage/slots', async (context) => {

@@ -277,7 +277,7 @@ await test('F10-01 auth, session and request security contract', async (t) => {
 
     const callback = await request(jar, `/api/auth/callback?state=${encodeURIComponent(flow.state)}&code=auth-code-one`);
     assert.equal(callback.status, 303);
-    assert.equal(callback.headers.get('location'), 'http://localhost/?auth=recovery');
+    assert.equal(callback.headers.get('location'), 'http://localhost/app?auth=recovery');
     assert.deepEqual(exchangedBody, { auth_code: 'auth-code-one', code_verifier: flow.verifier });
     assert.equal(callback.headers.get('location').includes(recoveryToken.access_token), false);
     assert.equal(jar.get('yzt_access'), recoveryToken.access_token);
@@ -287,7 +287,7 @@ await test('F10-01 auth, session and request security contract', async (t) => {
     globalThis.fetch = async () => { replayCalls += 1; return json(recoveryToken); };
     const replay = await request(jar, `/api/auth/callback?state=${encodeURIComponent(flow.state)}&code=auth-code-one`);
     assert.equal(replay.status, 303);
-    assert.equal(replay.headers.get('location'), 'http://localhost/?auth=link-invalid');
+    assert.equal(replay.headers.get('location'), 'http://localhost/app?auth=link-invalid');
     assert.equal(replayCalls, 0);
   });
 

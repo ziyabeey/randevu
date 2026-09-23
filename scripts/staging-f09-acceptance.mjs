@@ -287,7 +287,7 @@ const recipient = `delivered+f0905${runLabel}@resend.dev`;
 
 const payload = {
   customerName: 'F09-05 Acceptance',
-  customerPhone: null,
+  customerPhone: '05550009005',
   customerEmail: recipient,
   notes: 'Automated staging integration acceptance',
   serviceId: selected.service.service_id,

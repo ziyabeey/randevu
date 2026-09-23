@@ -37,6 +37,7 @@ export const onboardingCopy = {
     BUSINESS_HOURS_REQUIRED: 'İşletmenin çalışma saatlerini ekleyin.',
     STAFF_HOURS_REQUIRED: 'Hizmet veren personelin çalışma saatlerini ekleyin.',
     OVERLAPPING_HOURS_REQUIRED: 'İşletme ve personel saatlerinde en az bir ortak aralık oluşturun.',
+    PUBLIC_CONTACT_REQUIRED: 'Public profilinizde telefon, e-posta veya WhatsApp destek kanalından en az birini yayınlayın.',
   } as Record<string, string>,
 } as const;
 

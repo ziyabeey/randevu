@@ -1,0 +1,90 @@
+# DEV-ENGINE-07 devir
+
+## Kimlik ve kapsam
+
+- Görev: [DEV-ENGINE-07 / Issue #206](https://github.com/ziyabeey1-ai/randevu/issues/206)
+- Boyut / mod: M / FOCUSED
+- Başlangıç main / task claim: `86d1bfdd729577ebd9ab3f47d1273219b1afe8f0`
+- Branch: `chore/dev-engine-07-qwen-coordinator`
+- Merged implementation: [#208](https://github.com/ziyabeey1-ai/randevu/pull/208)
+  · accepted head `ba0a5072524c54c5b59cec0267a7bbbc36c80d66`
+  · main merge `dfbf7bc4762c85f1accd3d42961d4257ee08174c`.
+- Yazım alanı: `scripts/qwen-coordinator/**`,
+  `tests/qwen-coordinator-*.test.mjs`, `docs/runbooks/qwen-coordinator.md`, bu
+  devir, `.gitignore` ve görev satırı.
+- Kapsam dışı: ürün kodu, migration, GitHub workflow/ruleset, DEV-ENGINE-06
+  dosyaları, model ağırlıkları, tokenlar, etkin config, log ve runtime state.
+
+## Korunan sözleşmeler
+
+- `TASKS.md` tek canlı görev otoritesi olarak kalır.
+- Qwen danışmandır; deterministic policy sonucunu yükseltemez.
+- GitHub `CI gate` zorunludur; Depot yalnız paralel shadow kanıtıdır.
+- Qwen çağrısı yalnız exact aynı PR head için GitHub + Depot success sonrasında
+  mümkündür.
+- Belirsiz/kesik remote evidence, stale base/SHA, açık thread, merge conflict veya
+  rol provenance eksikliği fail-closed kalır.
+- Yeni kurulum shadow/read-only başlar. Guarded dış yazma ve otomatik merge ayrı,
+  açık opt-in olmadan etkinleşmez.
+
+## Teslim edilen kaynak
+
+- `policy.mjs`: TASKS eşleme, exact CI, surface/risk, receipt ve A/B/C/D policy.
+- `depot.mjs`: exact-SHA eligibility, status normalize, identity/conflict ve Qwen
+  çağrı eligibility kuralları.
+- `lease.mjs`: PID yaşam kanıtlı stale recovery ve owner-token bağlı release.
+  Lease metadata geçici dizinde tamamlanıp atomik yayımlanır; stale
+  takeover/release ownership claim ile eski lease'i quarantine eder ve eşzamanlı
+  iki recovery yalnız tek kazanan üretir.
+- `run-once.mjs`: GitHub snapshot, Depot tek-koşu yönetimi, Qwen danışma, guarded
+  action planı ve disposable rapor.
+- Qwen sonuçları positional sıraya değil exact PR numarası anahtarına bağlıdır;
+  TASKS satır sınırı ve tam review/comment gövdesi receipt değerlendirmesinde
+  fail-closed korunur.
+- TASKS evidence tam uzunlukta tutulur; R1/R2 bütçesi evidence alanından değil
+  owner/assignment dahil full canonical satırdan okunur. Review-kaynaklı
+  specialist receipt native commit OID olmadan kabul edilmez.
+- Latest exact-head native R0 review temiz/bloker olarak birlikte değerlendirilir;
+  actual findings veya çelişkili unresolved metin eski clean receipt'i geçersiz
+  kılar. Review-kaynaklı negatif R1/R2 de native commit OID ister.
+- Depot dış çağrısından önce durable launch reservation yazılır; belirsiz çağrı
+  sonucu aktif kalır ve otomatik tekrar koşusu başlatmaz.
+- R1/R2 launch yetkisi local daemon'dan kaldırılmıştır; configured rol endpoint'i
+  ve exact CI provenance canonical repository review workflow'unda kalır.
+- Bildirimler PR + exact head + karar/aksiyon kimliğiyle 200 olaylık kalıcı
+  ledger'da tekilleştirilir; ilgisiz fingerprint değişimi aynı uyarıyı tekrarlamaz.
+- GitHub polling yalnız TASKS'e bağlı aktif PR'larda hızlanır ve düşük/kritik rate
+  limit eşiklerinde sırasıyla en az 5/15 dakikaya fail-safe geri çekilir.
+- Kesik koordinasyon-issue geçmişi yalnız R1/R2 receipt'i tüketen PR'ı bloke
+  eder; R0-only PR için ilgisiz eski sayfalar yeniden çekilmez.
+- `depot-full-ci.yml`: immutable placeholder'lı full shadow CI şablonu.
+- `config.example.json`: secretsiz, makineden bağımsız, shadow varsayılan.
+- `install-local.mjs`: mevcut config'i koruyan macOS yerel kurucu.
+- `tests/qwen-coordinator-*.test.mjs`: policy, Depot, kurulum ve lease gerileme
+  testleri.
+- `docs/runbooks/qwen-coordinator.md`: kurulum, opt-in, izleme ve rollback.
+
+## Güncel doğrulama
+
+- `node --test tests/qwen-coordinator-*.test.mjs`: 32/32 başarılı.
+- Güncel main entegrasyonu sonrası repo HTTP testleri 72 dosyada 881/881
+  başarılı.
+- CI coverage, docs, typecheck ve build başarılı.
+- İnceleme onarımları: exact-head-only Depot checkout, non-empty workflow/job/
+  attempt başarı kanıtı, tüm non-pass Depot durumlarında fail-closed merge,
+  shell-safe wrapper quoting, owner-token lease ve incomplete remote snapshot'ta
+  koşu iptal etmeme.
+- macOS zsh wrapper testi darwin'de gerçek shebang, Linux CI'da aynı POSIX shell
+  quote sözleşmesi `/bin/sh` üzerinden çalıştırılarak doğrulanır.
+- Predecessor reviewed head `305c904a0cceb89b8f2bd16f1e9a081b0dfe391c`:
+  exact-head CI run `35500844512`, job `106052216068`, attempt `1`, tested
+  checkout aynı full SHA ve Depot `h9n2mpjxxj` aynı head/base üzerinde PASS.
+- Accepted head `ba0a5072524c54c5b59cec0267a7bbbc36c80d66`: exact-head GitHub CI
+  `35531961280` başarılı; Depot shadow `rnxfw1f42r` PASS; merge commit
+  `dfbf7bc4762c85f1accd3d42961d4257ee08174c` sonrası CI `35532954959`
+  başarılı.
+
+## Kapanış
+
+PR #208 main'e merge edildi ve DEV-ENGINE-07 kapanış kanıtı #231 ile kaydedildi.
+Bu handoff'ta bekleyen push, yeniden doğrulama veya thread kapatma adımı kalmadı.

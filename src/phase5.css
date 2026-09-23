@@ -58,6 +58,48 @@
 }
 .booking-fields textarea { min-height: 5rem; resize: vertical; }
 .wide-field { grid-column: 1 / -1; }
+
+.booking-step {
+  display: flex; align-items: flex-start; gap: .7rem; margin-top: 1.15rem; padding-top: 1rem; border-top: 1px solid #edf0f6;
+}
+.booking-step:first-of-type { margin-top: .8rem; }
+.booking-step-index {
+  display: inline-grid; place-items: center; flex: 0 0 1.8rem; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: #1d2f55; color: #fff; font-size: .72rem; font-weight: 800;
+}
+.booking-step > div { display: grid; gap: .15rem; }
+.booking-step small { color: var(--muted); line-height: 1.35; }
+.booking-inline-action { display: grid; gap: .35rem; align-content: end; color: var(--muted); font-size: .78rem; font-weight: 650; }
+.booking-close-panel {
+  display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .65rem; margin-top: .8rem; padding: .8rem; border: 1px solid #dbe3f1; border-radius: .75rem; background: #fafbfe;
+}
+.booking-close-panel label { display: grid; gap: .3rem; color: var(--muted); font-size: .76rem; font-weight: 650; }
+.booking-close-panel input, .booking-close-panel select { width: 100%; min-height: 2.6rem; border: 1px solid #ccd5e7; border-radius: .6rem; padding: .55rem .65rem; background: #fff; font: inherit; }
+.booking-line-editor { display: grid; gap: .6rem; margin-top: .8rem; }
+.booking-line-draft {
+  display: grid; grid-template-columns: 2rem minmax(12rem,1.2fr) minmax(10rem,1fr) minmax(8rem,.8fr) auto; gap: .55rem; align-items: end; padding: .7rem; border: 1px solid #e0e6f1; border-radius: .75rem; background: #fbfcff;
+}
+.booking-line-draft label { display: grid; gap: .3rem; color: var(--muted); font-size: .75rem; font-weight: 650; }
+.booking-line-draft select { min-height: 2.6rem; width: 100%; border: 1px solid #ccd5e7; border-radius: .6rem; background: #fff; padding: .5rem .65rem; color: inherit; font: inherit; }
+.booking-line-number { align-self: center; justify-self: center; display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #eef2f9; font-size: .72rem; font-weight: 800; }
+.booking-line-meta { align-self: center; color: var(--muted); font-size: .72rem; line-height: 1.25; }
+.booking-line-remove { min-height: 2.6rem; border: 0; border-radius: .6rem; background: #f3e9e7; color: #874941; padding: .5rem .7rem; font-weight: 750; cursor: pointer; }
+.booking-line-remove:disabled { opacity: .45; cursor: not-allowed; }
+.booking-future-hints { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.booking-future-hints > span { display: grid; gap: .1rem; padding: .55rem .7rem; border: 1px dashed #d3dbea; border-radius: .65rem; background: #fafbfe; }
+.booking-future-hints small { color: var(--muted); font-size: .7rem; }
+
+.booking-detail-tabs { display: flex; gap: .45rem; flex-wrap: wrap; margin: 1rem 0; }
+.booking-detail-tabs > span { padding: .55rem .75rem; border-radius: .65rem; background: #f1f4f9; color: #6d7890; font-size: .78rem; font-weight: 750; }
+.booking-detail-tabs > span.is-active { background: #1d2f55; color: #fff; }
+.booking-detail-tabs small { margin-left: .35rem; opacity: .65; }
+.booking-detail-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .65rem; margin: 0; }
+.booking-detail-grid > div { padding: .75rem; border: 1px solid #e4e9f3; border-radius: .65rem; background: #fbfcff; }
+.booking-detail-grid dt { color: var(--muted); font-size: .72rem; font-weight: 750; }
+.booking-detail-grid dd { margin: .25rem 0 0; overflow-wrap: anywhere; }
+.booking-detail-grid dd > div + div { margin-top: .25rem; }
+.booking-detail-actions { margin-top: 1rem; justify-content: flex-start; }
+.booking-detail-future { margin-top: .8rem; }
+
 .booking-actions { display: flex; justify-content: flex-end; margin-top: .8rem; }
 .secondary-button {
   min-height: 2.7rem;
@@ -172,7 +214,11 @@
   .booking-page { padding-inline: .8rem; }
   .booking-hero { flex-direction: column; }
   .booking-fields,
-  .reschedule-controls { grid-template-columns: 1fr; }
+  .reschedule-controls,
+  .booking-close-panel,
+  .booking-detail-grid { grid-template-columns: 1fr; }
+  .booking-line-draft { grid-template-columns: 2rem minmax(0,1fr); align-items: start; }
+  .booking-line-draft label, .booking-line-meta, .booking-line-remove { grid-column: 2; }
   .wide-field { grid-column: auto; }
   .appointment-row { grid-template-columns: 1fr; }
   .appointment-actions { grid-column: auto; }

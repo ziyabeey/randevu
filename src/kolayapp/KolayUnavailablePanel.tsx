@@ -15,7 +15,7 @@ export default function KolayUnavailablePanel({
       <h2 id={`kolay-unavailable-${title.replace(/\s+/g, '-').toLowerCase()}`}>{title}</h2>
       <p>{description}</p>
       <div className="kolay-unavailable__note" role="note">
-        Bu izole kabuk gerçek işlem yapmaz ve tamamlanmamış özelliği kullanılabilir göstermez.
+        Bu bölüm kullanıma açılana kadar burada işlem yapılamaz.
       </div>
     </section>
   );

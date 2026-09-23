@@ -5,6 +5,7 @@ export { default as KolayAppointmentsHome } from './KolayAppointmentsHome';
 export type { KolayAppointmentItem } from './KolayAppointmentsHome';
 export { default as KolayUnavailablePanel } from './KolayUnavailablePanel';
 export { default as KolayAppSpikePreview } from './KolayAppSpikePreview';
+export { default as KolayAppSurface } from './KolayAppSurface';
 export {
   KOLAY_APP_TABS,
   adjacentKolayAppTab,

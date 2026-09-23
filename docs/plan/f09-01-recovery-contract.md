@@ -125,7 +125,7 @@ F09-02 minimum başarılı HTTP cevabı:
 }
 ```
 
-F09-03 aynı create transaction'ını ileri migration ile durable notification intent doğuracak şekilde genişletir ve response'a ayrıca `notification.status = queued|skipped_no_email` ekleyebilir. `queued`, provider'a teslim edildi demek değildir.
+F09-03'ün tarihsel ilk sözleşmesinde create response'u `notification.status = queued|skipped_no_email` kullanabiliyordu. Bu adlandırma artık güncel müşteri projection otoritesi değildir. F12 notification-status projection'ı tarafından supersede edilmiştir: güncel müşteri-safe durum kümesi `not_requested|queued|sending|accepted|failed|unknown` değerleridir; e-posta istenmemiş akış `not_requested`, sağlayıcı kabulü `accepted` olarak gösterilir. `queued`, `sending` veya `accepted` inbox teslimi iddiası değildir.
 
 ## 5. Recovery sözleşmesi — F09-02
 

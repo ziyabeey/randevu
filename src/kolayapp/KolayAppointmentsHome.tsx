@@ -20,7 +20,7 @@ export default function KolayAppointmentsHome({
   items,
   onOpenAppointment,
   emptyTitle = 'Randevu görünmüyor',
-  emptyDescription = 'Bu görünüm canonical takvim verisi bağlandığında güncellenecek.',
+  emptyDescription = 'Randevular hazır olduğunda burada görünecek.',
 }: Props) {
   return (
     <section className="kolay-appointments" aria-labelledby="kolay-appointments-heading">

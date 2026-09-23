@@ -4,7 +4,7 @@ Repo-native guidance for `task/contract -> implementer -> exact-head CI ->
 independent R1/R2 -> coordinator merge -> post-main CI`. This is tooling, not a
 product feature, authority database, automatic merge system or new required gate.
 
-Historical implementation task **DEV-ENGINE-01 / [#119](https://github.com/ziyabeey1-ai/randevu/issues/119)** is **accepted and closed**.
+Historical implementation task **DEV-ENGINE-01 / [#119](https://github.com/ziyabeey/randevu/issues/119)** is **accepted and closed**.
 PR #120 merged at main `02d0a2a6605e9ade1c526cf5f1542ceefa523936`;
 post-main CI #1220 / `35312768868` succeeded. Its original 21-path scope and
 starting SHA are provenance only, not current execution state. Current durable task
@@ -18,7 +18,7 @@ coordination evidence, but they do not override TASKS.
 | Permanent rules / handoff | [AGENTS](../../AGENTS.md), [CONTRIBUTING](../../CONTRIBUTING.md), [workflow](../plan/agent-workflow.md) |
 | Live task / accepted-main status | [TASKS](../../TASKS.md) only |
 | Product boundary / planned sequence | [PRODUCT_SPEC](../../PRODUCT_SPEC.md), [ROADMAP](../../ROADMAP.md) and actual main ref |
-| Temporary writer claim / conflict / dispatch | open PRs and [Issue #65](https://github.com/ziyabeey1-ai/randevu/issues/65); never a second durable status source |
+| Temporary writer claim / conflict / dispatch | open PRs and [Issue #65](https://github.com/ziyabeey/randevu/issues/65); never a second durable status source |
 | Task scope / refresh | [Context Pack protocol](../plan/context-packs.md) and the assigned contract |
 | Review mode / lineage / decision-first receipts | [Review lineage kernel](../plan/agent-workflow.md#review-lineage-kernel); role prompts/Skills extend it instead of redefining it |
 | Executor wait-mode | [Shadow Validation Mode](../plan/shadow-validation-mode.md) |
@@ -71,9 +71,9 @@ This is a dated inventory, not a continuously accurate settings claim.
 | Active implementation/setup | Native R0 behavior is observed; durable bounded-R0 contract is being updated in PR #136. Other activation/setup remains governed by Issue #121. |
 
 Historical evidence: the initial main CI
-[35264446487](https://github.com/ziyabeey1-ai/randevu/actions/runs/35264446487)
+[35264446487](https://github.com/ziyabeey/randevu/actions/runs/35264446487)
 succeeded at the original starting SHA. Separately, F11-04 #117
-[job/check 105480417908](https://github.com/ziyabeey1-ai/randevu/actions/runs/35306324484/job/105480417908)
+[job/check 105480417908](https://github.com/ziyabeey/randevu/actions/runs/35306324484/job/105480417908)
 at `227b7698a70821a02bb8dfd45b9180194d4e301a` had `runner_id=0`, `steps=[]`
 and a runner/account billing annotation before checkout. That receipt is fenced to
 that historical run. DEV-ENGINE-01/#119 later completed successfully and is closed;
@@ -263,6 +263,48 @@ The observation remains disposable: TASKS is the sole durable live task/status
 source, Issue #65 remains temporary coordination, and PR/CI/receipts remain
 candidate-bound evidence. No dispatcher DB, queue, scheduler, workflow DSL or
 second status surface is introduced.
+
+## Independent R1/R2 Routine delivery
+
+When the pure Development Dispatcher reaches `request_required_reviews`, the
+existing Development Escalation Router may call the dedicated reusable
+`Development Review Router`. The review router has no direct `workflow_dispatch`
+entry point; its Routine credentials are reachable only through the checked-in
+parent workflow call. The reusable review router recomputes
+the Dispatcher result from the same observation/evidence, requires the same case
+fingerprint and exact current CI provenance, then fires only the roles listed in
+`eligibleRoles`.
+
+`Development Review Automation` rebuilds that observation from canonical `main`
+and live GitHub evidence after either successful PR CI or a later submitted R0
+review. This second trigger closes the normal race where CI finishes before the
+native R0 receipt. Drafts, forks, stale heads, base/main drift, non-PR CI, missing
+TASKS binding, open R0 findings and review budgets not stated in the bound TASKS
+row all fail closed before a Routine secret is used. A TASKS row that explicitly
+names only R2 makes R1 not required for that candidate; if neither role is named,
+the requirement remains unknown and no independent Routine is fired.
+
+R1 and R2 remain independent role contracts. The repository routes to role
+endpoints rather than model names:
+
+- `CLAUDE_R1_ROUTINE_URL` + `CLAUDE_R1_ROUTINE_TOKEN`
+- `CLAUDE_R2_ROUTINE_URL` + `CLAUDE_R2_ROUTINE_TOKEN`
+
+The Routine configuration owns the provider/model choice. Changing a model must
+not change R1/R2 scope, acceptance semantics or Dispatcher policy.
+
+The Claude Code Routine fire API creates a new session for every successful call
+and has no idempotency key. The review router therefore reserves a PR comment
+using a role-specific request fingerprint before firing. The request fingerprint excludes unrelated reviewer state and observation timestamp, so one reviewer finishing cannot accidentally re-fire the other. An existing reservation, successful launch receipt or uncertain launch blocks automatic duplicate spend.
+A launch receipt records only the exact head, case fingerprint and Claude session
+URL. It is **not** an `ACCEPTABLE | BLOCKER | INCOMPLETE` review receipt and never
+grants merge authority.
+
+Routine requests are bounded data packages. Exact task/PR/base/head/main identity,
+current CI checkout/run/job/attempt, same-role prior receipt state, obligations and
+source refs are preserved. Evidence strings are explicitly treated as data rather
+than instructions. Missing/mismatched candidate identity, current-pass CI or case
+fingerprint fails closed before a Routine is fired.
 
 ## Validation
 

@@ -8,6 +8,8 @@ import {
   type AuthEnv,
 } from './auth.ts';
 import { publicOperation } from './public-rpc.ts';
+import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';
+import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
 import {
   publicGateUnavailableBody,
   publicRateLimitedBody,
@@ -34,6 +36,7 @@ type PublicGroupCreateRow = {
   appointment_id: string;
   group_payload: Record<string, unknown>;
   recovery_expires_at: string;
+  notification_status?: unknown;
 };
 
 const groups = new Hono<{ Bindings: Env }>();
@@ -186,8 +189,10 @@ function publicFailure(data: unknown, fallback: string) {
   if (message.includes('DATE_OUT_OF_RANGE')) {
     return { code: 'DATE_OUT_OF_RANGE', message: 'Seçilen tarih rezervasyon aralığının dışında.', status: 400 as const };
   }
-  if (message.includes('PUBLIC_CONTACT_REQUIRED') || message.includes('INVALID_')
-      || message.includes('BOOKING_INTENT_')) {
+  if (message.includes('PUBLIC_CONTACT_REQUIRED')) {
+    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.', status: 400 as const };
+  }
+  if (message.includes('INVALID_') || message.includes('BOOKING_INTENT_')) {
     return { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon isteği geçerli değil.', status: 400 as const };
   }
   return { code: 'PUBLIC_BOOKING_UNAVAILABLE', message: fallback, status: 503 as const };
@@ -326,10 +331,12 @@ groups.post('/public/business/:slug/group-book', async (context) => {
       || !isCanonicalPublicBookingSecret(managementToken)
       || customerName.length < 2 || customerName.length > 120
       || customerPhone === undefined || customerEmail === undefined || notes === undefined
-      || (customerPhone === null && customerEmail === null)
       || (customerEmail !== null && !customerEmail.includes('@'))
       || lines === null || !isTimestamp(body?.startsAt)) {
     return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon isteği geçerli değil.' } }, 400);
+  }
+  if (customerPhone === null) {
+    return context.json({ error: { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.' } }, 400);
   }
 
   const proof = await verifyPublicBookingIntentV2(rawKey, recoveryId, recoverySecret);
@@ -340,10 +347,23 @@ groups.post('/public/business/:slug/group-book', async (context) => {
 
   const abuse = await resolvePublicAbuseIdentity(context);
   if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+
   const encrypted = await encryptManagementToken(context.env, managementToken, recoveryId);
   if (!encrypted) {
     return context.json({ error: { code: 'BOOKING_RECOVERY_UNAVAILABLE', message: 'Rezervasyon güvenli olarak hazırlanamadı.' } }, 503);
   }
+  const information = await publicOperation<PublicBookingInformationProjection[]>(context.env, 'profile', { p_slug: slug }, abuse);
+  if (!information.ok) {
+    return publicErrorResponse(context, publicFailure(information.data, 'Rezervasyon bilgilendirmeleri şu anda doğrulanamıyor.'));
+  }
+  const informationProfile = information.data?.[0];
+  if (!informationProfile) {
+    return context.json({ error: { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.' } }, 404);
+  }
+  if (!hasRequiredPublicBookingInformation(informationProfile)) {
+    return context.json({ error: { code: 'PUBLIC_INFORMATION_REQUIRED', message: 'İşletme rezervasyon bilgilendirmelerini henüz tamamlamadı.' } }, 409);
+  }
+
   const managementTokenHash = await sha256Hex(managementToken);
 
   const result = await publicOperation<PublicGroupCreateRow[]>(context.env, 'group_book', {
@@ -377,6 +397,7 @@ groups.post('/public/business/:slug/group-book', async (context) => {
   return context.json({
     group: created.group_payload,
     appointmentId: created.appointment_id,
+    notification: customerNotificationStatus(created.notification_status),
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: created.recovery_expires_at },
   }, 201);

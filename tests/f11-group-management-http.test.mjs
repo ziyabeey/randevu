@@ -106,6 +106,54 @@ await test('F11-03 operator reschedule forwards the optimistic version and repor
   assert.equal(seen.p_business_id, businessId);
 });
 
+await test('F13-03 operator native group status forwards CAS and maps a lost race', async () => {
+  let seen = null;
+  await withFetch(authMock(async (url, init) => {
+    assert.equal(url.pathname, '/rest/v1/rpc/set_appointment_group_status');
+    seen = JSON.parse(init.body);
+    return json({ message: 'BOOKING_GROUP_VERSION_CONFLICT' }, 400);
+  }), async () => {
+    const response = await app.request(`http://localhost/api/bookings/groups/${groupId}/status`, {
+      method: 'POST',
+      headers: { ...operatorHeaders(), 'Idempotency-Key': 'op-group-status-0001' },
+      body: JSON.stringify({ expectedVersion: 7, status: 'completed' }),
+    }, env);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error.code, 'BOOKING_GROUP_VERSION_CONFLICT');
+  });
+  assert.deepEqual(seen, {
+    p_business_id: businessId,
+    p_group_id: groupId,
+    p_idempotency_key: 'op-group-status-0001',
+    p_expected_version: 7,
+    p_status: 'completed',
+  });
+});
+
+await test('F13-03 operator native group status rejects unsupported or partial transitions explicitly', async () => {
+  await withFetch(authMock(async () => json({ message: 'BOOKING_GROUP_PARTIAL_STATUS' }, 400)), async () => {
+    const response = await app.request(`http://localhost/api/bookings/groups/${groupId}/status`, {
+      method: 'POST',
+      headers: { ...operatorHeaders(), 'Idempotency-Key': 'op-group-status-0002' },
+      body: JSON.stringify({ expectedVersion: 4, status: 'no_show' }),
+    }, env);
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error.code, 'BOOKING_GROUP_PARTIAL_STATUS');
+  });
+
+  let called = false;
+  await withFetch(authMock(async () => { called = true; return json({}); }), async () => {
+    const response = await app.request(`http://localhost/api/bookings/groups/${groupId}/status`, {
+      method: 'POST',
+      headers: { ...operatorHeaders(), 'Idempotency-Key': 'op-group-status-0003' },
+      body: JSON.stringify({ expectedVersion: 4, status: 'scheduled' }),
+    }, env);
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error.code, 'INVALID_GROUP_STATUS');
+  });
+  assert.equal(called, false);
+});
+
 await test('F11-03 operator mutations refuse a missing idempotency key before reaching the database', async () => {
   let called = false;
   await withFetch(authMock(async () => { called = true; return json({}); }), async () => {
@@ -159,6 +207,48 @@ await test('F11-03 operator group read reports an upstream outage as retryable, 
     assert.equal(response.status, 503);
     assert.equal((await response.json()).error.code, 'GROUP_MANAGEMENT_UNAVAILABLE');
   });
+});
+
+await test('F12-05 mounted public manage view exposes bounded notification status', async () => {
+  let seen = null;
+  await withFetch(async (input, init) => {
+    const url = new URL(String(input));
+    assert.equal(url.pathname, '/rest/v1/rpc/execute_public_operation');
+    seen = JSON.parse(init.body);
+    return json({ ok: true, data: [{
+      appointment_id: lineId,
+      business_name: 'Salon',
+      status: 'scheduled',
+      group_payload: { groupId, version: 4, status: 'scheduled' },
+      notification_status: {
+        channel: 'email',
+        status: 'accepted',
+        recipient: 'hidden@example.test',
+        provider: 'resend',
+        provider_message_id: 'hidden-provider-id',
+        last_error_class: 'hidden-error',
+        lease_token: 'hidden-lease',
+      },
+    }] });
+  }, async () => {
+    const response = await app.request('http://localhost/api/manage/view', {
+      method: 'POST',
+      headers: publicHeaders(),
+      body: JSON.stringify({ token }),
+    }, env);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      appointment: {
+        appointment_id: lineId,
+        business_name: 'Salon',
+        status: 'scheduled',
+      },
+      group: { groupId, version: 4, status: 'scheduled' },
+      notification: { channel: 'email', status: 'accepted' },
+    });
+  });
+  assert.equal(seen.p_action, 'manage_view');
+  assert.equal(seen.p_args.p_token, token);
 });
 
 await test('F11-03 public slot read dispatches the group action with its own step', async () => {

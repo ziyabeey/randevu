@@ -1,4 +1,6 @@
 import { publicOperation } from './public-rpc.ts';
+import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
+import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';
 import { Hono } from 'hono';
 import { base64UrlToBytes, bytesToBase64Url } from '../shared/base64.ts';
 import {
@@ -35,6 +37,7 @@ type PublicConfirmation = {
   price_minor: number;
   currency: string;
   recovery_expires_at: string;
+  notification_status?: unknown;
 };
 type RecoveryRow = {
   appointment_id: string;
@@ -51,6 +54,7 @@ type RecoveryRow = {
   management_token_iv: string;
   key_version: number;
   recovery_expires_at: string;
+  notification_status?: unknown;
   group_payload?: unknown;
 };
 type ResolutionRow = {
@@ -70,6 +74,7 @@ type ResolutionRow = {
   management_token_iv: string | null;
   key_version: number | null;
   recovery_expires_at: string | null;
+  notification_status?: unknown;
   group_payload?: unknown;
 };
 
@@ -300,7 +305,7 @@ function rpcError(data: unknown, fallback: string) {
     return { code: 'DATE_OUT_OF_RANGE', message: 'Seçilen tarih rezervasyon aralığının dışında.', status: 400 as const };
   }
   if (message.includes('PUBLIC_CONTACT_REQUIRED')) {
-    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon veya e-posta bilgilerinden en az biri gerekli.', status: 400 as const };
+    return { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.', status: 400 as const };
   }
   if (message.includes('INVALID_CUSTOMER') || message.includes('NOTES_TOO_LONG') || message.includes('INVALID_START') || message.includes('INVALID_BOOKING_RECOVERY_BOOTSTRAP')) {
     return { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon bilgileri geçerli değil.', status: 400 as const };
@@ -335,10 +340,12 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
   }
   if (customerName.length < 2 || customerName.length > 120
       || customerPhone === undefined || customerEmail === undefined || notes === undefined
-      || (customerPhone === null && customerEmail === null)
       || (customerEmail !== null && !customerEmail.includes('@'))
       || !validUuid(body?.serviceId) || !validUuid(body?.staffId) || !validTimestamp(body?.startsAt)) {
     return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Ad, iletişim, hizmet veya saat bilgileri geçerli değil.' } }, 400);
+  }
+  if (customerPhone === null) {
+    return context.json({ error: { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.' } }, 400);
   }
 
   if (looksLikePublicBookingIntentV2(rawKey)) {
@@ -358,6 +365,18 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
   const encrypted = await encryptManagementToken(context.env, managementToken, recoveryId);
   if (!encrypted) {
     return context.json({ error: { code: 'BOOKING_RECOVERY_UNAVAILABLE', message: 'Rezervasyon güvenli olarak hazırlanamadı. Lütfen tekrar deneyin.' } }, 503);
+  }
+
+  const information = await publicOperation<PublicBookingInformationProjection[]>(context.env, 'profile', { p_slug: slug }, abuse);
+  if (!information.ok) {
+    return errorResponse(context, rpcError(information.data, 'Rezervasyon bilgilendirmeleri şu anda doğrulanamıyor.'));
+  }
+  const informationProfile = first(information.data);
+  if (!informationProfile) {
+    return context.json({ error: { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu rezervasyon bağlantısı şu anda aktif değil.' } }, 404);
+  }
+  if (!hasRequiredPublicBookingInformation(informationProfile)) {
+    return context.json({ error: { code: 'PUBLIC_INFORMATION_REQUIRED', message: 'İşletme rezervasyon bilgilendirmelerini henüz tamamlamadı.' } }, 409);
   }
 
   const [managementTokenHash, recoverySecretHash] = await Promise.all([
@@ -392,8 +411,12 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
     return context.json({ error: { code: 'BOOKING_RESULT_UNKNOWN', message: 'Rezervasyon sonucunuz doğrulanamadı. Aynı işlemle sonucu kontrol edin.' } }, 503);
   }
 
+  const notification = customerNotificationStatus(appointment.notification_status);
+  const publicAppointment = { ...appointment };
+  delete publicAppointment.notification_status;
   return context.json({
-    appointment,
+    appointment: publicAppointment,
+    notification,
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: appointment.recovery_expires_at },
   }, 201);
@@ -450,6 +473,7 @@ bookingRecovery.post('/booking/recover', async (context) => {
       currency: row.currency,
     },
     ...(group ? { group } : {}),
+    notification: customerNotificationStatus(row.notification_status),
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: row.recovery_expires_at },
   });
@@ -532,6 +556,7 @@ bookingRecovery.post('/booking/resolve', async (context) => {
       currency: row.currency,
     },
     ...(group ? { group } : {}),
+    notification: customerNotificationStatus(row.notification_status),
     management: { url: `/m#${encodeURIComponent(managementToken)}` },
     recovery: { expiresAt: row.recovery_expires_at },
   });

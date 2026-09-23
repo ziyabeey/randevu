@@ -195,7 +195,17 @@ test('F09-04 public abuse Worker boundary', async (t) => {
   await t.test('booking create also surfaces 429 without reporting appointment failure', async () => {
     globalThis.fetch = async (input, init) => {
       const url = String(input);
-      if (url.endsWith('/rpc/execute_public_operation') && JSON.parse(init.body).p_action === 'book') {
+      const wire = JSON.parse(String(init?.body ?? '{}'));
+      if (url.endsWith('/rpc/execute_public_operation') && wire.p_action === 'profile') {
+        return json([{
+          kvkk_notice_text: 'Abuse fixture işletmesinin test aydınlatma metni.',
+          kvkk_notice_url: 'https://abuse.example.test/kvkk',
+          privacy_policy_url: 'https://abuse.example.test/privacy',
+          booking_terms_text: 'Abuse fixture işletmesinin test randevu koşulları.',
+          booking_terms_url: 'https://abuse.example.test/terms',
+        }]);
+      }
+      if (url.endsWith('/rpc/execute_public_operation') && wire.p_action === 'book') {
         return json({ message: 'PUBLIC_BOOKING_RATE_LIMITED:19' }, 400);
       }
       throw new Error(`unexpected fetch ${url}`);

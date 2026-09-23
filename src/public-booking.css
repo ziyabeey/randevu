@@ -10,6 +10,18 @@
   padding: clamp(1rem, 4vw, 3rem) clamp(.85rem, 4vw, 3rem) 4rem;
 }
 
+.public-booking-checkout-shell {
+  min-height: 0;
+  padding-top: 0;
+  background: transparent;
+}
+
+.public-booking-checkout-shell > .public-group-customer-card {
+  box-sizing: border-box;
+  width: min(100%, 68rem);
+  margin-inline: auto;
+}
+
 .public-booking-header,
 .public-booking-layout,
 .public-booking-notice,
@@ -126,6 +138,10 @@
 .public-customer-form textarea { min-height: 5.5rem; resize: vertical; }
 
 .public-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   min-height: 2.9rem;
   padding: .75rem 1rem;
   border: 0;
@@ -137,6 +153,13 @@
   cursor: pointer;
 }
 .public-primary:disabled { opacity: .55; cursor: default; }
+.public-primary:focus-visible,
+.public-secondary:focus-visible,
+.public-customer-form input:focus-visible,
+.public-customer-form textarea:focus-visible {
+  outline: 3px solid #9eb5ff;
+  outline-offset: 2px;
+}
 
 .public-slot-grid {
   display: grid;
@@ -170,6 +193,8 @@
   background: #f4f7ff;
 }
 .public-selection-summary span { color: #637089; font-size: .84rem; text-align: right; }
+.public-group-selection-summary > span { display: grid; gap: .2rem; }
+.public-group-selection-summary small { color: #6b768c; }
 
 .public-two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
 .public-field-hint,
@@ -177,6 +202,15 @@
 .public-confirmation-note,
 .public-booking-footer { color: #6b768c; }
 .public-field-hint { margin-top: -.45rem; font-size: .75rem; }
+.public-field-error {
+  padding: .7rem .8rem;
+  border: 1px solid #c63b3b;
+  border-radius: .7rem;
+  background: #fff2f2;
+  color: #8f2222;
+  font-size: .82rem;
+  font-weight: 700;
+}
 .public-book-button { margin-top: .2rem; }
 
 .public-booking-notice,
@@ -195,10 +229,48 @@
 .public-empty-state,
 .public-confirmation { width: min(100%, 34rem); margin: 8vh auto 0; text-align: center; }
 .public-success-mark { display: grid; place-items: center; width: 3.2rem; height: 3.2rem; margin: 0 auto 1rem; border-radius: 999px; background: #e6f7ed; color: #14733d; font-size: 1.5rem; font-weight: 900; }
+.public-result-mark { display: grid; place-items: center; width: 3.2rem; height: 3.2rem; margin: 0 auto 1rem; border-radius: 999px; background: #f3f5f8; color: #4b5563; font-size: 1.5rem; font-weight: 900; }
+.public-result-mark.is-active { background: #e6f7ed; color: #14733d; }
+.public-result-mark.is-neutral { background: #f3f5f8; color: #4b5563; }
+.public-result-mark.is-attention { background: #fff0bf; color: #6f4a00; }
 .public-confirmation-list { display: grid; gap: .65rem; margin: 1.4rem 0; text-align: left; }
 .public-confirmation-list > div { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid #edf0f5; }
 .public-confirmation-list dt { color: #6b768c; }
 .public-confirmation-list dd { margin: 0; font-weight: 700; text-align: right; }
+.public-confirmation-lead { color: #4c5870; }
+.public-confirmation-services {
+  display: grid;
+  gap: .6rem;
+  padding: 0;
+  margin: 1.2rem 0;
+  list-style: none;
+  text-align: left;
+}
+.public-confirmation-services li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .8rem;
+  border: 1px solid #e1e7f1;
+  border-radius: .75rem;
+  background: #f8faff;
+}
+.public-confirmation-services li > span:first-child { display: grid; gap: .18rem; }
+.public-confirmation-services small { color: #6b768c; }
+.public-confirmation-services li > span:last-child { color: #3159d9; font-weight: 750; text-align: right; }
+.public-result-status {
+  padding: .8rem 1rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid #697386;
+  border-radius: .5rem;
+  background: #f3f5f8;
+  color: #303846;
+  text-align: left;
+}
+.public-result-status.is-active { border-left-color: #25824b; background: #eef9f2; color: #234a32; }
+.public-result-status.is-neutral { border-left-color: #697386; background: #f3f5f8; color: #303846; }
+.public-result-status.is-attention { border-left-color: #b45309; background: #fff7ed; color: #713f12; }
+.public-result-status p { margin: .25rem 0; }
 
 .public-settings-page { padding: clamp(1rem, 4vw, 3rem) clamp(.85rem, 4vw, 3rem) 6rem; }
 .public-admin-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: clamp(1.3rem, 4vw, 2.2rem); margin-bottom: 1rem; border-top: 3px solid #3159d9; }
@@ -262,3 +334,18 @@
   .public-booking-card,
   .public-admin-card { padding: 1rem; }
 }
+
+
+/* F12-05 accessible information / privacy / terms / support surface. */
+.public-booking-information { display:grid; gap:.85rem; margin:1rem 0; padding:1rem; border:1px solid #dfe5f0; border-radius:.8rem; background:#fbfcff; text-align:left; }
+.public-information-links { display:flex; flex-wrap:wrap; gap:.45rem .8rem; }
+.public-information-links a,.public-information-contact a { display:inline-flex; align-items:center; min-height:44px; color:#3159d9; font-size:.8rem; font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+.public-information-links a:focus-visible,.public-information-contact a:focus-visible,.public-information-sections article:focus-visible { outline:3px solid #9eb5ff; outline-offset:2px; }
+.public-information-sections { display:grid; gap:.75rem; }
+.public-information-sections article { scroll-margin-top:1rem; padding-top:.75rem; border-top:1px solid #e7ebf3; }
+.public-information-sections h3 { margin:0 0 .35rem; color:#26334d; font-size:.9rem; }
+.public-information-sections p { margin:.35rem 0; color:#5b667c; font-size:.78rem; line-height:1.55; }
+.public-information-warning { margin:0; padding:.7rem .8rem; border:1px solid #c63b3b; border-radius:.65rem; background:#fff2f2; color:#8f2222; font-size:.8rem; font-weight:700; }
+.public-information-contact { display:flex; flex-wrap:wrap; align-items:center; gap:.25rem .85rem; }
+.public-information-contact address { flex-basis:100%; margin-top:.2rem; color:#5b667c; font-size:.78rem; font-style:normal; }
+.public-confirmation .public-booking-information,.manage-information { margin-top:1.1rem; }
