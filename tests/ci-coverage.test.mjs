@@ -145,6 +145,95 @@ test('coverage follows transitive psql relative includes from a planned integrit
   }
 });
 
+test('H19 manifest integrity accepts one canonical gate with matched expect/include/pass registration', async () => {
+  const { root, planPath } = await makeFixture();
+  try {
+    await writeFile(path.join(root, 'supabase/tests/h19_test_support.sql'), '-- support\n');
+    await writeFile(path.join(root, 'supabase/tests/h19_alpha.sql'), '-- scenario alpha\n');
+    await writeFile(path.join(root, 'supabase/tests/h19_beta.sql'), '-- scenario beta\n');
+    await writeFile(
+      path.join(root, 'supabase/tests/h19_integrity_gate.sql'),
+      [
+        '\\ir h19_test_support.sql',
+        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1');",
+        "select pg_temp.h19_expect('inventory.beta','inventory','D2','D5');",
+        '\\ir h19_alpha.sql',
+        "select pg_temp.h19_pass('booking.alpha');",
+        '\\ir h19_beta.sql',
+        "select pg_temp.h19_pass('inventory.beta');",
+        'select pg_temp.h19_assert_complete(2);',
+        '',
+      ].join('\n'),
+    );
+    const plan = fixturePlan([{ database: 'fixture', file: 'supabase/tests/h19_integrity_gate.sql' }]);
+    await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`);
+
+    await assert.doesNotReject(verifyCiCoverage({ root, planPath }));
+  } finally {
+    await removeFixture(root);
+  }
+});
+
+test('H19 manifest integrity rejects orphan scenarios and standalone scenario plan steps', async () => {
+  const { root, planPath } = await makeFixture();
+  try {
+    await writeFile(path.join(root, 'supabase/tests/h19_test_support.sql'), '-- support\n');
+    await writeFile(path.join(root, 'supabase/tests/h19_alpha.sql'), '-- scenario alpha\n');
+    await writeFile(path.join(root, 'supabase/tests/h19_beta.sql'), '-- orphan scenario\n');
+    await writeFile(
+      path.join(root, 'supabase/tests/h19_integrity_gate.sql'),
+      [
+        '\\ir h19_test_support.sql',
+        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1');",
+        '\\ir h19_alpha.sql',
+        "select pg_temp.h19_pass('booking.alpha');",
+        'select pg_temp.h19_assert_complete(1);',
+        '',
+      ].join('\n'),
+    );
+    const plan = fixturePlan([
+      { database: 'fixture', file: 'supabase/tests/h19_integrity_gate.sql' },
+      { database: 'fixture', file: 'supabase/tests/h19_beta.sql' },
+    ]);
+    await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`);
+
+    await assert.rejects(
+      verifyCiCoverage({ root, planPath }),
+      /H19 manifest integrity violation[\s\S]*standalone PostgreSQL plan steps[\s\S]*missing from canonical gate/,
+    );
+  } finally {
+    await removeFixture(root);
+  }
+});
+
+test('H19 manifest integrity rejects expect/pass/count drift', async () => {
+  const { root, planPath } = await makeFixture();
+  try {
+    await writeFile(path.join(root, 'supabase/tests/h19_test_support.sql'), '-- support\n');
+    await writeFile(path.join(root, 'supabase/tests/h19_alpha.sql'), '-- scenario alpha\n');
+    await writeFile(
+      path.join(root, 'supabase/tests/h19_integrity_gate.sql'),
+      [
+        '\\ir h19_test_support.sql',
+        "select pg_temp.h19_expect('booking.alpha','booking','D0','D1');",
+        '\\ir h19_alpha.sql',
+        "select pg_temp.h19_pass('booking.other');",
+        'select pg_temp.h19_assert_complete(2);',
+        '',
+      ].join('\n'),
+    );
+    const plan = fixturePlan([{ database: 'fixture', file: 'supabase/tests/h19_integrity_gate.sql' }]);
+    await writeFile(planPath, `${JSON.stringify(plan, null, 2)}\n`);
+
+    await assert.rejects(
+      verifyCiCoverage({ root, planPath }),
+      /missing pass registration[\s\S]*pass IDs without manifest registration[\s\S]*assert_complete count mismatch/,
+    );
+  } finally {
+    await removeFixture(root);
+  }
+});
+
 test('coverage fails closed when a psql relative include points at an unknown SQL file', async () => {
   const { root, planPath } = await makeFixture();
   try {
