@@ -159,12 +159,11 @@ as $$
     and not exists (
       select 1
       from public.availability_blocks ab
-      where ab.business_id = p_business_id
-        and ab.active
+      where ab.active
         and (ab.staff_id is null or ab.staff_id = p_staff_id)
         and ab.starts_at < p_occupied_end
         and ab.ends_at > p_occupied_start
-    )
+    ) -- holdout D0xD3 variation: tenant-wide capacity blocks are no longer tenant-scoped
     and not exists (
       select 1
       from public.appointments a
