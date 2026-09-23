@@ -28,6 +28,17 @@ test('committed native artifacts are valid and the existing full CI discovers th
   assert.equal(classifyPaths(['.github/copilot-instructions.md', `${home}/examples/task-manifest.v0.1.json`]), 'code');
 });
 
+test('Effective State audit never paginates Issue #65 or treats it as review authority', () => {
+  const workflow = read('.github/workflows/development-audits.yml');
+  assert.doesNotMatch(workflow, /issues\/65\/comments/);
+  assert.doesNotMatch(workflow, /coordination-comments\.json/);
+  assert.doesNotMatch(workflow, /coordination_comments/);
+
+  const prompt = read('docs/development-engine/automations/effective-state-audit.md');
+  assert.match(prompt, /Issue #65 is a temporary\s+coordination channel, not review\/acceptance authority/);
+  assert.match(prompt, /do not read its history by\s+default/);
+});
+
 test('required artifact-test path reports extra advisories without failing, but rejects static errors', async () => {
   const fixture = mkdtempSync(path.join(tmpdir(), 'randevu-engine-advisory-'));
   const env = { ...process.env };
