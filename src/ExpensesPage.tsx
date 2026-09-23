@@ -5,7 +5,7 @@ import { useWorkspace } from './workspace-context';
 
 type ExpenseEvent = {
   eventId: string; businessId: string; eventType: 'expense'|'reversal';
-  sourceExpenseEventId: string|null; category: string; description: string|null;
+  sourceExpenseEventId: string|null; correctionOfEventId: string|null; category: string; description: string|null;
   amountMinor: number; effectMinor: number; currency: string; paymentMethod: 'cash'|'card';
   occurredAt: string; businessDate: string; timezone: string; reason: string|null; actorMembershipId: string; createdAt: string;
 };
@@ -200,7 +200,7 @@ export default function ExpensesPage(){
       <article className="expenses-card">
         <h2>Hareketler</h2>
         {loading?<p>Masraflar yükleniyor…</p>:events.length===0?<p>Henüz masraf hareketi yok.</p>:<ol className="expenses-list">{events.map(e=><li key={e.eventId}>
-          <div><strong>{e.eventType==='expense'?e.category:'Reversal'}</strong><span>{expenseDateTime(e.occurredAt,e.timezone)} · {e.paymentMethod==='cash'?'Nakit':'Kart'}</span>{e.description&&<small>{e.description}</small>}{e.reason&&<small>{e.reason}</small>}</div>
+          <div><strong>{e.eventType==='expense'?e.category:'Reversal'}</strong><span>{expenseDateTime(e.occurredAt,e.timezone)} · {e.paymentMethod==='cash'?'Nakit':'Kart'}</span>{e.description&&<small>{e.description}</small>}{e.correctionOfEventId&&<small>Düzeltme kaydı</small>}{e.reason&&<small>{e.reason}</small>}</div>
           <div><strong className={e.effectMinor<0?'negative':'positive'}>{e.effectMinor<0?'-':''}{money(Math.abs(e.effectMinor),e.currency)}</strong>{e.eventType==='expense'&&!reversedSourceIds.has(e.eventId)&&<><button disabled={busy} onClick={()=>void correct(e)}>Düzelt</button><button disabled={busy} onClick={()=>void reverse(e.eventId)}>İptal / reversal</button></>}{e.eventType==='expense'&&reversedSourceIds.has(e.eventId)&&<small>Düzeltildi / iptal edildi</small>}</div>
         </li>)}</ol>}
         {page?.hasMore&&<button className="expenses-more" disabled={busy} onClick={()=>void load(page.nextCursor,true)}>Daha fazla</button>}
