@@ -30,6 +30,7 @@ select pg_temp.h19_expect('booking.d4d5.cross_day_authority','booking','D4','D5'
 select pg_temp.h19_expect('booking.d0d3.tenant_capacity','booking','D0','D3',2207,2212,2213);
 select pg_temp.h19_expect('booking.d3d4.staff_hours_fallback','booking','D3','D4',2162,2164,2285);
 select pg_temp.h19_expect('inventory.d0d1.actor_idempotency','inventory','D0','D1',2283,2287,2288);
+select pg_temp.h19_expect('inventory.d1d5.idempotency_concurrency','inventory','D1','D5',2355,2359,2360);
 select pg_temp.h19_expect('booking.d2d3.snapshot_staff_coherence','booking','D2','D3',2106,2107,2098);
 
 \echo 'H19 Integrity Gate: D0xD1 tenant/idempotency'
@@ -64,14 +65,18 @@ select pg_temp.h19_pass('booking.d3d4.staff_hours_fallback');
 \ir h19_f15_d0_d1_actor_idempotency.sql
 select pg_temp.h19_pass('inventory.d0d1.actor_idempotency');
 
+\echo 'H19 Integrity Gate: F15 D1xD5 idempotency/concurrency replay'
+\ir h19_inventory_d1_d5_idempotency_concurrency.sql
+select pg_temp.h19_pass('inventory.d1d5.idempotency_concurrency');
+
 \echo 'H19 Integrity Gate: D2xD3 snapshot/staff coherence'
 \ir h19_d2_d3_snapshot_staff_coherence.sql
 select pg_temp.h19_pass('booking.d2d3.snapshot_staff_coherence');
 
-select pg_temp.h19_assert_complete(9);
+select pg_temp.h19_assert_complete(10);
 
 do $h19done$
 begin
-  raise notice 'H19 INTEGRITY GATE PASS: 9/9 registered interaction invariants accepted';
+  raise notice 'H19 INTEGRITY GATE PASS: 10/10 registered interaction invariants accepted';
 end
 $h19done$;
