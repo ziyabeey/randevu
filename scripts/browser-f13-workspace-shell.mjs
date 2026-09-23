@@ -711,6 +711,7 @@ try {
         businessId: BUSINESS_A,
         eventType: 'expense',
         sourceExpenseEventId: null,
+        correctionOfEventId: null,
         category: body.category,
         description: body.description ?? null,
         amountMinor: body.amountMinor,
@@ -1500,12 +1501,13 @@ try {
     [...document.querySelectorAll('.expenses-list button')].find((node) => node.textContent.trim() === 'Düzelt').click();
   })()`);
   await waitFor(
-    () => page.evaluate(`document.body.innerText.includes('Masraf düzeltmesi reversal + yeni kayıt olarak kaydedildi.') && document.body.innerText.includes('120') && document.body.innerText.includes('Düzeltildi / iptal edildi')`),
+    () => page.evaluate(`document.body.innerText.includes('Masraf düzeltmesi reversal + yeni kayıt olarak kaydedildi.') && document.body.innerText.includes('120') && document.body.innerText.includes('Düzeltildi / iptal edildi') && document.body.innerText.includes('Düzeltme kaydı')`),
     'F15-03 expense correction did not render reversal + replacement',
   );
   assert.equal(expenseEvents.length, 3, 'F15-03 fixture did not preserve source + correction reversal + replacement');
   assert.equal(expenseEvents.filter((item) => item.eventType === 'reversal' && item.sourceExpenseEventId === EXPENSE).length, 1, 'F15-03 correction did not create exactly one source reversal');
   assert.equal(expenseEvents.find((item) => item.eventId === EXPENSE_REPLACEMENT)?.amountMinor, 12000, 'F15-03 correction replacement amount is wrong');
+  assert.equal(expenseEvents.find((item) => item.eventId === EXPENSE_REPLACEMENT)?.correctionOfEventId, EXPENSE, 'F15-03 correction replacement lost source lineage');
   const correctionUi = await page.evaluate(`(() => ({
     actionCount: [...document.querySelectorAll('.expenses-list button')].filter((node) => node.textContent.trim() === 'Düzelt').length,
     retiredCount: [...document.querySelectorAll('.expenses-list li')].filter((node) => node.textContent.includes('Düzeltildi / iptal edildi')).length,
