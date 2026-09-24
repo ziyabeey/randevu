@@ -63,15 +63,19 @@ export function verifyBaseFile(baseFile) {
   });
 }
 
+function validateRendererMetadata(renderer) {
+  for (const field of ['rendererId','version','framework','language']) {
+    if (!nonEmpty(renderer?.[field])) throw new Error(`renderer ${field} required`);
+  }
+  if (!isSha256(renderer?.artifactSha256)) throw new Error('renderer artifactSha256 required');
+  return renderer;
+}
+
 function rendererIdentity(renderer) {
   if (!renderer || typeof renderer.render !== 'function') {
     throw new TypeError('renderer with render(spec, baseFile) required');
   }
-  for (const field of ['rendererId','version','framework','language']) {
-    if (!nonEmpty(renderer[field])) throw new Error(`renderer ${field} required`);
-  }
-  if (!isSha256(renderer.artifactSha256)) throw new Error('renderer artifactSha256 required');
-
+  validateRendererMetadata(renderer);
   return deepFreeze({
     rendererId: renderer.rendererId,
     version: renderer.version,
@@ -94,11 +98,12 @@ function normalizeRenderResult(result) {
 }
 
 function runRendererDeterministically(renderer, spec, baseFile) {
-  const once = normalizeRenderResult(renderer.render(
+  const render = renderer.render;
+  const once = normalizeRenderResult(render(
     deepFreeze(structuredClone(spec)),
     baseFile ? deepFreeze(structuredClone(baseFile)) : null,
   ));
-  const twice = normalizeRenderResult(renderer.render(
+  const twice = normalizeRenderResult(render(
     deepFreeze(structuredClone(spec)),
     baseFile ? deepFreeze(structuredClone(baseFile)) : null,
   ));
@@ -158,6 +163,9 @@ export function validateTestCandidate(candidate, { baseFile = null } = {}) {
   if (!candidate?.candidateSha256) throw new TypeError('test candidate required');
   const { candidateSha256, ...body } = structuredClone(candidate);
   if (hashBody(body) !== candidateSha256) throw new Error('test candidate hash mismatch');
+
+  if (!isSha256(candidate.specSha256)) throw new Error('candidate specSha256 is invalid');
+  validateRendererMetadata(candidate.renderer);
 
   const normalizedPath = normalizeCandidatePath(candidate.target?.path);
   if (normalizedPath !== candidate.target.path) throw new Error('candidate target path is not normalized');
