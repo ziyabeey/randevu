@@ -62,9 +62,15 @@ export function freezeTestRecipe(recipe = {}) {
 
 export function verifyTestRecipe(recipe, hypothesis) {
   if (!recipe) return null;
+  if (!nonEmptyString(recipe.recipeId) || !nonEmptyString(recipe.version)) {
+    throw new Error('test recipe requires recipeId and version');
+  }
   if (recipeDigest(recipe) !== recipe.digest) throw new Error('test recipe digest mismatch');
 
   const matches = recipe.matches ?? {};
+  if (!nonEmptyString(matches.reason)) {
+    throw new Error('test recipe requires a reason match');
+  }
   if (matches.reason != null && matches.reason !== hypothesis.reason) {
     throw new Error('test recipe reason does not match hypothesis');
   }
@@ -162,6 +168,10 @@ export function buildTestSpecification({
     throw new Error('hypothesis requires confirmed validation before test specification');
   }
 
+  if (!Array.isArray(hypothesis.evidenceIds) || hypothesis.evidenceIds.length === 0) {
+    throw new Error('hypothesis requires source evidence IDs');
+  }
+
   const verifiedRecipe = verifyTestRecipe(recipe, hypothesis);
   const provenance = recipeRef(verifiedRecipe);
 
@@ -256,7 +266,36 @@ export function validateTestSpecification(spec) {
     }
   }
 
+  if (!Array.isArray(spec.origin?.evidenceIds) || spec.origin.evidenceIds.length === 0) {
+    throw new Error('test specification requires origin evidence IDs');
+  }
+
+  if (!spec.mutationToKill || !['known', 'unknown'].includes(spec.mutationToKill.state)) {
+    throw new Error('invalid mutationToKill state');
+  }
+  if (spec.mutationToKill.state === 'known') {
+    if (!nonEmptyString(spec.mutationToKill.mutationId)
+      || !nonEmptyString(spec.mutationToKill.mutatorId)
+      || !Array.isArray(spec.mutationToKill.provenance)
+      || spec.mutationToKill.provenance.length === 0) {
+      throw new Error('known mutationToKill requires IDs and provenance');
+    }
+  } else if (spec.mutationToKill.mutationId !== null || spec.mutationToKill.mutatorId !== null) {
+    throw new Error('unknown mutationToKill must not carry mutation IDs');
+  }
+
   const survivingMutant = spec.origin?.reason === 'surviving-mutant';
+  const expectedUnknowns = [];
+  if (spec.setup.state === 'unknown') expectedUnknowns.push('setup');
+  if (spec.action.state === 'unknown') expectedUnknowns.push('action');
+  if (spec.expectedInvariant.state === 'unknown') expectedUnknowns.push('expectedInvariant');
+  if (spec.mutationToKill.state === 'unknown') expectedUnknowns.push('mutationToKill');
+  if (spec.requiredObservations.state === 'unknown') expectedUnknowns.push('requiredObservations');
+
+  if (stableJson(spec.unknowns) !== stableJson(expectedUnknowns)) {
+    throw new Error('unknowns list is inconsistent with section states');
+  }
+
   const expectedReady = spec.setup.state === 'known'
     && spec.action.state === 'known'
     && spec.expectedInvariant.state === 'known'
