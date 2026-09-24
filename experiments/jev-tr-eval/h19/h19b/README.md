@@ -2,8 +2,8 @@
 
 Protokol: [`../H19B-PROTOKOL.md`](../H19B-PROTOKOL.md), sürüm v0.2, mühürlü (e3f1882).
 
-**Durum: vakalar donduruldu. Hiçbir Jev çağrısı yapılmadı.** Ölçüm, ikinci okuyucu kontrolünden sonra
-yapılacak.
+**Durum: vakalar donduruldu. Hiçbir Jev çağrısı yapılmadı.** Kör ikinci okuyucu kontrolü tamamlandı:
+12/12 etiket anahtarla uyuştu, vaka düşmedi. Ölçüm kapısı açıktır.
 
 | Dosya | İş |
 |---|---|
