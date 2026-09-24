@@ -155,6 +155,16 @@ assert.throws(() => createMinimalTestSpec({
   schemaVersion: 2,
 }), /unsupported minimal test spec schemaVersion/);
 
+assert.throws(() => validateMinimalTestSpec({
+  ...incomplete,
+  schemaVersion: 2,
+}), /unsupported minimal test spec schemaVersion/);
+
+assert.throws(() => validateMinimalTestSpec({
+  ...incomplete,
+  validationStatus: 'rejected',
+}), /validationStatus is invalid/);
+
 assert.throws(() => createMinimalTestSpec({
   packet: malformedPacket,
   hypothesisId: malformedPacket.hypotheses[0].id,
