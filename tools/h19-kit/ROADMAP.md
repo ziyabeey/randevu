@@ -57,7 +57,9 @@ M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf3
 - [ ] compiler/indexer launcher adapters (scip-typescript, scip-python, rust-analyzer, etc.)
 - [ ] call-edge classifier where language/indexer evidence supports it
 - [ ] Tree-sitter fallback adapters for unsupported languages
-- [ ] Nx/Turborepo affected adapters
+- [x] generic changed-file → reverse-dependency affected resolver
+- [x] Nx project-graph / affected adapter
+- [ ] Turborepo affected adapter
 - [x] content-addressed SCIP project-shard cache
 - [x] exact-head provenance manifest
 - [x] indexer version/config/source/dependency-surface invalidation
