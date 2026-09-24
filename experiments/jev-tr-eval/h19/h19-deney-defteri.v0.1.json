@@ -1,0 +1,175 @@
+{
+  "version": "H19-LEDGER-0.1",
+  "date": "2026-09-24",
+  "method": "H19",
+  "note": "One H19 method; suffixes are experiment identifiers, not separate methods.",
+  "experiments": [
+    {
+      "id": "R0",
+      "status": "completed",
+      "hypothesis": "Six semantic axes contain above-random signal in Jev outputs.",
+      "evidence": {
+        "cases": 16,
+        "top1_rate": 0.25,
+        "top3_rate_range": [
+          0.625,
+          0.688
+        ]
+      },
+      "reusable_lessons": [
+        "Axis-vector signal exists above random.",
+        "Do not trust one axis absolute score without ablation."
+      ],
+      "next": "H19a"
+    },
+    {
+      "id": "H19a",
+      "status": "completed",
+      "hypothesis": "D5 signal is robust to lexical/context perturbation.",
+      "evidence": {
+        "synthetic_lock_cue_delta_D5": 0.2
+      },
+      "result": "Lexical/context cue causally moves D5; D1 co-moves.",
+      "reusable_lessons": [
+        "Use ablation and hard negatives.",
+        "Context words are causal cues."
+      ],
+      "anti_patterns": [
+        "Treating lock-related text as direct proof of D5."
+      ],
+      "next": "H19b"
+    },
+    {
+      "id": "H19b",
+      "status": "incomparable",
+      "hypothesis": "Fact-conditioned directional Choice improves D5.",
+      "evidence": {
+        "J_auc": 0.96,
+        "V_auc": 1
+      },
+      "result": "Control set did not reproduce the intended H19a failure mode.",
+      "reusable_lessons": [
+        "A strong treatment result is not interpretable if the control task is too easy."
+      ],
+      "anti_patterns": [
+        "Easy negatives."
+      ],
+      "next": "H19b-prime"
+    },
+    {
+      "id": "H19b-prime",
+      "status": "failed",
+      "hypothesis": "Facts add value beyond Choice framing on adversarial D5 cases.",
+      "evidence": {
+        "V_auc": 0.92,
+        "J0_auc": 0.86,
+        "JF_auc": 0.82,
+        "direction_accuracy": 0.719
+      },
+      "result": "Facts acted as a prior and hurt; V remained best.",
+      "reusable_lessons": [
+        "Keep extractable facts in code by default.",
+        "Separate detection from direction."
+      ],
+      "anti_patterns": [
+        "Prompting deterministic facts as premises.",
+        "Single directional protection Choice."
+      ],
+      "next": "H19d"
+    },
+    {
+      "id": "H19d",
+      "status": "failed",
+      "hypothesis": "Relative-axis score S0 = D5 - max(other) beats raw D5 and works as router.",
+      "evidence": {
+        "raw_D5_auc": 0.934,
+        "S0_auc": 0.89,
+        "S0_pair_recall": 0.6
+      },
+      "result": "Relative-axis router did not replicate; co-occurring true axes penalized real D5.",
+      "reusable_lessons": [
+        "Multi-axis true positives must be represented prospectively."
+      ],
+      "anti_patterns": [
+        "Assuming D5 must be the dominant axis.",
+        "Promoting post-hoc score variants."
+      ],
+      "next": "H19t"
+    },
+    {
+      "id": "H19t",
+      "status": "failed",
+      "hypothesis": "Pre-calibrated raw D5 threshold 0.64 preserves recall and reduces System Two load.",
+      "evidence": {
+        "recall": 0.975,
+        "false_positive_rate": 0.35,
+        "D1_negative_false_positive_rate": 0.667,
+        "baseline_route_rate": 0.75,
+        "candidate_route_rate": 0.663,
+        "raw_D5_auc": 0.93
+      },
+      "result": "Recall held, but D1/D5 conflation prevented enough load reduction.",
+      "reusable_lessons": [
+        "Raw D5 is a strong ranker.",
+        "D1 and D5 are a persistent semantic neighborhood."
+      ],
+      "anti_patterns": [
+        "Threshold tuning as a fix for D1/D5 overlap."
+      ],
+      "next": "H19u"
+    },
+    {
+      "id": "H19u",
+      "status": "pending",
+      "hypothesis": "A second cheap Choice can resolve D1-only vs D5-involved without receiving V scores as premises.",
+      "protocol_commit": "d39e3883f22a915cfe20ab74691b19ff447ea534",
+      "reusable_lessons": [
+        "Second-stage resolver must see the diff, not first-stage score facts."
+      ],
+      "next_if_pass": "H19s"
+    },
+    {
+      "id": "H19s",
+      "status": "locked",
+      "hypothesis": "Validated router/resolver reduces real System Two work in shadow PR traffic.",
+      "unlock_condition": "H19u passes all preregistered gates."
+    }
+  ],
+  "invariant_rules": [
+    "Preregister before model calls.",
+    "Use fresh cases after method changes.",
+    "Blind second-reader before measurement.",
+    "Do not relabel disagreements; drop them.",
+    "Ban repeated mutations across validation sets.",
+    "Reject sets carried by a naive feature AUC > 0.70.",
+    "Balance hard negatives and multi-axis positives.",
+    "Separate detection, direction and routing.",
+    "Keep extractable facts out of model premises by default.",
+    "Post-hoc findings only generate hypotheses.",
+    "Evaluate operational cost/load separately from AUC."
+  ],
+  "generalization": {
+    "portable": [
+      "experiment core",
+      "freeze/hash",
+      "blind review",
+      "naive-feature gates",
+      "evidence ledger",
+      "prospective gates"
+    ],
+    "domain_specific": [
+      "axis definitions",
+      "invariants",
+      "mutation families",
+      "extractors"
+    ],
+    "current_domain_axes": {
+      "D0": "authorization / tenant / capability scope",
+      "D1": "atomicity / idempotency / command identity",
+      "D2": "snapshot / value / price / policy",
+      "D3": "staff / capacity / resource authority",
+      "D4": "time / buffer / local-day / boundary authority",
+      "D5": "concurrency / optimistic version / serialization"
+    }
+  }
+}
