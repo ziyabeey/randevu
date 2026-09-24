@@ -221,6 +221,66 @@ export async function queryNetgsmDeliveryReport(
   }
 }
 
+export type NetgsmLengthResult =
+  | { status: 'ok'; parts: number }
+  | {
+      status: 'failed';
+      errorClass: string;
+      retryable: boolean;
+      retryAfterSeconds?: number;
+    };
+
+export async function measureNetgsmSmsParts(
+  env: NetgsmEnv,
+  message: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<NetgsmLengthResult> {
+  const config = netgsmConfigured(env);
+  if (!config) {
+    return { status: 'failed', errorClass: 'netgsm_not_configured', retryable: false };
+  }
+  if (!message.trim()) {
+    return { status: 'failed', errorClass: 'netgsm_invalid_payload', retryable: false };
+  }
+  try {
+    const { response, data } = await jsonWithTimeout(
+      LENGTH_ENDPOINT,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: basicAuth(config.usercode, config.password),
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          context: message,
+          encoding: 11,
+          customHeader: true,
+        }),
+      },
+      fetchImpl,
+    );
+    const parts = typeof data?.parts === 'number' ? data.parts : Number(data?.parts);
+    if (!response.ok || !Number.isInteger(parts) || parts < 1) {
+      return {
+        status: 'failed',
+        errorClass: `netgsm_length_${providerCode(data) || `http_${response.status}`}`.slice(0, 120),
+        retryable: response.status === 429 || response.status >= 500,
+        retryAfterSeconds: retryAfter(response),
+      };
+    }
+    return { status: 'ok', parts };
+  } catch (error) {
+    return {
+      status: 'failed',
+      errorClass: error instanceof DOMException && error.name === 'AbortError'
+        ? 'netgsm_length_timeout'
+        : 'netgsm_length_network_error',
+      retryable: true,
+    };
+  }
+}
+
 export async function sendNetgsmSms(
   env: NetgsmEnv,
   input: NetgsmSendInput,
@@ -257,50 +317,23 @@ export async function sendNetgsmSms(
 
   // Provider-side length calculation is a safe preflight. The official API
   // rejects content over six parts; never attempt the send when the bound cannot
-  // be proven.
-  try {
-    const { response, data } = await jsonWithTimeout(
-      LENGTH_ENDPOINT,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: auth,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          context: input.message,
-          encoding: 11,
-          customHeader: true,
-        }),
-      },
-      fetchImpl,
-    );
-    const parts = typeof data?.parts === 'number' ? data.parts : Number(data?.parts);
-    if (!response.ok || !Number.isInteger(parts) || parts < 1) {
-      return {
-        status: 'failed',
-        errorClass: `netgsm_length_${providerCode(data) || `http_${response.status}`}`.slice(0, 120),
-        retryable: response.status === 429 || response.status >= 500,
-        definitelyRejected: true,
-        retryAfterSeconds: retryAfter(response),
-      };
-    }
-    if (parts > MAX_SMS_PARTS) {
-      return {
-        status: 'failed',
-        errorClass: 'netgsm_segment_limit_exceeded',
-        retryable: false,
-        definitelyRejected: true,
-      };
-    }
-  } catch (error) {
+  // be proven. The same helper is reused by hosted acceptance so the measured
+  // segment envelope is exactly the product preflight.
+  const measured = await measureNetgsmSmsParts(env, input.message, fetchImpl);
+  if (measured.status === 'failed') {
     return {
       status: 'failed',
-      errorClass: error instanceof DOMException && error.name === 'AbortError'
-        ? 'netgsm_length_timeout'
-        : 'netgsm_length_network_error',
-      retryable: true,
+      errorClass: measured.errorClass,
+      retryable: measured.retryable,
+      definitelyRejected: true,
+      retryAfterSeconds: measured.retryAfterSeconds,
+    };
+  }
+  if (measured.parts > MAX_SMS_PARTS) {
+    return {
+      status: 'failed',
+      errorClass: 'netgsm_segment_limit_exceeded',
+      retryable: false,
       definitelyRejected: true,
     };
   }
