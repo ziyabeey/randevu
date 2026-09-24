@@ -58,7 +58,8 @@ M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf3
 - [x] provider-neutral SCIP indexer registry + runtime version probing
 - [x] scip-typescript launcher
 - [ ] verified scip-python / rust-analyzer / scip-clang launchers
-- [ ] call-edge classifier where language/indexer evidence supports it
+- [x] fail-closed call-edge contract
+- [ ] language-specific confirmed call classifiers
 - [x] Tree-sitter fallback adapter contract + initial Go/Rust/C++ profiles
 - [x] generic changed-file → reverse-dependency affected resolver
 - [x] Nx project-graph / affected adapter
