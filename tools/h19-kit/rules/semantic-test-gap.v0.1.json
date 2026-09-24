@@ -1,0 +1,26 @@
+{
+  "id": "semantic-test-gap",
+  "version": "0.1.0",
+  "consumes": [
+    "semantic.risk.high",
+    "tests.impacted"
+  ],
+  "when": {
+    "all": [
+      {
+        "evidence": "semantic.risk.high",
+        "state": "present"
+      },
+      {
+        "evidence": "tests.impacted",
+        "state": "absent"
+      }
+    ]
+  },
+  "emit": {
+    "id": "H19.SEMANTIC_TEST_GAP",
+    "title": "High semantic risk has no impacted test",
+    "severity": "warning",
+    "action": "targeted-test"
+  }
+}
