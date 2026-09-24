@@ -1,0 +1,707 @@
+{
+  "arm": "V",
+  "model": "jev-1.13.0",
+  "cases_sha256": "3faa879057aed906eb8b69fe673a64a066228a4db170a3866315610d5e9d70f6",
+  "rows": [
+    {
+      "case_id": "A01",
+      "input_digest": "e7289ae3db83ebffaba57d803d808db2ab52fa5188029b144498b36e9eb58011",
+      "input_tokens": 906,
+      "latency_ms": 204,
+      "axis_probabilities": {
+        "D0": 0.15,
+        "D1": 0.67,
+        "D2": 0.16,
+        "D3": 0.38,
+        "D4": 0.03,
+        "D5": 0.89
+      }
+    },
+    {
+      "case_id": "A02",
+      "input_digest": "3cf4afda9a25bd4acaa2fe7230f26a17374f9b00ea05634d9e1f1e772995a9f7",
+      "input_tokens": 902,
+      "latency_ms": 230,
+      "axis_probabilities": {
+        "D0": 0.33,
+        "D1": 0.66,
+        "D2": 0.22,
+        "D3": 0.04,
+        "D4": 0.02,
+        "D5": 0.86
+      }
+    },
+    {
+      "case_id": "A03",
+      "input_digest": "0304987b2a67525a9b367d2d8edeaa29e3b5b7e5aebae1b1ad461a2b719b66c5",
+      "input_tokens": 903,
+      "latency_ms": 204,
+      "axis_probabilities": {
+        "D0": 0.11,
+        "D1": 0.61,
+        "D2": 0.27,
+        "D3": 0.02,
+        "D4": 0.02,
+        "D5": 0.87
+      }
+    },
+    {
+      "case_id": "A04",
+      "input_digest": "d9a7d0f6e4024983c503cfcc1a8808d809639216834af1aad8dc3d4418c75754",
+      "input_tokens": 852,
+      "latency_ms": 209,
+      "axis_probabilities": {
+        "D0": 0.54,
+        "D1": 0.71,
+        "D2": 0.19,
+        "D3": 0.15,
+        "D4": 0.02,
+        "D5": 0.93
+      }
+    },
+    {
+      "case_id": "A05",
+      "input_digest": "839d32121b894c45c62e1a6b02071133f233bc61ec060a810c058ef786a8a8cd",
+      "input_tokens": 881,
+      "latency_ms": 679,
+      "axis_probabilities": {
+        "D0": 0.1,
+        "D1": 0.73,
+        "D2": 0.24,
+        "D3": 0.06,
+        "D4": 0.02,
+        "D5": 0.94
+      }
+    },
+    {
+      "case_id": "A06",
+      "input_digest": "b13c5cf08cf6f81705fe1a8066003553430c69252f4a2ea07b6892bc41e81b2f",
+      "input_tokens": 999,
+      "latency_ms": 300,
+      "axis_probabilities": {
+        "D0": 0.61,
+        "D1": 0.67,
+        "D2": 0.33,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.84
+      }
+    },
+    {
+      "case_id": "A07",
+      "input_digest": "a19bfc9b288322f67b4c5e39112389edd6fa18ddebec7caac516e25a05a8aa43",
+      "input_tokens": 945,
+      "latency_ms": 689,
+      "axis_probabilities": {
+        "D0": 0.12,
+        "D1": 0.75,
+        "D2": 0.35,
+        "D3": 0.08,
+        "D4": 0.04,
+        "D5": 0.9
+      }
+    },
+    {
+      "case_id": "A08",
+      "input_digest": "7874b1c3e6b4014cce9f21fe053a07eefacc8b11128d6ee7a6f31167e928313a",
+      "input_tokens": 814,
+      "latency_ms": 638,
+      "axis_probabilities": {
+        "D0": 0.5,
+        "D1": 0.76,
+        "D2": 0.3,
+        "D3": 0.04,
+        "D4": 0.03,
+        "D5": 0.87
+      }
+    },
+    {
+      "case_id": "A09",
+      "input_digest": "c80e74c09110dd0c959ade890f7b079c5e1e90b31af31a35f7643c45f3391b97",
+      "input_tokens": 903,
+      "latency_ms": 211,
+      "axis_probabilities": {
+        "D0": 0.23,
+        "D1": 0.73,
+        "D2": 0.44,
+        "D3": 0.9,
+        "D4": 0.03,
+        "D5": 0.8
+      }
+    },
+    {
+      "case_id": "A10",
+      "input_digest": "c942a1c5fce85e8a760877c972c7ddcdda414e8f4c052d743312792d5638add3",
+      "input_tokens": 924,
+      "latency_ms": 290,
+      "axis_probabilities": {
+        "D0": 0.14,
+        "D1": 0.7,
+        "D2": 0.33,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.9
+      }
+    },
+    {
+      "case_id": "B01",
+      "input_digest": "d5ef54235852f0b3fe1bdfcf6dcda50ec15b1c0ef06d9a4eea966942d7435015",
+      "input_tokens": 845,
+      "latency_ms": 232,
+      "axis_probabilities": {
+        "D0": 0.13,
+        "D1": 0.9,
+        "D2": 0.67,
+        "D3": 0.04,
+        "D4": 0.02,
+        "D5": 0.9
+      }
+    },
+    {
+      "case_id": "B02",
+      "input_digest": "4502c9d4f21edad9bc2818edd24baab1c6fa2dbf2d2f0df666e67c0f9f39b5c3",
+      "input_tokens": 958,
+      "latency_ms": 261,
+      "axis_probabilities": {
+        "D0": 0.14,
+        "D1": 0.91,
+        "D2": 0.74,
+        "D3": 0.02,
+        "D4": 0.02,
+        "D5": 0.88
+      }
+    },
+    {
+      "case_id": "B03",
+      "input_digest": "7297902ae21d38a9202110e5afb40d90a5067ee578f27d9edf58a127012e2dcb",
+      "input_tokens": 857,
+      "latency_ms": 605,
+      "axis_probabilities": {
+        "D0": 0.13,
+        "D1": 0.86,
+        "D2": 0.49,
+        "D3": 0.02,
+        "D4": 0.03,
+        "D5": 0.88
+      }
+    },
+    {
+      "case_id": "B04",
+      "input_digest": "5abdab77e178d65fe8236a8efc7731bdfcc0c4ab1e2a50909c9dd76599b6939b",
+      "input_tokens": 1013,
+      "latency_ms": 633,
+      "axis_probabilities": {
+        "D0": 0.16,
+        "D1": 0.87,
+        "D2": 0.35,
+        "D3": 0.03,
+        "D4": 0.03,
+        "D5": 0.79
+      }
+    },
+    {
+      "case_id": "B05",
+      "input_digest": "c39f285c7838527121e9e671398400bcecfadf97fb05984ad78a0bc707cba3a9",
+      "input_tokens": 906,
+      "latency_ms": 343,
+      "axis_probabilities": {
+        "D0": 0.1,
+        "D1": 0.65,
+        "D2": 0.3,
+        "D3": 0.02,
+        "D4": 0.02,
+        "D5": 0.73
+      }
+    },
+    {
+      "case_id": "B06",
+      "input_digest": "1272873924e9816420b5ef2c95ac0360667bc6c9d11daa183bedb3999fb01979",
+      "input_tokens": 1098,
+      "latency_ms": 599,
+      "axis_probabilities": {
+        "D0": 0.19,
+        "D1": 0.61,
+        "D2": 0.5,
+        "D3": 0.03,
+        "D4": 0.1,
+        "D5": 0.77
+      }
+    },
+    {
+      "case_id": "B07",
+      "input_digest": "c7312b732e0ecd4a7d452bbc3ecf6e81c61668606f09218332325b6941c83c2e",
+      "input_tokens": 949,
+      "latency_ms": 229,
+      "axis_probabilities": {
+        "D0": 0.18,
+        "D1": 0.6,
+        "D2": 0.27,
+        "D3": 0.03,
+        "D4": 0.04,
+        "D5": 0.59
+      }
+    },
+    {
+      "case_id": "B08",
+      "input_digest": "e42a01fd192c36a73814b3fbc32bbf0ec02c992404f0ca78e347410ed9e84a90",
+      "input_tokens": 802,
+      "latency_ms": 256,
+      "axis_probabilities": {
+        "D0": 0.1,
+        "D1": 0.94,
+        "D2": 0.75,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.91
+      }
+    },
+    {
+      "case_id": "B09",
+      "input_digest": "93f912a6fbd8d9cd28d3ee20c4f5099a23b20b0f5cbeee1b444f1fae972c68ec",
+      "input_tokens": 835,
+      "latency_ms": 233,
+      "axis_probabilities": {
+        "D0": 0.14,
+        "D1": 0.85,
+        "D2": 0.46,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.85
+      }
+    },
+    {
+      "case_id": "B10",
+      "input_digest": "9322f84ded4c4fa7f223ace0e58c57f56a2683e551df963a5c8f07c7ed4b6799",
+      "input_tokens": 982,
+      "latency_ms": 217,
+      "axis_probabilities": {
+        "D0": 0.55,
+        "D1": 0.85,
+        "D2": 0.33,
+        "D3": 0.04,
+        "D4": 0.02,
+        "D5": 0.87
+      }
+    },
+    {
+      "case_id": "C01",
+      "input_digest": "9dfcb4561bfe62f7913b423e8ad089250731c6a04ee808087b7397c66038b64a",
+      "input_tokens": 830,
+      "latency_ms": 925,
+      "axis_probabilities": {
+        "D0": 0.03,
+        "D1": 0.14,
+        "D2": 0.32,
+        "D3": 0.04,
+        "D4": 0.02,
+        "D5": 0.03
+      }
+    },
+    {
+      "case_id": "C02",
+      "input_digest": "593b28091b020391e45bbce6c5984666f40cf0a65feb20e50980035bc6cac456",
+      "input_tokens": 833,
+      "latency_ms": 909,
+      "axis_probabilities": {
+        "D0": 0.14,
+        "D1": 0.21,
+        "D2": 0.09,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.07
+      }
+    },
+    {
+      "case_id": "C03",
+      "input_digest": "e22fb920ab12d854fe1cde911d19347cdb8948bd45e2390ed3c0d6eaab694dc9",
+      "input_tokens": 868,
+      "latency_ms": 279,
+      "axis_probabilities": {
+        "D0": 0.12,
+        "D1": 0.43,
+        "D2": 0.68,
+        "D3": 0.02,
+        "D4": 0.08,
+        "D5": 0.1
+      }
+    },
+    {
+      "case_id": "C04",
+      "input_digest": "930ccd24a0c1452c68afb601cb1f3e9b687061f8673aa9fee39b7ccba96c7f88",
+      "input_tokens": 829,
+      "latency_ms": 745,
+      "axis_probabilities": {
+        "D0": 0.12,
+        "D1": 0.08,
+        "D2": 0.09,
+        "D3": 0.07,
+        "D4": 0.01,
+        "D5": 0.03
+      }
+    },
+    {
+      "case_id": "C05",
+      "input_digest": "4acd659ca87e7e21e8ab0e66becedac381e995bfa5eba087b3686972c042ee4b",
+      "input_tokens": 854,
+      "latency_ms": 256,
+      "axis_probabilities": {
+        "D0": 0.03,
+        "D1": 0.05,
+        "D2": 0.3,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.02
+      }
+    },
+    {
+      "case_id": "C06",
+      "input_digest": "bc88ff10a7845eb6010d6a5c69d1be9b4691f46316c8729991a4e9aee128c8e5",
+      "input_tokens": 1119,
+      "latency_ms": 218,
+      "axis_probabilities": {
+        "D0": 0.12,
+        "D1": 0.19,
+        "D2": 0.14,
+        "D3": 0.02,
+        "D4": 0.02,
+        "D5": 0.04
+      }
+    },
+    {
+      "case_id": "C07",
+      "input_digest": "730e3cb7451ec57a0785f15b83442fe4af3d9c17cecc5d5cb50f48afe496065a",
+      "input_tokens": 894,
+      "latency_ms": 256,
+      "axis_probabilities": {
+        "D0": 0.08,
+        "D1": 0.18,
+        "D2": 0.77,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.05
+      }
+    },
+    {
+      "case_id": "C08",
+      "input_digest": "6909b40bf728daf068dd8d4e0bb5a1dc4cc411f30a95f7ad260a7e1f99c72a70",
+      "input_tokens": 867,
+      "latency_ms": 210,
+      "axis_probabilities": {
+        "D0": 0.05,
+        "D1": 0.58,
+        "D2": 0.31,
+        "D3": 0.02,
+        "D4": 0.08,
+        "D5": 0.17
+      }
+    },
+    {
+      "case_id": "C09",
+      "input_digest": "41e6b9d247bf5689d93bb107016a32993bf1dbf28315356813c2b61b1532f444",
+      "input_tokens": 898,
+      "latency_ms": 617,
+      "axis_probabilities": {
+        "D0": 0.22,
+        "D1": 0.21,
+        "D2": 0.08,
+        "D3": 0.51,
+        "D4": 0.02,
+        "D5": 0.18
+      }
+    },
+    {
+      "case_id": "C10",
+      "input_digest": "0dbc1eb2333ad9e392add48084f5db059c9725e9e88f3a93dc93c4319d0594ad",
+      "input_tokens": 865,
+      "latency_ms": 596,
+      "axis_probabilities": {
+        "D0": 0.05,
+        "D1": 0.12,
+        "D2": 0.12,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.09
+      }
+    },
+    {
+      "case_id": "D01",
+      "input_digest": "085c910526e65df786c92c41224d2c9338dec232bdedc03b869da7156b9f0450",
+      "input_tokens": 1004,
+      "latency_ms": 672,
+      "axis_probabilities": {
+        "D0": 0.05,
+        "D1": 0.13,
+        "D2": 0.15,
+        "D3": 0.02,
+        "D4": 0.02,
+        "D5": 0.03
+      }
+    },
+    {
+      "case_id": "D02",
+      "input_digest": "9eba09179fb1a1764479a643e6421b984aa6d919970efb45d4dcf4ec05d61152",
+      "input_tokens": 856,
+      "latency_ms": 708,
+      "axis_probabilities": {
+        "D0": 0.04,
+        "D1": 0.23,
+        "D2": 0.46,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.04
+      }
+    },
+    {
+      "case_id": "D03",
+      "input_digest": "1af27e25096146e83cd630d606aa5386049d059adbcead2a28e9b3a11cfc49f8",
+      "input_tokens": 1110,
+      "latency_ms": 245,
+      "axis_probabilities": {
+        "D0": 0.03,
+        "D1": 0.12,
+        "D2": 0.1,
+        "D3": 0.02,
+        "D4": 0.02,
+        "D5": 0.03
+      }
+    },
+    {
+      "case_id": "D04",
+      "input_digest": "3d216dc297ffe49f990e390fae4d3a044b2248539442b8c6089dc7c9b64f5f69",
+      "input_tokens": 1014,
+      "latency_ms": 217,
+      "axis_probabilities": {
+        "D0": 0.04,
+        "D1": 0.27,
+        "D2": 0.14,
+        "D3": 0.9,
+        "D4": 0.95,
+        "D5": 0.06
+      }
+    },
+    {
+      "case_id": "D05",
+      "input_digest": "cb9aa1afaa7dd8257dcbd43f9c9244ad378bb7241a453cef45e42018d20360c2",
+      "input_tokens": 876,
+      "latency_ms": 204,
+      "axis_probabilities": {
+        "D0": 0.11,
+        "D1": 0.1,
+        "D2": 0.41,
+        "D3": 0.91,
+        "D4": 0.2,
+        "D5": 0.24
+      }
+    },
+    {
+      "case_id": "D06",
+      "input_digest": "efe60d5d025c80e9fda2d86a7fd2804c4eb05efeca57eda34eb74ad5134f3981",
+      "input_tokens": 930,
+      "latency_ms": 197,
+      "axis_probabilities": {
+        "D0": 0.33,
+        "D1": 0.25,
+        "D2": 0.13,
+        "D3": 0.02,
+        "D4": 0.86,
+        "D5": 0.08
+      }
+    },
+    {
+      "case_id": "D07",
+      "input_digest": "9389454549bfbc1eeb19a5026637053666c68dd5c82d92651d3eb2586a13dcec",
+      "input_tokens": 906,
+      "latency_ms": 396,
+      "axis_probabilities": {
+        "D0": 0.05,
+        "D1": 0.19,
+        "D2": 0.25,
+        "D3": 0.01,
+        "D4": 0.01,
+        "D5": 0.06
+      }
+    },
+    {
+      "case_id": "D08",
+      "input_digest": "8b62ae29798b3df0261f6279da5286521252f7b156242e988174735330132c70",
+      "input_tokens": 885,
+      "latency_ms": 747,
+      "axis_probabilities": {
+        "D0": 0.07,
+        "D1": 0.35,
+        "D2": 0.15,
+        "D3": 0.02,
+        "D4": 0.03,
+        "D5": 0.05
+      }
+    },
+    {
+      "case_id": "D09",
+      "input_digest": "81838933fd6371067cff2fd06aa87e7c865b5e134946f3688b0c016cea4d05b0",
+      "input_tokens": 804,
+      "latency_ms": 560,
+      "axis_probabilities": {
+        "D0": 0.56,
+        "D1": 0.71,
+        "D2": 0.45,
+        "D3": 0.05,
+        "D4": 0.03,
+        "D5": 0.54
+      }
+    },
+    {
+      "case_id": "D10",
+      "input_digest": "4f33889b20520a101f1301611bdcee46519bb6b645d6c51eecf07aa9306e7b6b",
+      "input_tokens": 877,
+      "latency_ms": 689,
+      "axis_probabilities": {
+        "D0": 0.05,
+        "D1": 0.33,
+        "D2": 0.18,
+        "D3": 0.02,
+        "D4": 0.02,
+        "D5": 0.07
+      }
+    },
+    {
+      "case_id": "E01",
+      "input_digest": "48c7446728440c884eae3a9c096e9eeeab193d4f4e757792aa3b975fb8aa5910",
+      "input_tokens": 842,
+      "latency_ms": 267,
+      "axis_probabilities": {
+        "D0": 0.17,
+        "D1": 0.69,
+        "D2": 0.15,
+        "D3": 0.3,
+        "D4": 0.04,
+        "D5": 0.92
+      }
+    },
+    {
+      "case_id": "E02",
+      "input_digest": "9bde3b50e692af0b703afd6567a1d91d53c6b1bd0e07ca8975b4c88b704dfe6e",
+      "input_tokens": 842,
+      "latency_ms": 247,
+      "axis_probabilities": {
+        "D0": 0.19,
+        "D1": 0.8,
+        "D2": 0.39,
+        "D3": 0.17,
+        "D4": 0.05,
+        "D5": 0.94
+      }
+    },
+    {
+      "case_id": "E03",
+      "input_digest": "6f8303b20db4fac7b9fb3511f7ac976e7aba06e6aaabea07578a27a76c6e141b",
+      "input_tokens": 837,
+      "latency_ms": 227,
+      "axis_probabilities": {
+        "D0": 0.1,
+        "D1": 0.83,
+        "D2": 0.45,
+        "D3": 0.03,
+        "D4": 0.02,
+        "D5": 0.95
+      }
+    },
+    {
+      "case_id": "E04",
+      "input_digest": "d211fd593908b8c6c92e44c1992eb3e3091450942027e6bb34b1ddc6e40f42d7",
+      "input_tokens": 854,
+      "latency_ms": 201,
+      "axis_probabilities": {
+        "D0": 0.31,
+        "D1": 0.64,
+        "D2": 0.19,
+        "D3": 0.05,
+        "D4": 0.02,
+        "D5": 0.89
+      }
+    },
+    {
+      "case_id": "E05",
+      "input_digest": "9d9b91f3eb18b9a3e885c4279237b7a34270083d2899fbca726e444a86e19e28",
+      "input_tokens": 820,
+      "latency_ms": 353,
+      "axis_probabilities": {
+        "D0": 0.12,
+        "D1": 0.79,
+        "D2": 0.53,
+        "D3": 0.07,
+        "D4": 0.02,
+        "D5": 0.95
+      }
+    },
+    {
+      "case_id": "E06",
+      "input_digest": "0804e7080ea8c39f389fa28c00a1a97db90f2e8cdcc0c3ac3cee644579e0594d",
+      "input_tokens": 822,
+      "latency_ms": 691,
+      "axis_probabilities": {
+        "D0": 0.16,
+        "D1": 0.76,
+        "D2": 0.25,
+        "D3": 0.55,
+        "D4": 0.14,
+        "D5": 0.96
+      }
+    },
+    {
+      "case_id": "E07",
+      "input_digest": "91ed5d079f4f49dca535d4880e5dbc772ad153c40720e3efc193768e4236c62d",
+      "input_tokens": 817,
+      "latency_ms": 657,
+      "axis_probabilities": {
+        "D0": 0.14,
+        "D1": 0.81,
+        "D2": 0.34,
+        "D3": 0.06,
+        "D4": 0.03,
+        "D5": 0.96
+      }
+    },
+    {
+      "case_id": "E08",
+      "input_digest": "67e232f026787a0345a66dbb1f3953fdfb2df848c1c9d130acfed0556dd4db1a",
+      "input_tokens": 834,
+      "latency_ms": 805,
+      "axis_probabilities": {
+        "D0": 0.17,
+        "D1": 0.79,
+        "D2": 0.19,
+        "D3": 0.76,
+        "D4": 0.21,
+        "D5": 0.96
+      }
+    },
+    {
+      "case_id": "E09",
+      "input_digest": "39bdd0a3b33b170286f50f6e287eeb0844e0ecb48ce022a2159acdfcf682e3f1",
+      "input_tokens": 842,
+      "latency_ms": 241,
+      "axis_probabilities": {
+        "D0": 0.13,
+        "D1": 0.91,
+        "D2": 0.65,
+        "D3": 0.03,
+        "D4": 0.03,
+        "D5": 0.97
+      }
+    },
+    {
+      "case_id": "E10",
+      "input_digest": "714209f2815a37bb9e7ea7705f6befe992136bba276ad3b3b0e9931e0f8a57e4",
+      "input_tokens": 830,
+      "latency_ms": 209,
+      "axis_probabilities": {
+        "D0": 0.15,
+        "D1": 0.81,
+        "D2": 0.27,
+        "D3": 0.62,
+        "D4": 0.1,
+        "D5": 0.96
+      }
+    }
+  ]
+}
