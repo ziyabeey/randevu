@@ -38,3 +38,4 @@ export * from './adapters/tree-sitter-tags.mjs';
 export * from './adapters/nx-affected.mjs';
 export * from './adapters/turbo-affected.mjs';
 export * from './adapters/code-impact-evidence.mjs';
+export * from './adapters/scip-indexer.mjs';
