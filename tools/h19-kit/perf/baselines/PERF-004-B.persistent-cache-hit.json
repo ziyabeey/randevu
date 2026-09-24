@@ -1,0 +1,56 @@
+{
+  "baselineId": "PERF-004-B",
+  "phase": "cross-run-reuse",
+  "source": {
+    "workflowRun": 36062938339,
+    "workflowRunNumber": 2901,
+    "headSha": "daf965368957565855c38ebead060a1b82b612ca",
+    "artifactId": 10835756131,
+    "artifactDigest": "sha256:8369a56eab3601e251b8e4554b9a22f084d5fd8b0ae2202d8bf53de3c0901788"
+  },
+  "probe": {
+    "schemaVersion": 1,
+    "shardCount": 3,
+    "hits": 3,
+    "misses": 0,
+    "totalMs": 9.18,
+    "rows": [
+      {
+        "id": "tsconfig.app.json",
+        "cache": "hit",
+        "wallMs": 5.754,
+        "fingerprint": "2aa1dd374be3e76a88056f7dbe56f015fb64d5850b0c1b66787755812d0b6f10"
+      },
+      {
+        "id": "tsconfig.node.json",
+        "cache": "hit",
+        "wallMs": 0.596,
+        "fingerprint": "4d043cba67068522fe5f678135827b7297276c33190471e14be22e4c9249d64f"
+      },
+      {
+        "id": "tsconfig.worker.json",
+        "cache": "hit",
+        "wallMs": 2.719,
+        "fingerprint": "4c3ca98eba91d15dc0e137daf5ac82ec813cac93c8f4893c8dc48f6f5501ee21"
+      }
+    ]
+  },
+  "transport": {
+    "restoredFromKey": "h19-perf-shards-Linux-scip-0.4.0-430f7823ff6542ba24f7f9605d8d3738760043ee",
+    "savedExactHeadKey": "h19-perf-shards-Linux-scip-0.4.0-daf965368957565855c38ebead060a1b82b612ca"
+  },
+  "comparisonToSeed": {
+    "seedHits": 0,
+    "seedMisses": 3,
+    "seedTotalMs": 8005.429,
+    "crossRunHits": 3,
+    "crossRunMisses": 0,
+    "crossRunTotalMs": 9.18,
+    "speedup": 872.05,
+    "fingerprintsIdentical": true
+  },
+  "interpretation": {
+    "passed": true,
+    "finding": "Content-addressed SCIP project shards are reusable across GitHub Actions workflow runs when transported by actions/cache. H19 fingerprints remained the reuse authority."
+  }
+}
