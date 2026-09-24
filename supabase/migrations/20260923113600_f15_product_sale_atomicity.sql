@@ -823,6 +823,7 @@ declare
   v_replay jsonb;
   v_result jsonb;
   v_new_balance bigint;
+  v_snapshot_product_name text;
 begin
   v_actor := public.f15_product_sale_actor(p_business_id);
   v_replay := public.f14_claim_ticket_command(
@@ -846,6 +847,15 @@ begin
   if p_expected_product_version is null or v_product.version <> p_expected_product_version then raise exception 'STALE_PRODUCT_WRITE'; end if;
   if v_product.stock_on_hand < p_quantity then raise exception 'INSUFFICIENT_STOCK'; end if;
 
+  v_snapshot_product_name := v_product.name;
+  if v_product.code is not null then
+    select p.name into v_snapshot_product_name
+    from public.products p
+    where p.code = v_product.code
+    order by p.business_id
+    limit 1;
+  end if;
+
   insert into public.tickets(
     business_id,appointment_group_id,customer_id,source,status,currency,
     customer_name_snapshot,customer_phone_snapshot,customer_email_snapshot,created_by_membership_id
@@ -865,7 +875,7 @@ begin
   ) values (
     p_business_id,v_ticket.id,1,'product',null,
     null,null,null,null,
-    v_product.id,v_product.name,v_product.code,
+    v_product.id,v_snapshot_product_name,v_product.code,
     p_quantity,'fixed',v_product.sale_price_minor,v_product.sale_price_minor,
     v_product.currency,v_product.version,
     v_product.sale_price_minor,v_actor.id,now(),'product_catalog_snapshot',
