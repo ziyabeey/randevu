@@ -877,16 +877,17 @@ export default function BookingPage() {
     if (!seriesFor?.seriesId || !seriesDetail || !seriesFuturePreview
         || !seriesFuturePreview.targets.length || !seriesFuturePreview.allAvailable) return;
     const scopeGeneration = workspaceGeneration.current;
+    const requestedSeriesId = seriesFor.seriesId;
     const newStartsAt = seriesAction === 'reschedule' ? seriesNewStartsAt() : null;
     const fingerprint = [
-      'series-future',seriesFor.seriesId,seriesDetail.version,seriesAction,
+      'series-future',requestedSeriesId,seriesDetail.version,seriesAction,
       seriesFromOrdinal,newStartsAt ?? '',seriesReason.trim(),
     ].join(':');
     const key = stableMutationKey(fingerprint);
     setBusy(true); setNotice('');
     try {
       if (seriesAction === 'reschedule') {
-        await api(`/api/bookings/series/${seriesFor.seriesId}/future/reschedule`, {
+        await api(`/api/bookings/series/${requestedSeriesId}/future/reschedule`, {
           method: 'POST',
           headers: { 'Idempotency-Key': key },
           body: JSON.stringify({
@@ -896,7 +897,7 @@ export default function BookingPage() {
           }),
         });
       } else {
-        await api(`/api/bookings/series/${seriesFor.seriesId}/future/cancel`, {
+        await api(`/api/bookings/series/${requestedSeriesId}/future/cancel`, {
           method: 'POST',
           headers: { 'Idempotency-Key': key },
           body: JSON.stringify({
@@ -910,22 +911,38 @@ export default function BookingPage() {
       mutationKeys.current.delete(fingerprint);
       setSeriesFor(null); setSeriesDetail(null); setSeriesFuturePreview(null);
       await load();
+      if (scopeGeneration !== workspaceGeneration.current) return;
       setNotice(seriesAction === 'reschedule'
         ? 'Seçilen tekrar ve sonraki uygun randevular atomik olarak taşındı.'
         : 'Seçilen tekrar ve sonraki uygun randevular atomik olarak iptal edildi.');
     } catch (error) {
+      if (scopeGeneration !== workspaceGeneration.current) return;
       const coded = error as Error & { code?: string };
       setNotice(coded.message || 'Seri değişikliği uygulanamadı.');
       if (coded.code === 'APPOINTMENT_SERIES_VERSION_CONFLICT'
           || coded.code === 'BOOKING_GROUP_VERSION_CONFLICT'
           || coded.code === 'SERIES_FUTURE_OCCURRENCE_UNAVAILABLE') {
         setSeriesFuturePreview(null);
+        const { generation, controller } = beginSeriesRead();
         try {
-          const refreshed = await api<{ series: SeriesDetail }>(`/api/bookings/series/${seriesFor.seriesId}`);
+          const refreshed = await api<{ series: SeriesDetail }>(`/api/bookings/series/${requestedSeriesId}`, {
+            signal: controller.signal,
+          });
+          if (!seriesReadIsCurrent(generation, controller)
+              || scopeGeneration !== workspaceGeneration.current) return;
+          if (refreshed.series.businessId !== activeBusinessId) return;
           setSeriesDetail(refreshed.series);
-        } catch { /* preserve mutation error */ }
+        } catch {
+          // Preserve the mutation error; an aborted/stale refresh must not write UI state.
+        } finally {
+          if (generation === seriesReadGeneration.current) {
+            seriesReadController.current = null;
+          }
+        }
       }
-    } finally { setBusy(false); }
+    } finally {
+      if (scopeGeneration === workspaceGeneration.current) setBusy(false);
+    }
   }
 
   async function showHistory(booking: BookingGroup) {
