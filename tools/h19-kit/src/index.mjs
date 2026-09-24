@@ -39,3 +39,4 @@ export * from './impact/change-impact.mjs';
 export * from './discovery/coverage-discovery.mjs';
 export * from './discovery/validation-packet.mjs';
 export * from './perf/baseline.mjs';
+export * from './indexing/typescript-project-shards.mjs';\nexport * from './perf/typescript-shards.mjs';\n
