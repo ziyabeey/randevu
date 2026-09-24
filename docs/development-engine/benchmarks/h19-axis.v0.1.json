@@ -1,0 +1,250 @@
+{
+  "benchmark_id": "DE-JEV-H19-R0",
+  "version": "0.1.0",
+  "maturity": "SHADOW",
+  "source_gate": "supabase/tests/h19_integrity_gate.sql",
+  "frozen_holdout_pairs": [
+    "D0xD3",
+    "D1xD4",
+    "D2xD5"
+  ],
+  "registered_holdout_pairs": [
+    "D0xD3",
+    "D2xD5"
+  ],
+  "missing_registered_holdout_pairs": [
+    "D1xD4"
+  ],
+  "input_leakage_rule": "Never score from H19 scenario filenames, test SQL, branch names, PR titles or prose containing D0-D5 labels. Reconstruct model inputs from production-code diffs bound to the baseline/current-suite receipt and strip H19 benchmark metadata before inference.",
+  "receipt_semantics": {
+    "baseline_current_suite": "Frozen variation under the then-current suite before the prospective probe is introduced.",
+    "probe": "Same variation plus the frozen H19 probe.",
+    "clean_control": "Frozen probe on clean implementation."
+  },
+  "cases": [
+    {
+      "id": "booking.d0d1.tenant_idempotency",
+      "domain": "booking",
+      "expected_pair": [
+        "D0",
+        "D1"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2131,
+        "probe": 2135,
+        "clean_control": 2136
+      }
+    },
+    {
+      "id": "booking.d1d5.idempotency_concurrency",
+      "domain": "booking",
+      "expected_pair": [
+        "D1",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2197,
+        "probe": 2200,
+        "clean_control": 2202
+      }
+    },
+    {
+      "id": "booking.d0d4.tenant_time_boundary",
+      "domain": "booking",
+      "expected_pair": [
+        "D0",
+        "D4"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2152,
+        "probe": 2174,
+        "clean_control": 2175
+      }
+    },
+    {
+      "id": "booking.d0d5.tenant_lock_isolation",
+      "domain": "booking",
+      "expected_pair": [
+        "D0",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2177,
+        "probe": 2181,
+        "clean_control": 2249
+      }
+    },
+    {
+      "id": "booking.d4d5.cross_day_authority",
+      "domain": "booking",
+      "expected_pair": [
+        "D4",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2216,
+        "probe": 2232,
+        "clean_control": 2233
+      }
+    },
+    {
+      "id": "booking.d0d3.tenant_capacity",
+      "domain": "booking",
+      "expected_pair": [
+        "D0",
+        "D3"
+      ],
+      "origin": "holdout",
+      "receipts": {
+        "baseline_current_suite": 2207,
+        "probe": 2212,
+        "clean_control": 2213
+      }
+    },
+    {
+      "id": "booking.d3d4.staff_hours_fallback",
+      "domain": "booking",
+      "expected_pair": [
+        "D3",
+        "D4"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2162,
+        "probe": 2164,
+        "clean_control": 2285
+      }
+    },
+    {
+      "id": "inventory.d0d1.actor_idempotency",
+      "domain": "inventory",
+      "expected_pair": [
+        "D0",
+        "D1"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2283,
+        "probe": 2287,
+        "clean_control": 2288
+      }
+    },
+    {
+      "id": "inventory.d1d5.idempotency_concurrency",
+      "domain": "inventory",
+      "expected_pair": [
+        "D1",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2355,
+        "probe": 2359,
+        "clean_control": 2360
+      }
+    },
+    {
+      "id": "booking.d2d3.snapshot_staff_coherence",
+      "domain": "booking",
+      "expected_pair": [
+        "D2",
+        "D3"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2106,
+        "probe": 2107,
+        "clean_control": 2098
+      }
+    },
+    {
+      "id": "payments.d1d2.replay_snapshot",
+      "domain": "payments",
+      "expected_pair": [
+        "D1",
+        "D2"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2386,
+        "probe": 2389,
+        "clean_control": 2390
+      }
+    },
+    {
+      "id": "payments.d2d5.snapshot_concurrency",
+      "domain": "payments",
+      "expected_pair": [
+        "D2",
+        "D5"
+      ],
+      "origin": "holdout",
+      "receipts": {
+        "baseline_current_suite": 2436,
+        "probe": 2441,
+        "clean_control": 2444
+      }
+    },
+    {
+      "id": "team.d0d1.invite_scope",
+      "domain": "team",
+      "expected_pair": [
+        "D0",
+        "D1"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2513,
+        "probe": 2518,
+        "clean_control": 2519
+      }
+    },
+    {
+      "id": "catalog.d0d2.history_scope",
+      "domain": "catalog",
+      "expected_pair": [
+        "D0",
+        "D2"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2544,
+        "probe": 2551,
+        "clean_control": 2552
+      }
+    },
+    {
+      "id": "public-booking.d0d4.slot_scope",
+      "domain": "public-booking",
+      "expected_pair": [
+        "D0",
+        "D4"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2557,
+        "probe": 2582,
+        "clean_control": 2583
+      }
+    },
+    {
+      "id": "calendar.d4d5.range_revision",
+      "domain": "calendar",
+      "expected_pair": [
+        "D4",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2597,
+        "probe": 2609,
+        "clean_control": 2610
+      }
+    }
+  ]
+}
