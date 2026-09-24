@@ -7,8 +7,8 @@
   "preview_urls": true,
   "routes": [
     {
-      "pattern": "kepenk.ai/*",
-      "zone_name": "kepenk.ai"
+      "pattern": "kepenk.ai",
+      "custom_domain": true
     }
   ]
 }
