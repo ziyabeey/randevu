@@ -22,6 +22,8 @@ test('F16-02 booking composer exposes bounded transactional notification prefere
 
   assert.doesNotMatch(booking, /SMS<\/strong><small>F16-02 ile açılacak/);
   assert.match(booking, /SMS seçeneği yalnız işlemsel randevu mesajları içindir/);
+  assert.match(booking, /recurrenceFrequency === 'none'/);
+  assert.match(booking, /Tekrarlayan seriler için bildirim tercihleri G16 ortak entegrasyonunda bağlanacak/);
 });
 
 test('F16-02 preference changes rotate booking idempotency identity', () => {

@@ -225,6 +225,9 @@ export default function BookingPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [notificationEmail, setNotificationEmail] = useState(true);
+  const [notificationSms, setNotificationSms] = useState(false);
+  const [reminderMinutes, setReminderMinutes] = useState('1440');
   const [date, setDate] = useState(dateToday());
   const [createLines, setCreateLines] = useState<DraftLine[]>([
     { key: commandKey(), serviceId: '', staffId: 'any' },
@@ -589,6 +592,13 @@ export default function BookingPage() {
           staffId: line.staffId === 'any' ? null : line.staffId,
         })),
         startsAt: selectedCreateSlot.starts_at,
+        ...(recurrenceFrequency === 'none' ? {
+          notifications: {
+            emailEnabled: notificationEmail,
+            smsEnabled: notificationSms,
+            reminderMinutesBefore: reminderMinutes === 'none' ? null : Number(reminderMinutes),
+          },
+        } : {}),
       };
       const successMessage = recurrenceFrequency === 'none'
         ? 'Rezervasyon atomik olarak oluşturuldu.'
@@ -1058,6 +1068,29 @@ export default function BookingPage() {
           <div><strong>Not ve oluştur</strong><small>Tek tıklama, tek idempotency anahtarı; grup ya bütünüyle oluşur ya hiç oluşmaz.</small></div>
         </div>
         <div className="booking-fields"><label className="wide-field">Not<textarea value={notes} onChange={(event) => { setNotes(event.target.value); setCreateKey(commandKey()); }} maxLength={1000} placeholder="İsteğe bağlı not" /></label></div>
+        {recurrenceFrequency === 'none' ? <>
+          <div className="booking-notification-options" aria-label="Randevu bildirim tercihleri">
+            <label className="booking-toggle">
+              <input type="checkbox" checked={notificationEmail} onChange={(event) => { setNotificationEmail(event.target.checked); setCreateKey(commandKey()); }} />
+              <span><strong>E-posta</strong><small>{customerEmail ? 'Onay ve yaşam döngüsü bildirimi' : 'E-posta girilmezse gönderilmez'}</small></span>
+            </label>
+            <label className="booking-toggle">
+              <input type="checkbox" checked={notificationSms} onChange={(event) => { setNotificationSms(event.target.checked); setCreateKey(commandKey()); }} />
+              <span><strong>SMS</strong><small>{customerPhone ? 'İşlemsel SMS bildirimi' : 'Telefon girilmezse gönderilmez'}</small></span>
+            </label>
+            <label className="booking-reminder-select">
+              <span>Hatırlatma</span>
+              <select value={reminderMinutes} onChange={(event) => { setReminderMinutes(event.target.value); setCreateKey(commandKey()); }}>
+                <option value="none">Kapalı</option>
+                <option value="60">1 saat önce</option>
+                <option value="120">2 saat önce</option>
+                <option value="1440">24 saat önce</option>
+                <option value="2880">48 saat önce</option>
+              </select>
+            </label>
+          </div>
+          <p className="muted">Bildirimler randevu akışından bağımsızdır; kanal geçici olarak çalışmazsa rezervasyon yine oluşturulur. SMS seçeneği yalnız işlemsel randevu mesajları içindir.</p>
+        </> : <p className="muted">Tekrarlayan seriler için bildirim tercihleri G16 ortak entegrasyonunda bağlanacak; seri oluşturma mevcut F16-01 davranışını korur.</p>}
         <div className="booking-future-hints" aria-label="Tekrarlayan randevu">
           <label>
             <strong>Tekrar</strong>
