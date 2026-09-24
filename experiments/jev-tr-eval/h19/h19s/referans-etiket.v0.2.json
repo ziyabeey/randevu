@@ -1,0 +1,43 @@
+{
+  "version": "H19S-BLIND-LABEL-0.2",
+  "task": "Label one eligible routine change for D1, D5 and actionable D5.",
+  "blind_to": [
+    "jev_scores",
+    "jev_resolver",
+    "candidate_route",
+    "other_reader_label"
+  ],
+  "input": [
+    "pr_number",
+    "pr_title",
+    "routine_id",
+    "path",
+    "change_kind",
+    "patch",
+    "before_definition",
+    "after_definition"
+  ],
+  "definitions": {
+    "D1": "atomicity/idempotency/command identity/replay/receipt/request identity",
+    "D5": "concurrency/optimistic version/locking/serialization/stale-write/race-sensitive behavior",
+    "actionable_D5": "a D5 problem that would justify a code change or targeted regression test before merge"
+  },
+  "output": {
+    "d1": [
+      "yes",
+      "no",
+      "undetermined"
+    ],
+    "d5": [
+      "yes",
+      "no",
+      "undetermined"
+    ],
+    "actionable_d5": [
+      "yes",
+      "no",
+      "undetermined"
+    ],
+    "reason": "brief"
+  }
+}
