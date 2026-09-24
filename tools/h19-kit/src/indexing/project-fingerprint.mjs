@@ -35,6 +35,7 @@ export async function projectFingerprint({
       id: indexer.id,
       version: indexer.version,
       flags: [...(indexer.flags ?? [])],
+      projects: [...(indexer.projects ?? [])],
     },
     adapterVersion,
     sources,
