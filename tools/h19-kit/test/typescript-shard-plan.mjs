@@ -111,6 +111,7 @@ try {
   assert.deepEqual(changedPlan.missingShardIds, ['tsconfig.app.json']);
   assert.equal(changedPlan.rows.find((x) => x.id === 'tsconfig.worker.json').cache, 'hit');
 
+  const changedAppFingerprint = changedPlan.rows.find((x) => x.id === 'tsconfig.app.json').fingerprint;
   await writeFile(path.join(temp, 'scripts', 'ignored.mjs'), 'export const ignored = false;\n');
   const ignoredPlan = await planTypeScriptShardIndexes({
     cwd: temp,
@@ -120,8 +121,12 @@ try {
   });
   assert.deepEqual(ignoredPlan.missingShardIds, ['tsconfig.app.json']);
   assert.equal(ignoredPlan.rows.find((x) => x.id === 'tsconfig.worker.json').cache, 'hit');
+  assert.equal(
+    ignoredPlan.rows.find((x) => x.id === 'tsconfig.app.json').fingerprint,
+    changedAppFingerprint,
+  );
 
-  assert.throws(
+  await assert.rejects(
     () => planTypeScriptShardIndexes({ cwd: temp, cache, scipVersion: 'auto' }),
     /exact configured SCIP TypeScript version/,
   );
