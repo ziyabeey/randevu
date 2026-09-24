@@ -49,9 +49,13 @@ Hypotheses are frozen into a content-addressed validation packet and later recor
 
 A surviving mutant is ranked ahead of a plain coverage-gap hypothesis only when priority and target path are otherwise equal.
 
-## Next authorized gate
+## Active gate
 
-**Minimal test specification from validated/high-value coverage hypotheses.**
+**M6 — Minimal Test Specification Contract**
+
+Frozen before implementation in `docs/M6_TEST_SPEC_CONTRACT.md`.
+
+Goal: translate one eligible M5 coverage hypothesis into a deterministic, machine-readable test specification without generating executable test code.
 
 For a surviving-mutant-driven target, the first specification contract must be able to state:
 
@@ -65,7 +69,7 @@ setup
 
 This is the next planned bundle gate.
 
-**No M6 number is assigned here yet.** Freeze the scope and acceptance contract before naming/promoting the next milestone.
+**M6 is now assigned because the scope and acceptance contract were frozen before implementation.**
 
 ## Side-hardening HOLD
 
