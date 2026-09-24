@@ -217,6 +217,9 @@ jobs:
       - name: Run H19 Kit M3.5 affected-project smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m35-affected
+      - name: Run H19 Kit M3.5 normalized graph-cache smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35-graph-cache
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
