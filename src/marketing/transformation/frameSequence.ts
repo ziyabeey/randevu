@@ -11,6 +11,20 @@ export const TRANSFORMATION_FRAME_ROOTS = {
   mobile: "/marketing/transformation/frames/mobile",
 } as const;
 
+/** Where a scroll-scrubbed frame film lives and how its files are named. */
+export interface FrameSequenceSource {
+  roots: Readonly<Record<TransformationFrameVariant, string>>;
+  extension: "webp" | "avif";
+  count: number;
+}
+
+/** The legacy transformation film: the default source for every loader. */
+export const TRANSFORMATION_FRAME_SOURCE: FrameSequenceSource = {
+  roots: TRANSFORMATION_FRAME_ROOTS,
+  extension: "webp",
+  count: TRANSFORMATION_FRAME_COUNT,
+};
+
 export interface DecodedTransformationFrame {
   source: CanvasImageSource;
   width: number;
@@ -24,6 +38,14 @@ export interface FrameSequenceMetrics {
   cachePeakFrames: number;
 }
 
+/** A queued decode the reader has scrolled away from; callers ignore it, it never fails the sequence. */
+export class FrameSupersededError extends Error {
+  constructor(index: number) {
+    super(`Frame ${index} was superseded before it started.`);
+    this.name = "FrameSupersededError";
+  }
+}
+
 interface QueueItem {
   index: number;
   resolve: (frame: DecodedTransformationFrame) => void;
@@ -34,13 +56,21 @@ export function getTransformationFrameIndex(progress: number): number {
   return Math.round(clamp01(progress) * (TRANSFORMATION_FRAME_COUNT - 1));
 }
 
+export function getFrameSequenceIndex(progress: number, count: number): number {
+  return Math.round(clamp01(progress) * (Math.max(1, count) - 1));
+}
+
+export function getFrameSequenceUrl(source: FrameSequenceSource, index: number, variant: TransformationFrameVariant): string {
+  const safeIndex = Math.min(source.count - 1, Math.max(0, Math.round(index)));
+  return `${source.roots[variant]}/frame-${String(safeIndex).padStart(3, "0")}.${source.extension}`;
+}
+
 export function getTransformationFrameProgress(index: number): number {
   return clamp01(index / Math.max(1, TRANSFORMATION_FRAME_COUNT - 1));
 }
 
 export function getTransformationFrameUrl(index: number, variant: TransformationFrameVariant): string {
-  const safeIndex = Math.min(TRANSFORMATION_FRAME_COUNT - 1, Math.max(0, Math.round(index)));
-  return `${TRANSFORMATION_FRAME_ROOTS[variant]}/frame-${String(safeIndex).padStart(3, "0")}.webp`;
+  return getFrameSequenceUrl(TRANSFORMATION_FRAME_SOURCE, index, variant);
 }
 
 export function getTransformationFrameFocusX(
@@ -114,6 +144,7 @@ async function decodeFrame(blob: Blob): Promise<DecodedTransformationFrame> {
 
 export class TransformationFrameLoader {
   private readonly variant: TransformationFrameVariant;
+  private readonly source: FrameSequenceSource;
   private readonly cacheLimit: number;
   private readonly concurrency: number;
   private readonly cache = new Map<number, DecodedTransformationFrame>();
@@ -130,9 +161,10 @@ export class TransformationFrameLoader {
 
   constructor(
     variant: TransformationFrameVariant,
-    options: { cacheLimit?: number; concurrency?: number } = {},
+    options: { cacheLimit?: number; concurrency?: number; source?: FrameSequenceSource } = {},
   ) {
     this.variant = variant;
+    this.source = options.source ?? TRANSFORMATION_FRAME_SOURCE;
     this.cacheLimit = Math.max(2, options.cacheLimit ?? TRANSFORMATION_FRAME_CACHE_SIZE);
     this.concurrency = Math.max(1, options.concurrency ?? TRANSFORMATION_FRAME_FETCH_CONCURRENCY);
   }
@@ -150,8 +182,33 @@ export class TransformationFrameLoader {
     return frame;
   }
 
+  /** True when the frame is decoded, without touching the cache order. */
+  has(index: number): boolean {
+    return this.cache.has(index);
+  }
+
+  /** The decoded frame closest to a fractional film position, if any. */
+  nearestCached(position: number): { index: number; frame: DecodedTransformationFrame } | null {
+    let best: { index: number; frame: DecodedTransformationFrame } | null = null;
+    for (const [index, frame] of this.cache) {
+      if (!best || Math.abs(index - position) < Math.abs(best.index - position)) best = { index, frame };
+    }
+    return best;
+  }
+
+  /** Drops queued (not yet started) decodes more than `radius` frames away from `center`. */
+  retarget(center: number, radius: number): void {
+    for (let i = this.queue.length - 1; i >= 0; i--) {
+      const task = this.queue[i];
+      if (!task || Math.abs(task.index - center) <= radius) continue;
+      this.queue.splice(i, 1);
+      this.pending.delete(task.index);
+      task.reject(new FrameSupersededError(task.index));
+    }
+  }
+
   load(index: number, priority = false): Promise<DecodedTransformationFrame> {
-    const safeIndex = Math.min(TRANSFORMATION_FRAME_COUNT - 1, Math.max(0, Math.round(index)));
+    const safeIndex = Math.min(this.source.count - 1, Math.max(0, Math.round(index)));
     const cached = this.getCached(safeIndex);
     if (cached) return Promise.resolve(cached);
 
@@ -177,9 +234,32 @@ export class TransformationFrameLoader {
     return promise;
   }
 
+  /**
+   * Pulls compressed frames into the HTTP cache ahead of the reader without
+   * decoding them, two requests at a time. Best effort: failures are ignored
+   * here and surface through load() if the frame is actually needed.
+   */
+  warm(indices: readonly number[]): void {
+    const queue = [...new Set(indices)].filter((index) => index >= 0 && index < this.source.count);
+    const worker = async () => {
+      while (!this.disposed && queue.length > 0) {
+        const index = queue.shift();
+        if (index === undefined || this.cache.has(index) || this.pending.has(index)) continue;
+        try {
+          const response = await fetch(getFrameSequenceUrl(this.source, index, this.variant), { cache: "force-cache" });
+          await response.blob();
+        } catch {
+          // Warming never fails the sequence.
+        }
+      }
+    };
+    void worker();
+    void worker();
+  }
+
   prefetch(indices: readonly number[], onFailure?: (error: unknown) => void): void {
     const unique = [...new Set(indices)]
-      .filter((index) => index >= 0 && index < TRANSFORMATION_FRAME_COUNT);
+      .filter((index) => index >= 0 && index < this.source.count);
 
     for (const index of unique) {
       void this.load(index).catch((error) => onFailure?.(error));
@@ -231,7 +311,7 @@ export class TransformationFrameLoader {
     this.controllers.add(controller);
 
     try {
-      const response = await fetch(getTransformationFrameUrl(index, this.variant), {
+      const response = await fetch(getFrameSequenceUrl(this.source, index, this.variant), {
         cache: "force-cache",
         signal: controller.signal,
       });
@@ -265,10 +345,16 @@ export class TransformationFrameLoader {
   }
 }
 
+/**
+ * Draws a frame to cover the canvas. With `alpha` below 1 the frame is laid
+ * over what is already drawn instead of replacing it, which is how two
+ * neighbouring frames cross-fade.
+ */
 export function drawTransformationFrameCover(
   canvas: HTMLCanvasElement,
   frame: DecodedTransformationFrame,
   focusX = 0.5,
+  alpha = 1,
 ): boolean {
   const width = canvas.clientWidth || window.innerWidth;
   const height = canvas.clientHeight || window.innerHeight;
@@ -292,7 +378,14 @@ export function drawTransformationFrameCover(
   const x = (renderWidth - drawWidth) * boundedFocusX;
   const y = (renderHeight - drawHeight) / 2;
 
-  context.clearRect(0, 0, renderWidth, renderHeight);
+  if (alpha >= 1) {
+    context.clearRect(0, 0, renderWidth, renderHeight);
+    context.drawImage(frame.source, x, y, drawWidth, drawHeight);
+    return true;
+  }
+
+  context.globalAlpha = Math.max(0, alpha);
   context.drawImage(frame.source, x, y, drawWidth, drawHeight);
+  context.globalAlpha = 1;
   return true;
 }

@@ -26,8 +26,18 @@ test('MKT-01 frame sequence keeps the 121-frame timeline with bounded fetch and 
 
 test('MKT-01 frame sequence maps normalized scroll directly to frame index and fails closed', () => {
   assert.match(loader, /Math\.round\(clamp01\(progress\) \* \(TRANSFORMATION_FRAME_COUNT - 1\)\)/);
-  assert.match(hook, /new TransformationFrameLoader\(variant\)/);
-  assert.match(hook, /getTransformationFrameIndex\(mediaProgress\)/);
+  // The hook is configurable per film; the legacy transformation film stays the default.
+  assert.match(hook, /sequence: FrameSequenceScrubConfig = TRANSFORMATION_SCRUB/);
+  assert.match(hook, /source: TRANSFORMATION_FRAME_SOURCE/);
+  assert.match(loader, /count: TRANSFORMATION_FRAME_COUNT/);
+  assert.match(loader, /this\.source = options\.source \?\? TRANSFORMATION_FRAME_SOURCE/);
+  assert.match(loader, /Math\.round\(clamp01\(progress\) \* \(Math\.max\(1, count\) - 1\)\)/);
+  assert.match(hook, /new TransformationFrameLoader\(variant, \{ source: sequence\.source, cacheLimit: sequence\.cacheLimit \}\)/);
+  // Smoothing and cross-fading are opt-in per film; the legacy film keeps direct frame snapping.
+  assert.match(hook, /sequence\.smoothing \?\? 0/);
+  assert.match(hook, /const fluid = smoothing > 0 \|\| sequence\.blend === true/);
+  assert.doesNotMatch(hook.slice(hook.indexOf('export const TRANSFORMATION_SCRUB'), hook.indexOf('interface FrameSequenceScrollScrubResult')), /smoothing|blend/);
+  assert.match(hook, /getFrameSequenceIndex\(mediaProgress, frameCount\)/);
   assert.match(hook, /rootMargin: "75% 0px 75% 0px"/);
   assert.match(hook, /const scheduleScroll = \(\) =>/);
   assert.match(hook, /scrollFrame = window\.requestAnimationFrame/);
@@ -51,7 +61,8 @@ test('MKT-01 frame canvas preserves the same horizontal crop focus as the video 
   assert.match(loader, /if \(viewportWidth <= 980\)[\s\S]*?return 0\.62/);
   assert.match(loader, /return 0\.5/);
   assert.match(loader, /const x = \(renderWidth - drawWidth\) \* boundedFocusX/);
-  assert.match(hook, /getTransformationFrameFocusX\(index, variant, window\.innerWidth\)/);
+  assert.match(hook, /focusX: getTransformationFrameFocusX/);
+  assert.match(hook, /sequence\.focusX\(index, variant, window\.innerWidth\)/);
 });
 
 test('MKT-01 standalone preview exposes video versus frames without changing the production default', () => {
@@ -113,7 +124,8 @@ test('MKT-01 scroll pacing is monotonic, holds hero frames, and lets story progr
   assert.equal(timeline.getTransformationScrollPhaseProgress(timeline.TRANSFORMATION_SCROLL_PHASES.sweep.end, 'sweep'), 1);
 
   assert.match(hook, /const scrollProgress = getScrollProgress\(\)/);
-  assert.match(hook, /const mediaProgress = easeTransformationScroll\(scrollProgress\)/);
+  assert.match(hook, /ease: easeTransformationScroll/);
+  assert.match(hook, /const mediaProgress = sequence\.ease\(scrollProgress\)/);
   assert.match(hook, /getTransformationScrollPhase\(scrollProgress\)/);
   assert.match(hook, /--mkt-scroll-progress/);
   assert.match(loader, /imageSmoothingQuality = "high"/);

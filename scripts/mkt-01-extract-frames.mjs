@@ -28,13 +28,16 @@ const OUT = path.resolve(args.out ?? path.join(repoRoot, 'public/marketing'));
 
 export const FRAME_COUNT = 121;
 export const FRAME_FPS = 24;
+// 2026-09-24 render-quality pass: higher WebP quality plus a light unsharp mask
+// to recover the softness H.264 and AI video add; mobile keeps 1440 px so the
+// framed mobile media card is drawn near 1:1 instead of upscaled ~4.7x.
 export const FRAME_VARIANTS = [
-  { name: 'desktop', width: 1928, quality: 0.8 },
-  { name: 'mobile', width: 960, quality: 0.8 },
+  { name: 'desktop', width: 1928, quality: 0.9, sharpen: 0.35 },
+  { name: 'mobile', width: 1440, quality: 0.86, sharpen: 0.4 },
 ];
 export const STILLS = [
-  { name: 'hero/randevu-hero-model.webp', time: 0.08, width: 1928, quality: 0.88 },
-  { name: 'transformation/randevu-transformation-poster.webp', time: 0, width: 1928, quality: 0.86 },
+  { name: 'hero/randevu-hero-model.webp', time: 0.08, width: 1928, quality: 0.95, sharpen: 0.55 },
+  { name: 'transformation/randevu-transformation-poster.webp', time: 0, width: 1928, quality: 0.92, sharpen: 0.45 },
   // randevu-transformation-final.webp is the product-owner supplied seated-model scene, not a master frame.
 ];
 
@@ -100,7 +103,7 @@ const meta = await evaluate(`new Promise((resolve, reject) => {
 console.log('source', meta);
 if (!meta.width) throw new Error('Chrome could not decode the source.');
 
-async function grab(time, width, quality) {
+async function grab(time, width, quality, sharpen = 0) {
   return evaluate(`new Promise((resolve, reject) => {
     const v = document.getElementById('v'); const c = document.getElementById('c');
     const t = Math.min(Math.max(0, ${time}), Math.max(0, v.duration - 0.0005));
@@ -108,6 +111,21 @@ async function grab(time, width, quality) {
       const scale = ${width} / v.videoWidth; c.width = ${width}; c.height = Math.round(v.videoHeight * scale);
       const ctx = c.getContext('2d', { alpha: false }); ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(v, 0, 0, c.width, c.height);
+      const amount = ${sharpen};
+      if (amount > 0) {
+        // Unsharp mask: out = src + amount * (src - gaussian3x3(src)).
+        const img = ctx.getImageData(0, 0, c.width, c.height); const src = img.data; const out = new Uint8ClampedArray(src);
+        const w = c.width; const h = c.height; const k = [1, 2, 1, 2, 4, 2, 1, 2, 1];
+        for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+          const i = (y * w + x) * 4;
+          for (let ch = 0; ch < 3; ch++) {
+            let blur = 0, n = 0;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) blur += src[((y + dy) * w + (x + dx)) * 4 + ch] * k[n++];
+            out[i + ch] = src[i + ch] + amount * (src[i + ch] - blur / 16);
+          }
+        }
+        img.data.set(out); ctx.putImageData(img, 0, 0);
+      }
       c.toBlob((blob) => {
         if (!blob) return reject(new Error('toBlob failed'));
         const reader = new FileReader();
@@ -129,7 +147,7 @@ for (const variant of FRAME_VARIANTS) {
   mkdirSync(dir, { recursive: true });
   let total = 0;
   for (let index = 0; index < FRAME_COUNT; index++) {
-    const frame = await grab((index + 0.5) / FRAME_FPS, variant.width, variant.quality);
+    const frame = await grab((index + 0.5) / FRAME_FPS, variant.width, variant.quality, variant.sharpen);
     if (frame.type !== 'image/webp') throw new Error(`Chrome returned ${frame.type} instead of image/webp`);
     writeFileSync(path.join(dir, `frame-${String(index).padStart(3, '0')}.webp`), Buffer.from(frame.b64, 'base64'));
     total += frame.size;
@@ -138,7 +156,7 @@ for (const variant of FRAME_VARIANTS) {
   console.log(`${variant.name}: ${FRAME_COUNT} frames, ${(total / 1024 / 1024).toFixed(2)} MB, avg ${Math.round(total / FRAME_COUNT / 1024)} KB`);
 }
 for (const still of STILLS) {
-  const frame = await grab(still.time, still.width, still.quality);
+  const frame = await grab(still.time, still.width, still.quality, still.sharpen);
   const file = path.join(OUT, still.name);
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, Buffer.from(frame.b64, 'base64'));

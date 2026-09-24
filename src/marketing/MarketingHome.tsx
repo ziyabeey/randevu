@@ -10,6 +10,7 @@ import "./final-cta.css";
 import "./skip-link.css";
 import "./marketing-aesthetic.css";
 
+import { EditorialHome } from "./editorial/EditorialHome";
 import { MarketingHero } from "./MarketingHero";
 import { ProductStorySections, TrustSections } from "./ProductStorySections";
 import { MARKETING_CONTACT_HREF } from "./releaseGates";
@@ -165,7 +166,7 @@ function MarketingFooter() {
   );
 }
 
-export function MarketingHome() {
+export function LegacyMarketingHome() {
   useMarketingDocumentMeta();
 
   const bindSkipLink = (node: HTMLAnchorElement | null) => {
@@ -217,4 +218,13 @@ export function MarketingHome() {
       <MarketingFooter />
     </div>
   );
+}
+
+/**
+ * 2026-09-24 art direction: the editorial "Bir salonun günü" page is the
+ * homepage; the previous layout stays reachable in preview with `?legacy=1`.
+ */
+export function MarketingHome() {
+  const legacy = typeof document !== "undefined" && document.documentElement.dataset.mktLegacy === "true";
+  return legacy ? <LegacyMarketingHome /> : <EditorialHome />;
 }

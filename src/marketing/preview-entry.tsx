@@ -14,6 +14,7 @@ const effectiveRenderer = previewMode.rendererExplicit ? previewMode.renderer : 
 if (previewMode.rendererExplicit) document.documentElement.dataset.mktRenderer = previewMode.renderer;
 if (previewMode.reducedMotion) document.documentElement.dataset.mktReducedMotion = "true";
 if (previewMode.debug) document.documentElement.dataset.mktDebug = "true";
+if (new URLSearchParams(window.location.search).get("legacy") === "1") document.documentElement.dataset.mktLegacy = "true";
 
 type PreviewAssetStatus = "checking" | "ready" | "missing";
 
