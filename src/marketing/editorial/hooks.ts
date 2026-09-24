@@ -3,30 +3,6 @@ import { useEffect, type RefObject } from "react";
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
 /**
- * Editorial type (2026-09-24 art direction): Bricolage Grotesque for display,
- * Instrument Serif italic for the emotional words, JetBrains Mono for the
- * salon clock. Preview loads them from Google Fonts; production should
- * self-host the same families (privacy, KVKK and first paint).
- */
-export function useEditorialFonts() {
-  useEffect(() => {
-    if (document.getElementById("ed-fonts")) return;
-    for (const origin of ["https://fonts.googleapis.com", "https://fonts.gstatic.com"]) {
-      const preconnect = document.createElement("link");
-      preconnect.rel = "preconnect";
-      preconnect.href = origin;
-      if (origin.includes("gstatic")) preconnect.crossOrigin = "";
-      document.head.appendChild(preconnect);
-    }
-    const link = document.createElement("link");
-    link.id = "ed-fonts";
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap";
-    document.head.appendChild(link);
-  }, []);
-}
-
-/**
  * Scroll progress through a tall pinned section, written as `--p` (0 when the
  * sticky stage pins, 1 when it releases). Scroll events already arrive once
  * per rendered frame, so the value is written directly.

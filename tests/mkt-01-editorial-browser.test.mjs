@@ -103,6 +103,19 @@ test('MKT-01 editorial page keeps the approved story, nav, skip link and a stati
     assert.equal(metrics.journey, null, 'Reduced motion should not run the travelling token');
     assert.equal(metrics.shutter, false, 'Reduced motion should skip the opening shutter');
 
+    const fonts = await page.evaluate(`(async () => {
+      await document.fonts.ready;
+      const requests = performance.getEntriesByType('resource').map((entry) => entry.name);
+      return {
+        google: requests.filter((name) => /fonts\\.(googleapis|gstatic)\\.com/.test(name)),
+        local: requests.filter((name) => name.includes('/marketing/editorial/fonts/')).length,
+        ready: ['700 40px "Bricolage Grotesque"', 'italic 40px "Instrument Serif"', '600 12px "JetBrains Mono"']
+          .every((font) => document.fonts.check(font, 'İşğ')),
+      };
+    })()`);
+    assert.deepEqual(fonts.google, [], 'Fonts must be self-hosted (KVKK): no request to Google Fonts');
+    assert.ok(fonts.local >= 3 && fonts.ready, 'Self-hosted editorial fonts did not load');
+
     await pressTab(page);
     await waitFor(
       () => page.evaluate(`(() => {

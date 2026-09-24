@@ -7,8 +7,9 @@ import { WORKSPACE_HOME_PATH } from "../routePlan";
 import { useFrameSequenceScrollScrub } from "../transformation/useFrameSequenceScrollScrub";
 import { usePrefersReducedMotion } from "../transformation/useVideoScrollScrub";
 import { useMarketingDocumentMeta } from "../useMarketingDocumentMeta";
+import "./fonts.css";
 import "./editorial.css";
-import { useDayClock, useDepthParallax, useEditorialFonts, useSceneProgress, useSingleKolay } from "./hooks";
+import { useDayClock, useDepthParallax, useSceneProgress, useSingleKolay } from "./hooks";
 import { useJourney } from "./useJourney";
 
 /*
@@ -610,7 +611,6 @@ const JourneyToken = forwardRef<HTMLDivElement>(function JourneyToken(_props, re
 
 export function EditorialHome() {
   useMarketingDocumentMeta();
-  useEditorialFonts();
   const rootRef = useRef<HTMLDivElement>(null);
   const tokenRef = useRef<HTMLDivElement>(null);
   const reduced = usePrefersReducedMotion();
