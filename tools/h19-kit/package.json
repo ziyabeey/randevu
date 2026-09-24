@@ -15,7 +15,8 @@
     "test:m3": "node test/m3.mjs",
     "test:m35": "node test/m35.mjs",
     "test:m35-cache": "node test/m35-cache.mjs",
-    "test:m35-affected": "node test/m35-affected.mjs"
+    "test:m35-affected": "node test/m35-affected.mjs",
+    "test:m35-graph-cache": "node test/m35-graph-cache.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
