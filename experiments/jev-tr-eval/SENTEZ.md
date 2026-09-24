@@ -50,7 +50,7 @@ Jev bir **seçici**tir, karar verici değildir. Kod durumu, hesabı ve eylemi sa
 | K8 | Sürüm sabit (`jev-1.13.0`); her kararın girdisi, sürümü ve olasılıkları kaydedilir; aynı mesaj tekrar sorulmaz, kayıttan okunur. | ±1 oynama, alias değişebilir |
 | K9 | İyileştirme, değişiklikten **sonra** yazılmış yeni setle ölçülür; kabul eşiği ölçümden önce yazılır. | Set 2 yöntemi |
 | K10 | Jev erişilemezse sistem çalışmaya devam eder: kural/insan devri. Jev hiçbir akışın tek yolu değildir. | Erken sağlayıcı, SLA yok |
-| K11 | **Çıkarılabilir olgu sezdirilmez.** Regex/AST/CFG/git/DB introspection ile çıkarılabilen olgu Jev'e keşif sorusu olarak sorulmaz; kod hesaplar ve `state` içinde açık alan olarak verir. Jev yalnız bu olgular verildikten sonra davranışsal/ilişkisel sonucu değerlendirir. Verilen olgunun kendisi yeni ipucu olur; olgu-koşullu soru, olgu değerleri dengelenmiş yeni sette ve olgu çevirme sondasıyla ölçülür (K9). | H19a: tek `for update;` satırı D5'i etiketten ve "bağlamı sayma" talimatından bağımsız +0.20 itti |
+| K11 | **Çıkarılabilir olgu sezdirilmez.** Regex/AST/CFG/git/DB introspection ile çıkarılabilen olgu Jev'e keşif sorusu olarak sorulmaz; kod hesaplar ve `state` içinde açık alan olarak verir. Olgular **betimleyicidir**: yapıyı ve konumu söyler, risk ya da hüküm söylemez (sözdizimi/yapı → kod, davranışsal sonuç → Jev). **Sonuç kuralı:** Verilen olgu da bir ipucudur; olguya koşullandırılmış sezginin olgudan bağımsız katkısı ayrıca ölçülür. Bunun için olgu değerleri dengelenmiş yeni set ve beklentisi önceden yazılmış olgu çevirme sondası kullanılır (K9). | H19a: tek `for update;` satırı D5'i etiketten ve "bağlamı sayma" talimatından bağımsız +0.20 itti |
 
 ## 4. Uygulama portföyü
 
