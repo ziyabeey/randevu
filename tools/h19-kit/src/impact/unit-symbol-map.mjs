@@ -1,3 +1,5 @@
+import { evidence } from '../core/contracts.mjs';
+
 function normalizePath(value) {
   return String(value ?? '').replaceAll('\\', '/').replace(/^\.\//, '');
 }
@@ -96,4 +98,16 @@ export function symbolsForSemanticUnits(graph, units = [], {
     matches,
     unmatched,
   });
+}
+
+export function unitSymbolMappingEvidence(mapping) {
+  return evidence(
+    'impact.symbol_mapping_gap.present',
+    mapping.unmatched.length > 0 ? 'present' : 'absent',
+    {
+      matchedCount: mapping.matches.length - mapping.unmatched.length,
+      unmatchedCount: mapping.unmatched.length,
+      unmatched: mapping.unmatched,
+    },
+  );
 }
