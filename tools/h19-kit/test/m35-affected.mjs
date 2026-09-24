@@ -13,6 +13,7 @@ import {
   nxProjectGraph,
   parseNxAffected,
 } from '../src/adapters/nx.mjs';
+import { parseTurboLsJson, turboAffectedPackages } from '../src/adapters/turbo.mjs';
 
 const graph = projectGraph({
   projects: [
@@ -77,5 +78,35 @@ const nxGraph = await nxProjectGraph({
   },
 });
 assert.equal(nxGraph.projects.find((x) => x.id === 'app')?.root, 'apps/app');
+
+
+const turboFixture = {
+  packageManager: 'pnpm',
+  packages: {
+    count: 2,
+    items: [
+      { name: '@repo/lib', path: 'packages/lib' },
+      { name: 'web', path: 'apps/web' },
+    ],
+  },
+};
+assert.deepEqual(parseTurboLsJson(turboFixture), [
+  { name: '@repo/lib', path: 'packages/lib' },
+  { name: 'web', path: 'apps/web' },
+]);
+
+let turboCall = null;
+const turboAffected = await turboAffectedPackages({
+  base: 'abc',
+  head: 'def',
+  executeCommand: async (command, args, options) => {
+    turboCall = { command, args, env: options.env };
+    return { stdout: JSON.stringify(turboFixture), stderr: '' };
+  },
+});
+assert.equal(turboAffected.length, 2);
+assert.deepEqual(turboCall.args, ['turbo', 'ls', '--affected', '--output=json']);
+assert.equal(turboCall.env.TURBO_SCM_BASE, 'abc');
+assert.equal(turboCall.env.TURBO_SCM_HEAD, 'def');
 
 console.log('h19-kit M3.5 affected-project smoke: ok');
