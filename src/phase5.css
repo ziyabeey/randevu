@@ -84,6 +84,36 @@
 .booking-line-meta { align-self: center; color: var(--muted); font-size: .72rem; line-height: 1.25; }
 .booking-line-remove { min-height: 2.6rem; border: 0; border-radius: .6rem; background: #f3e9e7; color: #874941; padding: .5rem .7rem; font-weight: 750; cursor: pointer; }
 .booking-line-remove:disabled { opacity: .45; cursor: not-allowed; }
+.booking-notification-options {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr)) minmax(10rem,.8fr);
+  gap: .6rem;
+  margin-top: .75rem;
+}
+.booking-toggle,
+.booking-reminder-select {
+  min-width: 0;
+  border: 1px solid #dbe3f1;
+  border-radius: .7rem;
+  background: #fafbfe;
+  padding: .65rem .7rem;
+}
+.booking-toggle { display: flex; align-items: center; gap: .6rem; cursor: pointer; }
+.booking-toggle input { width: 1.1rem; height: 1.1rem; flex: none; }
+.booking-toggle > span { display: grid; min-width: 0; gap: .12rem; }
+.booking-toggle small { color: var(--muted); font-size: .7rem; line-height: 1.25; }
+.booking-reminder-select { display: grid; gap: .3rem; color: var(--muted); font-size: .75rem; font-weight: 650; }
+.booking-reminder-select select {
+  min-width: 0;
+  width: 100%;
+  min-height: 2.45rem;
+  border: 1px solid #ccd5e7;
+  border-radius: .6rem;
+  background: #fff;
+  padding: .45rem .55rem;
+  color: #182238;
+  font: inherit;
+}
 .booking-future-hints { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
 .booking-future-hints > span { display: grid; gap: .1rem; padding: .55rem .7rem; border: 1px dashed #d3dbea; border-radius: .65rem; background: #fafbfe; }
 .booking-future-hints small { color: var(--muted); font-size: .7rem; }
@@ -214,6 +244,7 @@
   .booking-page { padding-inline: .8rem; }
   .booking-hero { flex-direction: column; }
   .booking-fields,
+  .booking-notification-options,
   .reschedule-controls,
   .booking-close-panel,
   .booking-detail-grid { grid-template-columns: 1fr; }

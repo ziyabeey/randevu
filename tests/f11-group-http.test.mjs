@@ -342,3 +342,76 @@ await test('F11-02 public group create maps semantic failures and status 0/>=500
     } finally { globalThis.fetch = realFetch; }
   }
 });
+
+
+await test('F16-02 operator create binds notification preferences to the active tenant atomically', async () => {
+  const realFetch = globalThis.fetch;
+  const payload = groupPayload('60000000-0000-4000-8000-000000000088');
+  let rpcBody = null;
+  globalThis.fetch = authMock(async (url, init) => {
+    assert.equal(url.pathname, '/rest/v1/rpc/create_appointment_group_with_notifications');
+    rpcBody = JSON.parse(String(init.body));
+    return json(payload);
+  });
+  try {
+    const response = await app.request('http://localhost/api/bookings/groups', {
+      method: 'POST',
+      headers: { ...operatorHeaders(), 'Idempotency-Key': 'f1602-notify-create-0001' },
+      body: JSON.stringify({
+        businessId: foreignBusinessId,
+        customerName: 'Deniz',
+        customerPhone: '05551602001',
+        customerEmail: 'deniz@example.test',
+        startsAt: '2026-09-20T07:00:00Z',
+        lines: lines(),
+        notifications: {
+          emailEnabled: true,
+          smsEnabled: true,
+          reminderMinutesBefore: 1440,
+        },
+      }),
+    }, env);
+    assert.equal(response.status, 201);
+    assert.deepEqual((await response.json()).group, payload);
+    assert.equal(rpcBody.p_business_id, businessId);
+    assert.notEqual(rpcBody.p_business_id, foreignBusinessId);
+    assert.equal(rpcBody.p_email_enabled, true);
+    assert.equal(rpcBody.p_sms_enabled, true);
+    assert.equal(rpcBody.p_reminder_minutes_before, 1440);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+await test('F16-02 invalid notification preferences fail before group mutation', async () => {
+  for (const notifications of [
+    { emailEnabled: 'yes', smsEnabled: false, reminderMinutesBefore: 1440 },
+    { emailEnabled: true, smsEnabled: false, reminderMinutesBefore: 14 },
+    { emailEnabled: true, smsEnabled: false, reminderMinutesBefore: 10081 },
+  ]) {
+    const realFetch = globalThis.fetch;
+    let groupRpc = false;
+    globalThis.fetch = authMock(async (url) => {
+      if (url.pathname.includes('create_appointment_group')) groupRpc = true;
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    try {
+      const response = await app.request('http://localhost/api/bookings/groups', {
+        method: 'POST',
+        headers: { ...operatorHeaders(), 'Idempotency-Key': 'f1602-invalid-notify-0001' },
+        body: JSON.stringify({
+          customerName: 'Deniz',
+          customerPhone: '05551602001',
+          customerEmail: 'deniz@example.test',
+          startsAt: '2026-09-20T07:00:00Z',
+          lines: lines(),
+          notifications,
+        }),
+      }, env);
+      assert.equal(response.status, 400);
+      assert.equal(groupRpc, false);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  }
+});
