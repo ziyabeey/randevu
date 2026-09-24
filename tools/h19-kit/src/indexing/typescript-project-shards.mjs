@@ -126,7 +126,7 @@ export async function resolveTypeScriptProjectShards({
       projectRoot: '.',
       sourceFiles: Object.freeze(sourceFiles),
       configFiles: Object.freeze(configFiles),
-      flags: Object.freeze(['-p', configPath]),
+      flags: Object.freeze([configPath]),
     }));
   }
 
