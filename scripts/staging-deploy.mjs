@@ -173,6 +173,17 @@ if (db.pending) {
 }
 if ((state.rotating || mode === 'resume') && !gates.f09) throw new Error('Rotation/resume requires the real F09 acceptance gate');
 if (gates.f09 && !env.RESEND_ACCEPTANCE_API_KEY) throw new Error('Missing F09 provider acceptance read key');
+if (gates.f16sms) {
+  const requiredF16 = [
+    'NETGSM_USERCODE',
+    'NETGSM_PASSWORD',
+    'NETGSM_MSGHEADER',
+    'NETGSM_TEST_RECIPIENT',
+    'NETGSM_SMS_SEGMENT_PRICE_TRY',
+  ];
+  const missingF16 = requiredF16.filter((name) => !String(env[name] ?? '').trim());
+  if (missingF16.length) throw new Error(`Missing F16 SMS acceptance settings: ${missingF16.join(', ')}`);
+}
 state.evidence = { ...state.evidence, gates };
 for (const value of Object.values(state.keys)) console.log(`::add-mask::${value}`);
 
