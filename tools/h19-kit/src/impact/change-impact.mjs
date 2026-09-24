@@ -8,8 +8,23 @@ function unique(values = []) {
   return [...new Set(values.filter(Boolean).map(String))].sort();
 }
 
+const TEST_PATH_PATTERNS = Object.freeze([
+  /(?:^|\/)(?:__tests__|tests?|specs?)(?:\/|$)/i,
+  /(?:^|\/)[^/]+\.(?:test|spec)\.[^/]+$/i,
+  /(?:^|\/)test_[^/]+\.py$/i,
+  /(?:^|\/)[^/]+_test\.(?:go|py|rb)$/i,
+]);
+
+export function isLikelyTestPath(value) {
+  const path = String(value ?? '').replaceAll('\\', '/');
+  return TEST_PATH_PATTERNS.some((pattern) => pattern.test(path));
+}
+
 function candidateTests(report) {
-  const direct = unique(report.testReferencePaths);
+  const inferred = (report.sites ?? [])
+    .filter((site) => site.isTestReference || isLikelyTestPath(site.path))
+    .map((site) => site.path);
+  const direct = unique([...(report.testReferencePaths ?? []), ...inferred]);
   const uncovered = new Set(report.uncoveredPaths);
   const unknown = new Set(report.unknownCoveragePaths);
 
