@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from './api';
 import { useWorkspace } from './workspace-context';
+import PrivatePhotoArchive from './PrivatePhotoArchive';
 
 type Service = {
   id: string;
@@ -178,6 +179,8 @@ export default function ServicesPage() {
             </div>
           )}
         </section>
+
+        <PrivatePhotoArchive businessId={catalog.membership.business_id} services={catalog.services.map((service) => ({ id: service.id, name: service.name }))} />
       </div>
     </main>
   );

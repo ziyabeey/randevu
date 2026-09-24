@@ -29,7 +29,9 @@ test('F13-03 operator composer keeps the required field order and uses the atomi
 test('F13-03 close-time stays adjacent while F14-04 owns the live ticket connection point', () => {
   assert.match(booking, /closeOpen \? 'Kapat' : 'Saat kapat'/);
   assert.match(booking, /api\('\/api\/availability\/blocks'/);
-  assert.match(booking, /<span aria-disabled="true">Fotoğraf<\/span>/);
+  // F16-03 turned the former upcoming photo placeholder into the live private photo tab.
+  assert.match(booking, /role="tab" aria-selected=\{detailTab === 'photos'\}.*setDetailTab\('photos'\)\}>Fotoğraf<\/button>/);
+  assert.match(booking, /<AppointmentPhotos/);
   assert.match(booking, /openTicketForBooking/);
   assert.match(booking, /\/api\/tickets\/from-booking-group/);
   assert.match(booking, /Idempotency-Key/);
