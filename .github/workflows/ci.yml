@@ -194,6 +194,7 @@ jobs:
           PGPASSWORD: postgres
         run: node scripts/ci-code.mjs
       - name: Run H19 Kit foundation smoke
+        id: h19_kit
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm run test:h19-kit
       - name: Require the selected checks to complete
@@ -204,7 +205,13 @@ jobs:
           CI_DOCS_COMPLETE: ${{ steps.docs.outputs.complete }}
           CI_CODE_RESULT: ${{ steps.verify.outcome }}
           CI_CODE_COMPLETE: ${{ steps.verify.outputs.complete }}
-        run: node scripts/ci-result.mjs
+          H19_KIT_RESULT: ${{ steps.h19_kit.outcome }}
+        run: |
+          if [ "${CI_MODE}" = "code" ] && [ "${H19_KIT_RESULT}" != "success" ]; then
+            echo "H19 Kit foundation smoke did not pass: ${H19_KIT_RESULT}" >&2
+            exit 1
+          fi
+          node scripts/ci-result.mjs
       - name: Remove disposable test database
         if: ${{ always() && steps.scope.outputs.mode == 'code' }}
         run: docker rm --force --volumes randevu-ci-postgres
