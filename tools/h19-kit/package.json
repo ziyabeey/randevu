@@ -1,0 +1,18 @@
+{
+  "name": "@h19/kit",
+  "version": "0.0.1-alpha.0",
+  "private": true,
+  "type": "module",
+  "description": "H19 change-intelligence toolkit incubator",
+  "bin": {
+    "h19-kit": "./bin/h19-kit.mjs"
+  },
+  "scripts": {
+    "test": "node test/smoke.mjs",
+    "doctor": "node bin/h19-kit.mjs doctor"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "license": "UNLICENSED"
+}
