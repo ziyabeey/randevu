@@ -8,6 +8,7 @@ import { extractSqlRoutines } from '../src/extractors/sql-routines.mjs';
 import { extractTypeScriptUnits } from '../src/extractors/typescript-units.mjs';
 import { extractPythonUnits } from '../src/extractors/python-units.mjs';
 import { scan } from '../src/pipeline/scan.mjs';
+import { repositoryInventory } from '../src/repository/inventory.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -57,6 +58,13 @@ if (command === 'units') {
   process.exit(0);
 }
 
+if (command === 'inventory') {
+  const cwd = args[0] ?? process.cwd();
+  const result = await repositoryInventory(cwd);
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(result.errors.length ? 1 : 0);
+}
+
 if (command === 'scan') {
   const file = args[0];
   if (!file) throw new Error('scan requires an input JSON file');
@@ -66,5 +74,5 @@ if (command === 'scan') {
   process.exit(0);
 }
 
-console.error('usage: h19-kit <doctor|history [repo]|hotspots [repo]|units <file>|scan <input.json> [--sarif]>');
+console.error('usage: h19-kit <doctor|inventory [repo]|history [repo]|hotspots [repo]|units <file>|scan <input.json> [--sarif]>');
 process.exit(2);
