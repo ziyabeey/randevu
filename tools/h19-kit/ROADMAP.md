@@ -59,7 +59,7 @@ M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf3
 - [ ] Tree-sitter fallback adapters for unsupported languages
 - [x] generic changed-file → reverse-dependency affected resolver
 - [x] Nx project-graph / affected adapter
-- [ ] Turborepo affected adapter
+- [x] Turborepo affected adapter
 - [x] content-addressed SCIP project-shard cache
 - [x] exact-head provenance manifest
 - [x] indexer version/config/source/dependency-surface invalidation
