@@ -125,6 +125,7 @@ const gates = {
   f09: env.RUN_F09_ACCEPTANCE === 'true',
   f10: env.RUN_F10_ACCEPTANCE === 'true',
   f10team: env.RUN_F10_TEAM_ACCEPTANCE === 'true',
+  f16sms: env.RUN_F16_SMS_ACCEPTANCE === 'true',
   s01: env.RUN_S01_ACCEPTANCE === 'true',
   mailbox: env.S01_RECOVERY_EMAIL ?? '',
 };
@@ -228,6 +229,7 @@ await executeCutover({
     if (gates.f09) command('npm', ['run', 'staging:f09-acceptance']);
     if (gates.f10) command('npm', ['run', 'staging:f10-auth-acceptance']);
     if (gates.f10team) command('npm', ['run', 'staging:f10-team-acceptance']);
+    if (gates.f16sms) command('npm', ['run', 'staging:f16-sms-acceptance']);
     if (gates.s01) command('npm', ['run', 'staging:s01-acceptance']);
     if (mode === 'deploy' && gates.f09 && gates.f10 && gates.s01) {
       command('npm', ['run', 'staging:s07-acceptance']);
