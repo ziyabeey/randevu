@@ -150,6 +150,12 @@ const malformedPacket = {
   }],
 };
 assert.throws(() => createMinimalTestSpec({
+  packet,
+  hypothesisId: packet.hypotheses[0].id,
+  schemaVersion: 2,
+}), /unsupported minimal test spec schemaVersion/);
+
+assert.throws(() => createMinimalTestSpec({
   packet: malformedPacket,
   hypothesisId: malformedPacket.hypotheses[0].id,
 }), /requires mutationId and mutatorId/);
