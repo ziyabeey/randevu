@@ -130,16 +130,16 @@ assert.throws(() => materializeTestCandidate({
   renderer: { ...renderer, artifactSha256: 'not-a-sha' },
 }), /artifactSha256/);
 
+let nondeterministicCounter = 0;
 const nondeterministic = {
   ...renderer,
   artifactSha256: 'd'.repeat(64),
-  _n: 0,
   render() {
-    this._n += 1;
+    nondeterministicCounter += 1;
     return {
       path: 'tests/generated/nondeterministic.test.mjs',
       operation: 'create',
-      content: `test-${this._n}`,
+      content: `test-${nondeterministicCounter}`,
     };
   },
 };
