@@ -156,6 +156,20 @@ assert.throws(() => buildTestSpecification({
   packet,
   hypothesisId: mutantHypothesis.id,
   recipe: freezeTestRecipe({
+    recipeId: 'missing-mutator',
+    version: '1',
+    matches: { reason: 'surviving-mutant' },
+    setup: ['x'],
+    action: 'x',
+    expectedInvariant: 'x',
+    observations: ['x'],
+  }),
+}), /requires a mutator match/);
+
+assert.throws(() => buildTestSpecification({
+  packet,
+  hypothesisId: mutantHypothesis.id,
+  recipe: freezeTestRecipe({
     recipeId: 'wrong',
     version: '1',
     matches: { reason: 'surviving-mutant', mutatorId: 'other' },
