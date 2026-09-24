@@ -26,6 +26,24 @@ function exec(command, args, cwd) {
 }
 
 function rangeOf(occurrence) {
+  const single = field(occurrence, 'single_line_range', 'singleLineRange');
+  if (single) {
+    const line = Number(single.line ?? 0);
+    const start = Number(field(single, 'start_character', 'startCharacter') ?? 0);
+    const end = Number(field(single, 'end_character', 'endCharacter') ?? start);
+    return [line, start, end];
+  }
+
+  const multi = field(occurrence, 'multi_line_range', 'multiLineRange');
+  if (multi) {
+    return [
+      Number(field(multi, 'start_line', 'startLine') ?? 0),
+      Number(field(multi, 'start_character', 'startCharacter') ?? 0),
+      Number(field(multi, 'end_line', 'endLine') ?? 0),
+      Number(field(multi, 'end_character', 'endCharacter') ?? 0),
+    ];
+  }
+
   const range = occurrence?.range;
   return Array.isArray(range) ? [...range] : null;
 }
