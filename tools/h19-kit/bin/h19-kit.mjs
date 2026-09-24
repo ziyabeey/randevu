@@ -12,6 +12,10 @@ import { repositoryInventory } from '../src/repository/inventory.mjs';
 import { scan } from '../src/pipeline/scan.mjs';
 import { freezeCases } from '../src/experiments/freeze.mjs';
 import { blindSample } from '../src/experiments/blind-sample.mjs';
+import { scipGraph, scipImpact } from '../src/adapters/scip.mjs';
+import { treeSitterTags } from '../src/adapters/tree-sitter-tags.mjs';
+import { nxAffected } from '../src/adapters/nx-affected.mjs';
+import { turboAffected } from '../src/adapters/turbo-affected.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -26,7 +30,11 @@ if (command === 'doctor') {
     git: exists('git'),
     python: exists('python3') || exists('python'),
     semgrep: exists('semgrep'),
-    note: 'Semgrep is optional. TypeScript parsing uses the toolkit-local official TS6 compatibility package.',
+    scip: exists('scip'),
+    treeSitter: exists('tree-sitter'),
+    nx: exists('nx'),
+    turbo: exists('turbo'),
+    note: 'External analyzers are optional. Native toolkit extractors continue to work when they are absent.',
   };
   console.log(JSON.stringify(report, null, 2));
   process.exit(report.git ? 0 : 1);
@@ -104,6 +112,36 @@ if (command === 'scan') {
   process.exit(0);
 }
 
+if (command === 'scip-impact') {
+  const [indexPath, ...changedPaths] = args;
+  if (!indexPath || changedPaths.length === 0) {
+    throw new Error('scip-impact requires <index.scip> <changed-path>...');
+  }
+  const graph = await scipGraph({ indexPath });
+  console.log(JSON.stringify(scipImpact(graph, changedPaths), null, 2));
+  process.exit(0);
+}
+
+if (command === 'syntax-tags') {
+  if (args.length === 0) throw new Error('syntax-tags requires <file>...');
+  const graph = await treeSitterTags({ files: args });
+  console.log(JSON.stringify(graph.toJSON(), null, 2));
+  process.exit(0);
+}
+
+if (command === 'affected') {
+  const [provider, base = 'main', head = 'HEAD', task = null] = args;
+  if (provider === 'nx') {
+    console.log(JSON.stringify(await nxAffected({ base, head }), null, 2));
+    process.exit(0);
+  }
+  if (provider === 'turbo') {
+    console.log(JSON.stringify(await turboAffected({ base, head, task }), null, 2));
+    process.exit(0);
+  }
+  throw new Error('affected requires provider nx|turbo');
+}
+
 console.error([
   'usage: h19-kit <command>',
   '  doctor',
@@ -112,6 +150,9 @@ console.error([
   '  history [repo]',
   '  hotspots [repo]',
   '  scan <input.json> [--sarif]',
+  '  scip-impact <index.scip> <changed-path>...',
+  '  syntax-tags <file>...',
+  '  affected nx|turbo [base] [head] [task]',
   '  experiment-freeze <cases.json> <experiment-id> <protocol-version>',
   '  experiment-blind <frozen.json> [count]',
 ].join('\n'));
