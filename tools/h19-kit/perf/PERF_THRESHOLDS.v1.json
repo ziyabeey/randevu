@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "h19-perf-regression-v1",
+  "baselineFamily": "PERF-002",
+  "semantics": "Regression guard only. These limits are not product latency targets.",
+  "limits": {
+    "inventoryRepeatP95MsMax": 1000,
+    "historyWarmHitMsMax": 25,
+    "syntheticImpactP95MsMax": 30,
+    "syntheticDiscoveryP95MsMax": 20,
+    "scipExactWarmHitMsMax": 25,
+    "scipShardColdVsMonolithicRatioMax": 1.2,
+    "scipShardedChangedVsMonolithicRatioMax": 0.8,
+    "scipShardWarmTotalMsMax": 30
+  },
+  "invariants": {
+    "scipStatus": "measured",
+    "shardedChangeStatus": "measured",
+    "shardedChangeMissesMax": 1,
+    "shardedChangeHitsMin": 1
+  },
+  "reportOnly": [
+    "scipTypescript.firstIndexMs",
+    "scipTypescript.repeatH19CacheMissMs",
+    "scipTypescript.singleFileChange.reindexMs",
+    "scipTypescript.projectShards.rows[].coldMs"
+  ],
+  "productTargets": null
+}
