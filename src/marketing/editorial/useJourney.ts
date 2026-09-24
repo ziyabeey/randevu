@@ -201,6 +201,7 @@ export function useJourney(rootRef: RefObject<HTMLElement | null>, tokenRef: Ref
     let shown = Number.NaN;
     let last = 0;
     let tick = 0;
+    let gliding = false;
 
     const step = (now: number) => {
       tick = 0;
@@ -212,10 +213,13 @@ export function useJourney(rootRef: RefObject<HTMLElement | null>, tokenRef: Ref
       else shown += (target - shown) * (1 - Math.exp(-dt / GLIDE_MS));
       if (Math.abs(target - shown) < 0.0008) shown = target;
       draw(shown);
-      if (shown !== target) tick = window.requestAnimationFrame(step);
-      else {
+      if (shown !== target) {
+        gliding = true;
+        tick = window.requestAnimationFrame(step);
+      } else {
         last = 0;
-        root.dispatchEvent(new Event("ed-journey-settle"));
+        if (gliding) root.dispatchEvent(new Event("ed-journey-settle"));
+        gliding = false;
       }
     };
 
