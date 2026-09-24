@@ -260,7 +260,7 @@ Kişisel mailbox veya gerçek müşteri adresi kullanılmaz. Acceptance job sonr
 
 ## F16-02 opt-in gerçek SMS acceptance
 
-Actions ekranında `Staging deploy` çalıştırılırken incelenen branch/ref seçilir ve `Run real F16-02 NetGSM SMS delivery and segment/tariff gate` girişi açılır.
+Actions ekranında `Staging deploy` çalıştırılırken incelenen branch/ref seçilir ve `Run real F16-02 Twilio SMS delivery gate` girişi açılır.
 
 Acceptance komutu:
 
@@ -268,18 +268,21 @@ Acceptance komutu:
 npm run staging:f16-sms-acceptance
 ```
 
+Staging trial acceptance için GitHub `staging` environment içinde `TWILLO_ID`, `TWILLO_SECRET_API` ve yalnız testte kullanılan `TWILIO_TEST_RECIPIENT` bulunur. Trial modu Worker'a `TWILIO_TRIAL_MODE=true` olarak verilir. Test alıcısı Worker secret bundle'a kopyalanmaz.
+
 Acceptance şunları kanıtlar:
 
-- staging fixture için gerçek F16 lifecycle SMS job'ı üretilir,
-- test mesajı ürünün aynı `measureNetgsmSmsParts` preflight'ıyla ölçülür ve altı segment sınırı aşılmaz,
-- hesapta geçerli segment fiyatıyla o mesajın maliyet zarfı kaydedilir,
+- staging fixture için gerçek F16 lifecycle SMS job'ı üretilir ve provider `twilio` olur,
 - scheduled Worker shared F09/S03 outbox'tan işi claim eder,
-- immutable request fingerprint ve provider correlation korunur,
-- NetGSM kabulündeki gerçek `jobid` DB'ye yazılır,
-- aynı scheduled notification entry delivery-report reconciliation çalıştırır,
-- güvenli test alıcısında provider sonucu `delivered` olur.
+- immutable request fingerprint korunur,
+- Twilio trial kısıtı nedeniyle provider'a hazır `sms_appointment_reminders` body identifier'ı gönderilir; ürünün canonical SMS metni repo testlerinde ayrıca sabitlenir,
+- gerçek Twilio Message SID DB'ye yazılır,
+- aynı scheduled notification entry Message resource status reconciliation çalıştırır,
+- güvenli ve Twilio hesabında doğrulanmış test alıcısında provider sonucu `delivered` olur.
 
-Test recipient, credential ve SMS gövdesi loglanmaz. Bu kanıt staging provider entegrasyonuna aittir; production müşterilerine gönderim veya genel deliverability garantisi değildir.
+Trial kanıtı production sender provisioning iddiası değildir. Production hesapta custom body için `TWILIO_FROM` veya `TWILIO_MESSAGING_SERVICE_SID` gerekir. NetGSM adapter'ı geriye uyumluluk/fallback için repoda tutulur; yeni SMS job authority Twilio'dur.
+
+Test recipient, credential ve SMS gövdesi loglanmaz.
 
 ## Kesilmiş ilk kurulumun operatör adımları
 
@@ -309,7 +312,8 @@ Custom staging domain bağlandığında veya gerçek redirect tabanlı auth akı
 - Cloudflare account ID secret değildir.
 - Runtime `RESEND_API_KEY` gönderimle sınırlı tutulur.
 - `RESEND_ACCEPTANCE_API_KEY` yalnız seçilmiş/zorunlu GitHub acceptance process'ine verilir; Worker bundle'a girmez.
-- NetGSM runtime credential üçlüsü yalnız tam set olarak Worker'a verilir; `NETGSM_TEST_RECIPIENT` ve segment fiyatı Worker bundle'a girmez.
+- NetGSM runtime credential üçlüsü fallback/legacy uyumluluğu için yalnız tam set olarak Worker'a verilir; `NETGSM_TEST_RECIPIENT` ve segment fiyatı Worker bundle'a girmez.
+- Twilio runtime credential çifti yalnız tam set olarak Worker'a verilir; `TWILIO_TEST_RECIPIENT` Worker bundle'a girmez. Trial modu yalnız staging acceptance içindir.
 - Provider API key değerleri Git/PR/handoff'a yazılmaz.
 - Hosted migration'lar forward-only'dir; merge edilmiş eski migration'lar değiştirilmez.
 
