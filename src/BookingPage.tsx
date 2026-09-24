@@ -476,8 +476,8 @@ export default function BookingPage() {
     setCreateSlotsBusy(false);
     setCreateSlots([]);
     setSelectedCreateSlot(null);
+    invalidateSeriesRead();
     setSeriesPreview(null);
-    setSeriesPreviewBusy(false);
     if (rotateKey) setCreateKey(commandKey());
   }
 
@@ -1025,7 +1025,7 @@ export default function BookingPage() {
         <div className="booking-actions"><button className="secondary-button" type="button" disabled={busy || createSlotsBusy || createLines.some((line) => !line.serviceId)} onClick={() => void previewCreateSlots()}>{createSlotsBusy ? 'Saatler aranıyor…' : 'Uygun saatleri getir'}</button></div>
 
         <div className="slot-cloud">
-          {createSlots.map((slot) => <button type="button" className={selectedCreateSlot?.starts_at === slot.starts_at ? 'slot-button selected' : 'slot-button'} key={slot.starts_at} onClick={() => { setSelectedCreateSlot(slot); setSeriesPreview(null); setCreateKey(commandKey()); }}>
+          {createSlots.map((slot) => <button type="button" className={selectedCreateSlot?.starts_at === slot.starts_at ? 'slot-button selected' : 'slot-button'} key={slot.starts_at} onClick={() => { invalidateSeriesRead(); setSelectedCreateSlot(slot); setSeriesPreview(null); setCreateKey(commandKey()); }}>
             <strong>{formatTime(slot.starts_at, slot.timezone)}</strong><span>{createLines.length} hizmet · {slot.total_duration_minutes} dk</span>
           </button>)}
         </div>
@@ -1039,6 +1039,7 @@ export default function BookingPage() {
           <label>
             <strong>Tekrar</strong>
             <select value={recurrenceFrequency} onChange={(event) => {
+              invalidateSeriesRead();
               setRecurrenceFrequency(event.target.value as 'none' | 'daily' | 'weekly');
               setSeriesPreview(null);
               setCreateKey(commandKey());
@@ -1052,6 +1053,7 @@ export default function BookingPage() {
             <strong>Adet</strong>
             <input type="number" min={2} max={12} value={recurrenceCount} onChange={(event) => {
               const next = Math.max(2, Math.min(12, Number(event.target.value) || 2));
+              invalidateSeriesRead();
               setRecurrenceCount(next);
               setSeriesPreview(null);
               setCreateKey(commandKey());
