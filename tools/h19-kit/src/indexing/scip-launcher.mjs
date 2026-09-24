@@ -1,4 +1,4 @@
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -69,9 +69,7 @@ export async function indexProject({
     });
   }
 
-  const tempRoot = await mkdir(path.join(os.tmpdir(), 'h19-scip-'), { recursive: true })
-    .then(() => os.tmpdir());
-  const tempDir = await import('node:fs/promises').then(({ mkdtemp }) => mkdtemp(path.join(tempRoot, 'h19-scip-')));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'h19-scip-'));
   const output = path.join(tempDir, artifactName);
   const projectCwd = path.resolve(cwd, projectRoot);
 
