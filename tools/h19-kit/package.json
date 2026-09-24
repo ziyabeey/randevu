@@ -24,7 +24,9 @@
     "test:m5-validation-packet": "node test/m5-validation-packet.mjs",
     "test:perf-baseline": "node test/perf-baseline.mjs",
     "perf:baseline": "node perf/run-baseline.mjs",
-    "test:perf-shards": "node test/perf-shards.mjs"
+    "test:perf-shards": "node test/perf-shards.mjs",
+    "test:perf-gate": "node test/perf-regression-gate.mjs",
+    "perf:check": "node perf/check-baseline.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
