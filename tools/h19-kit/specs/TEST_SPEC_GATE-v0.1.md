@@ -53,7 +53,14 @@ Every specification MUST bind to:
 - `sourceRevision` from the packet;
 - exact target path/unit;
 - source evidence IDs;
-- optional recipe ID/version/digest when a recipe is used.
+- optional recipe ID/version/digest when a recipe is used;
+- validation-result digest when a confirmed validation result is used for eligibility.
+
+The validation-result digest is:
+
+```text
+validationDigest = sha256(stableJson(validationResult) + "\n")
+```
 
 Changing any binding changes the specification hash.
 
@@ -126,6 +133,14 @@ A recipe is data, not model reasoning, and has at minimum:
 ```
 
 A recipe MUST be versioned and content-addressed.
+
+Its digest is defined as:
+
+```text
+recipe.digest = sha256(stableJson(recipe without digest) + "\n")
+```
+
+The digest field is never hashed into itself.
 
 The generic core may compose recipe fields with frozen M5 metadata. It may not extrapolate fields that the recipe does not provide.
 
