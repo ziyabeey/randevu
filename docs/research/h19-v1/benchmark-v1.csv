@@ -1,0 +1,9 @@
+cell,selector,domain,axes,status,valid,baseline_ci,probe_ci,clean_ci,issue
+H-A,H19-semantic,customers,D1xD5,HIT,true,2620,2624,2625,486
+B-A,coverage-first,customers,D0xD5,HIT,true,2626,2627,2628,491
+H-B,H19-semantic,product-sales,D1xD5,ALREADY_COVERED,true,2629,,,497
+B-B,coverage-first,product-sales,D0xD2,HIT,true,2630,2631,2632,499
+H-C,H19-semantic,expenses,D1xD2,HIT,true,2633,2635,2636,501
+B-C,coverage-first,expenses,D1xD4,INVALID,false,,,,507
+H-D,H19-semantic,reporting,D0xD4,ALREADY_COVERED,true,2640,,,509
+B-D,coverage-first,reporting,D2xD4,HIT,true,2642,2646,2647,511
