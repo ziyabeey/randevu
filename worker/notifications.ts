@@ -1,8 +1,9 @@
 import { base64UrlToBytes } from '../shared/base64.ts';
 import { fetchTextWithTimeout } from './outbound-request.ts';
 import { netgsmConfigured, queryNetgsmDeliveryReport, sendNetgsmSms, type NetgsmEnv } from './netgsm.ts';
+import { queryTwilioMessageStatus, sendTwilioSms, twilioConfigured, type TwilioEnv } from './twilio.ts';
 
-export type NotificationEnv = NetgsmEnv & {
+export type NotificationEnv = NetgsmEnv & TwilioEnv & {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
@@ -26,7 +27,7 @@ type ClaimRow = {
   kind: 'public_booking_confirmation' | 'booking_lifecycle' | 'booking_reminder';
   channel: 'email' | 'sms';
   recipient: string;
-  provider: 'resend' | 'netgsm';
+  provider: 'resend' | 'netgsm' | 'twilio';
   provider_idempotency_key: string;
   provider_reference_id: string | null;
   attempt_count: number;
@@ -99,6 +100,7 @@ export type NotificationDispatchSummary = {
 };
 
 type DeliveryCheckRow = {
+  provider: 'netgsm' | 'twilio';
   provider_message_id: string;
   provider_reference_id: string | null;
 };
@@ -446,7 +448,9 @@ export function renderTemplateV3Sms(row: ClaimRow) {
 async function fingerprintProviderRequest(row: ClaimRow, body: string) {
   const endpoint = row.provider === 'netgsm'
     ? 'https://api.netgsm.com.tr/sms/rest/v2/send'
-    : PROVIDER_ENDPOINT;
+    : row.provider === 'twilio'
+      ? 'https://api.twilio.com/2010-04-01/Accounts/{account}/Messages.json'
+      : PROVIDER_ENDPOINT;
   const canonical = ['POST', endpoint, row.provider_idempotency_key, body].join('\n');
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
   return bytesToHex(new Uint8Array(digest));
@@ -497,6 +501,18 @@ async function prepareProviderRequest(
       recipient: row.recipient,
       message: smsMessage,
       referenceId: row.provider_reference_id,
+    });
+  } else if (row.template_version === 3 && row.channel === 'sms' && row.provider === 'twilio') {
+    const config = twilioConfigured(env);
+    sender = row.sender_snapshot === null
+      ? validSender(config?.senderLabel)
+      : validSender(row.sender_snapshot);
+    if (!sender || !config) return null;
+    smsMessage = renderTemplateV3Sms(row);
+    body = JSON.stringify({
+      recipient: row.recipient,
+      message: smsMessage,
+      trialMode: config.trialMode,
     });
   } else {
     return null;
@@ -654,6 +670,16 @@ export async function dispatchNotificationBatch(
       else summary.retrying += 1;
       return;
     }
+    if (row.provider === 'twilio' && !twilioConfigured(env)) {
+      const released = await release(
+        env, dispatchSecret, row, 'twilio_not_configured',
+        true, true, retryDelay(row.attempt_count), fetchImpl,
+      );
+      if (!released.ok) summary.leaseErrors += 1;
+      else if (released.data === 'failed_terminal') summary.failedTerminal += 1;
+      else summary.retrying += 1;
+      return;
+    }
 
     let groupSummary: GroupSummary | null = null;
     if (row.template_version === 2) {
@@ -711,7 +737,12 @@ export async function dispatchNotificationBatch(
         message: prepared.smsMessage ?? '',
         referenceId: row.provider_reference_id ?? '',
       }, fetchImpl)
-      : await sendResend(env, row, prepared, fetchImpl);
+      : row.provider === 'twilio'
+        ? await sendTwilioSms(env, {
+          recipient: row.recipient,
+          message: prepared.smsMessage ?? '',
+        }, fetchImpl)
+        : await sendResend(env, row, prepared, fetchImpl);
     if (provider.status === 'accepted') {
       const completed = await rpc<boolean>(env, 'complete_notification_job_v2', {
         p_dispatch_secret: dispatchSecret,
@@ -744,7 +775,7 @@ export async function reconcileNotificationDeliveryBatch(
   fetchImpl: typeof fetch = fetch,
 ): Promise<NotificationDeliverySummary> {
   const dispatchSecret = validSecret(env.NOTIFICATION_DISPATCH_SECRET);
-  if (!dispatchSecret || !netgsmConfigured(env)) {
+  if (!dispatchSecret || (!netgsmConfigured(env) && !twilioConfigured(env))) {
     return { status: 'disabled', claimed: 0, recorded: 0, delivered: 0, waiting: 0, terminal: 0, recordErrors: 0 };
   }
 
@@ -767,31 +798,44 @@ export async function reconcileNotificationDeliveryBatch(
   };
   if (!claimed.data.length) return summary;
 
-  const allowed = new Set(claimed.data.map((row) => row.provider_message_id));
-  const report = await queryNetgsmDeliveryReport(
-    env,
-    [...allowed],
-    fetchImpl,
-  );
-  if (report.status === 'failed') return { ...summary, status: 'provider_failed' };
-
-  for (const job of report.jobs) {
-    if (!allowed.has(job.providerMessageId)) continue;
+  async function record(provider: 'netgsm' | 'twilio', providerMessageId: string, status: string, delivered: boolean) {
     const recorded = await rpc<boolean>(env, 'record_notification_delivery_status', {
       p_dispatch_secret: dispatchSecret,
-      p_provider: 'netgsm',
-      p_provider_message_id: job.providerMessageId,
-      p_status: job.status,
-      p_delivered: job.delivered,
+      p_provider: provider,
+      p_provider_message_id: providerMessageId,
+      p_status: status,
+      p_delivered: delivered,
     }, fetchImpl);
     if (!recorded.ok || recorded.data !== true) {
       summary.recordErrors += 1;
-      continue;
+      return;
     }
     summary.recorded += 1;
-    if (job.delivered) summary.delivered += 1;
-    else if (job.status === 'waiting') summary.waiting += 1;
+    if (delivered) summary.delivered += 1;
+    else if (status === 'waiting') summary.waiting += 1;
     else summary.terminal += 1;
+  }
+
+  const netgsmRows = claimed.data.filter((row) => row.provider === 'netgsm');
+  if (netgsmRows.length) {
+    if (!netgsmConfigured(env)) return { ...summary, status: 'provider_failed' };
+    const allowed = new Set(netgsmRows.map((row) => row.provider_message_id));
+    const report = await queryNetgsmDeliveryReport(env, [...allowed], fetchImpl);
+    if (report.status === 'failed') return { ...summary, status: 'provider_failed' };
+    for (const job of report.jobs) {
+      if (!allowed.has(job.providerMessageId)) continue;
+      await record('netgsm', job.providerMessageId, job.status, job.delivered);
+    }
+  }
+
+  const twilioRows = claimed.data.filter((row) => row.provider === 'twilio');
+  if (twilioRows.length) {
+    if (!twilioConfigured(env)) return { ...summary, status: 'provider_failed' };
+    for (const row of twilioRows) {
+      const report = await queryTwilioMessageStatus(env, row.provider_message_id, fetchImpl);
+      if (report.status === 'failed') return { ...summary, status: 'provider_failed' };
+      await record('twilio', report.providerMessageId, report.providerStatus, report.delivered);
+    }
   }
 
   return summary;
