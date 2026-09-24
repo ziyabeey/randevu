@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const workflow = readFileSync(new URL('../.github/workflows/staging.yml', import.meta.url), 'utf8');
+const deployment = readFileSync(new URL('../scripts/staging-deployment.mjs', import.meta.url), 'utf8');
+const f16SmsAcceptance = readFileSync(new URL('../scripts/staging-f16-sms-acceptance.mjs', import.meta.url), 'utf8');
 
 const externalSettings = [
   'CLOUDFLARE_API_TOKEN',
@@ -34,8 +36,13 @@ test('F16 SMS staging credentials are conditional and the test recipient never b
   assert.match(workflow, /process\.env\.RUN_F16_SMS_ACCEPTANCE === 'true'/);
   assert.match(workflow, /F16 SMS acceptance missing staging settings/);
 
-  assert.doesNotMatch(deploy, /NETGSM_TEST_RECIPIENT/);
-  assert.match(deploy, /staging:f16-sms-acceptance/);
+  assert.doesNotMatch(deployment, /NETGSM_TEST_RECIPIENT/);
+  assert.match(deployment, /complete credential tuple/);
+  assert.match(f16SmsAcceptance, /NETGSM_TEST_RECIPIENT/);
+  assert.match(f16SmsAcceptance, /measureNetgsmSmsParts/);
+  assert.match(f16SmsAcceptance, /provider_message_id/);
+  assert.match(f16SmsAcceptance, /provider_delivery_status/);
+  assert.match(f16SmsAcceptance, /delivered_at/);
 });
 
 test('public staging metadata and generated job values are not treated as GitHub secrets', () => {
