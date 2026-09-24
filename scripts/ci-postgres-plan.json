@@ -1454,6 +1454,10 @@
           "file": "supabase/tests/f15_expense_concurrency.sql"
         },
         {
+          "database": "yzt_test",
+          "file": "supabase/tests/exp_h19_bench_expenses_d1_d2.sql"
+        },
+        {
           "database": "yzt_s08_upgrade",
           "file": "supabase/migrations/20260923074000_f15_expense_ledger.sql"
         },
