@@ -19,6 +19,7 @@ import products from './products.ts';
 import expenses from './expenses.ts';
 import reports from './reports.ts';
 import f16Series from './f16-series-http.ts';
+import f16Feedback from './f16-feedback-http.ts';
 import onboarding from './onboarding.ts';
 import whatsappVerify from './whatsapp-verify-http.ts';
 import type { TwilioVerifyEnv } from './whatsapp-verify.ts';
@@ -69,6 +70,8 @@ function mutationClass(method: string, path: string): MutationClass {
   }
 
   if (normalizedMethod === 'POST' && (path === '/api/manage/view'
+      || path === '/api/manage/feedback/view'
+      || path === '/api/manage/feedback'
       || path === '/api/manage/slots'
       || path === '/api/manage/reschedule'
       || path === '/api/manage/cancel')) {
@@ -110,6 +113,8 @@ app.route('/api', f11GroupManagement);
 // F11-02 exact group create/availability routes stay isolated behind management.
 // F16-01 recurring-series preview/create/read reuses the F11 physical group authority.
 app.route('/api', f16Series);
+// F16-04 capability feedback, public reviews and member moderation.
+app.route('/api', f16Feedback);
 app.route('/api', f11Groups);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);
