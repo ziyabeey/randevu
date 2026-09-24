@@ -1,0 +1,73 @@
+{
+  "baselineId": "PERF-003",
+  "source": {
+    "workflowRun": 36058537684,
+    "workflowRunNumber": 2897,
+    "headSha": "d5a580c476c145dd089c47e40a3c5666afdffb2b",
+    "artifactId": 10834275830,
+    "artifactDigest": "sha256:75b1f3e60a17419eb9a21ad767c77bbbe587c238020966a6fe4c211514cfa7be"
+  },
+  "report": {
+    "schemaVersion": 2,
+    "kind": "h19-typescript-shard-performance",
+    "generatedAt": "2026-09-24T21:07:02.457Z",
+    "indexer": {
+      "id": "scip-typescript",
+      "version": "0.4.0"
+    },
+    "shards": [
+      {
+        "id": "tsconfig.app.json",
+        "sourceFiles": 41,
+        "coldMs": 3866.072,
+        "indexBytes": 2928670
+      },
+      {
+        "id": "tsconfig.node.json",
+        "sourceFiles": 1,
+        "coldMs": 798.414,
+        "indexBytes": 2658
+      },
+      {
+        "id": "tsconfig.worker.json",
+        "sourceFiles": 35,
+        "coldMs": 1933.441,
+        "indexBytes": 2250481
+      }
+    ],
+    "measurements": {
+      "wholeRootSameRunFirstIndexMs": 5786.51,
+      "coldSequentialMs": 6598.186,
+      "exactWarmSequentialMs": 6.707,
+      "singleFileChange": {
+        "path": "src/App.tsx",
+        "ownerShard": "tsconfig.app.json",
+        "affectedShardCount": 1,
+        "fullRootReindexMs": 5655.077,
+        "shardReindexMs": 3873.727,
+        "speedup": 1.46,
+        "reductionPct": 31.5,
+        "unaffectedShardHits": [
+          "tsconfig.node.json",
+          "tsconfig.worker.json"
+        ]
+      },
+      "irrelevantChange": {
+        "path": "scripts/browser-booking-recovery.mjs",
+        "affectedShards": [],
+        "decisionMs": 0.013
+      }
+    }
+  },
+  "interpretation": {
+    "thresholdsFrozen": false,
+    "findings": [
+      "TypeScript project boundaries fixed false invalidation for scripts/browser-booking-recovery.mjs.",
+      "An app-project source edit reindexed only the app shard and preserved cache hits for node and worker shards.",
+      "The measured app edit reduced SCIP reindex wall time by 31.5% versus whole-root reindex on the same runner.",
+      "Sequential cold shard indexing was slower than whole-root indexing, so project sharding is not itself a cold-start optimization.",
+      "Exact warm shard lookup was ~6.7 ms in-run, but CI did not yet persist H19 artifact cache across workflow runs."
+    ],
+    "nextQuestion": "Can content-addressed SCIP shard artifacts be restored across workflow runs so unchanged shards remain hits in real CI?"
+  }
+}
