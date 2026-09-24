@@ -3,6 +3,7 @@ const headers = {
   "cache-control": "public, max-age=300",
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
+  "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
   "permissions-policy": "camera=(), microphone=(), geolocation=()",
   "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
 };
@@ -132,6 +133,17 @@ const terms = shell({
 export default {
   async fetch(request) {
     const url = new URL(request.url);
+
+    if (url.protocol !== "https:") {
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
+
+    if (url.hostname === "www.kepenk.ai") {
+      url.hostname = "kepenk.ai";
+      return Response.redirect(url.toString(), 301);
+    }
+
     if (request.method !== "GET" && request.method !== "HEAD") {
       return new Response("Method Not Allowed", { status: 405, headers: { allow: "GET, HEAD" } });
     }
@@ -143,7 +155,7 @@ export default {
     }
 
     if (url.pathname === "/robots.txt") {
-      return new Response("User-agent: *\nAllow: /\nSitemap: https://kepenk.ai/sitemap.xml\n", {
+      return new Response("User-agent: *\nAllow: /\n\nUser-agent: facebookexternalhit\nAllow: /\n\nUser-agent: meta-externalagent\nAllow: /\n\nUser-agent: meta-externalfetcher\nAllow: /\n\nUser-agent: meta-externalads\nAllow: /\n\nUser-agent: meta-webindexer\nAllow: /\n\nSitemap: https://kepenk.ai/sitemap.xml\n", {
         headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" }
       });
     }
