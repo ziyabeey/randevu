@@ -1,16 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { measureNetgsmSmsParts, normalizeNetgsmRecipient } from '../worker/netgsm.ts';
-import { renderTemplateV3Sms } from '../worker/notifications.ts';
+import { normalizeTwilioRecipient } from '../worker/twilio.ts';
 
 const required = [
   'STAGING_DATABASE_URL',
   'STAGING_OWNER_A_ID',
-  'NETGSM_USERCODE',
-  'NETGSM_PASSWORD',
-  'NETGSM_MSGHEADER',
-  'NETGSM_TEST_RECIPIENT',
-  'NETGSM_SMS_SEGMENT_PRICE_TRY',
+  'TWILLO_ID',
+  'TWILLO_SECRET_API',
+  'TWILIO_TEST_RECIPIENT',
 ];
 for (const name of required) {
   if (!process.env[name]?.trim()) throw new Error(`Missing required F16 SMS staging setting: ${name}`);
@@ -18,16 +15,12 @@ for (const name of required) {
 
 const dbUrl = process.env.STAGING_DATABASE_URL;
 const ownerId = process.env.STAGING_OWNER_A_ID.trim();
-const rawRecipient = process.env.NETGSM_TEST_RECIPIENT.trim();
-const recipient = normalizeNetgsmRecipient(rawRecipient);
-const unitPriceTry = Number(process.env.NETGSM_SMS_SEGMENT_PRICE_TRY);
+const rawRecipient = process.env.TWILIO_TEST_RECIPIENT.trim();
+const recipient = normalizeTwilioRecipient(rawRecipient);
 if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ownerId)) {
   throw new Error('F16 SMS acceptance owner id is invalid');
 }
-if (!recipient) throw new Error('F16 SMS acceptance recipient must be a Turkish mobile number');
-if (!Number.isFinite(unitPriceTry) || unitPriceTry <= 0 || unitPriceTry > 100) {
-  throw new Error('F16 SMS segment price must be a positive TRY amount no greater than 100');
-}
+if (!recipient) throw new Error('F16 SMS acceptance recipient must be a valid E.164/Turkish mobile number');
 
 process.stdout.write(`::add-mask::${rawRecipient}\n::add-mask::${recipient}\n`);
 
@@ -93,7 +86,7 @@ if (!slot || !Number.isFinite(Date.parse(slot))) {
 }
 
 const runLabel = String(process.env.GITHUB_RUN_ID ?? Date.now()).replace(/\D/g, '').slice(-24);
-const idempotencyKey = `f16-sms-${runLabel}-${randomUUID()}`.slice(0, 120);
+const idempotencyKey = `f16-twilio-${runLabel}-${randomUUID()}`.slice(0, 120);
 const group = psqlJson(`
   begin;
   set local role authenticated;
@@ -106,7 +99,7 @@ const group = psqlJson(`
   select public.create_appointment_group_with_notifications(
     ${sqlLiteral(BUSINESS_ID)}::uuid,
     ${sqlLiteral(idempotencyKey)},
-    'F16 SMS Acceptance',
+    'F16 Twilio Acceptance',
     jsonb_build_array(jsonb_build_object(
       'serviceId', ${sqlLiteral(SERVICE_ID)},
       'staffId', ${sqlLiteral(STAFF_ID)}
@@ -114,7 +107,7 @@ const group = psqlJson(`
     ${sqlLiteral(slot)}::timestamptz,
     ${sqlLiteral(recipient)},
     null,
-    'Hosted NetGSM acceptance',
+    'Hosted Twilio trial acceptance',
     false,
     true,
     null
@@ -131,13 +124,8 @@ const job = psqlJson(`
   from (
     select
       id as job_id,
-      event_reason,
-      business_name_snapshot,
-      customer_name_snapshot,
-      starts_at_snapshot,
-      timezone_snapshot,
-      service_name_snapshot,
       provider,
+      event_reason,
       provider_reference_id,
       template_version,
       channel
@@ -152,19 +140,9 @@ const job = psqlJson(`
     limit 1
   ) x;
 `);
-if (!job?.job_id || job.provider !== 'netgsm' || job.template_version !== 3 || job.channel !== 'sms') {
-  throw new Error('F16 SMS acceptance did not enqueue the canonical NetGSM lifecycle job');
+if (!job?.job_id || job.provider !== 'twilio' || job.template_version !== 3 || job.channel !== 'sms') {
+  throw new Error('F16 SMS acceptance did not enqueue the canonical Twilio lifecycle job');
 }
-
-const message = renderTemplateV3Sms(job);
-const measured = await measureNetgsmSmsParts(process.env, message);
-if (measured.status !== 'ok') {
-  throw new Error(`F16 SMS segment measurement failed: ${measured.errorClass}`);
-}
-if (measured.parts < 1 || measured.parts > 6) {
-  throw new Error(`F16 SMS template exceeded the six-segment envelope: ${measured.parts}`);
-}
-const estimatedCostTry = measured.parts * unitPriceTry;
 
 async function waitForDispatch() {
   const deadline = Date.now() + DISPATCH_TIMEOUT_MS;
@@ -173,18 +151,16 @@ async function waitForDispatch() {
     last = psqlJson(`
       select row_to_json(x)
       from (
-        select state, provider_message_id, provider_reference_id,
+        select state, provider, provider_message_id, provider_reference_id,
                request_fingerprint, last_error_class, delivery_certainty
         from public.appointment_notification_jobs
         where id=${sqlLiteral(job.job_id)}::uuid
       ) x;
     `);
-    if (last?.state === 'sent' && last.provider_message_id) {
+    if (last?.state === 'sent' && /^SM[0-9a-f]{32}$/i.test(String(last.provider_message_id ?? ''))) {
+      if (last.provider !== 'twilio') throw new Error('F16 SMS provider changed after enqueue');
       if (!/^[0-9a-f]{64}$/i.test(String(last.request_fingerprint ?? ''))) {
         throw new Error('F16 SMS dispatched without the immutable request fingerprint');
-      }
-      if (last.provider_reference_id !== job.provider_reference_id) {
-        throw new Error('F16 SMS provider correlation changed across dispatch');
       }
       return last;
     }
@@ -193,7 +169,7 @@ async function waitForDispatch() {
     }
     await sleep(POLL_MS);
   }
-  throw new Error(`F16 SMS dispatch did not reach provider acceptance within ${DISPATCH_TIMEOUT_MS / 1000}s`);
+  throw new Error(`F16 SMS dispatch did not reach Twilio acceptance within ${DISPATCH_TIMEOUT_MS / 1000}s`);
 }
 
 async function waitForDelivery(providerMessageId) {
@@ -206,6 +182,7 @@ async function waitForDelivery(providerMessageId) {
         select provider_delivery_status, provider_delivery_checked_at, delivered_at
         from public.appointment_notification_jobs
         where id=${sqlLiteral(job.job_id)}::uuid
+          and provider='twilio'
           and provider_message_id=${sqlLiteral(providerMessageId)}
       ) x;
     `);
@@ -223,7 +200,5 @@ const dispatched = await waitForDispatch();
 await waitForDelivery(dispatched.provider_message_id);
 
 console.log(
-  `F16-02 hosted NetGSM acceptance passed: one Worker-dispatched lifecycle SMS delivered; segments=${measured.parts}; `
-  + `configured_segment_price_try=${unitPriceTry.toFixed(4)}; estimated_message_cost_try=${estimatedCostTry.toFixed(4)}; `
-  + `provider_jobid=${dispatched.provider_message_id}.`,
+  `F16-02 hosted Twilio acceptance passed: one scheduled-Worker lifecycle SMS reached delivered; provider_sid=${dispatched.provider_message_id}; trial_template=sms_appointment_reminders.`,
 );
