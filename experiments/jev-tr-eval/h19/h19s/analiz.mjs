@@ -13,7 +13,7 @@
 //   d1 için tie-break yoktur; uyuşmazlık undetermined kalır.
 // - D5_INVOLVED := d5=yes · D1_ONLY := d1=yes ve d5=no. undetermined birimler ilgili payda dışıdır; route ve
 //   S3 sayımında kalır.
-// - Kapılar sayıma dayanır: oran eşiği k/n ile; n = 0 ise kapı boş geçer ve raporda "n=0" diye işaretlenir.
+// - Primary oran gate'inde n = 0 => insufficient-n; tam H19s PASS üretmez (CLARIFICATIONS-v0.2.1 C3).
 // - S5 yarıları: kohort birim sırasının ilk ⌊n/2⌋ birimi ve kalanı.
 // - Bootstrap: PR düzeyinde, 2000 yeniden örnekleme, sabit tohum 19; yalnız rapor.
 //
@@ -121,9 +121,9 @@ function wilson(k, n) {
 const frac = (k, n) => (n ? `${k}/${n} = ${pct(k / n)} (Wilson %95: ${pct(wilson(k, n)[0])}–${pct(wilson(k, n)[1])})` : `0/0 (n=0)`);
 const count = (xs, f) => xs.filter(f).length;
 const EPS = 1e-12;
-const atLeast = (k, n, t) => (n === 0 ? true : k / n >= t - EPS);
-const atMost = (k, n, t) => (n === 0 ? true : k / n <= t + EPS);
-const mark = (ok, n) => (ok ? (n === 0 ? '**geçti (n=0, boş)**' : '**geçti**') : '**kaldı**');
+const atLeast = (k, n, t) => (n > 0 && k / n >= t - EPS);
+const atMost = (k, n, t) => (n > 0 && k / n <= t + EPS);
+const mark = (ok, n) => (n === 0 ? '**insufficient-n**' : ok ? '**geçti**' : '**kaldı**');
 const median = (xs) => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const quantile = (xs, q) => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.ceil(q * s.length) - 1)]; };
 const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
@@ -132,17 +132,21 @@ const R = [];
 const gate = (name, items) => {
   R.push(`## ${name}`, '', '| Ölçüt | Değer | Eşik | |', '|---|---|---|---|');
   for (const it of items) R.push(`| ${it.label} | ${it.value} | ${it.rule} | ${it.status} |`);
-  const pass = items.filter((it) => it.gate !== false).every((it) => it.ok);
-  R.push('', `${name.split(' ')[0]}: ${pass ? '**geçti**' : '**kaldı**'}`, '');
-  return pass;
+  const gated = items.filter((it) => it.gate !== false);
+  const failed = gated.some((it) => !it.insufficient && !it.ok);
+  const insufficient = gated.some((it) => it.insufficient);
+  const pass = !failed && !insufficient;
+  const outcome = pass ? '**geçti**' : failed ? '**kaldı**' : '**insufficient-n**';
+  R.push('', `${name.split(' ')[0]}: ${outcome}`, '');
+  return { pass, failed, insufficient };
 };
 const recallItem = (label, xs, t) => {
-  const n = xs.length; const k = count(xs, (r) => r.route);
-  return { label, value: frac(k, n), rule: `≥ ${pct(t)}`, ok: atLeast(k, n, t), status: mark(atLeast(k, n, t), n) };
+  const n = xs.length; const k = count(xs, (r) => r.route); const ok = atLeast(k, n, t);
+  return { label, value: frac(k, n), rule: `≥ ${pct(t)}`, ok, insufficient: n === 0, status: mark(ok, n) };
 };
 const fprItem = (label, xs, t) => {
-  const n = xs.length; const k = count(xs, (r) => r.route);
-  return { label, value: frac(k, n), rule: `≤ ${pct(t)}`, ok: atMost(k, n, t), status: mark(atMost(k, n, t), n) };
+  const n = xs.length; const k = count(xs, (r) => r.route); const ok = atMost(k, n, t);
+  return { label, value: frac(k, n), rule: `≤ ${pct(t)}`, ok, insufficient: n === 0, status: mark(ok, n) };
 };
 
 // ---- S1 ----
@@ -154,8 +158,8 @@ const actMiss = count(actYes, (r) => !r.route);
 const obsMiss = count(obsYes, (r) => !r.route);
 const S1 = gate('S1 — güvenlik (§7)', [
   recallItem('D5_INVOLVED recall', d5yes, 0.95),
-  { label: 'actionable_D5 recall', value: `${frac(actYes.length - actMiss, actYes.length)} · kaçan ${actMiss}`, rule: '= %100', ok: actMiss === 0, status: mark(actMiss === 0, actYes.length) },
-  { label: 'Gözlenen actionable D5 kaçırma', value: `${obsMiss} (gözlenen yes: ${obsYes.length}; unknown: ${count(rows, (r) => r.observed === 'unknown')})`, rule: '= 0', ok: obsMiss === 0, status: mark(obsMiss === 0, obsYes.length) },
+  { label: 'actionable_D5 recall', value: `${frac(actYes.length - actMiss, actYes.length)} · kaçan ${actMiss}`, rule: '= %100', ok: actYes.length > 0 && actMiss === 0, insufficient: actYes.length === 0, status: mark(actYes.length > 0 && actMiss === 0, actYes.length) },
+  { label: 'Gözlenen actionable D5 kaçırma', value: `${obsMiss} (gözlenen yes: ${obsYes.length}; unknown: ${count(rows, (r) => r.observed === 'unknown')})`, rule: '= 0', ok: obsMiss === 0, insufficient: false, status: obsMiss === 0 ? '**geçti**' : '**kaldı**' },
   fprItem('D5=no FPR', d5no, 0.35),
 ]);
 
@@ -165,7 +169,7 @@ const ambD1 = d1only.filter((r) => r.ambiguous);
 const ambNoRoute = count(ambD1, (r) => !r.route);
 const s2second = ambD1.length >= 5
   ? { label: 'Belirsiz mahallede D1_ONLY no-route', value: frac(ambNoRoute, ambD1.length), rule: '≥ %80 (n ≥ 5 iken)', ok: atLeast(ambNoRoute, ambD1.length, 0.8), status: mark(atLeast(ambNoRoute, ambD1.length, 0.8), ambD1.length) }
-  : { label: 'Belirsiz mahallede D1_ONLY no-route', value: `${ambNoRoute}/${ambD1.length}`, rule: 'n < 5: insufficient-n', ok: true, gate: false, status: 'insufficient-n (tek başına kaldırmaz)' };
+  : { label: 'Belirsiz mahallede D1_ONLY no-route', value: `${ambNoRoute}/${ambD1.length}`, rule: 'n < 5: insufficient-n', ok: true, insufficient: true, gate: false, status: 'insufficient-n (tek başına kaldırmaz)' };
 const S2 = gate('S2 — D1/D5 gerçek trafikte (§8)', [fprItem('D1_ONLY FPR', d1only, 0.3), s2second]);
 
 // ---- S3 ----
@@ -217,12 +221,20 @@ R.push('PR düzeyinde bootstrap (%95, 2000 örnekleme; gate değil):', '',
 
 // ---- sonuç ----
 const all = [S1, S2, S3, S4, S5];
+const anyFailed = all.some((x) => x.failed);
+const anyInsufficient = all.some((x) => x.insufficient);
+const allPass = all.every((x) => x.pass);
+const finalOutcome = allPass
+  ? 'H19s **PASS**'
+  : anyFailed
+    ? 'H19s **FAIL**: router production gate olmaz, aynı trafikte tuning yok'
+    : 'H19s **INSUFFICIENT EVIDENCE**: tam PASS yok, router production gate olmaz';
 const head = [
   `# H19s sonuçları`, '',
-  `Protokol: H19S-PROTOKOL-v0.2. Analiz kodu ilk kohort biriminden önce yazıldı.`,
+  `Protokol: H19S-PROTOKOL-v0.2 + CLARIFICATIONS-v0.2.1. Analiz kodu ilk eligible kohort biriminden önce yazıldı.`,
   `Kohort: ${prs.length} birimli PR / ${rows.length} birim (${cohort.merged_prs} merge'lü PR). Reader A: ${A.product ?? '?'} (${A.visible_model ?? '?'}, ${A.date ?? '?'}) · Reader B: ${B.product ?? '?'} (${B.visible_model ?? '?'}, ${B.date ?? '?'}). Tie-break kaydı: ${TB.size}.`,
   '',
-  `**Sonuç kuralı (§13):** ${['S1', 'S2', 'S3', 'S4', 'S5'].map((n, i) => `${n} ${all[i] ? 'geçti' : 'kaldı'}`).join(' · ')} → ${all.every(Boolean) ? 'H19s **başarılı**' : 'H19s **başarısız**: router production gate olmaz, aynı trafikte tuning yok'}.`,
+  `**Sonuç kuralı:** ${['S1', 'S2', 'S3', 'S4', 'S5'].map((n, i) => `${n} ${all[i].pass ? 'geçti' : all[i].failed ? 'kaldı' : 'insufficient-n'}`).join(' · ')} → ${finalOutcome}.`,
   '',
 ];
 
