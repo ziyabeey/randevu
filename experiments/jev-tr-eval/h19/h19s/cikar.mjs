@@ -19,7 +19,9 @@ import path from 'node:path';
 export const MIGRATIONS = 'supabase/migrations';
 export const STOP = { units: 150, prs: 25 };
 const sha = (text) => createHash('sha256').update(text).digest('hex');
-const git = (args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28 });
+// Yol belirteçleri repo köküne göredir; betik hangi dizinden çalıştırılırsa çalıştırılsın.
+const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
+const git = (args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 1 << 28, cwd: ROOT });
 
 // ---- SQL rutin ayrıştırıcı ----
 
@@ -175,14 +177,19 @@ export function prFromMessage(message) {
 }
 
 export function unitsForMerge(mergeSha) {
-  const [full, parents, mergedAt, subject] = git(['show', '-s', '--format=%H%n%P%n%cI%n%s', mergeSha]).trim().split('\n');
+  const [full, parents, mergedAt, subject, ...bodyLines] = git(['show', '-s', '--format=%H%n%P%n%cI%n%s%n%b', mergeSha]).trim().split('\n');
   const [base, head = null] = parents.split(' ');
   const pr = prFromMessage(subject);
+  // GitHub merge commit'inde PR başlığı gövdenin ilk boş olmayan satırıdır; squash'ta başlığın kendisi.
+  const title = /^Merge pull request #/.test(subject)
+    ? (bodyLines.find((line) => line.trim()) ?? '').trim()
+    : subject.replace(/\s*\(#\d+\)\s*$/, '');
   const changed = git(['diff', '--name-only', '--diff-filter=AMR', base, full, '--', MIGRATIONS])
     .split('\n').filter((f) => f.endsWith('.sql')).sort();
   const record = {
     pr: pr?.number ?? null,
     branch: pr?.branch ?? null,
+    title,
     merge_sha: full,
     base_sha: base,
     head_sha: head,
@@ -217,6 +224,9 @@ export function unitsForMerge(mergeSha) {
       input_digest: sha(JSON.stringify({ files })),
       added_lines: patch.split('\n').filter((l) => l.startsWith('+')).length,
       removed_lines: patch.split('\n').filter((l) => l.startsWith('-')).length,
+      // Referans okuyucu paketi için (Jev girdisi değildir; input_digest yalnız `files` üzerindendir).
+      before_definition: prev ? prev.statement : null,
+      after_definition: now.statement,
     });
   }
   return record;
