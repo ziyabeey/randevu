@@ -160,11 +160,19 @@ Given identical:
 
 the canonical specification and `specSha256` MUST be byte-for-byte stable.
 
+The hash is defined as:
+
+```text
+specSha256 = sha256(stableJson(specification without specSha256) + "\n")
+```
+
+The `specSha256` field is therefore never hashed into itself.
+
 No wall-clock timestamp participates in the specification hash.
 
 ## 8. No-fabrication rule
 
-Every `known` semantic section MUST be traceable to at least one of:
+Every `known` semantic section MUST contain a non-empty value/items payload and MUST be traceable to at least one of:
 
 - frozen M5 hypothesis metadata;
 - frozen validation result;
