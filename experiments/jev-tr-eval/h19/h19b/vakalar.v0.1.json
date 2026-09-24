@@ -1,0 +1,1409 @@
+{
+  "version": "H19B-CASES-0.1",
+  "protocol": "H19B-PROTOKOL v0.2",
+  "protocol_sha256": "30c146b30c9c9d635f4fbf7ea4b93c0a712aee2a0ad6e1ab94d3cd86176a18a8",
+  "label_policy": "function-level: caller-held locks are ignored; protection provided by helpers the function itself calls counts",
+  "cue_check_scope": "files[].path and files[].patch; fixed fact field names are identical in every cell and are not checked",
+  "cases": [
+    {
+      "case_id": "A01",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql",
+        "function": "public.create_staff_guarded"
+      },
+      "pair": "C01",
+      "label": "weakens",
+      "rationale": "Sayım ve limit kontrolü advisory kilitten önceye taşındı; eşzamanlı iki ekleme 99 kaydı görüp limiti (100) aşabilir.",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql",
+          "patch": "@@ -246,9 +246,9 @@ begin\n     raise exception 'INVALID_STAFF';\n   end if;\n \n-  perform pg_advisory_xact_lock(hashtextextended('f10-04:staff:' || p_business_id::text, 0));\n   select count(*) into v_count from public.staff_profiles sp where sp.business_id = p_business_id;\n   if v_count >= 100 then raise exception 'CATALOG_STAFF_LIMIT_EXCEEDED'; end if;\n+  perform pg_advisory_xact_lock(hashtextextended('f10-04:staff:' || p_business_id::text, 0));\n \n   insert into public.staff_profiles(business_id, name, phone)\n   values(p_business_id, trim(p_name), v_phone)"
+        }
+      ],
+      "input_digest": "76c452434ab4d56c9a86bf99b97ac0fdb514a3c19be6e91568a304fc41dff3a9"
+    },
+    {
+      "case_id": "A02",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914033000_f10_team_access.sql",
+        "function": "public.revoke_business_invitation"
+      },
+      "pair": "C02",
+      "label": "weakens",
+      "rationale": "Yetki okuması işletme kilidinden önceye taşındı; aynı kilidi alan eşzamanlı bir rol düşürme arada tamamlanırsa iptal eski yetkiyle yürür.",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914033000_f10_team_access.sql",
+          "patch": "@@ -275,11 +275,11 @@ begin\n     raise exception 'AUTH_REQUIRED' using errcode = '42501';\n   end if;\n \n-  perform pg_advisory_xact_lock(hashtextextended(p_business_id::text, 0));\n   select * into v_actor from public.f10_team_actor(p_business_id);\n   if v_actor.membership_id is null or v_actor.role not in ('owner', 'manager') then\n     raise exception 'TEAM_FORBIDDEN' using errcode = '42501';\n   end if;\n+  perform pg_advisory_xact_lock(hashtextextended(p_business_id::text, 0));\n \n   select * into v_invitation\n   from public.business_invitations i"
+        }
+      ],
+      "input_digest": "acb4b2cf33ff4923166aab443f140aa1ca8db3e620472891de6730db42d69a19"
+    },
+    {
+      "case_id": "A03",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+        "function": "public.archive_product_guarded"
+      },
+      "pair": "C03",
+      "label": "weakens",
+      "rationale": "Sürüm kontrolü kilitsiz okumaya taşındı, satır kilidi sonra alınıyor ve güncelleme sürüm koşulu taşımıyor; aynı beklenen sürümle gelen eşzamanlı yazmalar birlikte geçer (kayıp güncelleme).",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+          "patch": "@@ -721,12 +721,16 @@ begin\n \n   select * into v_product\n   from public.products p\n-  where p.business_id = p_business_id and p.id = p_product_id\n-  for update;\n+  where p.business_id = p_business_id and p.id = p_product_id;\n \n   if v_product.id is null then raise exception 'PRODUCT_NOT_FOUND'; end if;\n   if p_expected_version is null or v_product.version <> p_expected_version then raise exception 'STALE_WRITE'; end if;\n \n+  perform 1\n+  from public.products p\n+  where p.business_id = p_business_id and p.id = p_product_id\n+  for update;\n+\n   if v_product.active then\n     update public.products\n     set active = false,"
+        }
+      ],
+      "input_digest": "2d471db940aa8b757f1a768ea98fb13a0858ff453e581c91dd5869d971b20333"
+    },
+    {
+      "case_id": "A04",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914033000_f10_team_access.sql",
+        "function": "public.update_team_membership"
+      },
+      "pair": "C04",
+      "label": "weakens",
+      "rationale": "Advisory kilit anahtarı işletmeden üyeliğe daraltıldı; son aktif sahip kontrolü artık serileşmiyor. İki sahip eşzamanlı düşürülürse ikisi de \"başka sahip var\" görür, işletme sahipsiz kalır.",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914033000_f10_team_access.sql",
+          "patch": "@@ -422,7 +422,7 @@ begin\n     raise exception 'INVALID_MEMBERSHIP_UPDATE';\n   end if;\n \n-  perform pg_advisory_xact_lock(hashtextextended(p_business_id::text, 0));\n+  perform pg_advisory_xact_lock(hashtextextended(p_membership_id::text, 0));\n \n   select * into v_actor from public.f10_team_actor(p_business_id);\n   if v_actor.membership_id is null or v_actor.role not in ('owner', 'manager') then"
+        }
+      ],
+      "input_digest": "50e0ac230baf716ae4e3684b54c56df907160472fb810e341633de9ad986c960"
+    },
+    {
+      "case_id": "A05",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260915150000_f12_service_price_range.sql",
+        "function": "public.create_service_guarded"
+      },
+      "pair": "C05",
+      "label": "weakens",
+      "rationale": "Advisory kilit anahtarı hizmet adına daraltıldı; farklı adlı eşzamanlı eklemeler 100 limitini ve sort_order hesabını birlikte geçer.",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260915150000_f12_service_price_range.sql",
+          "patch": "@@ -165,7 +165,7 @@ begin\n     raise exception 'INVALID_SERVICE';\n   end if;\n \n-  perform pg_advisory_xact_lock(hashtextextended('f10-04:services:' || p_business_id::text, 0));\n+  perform pg_advisory_xact_lock(hashtextextended('f10-04:services:' || p_business_id::text || ':' || lower(trim(p_name)), 0));\n   select count(*), least(coalesce(max(s.sort_order), -10) + 10, 1000000)\n     into v_count, v_sort\n   from public.services s"
+        }
+      ],
+      "input_digest": "ec17b380ef91c9d5c594807c8a446f06fb629d9e7d17c8e492b4998fb642935e"
+    },
+    {
+      "case_id": "A06",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914110500_f12_salon_profile_media.sql",
+        "function": "public.begin_business_public_media_upload"
+      },
+      "pair": "C06",
+      "label": "weakens",
+      "rationale": "İşletme satırı kilidi sayım ve eklemeden sonraya taşındı; eşzamanlı yüklemeler 20 limitini ve sort_order hesabını birlikte geçer.",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914110500_f12_salon_profile_media.sql",
+          "patch": "@@ -306,9 +306,6 @@ begin\n   if not public.can_manage_business(p_business_id) then\n     raise exception 'NOT_ALLOWED' using errcode = '42501';\n   end if;\n-  perform 1 from public.businesses b where b.id = p_business_id for update;\n-  if not found then raise exception 'NOT_ALLOWED' using errcode = '42501'; end if;\n-\n   if p_media_id is null\n      or p_storage_path <> p_business_id::text || '/' || p_media_id::text || '.webp'\n      or p_mime_type <> 'image/webp'\n@@ -334,6 +331,9 @@ begin\n     p_mime_type, p_size_bytes, p_width, p_height, auth.uid()\n   );\n \n+  perform 1 from public.businesses b where b.id = p_business_id for update;\n+  if not found then raise exception 'NOT_ALLOWED' using errcode = '42501'; end if;\n+\n   return query\n   select m.id, m.storage_path, m.status, m.alt_text, m.sort_order,\n          m.mime_type, m.size_bytes, m.width, m.height"
+        }
+      ],
+      "input_digest": "4e9c61f286e744224a72cc5b11eb38fd9fad5f8d15ed4f334fac2119c897e73f"
+    },
+    {
+      "case_id": "A07",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql",
+        "function": "public.set_appointment_status"
+      },
+      "pair": "C07",
+      "label": "weakens",
+      "rationale": "Durum geçişi kilitsiz okumayla doğrulanıyor, satır kilidi sonra alınıyor ve güncelleme durum koşulu taşımıyor; eşzamanlı iki geçiş eski durumdan geçerli görünür, son yazan kazanır ve olay kaydı tutarsızlaşır.",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911121000_phase5_booking_hardening.sql",
+          "patch": "@@ -475,8 +475,7 @@ begin\n \n   select * into v_current\n   from public.appointments\n-  where business_id = p_business_id and id = p_appointment_id\n-  for update;\n+  where business_id = p_business_id and id = p_appointment_id;\n \n   if v_current.id is null then raise exception 'APPOINTMENT_NOT_FOUND'; end if;\n   if v_current.status = p_status then return v_current; end if;\n@@ -491,6 +490,11 @@ begin\n     raise exception 'INVALID_STATUS_TRANSITION';\n   end if;\n \n+  perform 1\n+  from public.appointments\n+  where business_id = p_business_id and id = p_appointment_id\n+  for update;\n+\n   update public.appointments\n   set status = p_status,\n       cancelled_at = case when p_status = 'cancelled' then now() else cancelled_at end,"
+        }
+      ],
+      "input_digest": "da7cf974ae949b0846f2466b40323c25815acf7225ce49eb08ad00d544ab6dff"
+    },
+    {
+      "case_id": "A08",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260912123000_s03_notification_consistency.sql",
+        "function": "public.release_notification_job_v2"
+      },
+      "pair": "C08",
+      "label": "weakens",
+      "rationale": "Kilitli okumadan kiralama belirteci (lease_token) koşulu kaldırıldı; kiralaması düşmüş eski bir işçi, işi yeniden kiralamış başka bir işçinin işini serbest bırakabilir.",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260912123000_s03_notification_consistency.sql",
+          "patch": "@@ -775,7 +775,6 @@ begin\n   from public.appointment_notification_jobs j\n   where j.id = p_job_id\n     and j.state = 'leased'\n-    and j.lease_token = p_lease_token\n   for update;\n \n   if v_job.id is null then raise exception 'NOTIFICATION_LEASE_LOST'; end if;"
+        }
+      ],
+      "input_digest": "0b78130a3af4235ad95811b30e95c602ce7318cff941e767b7f394d78c4df031"
+    },
+    {
+      "case_id": "A09",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql",
+        "function": "public.set_staff_service_guarded"
+      },
+      "pair": "C09",
+      "label": "weakens",
+      "rationale": "Pasifleştirme için kilidi ve bayat yazma kontrolünü atlayan erken bir yazma yolu eklendi; eşzamanlı bir etkinleştirmeyle sırası belirsizleşir, eski görünümle yapılan pasifleştirme sessizce yazılır.",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql",
+          "patch": "@@ -162,6 +162,16 @@ begin\n   end if;\n   if p_active is null then raise exception 'INVALID_ASSIGNMENT'; end if;\n \n+  if not p_active then\n+    update public.staff_services ss\n+    set active = false\n+    where ss.business_id = p_business_id\n+      and ss.staff_id = p_staff_id\n+      and ss.service_id = p_service_id\n+    returning * into v_row;\n+    if found then return v_row; end if;\n+  end if;\n+\n   perform pg_advisory_xact_lock(hashtextextended('f10-04:assignments:' || p_business_id::text, 0));\n   select * into v_row\n   from public.staff_services ss"
+        }
+      ],
+      "input_digest": "acc36535efeec716c9c0a60879af1f45850f30c4635219ea0a1ceb8b1918b5b9"
+    },
+    {
+      "case_id": "A10",
+      "cell": "A",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+        "function": "public.cancel_ticket_guarded"
+      },
+      "pair": "C10",
+      "label": "weakens",
+      "rationale": "Durum ve sürüm kontrolü kilitsiz okumaya taşındı, kilit sonra alınıyor; eşzamanlı kapatma ve iptal ikisi de \"open\" görür, koşulsuz güncelleme kapanmış fişi iptal edebilir.",
+      "flip_expectation": "unspecified",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+          "patch": "@@ -1024,13 +1024,15 @@ begin\n \n   select * into v_ticket\n   from public.tickets t\n-  where t.business_id = p_business_id and t.id = p_ticket_id\n-  for update;\n+  where t.business_id = p_business_id and t.id = p_ticket_id;\n   if v_ticket.id is null then raise exception 'TICKET_NOT_FOUND'; end if;\n   if v_ticket.status <> 'open' then raise exception 'TICKET_NOT_OPEN'; end if;\n   if p_expected_version is null or v_ticket.version <> p_expected_version then\n     raise exception 'STALE_WRITE';\n   end if;\n+  perform 1 from public.tickets t\n+  where t.business_id = p_business_id and t.id = p_ticket_id\n+  for update;\n \n   update public.tickets\n   set status = 'cancelled',"
+        }
+      ],
+      "input_digest": "7e072ae5872fd142d93def1b2e82ecce2914fd02952887cd7a3b36322e46efcf"
+    },
+    {
+      "case_id": "B01",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+        "function": "public.f14_finish_ticket_command"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Koşullu \"ilk yazan kazanır\" güncellemesinin boşluk koşulları kaldırıldı; aynı komutu eşzamanlı bitiren ikinci istek sonucu sessizce ezer, çakışma hatası artık oluşmaz.",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+          "patch": "@@ -335,9 +335,7 @@ begin\n   where business_id = p_business_id\n     and actor_membership_id = p_actor_membership_id\n     and command = p_command\n-    and idempotency_key = p_idempotency_key\n-    and ticket_id is null\n-    and result_payload is null;\n+    and idempotency_key = p_idempotency_key;\n \n   if not found then\n     raise exception 'TICKET_COMMAND_RESULT_CONFLICT';"
+        }
+      ],
+      "input_digest": "4c126e5d710c55468b6c458bdd955f5eec23cce7b19fc0cfb1b03790585cfff7"
+    },
+    {
+      "case_id": "B02",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260923074000_f15_expense_ledger.sql",
+        "function": "public.f15_finish_expense_command"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Tek koşullu güncelleme \"önce kontrol et, sonra yaz\"a bölündü; eşzamanlı iki bitirme kontrolü birlikte geçer, ikincisi sonucu ezer.",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260923074000_f15_expense_ledger.sql",
+          "patch": "@@ -228,13 +228,23 @@ security definer\n set search_path = ''\n as $$\n begin\n+  if exists (\n+    select 1 from public.expense_commands\n+    where business_id=p_business_id\n+      and actor_membership_id=p_actor_membership_id\n+      and command=p_command\n+      and idempotency_key=p_idempotency_key\n+      and result_payload is not null\n+  ) then\n+    raise exception 'EXPENSE_COMMAND_RESULT_CONFLICT';\n+  end if;\n+\n   update public.expense_commands\n   set result_payload=p_result\n   where business_id=p_business_id\n     and actor_membership_id=p_actor_membership_id\n     and command=p_command\n-    and idempotency_key=p_idempotency_key\n-    and result_payload is null;\n+    and idempotency_key=p_idempotency_key;\n \n   if not found then\n     raise exception 'EXPENSE_COMMAND_RESULT_CONFLICT';"
+        }
+      ],
+      "input_digest": "73e61d265618b72e034ebace57042b3493ee7c7a7e2fa0fa83419ed3978de6e6"
+    },
+    {
+      "case_id": "B03",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260912123000_s03_notification_consistency.sql",
+        "function": "public.complete_notification_job_v2"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Sağlayıcı mesaj kimliği koşulu kaldırıldı; aynı iş için eşzamanlı iki tamamlama farklı kimliklerle gelirse ikincisi ilkini ezer (önceden çakışma hatası veriyordu).",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260912123000_s03_notification_consistency.sql",
+          "patch": "@@ -732,8 +732,7 @@ begin\n       updated_at = now()\n   where j.id = p_job_id\n     and j.receipt_token = p_receipt_token\n-    and j.request_fingerprint = p_request_fingerprint\n-    and (j.provider_message_id is null or j.provider_message_id = p_provider_message_id);\n+    and j.request_fingerprint = p_request_fingerprint;\n \n   get diagnostics v_updated = row_count;\n   if v_updated <> 1 then raise exception 'NOTIFICATION_LEASE_LOST'; end if;"
+        }
+      ],
+      "input_digest": "b342913287b9621e7259fdf6d06fa5bac9ff1de04935cbc51c7fee96d9eda41f"
+    },
+    {
+      "case_id": "B04",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911130000_phase6_public_booking.sql",
+        "function": "public.claim_booking_command"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "ON CONFLICT yerine \"var mı bak, yoksa ekle\"; aynı anahtarla eşzamanlı iki istek kontrolü birlikte geçer, ikincisi idempotent yanıt yerine benzersizlik hatası alır.",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911130000_phase6_public_booking.sql",
+          "patch": "@@ -107,15 +107,16 @@ begin\n     raise exception 'INVALID_IDEMPOTENCY_KEY';\n   end if;\n \n-  insert into public.booking_commands(\n-    business_id, idempotency_key, command, request_hash, appointment_id, created_by, source\n-  ) values (\n-    p_business_id, p_idempotency_key, p_command, p_request_hash, p_appointment_id, auth.uid(), v_source\n-  )\n-  on conflict (business_id, idempotency_key) do nothing;\n-\n-  get diagnostics v_inserted = row_count;\n-  if v_inserted = 1 then\n+  if not exists (\n+    select 1 from public.booking_commands\n+    where business_id = p_business_id\n+      and idempotency_key = p_idempotency_key\n+  ) then\n+    insert into public.booking_commands(\n+      business_id, idempotency_key, command, request_hash, appointment_id, created_by, source\n+    ) values (\n+      p_business_id, p_idempotency_key, p_command, p_request_hash, p_appointment_id, auth.uid(), v_source\n+    );\n     return query select true, p_appointment_id;\n     return;\n   end if;"
+        }
+      ],
+      "input_digest": "0426a3e57a305752c944b4807991f7a2ae652c8a2a83324136505438c5699325"
+    },
+    {
+      "case_id": "B05",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260920200000_f13_appointment_page_revision.sql",
+        "function": "public.f13_bump_appointment_page_revision"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Tek ifadelik upsert \"güncelle, bulamazsan ekle\"ye bölündü; işletmenin ilk iki randevusu eşzamanlı eklenirse ikisi de satırı bulamaz, ikincisi benzersizlik hatasıyla randevu eklemesini düşürür.",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260920200000_f13_appointment_page_revision.sql",
+          "patch": "@@ -28,10 +28,13 @@ set search_path = pg_catalog, public, private\n as $$\n begin\n   if tg_op = 'INSERT' then\n-    insert into private.appointment_page_revisions(business_id, revision)\n-    values (new.business_id, gen_random_uuid())\n-    on conflict (business_id) do update\n-      set revision = excluded.revision;\n+    update private.appointment_page_revisions\n+    set revision = gen_random_uuid()\n+    where business_id = new.business_id;\n+    if not found then\n+      insert into private.appointment_page_revisions(business_id, revision)\n+      values (new.business_id, gen_random_uuid());\n+    end if;\n     return new;\n   end if;\n "
+        }
+      ],
+      "input_digest": "75e28e776f01a52b9492056d165de6ee16ee37b2ae8efb1ac97351e1098ad189"
+    },
+    {
+      "case_id": "B06",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914033000_f10_team_access.sql",
+        "function": "public.f10_revoke_financial_permissions"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Değişen satırları kaydeden tek ifade (CTE) iki ifadeye bölündü; olaylar ayrı bir okumadan yazılıyor. Eşzamanlı iki iptal ikisi de olay yazar; arada verilen bir izin olay kaydı olmadan kapanır.",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914033000_f10_team_access.sql",
+          "patch": "@@ -156,22 +156,23 @@ security definer\n set search_path = ''\n as $$\n begin\n-  with changed as (\n-    update public.membership_financial_permissions p\n-    set active = false,\n-        revoked_by_membership_id = p_actor_membership_id,\n-        revoked_at = now()\n-    where p.business_id = p_business_id\n-      and p.membership_id = p_membership_id\n-      and p.active\n-    returning p.permission\n-  )\n   insert into public.membership_financial_permission_events(\n     business_id, membership_id, permission, action, actor_membership_id\n   )\n-  select p_business_id, p_membership_id, c.permission, 'revoke'::public.financial_permission_action,\n+  select p_business_id, p_membership_id, p.permission, 'revoke'::public.financial_permission_action,\n          p_actor_membership_id\n-  from changed c;\n+  from public.membership_financial_permissions p\n+  where p.business_id = p_business_id\n+    and p.membership_id = p_membership_id\n+    and p.active;\n+\n+  update public.membership_financial_permissions p\n+  set active = false,\n+      revoked_by_membership_id = p_actor_membership_id,\n+      revoked_at = now()\n+  where p.business_id = p_business_id\n+    and p.membership_id = p_membership_id\n+    and p.active;\n end\n $$;\n "
+        }
+      ],
+      "input_digest": "da9cd2e2e8071246c3844ff129586131c31e2d0e4cedca3ffbd3aa944cd21d47"
+    },
+    {
+      "case_id": "B07",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911170000_phase9_notification_outbox.sql",
+        "function": "public.complete_notification_job"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Kiralama kontrolü ayrı bir okumaya taşındı, güncelleme yalnız id ile yapılıyor; kontrol ile yazma arasında kiralama başka işçiye geçerse eski işçi işi \"gönderildi\" yapar.",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911170000_phase9_notification_outbox.sql",
+          "patch": "@@ -305,6 +305,15 @@ begin\n     raise exception 'INVALID_PROVIDER_MESSAGE_ID';\n   end if;\n \n+  if not exists (\n+    select 1 from public.appointment_notification_jobs j\n+    where j.id = p_job_id\n+      and j.state = 'leased'\n+      and j.lease_token = p_lease_token\n+  ) then\n+    raise exception 'NOTIFICATION_LEASE_LOST';\n+  end if;\n+\n   update public.appointment_notification_jobs j\n   set state = 'sent',\n       provider_message_id = p_provider_message_id,\n@@ -315,8 +324,6 @@ begin\n       lease_expires_at = null,\n       updated_at = now()\n   where j.id = p_job_id\n-    and j.state = 'leased'\n-    and j.lease_token = p_lease_token\n   returning j.recovery_id into v_recovery_id;\n \n   get diagnostics v_updated = row_count;"
+        }
+      ],
+      "input_digest": "fd6c6edeb39cdffba05bb66ea8ca10d19c771c4153005221bd6794381b3fd076"
+    },
+    {
+      "case_id": "B08",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql",
+        "function": "public.provision_public_management_token"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Ekleme, çakışmada belirteci ezen upsert oldu; eşzamanlı iki kurulum kontrolü birlikte geçerse ikincisi hata almak yerine ilk belirteci ezer, ilk müşterinin yönetim bağlantısı sessizce geçersizleşir.",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911140000_phase7_customer_manage.sql",
+          "patch": "@@ -98,7 +98,9 @@ begin\n     appointment_id, business_id, token_hash\n   ) values (\n     p_appointment_id, v_business_id, v_hash\n-  );\n+  )\n+  on conflict (appointment_id) do update\n+    set token_hash = excluded.token_hash;\n \n   return true;\n end"
+        }
+      ],
+      "input_digest": "69739ebd94106f0e0f63fa1cb021c7ccb31a284e4aa8d6b21f748bdc8d2be8db"
+    },
+    {
+      "case_id": "B09",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+        "function": "public.f15_finish_product_command"
+      },
+      "pair": "D10",
+      "label": "weakens",
+      "rationale": "\"İlk yazan kazanır\" koşulu gevşetildi (sonuç boşluğu koşulu kaldırıldı); aynı ürün için eşzamanlı ikinci bitirme sonucu ezer.",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+          "patch": "@@ -367,8 +367,7 @@ begin\n     and actor_membership_id = p_actor_membership_id\n     and command = p_command\n     and idempotency_key = p_idempotency_key\n-    and product_id is null\n-    and result_payload is null;\n+    and (product_id is null or product_id = p_product_id);\n \n   if not found then\n     raise exception 'PRODUCT_COMMAND_RESULT_CONFLICT';"
+        }
+      ],
+      "input_digest": "fe64fe50f25f8405b3d582d6da952f60ab773ed3898b0263e5cb74ce87b8f833"
+    },
+    {
+      "case_id": "B10",
+      "cell": "B",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql",
+        "function": "public.create_appointment"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Serileştirilmiş müşteri çözümleyici çağrısı yerine kilitsiz \"bul, yoksa ekle\"; aynı yeni iletişim bilgisiyle eşzamanlı iki randevu iki ayrı müşteri kaydı oluşturur (telefon/e-posta için benzersiz indeks yok).",
+      "flip_expectation": "weakens_down",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql",
+          "patch": "@@ -245,15 +245,20 @@ begin\n     raise exception 'SLOT_UNAVAILABLE';\n   end if;\n \n-  v_customer_id := public.f10_resolve_or_create_customer(\n-    p_business_id,\n-    v_customer_name,\n-    v_customer_phone,\n-    v_customer_email,\n-    null,\n-    auth.uid(),\n-    true\n-  );\n+  select c.id into v_customer_id\n+  from public.customers c\n+  where c.business_id = p_business_id\n+    and (\n+      (v_customer_phone is not null and c.phone = v_customer_phone)\n+      or (v_customer_email is not null and c.email = v_customer_email)\n+    )\n+  limit 1;\n+\n+  if v_customer_id is null then\n+    insert into public.customers(business_id, name, phone, email, created_by)\n+    values (p_business_id, v_customer_name, v_customer_phone, v_customer_email, auth.uid())\n+    returning id into v_customer_id;\n+  end if;\n \n   begin\n     insert into public.appointments("
+        }
+      ],
+      "input_digest": "5880c019fc4c46aa2d75a70c6f7379f32dd199412e9c6b97fbc0073465087b6e"
+    },
+    {
+      "case_id": "C01",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql",
+        "function": "public.create_staff_guarded"
+      },
+      "pair": "A01",
+      "label": "no_effect",
+      "rationale": "Personel adı büyük harfle başlatılıyor; yalnız kaydedilen değer değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql",
+          "patch": "@@ -251,7 +251,7 @@ begin\n   if v_count >= 100 then raise exception 'CATALOG_STAFF_LIMIT_EXCEEDED'; end if;\n \n   insert into public.staff_profiles(business_id, name, phone)\n-  values(p_business_id, trim(p_name), v_phone)\n+  values(p_business_id, initcap(trim(p_name)), v_phone)\n   returning * into v_row;\n   return v_row;\n end"
+        }
+      ],
+      "input_digest": "8940cf72036a4f260cfc97f5ffcdf13d0c5c29b889e8ec2375ad72c4b141a01c"
+    },
+    {
+      "case_id": "C02",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914033000_f10_team_access.sql",
+        "function": "public.revoke_business_invitation"
+      },
+      "pair": "A02",
+      "label": "no_effect",
+      "rationale": "Hata kodu yeniden adlandırıldı; yalnız çıktı değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914033000_f10_team_access.sql",
+          "patch": "@@ -293,7 +293,7 @@ begin\n     raise exception 'OWNER_ROLE_REQUIRES_OWNER' using errcode = '42501';\n   end if;\n   if v_invitation.accepted_at is not null then\n-    raise exception 'INVITATION_ALREADY_USED';\n+    raise exception 'INVITATION_ALREADY_ACCEPTED';\n   end if;\n   if v_invitation.revoked_at is not null then\n     return;"
+        }
+      ],
+      "input_digest": "9a661cfc44b98012596db1d20aaa4e91074f9ddf4b9b09ab4ad1f7f457a2792d"
+    },
+    {
+      "case_id": "C03",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+        "function": "public.archive_product_guarded"
+      },
+      "pair": "A03",
+      "label": "no_effect",
+      "rationale": "Dönen JSON'a arşiv alanları eklendi (kilit altında okunan satırdan); yalnız çıktı değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+          "patch": "@@ -738,6 +738,11 @@ begin\n   end if;\n \n   v_result := public.f15_product_projection(p_business_id, v_product.id);\n+  v_result := v_result || jsonb_build_object(\n+    'archived', not v_product.active,\n+    'archivedAt', v_product.archived_at,\n+    'archivedBy', v_product.archived_by_membership_id\n+  );\n   perform public.f15_finish_product_command(\n     p_business_id, v_actor.id, 'archive_product', p_idempotency_key, v_product.id, v_result\n   );"
+        }
+      ],
+      "input_digest": "cd08d2cd6a95ce60969111939e3038af027f153502c97725e0910c2e3825a977"
+    },
+    {
+      "case_id": "C04",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914033000_f10_team_access.sql",
+        "function": "public.update_team_membership"
+      },
+      "pair": "A04",
+      "label": "no_effect",
+      "rationale": "Hata kodu yeniden adlandırıldı; yalnız çıktı değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914033000_f10_team_access.sql",
+          "patch": "@@ -434,7 +434,7 @@ begin\n   where m.business_id = p_business_id and m.id = p_membership_id\n   for update;\n   if v_target.id is null then\n-    raise exception 'MEMBERSHIP_NOT_FOUND';\n+    raise exception 'TEAM_MEMBER_NOT_FOUND';\n   end if;\n \n   if v_actor.role = 'manager' and (v_target.role = 'owner' or p_role = 'owner') then"
+        }
+      ],
+      "input_digest": "04453eba829648ae276d27ee92224e00bc0c527965a9bcdac71d9105681d7080"
+    },
+    {
+      "case_id": "C05",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260915150000_f12_service_price_range.sql",
+        "function": "public.create_service_guarded"
+      },
+      "pair": "A05",
+      "label": "no_effect",
+      "rationale": "Yeni hizmetin varsayılan kategorisi değişti; yalnız kaydedilen değer değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260915150000_f12_service_price_range.sql",
+          "patch": "@@ -178,7 +178,7 @@ begin\n     price_policy_version, currency\n   ) values (\n     p_business_id, trim(p_name), p_duration_minutes, p_buffer_before_minutes, p_buffer_after_minutes,\n-    'Genel', v_sort, p_price_minor, 'fixed', p_price_minor, p_price_minor, 1, 'TRY'\n+    'Diğer', v_sort, p_price_minor, 'fixed', p_price_minor, p_price_minor, 1, 'TRY'\n   ) returning * into v_row;\n   return v_row;\n end"
+        }
+      ],
+      "input_digest": "364fb736af3160b145ad6fafb4f0398653c603f5227067716fbfbde17037fe50"
+    },
+    {
+      "case_id": "C06",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914110500_f12_salon_profile_media.sql",
+        "function": "public.begin_business_public_media_upload"
+      },
+      "pair": "A06",
+      "label": "no_effect",
+      "rationale": "Tek doğrulama bloğu ayrı hata kodlarına bölündü ve alternatif metin sınırı 200 oldu; hepsi kilit altında, yalnız doğrulama ve çıktı değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914110500_f12_salon_profile_media.sql",
+          "patch": "@@ -310,13 +310,19 @@ begin\n   if not found then raise exception 'NOT_ALLOWED' using errcode = '42501'; end if;\n \n   if p_media_id is null\n-     or p_storage_path <> p_business_id::text || '/' || p_media_id::text || '.webp'\n-     or p_mime_type <> 'image/webp'\n-     or p_size_bytes is null or p_size_bytes < 1 or p_size_bytes > 5242880\n+     or p_storage_path <> p_business_id::text || '/' || p_media_id::text || '.webp' then\n+    raise exception 'INVALID_PUBLIC_MEDIA_PATH';\n+  end if;\n+  if p_mime_type <> 'image/webp' then\n+    raise exception 'INVALID_PUBLIC_MEDIA_TYPE';\n+  end if;\n+  if p_size_bytes is null or p_size_bytes < 1 or p_size_bytes > 5242880\n      or p_width is null or p_width < 1 or p_width > 2000\n-     or p_height is null or p_height < 1 or p_height > 2000\n-     or v_alt is not null and char_length(v_alt) > 160 then\n-    raise exception 'INVALID_PUBLIC_MEDIA';\n+     or p_height is null or p_height < 1 or p_height > 2000 then\n+    raise exception 'INVALID_PUBLIC_MEDIA_SIZE';\n+  end if;\n+  if v_alt is not null and char_length(v_alt) > 200 then\n+    raise exception 'INVALID_PUBLIC_MEDIA_ALT';\n   end if;\n \n   select count(*), coalesce(max(m.sort_order), -1) + 1"
+        }
+      ],
+      "input_digest": "f9886b9609551c28cdfc4bb9755ca2207784982d35c2a43d53fa528f4b304823"
+    },
+    {
+      "case_id": "C07",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911121000_phase5_booking_hardening.sql",
+        "function": "public.set_appointment_status"
+      },
+      "pair": "A07",
+      "label": "no_effect",
+      "rationale": "Olay kaydının payload'u yeniden kuruldu (kaynak ve önceki durum eklendi); yalnız yazılan olay içeriği değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911121000_phase5_booking_hardening.sql",
+          "patch": "@@ -503,7 +503,11 @@ begin\n     business_id, appointment_id, event_type, actor_user_id, from_status, to_status, payload\n   ) values (\n     p_business_id, p_appointment_id, p_status, auth.uid(), v_current.status, p_status,\n-    case when p_status = 'cancelled' then jsonb_build_object('reason', v_reason) else '{}'::jsonb end\n+    jsonb_strip_nulls(jsonb_build_object(\n+      'reason', case when p_status = 'cancelled' then v_reason end,\n+      'source', 'operator',\n+      'previousStatus', v_current.status\n+    ))\n   );\n \n   return v_row;"
+        }
+      ],
+      "input_digest": "2ee67710ab149a00fdd2f7402dfa27130eb92f0785661359eed304702764240e"
+    },
+    {
+      "case_id": "C08",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260912123000_s03_notification_consistency.sql",
+        "function": "public.release_notification_job_v2"
+      },
+      "pair": "A08",
+      "label": "no_effect",
+      "rationale": "Kalıcı hata sınıfı metni zenginleştirildi ve 120 karakterle sınırlandı; yalnız kaydedilen hata metni değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260912123000_s03_notification_consistency.sql",
+          "patch": "@@ -795,8 +795,10 @@ begin\n     and now() + make_interval(secs => v_delay) >= v_job.provider_idempotency_expires_at;\n   v_error := case\n     when v_window_expired then 'idempotency_window_expired_ambiguous'\n+    when v_certainty = 'rejected' then 'rejected:' || p_error_class\n     else p_error_class\n   end;\n+  v_error := left(v_error, 120);\n \n   if not v_job.is_current\n      or not coalesce(p_retryable, false)"
+        }
+      ],
+      "input_digest": "cfd126853bf7522f6d1cfdbfc20c61ebee0432654d1da9744472f9d88c597850"
+    },
+    {
+      "case_id": "C09",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql",
+        "function": "public.set_staff_service_guarded"
+      },
+      "pair": "A09",
+      "label": "no_effect",
+      "rationale": "Varlık kontrolü ayrı hata kodlarına bölündü; aynı okumalar aynı kilit altında kalıyor, yalnız çıktı değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql",
+          "patch": "@@ -198,11 +198,14 @@ begin\n     if not exists (\n       select 1 from public.staff_profiles sp\n       where sp.business_id = p_business_id and sp.id = p_staff_id\n-    ) or not exists (\n+    ) then\n+      raise exception 'ASSIGNMENT_STAFF_NOT_FOUND';\n+    end if;\n+    if not exists (\n       select 1 from public.services s\n       where s.business_id = p_business_id and s.id = p_service_id\n     ) then\n-      raise exception 'ASSIGNMENT_NOT_FOUND';\n+      raise exception 'ASSIGNMENT_SERVICE_NOT_FOUND';\n     end if;\n     select count(*) into v_count\n     from public.staff_services ss where ss.business_id = p_business_id;"
+        }
+      ],
+      "input_digest": "cfda5886e243fff070b21adb8e7a8f19c5c3f2af03e0648864abf99466cafdba"
+    },
+    {
+      "case_id": "C10",
+      "cell": "C",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+        "function": "public.cancel_ticket_guarded"
+      },
+      "pair": "A10",
+      "label": "no_effect",
+      "rationale": "Hata kodu yeniden adlandırıldı; yalnız çıktı değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+          "patch": "@@ -1027,7 +1027,7 @@ begin\n   where t.business_id = p_business_id and t.id = p_ticket_id\n   for update;\n   if v_ticket.id is null then raise exception 'TICKET_NOT_FOUND'; end if;\n-  if v_ticket.status <> 'open' then raise exception 'TICKET_NOT_OPEN'; end if;\n+  if v_ticket.status <> 'open' then raise exception 'TICKET_NOT_CANCELLABLE'; end if;\n   if p_expected_version is null or v_ticket.version <> p_expected_version then\n     raise exception 'STALE_WRITE';\n   end if;"
+        }
+      ],
+      "input_digest": "345d94e75c4c0e3499bf6ed06bf480a79933e2f7366aba60a4c539ab831a6e04"
+    },
+    {
+      "case_id": "D01",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260923074000_f15_expense_ledger.sql",
+        "function": "public.create_expense_guarded"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Açıklama üst sınırı 500 oldu ve yalnız TRY para birimi kabul ediliyor; yalnız girdi doğrulaması değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260923074000_f15_expense_ledger.sql",
+          "patch": "@@ -359,9 +359,12 @@ begin\n   if v_replay is not null then return v_replay; end if;\n \n   if char_length(v_category) not between 1 and 80 then raise exception 'INVALID_EXPENSE_CATEGORY'; end if;\n-  if v_description is not null and char_length(v_description) not between 2 and 240 then raise exception 'INVALID_EXPENSE_DESCRIPTION'; end if;\n+  if v_description is not null and char_length(v_description) not between 2 and 500 then raise exception 'INVALID_EXPENSE_DESCRIPTION'; end if;\n   if p_amount_minor is null or p_amount_minor not between 1 and 100000000 then raise exception 'INVALID_EXPENSE_AMOUNT'; end if;\n   if v_currency !~ '^[A-Z]{3}$' then raise exception 'INVALID_CURRENCY'; end if;\n+  if v_currency <> 'TRY' then\n+    raise exception 'UNSUPPORTED_CURRENCY';\n+  end if;\n   if p_payment_method not in ('cash','card') then raise exception 'INVALID_PAYMENT_METHOD'; end if;\n   if p_occurred_local is null then raise exception 'INVALID_EXPENSE_TIME'; end if;\n "
+        }
+      ],
+      "input_digest": "96f9ab7d861a56213fecbd64c53f49b4da1fbd307ce79730eb57127502050ece"
+    },
+    {
+      "case_id": "D02",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+        "function": "public.open_walk_in_ticket_guarded"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Fişteki müşteri anlık görüntüsü normalize ediliyor (kırpma, boşsa null, e-posta küçük harf); yalnız kaydedilen değerler değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+          "patch": "@@ -647,7 +647,10 @@ begin\n     created_by_membership_id\n   ) values (\n     p_business_id, null, v_customer.id, 'walk_in', 'open', null,\n-    v_customer.name, v_customer.phone, v_customer.email, v_actor.id\n+    btrim(v_customer.name),\n+    nullif(btrim(coalesce(v_customer.phone, '')), ''),\n+    lower(nullif(btrim(coalesce(v_customer.email, '')), '')),\n+    v_actor.id\n   )\n   returning * into v_ticket;\n "
+        }
+      ],
+      "input_digest": "6581fa2387ec75af48ac6de17036e440d03660ca49ec68417317bb65aadfb1c9"
+    },
+    {
+      "case_id": "D03",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+        "function": "public.create_product_guarded"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Ürün adı/kodu/birimi doğrulaması ayrıntılı hata kodlarına bölündü, ad sınırı 160 ve \"pack\" birimi eklendi; yalnız girdi doğrulaması değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": true,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+          "patch": "@@ -576,11 +576,20 @@ begin\n   );\n   if v_replay is not null then return v_replay; end if;\n \n-  if char_length(v_name) not between 1 and 120 then raise exception 'INVALID_PRODUCT_NAME'; end if;\n-  if v_code is not null and (char_length(v_code) not between 1 and 64 or v_code !~ '^[A-Z0-9][A-Z0-9._-]*$') then\n-    raise exception 'INVALID_PRODUCT_CODE';\n+  if char_length(v_name) not between 1 and 160 then\n+    raise exception 'INVALID_PRODUCT_NAME';\n+  end if;\n+  if v_code is not null then\n+    if char_length(v_code) not between 1 and 64 then\n+      raise exception 'INVALID_PRODUCT_CODE_LENGTH';\n+    end if;\n+    if v_code !~ '^[A-Z0-9][A-Z0-9._-]*$' then\n+      raise exception 'INVALID_PRODUCT_CODE_FORMAT';\n+    end if;\n+  end if;\n+  if v_unit not in ('piece', 'pack') then\n+    raise exception 'INVALID_PRODUCT_UNIT';\n   end if;\n-  if v_unit <> 'piece' then raise exception 'INVALID_PRODUCT_UNIT'; end if;\n   if p_sale_price_minor is null or p_sale_price_minor < 0 then raise exception 'INVALID_PRODUCT_PRICE'; end if;\n   if v_currency !~ '^[A-Z]{3}$' then raise exception 'INVALID_CURRENCY'; end if;\n   if p_initial_quantity is null or p_initial_quantity < 0 or p_initial_quantity > 1000000000 then"
+        }
+      ],
+      "input_digest": "6d8783d4ed80290851f2d389ef006f33e2b6c1b0aee1d381bca737204426e93a"
+    },
+    {
+      "case_id": "D04",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911110000_phase4_availability.sql",
+        "function": "public.replace_business_hours"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Saat biçimi açıkça doğrulanıyor ve 15 dakikadan kısa aralık reddediliyor; yalnız girdi doğrulaması değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911110000_phase4_availability.sql",
+          "patch": "@@ -160,16 +160,19 @@ begin\n \n   for v_item in select value from jsonb_array_elements(p_intervals)\n   loop\n-    begin\n-      v_start := (v_item ->> 'start')::time;\n-      v_end := (v_item ->> 'end')::time;\n-    exception when others then\n+    if coalesce(v_item ->> 'start', '') !~ '^[0-9]{2}:[0-9]{2}$'\n+       or coalesce(v_item ->> 'end', '') !~ '^[0-9]{2}:[0-9]{2}$' then\n       raise exception 'INVALID_TIME';\n-    end;\n+    end if;\n+    v_start := (v_item ->> 'start')::time;\n+    v_end := (v_item ->> 'end')::time;\n \n-    if v_start is null or v_end is null or v_start >= v_end then\n+    if v_start >= v_end then\n       raise exception 'INVALID_INTERVAL';\n     end if;\n+    if v_end - v_start < interval '15 minutes' then\n+      raise exception 'INTERVAL_TOO_SHORT';\n+    end if;\n \n     if exists (\n       select 1 from public.business_hours h"
+        }
+      ],
+      "input_digest": "02042d3375703b6b50e2d43fd9758442263cd9c3195535150f17b0e3484a170a"
+    },
+    {
+      "case_id": "D05",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911110000_phase4_availability.sql",
+        "function": "public.replace_staff_hours"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Dönen satırlar yalnız aktif aralıklarla sınırlandı ve bitiş saatine göre de sıralandı; yalnız çıktı değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911110000_phase4_availability.sql",
+          "patch": "@@ -258,9 +258,13 @@ begin\n   end loop;\n \n   return query\n-  select h.* from public.staff_hours h\n-  where h.business_id = p_business_id and h.staff_id = p_staff_id and h.weekday = p_weekday\n-  order by h.starts_local;\n+  select h.*\n+  from public.staff_hours h\n+  where h.business_id = p_business_id\n+    and h.staff_id = p_staff_id\n+    and h.weekday = p_weekday\n+    and h.active\n+  order by h.starts_local, h.ends_local;\n end\n $$;\n "
+        }
+      ],
+      "input_digest": "f6ab61da48ec389fdc0950d6c0a83b4cd350880fa4ea7178fcadb576310e5f60"
+    },
+    {
+      "case_id": "D06",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql",
+        "function": "public.create_business_with_owner"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Saat dilimi adı doğrulaması eklendi; yalnız girdi doğrulaması değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql",
+          "patch": "@@ -140,6 +140,10 @@ begin\n   if v_user is null then raise exception 'AUTH_REQUIRED'; end if;\n   if char_length(trim(p_name)) < 2 then raise exception 'INVALID_BUSINESS_NAME'; end if;\n   if p_slug is null or p_slug !~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' then raise exception 'INVALID_BUSINESS_SLUG'; end if;\n+  if nullif(trim(p_timezone), '') is not null\n+     and not exists (select 1 from pg_timezone_names z where z.name = trim(p_timezone)) then\n+    raise exception 'INVALID_TIMEZONE';\n+  end if;\n \n   insert into public.businesses(name, slug, timezone, created_by)\n   values(trim(p_name), lower(p_slug), coalesce(nullif(trim(p_timezone), ''), 'Europe/Istanbul'), v_user)"
+        }
+      ],
+      "input_digest": "911794ab27c31c2f1539481846da4f208051e6840696b28e0966a6a68501d9c9"
+    },
+    {
+      "case_id": "D07",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql",
+        "function": "public.handle_new_user"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Görünen ad için ikinci bir meta veri alanı yedek olarak eklendi ve ifade açıldı; yalnız kaydedilen değer değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql",
+          "patch": "@@ -51,7 +51,14 @@ set search_path = public\n as $$\n begin\n   insert into public.profiles(id, display_name)\n-  values(new.id, nullif(trim(coalesce(new.raw_user_meta_data ->> 'full_name', split_part(coalesce(new.email, ''), '@', 1))), ''))\n+  values(\n+    new.id,\n+    nullif(trim(coalesce(\n+      new.raw_user_meta_data ->> 'full_name',\n+      new.raw_user_meta_data ->> 'name',\n+      split_part(coalesce(new.email, ''), '@', 1)\n+    )), '')\n+  )\n   on conflict(id) do update set display_name = coalesce(excluded.display_name, public.profiles.display_name);\n   return new;\n end $$;"
+        }
+      ],
+      "input_digest": "0dece79a70557fa63006e3331fe779f273705752986a13efbb31a6fbe5f310d9"
+    },
+    {
+      "case_id": "D08",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql",
+        "function": "public.create_public_appointment"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Telefon biçimi doğrulaması eklendi ve not sınırı 1000 oldu; yalnız girdi doğrulaması değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql",
+          "patch": "@@ -355,7 +355,10 @@ begin\n   if v_customer_phone is null and v_customer_email is null then\n     raise exception 'PUBLIC_CONTACT_REQUIRED';\n   end if;\n-  if v_notes is not null and char_length(v_notes) > 500 then\n+  if v_customer_phone is not null and v_customer_phone !~ '^[0-9 +()-]+$' then\n+    raise exception 'INVALID_CUSTOMER_PHONE';\n+  end if;\n+  if v_notes is not null and char_length(v_notes) > 1000 then\n     raise exception 'NOTES_TOO_LONG';\n   end if;\n   if p_starts_at is null then"
+        }
+      ],
+      "input_digest": "7740cb3e00840f3a30ce7a7ac8246fb5ec17c0dac401f101b58783f434384b53"
+    },
+    {
+      "case_id": "D09",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql",
+        "function": "public.provision_public_management_token"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Başlangıç okumasından komut kaynağı koşulu kaldırıldı (randevu kaynağı koşulu duruyor); yalnız hangi randevuların uygun sayıldığı (iş kuralı) değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911140000_phase7_customer_manage.sql",
+          "patch": "@@ -76,7 +76,6 @@ begin\n   where bc.appointment_id = p_appointment_id\n     and bc.idempotency_key = p_booking_idempotency_key\n     and bc.command = 'public_create'\n-    and bc.source = 'public'\n   limit 1;\n \n   if v_business_id is null then"
+        }
+      ],
+      "input_digest": "7a81f201c356b6ad35c27aa804768553b40896d1411481b0e1053095d981b6ab"
+    },
+    {
+      "case_id": "D10",
+      "cell": "D",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+        "function": "public.f15_finish_product_command"
+      },
+      "pair": "B09",
+      "label": "no_effect",
+      "rationale": "Girdi doğrulaması ayrıldı ve sonucun \"id\" alanı olan bir JSON nesnesi olması şartı eklendi; yalnız girdi doğrulaması değişir.",
+      "flip_expectation": "invariant",
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": false,
+        "guard_delta": "unchanged",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+          "patch": "@@ -356,9 +356,15 @@ security definer\n set search_path = ''\n as $$\n begin\n-  if p_product_id is null or p_result is null then\n+  if p_product_id is null then\n     raise exception 'INVALID_PRODUCT_RESULT';\n   end if;\n+  if p_result is null or jsonb_typeof(p_result) <> 'object' then\n+    raise exception 'INVALID_PRODUCT_RESULT';\n+  end if;\n+  if not (p_result ? 'id') then\n+    raise exception 'INVALID_PRODUCT_RESULT_SHAPE';\n+  end if;\n \n   update public.product_commands\n   set product_id = p_product_id,"
+        }
+      ],
+      "input_digest": "6c775078721cf16dbd75c15e9a3451bc9f9f61e209dec70a6e69df86601c17c5"
+    },
+    {
+      "case_id": "E01",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql",
+        "function": "public.create_staff_guarded"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Advisory kilit kaldırıldı; sayım ve ekleme serileşmiyor, eşzamanlı eklemeler limiti aşabilir.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "removed",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql",
+          "patch": "@@ -246,7 +246,6 @@ begin\n     raise exception 'INVALID_STAFF';\n   end if;\n \n-  perform pg_advisory_xact_lock(hashtextextended('f10-04:staff:' || p_business_id::text, 0));\n   select count(*) into v_count from public.staff_profiles sp where sp.business_id = p_business_id;\n   if v_count >= 100 then raise exception 'CATALOG_STAFF_LIMIT_EXCEEDED'; end if;\n "
+        }
+      ],
+      "input_digest": "8b55e0b2ad0ca61b3f9c4c7ac0c8bd85a6489b90198526810225c39912038251"
+    },
+    {
+      "case_id": "E02",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql",
+        "function": "public.update_staff_guarded"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Satır kilidi kaldırıldı; bayat yazma (updated_at) kontrolü kilitsiz okumada, güncelleme koşulsuz: eşzamanlı iki düzenleme ikisi de geçer.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "removed",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql",
+          "patch": "@@ -110,8 +110,7 @@ begin\n \n   select * into v_row\n   from public.staff_profiles sp\n-  where sp.business_id = p_business_id and sp.id = p_staff_id\n-  for update;\n+  where sp.business_id = p_business_id and sp.id = p_staff_id;\n   if not found then raise exception 'STAFF_NOT_FOUND'; end if;\n   if p_expected_updated_at is null\n      or v_row.updated_at is distinct from p_expected_updated_at then"
+        }
+      ],
+      "input_digest": "322e61b8d21199c84caccb9aee07ed18e187b223079418c5e9744150713fd84b"
+    },
+    {
+      "case_id": "E03",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+        "function": "public.record_product_stock_movement_guarded"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "Ürün satırı kilidi kaldırıldı; bakiye ve sürüm kilitsiz okumadan, güncelleme koşulsuz: eşzamanlı iki hareket kayıp güncelleme ve yanlış bakiye üretir.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "removed",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+          "patch": "@@ -789,8 +789,7 @@ begin\n \n   select * into v_product\n   from public.products p\n-  where p.business_id = p_business_id and p.id = p_product_id\n-  for update;\n+  where p.business_id = p_business_id and p.id = p_product_id;\n \n   if v_product.id is null then raise exception 'PRODUCT_NOT_FOUND'; end if;\n   if not v_product.active then raise exception 'PRODUCT_ARCHIVED'; end if;"
+        }
+      ],
+      "input_digest": "ee44c7fe092d5c2ce4eb67c136b498df5ccb124b0dd186867f38fcc8c413c222"
+    },
+    {
+      "case_id": "E04",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914033000_f10_team_access.sql",
+        "function": "public.revoke_business_invitation"
+      },
+      "pair": null,
+      "label": "weakens",
+      "rationale": "İşletme düzeyi advisory kilit kaldırıldı (davet satırı kilidi duruyor); yetki okuması eşzamanlı rol değişiklikleriyle serileşmiyor.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "removed",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914033000_f10_team_access.sql",
+          "patch": "@@ -275,7 +275,6 @@ begin\n     raise exception 'AUTH_REQUIRED' using errcode = '42501';\n   end if;\n \n-  perform pg_advisory_xact_lock(hashtextextended(p_business_id::text, 0));\n   select * into v_actor from public.f10_team_actor(p_business_id);\n   if v_actor.membership_id is null or v_actor.role not in ('owner', 'manager') then\n     raise exception 'TEAM_FORBIDDEN' using errcode = '42501';"
+        }
+      ],
+      "input_digest": "cf79e2160d5da1ed1dd1832bd2cc34c0038e6f54920abe350b6358569e839284"
+    },
+    {
+      "case_id": "E05",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260921043000_f13_group_lifecycle_partial_repair.sql",
+        "function": "public.set_appointment_group_status"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Güncellemedeki sürüm koşulu kaldırıldı, ama aynı fonksiyon grup anahtarlı advisory kilit ve satır kilidi altında sürümü zaten kontrol ediyor; koşul gereksizdi. Kod kuralı \"removed → weakens\" burada yanlış.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": true,
+        "version_guard": true,
+        "changed_inside_locked_region": true,
+        "guard_delta": "removed",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260921043000_f13_group_lifecycle_partial_repair.sql",
+          "patch": "@@ -118,7 +118,6 @@ begin\n       version=g.version+1,\n       updated_at=now()\n   where g.business_id=p_business_id and g.id=p_group_id\n-    and g.version=p_expected_version\n   returning g.version into v_new_version;\n   if v_new_version is null then raise exception 'BOOKING_GROUP_VERSION_CONFLICT'; end if;\n "
+        }
+      ],
+      "input_digest": "9d8e35152b6f78a3735c6184f33b20115d80e6b37e32a320794511689dcc4487"
+    },
+    {
+      "case_id": "E06",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911110000_phase4_availability.sql",
+        "function": "public.replace_business_hours"
+      },
+      "pair": null,
+      "label": "strengthens",
+      "rationale": "İşletme ve gün anahtarlı advisory kilit eklendi; eşzamanlı iki değiştirme artık serileşir, çakışan aralık kontrolü güvenilir olur.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "added",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911110000_phase4_availability.sql",
+          "patch": "@@ -155,6 +155,8 @@ begin\n     raise exception 'INVALID_INTERVALS';\n   end if;\n \n+  perform pg_advisory_xact_lock(hashtextextended('hours:' || p_business_id::text || ':' || p_weekday::text, 0));\n+\n   delete from public.business_hours\n   where business_id = p_business_id and weekday = p_weekday;\n "
+        }
+      ],
+      "input_digest": "65f81e065c66cda5c310d0ddf389d46a86a2bd9bb600b4f4455f37ef5d440ef8"
+    },
+    {
+      "case_id": "E07",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911140000_phase7_customer_manage.sql",
+        "function": "public.provision_public_management_token"
+      },
+      "pair": null,
+      "label": "strengthens",
+      "rationale": "Başlangıç okumasına satır kilidi eklendi; aynı randevu için eşzamanlı kurulumlar serileşir, ikincisi mevcut belirteci görüp karşılaştırır.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "added",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911140000_phase7_customer_manage.sql",
+          "patch": "@@ -77,7 +77,8 @@ begin\n     and bc.idempotency_key = p_booking_idempotency_key\n     and bc.command = 'public_create'\n     and bc.source = 'public'\n-  limit 1;\n+  limit 1\n+  for update of bc;\n \n   if v_business_id is null then\n     raise exception 'INVALID_MANAGEMENT_BOOTSTRAP';"
+        }
+      ],
+      "input_digest": "fcfd3a77ad1b6c2225ffc133fc9dc11886797932412b9fe7da597b689a2ac0a1"
+    },
+    {
+      "case_id": "E08",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql",
+        "function": "public.create_appointment"
+      },
+      "pair": null,
+      "label": "strengthens",
+      "rationale": "Personel anahtarlı advisory kilit eklendi; aynı personele eşzamanlı randevular uygunluk kontrolü ile ekleme arasında serileşir.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "added",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql",
+          "patch": "@@ -235,6 +235,7 @@ begin\n   if v_timezone is null then raise exception 'BUSINESS_NOT_FOUND'; end if;\n \n   v_date := (p_starts_at at time zone v_timezone)::date;\n+  perform pg_advisory_xact_lock(hashtextextended('staff-slot:' || p_staff_id::text, 0));\n   if not exists (\n     select 1\n     from public.compute_availability_slots_internal("
+        }
+      ],
+      "input_digest": "73966fd3eab198ddea5f169e6c674d57d00e0c8127bf9661e8cd99237da7199a"
+    },
+    {
+      "case_id": "E09",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+        "function": "public.cancel_ticket_guarded"
+      },
+      "pair": null,
+      "label": "no_effect",
+      "rationale": "Güncellemeye sürüm koşulu eklendi, ama satır aynı fonksiyonda kilitli ve sürüm zaten kontrol edilmiş; koşul gereksiz. Kod kuralı \"added → strengthens\" burada yanlış.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": true,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "added",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+          "patch": "@@ -1038,7 +1038,8 @@ begin\n       cancelled_by_membership_id = v_actor.id,\n       cancelled_at = now(),\n       cancellation_reason = v_reason\n-  where business_id = p_business_id and id = p_ticket_id;\n+  where business_id = p_business_id and id = p_ticket_id\n+    and version = p_expected_version;\n \n   v_result := public.f14_ticket_projection(p_business_id, p_ticket_id);\n   perform public.f14_finish_ticket_command("
+        }
+      ],
+      "input_digest": "cb7d818afa545f1a668954bef3f63c63c3504195a82fc745ac76803976918cff"
+    },
+    {
+      "case_id": "E10",
+      "cell": "E",
+      "origin": "synthetic",
+      "source": {
+        "file": "supabase/migrations/20260911110000_phase4_availability.sql",
+        "function": "public.replace_staff_hours"
+      },
+      "pair": null,
+      "label": "strengthens",
+      "rationale": "Personel ve gün anahtarlı advisory kilit eklendi; eşzamanlı iki değiştirme serileşir, çakışan aralık kontrolü güvenilir olur.",
+      "flip_expectation": null,
+      "facts": {
+        "lock_context": false,
+        "version_guard": false,
+        "changed_inside_locked_region": true,
+        "guard_delta": "added",
+        "retry_path": false,
+        "transaction_boundary": "unchanged"
+      },
+      "files": [
+        {
+          "path": "supabase/migrations/20260911110000_phase4_availability.sql",
+          "patch": "@@ -225,6 +225,8 @@ begin\n     raise exception 'INVALID_INTERVALS';\n   end if;\n \n+  perform pg_advisory_xact_lock(hashtextextended('staff-hours:' || p_staff_id::text || ':' || p_weekday::text, 0));\n+\n   delete from public.staff_hours\n   where business_id = p_business_id and staff_id = p_staff_id and weekday = p_weekday;\n "
+        }
+      ],
+      "input_digest": "68eadbad0a1665a0fbe0c481ad16b1efa718fd0a71402dcc16d4fb0d78d5c5b1"
+    }
+  ]
+}
