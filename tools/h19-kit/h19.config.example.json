@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "cacheDir": ".h19/cache",
+  "adapters": {
+    "static": [
+      {
+        "id": "semgrep",
+        "config": "./h19-rules"
+      }
+    ],
+    "testImpact": [],
+    "history": [
+      "git-temporal-coupling"
+    ],
+    "semantic": []
+  },
+  "reporting": {
+    "formats": [
+      "json",
+      "sarif"
+    ]
+  },
+  "policy": {
+    "unknown": "escalate"
+  }
+}

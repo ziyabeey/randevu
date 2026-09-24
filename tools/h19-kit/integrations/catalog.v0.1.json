@@ -1,0 +1,88 @@
+{
+  "version": "H19-INTEGRATION-CATALOG-0.1",
+  "policy": "No third-party source is bundled unless an exact-version license review explicitly allows it.",
+  "integrations": [
+    {
+      "id": "tornhill-patterns",
+      "project": "Tornhill",
+      "license": "MIT OR Apache-2.0",
+      "mode": "clean-room-pattern",
+      "use": [
+        "versioned rule cards",
+        "evidence scoping"
+      ]
+    },
+    {
+      "id": "testmon-adapter",
+      "project": "pytest-testmon",
+      "license": "MIT",
+      "mode": "adapter-first",
+      "use": [
+        "test impact memory"
+      ]
+    },
+    {
+      "id": "semgrep-cli",
+      "project": "Semgrep engine",
+      "license": "LGPL-2.1",
+      "mode": "external-process",
+      "use": [
+        "AST/static facts"
+      ],
+      "notes": [
+        "Do not bundle Semgrep community rules under their separate rules license."
+      ]
+    },
+    {
+      "id": "stryker-patterns",
+      "project": "StrykerJS",
+      "license": "Apache-2.0",
+      "mode": "clean-room-pattern",
+      "use": [
+        "mutation registry",
+        "incremental mutation history"
+      ]
+    },
+    {
+      "id": "pr-agent-patterns",
+      "project": "PR-Agent",
+      "license": "MIT",
+      "mode": "clean-room-pattern",
+      "use": [
+        "token-aware diff context packing"
+      ]
+    },
+    {
+      "id": "code-maat-patterns",
+      "project": "Code Maat",
+      "license": "GPL-3.0",
+      "mode": "clean-room-reimplementation",
+      "use": [
+        "temporal coupling",
+        "churn/hotspot ideas"
+      ],
+      "notes": [
+        "Do not link or vendor GPL implementation into proprietary core without a separate legal decision."
+      ]
+    },
+    {
+      "id": "ctxwitch-patterns",
+      "project": "ctxwitch",
+      "license": "Apache-2.0",
+      "mode": "clean-room-pattern",
+      "use": [
+        "behavioral dimensions",
+        "unresolved state"
+      ]
+    },
+    {
+      "id": "reviewdog-output",
+      "project": "reviewdog",
+      "license": "MIT",
+      "mode": "standard-output",
+      "use": [
+        "SARIF/RDJSON-compatible reporting"
+      ]
+    }
+  ]
+}
