@@ -1546,7 +1546,8 @@
         },
         {
           "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f16_recurring_series.sql",
+          "file": "supabase/tests/f16_recurring_series.sql"
+        },
         {
           "database": "yzt_s08_upgrade",
           "file": "supabase/tests/f16_recurring_series_concurrency.sql"
