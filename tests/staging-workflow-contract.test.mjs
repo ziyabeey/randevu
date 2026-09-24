@@ -11,7 +11,7 @@ const externalSettings = [
   'RESEND_API_KEY',
 ];
 
-test('staging workflow keeps the external provisioning surface at four secrets', () => {
+test('staging workflow keeps the baseline external provisioning surface at four secrets', () => {
   const match = workflow.match(/const requiredExternal = \[([\s\S]*?)\];/);
   assert.ok(match, 'requiredExternal contract must remain explicit');
   const actual = [...match[1].matchAll(/'([A-Z0-9_]+)'/g)].map((entry) => entry[1]);
@@ -20,6 +20,22 @@ test('staging workflow keeps the external provisioning surface at four secrets',
   for (const name of externalSettings) {
     assert.match(workflow, new RegExp(`secrets\\.${name}`), `${name} must come from GitHub staging secrets`);
   }
+});
+
+test('F16 SMS staging credentials are conditional and the test recipient never becomes a Worker binding', () => {
+  assert.match(workflow, /run_f16_sms_acceptance:/);
+  assert.match(workflow, /RUN_F16_SMS_ACCEPTANCE: \$\{\{ inputs\.run_f16_sms_acceptance \}\}/);
+  for (const name of ['NETGSM_USERCODE', 'NETGSM_PASSWORD', 'NETGSM_MSGHEADER', 'NETGSM_TEST_RECIPIENT']) {
+    assert.match(workflow, new RegExp(`${name}: \\\$\\{\\{ secrets\\.${name} \\}\\}`));
+  }
+  assert.match(workflow, /NETGSM_APPNAME: kepenk/);
+  assert.match(workflow, /NETGSM_SMS_SEGMENT_PRICE_TRY: \$\{\{ vars\.NETGSM_SMS_SEGMENT_PRICE_TRY \}\}/);
+  assert.match(workflow, /configuredNetgsm !== 0 && configuredNetgsm !== netgsmRuntime\.length/);
+  assert.match(workflow, /process\.env\.RUN_F16_SMS_ACCEPTANCE === 'true'/);
+  assert.match(workflow, /F16 SMS acceptance missing staging settings/);
+
+  assert.doesNotMatch(deploy, /NETGSM_TEST_RECIPIENT/);
+  assert.match(deploy, /staging:f16-sms-acceptance/);
 });
 
 test('public staging metadata and generated job values are not treated as GitHub secrets', () => {
@@ -107,11 +123,12 @@ test('staging resolves runtime before migrations and runs existing real acceptan
   assert.ok(workflow.indexOf('Resolve Cloudflare staging runtime') < workflow.indexOf('Apply staging migrations'));
   assert.ok(workflow.indexOf('Apply staging migrations') < workflow.indexOf('Deploy and verify consistent staging generation'));
   const smoke = deploy.indexOf("command('npm', ['run', 'staging:smoke'])");
-  for (const gate of ['staging:f09-acceptance', 'staging:f10-auth-acceptance', 'staging:s01-acceptance']) {
+  for (const gate of ['staging:f09-acceptance', 'staging:f10-auth-acceptance', 'staging:f16-sms-acceptance', 'staging:s01-acceptance']) {
     assert.ok(deploy.indexOf(gate) > smoke);
   }
   assert.match(workflow, /inputs\.run_f09_acceptance \|\| inputs\.operation == 'rotate' \|\| inputs\.operation == 'resume'/);
   assert.match(workflow, /RUN_F10_ACCEPTANCE: \$\{\{ inputs\.run_f10_auth_acceptance/);
+  assert.match(workflow, /RUN_F16_SMS_ACCEPTANCE: \$\{\{ inputs\.run_f16_sms_acceptance/);
   assert.match(workflow, /RUN_S01_ACCEPTANCE: \$\{\{ inputs\.run_s01_acceptance/);
   assert.match(workflow, /if: always\(\)/);
   assert.match(workflow, /rm -f \/tmp\/randevu-staging-secrets\.json/);
