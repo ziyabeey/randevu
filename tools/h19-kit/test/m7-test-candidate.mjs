@@ -121,7 +121,7 @@ assert.notEqual(a.contentSha256, d.contentSha256);
 assert.notEqual(a.candidateSha256, d.candidateSha256);
 
 // TC3: path and operation safety.
-for (const unsafe of ['../evil.test.mjs', '/tmp/evil.test.mjs', 'C:\\tmp\\evil.test.mjs', 'x\0y']) {
+for (const unsafe of ['../evil.test.mjs', '/tmp/evil.test.mjs', 'C:\\tmp\\evil.test.mjs', 'C:evil.test.mjs', 'x\0y']) {
   assert.throws(() => normalizeCandidatePath(unsafe));
 }
 
