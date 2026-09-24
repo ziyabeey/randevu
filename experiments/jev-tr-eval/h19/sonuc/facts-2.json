@@ -1,0 +1,364 @@
+{
+  "version": "DE-JEV-H19-R0-FACTS-0.1",
+  "protocol": "DE-JEV-H19-R0",
+  "question_bank": {
+    "id": "DE-JEV-H19-AXIS",
+    "version": "0.1.0",
+    "digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135"
+  },
+  "model": "jev-1.13.0",
+  "cases": [
+    {
+      "case_key": "C01",
+      "input_digest": "7c39363df5dfd2d2f79cc9bbc2086c7d9160ff069ac995e19b2cc4c7788fa22e",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "f075114a59f00fa7da4a16400f5fb8bd20953357bc44d4c74643a472b6a25df2",
+      "axis_probabilities": {
+        "D0": 0.13,
+        "D1": 0.69,
+        "D2": 0.34,
+        "D3": 0.71,
+        "D4": 0.48,
+        "D5": 0.81
+      },
+      "usage": {
+        "input_tokens": 824,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C02",
+      "input_digest": "47c69f1c699703436c1340aa97e2d71d230f041660aa805ab6cc0dbd007af949",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "d549343ec4a6acc57ce60b1e5bd168c717c1d675fb8b6d80b7f568f6cb25ff24",
+      "axis_probabilities": {
+        "D0": 0.53,
+        "D1": 0.84,
+        "D2": 0.54,
+        "D3": 0.04,
+        "D4": 0.02,
+        "D5": 0.83
+      },
+      "usage": {
+        "input_tokens": 814,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C03",
+      "input_digest": "5fff0590ddd161c1964ad2090b2e9f6ae72d5a73c48310cac5c0871a39e713e5",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "aff32a3ddda3a610103c9343f59ec6b180ce0cefcb15bceb4d404bfa742cebef",
+      "axis_probabilities": {
+        "D0": 0.09,
+        "D1": 0.19,
+        "D2": 0.15,
+        "D3": 0.43,
+        "D4": 0.7,
+        "D5": 0.1
+      },
+      "usage": {
+        "input_tokens": 810,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C04",
+      "input_digest": "2dec93933686af87e26de8e9cffde197723e87b79b2a006dd331e7cfe91bc085",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "577e5150d49fadc77333b6f5db94a79232101908fa34be65048704cd2f7a3dd6",
+      "axis_probabilities": {
+        "D0": 0.1,
+        "D1": 0.43,
+        "D2": 0.68,
+        "D3": 0.91,
+        "D4": 0.09,
+        "D5": 0.9
+      },
+      "usage": {
+        "input_tokens": 1120,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C05",
+      "input_digest": "241cf64609dfdd10757442050471cd244b542dc4648f8148c41c90a2e080df70",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "13291c79be4dd577a5e899b9ef078dbe47666bca94f30ed234d38444f4142812",
+      "axis_probabilities": {
+        "D0": 0.19,
+        "D1": 0.68,
+        "D2": 0.22,
+        "D3": 0.04,
+        "D4": 0.03,
+        "D5": 0.77
+      },
+      "usage": {
+        "input_tokens": 833,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C06",
+      "input_digest": "3a65b0aa2cc9bbb8543965edadcdcfc20139cda088b273d304938eb981876b60",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "5dcb58630fedd54567cb0265b14f09482548546b33395e9eca32ed3e5c64bcc8",
+      "axis_probabilities": {
+        "D0": 0.21,
+        "D1": 0.87,
+        "D2": 0.34,
+        "D3": 0.04,
+        "D4": 0.03,
+        "D5": 0.81
+      },
+      "usage": {
+        "input_tokens": 936,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C07",
+      "input_digest": "31d603eed23fbb2cce3e50d4a1fec035cfd6360090a00cbb0684a720c5b47194",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "145178dbcac91bcecd7bd6d516f632cb1ef23a3d3b4b4ef4dc981f4a3a6b7c1a",
+      "axis_probabilities": {
+        "D0": 0.8,
+        "D1": 0.3,
+        "D2": 0.26,
+        "D3": 0.87,
+        "D4": 0.32,
+        "D5": 0.78
+      },
+      "usage": {
+        "input_tokens": 854,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C08",
+      "input_digest": "8fff93114a4c563cd96418684aabc4bab28ec516724e4d85673cf410c4c20447",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "f5543d123f8ed862ae801e058df0351bd90ae98bbbb42f15c9b530c557691f00",
+      "axis_probabilities": {
+        "D0": 0.55,
+        "D1": 0.66,
+        "D2": 0.39,
+        "D3": 0.39,
+        "D4": 0.81,
+        "D5": 0.92
+      },
+      "usage": {
+        "input_tokens": 1011,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C09",
+      "input_digest": "0b53d36d713f61cef9a3506ee3a9e8dd91d497863d9f9490a3ff615c212c2646",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "7dfcf5bc141591b42fa8dd6c597759b1505a7b7bc147f8df766becbf216d68ba",
+      "axis_probabilities": {
+        "D0": 0.09,
+        "D1": 0.56,
+        "D2": 0.08,
+        "D3": 0.02,
+        "D4": 0.02,
+        "D5": 0.79
+      },
+      "usage": {
+        "input_tokens": 795,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C10",
+      "input_digest": "2c10f22589fd6fe3d3496d2d12651387e2fd76418d4b6bbb0e6928deb1239424",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "135f05de03e22698575c2e5f5356aefbec2ec696a68a7f7c4dd5aa9ae6369ae0",
+      "axis_probabilities": {
+        "D0": 0.14,
+        "D1": 0.83,
+        "D2": 0.42,
+        "D3": 0.02,
+        "D4": 0.03,
+        "D5": 0.83
+      },
+      "usage": {
+        "input_tokens": 1030,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C11",
+      "input_digest": "b4813922adfa37fdcdfa5e2f19ca0a7427efeeeda3c990b37ae2dfc5a8015ff9",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "28b96a8f5381eaee3449535c89677a40f5f27e17c280086252438b6f7b2007d8",
+      "axis_probabilities": {
+        "D0": 0.2,
+        "D1": 0.83,
+        "D2": 0.52,
+        "D3": 0.03,
+        "D4": 0.03,
+        "D5": 0.62
+      },
+      "usage": {
+        "input_tokens": 844,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C12",
+      "input_digest": "1b9fc7baf414757909acad91948e886ccdbc9d5d743957716ea7bbd66ed24bd5",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "a26955098dd25be2c4bd5c55b14f5ccb4179ca5c2ae2dfba5c41a3e7afde626b",
+      "axis_probabilities": {
+        "D0": 0.05,
+        "D1": 0.38,
+        "D2": 0.18,
+        "D3": 0.02,
+        "D4": 0.03,
+        "D5": 0.39
+      },
+      "usage": {
+        "input_tokens": 933,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C13",
+      "input_digest": "3d55eee7271410cb31cb9db099ac1014e034803ef290fb5b09d49390c7cf93a5",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "c9b9b8ac375692f04c1a09e38c1e56ddf38b9469446e198ff8cab5e407909c2f",
+      "axis_probabilities": {
+        "D0": 0.87,
+        "D1": 0.56,
+        "D2": 0.29,
+        "D3": 0.15,
+        "D4": 0.02,
+        "D5": 0.73
+      },
+      "usage": {
+        "input_tokens": 829,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C14",
+      "input_digest": "41466fe8c45727699418b130e75fcb4b8c978e37f18413bac2845fdebd7d351a",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "8888c4a56309b3f78694626947356cdd55eb485e34b155315832ba526dd0a6dc",
+      "axis_probabilities": {
+        "D0": 0.71,
+        "D1": 0.74,
+        "D2": 0.84,
+        "D3": 0.03,
+        "D4": 0.03,
+        "D5": 0.63
+      },
+      "usage": {
+        "input_tokens": 991,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C15",
+      "input_digest": "340f791b31cc17da73cf33b36ef179653aaaa967f0ec9faa0c51ce24a40eb6df",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "ba0c64cc233d99c79c27ad4ed0eb28aafb5edaf3526c2c604e17fb13508aebac",
+      "axis_probabilities": {
+        "D0": 0.48,
+        "D1": 0.17,
+        "D2": 0.12,
+        "D3": 0.73,
+        "D4": 0.45,
+        "D5": 0.18
+      },
+      "usage": {
+        "input_tokens": 839,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    },
+    {
+      "case_key": "C16",
+      "input_digest": "0eecc42e15c7576c975535c497a0e26b5af97be5380709be864b5e7fcd86720a",
+      "question_bank_id": "DE-JEV-H19-AXIS",
+      "question_bank_version": "0.1.0",
+      "question_bank_digest": "6017347979f05981b6db2dcd3931355b6bfdfbf14f6d4fd0b04e67c935253135",
+      "model": "jev-1.13.0",
+      "fact_key": "abd8fe7267c7bd52726570b345b36817a02e65b7298a3fffd366f97d03a1024b",
+      "axis_probabilities": {
+        "D0": 0.19,
+        "D1": 0.62,
+        "D2": 0.62,
+        "D3": 0.09,
+        "D4": 0.93,
+        "D5": 0.43
+      },
+      "usage": {
+        "input_tokens": 895,
+        "output_tokens": 106
+      },
+      "cache_hit": false
+    }
+  ]
+}
