@@ -56,13 +56,17 @@ M6 converts eligible M5 hypotheses into deterministic, provenance-bound test spe
 
 It keeps setup/action/invariant/observations explicitly known or unknown and does not generate executable test source.
 
-## Next authorized gate
+## Active milestone — M7 Executable Test Candidate
+
+The gate was frozen before implementation in `specs/TEST_CANDIDATE_GATE-v0.1.md` and passed exact-head CI #2848 at freeze head `63d8e8e8173500e62369e17c2cf00f27793964eb`.
 
 **Executable test candidate materialization from a complete M6 specification.**
 
 The next gate may render deterministic test source through an explicitly selected, versioned renderer, but it must not write or execute the candidate.
 
-**No M7 number is assigned yet.** The candidate contract must be frozen and exact-head CI-green first.
+This is Bundle **M7**. Its implementation is limited to frozen TC1–TC8.
+
+M7 returns candidate data only. It does not write or execute repository tests.
 
 ## Side-hardening HOLD
 
