@@ -46,6 +46,8 @@ try {
   assert.ok(app.configFiles.includes('tsconfig.json'));
   assert.ok(app.configFiles.includes('tsconfig.app.json'));
   assert.ok(app.configFiles.includes('package-lock.json'));
+  assert.deepEqual(app.flags, ['tsconfig.app.json']);
+  assert.deepEqual(worker.flags, ['tsconfig.worker.json']);
 
   assert.deepEqual(shardForChangedFile(shards, 'src/a.ts'), ['tsconfig.app.json']);
   assert.deepEqual(shardForChangedFile(shards, 'worker/b.ts'), ['tsconfig.worker.json']);
