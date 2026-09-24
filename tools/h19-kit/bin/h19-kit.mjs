@@ -16,6 +16,7 @@ import { scipGraph, scipImpact } from '../src/adapters/scip.mjs';
 import { treeSitterTags } from '../src/adapters/tree-sitter-tags.mjs';
 import { nxAffected } from '../src/adapters/nx-affected.mjs';
 import { turboAffected } from '../src/adapters/turbo-affected.mjs';
+import { indexTypeScriptScip } from '../src/adapters/scip-indexer.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -31,6 +32,7 @@ if (command === 'doctor') {
     python: exists('python3') || exists('python'),
     semgrep: exists('semgrep'),
     scip: exists('scip'),
+    scipTypeScript: exists('scip-typescript'),
     treeSitter: exists('tree-sitter'),
     nx: exists('nx'),
     turbo: exists('turbo'),
@@ -112,6 +114,19 @@ if (command === 'scan') {
   process.exit(0);
 }
 
+if (command === 'scip-index-ts') {
+  const cwd = args[0] ?? process.cwd();
+  const mode = args[1] ?? '';
+  const result = await indexTypeScriptScip({
+    cwd,
+    inferTsconfig: mode === 'infer',
+    pnpmWorkspaces: mode === 'pnpm',
+    yarnWorkspaces: mode === 'yarn',
+  });
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(0);
+}
+
 if (command === 'scip-impact') {
   const [indexPath, ...changedPaths] = args;
   if (!indexPath || changedPaths.length === 0) {
@@ -150,6 +165,7 @@ console.error([
   '  history [repo]',
   '  hotspots [repo]',
   '  scan <input.json> [--sarif]',
+  '  scip-index-ts [repo] [infer|pnpm|yarn]',
   '  scip-impact <index.scip> <changed-path>...',
   '  syntax-tags <file>...',
   '  affected nx|turbo [base] [head] [task]',
