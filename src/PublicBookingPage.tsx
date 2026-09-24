@@ -330,6 +330,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
   const [otpSent, setOtpSent] = useState(false);
   const [otpBusy, setOtpBusy] = useState(false);
   const [otpNotice, setOtpNotice] = useState('');
+  const [verificationChallenge, setVerificationChallenge] = useState('');
   const [verifiedPhone, setVerifiedPhone] = useState('');
   const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
   const clockSample = useRef<ClockSample | null>(null);
@@ -644,6 +645,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       setPhoneVerificationToken('');
       setOtpCode('');
       setOtpSent(false);
+      setVerificationChallenge('');
       setOtpNotice('');
     }
   }
@@ -657,11 +659,13 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     setOtpBusy(true);
     setOtpNotice('');
     try {
-      await api('/api/public/verify/whatsapp/start', {
+      const result = await api<{ verificationChallenge: string }>('/api/public/verify/whatsapp/start', {
         method: 'POST',
         csrf: 'skip',
         body: JSON.stringify({ slug, phone }),
       });
+      if (!result.verificationChallenge) throw new Error('Telefon doğrulama isteği hazırlanamadı.');
+      setVerificationChallenge(result.verificationChallenge);
       setOtpSent(true);
       setOtpNotice('WhatsApp doğrulama kodu gönderildi.');
     } catch (error) {
@@ -683,11 +687,12 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       const result = await api<{ phoneVerificationToken: string }>('/api/public/verify/whatsapp/check', {
         method: 'POST',
         csrf: 'skip',
-        body: JSON.stringify({ slug, phone, code: otpCode.trim() }),
+        body: JSON.stringify({ slug, phone, code: otpCode.trim(), verificationChallenge }),
       });
       if (!result.phoneVerificationToken) throw new Error('Telefon doğrulama kanıtı alınamadı.');
       setPhoneVerificationToken(result.phoneVerificationToken);
       setVerifiedPhone(phone);
+      setVerificationChallenge('');
       setOtpNotice('Telefon WhatsApp ile doğrulandı.');
     } catch (error) {
       setPhoneVerificationToken('');
@@ -725,11 +730,11 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
             inputMode="numeric"
             autoComplete="one-time-code"
             value={otpCode}
-            maxLength={10}
-            placeholder="Doğrulama kodu"
+            maxLength={6}
+            placeholder="6 haneli kod"
             onChange={(event) => setOtpCode(event.target.value.replace(/\\D/g, ''))}
           />
-          <button className="public-secondary" type="button" disabled={otpBusy || otpCode.length < 4} onClick={() => void verifyWhatsappOtpCode()}>
+          <button className="public-secondary" type="button" disabled={otpBusy || otpCode.length !== 6 || !verificationChallenge} onClick={() => void verifyWhatsappOtpCode()}>
             Kodu doğrula
           </button>
         </>}
