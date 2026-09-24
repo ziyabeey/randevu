@@ -32,3 +32,4 @@ export * from './adapters/semgrep-evidence.mjs';
 export * from './experiments/protocol.mjs';
 export * from './experiments/blind-packet.mjs';
 export * from './experiments/ledger.mjs';
+export * from './core/engine.mjs';
