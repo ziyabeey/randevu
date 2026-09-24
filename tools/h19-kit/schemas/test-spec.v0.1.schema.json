@@ -115,6 +115,26 @@
             "digest"
           ],
           "additionalProperties": false
+        },
+        "validation": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "status": {
+              "const": "confirmed"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "status",
+            "digest"
+          ],
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
