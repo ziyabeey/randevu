@@ -24,6 +24,79 @@ const MEMBERSHIP = 'f3020000-0000-4000-8000-000000000001';
 const SERVICE = 'f3030000-0000-4000-8000-000000000001';
 const STAFF = 'f3040000-0000-4000-8000-000000000001';
 const CSRF = 'F'.repeat(43);
+const SERIES = 'f3050000-0000-4000-8000-000000000001';
+const SERIES_GROUPS = [
+  'f3060000-0000-4000-8000-000000000001',
+  'f3060000-0000-4000-8000-000000000002',
+  'f3060000-0000-4000-8000-000000000003',
+];
+let recurringBookings = [];
+let seriesVersion = 1;
+
+function seriesGroup(ordinal, startsAt) {
+  const end = new Date(new Date(startsAt).getTime() + 30 * 60_000).toISOString();
+  return {
+    groupId: SERIES_GROUPS[ordinal - 1],
+    status: 'scheduled',
+    source: 'operator',
+    version: seriesVersion,
+    customerId: 'f3070000-0000-4000-8000-000000000001',
+    startsAt,
+    endsAt: end,
+    timezone: 'Europe/Istanbul',
+    currency: 'TRY',
+    estimateMinMinor: 10000,
+    estimateMaxMinor: 10000,
+    lines: [{
+      appointmentId: 'f3080000-0000-4000-8000-00000000000' + ordinal,
+      lineOrdinal: 1,
+      serviceId: SERVICE,
+      serviceName: 'Kesim',
+      staffId: STAFF,
+      staffName: 'Ada',
+      status: 'scheduled',
+      startsAt,
+      endsAt: end,
+      occupiedStartsAt: startsAt,
+      occupiedEndsAt: end,
+      processingCapacityPolicy: 'HOLD',
+      passiveWaitMinutes: 0,
+      processingPolicyVersion: 1,
+      priceType: 'fixed',
+      priceMinMinor: 10000,
+      priceMaxMinor: 10000,
+      priceMinor: 10000,
+      currency: 'TRY',
+      pricePolicyVersion: 1,
+    }],
+    legacyAppointmentId: null,
+    managementMode: 'group',
+    lineCount: 1,
+    canRescheduleGroup: true,
+    canCancelGroup: true,
+    customerName: 'F16 Seri Müşteri',
+    customerPhone: '05551601001',
+    customerEmail: null,
+    notes: null,
+    seriesId: SERIES,
+    seriesOrdinal: ordinal,
+  };
+}
+function seriesPayload() {
+  return {
+    seriesId: SERIES,
+    businessId: BUSINESS,
+    customerId: 'f3070000-0000-4000-8000-000000000001',
+    frequency: 'weekly',
+    occurrenceCount: 3,
+    timezone: 'Europe/Istanbul',
+    anchorStartsAt: recurringBookings[0]?.startsAt ?? '2026-10-05T07:00:00.000Z',
+    version: seriesVersion,
+    status: 'active',
+    occurrences: recurringBookings,
+    events: [],
+  };
+}
 
 function contentType(filePath) {
   switch (path.extname(filePath).toLowerCase()) {
@@ -150,7 +223,7 @@ try {
   assert.ok(cssFile, 'production main build did not emit CSS');
   const appCss = readFileSync(path.join(bundleDir, cssFile));
 
-  server = createServer((request, response) => {
+  server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://localhost');
     if (url.pathname === '/app.js') {
       servedAssets.add('/app.js');
@@ -185,6 +258,16 @@ try {
       return;
     }
 
+    let body = {};
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      if (chunks.length) {
+        try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+        catch { return sendJson(response, 400, { error: { code: 'INVALID_JSON', message: 'Geçersiz JSON.' } }); }
+      }
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/session') {
       return sendJson(response, 200, {
         user: { id: USER, email: 'f13-prod@example.test', fullName: 'F13 Prod' },
@@ -212,10 +295,95 @@ try {
     if (request.method === 'GET' && url.pathname === '/api/availability/setup') {
       return sendJson(response, 200, { timezone: 'Europe/Istanbul' });
     }
+    if (request.method === 'POST' && url.pathname === '/api/availability/group-slots') {
+      assert.deepEqual(body.lines, [{ serviceId: SERVICE, staffId: null }]);
+      return sendJson(response, 200, {
+        slots: [{
+          starts_at: '2026-10-05T07:00:00.000Z',
+          ends_at: '2026-10-05T07:30:00.000Z',
+          timezone: 'Europe/Istanbul',
+          total_duration_minutes: 30,
+          lines: [],
+        }],
+      });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/bookings/series/preview') {
+      assert.equal(body.frequency, 'weekly');
+      assert.equal(body.count, 3);
+      assert.deepEqual(body.lines, [{ serviceId: SERVICE, staffId: null }]);
+      return sendJson(response, 200, {
+        preview: {
+          frequency: 'weekly',
+          occurrenceCount: 3,
+          timezone: 'Europe/Istanbul',
+          allAvailable: true,
+          occurrences: [
+            { ordinal: 1, startsAt: '2026-10-05T07:00:00.000Z', localDate: '2026-10-05', localTime: '10:00:00', available: true },
+            { ordinal: 2, startsAt: '2026-10-12T07:00:00.000Z', localDate: '2026-10-12', localTime: '10:00:00', available: true },
+            { ordinal: 3, startsAt: '2026-10-19T07:00:00.000Z', localDate: '2026-10-19', localTime: '10:00:00', available: true },
+          ],
+        },
+      });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/bookings/series') {
+      assert.ok(request.headers['idempotency-key'], 'F16-01 series create omitted Idempotency-Key');
+      assert.equal(body.frequency, 'weekly');
+      assert.equal(body.count, 3);
+      recurringBookings = [
+        seriesGroup(1, '2026-10-05T07:00:00.000Z'),
+        seriesGroup(2, '2026-10-12T07:00:00.000Z'),
+        seriesGroup(3, '2026-10-19T07:00:00.000Z'),
+      ];
+      return sendJson(response, 201, { series: seriesPayload() });
+    }
+    if (request.method === 'GET' && url.pathname === `/api/bookings/series/${SERIES}`) {
+      return sendJson(response, 200, { series: seriesPayload() });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/bookings/series/${SERIES}/future/preview`) {
+      assert.equal(body.action, 'reschedule_future');
+      assert.equal(body.fromOrdinal, 1);
+      assert.equal(typeof body.newStartsAt, 'string');
+      const start = new Date(body.newStartsAt);
+      const targets = recurringBookings.map((booking, index) => {
+        const target = new Date(start.getTime() + index * 7 * 24 * 60 * 60_000).toISOString();
+        return {
+          groupId: booking.groupId,
+          ordinal: index + 1,
+          groupVersion: booking.version,
+          startsAt: booking.startsAt,
+          targetStartsAt: target,
+          localDate: target.slice(0, 10),
+          available: true,
+        };
+      });
+      return sendJson(response, 200, {
+        preview: {
+          seriesId: SERIES,
+          seriesVersion,
+          action: 'reschedule_future',
+          fromOrdinal: 1,
+          timezone: 'Europe/Istanbul',
+          allAvailable: true,
+          targets,
+          conflicts: [],
+          skipped: [],
+        },
+      });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/bookings/series/${SERIES}/future/reschedule`) {
+      assert.ok(request.headers['idempotency-key'], 'F16-01 future reschedule omitted Idempotency-Key');
+      assert.equal(body.expectedVersion, seriesVersion);
+      assert.equal(body.fromOrdinal, 1);
+      const start = new Date(body.newStartsAt);
+      seriesVersion += 1;
+      recurringBookings = recurringBookings.map((_, index) =>
+        seriesGroup(index + 1, new Date(start.getTime() + index * 7 * 24 * 60 * 60_000).toISOString()));
+      return sendJson(response, 200, { series: seriesPayload() });
+    }
     if (request.method === 'GET' && url.pathname === '/api/bookings/groups') {
       return sendJson(response, 200, {
         membership: { id: MEMBERSHIP, business_id: BUSINESS, role: 'owner', active: true },
-        bookings: [],
+        bookings: recurringBookings,
         page: { limit: 25, hasMore: false, nextCursor: null },
       });
     }
@@ -258,9 +426,79 @@ try {
     `production /app/bookings did not request BookingPage lazy chunk: ${JSON.stringify([...servedAssets])}`,
   );
   assert.equal(await page.evaluate("document.querySelector('a[aria-current=\"page\"]')?.textContent"), 'Randevular');
+
+  await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  const setControl = async (labelText, value, tag = 'input') => page.evaluate(`(() => {
+    const label=[...document.querySelectorAll('label')].find((node)=>node.textContent.includes(${JSON.stringify(labelText)}));
+    const field=label?.querySelector(${JSON.stringify(tag)});
+    if(!field) return false;
+    const proto=field.tagName==='SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto,'value').set.call(field,${JSON.stringify(value)});
+    field.dispatchEvent(new Event('input',{bubbles:true}));
+    field.dispatchEvent(new Event('change',{bubbles:true}));
+    return true;
+  })()`);
+
+  assert.equal(await setControl('Müşteri adı', 'F16 Seri Müşteri'), true, 'F16-01 customer input missing');
+  await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.includes('Uygun saatleri getir')).click()`);
+  await waitFor(
+    () => page.evaluate(`[...document.querySelectorAll('.slot-button')].some((node)=>node.textContent.includes('10:00'))`),
+    'F16-01 create slot did not render',
+  );
+  await page.evaluate(`[...document.querySelectorAll('.slot-button')].find((node)=>node.textContent.includes('10:00')).click()`);
+  assert.equal(await setControl('Tekrar', 'weekly', 'select'), true, 'F16-01 recurrence selector missing');
+  assert.equal(await setControl('Adet', '3'), true, 'F16-01 recurrence count missing');
+  await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.includes('Tüm tekrarları önizle')).click()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('3 tekrarın tamamı uygun.') && document.body.innerText.includes('3. tekrar')`),
+    'F16-01 all-occurrence preview did not render',
+  );
+
+  const create390 = await page.evaluate(`(() => ({
+    overflow: document.documentElement.scrollWidth-innerWidth,
+    text: document.body.innerText,
+  }))()`);
+  assert.equal(create390.overflow <= 1, true, 'F16-01 recurring composer overflowed at 390px');
+  assert.match(create390.text, /Her hafta/);
+  assert.match(create390.text, /3\. tekrar/);
+
+  await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.trim()==='Seriyi oluştur').click()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('3 randevuluk seri atomik olarak oluşturuldu.') && [...document.querySelectorAll('button')].some((node)=>node.textContent.trim()==='Seri')`),
+    'F16-01 series create did not refresh occurrence list',
+  );
+
+  await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.trim()==='Seri').click()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('TEKRARLAYAN SERİ') && document.body.innerText.includes('Seri sürümü')`),
+    'F16-01 series management surface did not open',
+  );
+  assert.equal(await setControl('Yeni tarih', '2026-10-05'), true, 'F16-01 future date input missing');
+  assert.equal(await setControl('Yeni saat', '12:00'), true, 'F16-01 future time input missing');
+  await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.includes('Kapsamı önizle')).click()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes(${JSON.stringify(SERIES_GROUPS[0])}) && document.body.innerText.includes(${JSON.stringify(SERIES_GROUPS[2])}) && document.body.innerText.includes('Kapsamda')`),
+    'F16-01 future-scope preview did not expose exact group ids',
+  );
+
+  const scope390 = await page.evaluate(`(() => ({
+    overflow: document.documentElement.scrollWidth-innerWidth,
+    targets: [...document.querySelectorAll('.appointment-row')].filter((node)=>node.textContent.includes('Kapsamda')).length,
+  }))()`);
+  assert.equal(scope390.overflow <= 1, true, 'F16-01 series scope overflowed at 390px');
+  assert.equal(scope390.targets >= 3, true, 'F16-01 series scope did not expose all three targets');
+
+  await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.includes('Kapsamdaki randevuları taşı')).click()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Seçilen tekrar ve sonraki uygun randevular atomik olarak taşındı.')`),
+    'F16-01 future reschedule did not complete through the operator UI',
+  );
+  assert.equal(seriesVersion, 2, 'F16-01 browser fixture did not receive one series version bump');
+
   assert.deepEqual(page.diagnostics, []);
   page.close();
 
+  console.log('F16-01 production Chrome acceptance passed: weekly preview/create, exact future scope, atomic reschedule and 390px.');
   console.log('F13-03 production-entry browser passed: src/main.tsx /app/bookings route requested BookingPage lazy chunk and rendered workspace UI.');
 } catch (error) {
   let diagnostics = '';
