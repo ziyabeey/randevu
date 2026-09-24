@@ -51,6 +51,7 @@ M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf3
 - [x] external SCIP JSON ingestion contract
 - [x] normalized definition/reference/relationship graph
 - [x] reference blast-radius report
+- [x] semantic-unit → SCIP symbol mapping with typed/enclosing ranges
 - [x] test-code reference distinction
 - [x] explicit coverage-gap/unknown separation
 - [x] temporal-coupling companion evidence
