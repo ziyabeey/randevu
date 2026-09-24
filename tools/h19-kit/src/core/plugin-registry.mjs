@@ -12,6 +12,7 @@ export class PluginRegistry {
       kind: plugin.kind,
       version: plugin.version ?? '0.1.0',
       capabilities: Object.freeze([...(plugin.capabilities ?? [])]),
+      produces: Object.freeze([...(plugin.produces ?? [])]),
       run: plugin.run,
     });
     this.#plugins.set(key, frozen);
