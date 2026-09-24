@@ -1,0 +1,207 @@
+{
+  "benchmark_id": "DE-H19-COVERAGE-OUTCOMES",
+  "version": "0.1.0",
+  "maturity": "SHADOW",
+  "purpose": "Sidecar evidence memory for H19 coverage-first experiments. This is not TASKS authority and does not modify the canonical H19 integrity gate.",
+  "interpretation": {
+    "geometry_hit": "Phase-1 semantic variation passed the existing suite, the frozen prospective probe failed on that variation, and the same probe passed on clean code.",
+    "already_covered": "Phase-1 semantic variation already failed the existing suite; no prospective probe is credited as new coverage.",
+    "miss": "Reserved for a valid frozen prospective probe that fails to distinguish variation from clean control. No such row is asserted in this v0.1 corpus.",
+    "invalid": "Reserved for an invalid/no-op intervention excluded by the frozen experiment protocol."
+  },
+  "axis_fact_relation": "Coverage novelty is a separate fact from axis classification. already_covered is not a negative axis label.",
+  "rows": [
+    {
+      "cell": "B-A",
+      "domain": "customers",
+      "pair": [
+        "D0",
+        "D5"
+      ],
+      "outcome": "geometry_hit",
+      "phase1": {
+        "pr": 492,
+        "run_number": 2626,
+        "run_id": 35958293666,
+        "conclusion": "success",
+        "head_sha": "30cbaadde37ee691690fa162530fe46eb81d89d2"
+      },
+      "probe": {
+        "pr": 493,
+        "run_number": 2627,
+        "run_id": 35958884182,
+        "conclusion": "failure",
+        "head_sha": "aa7c334ec066d1f5d9f772688fa8a04090cd918e"
+      },
+      "clean": {
+        "pr": 496,
+        "run_number": 2628,
+        "run_id": 35960294811,
+        "conclusion": "success",
+        "head_sha": "74787c6a4f9fe3a794eb1377a4bd796fc356a3ef"
+      }
+    },
+    {
+      "cell": "B-B",
+      "domain": "product-sales",
+      "pair": [
+        "D0",
+        "D2"
+      ],
+      "outcome": "geometry_hit",
+      "phase1": {
+        "pr": 500,
+        "run_number": 2630,
+        "run_id": 35961169443,
+        "conclusion": "success",
+        "head_sha": "fb09849c0dacd5beaba78ad68f3e587cf5291cd2"
+      },
+      "probe": {
+        "pr": 502,
+        "run_number": 2631,
+        "run_id": 35961619461,
+        "conclusion": "failure",
+        "head_sha": "85c4c3d9e537be4d7a1f72c278111aec54dd2794"
+      },
+      "clean": {
+        "pr": 503,
+        "run_number": 2632,
+        "run_id": 35961622735,
+        "conclusion": "success",
+        "head_sha": "063d47e8b78d8fb6091951067e36b4a5f1b4662a"
+      }
+    },
+    {
+      "cell": "H-A",
+      "domain": "customers",
+      "pair": [
+        "D1",
+        "D5"
+      ],
+      "outcome": "geometry_hit",
+      "phase1": {
+        "pr": 487,
+        "run_number": 2620,
+        "run_id": 35956836729,
+        "conclusion": "success",
+        "head_sha": "b384fc505bf15fd2d56f86015d396c3acbf2e28c"
+      },
+      "probe": {
+        "pr": 489,
+        "run_number": 2624,
+        "run_id": 35957767948,
+        "conclusion": "failure",
+        "head_sha": "460771e90047596b5472db16a605d062d09dd4b8"
+      },
+      "clean": {
+        "pr": 490,
+        "run_number": 2625,
+        "run_id": 35957771824,
+        "conclusion": "success",
+        "head_sha": "872f81cd5f754891b3685a2fe6f04f35fbe3aa30"
+      }
+    },
+    {
+      "cell": "H-C",
+      "domain": "expenses",
+      "pair": [
+        "D1",
+        "D2"
+      ],
+      "outcome": "geometry_hit",
+      "phase1": {
+        "pr": 504,
+        "run_number": 2633,
+        "run_id": 35962057155,
+        "conclusion": "success",
+        "head_sha": "576833da80888db56743d5530fa84a648d56424a"
+      },
+      "probe": {
+        "pr": 505,
+        "run_number": 2635,
+        "run_id": 35962501459,
+        "conclusion": "failure",
+        "head_sha": "64344323bca0c1ec9f3362059e098aa2c1d4eba9"
+      },
+      "clean": {
+        "pr": 506,
+        "run_number": 2636,
+        "run_id": 35962503963,
+        "conclusion": "success",
+        "head_sha": "722780dbab2313b236a33878a88cae3d8e76d853"
+      }
+    },
+    {
+      "cell": "B-D",
+      "domain": "reporting",
+      "pair": [
+        "D2",
+        "D4"
+      ],
+      "outcome": "geometry_hit",
+      "phase1": {
+        "pr": 512,
+        "run_number": 2642,
+        "run_id": 35964098520,
+        "conclusion": "success",
+        "head_sha": "0c8480154b47d93fef8f53c88df01ff39f1e7585"
+      },
+      "probe": {
+        "pr": 515,
+        "run_number": 2646,
+        "run_id": 35964679112,
+        "conclusion": "failure",
+        "head_sha": "2df44caa2e608bf1a99ddbd1b459cf4ad81ced23"
+      },
+      "clean": {
+        "pr": 516,
+        "run_number": 2647,
+        "run_id": 35964695902,
+        "conclusion": "success",
+        "head_sha": "f27bfee7a7ac00f9aed77d8f2ecb727921a76538"
+      }
+    },
+    {
+      "cell": "H-B",
+      "domain": "product-sales",
+      "pair": [
+        "D1",
+        "D5"
+      ],
+      "outcome": "already_covered",
+      "phase1": {
+        "pr": 498,
+        "run_number": 2629,
+        "run_id": 35960508800,
+        "conclusion": "failure",
+        "head_sha": "9211422fbf2712db6270b0018f027bd13aea404e"
+      },
+      "probe": null,
+      "clean": null
+    },
+    {
+      "cell": "H-D",
+      "domain": "reporting",
+      "pair": [
+        "D0",
+        "D4"
+      ],
+      "outcome": "already_covered",
+      "phase1": {
+        "pr": 510,
+        "run_number": 2640,
+        "run_id": 35963354975,
+        "conclusion": "failure",
+        "head_sha": "9c35649755d1ff428d5ccdf1e33efd8ecb59fb68"
+      },
+      "probe": null,
+      "clean": null
+    }
+  ],
+  "counts": {
+    "geometry_hit": 5,
+    "already_covered": 2,
+    "miss": 0,
+    "invalid": 0
+  }
+}
