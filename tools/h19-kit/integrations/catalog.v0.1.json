@@ -96,6 +96,48 @@
       "use": [
         "SARIF/RDJSON-compatible reporting"
       ]
+    },
+    {
+      "id": "tree-sitter-tags",
+      "project": "Tree-sitter",
+      "license": "MIT",
+      "mode": "external-process",
+      "use": [
+        "syntax-only fallback symbol tags"
+      ],
+      "notes": [
+        "Fallback only; compiler-backed/native/SCIP relationships have higher authority."
+      ]
+    },
+    {
+      "id": "scip-cli",
+      "project": "SCIP",
+      "license": "Apache-2.0",
+      "mode": "external-process",
+      "use": [
+        "symbol definitions",
+        "references",
+        "relationships",
+        "cross-file impact"
+      ]
+    },
+    {
+      "id": "nx-affected",
+      "project": "Nx",
+      "license": "MIT",
+      "mode": "external-process",
+      "use": [
+        "affected project graph evidence"
+      ]
+    },
+    {
+      "id": "turborepo-affected",
+      "project": "Turborepo",
+      "license": "MIT",
+      "mode": "external-process",
+      "use": [
+        "affected package/task evidence"
+      ]
     }
   ]
-}
+}\n
