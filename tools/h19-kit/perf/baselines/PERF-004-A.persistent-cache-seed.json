@@ -1,0 +1,48 @@
+{
+  "baselineId": "PERF-004-A",
+  "phase": "seed",
+  "source": {
+    "workflowRun": 36061644907,
+    "workflowRunNumber": 2899,
+    "workflowRunAttempt": 2,
+    "headSha": "a6bd91c946ecf160176aa40f792b832a4e32820a",
+    "artifactId": 10834459674,
+    "artifactDigest": "sha256:e510238c14e00c5a479fc1fe61eb81613ac017494506a608e5461094b3446776"
+  },
+  "probe": {
+    "schemaVersion": 1,
+    "shardCount": 3,
+    "hits": 0,
+    "misses": 3,
+    "totalMs": 8005.429,
+    "rows": [
+      {
+        "id": "tsconfig.app.json",
+        "cache": "miss",
+        "wallMs": 4630.586,
+        "fingerprint": "2aa1dd374be3e76a88056f7dbe56f015fb64d5850b0c1b66787755812d0b6f10"
+      },
+      {
+        "id": "tsconfig.node.json",
+        "cache": "miss",
+        "wallMs": 1018.063,
+        "fingerprint": "4d043cba67068522fe5f678135827b7297276c33190471e14be22e4c9249d64f"
+      },
+      {
+        "id": "tsconfig.worker.json",
+        "cache": "miss",
+        "wallMs": 2356.641,
+        "fingerprint": "4c3ca98eba91d15dc0e137daf5ac82ec813cac93c8f4893c8dc48f6f5501ee21"
+      }
+    ]
+  },
+  "cacheTransport": {
+    "saved": true,
+    "observedSavedKey": "h19-perf-shards-Linux-scip-0.4.0-430f7823ff6542ba24f7f9605d8d3738760043ee",
+    "note": "The observed key used GitHub pull-request synthetic github.sha. Run B corrects key provenance to pull_request.head.sha while retaining the same restore prefix."
+  },
+  "interpretation": {
+    "expected": true,
+    "note": "Seed run intentionally starts cold. Run B is the cross-run reuse test."
+  }
+}
