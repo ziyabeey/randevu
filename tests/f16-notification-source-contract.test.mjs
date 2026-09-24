@@ -30,7 +30,7 @@ test('F16-02 NetGSM ambiguous sends cannot be reclaimed or blindly replayed', ()
 test('F16-02 SMS is provider-length bounded before the send boundary', () => {
   assert.match(netgsm, /sms\/rest\/v2\/length/);
   assert.match(netgsm, /const MAX_SMS_PARTS = 6/);
-  assert.match(netgsm, /if \(parts > MAX_SMS_PARTS\)/);
+  assert.match(netgsm, /if \(measured\.parts > MAX_SMS_PARTS\)/);
   assert.match(netgsm, /netgsm_segment_limit_exceeded/);
 });
 
