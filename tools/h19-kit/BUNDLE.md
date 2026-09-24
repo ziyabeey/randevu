@@ -59,9 +59,13 @@ Required measurements:
 - Git-history cold vs warm-cache wall time;
 - real scip-typescript cold indexing time and index size;
 - H19 project-shard warm cache-hit time;
+- real single-source-change reindex cost;
+- tsconfig-scoped shard invalidation cost and unchanged-shard cache reuse;
 - deterministic M4/M5 synthetic scale probe.
 
 The first run is measurement-only. Do not invent pass/fail thresholds before the baseline is captured.
+
+PERF-002 established a concrete bottleneck: a single changed file caused ~8.95 s reindex, ~96% of whole-repository first-index cost, while exact-content cache hit was ~28 ms. The next performance experiment therefore targets TypeScript-project-scoped invalidation before any new feature milestone.
 
 ## Next authorized feature gate
 
