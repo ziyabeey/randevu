@@ -86,6 +86,14 @@ test('Depot starts only for an exact, mapped, non-doc PR while GitHub CI is pend
   assert.equal(depotEligible(pr, decision, { depotShadowEnabled: true }), true);
   assert.equal(depotEligible(pr, {
     ...decision,
+    gaps: ['STACK_DEPENDENCY_PENDING'],
+  }, { depotShadowEnabled: true }), false);
+  assert.equal(depotEligible(pr, {
+    ...decision,
+    gaps: ['STACK_PARENT_HEAD_STALE'],
+  }, { depotShadowEnabled: true }), false);
+  assert.equal(depotEligible(pr, {
+    ...decision,
     surface: { docsOnly: true, incomplete: false },
   }, { depotShadowEnabled: true }), false);
   assert.equal(depotEligible({ ...pr, headRef: '../unsafe' }, decision, {
