@@ -86,6 +86,39 @@ type AppointmentEvent = {
   id: string; event_type: string; actor_user_id: string; from_status: string | null;
   to_status: string | null; payload: Record<string, unknown>; created_at: string;
 };
+type SeriesDetail = {
+  seriesId: string;
+  businessId: string;
+  customerId: string;
+  frequency: 'daily' | 'weekly';
+  occurrenceCount: number;
+  timezone: string;
+  anchorStartsAt: string;
+  version: number;
+  status: 'active' | 'cancelled';
+  occurrences: BookingGroup[];
+  events: Array<{ eventId: string; seriesVersion: number; eventType: string; payload: Record<string, unknown>; createdAt: string }>;
+};
+type SeriesFutureTarget = {
+  groupId: string;
+  ordinal: number;
+  groupVersion: number;
+  startsAt: string;
+  targetStartsAt: string | null;
+  localDate: string;
+  available: boolean;
+};
+type SeriesFuturePreview = {
+  seriesId: string;
+  seriesVersion: number;
+  action: 'reschedule_future' | 'cancel_future';
+  fromOrdinal: number;
+  timezone?: string;
+  allAvailable: boolean;
+  targets: SeriesFutureTarget[];
+  conflicts: Array<{ groupId: string; ordinal: number; localDate: string; reason: string }>;
+  skipped: Array<{ groupId: string; ordinal: number; startsAt: string; reason: string }>;
+};
 type PageInfo = { limit: number; hasMore: boolean; nextCursor: string | null };
 type RescheduleTarget = { booking: BookingGroup; key: string };
 type LineTarget = { booking: BookingGroup; line: BookingLine; key: string };
@@ -230,6 +263,15 @@ export default function BookingPage() {
   const [eventsFor, setEventsFor] = useState<BookingGroup | null>(null);
   const [events, setEvents] = useState<AppointmentEvent[]>([]);
   const [eventsNextCursor, setEventsNextCursor] = useState<string | null>(null);
+
+  const [seriesFor, setSeriesFor] = useState<BookingGroup | null>(null);
+  const [seriesDetail, setSeriesDetail] = useState<SeriesDetail | null>(null);
+  const [seriesAction, setSeriesAction] = useState<'reschedule' | 'cancel'>('reschedule');
+  const [seriesFromOrdinal, setSeriesFromOrdinal] = useState(1);
+  const [seriesDate, setSeriesDate] = useState(dateToday());
+  const [seriesTime, setSeriesTime] = useState('09:00');
+  const [seriesReason, setSeriesReason] = useState('');
+  const [seriesFuturePreview, setSeriesFuturePreview] = useState<SeriesFuturePreview | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -664,6 +706,113 @@ export default function BookingPage() {
     finally { setBusy(false); }
   }
 
+  async function openSeriesScope(booking: BookingGroup) {
+    if (!booking.seriesId || !booking.seriesOrdinal) return;
+    setDetailFor(null);
+    setSeriesFor(booking);
+    setSeriesDetail(null);
+    setSeriesFuturePreview(null);
+    setSeriesAction('reschedule');
+    setSeriesFromOrdinal(booking.seriesOrdinal);
+    setSeriesDate(dateInZone(booking.startsAt, booking.timezone));
+    setSeriesTime(timeInZone(booking.startsAt, booking.timezone));
+    setSeriesReason('');
+    setBusy(true); setNotice('');
+    try {
+      const result = await api<{ series: SeriesDetail }>(`/api/bookings/series/${booking.seriesId}`);
+      setSeriesDetail(result.series);
+      setSeriesFromOrdinal(Math.max(1, booking.seriesOrdinal));
+    } catch (error) {
+      setSeriesFor(null);
+      setNotice(error instanceof Error ? error.message : 'Seri bilgisi okunamadı.');
+    } finally { setBusy(false); }
+  }
+
+  function seriesNewStartsAt() {
+    if (!seriesDetail || seriesAction !== 'reschedule') return null;
+    return zonedLocalToIso(seriesDate, seriesTime, seriesDetail.timezone);
+  }
+
+  async function previewSeriesFutureScope() {
+    if (!seriesFor?.seriesId || !seriesDetail) return;
+    setBusy(true); setNotice(''); setSeriesFuturePreview(null);
+    try {
+      const newStartsAt = seriesNewStartsAt();
+      const result = await api<{ preview: SeriesFuturePreview }>(
+        `/api/bookings/series/${seriesFor.seriesId}/future/preview`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            fromOrdinal: seriesFromOrdinal,
+            action: seriesAction === 'reschedule' ? 'reschedule_future' : 'cancel_future',
+            newStartsAt,
+          }),
+        },
+      );
+      setSeriesFuturePreview(result.preview);
+      const mutable = result.preview.targets.length;
+      const skipped = result.preview.skipped.length;
+      setNotice(result.preview.allAvailable
+        ? `${mutable} gelecek randevu kapsamda${skipped ? `, ${skipped} geçmiş/kapalı kayıt korunacak` : ''}.`
+        : `Kapsamda ${result.preview.conflicts.length} çakışma var; işlem uygulanmayacak.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Seri kapsamı önizlenemedi.');
+    } finally { setBusy(false); }
+  }
+
+  async function commitSeriesFutureScope() {
+    if (!seriesFor?.seriesId || !seriesDetail || !seriesFuturePreview
+        || !seriesFuturePreview.targets.length || !seriesFuturePreview.allAvailable) return;
+    const newStartsAt = seriesAction === 'reschedule' ? seriesNewStartsAt() : null;
+    const fingerprint = [
+      'series-future',seriesFor.seriesId,seriesDetail.version,seriesAction,
+      seriesFromOrdinal,newStartsAt ?? '',seriesReason.trim(),
+    ].join(':');
+    const key = stableMutationKey(fingerprint);
+    setBusy(true); setNotice('');
+    try {
+      if (seriesAction === 'reschedule') {
+        await api(`/api/bookings/series/${seriesFor.seriesId}/future/reschedule`, {
+          method: 'POST',
+          headers: { 'Idempotency-Key': key },
+          body: JSON.stringify({
+            expectedVersion: seriesDetail.version,
+            fromOrdinal: seriesFromOrdinal,
+            newStartsAt,
+          }),
+        });
+      } else {
+        await api(`/api/bookings/series/${seriesFor.seriesId}/future/cancel`, {
+          method: 'POST',
+          headers: { 'Idempotency-Key': key },
+          body: JSON.stringify({
+            expectedVersion: seriesDetail.version,
+            fromOrdinal: seriesFromOrdinal,
+            reason: seriesReason.trim() || null,
+          }),
+        });
+      }
+      mutationKeys.current.delete(fingerprint);
+      setSeriesFor(null); setSeriesDetail(null); setSeriesFuturePreview(null);
+      await load();
+      setNotice(seriesAction === 'reschedule'
+        ? 'Seçilen tekrar ve sonraki uygun randevular atomik olarak taşındı.'
+        : 'Seçilen tekrar ve sonraki uygun randevular atomik olarak iptal edildi.');
+    } catch (error) {
+      const coded = error as Error & { code?: string };
+      setNotice(coded.message || 'Seri değişikliği uygulanamadı.');
+      if (coded.code === 'APPOINTMENT_SERIES_VERSION_CONFLICT'
+          || coded.code === 'BOOKING_GROUP_VERSION_CONFLICT'
+          || coded.code === 'SERIES_FUTURE_OCCURRENCE_UNAVAILABLE') {
+        setSeriesFuturePreview(null);
+        try {
+          const refreshed = await api<{ series: SeriesDetail }>(`/api/bookings/series/${seriesFor.seriesId}`);
+          setSeriesDetail(refreshed.series);
+        } catch { /* preserve mutation error */ }
+      }
+    } finally { setBusy(false); }
+  }
+
   async function showHistory(booking: BookingGroup) {
     if (!booking.legacyAppointmentId) return;
     setBusy(true); setNotice('');
@@ -835,6 +984,7 @@ export default function BookingPage() {
             </div>
             <div className="appointment-actions">
               <button disabled={busy} onClick={() => { setDetailFor(booking); setNotice(''); }}>Detay</button>
+              {booking.seriesId && booking.seriesOrdinal && <button disabled={busy} onClick={() => void openSeriesScope(booking)}>Seri</button>}
               {booking.managementMode === 'legacy_single' ? <>
                 {booking.status === 'scheduled' && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'confirmed')}>Onayla</button>}
                 {(booking.status === 'scheduled' || booking.status === 'confirmed') && <button disabled={busy} onClick={() => openReschedule(booking)}>Taşı</button>}
@@ -869,6 +1019,7 @@ export default function BookingPage() {
         <div className="wide-field"><dt>Hizmetler</dt><dd>{detailFor.lines.map((line) => <div key={line.appointmentId}>{line.lineOrdinal}. {line.serviceName} · {line.staffName} · {formatTime(line.startsAt, detailFor.timezone)} · {statusText[line.status]}</div>)}</dd></div>
       </dl>
       <div className="appointment-actions booking-detail-actions">
+        {detailFor.seriesId && detailFor.seriesOrdinal && <button disabled={busy} onClick={() => void openSeriesScope(detailFor)}>Seriyi yönet</button>}
         {detailFor.managementMode === 'legacy_single' ? <>
           {detailFor.status === 'scheduled' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'confirmed')}>Onayla</button>}
           {(detailFor.status === 'scheduled' || detailFor.status === 'confirmed') && <button disabled={busy} onClick={() => openReschedule(detailFor)}>Taşı</button>}
@@ -884,6 +1035,80 @@ export default function BookingPage() {
         </>}
       </div>
       <p className="muted booking-detail-future">Fotoğraf bölümü henüz kullanıma açık değil. Adisyon aynı randevu kaynağından güvenli biçimde açılır veya yeniden kullanılır.</p>
+    </section>}
+
+    {seriesFor && <section className="booking-card booking-modal-card booking-detail-card">
+      <div className="section-head">
+        <div><p className="eyebrow">TEKRARLAYAN SERİ</p><h2>{seriesFor.customerName}</h2></div>
+        <button type="button" onClick={() => { setSeriesFor(null); setSeriesDetail(null); setSeriesFuturePreview(null); }}>Kapat</button>
+      </div>
+      {!seriesDetail ? <p className="muted">Seri hazırlanıyor…</p> : <>
+        <dl className="booking-detail-grid">
+          <div><dt>Sıklık</dt><dd>{seriesDetail.frequency === 'daily' ? 'Her gün' : 'Her hafta'}</dd></div>
+          <div><dt>Toplam tekrar</dt><dd>{seriesDetail.occurrenceCount}</dd></div>
+          <div><dt>Seri sürümü</dt><dd>{seriesDetail.version}</dd></div>
+          <div><dt>Saat dilimi</dt><dd>{seriesDetail.timezone}</dd></div>
+        </dl>
+        <div className="booking-fields">
+          <label>
+            İşlem
+            <select value={seriesAction} onChange={(event) => {
+              setSeriesAction(event.target.value as 'reschedule' | 'cancel');
+              setSeriesFuturePreview(null);
+            }}>
+              <option value="reschedule">Bu ve sonrakileri taşı</option>
+              <option value="cancel">Bu ve sonrakileri iptal et</option>
+            </select>
+          </label>
+          <label>
+            Başlangıç tekrarı
+            <select value={seriesFromOrdinal} onChange={(event) => {
+              const ordinal = Number(event.target.value);
+              setSeriesFromOrdinal(ordinal);
+              const occurrence = seriesDetail.occurrences.find((item) => item.seriesOrdinal === ordinal);
+              if (occurrence) {
+                setSeriesDate(dateInZone(occurrence.startsAt, seriesDetail.timezone));
+                setSeriesTime(timeInZone(occurrence.startsAt, seriesDetail.timezone));
+              }
+              setSeriesFuturePreview(null);
+            }}>
+              {Array.from({ length: seriesDetail.occurrenceCount }, (_, index) => index + 1).map((ordinal) =>
+                <option value={ordinal} key={ordinal}>{ordinal}. tekrar</option>)}
+            </select>
+          </label>
+          {seriesAction === 'reschedule' ? <>
+            <label>Yeni tarih<input type="date" value={seriesDate} onChange={(event) => { setSeriesDate(event.target.value); setSeriesFuturePreview(null); }} /></label>
+            <label>Yeni saat<input type="time" value={seriesTime} onChange={(event) => { setSeriesTime(event.target.value); setSeriesFuturePreview(null); }} /></label>
+          </> : <label className="wide-field">İptal nedeni<textarea rows={2} maxLength={500} value={seriesReason} onChange={(event) => { setSeriesReason(event.target.value); setSeriesFuturePreview(null); }} /></label>}
+        </div>
+        <div className="booking-actions">
+          <button className="secondary-button" disabled={busy} onClick={() => void previewSeriesFutureScope()}>
+            {busy ? 'Kapsam hesaplanıyor…' : 'Kapsamı önizle'}
+          </button>
+        </div>
+        {seriesFuturePreview && <div className="appointment-list" aria-label="Seri değişiklik kapsamı">
+          {seriesFuturePreview.targets.map((target) => <div className="appointment-row" key={target.groupId}>
+            <div className="appointment-time">
+              <strong>{target.ordinal}. tekrar</strong>
+              <span>{target.localDate}{target.targetStartsAt ? ` · ${formatTime(target.targetStartsAt, seriesDetail.timezone)}` : ''}</span>
+            </div>
+            <div className="appointment-main"><small>{target.groupId}</small><span className="status-pill">{target.available ? 'Kapsamda' : 'Çakışıyor'}</span></div>
+          </div>)}
+          {seriesFuturePreview.skipped.map((target) => <div className="appointment-row" key={`skip-${target.groupId}`}>
+            <div className="appointment-time"><strong>{target.ordinal}. tekrar</strong><span>{formatDateTime(target.startsAt, seriesDetail.timezone)}</span></div>
+            <div className="appointment-main"><small>{target.groupId}</small><span className="status-pill">Korunacak</span></div>
+          </div>)}
+          {seriesFuturePreview.conflicts.map((target) => <div className="appointment-row" key={`conflict-${target.groupId}`}>
+            <div className="appointment-time"><strong>{target.ordinal}. tekrar</strong><span>{target.localDate}</span></div>
+            <div className="appointment-main"><small>{target.groupId}</small><span className="status-pill">Çakışma</span></div>
+          </div>)}
+          <div className="booking-actions">
+            <button className="primary-button" disabled={busy || !seriesFuturePreview.allAvailable || !seriesFuturePreview.targets.length} onClick={() => void commitSeriesFutureScope()}>
+              {seriesAction === 'reschedule' ? 'Kapsamdaki randevuları taşı' : 'Kapsamdaki randevuları iptal et'}
+            </button>
+          </div>
+        </div>}
+      </>}
     </section>}
 
     {rescheduleTarget && <section className="booking-card booking-modal-card">
