@@ -1,0 +1,16 @@
+{
+  "_aciklama": "🔵 Needs a closer look incelemeleri için elle etiket: true = incelemede somut bir kusur/eksik bildiriliyor (Findings ≥ 1 ise her zaman true); false = yalnız hassas alan nedeniyle genel insan incelemesi önerisi; null = belirsiz. Etiketleyen: Claude, özet cümlesi ve bulgu sayısına bakarak.",
+  "review-5253522125": true, "review-5252172675": true, "review-5245880315": true, "review-5247792046": false,
+  "review-5247994158": true, "review-5248033468": true, "review-5248388426": null, "review-5248682704": true,
+  "review-5248809174": true, "review-5248233722": false, "review-5249018426": true, "review-5249193006": false,
+  "review-5249968571": false, "review-5250454913": false, "review-5251253554": false, "review-5252213768": true,
+  "review-5252324810": false, "review-5253154182": true, "review-5253158922": true, "review-5254692353": true,
+  "review-5255201492": false, "review-5255741687": true, "review-5255775887": true, "review-5256312146": true,
+  "review-5257039073": true, "review-5256645782": false, "review-5259783231": true, "review-5259804227": false,
+  "review-5259818029": true, "review-5259467308": false, "review-5259487820": false, "review-5260060883": true,
+  "review-5260112869": true, "review-5259873299": true, "review-5260149458": true, "review-5260145112": null,
+  "review-5260170783": false, "review-5260285488": false, "review-5260431489": true, "review-5260429512": true,
+  "review-5260641117": null, "review-5260893314": false, "review-5261127760": true, "review-5261379621": false,
+  "review-5262518557": true, "review-5262994836": true, "review-5262984828": true, "review-5263153441": true,
+  "review-5263358678": false, "review-5266134691": true
+}

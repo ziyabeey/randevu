@@ -19,6 +19,8 @@ Node'un yerleşik `fetch`'i `HTTPS_PROXY`'yi kendiliğinden okumaz; `npm run eva
 `NODE_USE_ENV_PROXY=1` ile çalışır (Node ≥ 22.21). Bu bayrak olmadan istekler ortamın ajan proxy'sine
 gitmez ve `403 Host not in allowlist` alınır.
 
+Geliştirme motoru deneyi (R0 inceleme yorumlarını okumak): [`r0/BULGULAR.md`](r0/BULGULAR.md).
+
 Sonuçların özeti: [`BULGULAR.md`](BULGULAR.md) · ham raporlar: [`raporlar/`](raporlar/) · R&D issue taslağı: [`rnd-issue-taslak.md`](rnd-issue-taslak.md).
 
 ## Çalıştırma
