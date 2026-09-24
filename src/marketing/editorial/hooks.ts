@@ -217,10 +217,13 @@ export function useSingleKolay(rootRef: RefObject<HTMLElement | null>, tokenRef:
     write();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
+    // The token glides on after the scroll stops; decide again where it lands.
+    root.addEventListener("ed-journey-settle", write);
     const settle = window.setTimeout(write, 1000);
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      root.removeEventListener("ed-journey-settle", write);
       window.clearTimeout(settle);
       if (frame !== null) window.cancelAnimationFrame(frame);
       delete root.dataset.navKolay;

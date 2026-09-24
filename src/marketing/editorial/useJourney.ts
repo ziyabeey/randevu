@@ -11,6 +11,10 @@ import { useEffect, type RefObject } from "react";
  * holds it flies from one live anchor rect to the next on an arc, travelling
  * with the page and fading under the nav or past the bottom edge rather than
  * pinning to the viewport. Only transforms and sizes are written; scroll is native.
+ *
+ * The token's place on the journey glides toward the scroll position instead of
+ * jumping with it, so a wheel notch that crosses a whole flight still reads as a
+ * flight. Rects are read live every frame, so holds stay glued to their anchors.
  */
 
 type Edge = { scene: string; at: number } | { line: number } | { y: number };
@@ -45,7 +49,8 @@ interface Resolved extends Waypoint { element: HTMLElement; start: number; end: 
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+// Sine ease: soft take-off and landing, half the peak speed of a cubic.
+const easeInOut = (t: number) => 0.5 - Math.cos(Math.PI * t) / 2;
 const smoothstep = (a: number, b: number, t: number) => {
   const x = clamp01((t - a) / (b - a));
   return x * x * (3 - 2 * x);
@@ -63,6 +68,14 @@ const rectOf = (element: HTMLElement): Rect => {
   return { x: r.left, y: r.top, w: r.width, h: r.height };
 };
 const docTop = (element: Element) => element.getBoundingClientRect().top + window.scrollY;
+
+const NAV_LINE = 72;
+// Fades run over a fixed stretch of travel, so a small badge fades as gently as the headline word.
+const FADE = 96;
+const GLIDE_MS = 140;
+
+const visibility = (top: number, height: number) =>
+  Math.min(smoothstep(0, FADE, top + height - NAV_LINE), smoothstep(0, FADE, window.innerHeight - top));
 
 function resolve(edge: Edge, anchor: HTMLElement): number {
   if ("y" in edge) return Number.isFinite(edge.y) ? edge.y * window.innerHeight : edge.y;
@@ -108,49 +121,58 @@ export function useJourney(rootRef: RefObject<HTMLElement | null>, tokenRef: Ref
       token.style.color = ink;
     };
 
+    // Faces turn over like a drum: the old one rolls up and out while the new one
+    // rolls in right beneath it, so the block never goes blank and texts never overlap.
     const layers = (from: string, to: string | null, t: number) => {
+      const turn = to === null ? 0 : smoothstep(0.3, 0.7, t);
       for (const layer of token.querySelectorAll<HTMLElement>("[data-layer]")) {
         const id = layer.dataset.layer;
-        const opacity = to === null
-          ? Number(id === from)
-          // Hand-over at the midpoint: never two faces at once, never a long empty block.
-          : id === from ? 1 - smoothstep(0.12, 0.5, t) : id === to ? smoothstep(0.5, 0.88, t) : 0;
+        let opacity = 0;
+        let shift = 0;
+        if (id === to) {
+          opacity = smoothstep(0.1, 0.65, turn);
+          shift = 100 * (1 - turn);
+        } else if (id === from) {
+          opacity = 1 - smoothstep(0.35, 0.9, turn);
+          shift = -100 * turn;
+        }
         layer.style.opacity = opacity.toFixed(3);
+        layer.style.transform = shift ? `translate3d(0, ${shift.toFixed(2)}%, 0)` : "";
       }
     };
 
-    const frame = () => {
-      if (salon) token.style.setProperty("--tok-progress", salon.style.getPropertyValue("--mkt-progress") || "0");
+    // Journey coordinate: i holds on points[i]; i + t flies from points[i] to points[i + 1].
+    const goal = () => {
       const y = window.scrollY;
-      const first = points[0];
-      if (!first) {
+      for (let i = 0; i < points.length; i++) {
+        const point = points[i];
+        const following = points[i + 1];
+        if (!point) continue;
+        if (y <= point.end || !following) return i;
+        if (y < following.start) return i + clamp01((y - point.end) / Math.max(1, following.start - point.end));
+      }
+      return 0;
+    };
+
+    const draw = (s: number) => {
+      if (salon) token.style.setProperty("--tok-progress", salon.style.getPropertyValue("--mkt-progress") || "0");
+      const index = Math.min(points.length - 1, Math.max(0, Math.floor(s)));
+      const current = points[index];
+      if (!current) {
         token.style.opacity = "0";
         return;
       }
-      token.style.opacity = "1";
-
-      let current = first;
-      let next: Resolved | null = null;
-      let t = 0;
-      for (let i = 0; i < points.length; i++) {
-        const point = points[i];
-        if (!point) continue;
-        const following = points[i + 1] ?? null;
-        current = point;
-        if (y <= point.end || !following) break;
-        if (y < following.start) {
-          next = following;
-          t = clamp01((y - point.end) / Math.max(1, following.start - point.end));
-          break;
-        }
-      }
+      const t = s - index;
+      const next = t > 0.0005 ? points[index + 1] ?? null : null;
 
       const at = next ? `${current.id}-${next.id}` : current.id;
       token.dataset.at = at;
       root.dataset.journeyAt = at;
 
       if (!next) {
-        place(rectOf(current.element), current.fill, current.ink, current.radius);
+        const rect = rectOf(current.element);
+        place(rect, current.fill, current.ink, current.radius);
+        token.style.opacity = visibility(rect.y, rect.h).toFixed(3);
         token.style.boxShadow = "";
         layers(current.id, null, 0);
         return;
@@ -163,7 +185,6 @@ export function useJourney(rootRef: RefObject<HTMLElement | null>, tokenRef: Ref
       const w = lerp(a.w, b.w, e);
       const h = lerp(a.h, b.h, e);
       const margin = 14;
-      const navLine = 72;
       const top = lerp(a.y, b.y, e) - lift * Math.min(90, window.innerHeight * 0.09);
       place({
         x: Math.min(Math.max(lerp(a.x, b.x, e), margin), window.innerWidth - w - margin),
@@ -172,14 +193,39 @@ export function useJourney(rootRef: RefObject<HTMLElement | null>, tokenRef: Ref
         h,
       }, mix(current.fill, next.fill, e), mix(current.ink, next.ink, e), lerp(current.radius, next.radius, e));
       // No pinning to the viewport: the token travels with the page and fades as it slides under the nav or off the bottom.
-      const visible = clamp01(Math.min((top + h - navLine) / Math.max(1, h), (window.innerHeight - top) / Math.max(1, h)));
-      token.style.opacity = visible.toFixed(3);
+      token.style.opacity = visibility(top, h).toFixed(3);
       token.style.boxShadow = `0 ${Math.round(14 + lift * 28)}px ${Math.round(34 + lift * 46)}px rgba(15, 26, 46, ${(0.12 + lift * 0.18).toFixed(3)})`;
       layers(current.id, next.id, e);
     };
 
+    let shown = Number.NaN;
+    let last = 0;
+    let tick = 0;
+
+    const step = (now: number) => {
+      tick = 0;
+      const target = goal();
+      const dt = last ? Math.min(64, now - last) : 16;
+      last = now;
+      // More than one waypoint away (a menu jump, a resize): cut, do not fly through the page.
+      if (!Number.isFinite(shown) || Math.abs(target - shown) > 1.2) shown = target;
+      else shown += (target - shown) * (1 - Math.exp(-dt / GLIDE_MS));
+      if (Math.abs(target - shown) < 0.0008) shown = target;
+      draw(shown);
+      if (shown !== target) tick = window.requestAnimationFrame(step);
+      else {
+        last = 0;
+        root.dispatchEvent(new Event("ed-journey-settle"));
+      }
+    };
+
+    const frame = () => {
+      if (!tick) tick = window.requestAnimationFrame(step);
+    };
+
     const remeasure = () => {
       measure();
+      shown = Number.NaN;
       frame();
     };
 
@@ -197,6 +243,7 @@ export function useJourney(rootRef: RefObject<HTMLElement | null>, tokenRef: Ref
       window.removeEventListener("resize", remeasure);
       observer.disconnect();
       window.clearTimeout(settle);
+      if (tick) window.cancelAnimationFrame(tick);
       delete root.dataset.journey;
       delete root.dataset.journeyAt;
     };

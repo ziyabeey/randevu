@@ -225,3 +225,54 @@ test('MKT-01 editorial salon film draws frames and keeps one "kolay" on screen',
     assert.equal(late.nav, 'off', 'Pricing beat "kolay" should hide the nav "kolay"');
   });
 });
+
+test('MKT-01 editorial journey token glides between waypoints without teleporting or going blank', { timeout: 90_000 }, async (t) => {
+  await withPreview(t, 'journey', async (page, origin) => {
+    await renderEditorial(page, `${origin}/marketing-preview.html?clean=1`, { width: 1440, height: 900, mobile: false }, false);
+    await page.evaluate(`window.dispatchEvent(new WheelEvent('wheel'))`);
+    await waitFor(() => page.evaluate(`!document.querySelector('.ed-shutter--opening')`), 'Opening shutter did not lift', 8_000);
+    await page.evaluate(`(() => {
+      window.__journey = [];
+      const token = document.querySelector('.ed-token');
+      const record = () => {
+        const rect = token.getBoundingClientRect();
+        const faces = [...token.querySelectorAll('[data-layer]')].map((layer) => Number(layer.style.opacity || 0));
+        window.__journey.push({ at: token.dataset.at, x: rect.left, y: rect.top, w: rect.width, h: rect.height, opacity: Number(token.style.opacity || 1), face: Math.max(...faces) });
+        requestAnimationFrame(record);
+      };
+      requestAnimationFrame(record);
+    })()`);
+
+    // Wheel notches through the hero, the phone's three states and into the calendar.
+    const end = await page.evaluate(`document.querySelector('#isletmen-icin').getBoundingClientRect().top + scrollY + innerHeight`);
+    for (let notch = 0; notch < 120; notch += 1) {
+      await page.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: 720, y: 450, deltaX: 0, deltaY: 100 });
+      await new Promise((resolve) => setTimeout(resolve, 110));
+      if (await page.evaluate('scrollY') >= end) break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    const frames = await page.evaluate('window.__journey');
+    const seen = new Set(frames.map((frame) => frame.at));
+    for (const flight of ['word-service', 'service-slot', 'slot-done', 'done-block']) {
+      assert.ok(seen.has(flight), `The token never flew ${flight}`);
+    }
+    let jump = 0;
+    let fade = 0;
+    let blank = 1;
+    for (let i = 1; i < frames.length; i += 1) {
+      const a = frames[i - 1];
+      const b = frames[i];
+      if (Math.max(a.opacity, b.opacity) < 0.2) continue;
+      const moved = Math.hypot(b.x - a.x, b.y - a.y);
+      jump = Math.max(jump, moved);
+      // Fades follow travel; a token that barely moved must not blink.
+      if (moved < 40) fade = Math.max(fade, Math.abs(b.opacity - a.opacity));
+      if (b.opacity > 0.5 && b.at.includes('-')) blank = Math.min(blank, b.face);
+    }
+    // A wheel notch moves the page 100px in one frame here; the token may follow the page, never outrun it.
+    assert.ok(jump <= 150, `Token jumped ${Math.round(jump)}px in one frame`);
+    assert.ok(fade <= 0.5, `Token opacity snapped by ${fade.toFixed(2)} while it barely moved`);
+    assert.ok(blank >= 0.5, `Token went blank mid-flight (strongest face ${blank.toFixed(2)})`);
+  });
+});
