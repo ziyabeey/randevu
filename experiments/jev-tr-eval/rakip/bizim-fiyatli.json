@@ -1,0 +1,45 @@
+{
+  "_aciklama": "Kendi homepage metnimiz; docs/brand/randevu-homepage-copy.md (v1, 14 Eylül 2026) içinden elle çıkarıldı. Satır numaraları o dosyaya aittir. SENARYO: ürün sahibinin 24 Eylül 2026'da verdiği fiyat (899 TL/ay, yıllık %40 indirim) eklendi; KDV ve paket yapısı henüz belirsiz, homepage sözleşmesine işlenmedi.",
+  "ad": "Randevu (Kepenk.ai)",
+  "sayfalar": [
+    {
+      "url": "docs/brand/randevu-homepage-copy.md",
+      "baslik": "Randevu kolay.",
+      "meta": "",
+      "h1": [
+        "Randevu kolay."
+      ],
+      "hero_alt": "Müşteri kendi alsın. Takvimin karışmasın. Kurulumla da seni uğraştırmayalım.",
+      "basliklar": [
+        "Birazını Randevu yapsın.",
+        "İşin güzellik. Karışıklık değil.",
+        "Müşteri kendi alsın.",
+        "Kim boş, kim dolu? Bakınca belli.",
+        "Unuttu mu? Biz hatırlatırız.",
+        "Müşteri kimdi? Hatırlamak zorunda değilsin.",
+        "Sen kurma. Biz hazırlayalım.",
+        "Uğraş? Az.",
+        "Bugün ne olmuş? Tek yerde.",
+        "Önce gösterelim. Sonra anlatalım.",
+        "Kolay diyen biz olmayalım.",
+        "Fiyatı da kolay olsun.",
+        "Üç adım. Gerisi işin.",
+        "Randevu kolay. İşin sana kalsın."
+      ],
+      "ctalar": [
+        "Birlikte kuralım",
+        "Nasıl çalışıyor?",
+        "Kolay başlayalım",
+        "Giriş yap"
+      ],
+      "fiyat": [
+        "899 TL / ay",
+        "Yıllık ödemede %40 indirim"
+      ],
+      "diger": [
+        "Kuaför, berber ve güzellik işletmeleri için.",
+        "Kepenk.ai sunar"
+      ]
+    }
+  ]
+}

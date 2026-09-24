@@ -12,6 +12,7 @@ const { values: args } = parseArgs({ options: {
   mock: { type: 'boolean', default: false },
   'yalniz-bizim': { type: 'boolean', default: false },
   model: { type: 'string', default: 'jev-1.13.0' },
+  bizim: { type: 'string', default: 'bizim.json' },
 } });
 const here = new URL('.', import.meta.url);
 const client = args.mock
@@ -125,7 +126,7 @@ function compact(site) {
   };
 }
 
-const sites = [JSON.parse(readFileSync(new URL('bizim.json', here), 'utf8'))];
+const sites = [JSON.parse(readFileSync(new URL(args.bizim, here), 'utf8'))];
 const dir = new URL('sayfalar/', here);
 if (!args['yalniz-bizim'] && existsSync(dir)) {
   for (const f of readdirSync(dir).filter((f) => f.endsWith('.json'))) sites.push(JSON.parse(readFileSync(new URL(f, dir), 'utf8')));
