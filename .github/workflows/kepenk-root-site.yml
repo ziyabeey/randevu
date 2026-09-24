@@ -45,15 +45,15 @@ jobs:
       - name: Verify public root
         shell: bash
         run: |
-          for attempt in {1..15}; do
+          for attempt in {1..30}; do
             body="$(curl -fsS --max-time 15 https://kepenk.ai/ || true)"
             privacy="$(curl -fsS --max-time 15 https://kepenk.ai/gizlilik || true)"
             if grep -q 'data-kepenk-root="v1"' <<<"$body" && grep -q 'Gizlilik Politikası' <<<"$privacy"; then
               echo "kepenk.ai root landing is live."
               exit 0
             fi
-            echo "Waiting for route propagation (attempt $attempt/15)..."
-            sleep 4
+            echo "Waiting for custom-domain DNS/certificate propagation (attempt $attempt/30)..."
+            sleep 5
           done
-          echo "::error::kepenk.ai did not serve the expected root landing after deployment."
+          echo "::error::kepenk.ai did not serve the expected root landing after custom-domain deployment."
           exit 1
