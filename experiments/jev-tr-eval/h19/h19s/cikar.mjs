@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// H19s eligible-unit çıkarıcı (H19S-PROTOKOL v0.1 §2–§3). Deterministik; Jev çağrısı yapmaz, H19 skoruna,
+// H19s eligible-unit çıkarıcı (H19S-PROTOKOL-v0.2 §2–§3 + CLARIFICATIONS-v0.2.1). Deterministik; Jev çağrısı yapmaz, H19 skoruna,
 // etikete veya review sonucuna bakmaz.
 //
 // Bir birim: main'e merge edilen bir PR'ın final base→merge farkında `supabase/migrations/**/*.sql` altındaki
@@ -255,7 +255,7 @@ export function collect(ref, afterRev, { stop = false } = {}) {
   }
   const order = prs.flatMap((p) => p.units.map((u) => u.unit_id));
   return {
-    protocol: 'H19S-PROTOKOL v0.1',
+    protocol: 'H19S-PROTOKOL-v0.2 + CLARIFICATIONS-v0.2.1',
     ref,
     after: git(['rev-parse', afterRev]).trim(),
     merged_prs: prs.length,
