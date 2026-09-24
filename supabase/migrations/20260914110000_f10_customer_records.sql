@@ -323,13 +323,10 @@ begin
     raise exception 'NOTES_TOO_LONG';
   end if;
 
-  perform pg_advisory_xact_lock(hashtextextended(p_business_id::text, 0));
-
   select * into v_current
   from public.customers c
   where c.business_id = p_business_id
-    and c.id = p_customer_id
-  for update;
+    and c.id = p_customer_id;
 
   if v_current.id is null then
     raise exception 'CUSTOMER_NOT_FOUND';
@@ -337,6 +334,8 @@ begin
   if v_current.updated_at <> p_expected_updated_at then
     raise exception 'CUSTOMER_VERSION_CONFLICT';
   end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(p_business_id::text, 0));
 
   if exists (
     select 1
