@@ -241,22 +241,31 @@ jobs:
       - name: Run H19 Kit TypeScript shard resolver smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:ts-shards
+      - name: Run H19 Kit cache-plan smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:cache-plan
       - name: Restore H19 persistent shard cache
-        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-persistent-cache' }}
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-persistent-cache' || github.event.pull_request.head.ref == 'h19-kit-performance-cache-plan') }}
         uses: actions/cache@v4
         with:
           path: .h19/perf-shard-artifacts
           key: h19-perf-shards-${{ runner.os }}-scip-0.4.0-${{ github.event.pull_request.head.sha || github.sha }}
           restore-keys: |
             h19-perf-shards-${{ runner.os }}-scip-0.4.0-
+      - name: Plan H19 TypeScript shard cache
+        id: h19_cache_plan
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-cache-plan' }}
+        run: npm --prefix tools/h19-kit run perf:plan-cache -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-cache-plan-before.json" --cache-root ".h19/perf-shard-artifacts" --scip-version 0.4.0
       - name: Install pinned SCIP TypeScript for performance baseline
-        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
+        id: h19_scip_install
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') && (github.event.pull_request.head.ref != 'h19-kit-performance-cache-plan' || steps.h19_cache_plan.outputs.misses != '0') }}
         run: npm install --global @sourcegraph/scip-typescript@0.4.0
       - name: Measure H19 Kit performance baseline
-        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
+        id: h19_perf_baseline
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') && github.event.pull_request.head.ref != 'h19-kit-performance-cache-plan' }}
         run: npm --prefix tools/h19-kit run perf:baseline -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-perf-baseline.json" --require-scip
       - name: Upload H19 Kit performance baseline
-        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
+        if: ${{ steps.h19_perf_baseline.conclusion == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: h19-performance-baseline
@@ -273,15 +282,51 @@ jobs:
           path: ${{ runner.temp }}/h19-ts-shard-performance.json
           if-no-files-found: error
       - name: Probe H19 cross-run persistent shard cache
+        id: h19_persistent_probe
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-persistent-cache' }}
         run: npm --prefix tools/h19-kit run perf:persistent-cache -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-persistent-cache-probe.json" --cache-root ".h19/perf-shard-artifacts" --scip-version 0.4.0
       - name: Upload H19 persistent shard cache probe
-        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-persistent-cache' }}
+        if: ${{ steps.h19_persistent_probe.conclusion == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: h19-persistent-cache-probe
           path: ${{ runner.temp }}/h19-persistent-cache-probe.json
           if-no-files-found: error
+      - name: Materialize H19 cache-plan misses
+        id: h19_cache_fill
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-cache-plan' && steps.h19_cache_plan.outputs.misses != '0' }}
+        run: npm --prefix tools/h19-kit run perf:materialize-cache -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-cache-materialize.json" --cache-root ".h19/perf-shard-artifacts" --scip-version 0.4.0
+      - name: Re-plan H19 TypeScript shard cache
+        id: h19_cache_post
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-cache-plan' }}
+        run: npm --prefix tools/h19-kit run perf:plan-cache -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-cache-plan-after.json" --cache-root ".h19/perf-shard-artifacts" --scip-version 0.4.0
+      - name: Require H19 cache-plan completion
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-cache-plan' }}
+        env:
+          INITIAL_MISSES: ${{ steps.h19_cache_plan.outputs.misses }}
+          POST_MISSES: ${{ steps.h19_cache_post.outputs.misses }}
+          SCIP_INSTALL_RESULT: ${{ steps.h19_scip_install.conclusion }}
+          FILL_RESULT: ${{ steps.h19_cache_fill.conclusion }}
+        run: |
+          set -euo pipefail
+          test "${POST_MISSES}" = "0"
+          if [ "${INITIAL_MISSES}" = "0" ]; then
+            test "${SCIP_INSTALL_RESULT}" = "skipped"
+            test "${FILL_RESULT}" = "skipped"
+          else
+            test "${SCIP_INSTALL_RESULT}" = "success"
+            test "${FILL_RESULT}" = "success"
+          fi
+      - name: Upload H19 cache-plan evidence
+        if: ${{ steps.h19_cache_post.conclusion == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-cache-plan
+          path: |
+            ${{ runner.temp }}/h19-cache-plan-before.json
+            ${{ runner.temp }}/h19-cache-materialize.json
+            ${{ runner.temp }}/h19-cache-plan-after.json
+          if-no-files-found: warn
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
