@@ -138,8 +138,14 @@ export function createMinimalTestSpec({
 }
 
 export function validateMinimalTestSpec(spec) {
+  if (spec?.schemaVersion !== 1) {
+    throw new Error('unsupported minimal test spec schemaVersion');
+  }
   if (!spec?.specSha256 || !spec?.packetSha256 || !spec?.hypothesisId) {
     throw new TypeError('minimal test spec is missing provenance');
+  }
+  if (!['unvalidated', 'confirmed', 'inconclusive'].includes(spec.validationStatus)) {
+    throw new Error('minimal test spec validationStatus is invalid');
   }
   validateSection('setup', spec.setup);
   validateSection('action', spec.action);
