@@ -4,6 +4,7 @@
 //   npm run eval                      # gerçek API (TYPESAFE_API_KEY + api.typesafe.ai erişimi gerekir)
 //   npm run eval -- --mock            # ağsız kuru çalışma; betiğin uçtan uca çalıştığını doğrular
 //   npm run eval -- --task=niyet --variant=hazirlanmis --limit=20
+//   npm run eval -- --set=2           # 1. turdan sonra yazılmış yeni test seti
 //
 // Çıktı: results/<zaman>/report.md ve raw.jsonl
 
@@ -17,6 +18,7 @@ const { values: args } = parseArgs({
   options: {
     task: { type: 'string', default: 'all' },
     variant: { type: 'string', default: 'all' },
+    set: { type: 'string', default: '1' },
     mock: { type: 'boolean', default: false },
     limit: { type: 'string' },
     concurrency: { type: 'string', default: '8' },
@@ -29,9 +31,11 @@ const { values: args } = parseArgs({
 });
 
 const taskNames = args.task === 'all' ? Object.keys(TASKS) : args.task.split(',');
-const variants = args.variant === 'all' ? VARIANTS : args.variant.split(',');
+const requestedVariants = args.variant === 'all' ? VARIANTS : args.variant.split(',');
 for (const t of taskNames) if (!TASKS[t]) fail(`Bilinmeyen görev: ${t} (niyet, hizmet, saat)`);
-for (const v of variants) if (!VARIANTS.includes(v)) fail(`Bilinmeyen varyant: ${v} (${VARIANTS.join(', ')})`);
+for (const v of requestedVariants) if (!VARIANTS.includes(v)) fail(`Bilinmeyen varyant: ${v} (${VARIANTS.join(', ')})`);
+if (!['1', '2'].includes(args.set)) fail('--set 1 ya da 2 olmalı');
+const variantsFor = (task) => TASKS[task].variants.filter((v) => requestedVariants.includes(v));
 const limit = args.limit ? Number(args.limit) : Infinity;
 const concurrency = Number(args.concurrency);
 const pricePerMillion = Number(args.price);
@@ -53,8 +57,8 @@ const client = args.mock
 
 const jobs = [];
 for (const task of taskNames) {
-  const items = TASKS[task].items().slice(0, limit);
-  for (const variant of variants) for (const item of items) jobs.push({ task, variant, item });
+  const items = TASKS[task].items(args.set).slice(0, limit);
+  for (const variant of variantsFor(task)) for (const item of items) jobs.push({ task, variant, item });
 }
 
 let done = 0;
@@ -68,7 +72,7 @@ if (process.stderr.isTTY) process.stderr.write('\n');
 
 // Kural tabanlı alt sınır (yalnız niyet görevi, API çağrısı yok).
 if (taskNames.includes('niyet')) {
-  for (const item of TASKS.niyet.items().slice(0, limit)) {
+  for (const item of TASKS.niyet.items(args.set).slice(0, limit)) {
     const choice = ruleIntent(item.message, item.context);
     records.push(base({ task: 'niyet', variant: 'kural', item }, { choice, confidence: null, latencyMs: 0, inputTokens: 0 }));
   }
@@ -94,11 +98,12 @@ async function ask(job) {
 }
 
 function base({ task, variant, item }, result) {
+  const accept = TASKS[task].accept?.(item, variant) ?? item.accept;
   return {
     task, variant, id: item.id, message: item.message, context: item.context,
-    gold: item.gold, accept: item.accept, tags: item.tags, ambiguous: item.ambiguous,
+    gold: item.gold, accept, tags: item.tags, ambiguous: item.ambiguous,
     ...result,
-    correct: result.error ? null : item.accept.includes(result.choice),
+    correct: result.error ? null : accept.includes(result.choice),
   };
 }
 
@@ -174,7 +179,7 @@ for (const task of taskNames) for (const variant of variantOrder) {
 
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const lines = [];
-lines.push(`# Jev Türkçe randevu değerlendirmesi — ${new Date().toISOString()}`, '');
+lines.push(`# Jev Türkçe randevu değerlendirmesi — test seti ${args.set} — ${new Date().toISOString()}`, '');
 if (args.mock) lines.push('> **MOCK ÇALIŞMA — gerçek Jev sonucu değildir.** Yalnız betiğin uçtan uca çalıştığını doğrular.', '');
 const models = [...new Set(records.map((r) => r.model).filter(Boolean))];
 lines.push(`Model: ${models.join(', ') || '—'} · Güven eşiği: ${threshold} · Fiyat varsayımı: $${pricePerMillion}/1M girdi token`, '');
@@ -215,7 +220,7 @@ for (const { task, variant, rows, s } of combos) {
   if (errors.length) lines.push('**API hataları (ilk 5):**', '', ...errors.map((r) => `- ${r.id}: ${cell(r.error)}`), '');
 }
 
-const dir = new URL(`${args.out}/${stamp}${args.mock ? '-mock' : ''}/`, new URL('.', import.meta.url));
+const dir = new URL(`${args.out}/${stamp}-set${args.set}${args.mock ? '-mock' : ''}/`, new URL('.', import.meta.url));
 mkdirSync(dir, { recursive: true });
 writeFileSync(new URL('report.md', dir), lines.join('\n'));
 writeFileSync(new URL('raw.jsonl', dir), records.map((r) => JSON.stringify(r)).join('\n') + '\n');

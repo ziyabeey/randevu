@@ -19,7 +19,7 @@ Node'un yerleşik `fetch`'i `HTTPS_PROXY`'yi kendiliğinden okumaz; `npm run eva
 `NODE_USE_ENV_PROXY=1` ile çalışır (Node ≥ 22.21). Bu bayrak olmadan istekler ortamın ajan proxy'sine
 gitmez ve `403 Host not in allowlist` alınır.
 
-İlk gerçek ölçümün raporu: [`ilk-olcum-2026-09-24.md`](ilk-olcum-2026-09-24.md).
+Sonuçların özeti: [`BULGULAR.md`](BULGULAR.md) · ham raporlar: [`raporlar/`](raporlar/) · R&D issue taslağı: [`rnd-issue-taslak.md`](rnd-issue-taslak.md).
 
 ## Çalıştırma
 
@@ -30,6 +30,7 @@ npm run eval:mock            # ağsız kuru çalışma: betiğin uçtan uca çal
 npm run eval                 # gerçek ölçüm, 3 görev × 2 varyant ≈ 490 çağrı, maliyeti bir sentin altında
 npm run eval -- --task=niyet --variant=hazirlanmis --limit=20
 npm run eval -- --threshold=0.7
+npm run eval -- --set=2       # 1. turdan sonra yazılmış yeni test seti
 ```
 
 Rapor `results/<zaman>/report.md`'ye, her çağrının ham sonucu `raw.jsonl`'e yazılır (`results/` Git'e girmez).
@@ -52,7 +53,12 @@ Varyantlar (`tasks.mjs`):
 - **duz:** kısa etiket açıklamaları
 - **hazirlanmis:** açıklamalara tipik Türkçe ifadeler, eş anlamlı hizmet adları ve Türkçe saat kuralları
   ("çeyrek kala", "buçuk", "7de" = 19:00) eklenmiş hâli
+- **baglamli:** (niyet) hazırlanmış + botun bekleyen sorusu yoksa `onay`/`ret` seçenekleri sunulmaz
+- **salon:** (hizmet) hazırlanmış + salonun kataloguna girdiği halk ağzı adlar ("brezilya fönü", "röfle"…)
 - **kural:** niyet görevi için anahtar kelime kuralları (`baseline-rules.mjs`), API çağrısı yok
+
+Test setleri: `data/*.jsonl` = set 1; `data/*-2.jsonl` = set 2, 1. turun hatalarına bakılarak yapılan
+değişikliklerden **sonra** yazılmış yeni mesajlar. Hazırlığın genelleşip genelleşmediğini set 2 gösterir.
 
 Talimatlar state alanlarına `musteri_mesaji` gibi adıyla atıf yapar; soru adı modele gitmez
 (Jev-Mem'in `memory/jev_questions.py` yazım kuralı).

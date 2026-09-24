@@ -1,7 +1,10 @@
 // Jev'e sorulacak üç karar: niyet, hizmet eşleştirme, saat seçimi.
-// Her görevin iki varyantı var:
+// Varyantlar:
 //   duz          — yalnız kısa etiket açıklamaları
 //   hazirlanmis  — randevu alanına özgü Türkçe ifadeler ve kurallar eklenmiş açıklamalar
+//   baglamli     — (niyet) hazirlanmis + botun bekleyen sorusu yoksa onay/ret seçenekleri sunulmaz
+//   salon        — (hizmet) hazirlanmis + salonun kataloguna girdiği halk ağzı adlar
+// Test setleri: 1 = ilk set; 2 = 1. turun hatalarına bakılarak yapılan değişikliklerden SONRA yazılmış yeni set.
 // Hazırlık örnekleri test setindeki mesajların birebir kopyası değildir (sızıntı olmasın diye).
 // Soru adı modele gitmez; talimatlar state alanlarına `musteri_mesaji` gibi adıyla atıf yapar
 // (Jev-Mem'in memory/jev_questions.py dosyasındaki soru yazım kuralı).
@@ -11,8 +14,12 @@ import { readFileSync } from 'node:fs';
 const here = new URL('.', import.meta.url);
 const readJsonl = (name) => readFileSync(new URL(`data/${name}`, here), 'utf8')
   .split('\n').filter(Boolean).map((line) => JSON.parse(line));
+const dataFile = (base, set) => (String(set) === '2' ? `${base}-2.jsonl` : `${base}.jsonl`);
 
-export const VARIANTS = ['duz', 'hazirlanmis'];
+export const VARIANTS = ['duz', 'hazirlanmis', 'baglamli', 'salon'];
+
+// Onay/ret ancak botun cevap beklediği bir soru varken anlamlıdır.
+const CONFIRMATION_LABELS = ['onay', 'ret'];
 
 // ---------------------------------------------------------------- niyet
 
@@ -58,8 +65,13 @@ const INTENT_INSTRUCTIONS = {
   ].join(' '),
 };
 
-function intentCriteria(variant) {
+function intentCriteria(variant, item) {
   if (variant === 'duz') return { ...INTENT_PLAIN };
+  if (variant === 'baglamli') {
+    const criteria = intentCriteria('hazirlanmis');
+    if (!item.context) for (const label of CONFIRMATION_LABELS) delete criteria[label];
+    return criteria;
+  }
   return Object.fromEntries(Object.entries(INTENT_PLAIN).map(([label, text]) => [
     label, `${text}. Tipik ifadeler: ${INTENT_EXAMPLES[label].map((e) => `"${e}"`).join(', ')}`,
   ]));
@@ -90,10 +102,23 @@ const SERVICE_SYNONYMS = {
   cilt: 'hydrafacial',
 };
 
+// Salonun katalogda hizmete eklediği kendi müşterilerinin kullandığı adlar (1. turun hatalarından).
+const SALON_SYNONYMS = {
+  keratin: 'brezilya fönü',
+  balyaj: 'röfle',
+  kesim_erkek: 'çocuk tıraşı',
+  protez_tirnak: 'tırnak uzatma',
+};
+
 function serviceCriteria(variant) {
   const criteria = {};
   for (const [label, name] of Object.entries(catalog.services)) {
-    criteria[label] = variant === 'duz' ? name : `${name} (${SERVICE_SYNONYMS[label]})`;
+    if (variant === 'duz') {
+      criteria[label] = name;
+    } else {
+      const synonyms = [SERVICE_SYNONYMS[label], variant === 'salon' ? SALON_SYNONYMS[label] : null].filter(Boolean);
+      criteria[label] = `${name} (${synonyms.join(', ')})`;
+    }
   }
   criteria[catalog.none_label] = catalog.none_description;
   return criteria;
@@ -118,6 +143,9 @@ const SLOT_INSTRUCTIONS = {
   ].join(' '),
 };
 
+INTENT_INSTRUCTIONS.baglamli = INTENT_INSTRUCTIONS.hazirlanmis;
+SERVICE_INSTRUCTIONS.salon = SERVICE_INSTRUCTIONS.hazirlanmis;
+
 function slotCriteria(item) {
   return { ...item.offered, hicbiri: 'Müşterinin istediği zaman bu saatlerin hiçbirine uymuyor ya da net değil; tekrar sorulmalı' };
 }
@@ -126,16 +154,24 @@ function slotCriteria(item) {
 
 export const TASKS = {
   niyet: {
-    items: () => readJsonl('intent.jsonl'),
+    variants: ['duz', 'hazirlanmis', 'baglamli'],
+    items: (set) => readJsonl(dataFile('intent', set)),
+    // baglamli varyantta onay/ret sunulmadığında beklenen cevap da ondan arınır.
+    accept(item, variant) {
+      if (variant !== 'baglamli' || item.context) return item.accept;
+      const accept = item.accept.filter((label) => !CONFIRMATION_LABELS.includes(label));
+      return accept.length ? accept : ['diger'];
+    },
     request(item, variant) {
       const state = item.context
         ? { botun_onceki_mesaji: item.context, musteri_mesaji: item.message }
         : { musteri_mesaji: item.message };
-      return { state, question: { type: 'choice', instructions: INTENT_INSTRUCTIONS[variant], criteria: intentCriteria(variant) } };
+      return { state, question: { type: 'choice', instructions: INTENT_INSTRUCTIONS[variant], criteria: intentCriteria(variant, item) } };
     },
   },
   hizmet: {
-    items: () => readJsonl('service.jsonl'),
+    variants: ['duz', 'hazirlanmis', 'salon'],
+    items: (set) => readJsonl(dataFile('service', set)),
     request(item, variant) {
       return {
         state: { musteri_mesaji: item.message },
@@ -144,7 +180,8 @@ export const TASKS = {
     },
   },
   saat: {
-    items: () => readJsonl('slot.jsonl'),
+    variants: ['duz', 'hazirlanmis'],
+    items: (set) => readJsonl(dataFile('slot', set)),
     request(item, variant) {
       const offered = Object.values(item.offered).join(', ');
       return {

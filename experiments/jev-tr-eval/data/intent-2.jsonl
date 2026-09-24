@@ -1,0 +1,65 @@
+{"id": "intent2-001", "gold": "randevu_al", "message": "Önümüzdeki çarşamba öğlene doğru yer var mıdır, kesim+fön", "accept": ["randevu_al"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-002", "gold": "randevu_al", "message": "arkadaşımla beraber gelmek istiyoruz ikimize de manikür", "accept": ["randevu_al"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-003", "gold": "randevu_al", "message": "cuma akşamüstü için bi yer ayarlayabilir misin kanka", "accept": ["randevu_al"], "tags": ["yazim"], "ambiguous": false}
+{"id": "intent2-004", "gold": "randevu_al", "message": "Düğün öncesi ön deneme için ne zaman gelebilirim", "accept": ["randevu_al"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-005", "gold": "randevu_al", "message": "Hafta sonu boş gününüz olursa beni de sıkıştırın", "accept": ["randevu_al"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-006", "gold": "randevu_tasi", "message": "perşembeki randevumu cumaya kaydırsak", "accept": ["randevu_tasi"], "tags": ["yazim"], "ambiguous": false}
+{"id": "intent2-007", "gold": "randevu_tasi", "message": "Saatimi biraz daha geç bir saate alabilir miyiz, 4 değil 6 gibi", "accept": ["randevu_tasi"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-008", "gold": "randevu_tasi", "message": "Bugün yetişemeyeceğim, yarına alsak olur mu", "accept": ["randevu_tasi"], "tags": ["olumsuzluk"], "ambiguous": false}
+{"id": "intent2-009", "gold": "randevu_tasi", "message": "Randevuyu bir hafta ileri atmak istiyorum", "accept": ["randevu_tasi"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-010", "gold": "randevu_tasi", "message": "Gün aynı kalsın sadece saat değişsin", "accept": ["randevu_tasi"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-011", "gold": "randevu_iptal", "message": "Randevumu iptal ettirmek istiyorum", "accept": ["randevu_iptal"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-012", "gold": "randevu_iptal", "message": "yarın gelemeyecem malesef iptal edelim", "accept": ["randevu_iptal"], "tags": ["yazim", "olumsuzluk"], "ambiguous": false}
+{"id": "intent2-013", "gold": "randevu_iptal", "message": "Ben vazgeçtim, kaydımı silin", "accept": ["randevu_iptal"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-014", "gold": "randevu_iptal", "message": "Cuma gelmem mümkün değil, şimdilik iptal lütfen", "accept": ["randevu_iptal"], "tags": ["olumsuzluk"], "ambiguous": false}
+{"id": "intent2-015", "gold": "randevu_iptal", "message": "Taşımayın, direkt iptal edin", "accept": ["randevu_iptal"], "tags": ["olumsuzluk", "tuzak"], "ambiguous": false}
+{"id": "intent2-016", "gold": "gecikme", "message": "Kusura bakmayın 10 dk kadar geç kalacağım", "accept": ["gecikme"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-017", "gold": "gecikme", "message": "trafik kilit, biraz gecikebilirim", "accept": ["gecikme"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-018", "gold": "gecikme", "message": "Çocuğu okuldan aldım geliyorum, 15 dakika rötar", "accept": ["gecikme"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-019", "gold": "gecikme", "message": "yola çıktım ama biraz geç olur", "accept": ["gecikme"], "tags": ["yazim"], "ambiguous": false}
+{"id": "intent2-020", "gold": "gecikme", "message": "Birazcık bekletirsem kızmayın 🙈", "accept": ["gecikme"], "tags": ["emoji"], "ambiguous": false}
+{"id": "intent2-021", "gold": "fiyat_sorusu", "message": "Dip boya fiyatı ne kadar acaba", "accept": ["fiyat_sorusu"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-022", "gold": "fiyat_sorusu", "message": "ağda tüm vücut kaç tl oluyor", "accept": ["fiyat_sorusu"], "tags": ["yazim"], "ambiguous": false}
+{"id": "intent2-023", "gold": "fiyat_sorusu", "message": "Kesim fiyatlarınızı öğrenebilir miyim", "accept": ["fiyat_sorusu"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-024", "gold": "fiyat_sorusu", "message": "Kampanyalı paketleriniz ne kadar", "accept": ["bilgi_sorusu", "fiyat_sorusu"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-025", "gold": "fiyat_sorusu", "message": "keratinle fön birlikte ne tutar", "accept": ["fiyat_sorusu"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-026", "gold": "bilgi_sorusu", "message": "Cumartesi kaça kadar açıksınız", "accept": ["bilgi_sorusu"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-027", "gold": "bilgi_sorusu", "message": "Hangi semttesiniz", "accept": ["bilgi_sorusu"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-028", "gold": "bilgi_sorusu", "message": "Nakit mi kart mı alıyorsunuz", "accept": ["bilgi_sorusu"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-029", "gold": "bilgi_sorusu", "message": "Erkek berberliği de var mı sizde", "accept": ["bilgi_sorusu"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-030", "gold": "bilgi_sorusu", "message": "Benim randevu saatimi hatırlatır mısınız", "accept": ["bilgi_sorusu"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-031", "gold": "onay", "message": "uygundur", "accept": ["onay"], "tags": ["baglam", "kisa"], "ambiguous": false, "context": "Pazartesi 11:00 sizin için uygun mu?"}
+{"id": "intent2-032", "gold": "onay", "message": "evet onaylıyorum", "accept": ["onay"], "tags": ["baglam"], "ambiguous": false, "context": "Randevunuzu oluşturuyorum, onaylıyor musunuz?"}
+{"id": "intent2-033", "gold": "onay", "message": "orda olurum", "accept": ["onay"], "tags": ["baglam", "yazim"], "ambiguous": false, "context": "Yarın 13:30'da görüşmek üzere. Geliyor musunuz?"}
+{"id": "intent2-034", "gold": "onay", "message": "taşıyalım", "accept": ["onay", "randevu_tasi"], "tags": ["baglam", "tuzak"], "ambiguous": false, "context": "Randevunuzu Salı 10:00'a taşıyalım mı?"}
+{"id": "intent2-035", "gold": "onay", "message": "edelim", "accept": ["onay", "randevu_iptal"], "tags": ["baglam", "kisa"], "ambiguous": false, "context": "Randevunuzu iptal edelim mi?"}
+{"id": "intent2-036", "gold": "ret", "message": "pek uymuyor", "accept": ["ret"], "tags": ["baglam"], "ambiguous": false, "context": "Pazartesi 11:00 sizin için uygun mu?"}
+{"id": "intent2-037", "gold": "ret", "message": "yok sonra yazarım", "accept": ["ret"], "tags": ["baglam", "olumsuzluk"], "ambiguous": false, "context": "Randevunuzu oluşturayım mı?"}
+{"id": "intent2-038", "gold": "ret", "message": "olmaz, Zeynep hanım olsun", "accept": ["ret"], "tags": ["baglam", "olumsuzluk"], "ambiguous": false, "context": "Zeynep Hanım yerine Elif Hanım olur mu?"}
+{"id": "intent2-039", "gold": "ret", "message": "o zaman vazgeçiyorum", "accept": ["randevu_iptal", "ret"], "tags": ["baglam"], "ambiguous": false, "context": "Kapora ödemesi gerekiyor, devam edelim mi?"}
+{"id": "intent2-040", "gold": "ret", "message": "geç olur bana", "accept": ["ret"], "tags": ["baglam"], "ambiguous": false, "context": "Akşam 19:00 uygun mu?"}
+{"id": "intent2-041", "gold": "diger", "message": "👌", "accept": ["diger", "onay"], "tags": ["kisa", "emoji", "baglamsiz_kisa"], "ambiguous": true}
+{"id": "intent2-042", "gold": "diger", "message": "tamam", "accept": ["diger", "onay"], "tags": ["kisa", "baglamsiz_kisa"], "ambiguous": true}
+{"id": "intent2-043", "gold": "diger", "message": "olmaz", "accept": ["diger", "ret"], "tags": ["kisa", "baglamsiz_kisa"], "ambiguous": true}
+{"id": "intent2-044", "gold": "diger", "message": "Evet", "accept": ["diger", "onay"], "tags": ["kisa", "baglamsiz_kisa"], "ambiguous": true}
+{"id": "intent2-045", "gold": "diger", "message": "Olabilir", "accept": ["diger", "onay", "randevu_al"], "tags": ["kisa", "baglamsiz_kisa"], "ambiguous": true}
+{"id": "intent2-046", "gold": "diger", "message": "Selamlar", "accept": ["diger"], "tags": ["kisa"], "ambiguous": false}
+{"id": "intent2-047", "gold": "sikayet", "message": "Fönüm yarım saatte bozuldu, hiç memnun kalmadım", "accept": ["sikayet"], "tags": ["olumsuzluk"], "ambiguous": false}
+{"id": "intent2-048", "gold": "sikayet", "message": "Çok teşekkürler(!) saçımı yaktınız resmen", "accept": ["sikayet"], "tags": ["ironi"], "ambiguous": false}
+{"id": "intent2-049", "gold": "sikayet", "message": "Randevu saatimde kimse yoktu, boşuna geldim", "accept": ["sikayet"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-050", "gold": "sikayet", "message": "Geçen hafta yapılan oje şimdiden kalktı", "accept": ["sikayet"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-051", "gold": "sikayet", "message": "Maşallah çok hızlısınız, 1 saattir bekliyorum 🙄", "accept": ["sikayet"], "tags": ["ironi", "emoji"], "ambiguous": false}
+{"id": "intent2-052", "gold": "memnuniyet", "message": "Saçım çok güzel oldu teşekkür ederim 🥰", "accept": ["memnuniyet"], "tags": ["emoji"], "ambiguous": false}
+{"id": "intent2-053", "gold": "memnuniyet", "message": "Elif hanımın ellerine sağlık, bayıldım", "accept": ["memnuniyet"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-054", "gold": "memnuniyet", "message": "Gayet memnun kaldım, tekrar geleceğim", "accept": ["memnuniyet", "randevu_al"], "tags": ["coklu"], "ambiguous": false}
+{"id": "intent2-055", "gold": "memnuniyet", "message": "Hiç beklemedim, çok hızlı ve güzeldi", "accept": ["memnuniyet"], "tags": ["olumsuzluk"], "ambiguous": false}
+{"id": "intent2-056", "gold": "memnuniyet", "message": "Mükemmel olmuş, sağ olun", "accept": ["memnuniyet"], "tags": ["kisa"], "ambiguous": false}
+{"id": "intent2-057", "gold": "insan_istiyor", "message": "Salon sahibine ulaşmak istiyorum", "accept": ["insan_istiyor"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-058", "gold": "insan_istiyor", "message": "Beni bir arar mısınız, yazamıyorum", "accept": ["insan_istiyor"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-059", "gold": "insan_istiyor", "message": "Otomatik mesaj istemiyorum, biri dönsün", "accept": ["insan_istiyor"], "tags": ["olumsuzluk"], "ambiguous": false}
+{"id": "intent2-060", "gold": "insan_istiyor", "message": "Yöneticinizin numarası var mı", "accept": ["bilgi_sorusu", "insan_istiyor"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-061", "gold": "insan_istiyor", "message": "Canlı biriyle görüşebilir miyim", "accept": ["insan_istiyor"], "tags": ["duz"], "ambiguous": false}
+{"id": "intent2-062", "gold": "diger", "message": "Merhaba, kolay gelsin", "accept": ["diger"], "tags": ["kisa"], "ambiguous": false}
+{"id": "intent2-063", "gold": "diger", "message": "Tebrikler, 1000 TL kazandınız! Hemen tıklayın", "accept": ["diger"], "tags": ["spam"], "ambiguous": false}
+{"id": "intent2-064", "gold": "diger", "message": "Kuaför malzemesi satıyoruz, katalog atayım mı", "accept": ["diger"], "tags": ["spam"], "ambiguous": false}
+{"id": "intent2-065", "gold": "diger", "message": "Pardon yanlış kişiye yazdım", "accept": ["diger"], "tags": ["duz"], "ambiguous": false}

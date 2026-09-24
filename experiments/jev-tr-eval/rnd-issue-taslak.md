@@ -1,0 +1,15 @@
+Başlık: [R&D] Jev (System-One) ile Türkçe WhatsApp randevu asistanının karar katmanı
+
+## R&D PROPOSAL
+Role: A1 formatı; ürün sahibinin isteğiyle Claude tarafından hazırlandı
+Fingerprint: rnd:jev-system-one-booking-chat-router
+Observed problem/opportunity: Rakip analizleri salon trafiğinin WhatsApp/Instagram'da döndüğünü ve rakiplerin WhatsApp kanalını öne çıkardığını gösteriyor (`docs/research/salonrandevu-competitive-analysis-2026-09-14.md`, `randu-…`). Ürünün bugün sohbet üzerinden randevu alan bir yüzeyi yok; AI MVP dışında (`PRODUCT_SPEC.md`, `ROADMAP.md`).
+Proposal: Müşteri mesajlarını TypeSafe Jev'in tipli seçimleriyle (niyet, hizmet, saat) yönlendiren ve işlemleri mevcut public booking RPC'leriyle yapan bir sohbet asistanının karar katmanı. Jev yalnız seçer; müsaitlik, fiyat ve randevu durumu her zaman DB/RPC'den gelir. Seçenekler konuşma durumundan kurulur (onay/ret yalnız bekleyen soru varken; saatler yalnız müsaitlik RPC'sinin döndürdükleri; hizmetler salonun katalogu + salonun eş anlamlıları). Eşik altı kararlar netleştirici soruya ya da salona düşer.
+Why Kepenk.ai: Karar kümesi dar ve sabit (randevu al/taşı/iptal, gecikme, fiyat, bilgi…), seçenekler zaten veritabanında (services, staff_profiles, müsaitlik). Jev'in resmi TS SDK'sı bağımlılıksız, fetch tabanlı ve Cloudflare Workers'ı tanıyor; mevcut Worker mimarisine ek servis gerektirmeden oturur.
+Evidence: Branch `claude/upbeat-maxwell-kiof98`, `experiments/jev-tr-eval/BULGULAR.md`. Sentetik Türkçe mesajlarla jev-1.13.0: niyet %98.3 (önceden görülmemiş yeni sette de %98.3; set 1'e göre yazılmış anahtar kelime kuralları yeni sette %55), hizmet salon eş anlamlılarıyla %100, saat hazırlanmış %94.4. 0.8 eşiğinde niyet kararlarının ~%90'ı otomatik, bunların doğruluğu %98–100. Gecikme p50 ~300 ms. ~1.500 çağrı ~7 sent. Paper: arXiv 2609.23986 (Jev-Mem).
+Likely benefit: Hipotez — salon mesajlarının çoğu insan müdahalesi olmadan doğru akışa yönlenir; bot yalnız emin olduğu kararları uygular. Ölçü: gerçek anonim mesajlarda eşik üstü kararların doğruluğu ≥ %98 ve otomatik oranı ≥ %80.
+Cost/complexity: MEDIUM — karar katmanı küçük; WhatsApp Business API kanalı, KVKK/veri işleme sözleşmesi ve konuşma durum yönetimi asıl iş.
+Risks/tradeoffs: Dış sağlayıcıya müşteri mesajı gönderimi (KVKK, ABD veri işleme; sıfır saklama yalnız belirli gateway üzerinden); sağlayıcı yeni (Eylül 2026) ve SLA yok → kural/insan devri yedeği şart; sentetik sonuçlar gerçek trafiği temsil etmeyebilir; "ne tutar" gibi kaçan Türkçe kalıplar; saat seçiminde sınırda güvenle yanlış seçim (müşteri onayı gerekir); tenant izolasyonu (salon eş anlamlıları ve konuşma verisi işletme bazında).
+Duplicate search: repo issue araması "R&D chatbot WhatsApp AI assistant Jev intent classification" ve "[R&D] proposal rnd-stage" — sonuç yok.
+Recommended validator question: Anonimleştirilmiş gerçek salon WhatsApp mesajlarında (≥ 200), bağlamlı seçenek sunumu ve 0.8 eşiğiyle, eşik üstü Jev kararlarının doğruluğu %98'in altına düşer mi?
+No product commitment: true

@@ -1,0 +1,26 @@
+{"id": "service2-001", "gold": "keratin", "message": "Kızım için brezilya fönü randevusu", "accept": ["keratin"], "tags": ["salon_esanlamli"], "ambiguous": false}
+{"id": "service2-002", "gold": "balyaj", "message": "Saçlarıma röfle attırmak istiyorum, açık kumral", "accept": ["balyaj"], "tags": ["salon_esanlamli"], "ambiguous": false}
+{"id": "service2-003", "gold": "kesim_erkek", "message": "6 yaşındaki oğluma tıraş", "accept": ["kesim_erkek"], "tags": ["salon_esanlamli", "tuzak"], "ambiguous": false}
+{"id": "service2-004", "gold": "protez_tirnak", "message": "Tırnak uzatma yapıyor musunuz", "accept": ["protez_tirnak"], "tags": ["salon_esanlamli"], "ambiguous": false}
+{"id": "service2-005", "gold": "balyaj", "message": "Saçıma meç yaptıracağım", "accept": ["balyaj"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-006", "gold": "sakal", "message": "sakalımı şekillendirmek istiyorum", "accept": ["sakal"], "tags": ["duz"], "ambiguous": false}
+{"id": "service2-007", "gold": "kas", "message": "kaşlarıma şekil verdirmek", "accept": ["kas"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-008", "gold": "agda", "message": "komple ağda", "accept": ["agda"], "tags": ["duz"], "ambiguous": false}
+{"id": "service2-009", "gold": "lazer", "message": "koltukaltı ve bacak lazer", "accept": ["lazer"], "tags": ["duz"], "ambiguous": false}
+{"id": "service2-010", "gold": "gelin", "message": "gelin başı + makyaj paketi", "accept": ["gelin"], "tags": ["duz"], "ambiguous": false}
+{"id": "service2-011", "gold": "makyaj", "message": "kına gecesi makyajı", "accept": ["gelin", "makyaj"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-012", "gold": "cilt", "message": "yüzüme bakım yaptırmak istiyorum", "accept": ["cilt"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-013", "gold": "fon", "message": "saçıma dalga yaptırmak", "accept": ["fon"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-014", "gold": "fon", "message": "düz fön", "accept": ["fon"], "tags": ["duz"], "ambiguous": false}
+{"id": "service2-015", "gold": "dip_boya", "message": "kök boyası yaptıracağım", "accept": ["dip_boya"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-016", "gold": "tum_boya", "message": "saçımı kahveden sarıya dönüştürmek", "accept": ["balyaj", "tum_boya"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-017", "gold": "kalici_oje", "message": "semi kalıcı oje", "accept": ["kalici_oje"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-018", "gold": "manikur", "message": "el bakımı + oje", "accept": ["kalici_oje", "manikur"], "tags": ["coklu"], "ambiguous": false}
+{"id": "service2-019", "gold": "pedikur", "message": "topuk çatlakları için bakım", "accept": ["pedikur"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-020", "gold": "yok", "message": "saç ekimi", "accept": ["yok"], "tags": ["katalog_disi"], "ambiguous": false}
+{"id": "service2-021", "gold": "yok", "message": "kalıcı kirpik", "accept": ["yok"], "tags": ["katalog_disi"], "ambiguous": false}
+{"id": "service2-022", "gold": "keratin", "message": "saç botoksu", "accept": ["keratin"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-023", "gold": "kesim_kadin", "message": "küt kesim", "accept": ["kesim_kadin"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service2-024", "gold": "kesim_kadin", "message": "sac uclarimi aldiricam", "accept": ["kesim_erkek", "kesim_kadin"], "tags": ["yazim", "belirsiz"], "ambiguous": true}
+{"id": "service2-025", "gold": "kas", "message": "iple bıyık", "accept": ["kas", "yok"], "tags": ["belirsiz"], "ambiguous": true}
+{"id": "service2-026", "gold": "protez_tirnak", "message": "protez tırnak dolgusu", "accept": ["protez_tirnak"], "tags": ["duz"], "ambiguous": false}
