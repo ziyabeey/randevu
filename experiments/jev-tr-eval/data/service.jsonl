@@ -1,0 +1,30 @@
+{"id": "service-001", "gold": "balyaj", "message": "röfle yaptırmak istiyorum", "accept": ["balyaj"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-002", "gold": "dip_boya", "message": "beyazlarımı kapatmak istiyorum sadece dipler", "accept": ["dip_boya"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-003", "gold": "tum_boya", "message": "saçımı komple kızıla boyatacağım", "accept": ["tum_boya"], "tags": ["duz"], "ambiguous": false}
+{"id": "service-004", "gold": "balyaj", "message": "ombre", "accept": ["balyaj"], "tags": ["kisa"], "ambiguous": false}
+{"id": "service-005", "gold": "keratin", "message": "brezilya fönü", "accept": ["keratin"], "tags": ["esanlam", "tuzak"], "ambiguous": false}
+{"id": "service-006", "gold": "kalici_oje", "message": "tırnaklarıma jel", "accept": ["kalici_oje", "protez_tirnak"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-007", "gold": "protez_tirnak", "message": "tırnak uzatma", "accept": ["protez_tirnak"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-008", "gold": "manikur", "message": "oje sürdürmek", "accept": ["kalici_oje", "manikur"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-009", "gold": "pedikur", "message": "ayak bakımı", "accept": ["pedikur"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-010", "gold": "kas", "message": "kaşlarımı aldırmak", "accept": ["kas"], "tags": ["duz"], "ambiguous": false}
+{"id": "service-011", "gold": "kas", "message": "bıyık aldırmak iple", "accept": ["kas", "yok"], "tags": ["esanlam", "belirsiz"], "ambiguous": true}
+{"id": "service-012", "gold": "agda", "message": "bacak ağdası", "accept": ["agda", "yok"], "tags": ["belirsiz"], "ambiguous": true}
+{"id": "service-013", "gold": "lazer", "message": "koltuk altı lazer", "accept": ["lazer"], "tags": ["duz"], "ambiguous": false}
+{"id": "service-014", "gold": "gelin", "message": "düğünüm var saç ve makyaj", "accept": ["gelin"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-015", "gold": "makyaj", "message": "nişan makyajı", "accept": ["gelin", "makyaj"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-016", "gold": "cilt", "message": "yüz temizliği", "accept": ["cilt"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-017", "gold": "kesim_kadin", "message": "saçlarımın uçlarını aldırmak istiyorum", "accept": ["kesim_erkek", "kesim_kadin"], "tags": ["esanlam", "belirsiz"], "ambiguous": true}
+{"id": "service-018", "gold": "kesim_erkek", "message": "oğluma tıraş", "accept": ["kesim_erkek"], "tags": ["esanlam", "tuzak"], "ambiguous": false}
+{"id": "service-019", "gold": "sakal", "message": "sakal düzeltme", "accept": ["sakal"], "tags": ["duz"], "ambiguous": false}
+{"id": "service-020", "gold": "fon", "message": "dalga yaptırmak, maşa", "accept": ["fon"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-021", "gold": "yok", "message": "perma", "accept": ["yok"], "tags": ["katalog_disi"], "ambiguous": false}
+{"id": "service-022", "gold": "yok", "message": "kirpik lifting", "accept": ["yok"], "tags": ["katalog_disi"], "ambiguous": false}
+{"id": "service-023", "gold": "keratin", "message": "saç bakımı yaptırsam, çok yıprandı", "accept": ["keratin"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-024", "gold": "fon", "message": "fön çektirmek", "accept": ["fon"], "tags": ["duz"], "ambiguous": false}
+{"id": "service-025", "gold": "tum_boya", "message": "saçımı sarıya açtırmak", "accept": ["balyaj", "tum_boya"], "tags": ["esanlam"], "ambiguous": false}
+{"id": "service-026", "gold": "manikur", "message": "manikür pedikür ikisi", "accept": ["manikur", "pedikur"], "tags": ["coklu"], "ambiguous": false}
+{"id": "service-027", "gold": "yok", "message": "kalıcı makyaj kaş", "accept": ["yok"], "tags": ["katalog_disi", "tuzak"], "ambiguous": false}
+{"id": "service-028", "gold": "kesim_kadin", "message": "sac kesimi kisa bob", "accept": ["kesim_kadin"], "tags": ["yazim"], "ambiguous": false}
+{"id": "service-029", "gold": "protez_tirnak", "message": "protez tırnak söktürmek", "accept": ["protez_tirnak"], "tags": ["duz"], "ambiguous": false}
+{"id": "service-030", "gold": "yok", "message": "masaj", "accept": ["yok"], "tags": ["katalog_disi"], "ambiguous": false}

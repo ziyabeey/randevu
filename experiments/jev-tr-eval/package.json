@@ -1,0 +1,16 @@
+{
+  "name": "jev-tr-eval",
+  "private": true,
+  "type": "module",
+  "description": "Jev'in Türkçe randevu mesajlarındaki seçim doğruluğunu ölçen deney (MVP dışı, main'e girmez)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "eval": "node run-eval.mjs",
+    "eval:mock": "node run-eval.mjs --mock"
+  },
+  "dependencies": {
+    "@typesafe-ai/sdk": "0.6.0"
+  }
+}

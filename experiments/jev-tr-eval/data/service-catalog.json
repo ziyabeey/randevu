@@ -1,0 +1,24 @@
+{
+  "services": {
+    "kesim_kadin": "Kadın Saç Kesimi",
+    "kesim_erkek": "Erkek Saç Kesimi",
+    "sakal": "Sakal Tıraşı / Düzeltme",
+    "fon": "Fön / Maşa",
+    "dip_boya": "Dip Boya",
+    "tum_boya": "Tüm Saç Boya",
+    "balyaj": "Balyaj / Ombre",
+    "keratin": "Keratin Bakım",
+    "manikur": "Manikür",
+    "pedikur": "Pedikür",
+    "kalici_oje": "Kalıcı Oje",
+    "protez_tirnak": "Protez Tırnak",
+    "kas": "Kaş Alımı (İp)",
+    "agda": "Tüm Vücut Ağda",
+    "lazer": "Lazer Epilasyon",
+    "gelin": "Gelin Saçı + Makyaj",
+    "makyaj": "Günlük / Özel Gün Makyajı",
+    "cilt": "Cilt Bakımı"
+  },
+  "none_label": "yok",
+  "none_description": "Salonun katalogunda bu isteğin karşılığı yok"
+}
