@@ -86,8 +86,9 @@ do $f16_gap$
 declare v_error text;
 begin
   begin
-    perform count(*) from public.f16_series_candidates(
+    perform public.preview_appointment_series(
       'f1610000-0000-4000-8000-000000000001',
+      '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
       '2027-03-21 02:30 Europe/Berlin'::timestamptz,
       'weekly',2
     );
