@@ -8,6 +8,7 @@ RESEND_API_KEY=re_xxxxxxxxx
 NOTIFICATION_FROM_EMAIL=Randevu <randevu@example.com>
 PUBLIC_APP_ORIGIN=https://app.example.com
 
-TWILLO_ID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILLO_SECRET_API=YOUR_TWILIO_AUTH_TOKEN
-TWILIO_VERIFY_SERVICE_SID=VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ZERNIO_API_KEY=sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ZERNIO_WHATSAPP_ACCOUNT_ID=000000000000000000000000
+ZERNIO_WHATSAPP_TEMPLATE_NAME=randevu_phone_verification
+ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE=tr
