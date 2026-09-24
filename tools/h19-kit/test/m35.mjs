@@ -5,6 +5,7 @@ import { normalizeScipIndex, scipImpact } from '../src/adapters/scip.mjs';
 import { parseTreeSitterTags, treeSitterTagsGraph } from '../src/adapters/tree-sitter-tags.mjs';
 import { parseNxAffected } from '../src/adapters/nx-affected.mjs';
 import { parseTurboAffected } from '../src/adapters/turbo-affected.mjs';
+import { scipImpactEvidence, workspaceAffectedEvidence } from '../src/adapters/code-impact-evidence.mjs';
 
 const symbol = 'scip-typescript npm demo 1.0.0 src/a.ts/foo().';
 const scip = normalizeScipIndex({
@@ -28,6 +29,8 @@ assert.equal(scip.edges('scip:references').length, 1);
 const impact = scipImpact(scip, ['src/a.ts']);
 assert.deepEqual(impact.affectedDocuments, ['doc:src/a.ts', 'doc:src/b.ts']);
 assert.equal(impact.changedSymbols.length, 1);
+const impactEvidence = scipImpactEvidence(impact);
+assert.equal(impactEvidence.find((x) => x.id === 'impact.cross_file').state, 'present');
 
 const tagRows = parseTreeSitterTags(`
 src/demo.py
@@ -66,6 +69,7 @@ const turbo = parseTurboAffected({
 assert.equal(turbo.packages.length, 2);
 assert.equal(turbo.tasks.length, 1);
 assert.equal(turbo.packages[0].name, '@demo/ui');
+assert.equal(workspaceAffectedEvidence(turbo)[0].state, 'present');
 
 const graph = new CodeGraph();
 graph.addNode('a', 'symbol');
