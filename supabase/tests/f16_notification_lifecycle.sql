@@ -274,6 +274,7 @@ declare
   v_group uuid:=current_setting('f1602.group_id')::uuid;
   v_count integer;
   v_null_recovery integer;
+  v_rows jsonb;
 begin
   select
     count(*) filter (
@@ -286,12 +287,24 @@ begin
         and event_reason='cancelled'
         and kind='booking_lifecycle'
         and recovery_id is null
-    )::integer
-  into v_count,v_null_recovery
+    )::integer,
+    jsonb_agg(jsonb_build_object(
+      'jobId',job_id,
+      'groupId',group_id,
+      'recoveryId',recovery_id,
+      'channel',channel,
+      'eventReason',event_reason,
+      'kind',kind
+    )) filter (
+      where group_id=v_group
+        and event_reason='cancelled'
+        and kind='booking_lifecycle'
+    )
+  into v_count,v_null_recovery,v_rows
   from public.claim_notification_jobs_v3(repeat('s',43),50,45);
   if v_count<>2 or v_null_recovery<>2 then
-    raise exception 'F16-02 v3 claim did not expose the two operator cancellation jobs: count=% nullRecovery=%',
-      v_count,v_null_recovery;
+    raise exception 'F16-02 v3 claim did not expose the two operator cancellation jobs: count=% nullRecovery=% rows=%',
+      v_count,v_null_recovery,v_rows;
   end if;
 end
 $f1602_claim$;
