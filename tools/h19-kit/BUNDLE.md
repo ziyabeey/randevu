@@ -61,7 +61,11 @@ Required measurements:
 - H19 project-shard warm cache-hit time;
 - deterministic M4/M5 synthetic scale probe.
 
-The first run is measurement-only. Do not invent pass/fail thresholds before the baseline is captured.
+PERF-001 captured the first baseline. PERF-002 then corrected over-broad TypeScript invalidation and measured
+tsconfig-level project sharding. A repeat sample reproduced the result closely.
+
+A regression guard is now frozen in `perf/PERF_THRESHOLDS.v1.json`. It protects the measured gains without
+declaring the remaining ~5.6s app-shard rebuild to be an acceptable product latency target.
 
 ## Next authorized feature gate
 
