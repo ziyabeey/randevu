@@ -24,6 +24,11 @@ on:
         required: false
         default: false
         type: boolean
+      run_f16_sms_acceptance:
+        description: Run real F16-02 NetGSM SMS delivery and segment/tariff gate
+        required: false
+        default: false
+        type: boolean
       run_s01_acceptance:
         description: Run S01 public mailbox recovery boundary
         required: false
@@ -53,6 +58,7 @@ jobs:
       RUN_F09_ACCEPTANCE: ${{ inputs.run_f09_acceptance || inputs.operation == 'rotate' || inputs.operation == 'resume' }}
       RUN_F10_ACCEPTANCE: ${{ inputs.run_f10_auth_acceptance }}
       RUN_F10_TEAM_ACCEPTANCE: ${{ inputs.run_f10_team_acceptance || inputs.run_f10_auth_acceptance }}
+      RUN_F16_SMS_ACCEPTANCE: ${{ inputs.run_f16_sms_acceptance }}
       RUN_S01_ACCEPTANCE: ${{ inputs.run_s01_acceptance }}
       S01_RECOVERY_EMAIL: ${{ inputs.s01_recovery_email }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -66,6 +72,12 @@ jobs:
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       NOTIFICATION_FROM_EMAIL: randevu@notify.kepenk.ai
+      NETGSM_USERCODE: ${{ secrets.NETGSM_USERCODE }}
+      NETGSM_PASSWORD: ${{ secrets.NETGSM_PASSWORD }}
+      NETGSM_MSGHEADER: ${{ secrets.NETGSM_MSGHEADER }}
+      NETGSM_APPNAME: kepenk
+      NETGSM_TEST_RECIPIENT: ${{ secrets.NETGSM_TEST_RECIPIENT }}
+      NETGSM_SMS_SEGMENT_PRICE_TRY: ${{ vars.NETGSM_SMS_SEGMENT_PRICE_TRY }}
 
     steps:
       - name: Checkout
@@ -147,6 +159,23 @@ jobs:
           const missingExternal = requiredExternal.filter((name) => !process.env[name]);
           if (missingExternal.length) {
             throw new Error(`Missing staging external settings: ${missingExternal.join(', ')}`);
+          }
+
+          const netgsmRuntime = ['NETGSM_USERCODE', 'NETGSM_PASSWORD', 'NETGSM_MSGHEADER'];
+          const configuredNetgsm = netgsmRuntime.filter((name) => Boolean(process.env[name])).length;
+          if (configuredNetgsm !== 0 && configuredNetgsm !== netgsmRuntime.length) {
+            throw new Error('NetGSM staging runtime credentials must be configured together');
+          }
+          if (process.env.RUN_F16_SMS_ACCEPTANCE === 'true') {
+            const f16Required = [
+              ...netgsmRuntime,
+              'NETGSM_TEST_RECIPIENT',
+              'NETGSM_SMS_SEGMENT_PRICE_TRY',
+            ];
+            const missingF16 = f16Required.filter((name) => !process.env[name]);
+            if (missingF16.length) {
+              throw new Error(`F16 SMS acceptance missing staging settings: ${missingF16.join(', ')}`);
+            }
           }
 
           const requiredWorkflow = [
