@@ -8,6 +8,7 @@ const migration = await readFile(
 );
 const dispatcher = await readFile(new URL('../worker/notifications.ts', import.meta.url), 'utf8');
 const netgsm = await readFile(new URL('../worker/netgsm.ts', import.meta.url), 'utf8');
+const twilio = await readFile(new URL('../worker/twilio.ts', import.meta.url), 'utf8');
 const entry = await readFile(new URL('../worker/entry.ts', import.meta.url), 'utf8');
 
 test('F16-02 reuses the canonical notification queue instead of creating a second scheduler', () => {
@@ -19,12 +20,13 @@ test('F16-02 reuses the canonical notification queue instead of creating a secon
   assert.match(dispatcher, /complete_notification_job_v2/);
 });
 
-test('F16-02 NetGSM ambiguous sends cannot be reclaimed or blindly replayed', () => {
-  assert.match(migration, /netgsm_ambiguous_lease_expired/);
-  assert.match(migration, /j\.provider='netgsm'[\s\S]*?j\.first_provider_attempt_at is not null[\s\S]*?j\.delivery_certainty='ambiguous'/);
-  assert.match(migration, /and not \([\s\S]*?j\.provider='netgsm'[\s\S]*?j\.delivery_certainty='ambiguous'[\s\S]*?\)/);
+test('F16-02 SMS providers fail closed after ambiguous send boundaries', () => {
+  assert.match(migration, /sms_provider_ambiguous_lease_expired/);
+  assert.match(migration, /j\.provider in \('netgsm','twilio'\)[\s\S]*?j\.first_provider_attempt_at is not null[\s\S]*?j\.delivery_certainty='ambiguous'/);
   assert.match(netgsm, /NetGSM does not document referansID as an idempotency guarantee/);
   assert.match(netgsm, /retryable:\s*false,[\s\S]*?definitelyRejected:\s*false/);
+  assert.match(twilio, /twilio_send_network_ambiguous/);
+  assert.match(twilio, /retryable:\s*false,[\s\S]*?definitelyRejected:\s*false/);
 });
 
 test('F16-02 SMS is provider-length bounded before the send boundary', () => {
@@ -43,11 +45,13 @@ test('F16-02 operator jobs remain tenant-scoped and public recovery is optional'
 });
 
 
-test('F16-02 reconciles NetGSM delivery from the existing scheduled notification entry', () => {
+test('F16-02 reconciles both NetGSM and Twilio delivery from the existing scheduled notification entry', () => {
   assert.match(migration, /claim_notification_delivery_checks/);
   assert.match(migration, /record_notification_delivery_status/);
   assert.match(netgsm, /sms\/rest\/v2\/report/);
+  assert.match(twilio, /Messages\/\$\{providerMessageId\}\.json/);
   assert.match(dispatcher, /queryNetgsmDeliveryReport/);
+  assert.match(dispatcher, /queryTwilioMessageStatus/);
   assert.match(dispatcher, /claim_notification_delivery_checks/);
   assert.match(dispatcher, /record_notification_delivery_status/);
   assert.match(entry, /context\.waitUntil\(reconcileNotificationDeliveryBatch\(env\)\)/);
