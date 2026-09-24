@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/rule-card.v1.schema.json",
+  "title": "H19 Rule Card Metadata v1",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "consumes"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "consumes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "description": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

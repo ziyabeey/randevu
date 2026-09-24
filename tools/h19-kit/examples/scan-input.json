@@ -1,0 +1,21 @@
+{
+  "semantic": {
+    "high": true,
+    "axis": "D5",
+    "score": 0.91,
+    "source": "h19-shadow"
+  },
+  "testImpact": {
+    "known": true,
+    "impactedTests": []
+  },
+  "history": {
+    "companionMissing": true,
+    "companion": "ledger.sql",
+    "confidence": 0.82
+  },
+  "context": {
+    "path": "supabase/migrations/example.sql",
+    "symbol": "public.example/2"
+  }
+}
