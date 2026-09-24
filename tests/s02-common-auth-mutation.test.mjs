@@ -352,6 +352,10 @@ const cookieMutations = [
   ['POST', '/api/tickets/:id/lines/:lineId/package-usage'],
   ['POST', '/api/tickets/:id/lines/:lineId/package-usage/reverse'],
   ['POST', '/api/customer-packages/:id/refund'],
+  ['POST', '/api/promo-codes'],
+  ['PATCH', '/api/promo-codes/:id'],
+  ['POST', '/api/tickets/:id/promo'],
+  ['POST', '/api/tickets/:id/promo/remove'],
   ['POST', '/api/feedback/:feedbackId/moderate'],
 ];
 const exceptions = [
@@ -361,6 +365,7 @@ const exceptions = [
   '/api/public/booking/recover', '/api/public/booking/resolve',
   '/api/manage/view', '/api/manage/slots', '/api/manage/reschedule', '/api/manage/cancel',
   '/api/manage/feedback/view', '/api/manage/feedback',
+  '/api/manage/promo/view', '/api/manage/promo',
 ];
 const concrete = (path) => path.replace(':weekday', '1').replace(':slug', 'test-salon').replace(/:[A-Za-z]+/g, businessId);
 const csrfValue = 'C'.repeat(43);

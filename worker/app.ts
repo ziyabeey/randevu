@@ -20,6 +20,7 @@ import expenses from './expenses.ts';
 import reports from './reports.ts';
 import f16Series from './f16-series-http.ts';
 import f16Packages from './f16-packages-http.ts';
+import f16Promo from './f16-promo-http.ts';
 import f16Feedback from './f16-feedback-http.ts';
 import onboarding from './onboarding.ts';
 import {
@@ -69,6 +70,8 @@ function mutationClass(method: string, path: string): MutationClass {
   if (normalizedMethod === 'POST' && (path === '/api/manage/view'
       || path === '/api/manage/feedback/view'
       || path === '/api/manage/feedback'
+      || path === '/api/manage/promo/view'
+      || path === '/api/manage/promo'
       || path === '/api/manage/slots'
       || path === '/api/manage/reschedule'
       || path === '/api/manage/cancel')) {
@@ -124,6 +127,8 @@ app.route('/api/calendar', calendar);
 app.route('/api/team', team);
 app.route('/api', tickets);
 app.route('/api', f16Packages);
+// F16-06 promo codes: public preview, capability reservation, member application.
+app.route('/api', f16Promo);
 app.route('/api', products);
 app.route('/api', expenses);
 app.route('/api', reports);
