@@ -11,3 +11,10 @@ NETGSM_PASSWORD=YOUR_NETGSM_API_PASSWORD
 NETGSM_MSGHEADER=YOUR_APPROVED_HEADER
 NETGSM_APPNAME=kepenk
 PUBLIC_APP_ORIGIN=https://app.example.com
+
+TWILLO_ID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILLO_SECRET_API=YOUR_TWILIO_AUTH_TOKEN
+TWILIO_TRIAL_MODE=true
+# Production only after upgrade/sender provisioning:
+# TWILIO_FROM=KEPENK
+# TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
