@@ -249,3 +249,21 @@ H19s başladığında aynı kohortta:
 yasaktır.
 
 Bu ek, ana protokolün geçiş eşiklerini değiştirmez.
+
+## 11. Runtime secret ve provider guard
+
+H19s reference reader çağrıları mevcut Qwen/OpenAI-compatible secret veya endpoint'ini kullanmaz.
+
+Zorunlu secret:
+- `H19S_OPENAI_API_KEY`
+
+Zorunlu provider:
+- `https://api.openai.com/v1`
+
+Runner:
+- custom `OPENAI_BASE_URL` kabul etmez;
+- Reader A cevabında served model'in `gpt-6-sol`, Reader B cevabında `gpt-5.6-sol` olduğunu doğrular;
+- model alias/substitution görülürse o birimin reader çağrısı geçersizdir ve yeniden aynı frozen modelle çalıştırılmadan label/maliyet hesabına girmez;
+- API key veya TypeSafe key yoksa shadow ölçümü fail-closed durur, PR/CI ise etkilenmez.
+
+Bu secret yalnız H19s ölçümüne aittir; normal development-engine reviewer sözleşmesini değiştirmez.
