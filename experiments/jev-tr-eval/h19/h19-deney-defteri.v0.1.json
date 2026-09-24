@@ -120,32 +120,57 @@
     },
     {
       "id": "H19u",
-      "status": "measurement-ready",
+      "status": "passed",
       "hypothesis": "A second cheap Choice can resolve D1-only vs D5-involved without receiving V scores as premises.",
       "protocol_commit": "d39e3883f22a915cfe20ab74691b19ff447ea534",
       "reusable_lessons": [
-        "Second-stage resolver must see the diff, not first-stage score facts."
+        "Second-stage resolver must see the diff, not first-stage score facts.",
+        "Binary D5-involved routing can succeed even when exact D1_ONLY/D5_ONLY/BOTH/OTHER classification is imperfect.",
+        "Synthetic balanced-set call savings are not production cost evidence."
       ],
       "next_if_pass": "H19s",
       "cases_sha256": "ba531c863b5ff27b382008dfd55d4f5d8f898c62b15bc8c9d6c652301a859914",
       "case_freeze_commit": "2273d5c",
       "blind_check": {
         "n": 16,
-        "agreement": 15,
-        "drops": 1,
+        "agreement": 14,
+        "drops": 2,
         "dropped_case_ids": [
-          "A16"
+          "A16",
+          "C20"
         ],
         "blind_commit": "1afdf35483b4d3c43c217c54de73a20f329158c5"
       },
       "measurement_calls_planned": 240,
-      "analysis_case_count": 79
+      "analysis_case_count": 78,
+      "measurement_calls": 240,
+      "result_commit": "32899f1",
+      "gates": {
+        "U1": "pass",
+        "U2": "pass",
+        "U3": "pass",
+        "U4": "pass",
+        "U5": "pass"
+      },
+      "evidence": {
+        "D5_recall": "39/39",
+        "D1_only_false_positive_baseline": "9/19",
+        "D1_only_false_positive_candidate": "0/19",
+        "nonD5_false_positive_baseline": 0.282,
+        "nonD5_false_positive_candidate": 0.051,
+        "system_two_route_baseline": 0.641,
+        "system_two_route_candidate": 0.526,
+        "resolver_exact_4class_accuracy": 0.756,
+        "ambiguous_neighborhood_rate": 0.59
+      },
+      "result": "Composite router passed all preregistered gates. Resolver works for binary D5-involved routing; full four-class semantics are weaker."
     },
     {
       "id": "H19s",
-      "status": "locked",
-      "hypothesis": "Validated router/resolver reduces real System Two work in shadow PR traffic.",
-      "unlock_condition": "H19u passes all preregistered gates."
+      "status": "open",
+      "hypothesis": "Validated composite router reduces real System Two work in shadow PR traffic while preserving actionable D5 recall.",
+      "unlock_condition": "H19u passed all preregistered gates.",
+      "terminal_for_current_adapter": true
     }
   ],
   "invariant_rules": [
