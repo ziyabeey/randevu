@@ -22,7 +22,8 @@
     "test:m4-change-impact": "node test/m4-change-impact.mjs",
     "test:m5-coverage-discovery": "node test/m5-coverage-discovery.mjs",
     "test:m5-validation-packet": "node test/m5-validation-packet.mjs",
-    "test:m6-test-spec": "node test/m6-test-spec.mjs"
+    "test:m6-test-spec": "node test/m6-test-spec.mjs",
+    "test:m7-test-candidate": "node test/m7-test-candidate.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
