@@ -48,6 +48,50 @@ function rangeOf(occurrence) {
   return Array.isArray(range) ? [...range] : null;
 }
 
+function enclosingRangeOf(occurrence) {
+  const single = field(occurrence, 'single_line_enclosing_range', 'singleLineEnclosingRange');
+  if (single) {
+    const line = Number(single.line ?? 0);
+    const start = Number(field(single, 'start_character', 'startCharacter') ?? 0);
+    const end = Number(field(single, 'end_character', 'endCharacter') ?? start);
+    return [line, start, end];
+  }
+
+  const multi = field(occurrence, 'multi_line_enclosing_range', 'multiLineEnclosingRange');
+  if (multi) {
+    return [
+      Number(field(multi, 'start_line', 'startLine') ?? 0),
+      Number(field(multi, 'start_character', 'startCharacter') ?? 0),
+      Number(field(multi, 'end_line', 'endLine') ?? 0),
+      Number(field(multi, 'end_character', 'endCharacter') ?? 0),
+    ];
+  }
+
+  const range = field(occurrence, 'enclosing_range', 'enclosingRange');
+  return Array.isArray(range) ? [...range] : null;
+}
+
+function points(range) {
+  if (!Array.isArray(range)) return null;
+  if (range.length === 3) {
+    return { start: [range[0], range[1]], end: [range[0], range[2]] };
+  }
+  if (range.length === 4) {
+    return { start: [range[0], range[1]], end: [range[2], range[3]] };
+  }
+  return null;
+}
+
+function cmp(a, b) {
+  return a[0] - b[0] || a[1] - b[1];
+}
+
+function containsRange(outer, inner) {
+  const o = points(outer), i = points(inner);
+  if (!o || !i) return false;
+  return cmp(o.start, i.start) <= 0 && cmp(o.end, i.end) >= 0;
+}
+
 export function normalizeScipIndex(index, { source = 'scip' } = {}) {
   const graph = new CodeGraph();
   const documents = index?.documents ?? index?.Documents ?? [];
@@ -86,17 +130,21 @@ export function normalizeScipIndex(index, { source = 'scip' } = {}) {
       }
     }
 
-    for (const occurrence of doc.occurrences ?? []) {
+    const occurrences = doc.occurrences ?? [];
+    const definitions = [];
+
+    for (const occurrence of occurrences) {
       const symbol = occurrence.symbol;
       if (!symbol) continue;
       const symbolId = `symbol:${symbol}`;
       const roleValue = Number(field(occurrence, 'symbol_roles', 'symbolRoles') ?? 0);
+      const definition = (roleValue & roles.definition) !== 0;
+      const range = rangeOf(occurrence);
       graph.addNode(symbolId, 'symbol', { symbol, source });
-      const kind = (roleValue & roles.definition) !== 0 ? 'defines' : 'references';
-      graph.addEdge(docId, symbolId, `scip:${kind}`, {
-        range: rangeOf(occurrence),
+      graph.addEdge(docId, symbolId, definition ? 'scip:defines' : 'scip:references', {
+        range,
         roles: {
-          definition: (roleValue & roles.definition) !== 0,
+          definition,
           import: (roleValue & roles.import) !== 0,
           write: (roleValue & roles.write) !== 0,
           read: (roleValue & roles.read) !== 0,
@@ -104,6 +152,33 @@ export function normalizeScipIndex(index, { source = 'scip' } = {}) {
           forwardDefinition: (roleValue & roles.forwardDefinition) !== 0,
         },
       });
+      if (definition) {
+        definitions.push({
+          symbolId,
+          range: enclosingRangeOf(occurrence) ?? range,
+        });
+      }
+    }
+
+    for (const occurrence of occurrences) {
+      const symbol = occurrence.symbol;
+      if (!symbol) continue;
+      const roleValue = Number(field(occurrence, 'symbol_roles', 'symbolRoles') ?? 0);
+      if ((roleValue & roles.definition) !== 0) continue;
+      const range = rangeOf(occurrence);
+      if (!range) continue;
+
+      const owners = definitions.filter((def) => def.range && containsRange(def.range, range));
+      if (!owners.length) continue;
+      owners.sort((a, b) => {
+        const pa = points(a.range), pb = points(b.range);
+        const sa = pa ? (pa.end[0] - pa.start[0]) * 1e6 + (pa.end[1] - pa.start[1]) : Number.MAX_SAFE_INTEGER;
+        const sb = pb ? (pb.end[0] - pb.start[0]) * 1e6 + (pb.end[1] - pb.start[1]) : Number.MAX_SAFE_INTEGER;
+        return sa - sb;
+      });
+      const owner = owners[0].symbolId;
+      const target = `symbol:${symbol}`;
+      if (owner !== target) graph.addEdge(owner, target, 'scip:uses', { range, document: path });
     }
   }
 
