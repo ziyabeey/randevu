@@ -10,6 +10,7 @@ import {
 import { publicOperation } from './public-rpc.ts';
 import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';
 import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
+import { verifyWhatsappPhoneProof } from './whatsapp-verify.ts';
 import {
   publicGateUnavailableBody,
   publicRateLimitedBody,
@@ -324,6 +325,7 @@ groups.post('/public/business/:slug/group-book', async (context) => {
   const recoveryId = body?.recoveryId;
   const recoverySecret = body?.recoverySecret;
   const managementToken = body?.managementToken;
+  const phoneVerificationToken = typeof body?.phoneVerificationToken === 'string' ? body.phoneVerificationToken.trim() : '';
 
   if (!isSlug(slug) || !key || !looksLikePublicBookingIntentV2(rawKey)
       || !isCanonicalPublicBookingRecoveryId(recoveryId)
@@ -337,6 +339,16 @@ groups.post('/public/business/:slug/group-book', async (context) => {
   }
   if (customerPhone === null) {
     return context.json({ error: { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.' } }, 400);
+  }
+  if (!phoneVerificationToken || !await verifyWhatsappPhoneProof(
+    context.env.PUBLIC_BOOKING_GATE_SECRET ?? '',
+    phoneVerificationToken,
+    slug,
+    customerPhone,
+  )) {
+    return context.json({
+      error: { code: 'PHONE_VERIFICATION_REQUIRED', message: 'Telefon numarasını WhatsApp koduyla doğrulayın.' },
+    }, 403);
   }
 
   const proof = await verifyPublicBookingIntentV2(rawKey, recoveryId, recoverySecret);
