@@ -1,0 +1,366 @@
+begin;
+
+-- F16-01 recurring-series acceptance: bounded enumeration, DST wall-clock
+-- preservation, whole-series idempotency and atomic conflict rollback.
+
+insert into auth.users(id,email,raw_user_meta_data)
+values
+  ('f1600000-0000-4000-8000-000000000001','f1601-owner@example.invalid','{}'::jsonb),
+  ('f1600000-0000-4000-8000-000000000002','f1601-other@example.invalid','{}'::jsonb)
+on conflict(id) do nothing;
+
+insert into public.businesses(id,name,slug,timezone,created_by)
+values
+  ('f1610000-0000-4000-8000-000000000001','F16-01 Berlin','f1601-berlin','Europe/Berlin','f1600000-0000-4000-8000-000000000001'),
+  ('f1610000-0000-4000-8000-000000000002','F16-01 Other','f1601-other','Europe/Istanbul','f1600000-0000-4000-8000-000000000002');
+
+insert into public.memberships(id,business_id,user_id,role,active)
+values
+  ('f1620000-0000-4000-8000-000000000001','f1610000-0000-4000-8000-000000000001','f1600000-0000-4000-8000-000000000001','owner',true),
+  ('f1620000-0000-4000-8000-000000000002','f1610000-0000-4000-8000-000000000002','f1600000-0000-4000-8000-000000000002','owner',true);
+
+insert into public.services(
+  id,business_id,name,duration_minutes,buffer_before_minutes,buffer_after_minutes,
+  category,sort_order,price_minor,price_type,price_min_minor,price_max_minor,currency,active
+) values (
+  'f1630000-0000-4000-8000-000000000001',
+  'f1610000-0000-4000-8000-000000000001',
+  'Seri Kesim',30,0,0,'Genel',10,15000,'fixed',15000,15000,'EUR',true
+);
+
+insert into public.staff_profiles(id,business_id,name,active)
+values (
+  'f1640000-0000-4000-8000-000000000001',
+  'f1610000-0000-4000-8000-000000000001',
+  'Seri Staff',true
+);
+
+insert into public.staff_services(business_id,staff_id,service_id,active)
+values (
+  'f1610000-0000-4000-8000-000000000001',
+  'f1640000-0000-4000-8000-000000000001',
+  'f1630000-0000-4000-8000-000000000001',true
+);
+
+-- Sundays covering the 2027 spring DST transition.
+insert into public.business_hours(business_id,weekday,starts_local,ends_local,active)
+values ('f1610000-0000-4000-8000-000000000001',0,time '08:00',time '18:00',true);
+
+insert into public.staff_hours(business_id,staff_id,weekday,starts_local,ends_local,active)
+values (
+  'f1610000-0000-4000-8000-000000000001',
+  'f1640000-0000-4000-8000-000000000001',
+  0,time '08:00',time '18:00',true
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+
+-- Preview crosses spring-forward and keeps the requested 10:00 business-local time.
+do $f16_preview$
+declare
+  v jsonb;
+  v_bad integer;
+begin
+  v:=public.preview_appointment_series(
+    'f1610000-0000-4000-8000-000000000001',
+    '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+    '2027-03-21 10:00 Europe/Berlin'::timestamptz,
+    'weekly',3
+  );
+  if (v->>'allAvailable')::boolean is not true
+     or jsonb_array_length(v->'occurrences')<>3 then
+    raise exception 'F16-01 DST preview did not produce three available occurrences: %',v;
+  end if;
+
+  select count(*)::integer into v_bad
+  from jsonb_array_elements(v->'occurrences') x
+  where (x->>'localTime')::time<>time '10:00';
+  if v_bad<>0 then raise exception 'F16-01 DST preview drifted local wall clock: %',v; end if;
+end
+$f16_preview$;
+
+-- A nonexistent local wall time must fail explicitly instead of silently moving.
+do $f16_gap$
+declare v_error text;
+begin
+  begin
+    perform count(*) from public.f16_series_candidates(
+      'f1610000-0000-4000-8000-000000000001',
+      '2027-03-21 02:30 Europe/Berlin'::timestamptz,
+      'weekly',2
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('SERIES_LOCAL_TIME_UNAVAILABLE:2027-03-28' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 nonexistent DST time did not fail explicitly: %',v_error;
+  end if;
+end
+$f16_gap$;
+
+-- DB and API share K03's hard 12-occurrence ceiling.
+do $f16_limit$
+declare v_error text;
+begin
+  begin
+    perform public.preview_appointment_series(
+      'f1610000-0000-4000-8000-000000000001',
+      '[{"serviceId":"f1630000-0000-4000-8000-000000000001"}]'::jsonb,
+      '2027-03-21 10:00 Europe/Berlin'::timestamptz,
+      'weekly',13
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('SERIES_LIMIT_EXCEEDED' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 DB accepted a 13-occurrence series: %',v_error;
+  end if;
+end
+$f16_limit$;
+
+-- Initial series creation is one outer transaction and one external idempotency result.
+do $f16_create$
+declare
+  v jsonb;
+begin
+  v:=public.create_appointment_series(
+    'f1610000-0000-4000-8000-000000000001',
+    'f1601-series-create-0001',
+    'Seri Müşteri',
+    '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+    '2027-03-21 10:00 Europe/Berlin'::timestamptz,
+    'weekly',3,
+    '05551601001',null,'DST seri'
+  );
+  if v->>'seriesId' is null or (v->>'occurrenceCount')::integer<>3
+     or jsonb_array_length(v->'occurrences')<>3 then
+    raise exception 'F16-01 series create payload invalid: %',v;
+  end if;
+  perform set_config('f1601.series_id',v->>'seriesId',false);
+end
+$f16_create$;
+
+reset role;
+do $f16_shape$
+declare
+  v_series uuid:=current_setting('f1601.series_id')::uuid;
+  v_groups integer;
+  v_lines integer;
+  v_events integer;
+  v_bad integer;
+begin
+  select count(*)::integer into v_groups
+  from public.appointment_groups
+  where business_id='f1610000-0000-4000-8000-000000000001'
+    and series_id=v_series;
+  select count(*)::integer into v_lines
+  from public.appointments a
+  join public.appointment_groups g
+    on g.business_id=a.business_id and g.id=a.group_id
+  where g.business_id='f1610000-0000-4000-8000-000000000001'
+    and g.series_id=v_series;
+  select count(*)::integer into v_events
+  from public.appointment_series_events
+  where business_id='f1610000-0000-4000-8000-000000000001'
+    and series_id=v_series and event_type='created';
+
+  if v_groups<>3 or v_lines<>3 or v_events<>1 then
+    raise exception 'F16-01 series durable shape wrong groups=% lines=% events=%',
+      v_groups,v_lines,v_events;
+  end if;
+
+  select count(*)::integer into v_bad
+  from public.appointment_groups g
+  join public.appointments a
+    on a.business_id=g.business_id and a.group_id=g.id
+  where g.business_id='f1610000-0000-4000-8000-000000000001'
+    and g.series_id=v_series
+    and (a.starts_at at time zone 'Europe/Berlin')::time<>time '10:00';
+  if v_bad<>0 then raise exception 'F16-01 committed series drifted local time'; end if;
+
+  if (select array_agg(series_ordinal order by series_ordinal)
+      from public.appointment_groups
+      where business_id='f1610000-0000-4000-8000-000000000001'
+        and series_id=v_series)<>array[1::smallint,2::smallint,3::smallint] then
+    raise exception 'F16-01 occurrence ordinals are not stable';
+  end if;
+end
+$f16_shape$;
+
+-- Same key + same intent returns the exact same series and creates no duplicate.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $f16_replay$
+declare v jsonb;
+begin
+  v:=public.create_appointment_series(
+    'f1610000-0000-4000-8000-000000000001',
+    'f1601-series-create-0001',
+    'Seri Müşteri',
+    '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+    '2027-03-21 10:00 Europe/Berlin'::timestamptz,
+    'weekly',3,
+    '05551601001',null,'DST seri'
+  );
+  if v->>'seriesId'<>current_setting('f1601.series_id') then
+    raise exception 'F16-01 replay returned another series: %',v;
+  end if;
+end
+$f16_replay$;
+
+reset role;
+do $f16_replay_shape$
+begin
+  if (select count(*) from public.appointment_series
+      where business_id='f1610000-0000-4000-8000-000000000001')<>1 then
+    raise exception 'F16-01 replay created another series header';
+  end if;
+  if (select count(*) from public.appointment_groups
+      where business_id='f1610000-0000-4000-8000-000000000001'
+        and series_id=current_setting('f1601.series_id')::uuid)<>3 then
+    raise exception 'F16-01 replay created duplicate occurrence groups';
+  end if;
+end
+$f16_replay_shape$;
+
+-- Reusing the external key with a different cadence is a conflict.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $f16_idempotency_conflict$
+declare v_error text;
+begin
+  begin
+    perform public.create_appointment_series(
+      'f1610000-0000-4000-8000-000000000001',
+      'f1601-series-create-0001',
+      'Seri Müşteri',
+      '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+      '2027-03-21 10:00 Europe/Berlin'::timestamptz,
+      'daily',3,'05551601001',null,'DST seri'
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('IDEMPOTENCY_CONFLICT' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 same key accepted a changed cadence: %',v_error;
+  end if;
+end
+$f16_idempotency_conflict$;
+
+-- Put one canonical group on the second occurrence of a different series intent.
+-- The candidate's first occurrence would be placeable; the second conflicts.
+do $f16_blocker$
+begin
+  perform public.create_appointment_group(
+    'f1610000-0000-4000-8000-000000000001',
+    'f1601-blocker-group-0001',
+    'Bloklayan Müşteri',
+    '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+    '2027-04-11 12:00 Europe/Berlin'::timestamptz,
+    '05551601999'
+  );
+end
+$f16_blocker$;
+
+reset role;
+select set_config('f1601.series_before',
+  (select count(*)::text from public.appointment_series
+   where business_id='f1610000-0000-4000-8000-000000000001'),false);
+select set_config('f1601.groups_before',
+  (select count(*)::text from public.appointment_groups
+   where business_id='f1610000-0000-4000-8000-000000000001'),false);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $f16_atomic_conflict$
+declare v_error text;
+begin
+  begin
+    perform public.create_appointment_series(
+      'f1610000-0000-4000-8000-000000000001',
+      'f1601-series-create-fail',
+      'Atomic Seri',
+      '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+      '2027-04-04 12:00 Europe/Berlin'::timestamptz,
+      'weekly',3,'05551601002'
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('SERIES_OCCURRENCE_UNAVAILABLE:2:2027-04-11' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 middle conflict was not occurrence-specific: %',v_error;
+  end if;
+end
+$f16_atomic_conflict$;
+
+reset role;
+do $f16_atomic_shape$
+begin
+  if (select count(*) from public.appointment_series
+      where business_id='f1610000-0000-4000-8000-000000000001')
+     <>current_setting('f1601.series_before')::integer then
+    raise exception 'F16-01 failed series left a header behind';
+  end if;
+  if (select count(*) from public.appointment_groups
+      where business_id='f1610000-0000-4000-8000-000000000001')
+     <>current_setting('f1601.groups_before')::integer then
+    raise exception 'F16-01 failed series left a partial occurrence group behind';
+  end if;
+  if exists (
+    select 1 from public.appointment_series_commands
+    where business_id='f1610000-0000-4000-8000-000000000001'
+      and idempotency_key='f1601-series-create-fail'
+  ) then raise exception 'F16-01 failed series left its command behind'; end if;
+  if exists (
+    select 1 from public.booking_commands
+    where business_id='f1610000-0000-4000-8000-000000000001'
+      and idempotency_key like 'f16c:%'
+      and created_at>statement_timestamp()-interval '1 minute'
+      and appointment_id is null
+  ) then raise exception 'F16-01 failed series left an unfinished child command'; end if;
+end
+$f16_atomic_shape$;
+
+-- Another tenant cannot use the series RPC to inspect tenant A.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000002',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $f16_cross_tenant$
+declare v_error text;
+begin
+  begin
+    perform public.get_appointment_series(
+      'f1610000-0000-4000-8000-000000000001',
+      current_setting('f1601.series_id')::uuid
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('NOT_ALLOWED' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 foreign tenant could read series: %',v_error;
+  end if;
+end
+$f16_cross_tenant$;
+
+-- K03 performance evidence: 12 timezone-aware candidates remain trivially bounded.
+reset role;
+do $f16_measure$
+declare
+  v_started timestamptz:=clock_timestamp();
+  v_count integer;
+  v_elapsed_ms numeric;
+begin
+  select count(*)::integer into v_count
+  from public.f16_series_candidates(
+    'f1610000-0000-4000-8000-000000000001',
+    '2027-03-21 10:00 Europe/Berlin'::timestamptz,
+    'weekly',12
+  );
+  v_elapsed_ms:=extract(epoch from (clock_timestamp()-v_started))*1000;
+  if v_count<>12 then raise exception 'F16-01 12-candidate measurement returned %',v_count; end if;
+  if v_elapsed_ms>100 then raise exception 'F16-01 12-candidate enumeration exceeded 100ms: % ms',v_elapsed_ms; end if;
+  raise notice 'F16-01 K03 enumeration: occurrences=12 elapsed_ms=%',round(v_elapsed_ms,3);
+end
+$f16_measure$;
+
+rollback;
