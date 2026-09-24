@@ -77,6 +77,7 @@ Optional external tools can enrich the deterministic evidence graph without beco
 node tools/h19-kit/bin/h19-kit.mjs doctor
 
 # SCIP compiler-backed/reference graph impact
+node tools/h19-kit/bin/h19-kit.mjs scip-index-ts . pnpm
 node tools/h19-kit/bin/h19-kit.mjs scip-impact index.scip src/changed.ts
 
 # Tree-sitter syntax-only fallback tags
