@@ -120,13 +120,26 @@
     },
     {
       "id": "H19u",
-      "status": "pending",
+      "status": "measurement-ready",
       "hypothesis": "A second cheap Choice can resolve D1-only vs D5-involved without receiving V scores as premises.",
       "protocol_commit": "d39e3883f22a915cfe20ab74691b19ff447ea534",
       "reusable_lessons": [
         "Second-stage resolver must see the diff, not first-stage score facts."
       ],
-      "next_if_pass": "H19s"
+      "next_if_pass": "H19s",
+      "cases_sha256": "ba531c863b5ff27b382008dfd55d4f5d8f898c62b15bc8c9d6c652301a859914",
+      "case_freeze_commit": "2273d5c",
+      "blind_check": {
+        "n": 16,
+        "agreement": 15,
+        "drops": 1,
+        "dropped_case_ids": [
+          "A16"
+        ],
+        "blind_commit": "1afdf35483b4d3c43c217c54de73a20f329158c5"
+      },
+      "measurement_calls_planned": 240,
+      "analysis_case_count": 79
     },
     {
       "id": "H19s",
