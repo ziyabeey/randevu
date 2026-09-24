@@ -1,5 +1,7 @@
 # H19 Kit integration roadmap
 
+> **Naming note:** This document is the long-term integration/productization roadmap, not the active Bundle milestone sequence. For the current M0→M5 execution line and its next authorized gate, use [BUNDLE.md](BUNDLE.md). Do not mix the M-numbers between these two documents.
+
 This roadmap is deliberately independent from the frozen H19s experiment.
 
 ## M0 — foundation ✅
