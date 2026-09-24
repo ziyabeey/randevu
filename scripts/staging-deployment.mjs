@@ -86,6 +86,20 @@ export function secretBundle(env, generated = {}) {
       payload.NETGSM_APPNAME = env.NETGSM_APPNAME.trim();
     }
   }
+  const twilioNames = ['TWILLO_ID', 'TWILLO_SECRET_API'];
+  const twilioValues = twilioNames.map((name) => typeof env[name] === 'string' ? env[name].trim() : '');
+  const configuredTwilio = twilioValues.filter(Boolean).length;
+  if (configuredTwilio !== 0 && configuredTwilio !== twilioNames.length) {
+    throw new Error('Twilio Worker configuration must be supplied as a complete credential tuple');
+  }
+  if (configuredTwilio === twilioNames.length) {
+    for (let index = 0; index < twilioNames.length; index += 1) payload[twilioNames[index]] = twilioValues[index];
+    payload.TWILIO_TRIAL_MODE = env.TWILIO_TRIAL_MODE === 'true' ? 'true' : 'false';
+    if (typeof env.TWILIO_FROM === 'string' && env.TWILIO_FROM.trim()) payload.TWILIO_FROM = env.TWILIO_FROM.trim();
+    if (typeof env.TWILIO_MESSAGING_SERVICE_SID === 'string' && env.TWILIO_MESSAGING_SERVICE_SID.trim()) {
+      payload.TWILIO_MESSAGING_SERVICE_SID = env.TWILIO_MESSAGING_SERVICE_SID.trim();
+    }
+  }
   for (const name of KEY_NAMES) if (Object.hasOwn(generated, name)) payload[name] = generated[name];
   if (Object.values(payload).some((value) => typeof value !== 'string' || !value)) throw new Error('Worker configuration incomplete');
   return payload;
