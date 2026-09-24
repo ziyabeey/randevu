@@ -839,12 +839,16 @@ begin
 
   select * into v_product
   from public.products p
-  where p.business_id=p_business_id and p.id=p_product_id
-  for update;
+  where p.business_id=p_business_id and p.id=p_product_id;
   if v_product.id is null then raise exception 'PRODUCT_NOT_FOUND'; end if;
   if not v_product.active then raise exception 'PRODUCT_ARCHIVED'; end if;
   if p_expected_product_version is null or v_product.version <> p_expected_product_version then raise exception 'STALE_PRODUCT_WRITE'; end if;
   if v_product.stock_on_hand < p_quantity then raise exception 'INSUFFICIENT_STOCK'; end if;
+
+  perform 1
+  from public.products p
+  where p.business_id=p_business_id and p.id=p_product_id
+  for update;
 
   insert into public.tickets(
     business_id,appointment_group_id,customer_id,source,status,currency,
