@@ -20,6 +20,7 @@ import expenses from './expenses.ts';
 import reports from './reports.ts';
 import f16Series from './f16-series-http.ts';
 import f16PrivateMedia from './f16-private-media-http.ts';
+import f16Feedback from './f16-feedback-http.ts';
 import onboarding from './onboarding.ts';
 import {
   mutationSecurityError,
@@ -66,6 +67,8 @@ function mutationClass(method: string, path: string): MutationClass {
   }
 
   if (normalizedMethod === 'POST' && (path === '/api/manage/view'
+      || path === '/api/manage/feedback/view'
+      || path === '/api/manage/feedback'
       || path === '/api/manage/slots'
       || path === '/api/manage/reschedule'
       || path === '/api/manage/cancel')) {
@@ -109,6 +112,8 @@ app.route('/api', f11GroupManagement);
 app.route('/api', f16Series);
 // F16-03 private appointment photos: cookie-authenticated, membership-checked on every read.
 app.route('/api', f16PrivateMedia);
+// F16-04 capability feedback, public reviews and member moderation.
+app.route('/api', f16Feedback);
 app.route('/api', f11Groups);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);

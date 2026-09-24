@@ -54,6 +54,9 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **Kabul:** Sahte/başka randevu kimliğiyle yorum oluşturulamaz. Özel geri bildirim onaylanmadan public olmaz; başka işletme yorumu değiştirilemez. Müşteri Yorumlar sekmesi gerçek yayınlanmış kayıtları gösterir; destek bağlantısı çalışır.
 - **Devir:** Yorum durumları, kötüye kullanım testleri ve müşteri/işletme iki yüzündeki gerçek kayıt kanıtı.
 - **v3 sıra:** Bu iş özel fotoğraf modülünü beklemez; doğrulanmış randevu/grup yetkisi yeterlidir. Public yorum yazımı S04 kaynak sınırları ve dar yetki modelini genişletir.
+- **Uygulanan model (2026-09-24):** Müşteri yalnız kendi yönetim bağlantısıyla (`/m#token`, token POST gövdesinde) ve yalnız `completed` randevu grubu için tek değerlendirme bırakır (1–5 puan, ≤1000 karakter yorum, açık yayın izni). Tahmin/başka randevu token'ı `MANAGEMENT_NOT_FOUND`; ikinci farklı gönderim `FEEDBACK_ALREADY_SUBMITTED`, birebir tekrar idempotent aynı sonuç döner. Public çağrılar ayrı ve dar `execute_public_feedback_operation` kapısından geçer: aynı gate secret, aynı S04 rate sınıfları (`read`/`manage_read`/`manage_change`), kapalı action listesi ve ayrı hata sözlüğü; booking kapısı genişletilmez.
+- **Moderasyon ve görünürlük:** Her geri bildirim `pending` başlar ve public değildir. Owner/manager yalnız müşteri izni olanı `published` yapabilir (DB kısıtı: yayında ⇒ izin var), her yorumu `hidden` yapabilir; işlem beklenen durum ile CAS'lıdır. Staff listeyi görür, moderasyon yapamaz. Public “Yorumlar” bölümü yalnız yayınlanabilir salonun yayınlanmış kayıtlarını, ortalama/adet ile ve maskeli adla (“Ayşe D.”) gösterir; telefon, e-posta, tam ad ve randevu ayrıntısı public'e çıkmaz. İşletme tarafı çalışma alanındaki “Yorumlar” sayfasıdır.
+- **Destek yolu:** F12-05'in salon/yönetim sayfalarındaki “Destek ve iletişim” bölümü korunur; yönetim sayfasında değerlendirme kartı bu bölümün hemen üstündedir.
 
 ## F16-05
 

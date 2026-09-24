@@ -349,6 +349,7 @@ const cookieMutations = [
   ['POST', '/api/private-media/cleanup'],
   ['DELETE', '/api/private-media/:mediaId'],
   ['POST', '/api/private-media/:mediaId/publish'],
+  ['POST', '/api/feedback/:feedbackId/moderate'],
 ];
 const exceptions = [
   '/api/public/business/:slug/book',
@@ -356,6 +357,7 @@ const exceptions = [
   '/api/public/business/:slug/group-book',
   '/api/public/booking/recover', '/api/public/booking/resolve',
   '/api/manage/view', '/api/manage/slots', '/api/manage/reschedule', '/api/manage/cancel',
+  '/api/manage/feedback/view', '/api/manage/feedback',
 ];
 const concrete = (path) => path.replace(':weekday', '1').replace(':slug', 'test-salon').replace(/:[A-Za-z]+/g, businessId);
 const csrfValue = 'C'.repeat(43);
