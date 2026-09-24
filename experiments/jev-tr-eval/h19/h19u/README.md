@@ -4,8 +4,7 @@
 - **Vaka üreticisi:** Claude.
 - **Kör ikinci okuyucu:** H19 sahibi.
 
-**Durum:** Vakalar donduruldu. **Hiçbir H19u Jev çağrısı yapılmadı.** Ölçüm kapısı kapalı: kör ikinci okuyucu
-cevapları commit'lenmeden `calistir.mjs` çalıştırılmaz (protokol §4).
+**Durum:** Vakalar donduruldu. **Hiçbir H19u Jev çağrısı yapılmadı.** Kör ikinci okuyucu kontrolü ölçümden önce tamamlandı: 15/16 uyum. Tek uyuşmazlık A16 (`BOTH` vs anahtar `D1_ONLY`); protokol gereği yeniden etiketlenmedi, `dusen.json` ile düşürüldü ve yerine vaka konmadı. Kör etiketler `1afdf35483b4d3c43c217c54de73a20f329158c5` commitinde mühürlü. Ölçüm kapısı açıktır.
 
 ```text
 vakalar.v0.1.json sha256 ba531c863b5ff27b382008dfd55d4f5d8f898c62b15bc8c9d6c652301a859914
