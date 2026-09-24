@@ -109,7 +109,7 @@ begin
     and j.group_id=v_group
     and (
       (j.channel='email' and j.provider<>'resend')
-      or (j.channel='sms' and (j.provider<>'netgsm' or j.provider_reference_id is null))
+      or (j.channel='sms' and (j.provider<>'twilio' or j.provider_reference_id is null))
       or j.recovery_id is not null
     );
   if v_bad<>0 then raise exception 'F16-02 provider/operator job mapping invalid'; end if;
