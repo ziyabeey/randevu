@@ -229,6 +229,9 @@ jobs:
       - name: Run H19 Kit M3.5 indexer-registry smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m35-indexers
+      - name: Run H19 Kit M3.5 call-edge contract smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35-call-edge
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
