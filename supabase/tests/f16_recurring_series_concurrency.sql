@@ -67,6 +67,7 @@ declare
   v_series_a uuid;
   v_series_b uuid;
   v_drain integer;
+  v_conn text;
 begin
   perform dblink_connect(
     'f1601_series_a',
