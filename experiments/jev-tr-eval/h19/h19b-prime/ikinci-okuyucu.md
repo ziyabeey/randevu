@@ -23,7 +23,7 @@ Fonksiyon: `public.maintain_notification_jobs` (`supabase/migrations/20260912123
    get diagnostics v_count = row_count;
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `strengthens` · eksen (no_effect ise): `—`
 
 ## Vaka 2
 
@@ -74,7 +74,7 @@ Fonksiyon: `public.update_business_public_profile` (`supabase/migrations/2026091
  end
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `weakens` · eksen (no_effect ise): `—`
 
 ## Vaka 3
 
@@ -92,7 +92,7 @@ Fonksiyon: `public.accept_business_invitation` (`supabase/migrations/20260914033
    for update;
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `weakens` · eksen (no_effect ise): `—`
 
 ## Vaka 4
 
@@ -122,7 +122,7 @@ Fonksiyon: `public.accept_business_invitation` (`supabase/migrations/20260914033
  
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `no_effect` · eksen (no_effect ise): `D0`
 
 ## Vaka 5
 
@@ -144,7 +144,7 @@ Fonksiyon: `public.create_public_appointment` (`supabase/migrations/202609111300
    begin
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `strengthens` · eksen (no_effect ise): `—`
 
 ## Vaka 6
 
@@ -162,7 +162,7 @@ Fonksiyon: `public.maintain_notification_jobs` (`supabase/migrations/20260913120
      );
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `no_effect` · eksen (no_effect ise): `D4`
 
 ## Vaka 7
 
@@ -183,7 +183,7 @@ Fonksiyon: `public.maintain_notification_jobs` (`supabase/migrations/20260911170
  
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `weakens` · eksen (no_effect ise): `—`
 
 ## Vaka 8
 
@@ -213,7 +213,7 @@ Fonksiyon: `public.cancel_public_managed_appointment` (`supabase/migrations/2026
        cancelled_at = now(),
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `weakens` · eksen (no_effect ise): `—`
 
 ## Vaka 9
 
@@ -232,7 +232,7 @@ Fonksiyon: `public.replace_business_hours_guarded` (`supabase/migrations/2026091
    end if;
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `strengthens` · eksen (no_effect ise): `—`
 
 ## Vaka 10
 
@@ -250,7 +250,7 @@ Fonksiyon: `public.set_staff_service_guarded` (`supabase/migrations/202609141117
    end if;
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `no_effect` · eksen (no_effect ise): `D3`
 
 ## Vaka 11
 
@@ -268,7 +268,7 @@ Fonksiyon: `public.restore_business_public_media_delete` (`supabase/migrations/2
      on conflict (business_id) do update set cover_media_id = excluded.cover_media_id;
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `no_effect` · eksen (no_effect ise): `D2`
 
 ## Vaka 12
 
@@ -285,7 +285,7 @@ Fonksiyon: `public.create_appointment` (`supabase/migrations/20260911120000_phas
  
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `no_effect` · eksen (no_effect ise): `D3`
 
 ## Vaka 13
 
@@ -303,7 +303,7 @@ Fonksiyon: `public.finish_business_public_media_delete` (`supabase/migrations/20
  end
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `no_effect` · eksen (no_effect ise): `D0`
 
 ## Vaka 14
 
@@ -324,7 +324,7 @@ Fonksiyon: `public.cancel_public_managed_appointment` (`supabase/migrations/2026
  
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `no_effect` · eksen (no_effect ise): `D4`
 
 ## Vaka 15
 
@@ -366,7 +366,7 @@ Fonksiyon: `public.update_service_guarded` (`supabase/migrations/20260914111500_
    returning * into v_row;
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `no_effect` · eksen (no_effect ise): `D2`
 
 ## Vaka 16
 
@@ -384,5 +384,5 @@ Fonksiyon: `public.update_service_guarded` (`supabase/migrations/20260914111500_
  
 ```
 
-D5: `________` · eksen (no_effect ise): `____`
+D5: `strengthens` · eksen (no_effect ise): `—`
 
