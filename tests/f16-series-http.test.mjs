@@ -153,3 +153,102 @@ await test('F16-01 series read derives tenant from the active membership',async(
     assert.deepEqual(rpcBody,{p_business_id:businessId,p_series_id:seriesId});
   }finally{globalThis.fetch=real;}
 });
+
+
+await test('F16-01 future scope preview is tenant-derived and bounded to an occurrence ordinal',async()=>{
+  const real=globalThis.fetch;
+  const seriesId='f1650000-0000-4000-8000-000000000001';
+  let rpcBody;
+  globalThis.fetch=baseFetch(async(url,init)=>{
+    assert.equal(url.pathname,'/rest/v1/rpc/preview_appointment_series_future');
+    rpcBody=JSON.parse(init.body);
+    return json({
+      seriesId,seriesVersion:2,action:'reschedule_future',fromOrdinal:2,
+      allAvailable:true,targets:[{groupId:'f1660000-0000-4000-8000-000000000002',ordinal:2}],
+      conflicts:[],skipped:[],
+    });
+  });
+  try{
+    const r=await app.request('http://localhost/api/bookings/series/'+seriesId+'/future/preview',{
+      method:'POST',
+      headers:{...headers(),Cookie:mutationCookie()},
+      body:JSON.stringify({
+        businessId:'attacker',fromOrdinal:2,action:'reschedule_future',
+        newStartsAt:'2026-10-08T07:00:00Z',
+      }),
+    },env);
+    assert.equal(r.status,200);
+    assert.equal(rpcBody.p_business_id,businessId);
+    assert.equal(rpcBody.p_series_id,seriesId);
+    assert.equal(rpcBody.p_from_ordinal,2);
+    assert.equal(rpcBody.p_action,'reschedule_future');
+    assert.equal(JSON.stringify(rpcBody).includes('attacker'),false);
+  }finally{globalThis.fetch=real;}
+});
+
+await test('F16-01 future reschedule and cancel bind one external idempotency key to the active tenant',async()=>{
+  const real=globalThis.fetch;
+  const seriesId='f1650000-0000-4000-8000-000000000001';
+  const seen=[];
+  globalThis.fetch=baseFetch(async(url,init)=>{
+    const body=JSON.parse(init.body);
+    seen.push({path:url.pathname,body});
+    return json({seriesId,businessId,version:url.pathname.includes('reschedule')?3:4,occurrences:[]});
+  });
+  try{
+    let r=await app.request('http://localhost/api/bookings/series/'+seriesId+'/future/reschedule',{
+      method:'POST',
+      headers:{...headers(),Cookie:mutationCookie(),'Idempotency-Key':'f1601-future-move-0001'},
+      body:JSON.stringify({
+        businessId:'attacker',expectedVersion:2,fromOrdinal:2,newStartsAt:'2026-10-08T07:00:00Z',
+      }),
+    },env);
+    assert.equal(r.status,200);
+
+    r=await app.request('http://localhost/api/bookings/series/'+seriesId+'/future/cancel',{
+      method:'POST',
+      headers:{...headers(),Cookie:mutationCookie(),'Idempotency-Key':'f1601-future-cancel-0001'},
+      body:JSON.stringify({
+        businessId:'attacker',expectedVersion:3,fromOrdinal:3,reason:'Plan değişti',
+      }),
+    },env);
+    assert.equal(r.status,200);
+
+    assert.equal(seen.length,2);
+    assert.equal(seen[0].path,'/rest/v1/rpc/reschedule_appointment_series_future');
+    assert.equal(seen[0].body.p_business_id,businessId);
+    assert.equal(seen[0].body.p_expected_version,2);
+    assert.equal(seen[0].body.p_from_ordinal,2);
+    assert.equal(seen[0].body.p_idempotency_key,'f1601-future-move-0001');
+    assert.equal(seen[1].path,'/rest/v1/rpc/cancel_appointment_series_future');
+    assert.equal(seen[1].body.p_business_id,businessId);
+    assert.equal(seen[1].body.p_expected_version,3);
+    assert.equal(seen[1].body.p_from_ordinal,3);
+    assert.equal(seen[1].body.p_reason,'Plan değişti');
+    assert.ok(seen.every((item)=>!JSON.stringify(item.body).includes('attacker')));
+  }finally{globalThis.fetch=real;}
+});
+
+await test('F16-01 future scope maps stale series and occurrence conflicts explicitly',async()=>{
+  const seriesId='f1650000-0000-4000-8000-000000000001';
+  for(const [message,status,code] of [
+    ['APPOINTMENT_SERIES_VERSION_CONFLICT',409,'APPOINTMENT_SERIES_VERSION_CONFLICT'],
+    ['SERIES_NO_FUTURE_OCCURRENCES',409,'SERIES_NO_FUTURE_OCCURRENCES'],
+    ['SERIES_FUTURE_OCCURRENCE_UNAVAILABLE:3:2026-10-15',409,'SERIES_FUTURE_OCCURRENCE_UNAVAILABLE'],
+  ]){
+    const real=globalThis.fetch;
+    globalThis.fetch=baseFetch(async(url)=>{
+      assert.equal(url.pathname,'/rest/v1/rpc/reschedule_appointment_series_future');
+      return json({message},400);
+    });
+    try{
+      const r=await app.request('http://localhost/api/bookings/series/'+seriesId+'/future/reschedule',{
+        method:'POST',
+        headers:{...headers(),Cookie:mutationCookie(),'Idempotency-Key':'f1601-future-error-0001'},
+        body:JSON.stringify({expectedVersion:2,fromOrdinal:2,newStartsAt:'2026-10-08T07:00:00Z'}),
+      },env);
+      assert.equal(r.status,status,message);
+      assert.equal((await r.json()).error?.code,code,message);
+    }finally{globalThis.fetch=real;}
+  }
+});
