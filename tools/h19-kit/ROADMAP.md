@@ -46,6 +46,22 @@ M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf3
 - [ ] experiment ledger updater
 - [ ] anti-pattern proposal guard
 
+## M3.5 — code intelligence graph
+
+- [x] external SCIP JSON ingestion contract
+- [x] normalized definition/reference/relationship graph
+- [x] reference blast-radius report
+- [x] test-code reference distinction
+- [x] explicit coverage-gap/unknown separation
+- [x] temporal-coupling companion evidence
+- [ ] compiler/indexer launcher adapters (scip-typescript, scip-python, rust-analyzer, etc.)
+- [ ] call-edge classifier where language/indexer evidence supports it
+- [ ] Tree-sitter fallback adapters for unsupported languages
+- [ ] Nx/Turborepo affected adapters
+- [ ] graph cache keyed by repository head + indexer version
+
+M3.5 deliberately does not convert reference count or D5 probability into severity. It emits evidence only.
+
 ## M4 — semantic probes
 
 Only after H19s is complete:
