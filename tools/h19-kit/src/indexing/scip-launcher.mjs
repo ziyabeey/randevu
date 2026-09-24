@@ -23,6 +23,7 @@ export function scipTypeScriptIndexer({
   version,
   command = 'scip-typescript',
   flags = [],
+  projects = [],
 } = {}) {
   if (!version) throw new TypeError('scip-typescript version required');
   return Object.freeze({
@@ -30,7 +31,8 @@ export function scipTypeScriptIndexer({
     version,
     command,
     flags: [...flags],
-    buildArgs: ({ output }) => ['index', '--output', output, ...flags],
+    projects: [...projects],
+    buildArgs: ({ output }) => ['index', '--output', output, ...flags, ...projects],
   });
 }
 
