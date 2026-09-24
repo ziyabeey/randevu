@@ -39,6 +39,7 @@ select pg_temp.h19_expect('payments.d2d5.snapshot_concurrency','payments','D2','
 select pg_temp.h19_expect('team.d0d1.invite_scope','team','D0','D1','prospective',2513,2518,2519);
 select pg_temp.h19_expect('catalog.d0d2.history_scope','catalog','D0','D2','prospective',2544,2551,2552);
 select pg_temp.h19_expect('public-booking.d0d4.slot_scope','public-booking','D0','D4','prospective',2557,2582,2583);
+select pg_temp.h19_expect('calendar.d4d5.range_revision','calendar','D4','D5','prospective',2597,2609,2610);
 
 \echo 'H19 Integrity Gate: D0xD1 tenant/idempotency'
 \ir h19_d0_d1_tenant_idempotency.sql
@@ -100,10 +101,14 @@ select pg_temp.h19_pass('catalog.d0d2.history_scope');
 \ir h19_public_booking_d0_d4_slot_scope.sql
 select pg_temp.h19_pass('public-booking.d0d4.slot_scope');
 
-select pg_temp.h19_assert_complete(15);
+\echo 'H19 Integrity Gate: F13 calendar D4xD5 range/revision coherence'
+\ir h19_calendar_d4_d5_range_revision.sql
+select pg_temp.h19_pass('calendar.d4d5.range_revision');
+
+select pg_temp.h19_assert_complete(16);
 
 do $h19done$
 begin
-  raise notice 'H19 INTEGRITY GATE PASS: 15/15 registered interaction invariants accepted';
+  raise notice 'H19 INTEGRITY GATE PASS: 16/16 registered interaction invariants accepted';
 end
 $h19done$;
