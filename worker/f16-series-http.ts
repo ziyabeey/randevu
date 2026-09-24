@@ -38,6 +38,17 @@ function parseCount(value: unknown) {
   const count = Number(value);
   return Number.isInteger(count) && count >= 2 && count <= SERIES_LIMIT ? count : null;
 }
+function parseOrdinal(value: unknown) {
+  const ordinal = Number(value);
+  return Number.isInteger(ordinal) && ordinal >= 1 && ordinal <= SERIES_LIMIT ? ordinal : null;
+}
+function parseVersion(value: unknown) {
+  const version = Number(value);
+  return Number.isInteger(version) && version >= 1 ? version : null;
+}
+function parseSeriesAction(value: unknown): 'reschedule_future' | 'cancel_future' | null {
+  return value === 'reschedule_future' || value === 'cancel_future' ? value : null;
+}
 function parseLines(value: unknown): SeriesLine[] | null {
   if (!Array.isArray(value) || value.length < 1 || value.length > GROUP_LINE_LIMIT) return null;
   const lines: SeriesLine[] = [];
@@ -67,6 +78,30 @@ function seriesError(message: string) {
   }
   if (message.includes('APPOINTMENT_SERIES_NOT_FOUND')) {
     return { status: 404 as const, code: 'APPOINTMENT_SERIES_NOT_FOUND', message: 'Tekrarlayan randevu serisi bulunamadı.' };
+  }
+  if (message.includes('APPOINTMENT_SERIES_VERSION_CONFLICT')) {
+    return { status: 409 as const, code: 'APPOINTMENT_SERIES_VERSION_CONFLICT', message: 'Seri başka bir işlemle değişti. Güncel halini açıp tekrar deneyin.' };
+  }
+  if (message.includes('SERIES_NO_FUTURE_OCCURRENCES')) {
+    return { status: 409 as const, code: 'SERIES_NO_FUTURE_OCCURRENCES', message: 'Bu kapsamda değiştirilebilir gelecek randevu kalmadı.' };
+  }
+  if (message.includes('SERIES_FUTURE_OCCURRENCE_UNAVAILABLE')) {
+    const match = /SERIES_FUTURE_OCCURRENCE_UNAVAILABLE:(\d+):(\d{4}-\d{2}-\d{2})/.exec(message);
+    return {
+      status: 409 as const,
+      code: 'SERIES_FUTURE_OCCURRENCE_UNAVAILABLE',
+      message: match ? `${match[2]} tarihli ${match[1]}. tekrar yeni saate taşınamıyor.` : 'Gelecek tekrarlardan biri yeni saate taşınamıyor.',
+    };
+  }
+  if (message.includes('BOOKING_GROUP_VERSION_CONFLICT')) {
+    return { status: 409 as const, code: 'BOOKING_GROUP_VERSION_CONFLICT', message: 'Serideki bir randevu başka bir işlemle değişti. Önizlemeyi yenileyin.' };
+  }
+  if (message.includes('BOOKING_GROUP_NOT_RESCHEDULABLE') || message.includes('BOOKING_GROUP_NOT_CANCELLABLE')) {
+    return { status: 409 as const, code: 'SERIES_OCCURRENCE_NOT_MUTABLE', message: 'Serideki bir randevu artık bu toplu işlemle değiştirilemez.' };
+  }
+  if (message.includes('INVALID_SERIES_ORDINAL') || message.includes('INVALID_SERIES_ACTION')
+      || message.includes('INVALID_SERIES_VERSION') || message.includes('CANCELLATION_REASON_TOO_LONG')) {
+    return { status: 400 as const, code: 'INVALID_SERIES_FUTURE_SCOPE', message: 'Seri değişiklik kapsamı geçerli değil.' };
   }
   if (message.includes('SERVICE_NOT_FOUND')) {
     return { status: 404 as const, code: 'SERVICE_NOT_FOUND', message: 'Seçilen hizmetlerden biri aktif değil veya bu işletmeye ait değil.' };
@@ -207,6 +242,118 @@ series.post('/bookings/series', async (context) => {
     return rpcFailure(context, result.status, result.data, 'Seri oluşturma sonucu şu anda doğrulanamıyor. Aynı işlem anahtarıyla tekrar deneyin.');
   }
   return context.json({ series: result.data }, 201);
+});
+
+
+series.post('/bookings/series/:seriesId/future/preview', async (context) => {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  const seriesId = context.req.param('seriesId');
+  const body = await readJson(context);
+  const fromOrdinal = parseOrdinal(body?.fromOrdinal);
+  const action = parseSeriesAction(body?.action);
+  const newStartsAt = body?.newStartsAt === null || body?.newStartsAt === undefined || body?.newStartsAt === ''
+    ? null : body.newStartsAt;
+  if (!isUuid(seriesId) || !fromOrdinal || !action
+      || (action === 'reschedule_future' && !isTimestamp(newStartsAt))
+      || (action === 'cancel_future' && newStartsAt !== null)) {
+    return context.json({
+      error: { code: 'INVALID_SERIES_FUTURE_SCOPE', message: 'Seri değişiklik kapsamı geçerli değil.' },
+    }, 400);
+  }
+
+  const result = await supabaseRequest<Record<string, unknown>>(
+    context.env,
+    'rest/v1/rpc/preview_appointment_series_future',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_business_id: access.membership.business_id,
+        p_series_id: seriesId,
+        p_from_ordinal: fromOrdinal,
+        p_action: action,
+        p_new_starts_at: newStartsAt,
+      }),
+    },
+    access.auth.accessToken,
+  );
+  if (!result.ok || !result.data) {
+    return rpcFailure(context, result.status, result.data, 'Seri değişiklik önizlemesi şu anda hazırlanamadı.');
+  }
+  return context.json({ preview: result.data });
+});
+
+series.post('/bookings/series/:seriesId/future/reschedule', async (context) => {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  const seriesId = context.req.param('seriesId');
+  const key = idempotencyKey(context.req.header('Idempotency-Key'));
+  const body = await readJson(context);
+  const expectedVersion = parseVersion(body?.expectedVersion);
+  const fromOrdinal = parseOrdinal(body?.fromOrdinal);
+  if (!isUuid(seriesId) || !key || !expectedVersion || !fromOrdinal || !isTimestamp(body?.newStartsAt)) {
+    return context.json({
+      error: { code: 'INVALID_SERIES_FUTURE_SCOPE', message: 'Seri taşıma bilgileri geçerli değil.' },
+    }, 400);
+  }
+
+  const result = await supabaseRequest<Record<string, unknown>>(
+    context.env,
+    'rest/v1/rpc/reschedule_appointment_series_future',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_business_id: access.membership.business_id,
+        p_series_id: seriesId,
+        p_idempotency_key: key,
+        p_expected_version: expectedVersion,
+        p_from_ordinal: fromOrdinal,
+        p_new_starts_at: body.newStartsAt,
+      }),
+    },
+    access.auth.accessToken,
+  );
+  if (!result.ok || !result.data) {
+    return rpcFailure(context, result.status, result.data, 'Gelecek seri randevuları şu anda taşınamadı.');
+  }
+  return context.json({ series: result.data });
+});
+
+series.post('/bookings/series/:seriesId/future/cancel', async (context) => {
+  const access = await requireStandardMember(context);
+  if ('error' in access) return access.error;
+  const seriesId = context.req.param('seriesId');
+  const key = idempotencyKey(context.req.header('Idempotency-Key'));
+  const body = await readJson(context);
+  const expectedVersion = parseVersion(body?.expectedVersion);
+  const fromOrdinal = parseOrdinal(body?.fromOrdinal);
+  const reason = cleanOptional(body?.reason, 500);
+  if (!isUuid(seriesId) || !key || !expectedVersion || !fromOrdinal || reason === undefined) {
+    return context.json({
+      error: { code: 'INVALID_SERIES_FUTURE_SCOPE', message: 'Seri iptal bilgileri geçerli değil.' },
+    }, 400);
+  }
+
+  const result = await supabaseRequest<Record<string, unknown>>(
+    context.env,
+    'rest/v1/rpc/cancel_appointment_series_future',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        p_business_id: access.membership.business_id,
+        p_series_id: seriesId,
+        p_idempotency_key: key,
+        p_expected_version: expectedVersion,
+        p_from_ordinal: fromOrdinal,
+        p_reason: reason,
+      }),
+    },
+    access.auth.accessToken,
+  );
+  if (!result.ok || !result.data) {
+    return rpcFailure(context, result.status, result.data, 'Gelecek seri randevuları şu anda iptal edilemedi.');
+  }
+  return context.json({ series: result.data });
 });
 
 series.get('/bookings/series/:seriesId', async (context) => {
