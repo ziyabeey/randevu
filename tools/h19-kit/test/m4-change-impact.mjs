@@ -8,6 +8,7 @@ import { analyzeChangeImpact, isLikelyTestPath } from '../src/impact/change-impa
 const method = 'typescript npm demo 1.0.0 packages/lib/src/a.ts/Foo#do().';
 
 assert.equal(isLikelyTestPath('apps/app/src/a.test.ts'), true);
+assert.equal(isLikelyTestPath('apps\\\\app\\\\src\\\\a.test.ts'), true);
 assert.equal(isLikelyTestPath('tests/bookings-http.mjs'), true);
 assert.equal(isLikelyTestPath('pkg/foo_test.go'), true);
 assert.equal(isLikelyTestPath('src/contest.ts'), false);
