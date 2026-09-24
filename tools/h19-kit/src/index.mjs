@@ -14,3 +14,8 @@ export * from './ledger/experiment-memory.mjs';
 export * from './mutations/registry.mjs';
 export * from './pipeline/scan.mjs';
 export * from './reporters/sarif.mjs';
+export * from './extractors/typescript-units.mjs';
+export * from './extractors/python-units.mjs';
+export * from './adapters/git-hotspots.mjs';
+export * from './adapters/history-cache.mjs';
+export * from './adapters/test-impact-store.mjs';
