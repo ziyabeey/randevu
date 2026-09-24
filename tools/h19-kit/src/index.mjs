@@ -19,3 +19,5 @@ export * from './extractors/python-units.mjs';
 export * from './adapters/git-hotspots.mjs';
 export * from './adapters/history-cache.mjs';
 export * from './adapters/test-impact-store.mjs';
+export * from './adapters/coverage-impact.mjs';
+export * from './repository/inventory.mjs';
