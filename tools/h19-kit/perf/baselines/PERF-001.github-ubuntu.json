@@ -1,0 +1,87 @@
+{
+  "baselineId": "PERF-001",
+  "source": {
+    "workflowRun": 36052113347,
+    "workflowRunNumber": 2862,
+    "headSha": "f87326d487a9c0611f9a28cdaf45bb57bd351f13",
+    "artifactId": 10830389866,
+    "artifactDigest": "sha256:6e31da125c85064fe566b857fc3f653255faa5da82d171a0eb8f5532b8bd4a92"
+  },
+  "report": {
+    "schemaVersion": 1,
+    "kind": "h19-performance-baseline",
+    "generatedAt": "2026-09-24T20:07:00.763Z",
+    "environment": {
+      "node": "v24.21.0",
+      "platform": "linux",
+      "arch": "x64",
+      "cpuCount": 4,
+      "cpuModel": "AMD EPYC 7763 64-Core Processor",
+      "totalMemoryBytes": 16766410752
+    },
+    "repository": {
+      "sourceFiles": 530,
+      "sourceBytes": 5430190,
+      "sourceLines": 130958,
+      "tsJsFiles": 329,
+      "tsJsLines": 66650
+    },
+    "measurements": {
+      "discovery": {
+        "sourceWalkMs": 12.164,
+        "sourceStatsMs": 101.628
+      },
+      "inventory": {
+        "filesScanned": 530,
+        "units": 6412,
+        "errors": 0,
+        "firstMs": 1020.185,
+        "repeatMedianMs": 644.556,
+        "repeatP95Ms": 694.997,
+        "filesPerSecond": 519.5,
+        "unitsPerSecond": 6285.1
+      },
+      "history": {
+        "coldMs": 256.776,
+        "warmHitMs": 7.08,
+        "coldCache": "miss",
+        "warmCache": "hit",
+        "warmSpeedup": 36.27,
+        "couplings": 888,
+        "hotspots": 767
+      },
+      "syntheticScale": {
+        "projects": 200,
+        "references": 5000,
+        "impactMedianMs": 6.07,
+        "impactP95Ms": 12.752,
+        "impactedPaths": 5000,
+        "candidateTests": 2500,
+        "discoveryMedianMs": 5.851,
+        "discoveryP95Ms": 8.304,
+        "hypotheses": 1767
+      },
+      "scipTypescript": {
+        "status": "measured",
+        "version": "0.4.0",
+        "sourceFiles": 329,
+        "sourceLines": 66650,
+        "coldMs": 8432.481,
+        "warmHitMs": 23.401,
+        "warmSpeedup": 360.35,
+        "indexBytes": 5181665,
+        "linesPerSecond": 7904
+      }
+    }
+  },
+  "interpretation": {
+    "thresholdsFrozen": false,
+    "primaryObservedBottleneck": "scip-typescript cold indexing",
+    "notes": [
+      "PERF-001 is the first observed baseline, not a pass/fail gate.",
+      "Warm project-shard cache is fast, but this does not establish incremental cost after a source change.",
+      "Memory use of the external SCIP child process is not yet measured.",
+      "Cross-repository scaling is not established."
+    ]
+  }
+}
