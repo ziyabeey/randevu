@@ -223,6 +223,9 @@ jobs:
       - name: Run H19 Kit M3.5 Tree-sitter fallback smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m35-tree-sitter
+      - name: Run H19 Kit M3.5 unit-symbol mapping smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35-unit-symbol
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
