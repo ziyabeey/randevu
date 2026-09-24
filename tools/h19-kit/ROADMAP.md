@@ -56,7 +56,7 @@ M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf3
 - [x] temporal-coupling companion evidence
 - [ ] compiler/indexer launcher adapters (scip-typescript, scip-python, rust-analyzer, etc.)
 - [ ] call-edge classifier where language/indexer evidence supports it
-- [ ] Tree-sitter fallback adapters for unsupported languages
+- [x] Tree-sitter fallback adapter contract + initial Go/Rust/C++ profiles
 - [x] generic changed-file → reverse-dependency affected resolver
 - [x] Nx project-graph / affected adapter
 - [x] Turborepo affected adapter
