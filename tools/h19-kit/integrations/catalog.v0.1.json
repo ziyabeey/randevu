@@ -3,6 +3,19 @@
   "policy": "No third-party source is bundled unless an exact-version license review explicitly allows it.",
   "integrations": [
     {
+      "id": "typescript6-parser",
+      "project": "@typescript/typescript6",
+      "version": "6.0.2",
+      "license": "Apache-2.0",
+      "mode": "direct-toolkit-dependency",
+      "use": [
+        "TypeScript/JavaScript AST semantic-unit extraction"
+      ],
+      "notes": [
+        "Installed only in tools/h19-kit; do not replace the host application's TypeScript 7 compiler."
+      ]
+    },
+    {
       "id": "tornhill-patterns",
       "project": "Tornhill",
       "license": "MIT OR Apache-2.0",

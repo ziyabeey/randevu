@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/test-impact.v1.schema.json",
+  "title": "H19 Test Impact Store v1",
+  "type": "object",
+  "required": [
+    "version",
+    "units"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "tests",
+          "provider"
+        ],
+        "properties": {
+          "tests": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "provider": {
+            "type": "string"
+          },
+          "sourceDigest": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

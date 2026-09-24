@@ -196,6 +196,12 @@ jobs:
       - name: Run H19 Kit foundation smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm run test:h19-kit
+      - name: Install H19 Kit M1 parser dependency
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm install --prefix tools/h19-kit --ignore-scripts --no-audit --no-fund --install-strategy=linked
+      - name: Run H19 Kit M1 repository-intelligence smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m1
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:

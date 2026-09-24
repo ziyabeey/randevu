@@ -20,3 +20,9 @@ package dependency is added, the exact release/tag license must be pinned and re
 
 A third-party project's **idea or public interface pattern** may inspire an independent H19 implementation.
 Third-party source code is only copied, modified, linked or redistributed after an exact-version license review.
+
+## Direct dependency introduced in M1
+
+- `@typescript/typescript6@6.0.2` — Microsoft TypeScript 6 compatibility API, Apache-2.0.
+  Used only by the TypeScript/JavaScript semantic-unit extractor inside the toolkit package.
+  It is installed under `tools/h19-kit/node_modules` during toolkit development/CI and is not added to the host application's root dependencies.

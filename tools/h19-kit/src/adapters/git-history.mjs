@@ -20,7 +20,7 @@ export async function temporalCoupling({
 } = {}) {
   const out = await git([
     'log', `--max-count=${maxCommits}`, `--since=${since}`,
-    '--format=__H19_COMMIT__', '--name-only', '--no-renames',
+    '--format=format:__H19_COMMIT__', '--name-only', '--no-renames',
   ], cwd);
 
   const commits = [];
