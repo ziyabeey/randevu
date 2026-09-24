@@ -340,28 +340,56 @@ try {
       return sendJson(response, 200, { series: seriesPayload() });
     }
     if (request.method === 'POST' && url.pathname === `/api/bookings/series/${SERIES}/future/preview`) {
-      assert.equal(body.action, 'reschedule_future');
-      assert.equal(body.fromOrdinal, 1);
-      assert.equal(typeof body.newStartsAt, 'string');
-      const start = new Date(body.newStartsAt);
-      const targets = recurringBookings.map((booking, index) => {
-        const target = new Date(start.getTime() + index * 7 * 24 * 60 * 60_000).toISOString();
-        return {
+      assert.ok(body.action === 'reschedule_future' || body.action === 'cancel_future');
+      if (body.action === 'reschedule_future') {
+        assert.equal(body.fromOrdinal, 1);
+        assert.equal(typeof body.newStartsAt, 'string');
+        const start = new Date(body.newStartsAt);
+        const targets = recurringBookings.map((booking, index) => {
+          const target = new Date(start.getTime() + index * 7 * 24 * 60 * 60_000).toISOString();
+          return {
+            groupId: booking.groupId,
+            ordinal: index + 1,
+            groupVersion: booking.version,
+            startsAt: booking.startsAt,
+            targetStartsAt: target,
+            localDate: target.slice(0, 10),
+            available: true,
+          };
+        });
+        return sendJson(response, 200, {
+          preview: {
+            seriesId: SERIES,
+            seriesVersion,
+            action: 'reschedule_future',
+            fromOrdinal: 1,
+            timezone: 'Europe/Istanbul',
+            allAvailable: true,
+            targets,
+            conflicts: [],
+            skipped: [],
+          },
+        });
+      }
+      assert.equal(body.fromOrdinal, 2);
+      assert.equal(body.newStartsAt, null);
+      const targets = recurringBookings
+        .filter((booking) => booking.seriesOrdinal >= 2 && booking.status !== 'cancelled')
+        .map((booking) => ({
           groupId: booking.groupId,
-          ordinal: index + 1,
+          ordinal: booking.seriesOrdinal,
           groupVersion: booking.version,
           startsAt: booking.startsAt,
-          targetStartsAt: target,
-          localDate: target.slice(0, 10),
+          targetStartsAt: null,
+          localDate: booking.startsAt.slice(0, 10),
           available: true,
-        };
-      });
+        }));
       return sendJson(response, 200, {
         preview: {
           seriesId: SERIES,
           seriesVersion,
-          action: 'reschedule_future',
-          fromOrdinal: 1,
+          action: 'cancel_future',
+          fromOrdinal: 2,
           timezone: 'Europe/Istanbul',
           allAvailable: true,
           targets,
@@ -378,6 +406,25 @@ try {
       seriesVersion += 1;
       recurringBookings = recurringBookings.map((_, index) =>
         seriesGroup(index + 1, new Date(start.getTime() + index * 7 * 24 * 60 * 60_000).toISOString()));
+      return sendJson(response, 200, { series: seriesPayload() });
+    }
+    if (request.method === 'POST' && url.pathname === `/api/bookings/series/${SERIES}/future/cancel`) {
+      assert.ok(request.headers['idempotency-key'], 'F16-01 future cancel omitted Idempotency-Key');
+      assert.equal(body.expectedVersion, seriesVersion);
+      assert.equal(body.fromOrdinal, 2);
+      assert.equal(body.reason, 'Plan değişti');
+      seriesVersion += 1;
+      recurringBookings = recurringBookings.map((booking) => {
+        if (booking.seriesOrdinal < 2) return booking;
+        return {
+          ...booking,
+          status: 'cancelled',
+          version: seriesVersion,
+          canRescheduleGroup: false,
+          canCancelGroup: false,
+          lines: booking.lines.map((line) => ({ ...line, status: 'cancelled' })),
+        };
+      });
       return sendJson(response, 200, { series: seriesPayload() });
     }
     if (request.method === 'GET' && url.pathname === '/api/bookings/groups') {
@@ -495,10 +542,43 @@ try {
   );
   assert.equal(seriesVersion, 2, 'F16-01 browser fixture did not receive one series version bump');
 
+  // Re-open the series and prove the operator cancel-future path against the
+  // same candidate-bound production build. Ordinal 1 must stay scheduled.
+  await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.trim()==='Seri').click()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('TEKRARLAYAN SERİ') && document.body.innerText.includes('Seri sürümü')`),
+    'F16-01 series management surface did not reopen for future cancel',
+  );
+  assert.equal(await setControl('İşlem', 'cancel', 'select'), true, 'F16-01 future cancel selector missing');
+  assert.equal(await setControl('Başlangıç tekrarı', '2', 'select'), true, 'F16-01 future cancel ordinal selector missing');
+  const reasonSet = await page.evaluate(`(() => {
+    const label=[...document.querySelectorAll('label')].find((node)=>node.textContent.includes('İptal nedeni'));
+    const field=label?.querySelector('textarea');
+    if(!field) return false;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(field,'Plan değişti');
+    field.dispatchEvent(new Event('input',{bubbles:true}));
+    field.dispatchEvent(new Event('change',{bubbles:true}));
+    return true;
+  })()`);
+  assert.equal(reasonSet, true, 'F16-01 future cancel reason field missing');
+  await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.includes('Kapsamı önizle')).click()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes(${JSON.stringify(SERIES_GROUPS[1])}) && document.body.innerText.includes(${JSON.stringify(SERIES_GROUPS[2])}) && !document.body.innerText.includes(${JSON.stringify(SERIES_GROUPS[0])})`),
+    'F16-01 future cancel preview did not expose exactly ordinals 2-3',
+  );
+  await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.includes('Kapsamdaki randevuları iptal et')).click()`);
+  await waitFor(
+    () => page.evaluate(`document.body.innerText.includes('Seçilen tekrar ve sonraki uygun randevular atomik olarak iptal edildi.')`),
+    'F16-01 future cancel did not complete through the operator UI',
+  );
+  assert.equal(seriesVersion, 3, 'F16-01 future cancel did not bump the series version once');
+  assert.equal(recurringBookings[0].status, 'scheduled', 'F16-01 future cancel rewrote the preserved first occurrence');
+  assert.deepEqual(recurringBookings.slice(1).map((booking) => booking.status), ['cancelled', 'cancelled']);
+
   assert.deepEqual(page.diagnostics, []);
   page.close();
 
-  console.log('F16-01 production Chrome acceptance passed: weekly preview/create, exact future scope, atomic reschedule and 390px.');
+  console.log('F16-01 production Chrome acceptance passed: weekly preview/create, exact future scope, atomic reschedule/cancel and 390px.');
   console.log('F13-03 production-entry browser passed: src/main.tsx /app/bookings route requested BookingPage lazy chunk and rendered workspace UI.');
 } catch (error) {
   let diagnostics = '';
