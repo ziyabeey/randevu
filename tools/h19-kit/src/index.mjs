@@ -36,3 +36,4 @@ export * from './adapters/scip.mjs';\nexport * from './graph/symbol-graph.mjs';\
 export * from './indexing/graph-cache.mjs';
 export * from './adapters/tree-sitter.mjs';\nexport * from './extractors/tree-sitter-units.mjs';\nexport * from './extractors/tree-sitter-profiles.mjs';\nexport * from './impact/unit-symbol-map.mjs';
 export * from './impact/change-impact.mjs';
+export * from './discovery/coverage-discovery.mjs';
