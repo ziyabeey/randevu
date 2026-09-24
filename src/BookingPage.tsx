@@ -234,6 +234,9 @@ export default function BookingPage() {
   const [createSlotsBusy, setCreateSlotsBusy] = useState(false);
   const createSlotGeneration = useRef(0);
   const createSlotController = useRef<AbortController | null>(null);
+  const loadGeneration = useRef(0);
+  const loadController = useRef<AbortController | null>(null);
+  const workspaceGeneration = useRef(0);
   const [createKey, setCreateKey] = useState(commandKey);
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<'none' | 'daily' | 'weekly'>('none');
   const [recurrenceCount, setRecurrenceCount] = useState(2);
@@ -272,15 +275,23 @@ export default function BookingPage() {
   const [seriesTime, setSeriesTime] = useState('09:00');
   const [seriesReason, setSeriesReason] = useState('');
   const [seriesFuturePreview, setSeriesFuturePreview] = useState<SeriesFuturePreview | null>(null);
+  const seriesReadGeneration = useRef(0);
+  const seriesReadController = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    const generation = loadGeneration.current + 1;
+    loadGeneration.current = generation;
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
     setLoading(true);
     try {
       const [nextCatalog, nextSetup, nextBookings] = await Promise.all([
-        api<Catalog>('/api/catalog'),
-        api<Setup>('/api/availability/setup'),
-        api<{ bookings: BookingGroup[]; page: PageInfo }>('/api/bookings/groups?limit=25'),
+        api<Catalog>('/api/catalog', { signal: controller.signal }),
+        api<Setup>('/api/availability/setup', { signal: controller.signal }),
+        api<{ bookings: BookingGroup[]; page: PageInfo }>('/api/bookings/groups?limit=25', { signal: controller.signal }),
       ]);
+      if (controller.signal.aborted || generation !== loadGeneration.current) return;
       if (nextCatalog.membership.business_id !== activeBusinessId) {
         throw new Error('Randevu verileri güncel işletme bağlamıyla eşleşmiyor.');
       }
@@ -300,12 +311,57 @@ export default function BookingPage() {
         }));
       });
     } catch (error) {
+      if (controller.signal.aborted || generation !== loadGeneration.current) return;
       setNotice(error instanceof Error ? error.message : 'Randevu ekranı yüklenemedi.');
-    } finally { setLoading(false); }
+    } finally {
+      if (generation === loadGeneration.current) {
+        loadController.current = null;
+        setLoading(false);
+      }
+    }
   }, [activeBusinessId]);
 
-  useEffect(() => { void load(); }, [load, scopeEpoch]);
-  useEffect(() => () => createSlotController.current?.abort(), []);
+  useEffect(() => {
+    workspaceGeneration.current += 1;
+
+    createSlotGeneration.current += 1;
+    createSlotController.current?.abort();
+    createSlotController.current = null;
+
+    seriesReadGeneration.current += 1;
+    seriesReadController.current?.abort();
+    seriesReadController.current = null;
+
+    mutationKeys.current.clear();
+    setCatalog(null);
+    setBookings([]);
+    setBookingsNextCursor(null);
+    setCreateSlots([]);
+    setSelectedCreateSlot(null);
+    setCreateSlotsBusy(false);
+    setSeriesPreview(null);
+    setSeriesPreviewBusy(false);
+    setDetailFor(null);
+    setRescheduleTarget(null);
+    setServiceTarget(null);
+    setLineScheduleTarget(null);
+    setEventsFor(null);
+    setEvents([]);
+    setSeriesFor(null);
+    setSeriesDetail(null);
+    setSeriesFuturePreview(null);
+    setBusy(false);
+    void load();
+  }, [load, scopeEpoch]);
+
+  useEffect(() => () => {
+    loadGeneration.current += 1;
+    loadController.current?.abort();
+    createSlotGeneration.current += 1;
+    createSlotController.current?.abort();
+    seriesReadGeneration.current += 1;
+    seriesReadController.current?.abort();
+  }, []);
 
   const activeServices = useMemo(() => catalog?.services.filter((item) => item.active) ?? [], [catalog]);
   const editableServices = activeServices;
@@ -331,6 +387,26 @@ export default function BookingPage() {
     const ids = new Set(catalog.assignments.filter((item) => item.active && item.service_id === line.serviceId).map((item) => item.staff_id));
     return activeStaff.filter((person) => ids.has(person.id));
   }, [activeStaff, catalog, lineScheduleTarget]);
+
+  function beginSeriesRead() {
+    const generation = seriesReadGeneration.current + 1;
+    seriesReadGeneration.current = generation;
+    seriesReadController.current?.abort();
+    const controller = new AbortController();
+    seriesReadController.current = controller;
+    return { generation, controller };
+  }
+
+  function seriesReadIsCurrent(generation: number, controller: AbortController) {
+    return !controller.signal.aborted && generation === seriesReadGeneration.current;
+  }
+
+  function invalidateSeriesRead() {
+    seriesReadGeneration.current += 1;
+    seriesReadController.current?.abort();
+    seriesReadController.current = null;
+    setSeriesPreviewBusy(false);
+  }
 
   function stableMutationKey(fingerprint: string) {
     let key = mutationKeys.current.get(fingerprint);
@@ -465,10 +541,12 @@ export default function BookingPage() {
 
   async function previewSeriesCreate() {
     if (!selectedCreateSlot || recurrenceFrequency === 'none') return;
+    const { generation, controller } = beginSeriesRead();
     setSeriesPreviewBusy(true); setNotice(''); setSeriesPreview(null);
     try {
       const result = await api<{ preview: SeriesPreview }>('/api/bookings/series/preview', {
         method: 'POST',
+        signal: controller.signal,
         body: JSON.stringify({
           lines: createLines.map((line) => ({
             serviceId: line.serviceId,
@@ -479,17 +557,25 @@ export default function BookingPage() {
           count: recurrenceCount,
         }),
       });
+      if (!seriesReadIsCurrent(generation, controller)) return;
       setSeriesPreview(result.preview);
       setNotice(result.preview.allAvailable
         ? `${result.preview.occurrenceCount} tekrarın tamamı uygun.`
         : 'Serideki en az bir tekrar uygun değil. Tarih veya saati değiştirin.');
     } catch (error) {
+      if (!seriesReadIsCurrent(generation, controller)) return;
       setNotice(error instanceof Error ? error.message : 'Seri önizlemesi hazırlanamadı.');
-    } finally { setSeriesPreviewBusy(false); }
+    } finally {
+      if (generation === seriesReadGeneration.current) {
+        seriesReadController.current = null;
+        setSeriesPreviewBusy(false);
+      }
+    }
   }
 
   async function createBooking() {
     if (!selectedCreateSlot || !createLines.length) return;
+    const scopeGeneration = workspaceGeneration.current;
     if (recurrenceFrequency !== 'none' && (!seriesPreview || !seriesPreview.allAvailable)) {
       setNotice('Seriyi oluşturmadan önce tüm tekrarları önizleyin.');
       return;
@@ -523,6 +609,7 @@ export default function BookingPage() {
         });
         setNotice(`${recurrenceCount} randevuluk seri atomik olarak oluşturuldu.`);
       }
+      if (scopeGeneration !== workspaceGeneration.current) return;
       setCustomerName(''); setCustomerPhone(''); setCustomerEmail(''); setNotes('');
       const firstService = activeServices[0]?.id ?? '';
       setCreateLines([{ key: commandKey(), serviceId: firstService, staffId: 'any' }]);
@@ -708,6 +795,7 @@ export default function BookingPage() {
 
   async function openSeriesScope(booking: BookingGroup) {
     if (!booking.seriesId || !booking.seriesOrdinal) return;
+    const { generation, controller } = beginSeriesRead();
     setDetailFor(null);
     setSeriesFor(booking);
     setSeriesDetail(null);
@@ -719,13 +807,25 @@ export default function BookingPage() {
     setSeriesReason('');
     setBusy(true); setNotice('');
     try {
-      const result = await api<{ series: SeriesDetail }>(`/api/bookings/series/${booking.seriesId}`);
+      const result = await api<{ series: SeriesDetail }>(`/api/bookings/series/${booking.seriesId}`, {
+        signal: controller.signal,
+      });
+      if (!seriesReadIsCurrent(generation, controller)) return;
+      if (result.series.businessId !== activeBusinessId) {
+        throw new Error('Seri verileri güncel işletme bağlamıyla eşleşmiyor.');
+      }
       setSeriesDetail(result.series);
       setSeriesFromOrdinal(Math.max(1, booking.seriesOrdinal));
     } catch (error) {
+      if (!seriesReadIsCurrent(generation, controller)) return;
       setSeriesFor(null);
       setNotice(error instanceof Error ? error.message : 'Seri bilgisi okunamadı.');
-    } finally { setBusy(false); }
+    } finally {
+      if (generation === seriesReadGeneration.current) {
+        seriesReadController.current = null;
+        setBusy(false);
+      }
+    }
   }
 
   function seriesNewStartsAt() {
@@ -735,13 +835,16 @@ export default function BookingPage() {
 
   async function previewSeriesFutureScope() {
     if (!seriesFor?.seriesId || !seriesDetail) return;
+    const requestedSeriesId = seriesFor.seriesId;
+    const { generation, controller } = beginSeriesRead();
     setBusy(true); setNotice(''); setSeriesFuturePreview(null);
     try {
       const newStartsAt = seriesNewStartsAt();
       const result = await api<{ preview: SeriesFuturePreview }>(
-        `/api/bookings/series/${seriesFor.seriesId}/future/preview`,
+        `/api/bookings/series/${requestedSeriesId}/future/preview`,
         {
           method: 'POST',
+          signal: controller.signal,
           body: JSON.stringify({
             fromOrdinal: seriesFromOrdinal,
             action: seriesAction === 'reschedule' ? 'reschedule_future' : 'cancel_future',
@@ -749,6 +852,10 @@ export default function BookingPage() {
           }),
         },
       );
+      if (!seriesReadIsCurrent(generation, controller)) return;
+      if (result.preview.seriesId !== requestedSeriesId) {
+        throw new Error('Seri kapsamı güncel randevu serisiyle eşleşmiyor.');
+      }
       setSeriesFuturePreview(result.preview);
       const mutable = result.preview.targets.length;
       const skipped = result.preview.skipped.length;
@@ -756,13 +863,20 @@ export default function BookingPage() {
         ? `${mutable} gelecek randevu kapsamda${skipped ? `, ${skipped} geçmiş/kapalı kayıt korunacak` : ''}.`
         : `Kapsamda ${result.preview.conflicts.length} çakışma var; işlem uygulanmayacak.`);
     } catch (error) {
+      if (!seriesReadIsCurrent(generation, controller)) return;
       setNotice(error instanceof Error ? error.message : 'Seri kapsamı önizlenemedi.');
-    } finally { setBusy(false); }
+    } finally {
+      if (generation === seriesReadGeneration.current) {
+        seriesReadController.current = null;
+        setBusy(false);
+      }
+    }
   }
 
   async function commitSeriesFutureScope() {
     if (!seriesFor?.seriesId || !seriesDetail || !seriesFuturePreview
         || !seriesFuturePreview.targets.length || !seriesFuturePreview.allAvailable) return;
+    const scopeGeneration = workspaceGeneration.current;
     const newStartsAt = seriesAction === 'reschedule' ? seriesNewStartsAt() : null;
     const fingerprint = [
       'series-future',seriesFor.seriesId,seriesDetail.version,seriesAction,
@@ -792,6 +906,7 @@ export default function BookingPage() {
           }),
         });
       }
+      if (scopeGeneration !== workspaceGeneration.current) return;
       mutationKeys.current.delete(fingerprint);
       setSeriesFor(null); setSeriesDetail(null); setSeriesFuturePreview(null);
       await load();
