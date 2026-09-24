@@ -10,6 +10,7 @@ export type WorkspacePage =
   | 'setup'
   | 'team'
   | 'public-booking'
+  | 'feedback'
   | 'mobile-appointments'
   | 'mobile-tickets'
   | 'mobile-new'
@@ -54,6 +55,7 @@ const workspaceRoutes: Record<string, WorkspacePage> = {
   '/app/setup': 'setup',
   '/app/team': 'team',
   '/app/public-booking': 'public-booking',
+  '/app/feedback': 'feedback',
   '/app/mobile': 'mobile-appointments',
   '/app/mobile/': 'mobile-appointments',
   '/app/mobile/appointments': 'mobile-appointments',
