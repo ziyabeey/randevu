@@ -67,6 +67,7 @@ export function createMinimalTestSpec({
   hints = {},
   schemaVersion = 1,
 } = {}) {
+  if (schemaVersion !== 1) throw new Error('unsupported minimal test spec schemaVersion');
   if (!packet?.packetSha256) throw new TypeError('frozen M5 packet is required');
   if (!hypothesisId) throw new TypeError('hypothesisId is required');
 
