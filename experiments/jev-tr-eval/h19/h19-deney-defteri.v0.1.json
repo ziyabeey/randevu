@@ -167,10 +167,26 @@
     },
     {
       "id": "H19s",
-      "status": "open",
+      "status": "preregistered",
       "hypothesis": "Validated composite router reduces real System Two work in shadow PR traffic while preserving actionable D5 recall.",
       "unlock_condition": "H19u passed all preregistered gates.",
-      "terminal_for_current_adapter": true
+      "terminal_for_current_adapter": true,
+      "protocol_commit": "c9b6fcaca9a83d7cc8fa1ea162f6e4dd90fd6b59",
+      "sampling": {
+        "min_eligible_units": 150,
+        "min_merged_prs": 25,
+        "consecutive": true,
+        "label_independent_stop_rule": true
+      },
+      "primary_gates": [
+        "S1 safety",
+        "S2 D1/D5 mechanism",
+        "S3 System Two load",
+        "S4 total cost",
+        "S5 drift"
+      ],
+      "next_if_pass": "freeze Kepenk adapter v1 and package tool",
+      "next_if_fail": "keep router research-only; stop new synthetic suffix experiments for this adapter"
     }
   ],
   "invariant_rules": [
