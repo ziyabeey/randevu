@@ -1,5 +1,9 @@
-import * as ts from 'typescript';
+import * as tsModule from 'typescript';
 import { createHash } from 'node:crypto';
+
+// TypeScript 7's Node ESM interop exposes the API under `default` in this runtime.
+// Older TypeScript releases expose the namespace directly. Normalize both shapes.
+const ts = tsModule.default ?? tsModule;
 
 const sha = (text) => createHash('sha256').update(String(text)).digest('hex');
 
