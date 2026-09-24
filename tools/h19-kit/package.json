@@ -19,7 +19,8 @@
     "test:m35-graph-cache": "node test/m35-graph-cache.mjs",
     "test:m35-tree-sitter": "node test/m35-tree-sitter.mjs",
     "test:m35-unit-symbol": "node test/m35-unit-symbol-map.mjs",
-    "test:m35-indexers": "node test/m35-indexer-registry.mjs"
+    "test:m35-indexers": "node test/m35-indexer-registry.mjs",
+    "test:m35-call-edge": "node test/m35-call-edge.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
