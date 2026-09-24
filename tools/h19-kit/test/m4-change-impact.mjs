@@ -3,9 +3,16 @@ import assert from 'node:assert/strict';
 import { SCIP_ROLES } from '../src/adapters/scip.mjs';
 import { buildSymbolGraph } from '../src/graph/symbol-graph.mjs';
 import { projectGraph } from '../src/impact/project-graph.mjs';
-import { analyzeChangeImpact } from '../src/impact/change-impact.mjs';
+import { analyzeChangeImpact, isLikelyTestPath } from '../src/impact/change-impact.mjs';
 
 const method = 'typescript npm demo 1.0.0 packages/lib/src/a.ts/Foo#do().';
+
+assert.equal(isLikelyTestPath('apps/app/src/a.test.ts'), true);
+assert.equal(isLikelyTestPath('tests/bookings-http.mjs'), true);
+assert.equal(isLikelyTestPath('pkg/foo_test.go'), true);
+assert.equal(isLikelyTestPath('src/contest.ts'), false);
+assert.equal(isLikelyTestPath('src/latest.ts'), false);
+assert.equal(isLikelyTestPath('src/foo.ts'), false);
 
 const symbols = buildSymbolGraph({
   documents: [{
