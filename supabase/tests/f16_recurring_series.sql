@@ -248,6 +248,159 @@ begin
 end
 $f16_idempotency_conflict$;
 
+
+-- Future-scope mutation preserves completed history and mutates only the
+-- still-manageable future occurrences. Series version is its own CAS identity.
+do $f16_future_scope$
+declare
+  v_series uuid:=current_setting('f1601.series_id')::uuid;
+  v_first_group uuid;
+  v_first_version integer;
+  v_preview jsonb;
+  v_move jsonb;
+  v_replay jsonb;
+  v_cancel jsonb;
+  v_bad integer;
+begin
+  select g.id,g.version into v_first_group,v_first_version
+  from public.appointment_groups g
+  where g.business_id='f1610000-0000-4000-8000-000000000001'
+    and g.series_id=v_series
+    and g.series_ordinal=1;
+
+  perform public.set_appointment_group_status(
+    'f1610000-0000-4000-8000-000000000001',
+    v_first_group,'f1601-series-first-confirm',v_first_version,'confirmed'
+  );
+  select g.version into v_first_version
+  from public.appointment_groups g
+  where g.business_id='f1610000-0000-4000-8000-000000000001'
+    and g.id=v_first_group;
+
+  perform public.set_appointment_group_status(
+    'f1610000-0000-4000-8000-000000000001',
+    v_first_group,'f1601-series-first-complete',v_first_version,'completed'
+  );
+
+  v_preview:=public.preview_appointment_series_future(
+    'f1610000-0000-4000-8000-000000000001',
+    v_series,1,'reschedule_future',
+    '2027-03-21 12:00 Europe/Berlin'::timestamptz
+  );
+  if (v_preview->>'allAvailable')::boolean is not true
+     or jsonb_array_length(v_preview->'targets')<>2
+     or jsonb_array_length(v_preview->'skipped')<>1 then
+    raise exception 'F16-01 future preview target set wrong: %',v_preview;
+  end if;
+  if not exists (
+    select 1 from jsonb_array_elements(v_preview->'skipped') x
+    where (x->>'ordinal')::integer=1 and x->>'reason'='not_mutable'
+  ) then
+    raise exception 'F16-01 completed occurrence was not preserved by preview: %',v_preview;
+  end if;
+  select count(*)::integer into v_bad
+  from jsonb_array_elements(v_preview->'targets') x
+  where (x->>'ordinal')::integer not in (2,3)
+     or (x->>'targetStartsAt')::timestamptz at time zone 'Europe/Berlin'::text
+        is null;
+  if v_bad<>0 then raise exception 'F16-01 future preview exposed wrong targets: %',v_preview; end if;
+  select count(*)::integer into v_bad
+  from jsonb_array_elements(v_preview->'targets') x
+  where ((x->>'targetStartsAt')::timestamptz at time zone 'Europe/Berlin')::time<>time '12:00';
+  if v_bad<>0 then raise exception 'F16-01 future preview drifted new local time: %',v_preview; end if;
+
+  v_move:=public.reschedule_appointment_series_future(
+    'f1610000-0000-4000-8000-000000000001',
+    v_series,'f1601-series-future-move',1,1,
+    '2027-03-21 12:00 Europe/Berlin'::timestamptz
+  );
+  if (v_move->>'version')::integer<>2 then
+    raise exception 'F16-01 future reschedule did not bump series version once: %',v_move;
+  end if;
+
+  -- The completed first occurrence stays at 10:00. Only ordinals 2-3 move.
+  select count(*)::integer into v_bad
+  from public.appointment_groups g
+  join public.appointments a
+    on a.business_id=g.business_id and a.group_id=g.id
+  where g.business_id='f1610000-0000-4000-8000-000000000001'
+    and g.series_id=v_series
+    and (
+      (g.series_ordinal=1 and (
+        a.status<>'completed'
+        or (a.starts_at at time zone 'Europe/Berlin')::time<>time '10:00'
+      ))
+      or
+      (g.series_ordinal in (2,3) and (
+        a.status not in ('scheduled','confirmed')
+        or (a.starts_at at time zone 'Europe/Berlin')::time<>time '12:00'
+      ))
+    );
+  if v_bad<>0 then raise exception 'F16-01 future reschedule rewrote protected history or missed future targets'; end if;
+
+  -- Exact replay returns the already-mutated series without another version bump.
+  v_replay:=public.reschedule_appointment_series_future(
+    'f1610000-0000-4000-8000-000000000001',
+    v_series,'f1601-series-future-move',1,1,
+    '2027-03-21 12:00 Europe/Berlin'::timestamptz
+  );
+  if (v_replay->>'version')::integer<>2 then
+    raise exception 'F16-01 future reschedule replay mutated series again: %',v_replay;
+  end if;
+  if (select count(*) from public.appointment_series_events
+      where business_id='f1610000-0000-4000-8000-000000000001'
+        and series_id=v_series and event_type='future_rescheduled')<>1 then
+    raise exception 'F16-01 future reschedule replay duplicated audit';
+  end if;
+
+  v_cancel:=public.cancel_appointment_series_future(
+    'f1610000-0000-4000-8000-000000000001',
+    v_series,'f1601-series-future-cancel',2,1,'Plan değişti'
+  );
+  if (v_cancel->>'version')::integer<>3 or v_cancel->>'status'<>'cancelled' then
+    raise exception 'F16-01 future cancel did not close the remaining series: %',v_cancel;
+  end if;
+
+  select count(*)::integer into v_bad
+  from public.appointment_groups g
+  join public.appointments a
+    on a.business_id=g.business_id and a.group_id=g.id
+  where g.business_id='f1610000-0000-4000-8000-000000000001'
+    and g.series_id=v_series
+    and (
+      (g.series_ordinal=1 and a.status<>'completed')
+      or (g.series_ordinal in (2,3) and a.status<>'cancelled')
+    );
+  if v_bad<>0 then raise exception 'F16-01 future cancel touched completed history or missed future groups'; end if;
+
+  if (select count(*) from public.appointment_series_events
+      where business_id='f1610000-0000-4000-8000-000000000001'
+        and series_id=v_series and event_type='future_cancelled')<>1 then
+    raise exception 'F16-01 future cancel audit missing';
+  end if;
+end
+$f16_future_scope$;
+
+-- Another tenant cannot inspect a future mutation scope either.
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000002',true);
+do $f16_cross_tenant_future$
+declare v_error text;
+begin
+  begin
+    perform public.preview_appointment_series_future(
+      'f1610000-0000-4000-8000-000000000001',
+      current_setting('f1601.series_id')::uuid,
+      1,'cancel_future',null
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('NOT_ALLOWED' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 foreign tenant could inspect future series scope: %',v_error;
+  end if;
+end
+$f16_cross_tenant_future$;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+
 -- Put one canonical group on the second occurrence of a different series intent.
 -- The candidate's first occurrence would be placeable; the second conflicts.
 do $f16_blocker$
