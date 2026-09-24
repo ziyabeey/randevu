@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 
 import {
   affectedProjects,
@@ -72,7 +72,6 @@ const nxGraph = await nxProjectGraph({
     const arg = args.find((x) => x.startsWith('--file='));
     assert.ok(arg);
     const file = arg.slice('--file='.length);
-    await mkdir(new URL('.', `file://${file}`), { recursive: true }).catch(() => {});
     await writeFile(file, JSON.stringify(nxRaw));
     return { stdout: '', stderr: '' };
   },
