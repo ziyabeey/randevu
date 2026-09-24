@@ -250,6 +250,51 @@ begin
 end
 $f16_replay_shape$;
 
+-- A committed replay must remain stable after its requested start has become
+-- historical. Seed the already-committed command mapping directly so this test
+-- stays deterministic regardless of the wall-clock date when CI runs.
+insert into public.appointment_series_commands(
+  business_id,idempotency_key,command,request_hash,series_id,created_by
+) values (
+  'f1610000-0000-4000-8000-000000000001',
+  'f1601-series-expired-replay',
+  'create_series',
+  md5(jsonb_build_object(
+    'customerName','Seri Müşteri',
+    'customerPhone','05551601001',
+    'customerEmail',public.f10_normalize_customer_email(''),
+    'lines','[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+    'startsAt','2026-01-21 10:00 Europe/Berlin'::timestamptz,
+    'frequency','weekly',
+    'count',3,
+    'notes','DST seri'
+  )::text),
+  current_setting('f1601.series_id')::uuid,
+  'f1600000-0000-4000-8000-000000000001'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $f16_historical_replay$
+declare v jsonb;
+begin
+  v:=public.create_appointment_series(
+    'f1610000-0000-4000-8000-000000000001',
+    'f1601-series-expired-replay',
+    'Seri Müşteri',
+    '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+    '2026-01-21 10:00 Europe/Berlin'::timestamptz,
+    'weekly',3,
+    '05551601001',null,'DST seri'
+  );
+  if v->>'seriesId'<>current_setting('f1601.series_id') then
+    raise exception 'F16-01 historical replay lost stored series identity: %',v;
+  end if;
+end
+$f16_historical_replay$;
+reset role;
+
 -- Reusing the external key with a different cadence is a conflict.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
