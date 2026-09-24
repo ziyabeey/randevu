@@ -4,8 +4,7 @@
 - **Vaka üreticisi:** Claude.
 - **Kör ikinci okuyucu:** H19 sahibi.
 
-**Durum:** Vakalar donduruldu. **Hiçbir H19t Jev çağrısı yapılmadı.** Ölçüm kapısı kapalı: kör ikinci okuyucu
-cevapları commit'lenmeden `calistir.mjs` çalıştırılmaz (protokol §4).
+**Durum:** Vakalar donduruldu. **Hiçbir H19t Jev çağrısı yapılmadı.** İlk seed-1924 kör örnekleminin vaka kimlikleri üretici tarafından taslak aşamasında görülmüş olduğundan gate için kullanılmadı. H19 sahibi frozen setten ilk örneklemi tamamen dışlayarak bağımsız 16 vaka seçti; cevaplar `39c8bb569292d48f1a3568166d8540ab4d9ddb0c` commitinde etiketler açılmadan mühürlendi ve frozen etiketlerle 16/16 tam uyuştu. 0 vaka düştü; ölçüm kapısı açıktır.
 
 ```text
 vakalar.v0.1.json sha256 60877b5f370e709f8b41aaab5858791f9aa64c6983ac73cfbf6f58f39999990a
