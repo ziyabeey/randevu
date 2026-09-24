@@ -74,14 +74,18 @@ export function secretBundle(env, generated = {}) {
     COOKIE_SECURE: 'true', RESEND_API_KEY: env.RESEND_API_KEY,
     NOTIFICATION_FROM_EMAIL: env.NOTIFICATION_FROM_EMAIL, PUBLIC_APP_ORIGIN: env.STAGING_APP_ORIGIN,
   };
-  const twilioNames = ['TWILLO_ID', 'TWILLO_SECRET_API', 'TWILIO_VERIFY_SERVICE_SID'];
-  const twilioValues = twilioNames.map((name) => typeof env[name] === 'string' ? env[name].trim() : '');
-  const configuredTwilio = twilioValues.filter(Boolean).length;
-  if (configuredTwilio !== 0 && configuredTwilio !== twilioNames.length) {
-    throw new Error('Twilio Verify Worker settings must be supplied as a complete tuple');
+  const zernioNames = ['ZERNIO_API_KEY', 'ZERNIO_WHATSAPP_ACCOUNT_ID', 'ZERNIO_WHATSAPP_TEMPLATE_NAME'];
+  const zernioValues = zernioNames.map((name) => typeof env[name] === 'string' ? env[name].trim() : '');
+  const configuredZernio = zernioValues.filter(Boolean).length;
+  if (configuredZernio !== 0 && configuredZernio !== zernioNames.length) {
+    throw new Error('Zernio WhatsApp Worker settings must be supplied as a complete tuple');
   }
-  if (configuredTwilio === twilioNames.length) {
-    for (let index = 0; index < twilioNames.length; index += 1) payload[twilioNames[index]] = twilioValues[index];
+  if (configuredZernio === zernioNames.length) {
+    for (let index = 0; index < zernioNames.length; index += 1) payload[zernioNames[index]] = zernioValues[index];
+    payload.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE =
+      typeof env.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE === 'string' && env.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE.trim()
+        ? env.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE.trim()
+        : 'tr';
   }
   for (const name of KEY_NAMES) if (Object.hasOwn(generated, name)) payload[name] = generated[name];
   if (Object.values(payload).some((value) => typeof value !== 'string' || !value)) throw new Error('Worker configuration incomplete');
