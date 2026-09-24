@@ -226,28 +226,36 @@ export async function runPerformanceBaseline({
     };
 
     if (scipVersion) {
-      const artifactCache = new ArtifactCache(path.join(temp, 'scip-artifacts'));
-      const configs = ['package.json','tsconfig.json','tsconfig.app.json','tsconfig.worker.json','tsconfig.node.json'];
-      const availableConfigs = [];
-      for (const config of configs) {
+      const baseConfigCandidates = ['package.json', 'package-lock.json', 'tsconfig.json'];
+      const baseConfigFiles = [];
+      for (const config of baseConfigCandidates) {
         try {
           await stat(path.join(repoRoot, config));
-          availableConfigs.push(config);
+          baseConfigFiles.push(config);
         } catch (error) {
           if (error?.code !== 'ENOENT') throw error;
         }
       }
 
+      const actualIndexedFiles = tsProjectsTimed.value.indexedFiles.length
+        ? [...tsProjectsTimed.value.indexedFiles]
+        : [...statsTimed.value.tsJs];
+      const actualIndexedStats = await sourceStats(repoRoot, actualIndexedFiles);
+      const allProjectConfigs = [...new Set([
+        ...baseConfigFiles,
+        ...tsProjectsTimed.value.shards.flatMap((shard) => shard.configFiles),
+      ])].sort();
+
       const indexer = scipTypeScriptIndexer({
         version: scipVersion,
         command: 'scip-typescript',
       });
-
+      const artifactCache = new ArtifactCache(path.join(temp, 'scip-artifacts'));
       const params = {
         cwd: repoRoot,
         projectRoot: '.',
-        sourceFiles: statsTimed.value.tsJs,
-        configFiles: availableConfigs,
+        sourceFiles: actualIndexedFiles,
+        configFiles: allProjectConfigs,
         dependencySurfaces: {},
         indexer,
         cache: artifactCache,
@@ -267,15 +275,8 @@ export async function runPerformanceBaseline({
         throw new Error('SCIP repeat cache-miss benchmark unexpectedly hit cache');
       }
 
-      let singleFileChange = {
-        status: 'not-measured',
-        reason: 'no mutable TypeScript/JavaScript source file found',
-      };
-      const mutationTarget = statsTimed.value.tsJs.find((file) =>
-        /\.(?:ts|tsx|js|jsx|mjs|cjs)$/i.test(file) && !/\.d\.ts$/i.test(file));
-
-      if (mutationTarget) {
-        const mutationRoot = path.join(temp, 'mutation-repo');
+      const prepareMutationClone = async (name, target) => {
+        const mutationRoot = path.join(temp, name);
         const clone = spawnSync('git', ['clone', '--shared', '--quiet', repoRoot, mutationRoot], {
           cwd: temp,
           encoding: 'utf8',
@@ -283,30 +284,35 @@ export async function runPerformanceBaseline({
         if (clone.status !== 0) {
           throw new Error(`local mutation clone failed: ${String(clone.stderr || clone.stdout).trim()}`);
         }
-
         try {
           await stat(path.join(repoRoot, 'node_modules'));
           await symlink(path.join(repoRoot, 'node_modules'), path.join(mutationRoot, 'node_modules'), 'dir');
         } catch (error) {
           if (error?.code !== 'ENOENT') throw error;
         }
-
         await appendFile(
-          path.join(mutationRoot, mutationTarget),
+          path.join(mutationRoot, target),
           '\n// h19-performance-single-file-change\n',
         );
+        return mutationRoot;
+      };
 
+      let singleFileChange = {
+        status: 'not-measured',
+        reason: 'no mutable indexed TypeScript/JavaScript source file found',
+      };
+      const mutationTarget = actualIndexedFiles.find((file) =>
+        /\.(?:ts|tsx|js|jsx|mjs|cjs)$/i.test(file) && !/\.d\.ts$/i.test(file));
+
+      if (mutationTarget) {
+        const mutationRoot = await prepareMutationClone('mutation-indexed-repo', mutationTarget);
         const mutationRun = await timed(() => indexProject({
+          ...params,
           cwd: mutationRoot,
-          projectRoot: '.',
-          sourceFiles: statsTimed.value.tsJs,
-          configFiles: availableConfigs,
-          dependencySurfaces: {},
-          indexer,
-          cache: new ArtifactCache(path.join(temp, 'scip-mutation-artifacts')),
+          cache: artifactCache,
         }));
         if (mutationRun.value.cache !== 'miss') {
-          throw new Error('single-file-change benchmark unexpectedly hit cache');
+          throw new Error('indexed single-file-change benchmark unexpectedly hit cache');
         }
 
         singleFileChange = {
@@ -318,20 +324,151 @@ export async function runPerformanceBaseline({
         };
       }
 
+      let unindexedFileChange = {
+        status: 'not-measured',
+        reason: 'no TypeScript/JavaScript file outside the SCIP project graph',
+      };
+      const unindexedTarget = scipUnindexedTsJs.find((file) =>
+        /\.(?:ts|tsx|js|jsx|mjs|cjs)$/i.test(file) && !/\.d\.ts$/i.test(file));
+      if (unindexedTarget) {
+        const mutationRoot = await prepareMutationClone('mutation-unindexed-repo', unindexedTarget);
+        const run = await timed(() => indexProject({
+          ...params,
+          cwd: mutationRoot,
+          cache: artifactCache,
+        }));
+        if (run.value.cache !== 'hit') {
+          throw new Error('SCIP-unindexed file unexpectedly invalidated project cache');
+        }
+        unindexedFileChange = {
+          status: 'measured',
+          path: unindexedTarget,
+          cache: run.value.cache,
+          wallMs: run.wallMs,
+        };
+      }
+
+      const shardCache = new ArtifactCache(path.join(temp, 'scip-shard-artifacts'));
+      const shardRows = [];
+      const shardParams = new Map();
+
+      for (const shard of tsProjectsTimed.value.shards) {
+        const stats = await sourceStats(repoRoot, shard.sourceFiles);
+        const shardIndexer = scipTypeScriptIndexer({
+          version: scipVersion,
+          command: 'scip-typescript',
+          projects: [shard.configPath],
+        });
+        const shardConfigFiles = [...new Set([
+          ...baseConfigFiles,
+          ...shard.configFiles,
+        ])].sort();
+        const shardParam = {
+          cwd: repoRoot,
+          projectRoot: '.',
+          sourceFiles: [...shard.sourceFiles],
+          configFiles: shardConfigFiles,
+          dependencySurfaces: {},
+          indexer: shardIndexer,
+          cache: shardCache,
+        };
+        shardParams.set(shard.id, shardParam);
+
+        const shardCold = await timed(() => indexProject(shardParam));
+        if (shardCold.value.cache !== 'miss') {
+          throw new Error(`SCIP shard cold benchmark unexpectedly hit cache: ${shard.id}`);
+        }
+        const shardStat = await stat(shardCold.value.indexFile);
+        const shardWarm = await timed(() => indexProject(shardParam));
+        if (shardWarm.value.cache !== 'hit') {
+          throw new Error(`SCIP shard warm benchmark unexpectedly missed cache: ${shard.id}`);
+        }
+
+        shardRows.push({
+          id: shard.id,
+          configPath: shard.configPath,
+          sourceFiles: stats.files,
+          sourceLines: stats.lines,
+          coldMs: shardCold.wallMs,
+          warmHitMs: shardWarm.wallMs,
+          indexBytes: shardStat.size,
+          files: [...shard.sourceFiles],
+        });
+      }
+
+      const shardColdTotalMs = round(shardRows.reduce((sum, row) => sum + row.coldMs, 0));
+      const shardWarmTotalMs = round(shardRows.reduce((sum, row) => sum + row.warmHitMs, 0));
+      const largestShard = [...shardRows].sort(
+        (a, b) => b.sourceLines - a.sourceLines || a.id.localeCompare(b.id),
+      )[0] ?? null;
+
+      let shardedSingleFileChange = {
+        status: 'not-measured',
+        reason: 'no TypeScript project shard available',
+      };
+      if (largestShard) {
+        const target = largestShard.files.find((file) =>
+          /\.(?:ts|tsx|js|jsx|mjs|cjs)$/i.test(file) && !/\.d\.ts$/i.test(file));
+        if (target) {
+          const mutationRoot = await prepareMutationClone('mutation-sharded-repo', target);
+          const perShard = [];
+          const started = performance.now();
+          for (const shard of tsProjectsTimed.value.shards) {
+            const original = shardParams.get(shard.id);
+            const run = await timed(() => indexProject({
+              ...original,
+              cwd: mutationRoot,
+            }));
+            perShard.push({
+              id: shard.id,
+              cache: run.value.cache,
+              wallMs: run.wallMs,
+            });
+          }
+          const totalMs = round(performance.now() - started);
+          const misses = perShard.filter((row) => row.cache === 'miss').length;
+          const hits = perShard.filter((row) => row.cache === 'hit').length;
+          shardedSingleFileChange = {
+            status: 'measured',
+            path: target,
+            owningShard: largestShard.id,
+            totalMs,
+            misses,
+            hits,
+            perShard,
+            vsMonolithicChangedFileSpeedup: singleFileChange.status === 'measured' && totalMs > 0
+              ? round(singleFileChange.reindexMs / totalMs, 2)
+              : null,
+          };
+        }
+      }
+
       scip = {
         status: 'measured',
         version: scipVersion,
-        sourceFiles: statsTimed.value.tsJsFiles,
-        sourceLines: statsTimed.value.tsJsLines,
+        repositoryTsJsFiles: statsTimed.value.tsJsFiles,
+        repositoryTsJsLines: statsTimed.value.tsJsLines,
+        sourceFiles: actualIndexedStats.files,
+        sourceLines: actualIndexedStats.lines,
+        unindexedTsJsFiles: scipUnindexedTsJs.length,
         firstIndexMs: cold.wallMs,
         repeatH19CacheMissMs: repeatMiss.wallMs,
         exactContentWarmHitMs: warm.wallMs,
         exactContentWarmSpeedup: warm.wallMs > 0 ? round(cold.wallMs / warm.wallMs, 2) : null,
         indexBytes: indexStat.size,
         firstIndexLinesPerSecond: cold.wallMs > 0
-          ? round(statsTimed.value.tsJsLines / (cold.wallMs / 1000), 1)
+          ? round(actualIndexedStats.lines / (cold.wallMs / 1000), 1)
           : null,
         singleFileChange,
+        unindexedFileChange,
+        projectShards: {
+          count: shardRows.length,
+          coldTotalMs: shardColdTotalMs,
+          warmHitTotalMs: shardWarmTotalMs,
+          coldVsMonolithicRatio: cold.wallMs > 0 ? round(shardColdTotalMs / cold.wallMs, 3) : null,
+          rows: shardRows.map(({ files, ...row }) => row),
+          singleFileChange: shardedSingleFileChange,
+        },
       };
     } else if (requireScip) {
       throw new Error('scip-typescript is required for this baseline but is not installed');
