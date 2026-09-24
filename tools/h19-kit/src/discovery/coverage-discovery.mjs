@@ -91,8 +91,15 @@ export function discoverCoverageHypotheses({
 
   const ordered = [...dedup.values()].sort((a, b) => {
     const rank = { high: 0, medium: 1, low: 2 };
+    const reasonRank = {
+      'surviving-mutant': 0,
+      'explicit-runtime-coverage-gap': 1,
+      'unknown-runtime-coverage-on-impacted-reference': 2,
+      'historical-companion-not-changed': 3,
+    };
     return (rank[a.priority] ?? 9) - (rank[b.priority] ?? 9)
       || a.target.path.localeCompare(b.target.path)
+      || (reasonRank[a.reason] ?? 9) - (reasonRank[b.reason] ?? 9)
       || a.reason.localeCompare(b.reason);
   });
 
