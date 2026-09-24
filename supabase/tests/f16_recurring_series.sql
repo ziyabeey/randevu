@@ -261,22 +261,29 @@ declare
   v_move jsonb;
   v_replay jsonb;
   v_cancel jsonb;
+  v_state jsonb;
   v_bad integer;
 begin
-  select g.id,g.version into v_first_group,v_first_version
-  from public.appointment_groups g
-  where g.business_id='f1610000-0000-4000-8000-000000000001'
-    and g.series_id=v_series
-    and g.series_ordinal=1;
+  -- Exercise the same authenticated read surface used by the operator UI.
+  -- The acceptance test must not bypass table grants just to discover group
+  -- identity/version.
+  v_state:=public.get_appointment_series(
+    'f1610000-0000-4000-8000-000000000001',v_series
+  );
+  v_first_group:=(v_state->'occurrences'->0->>'groupId')::uuid;
+  v_first_version:=(v_state->'occurrences'->0->>'version')::integer;
+  if v_first_group is null or v_first_version is null then
+    raise exception 'F16-01 series payload did not expose first occurrence identity: %',v_state;
+  end if;
 
   perform public.set_appointment_group_status(
     'f1610000-0000-4000-8000-000000000001',
     v_first_group,'f1601-series-first-confirm',v_first_version,'confirmed'
   );
-  select g.version into v_first_version
-  from public.appointment_groups g
-  where g.business_id='f1610000-0000-4000-8000-000000000001'
-    and g.id=v_first_group;
+  v_state:=public.get_appointment_series(
+    'f1610000-0000-4000-8000-000000000001',v_series
+  );
+  v_first_version:=(v_state->'occurrences'->0->>'version')::integer;
 
   perform public.set_appointment_group_status(
     'f1610000-0000-4000-8000-000000000001',
@@ -319,24 +326,23 @@ begin
     raise exception 'F16-01 future reschedule did not bump series version once: %',v_move;
   end if;
 
-  -- The completed first occurrence stays at 10:00. Only ordinals 2-3 move.
+  -- Completed occurrence stays at 10:00; only ordinals 2-3 move to 12:00.
+  v_state:=public.get_appointment_series(
+    'f1610000-0000-4000-8000-000000000001',v_series
+  );
   select count(*)::integer into v_bad
-  from public.appointment_groups g
-  join public.appointments a
-    on a.business_id=g.business_id and a.group_id=g.id
-  where g.business_id='f1610000-0000-4000-8000-000000000001'
-    and g.series_id=v_series
-    and (
-      (g.series_ordinal=1 and (
-        a.status<>'completed'
-        or (a.starts_at at time zone 'Europe/Berlin')::time<>time '10:00'
-      ))
-      or
-      (g.series_ordinal in (2,3) and (
-        a.status not in ('scheduled','confirmed')
-        or (a.starts_at at time zone 'Europe/Berlin')::time<>time '12:00'
-      ))
-    );
+  from jsonb_array_elements(v_state->'occurrences') o
+  cross join lateral jsonb_array_elements(o->'lines') l
+  where
+    ((o->>'seriesOrdinal')::integer=1 and (
+      l->>'status'<>'completed'
+      or ((l->>'startsAt')::timestamptz at time zone 'Europe/Berlin')::time<>time '10:00'
+    ))
+    or
+    ((o->>'seriesOrdinal')::integer in (2,3) and (
+      l->>'status' not in ('scheduled','confirmed')
+      or ((l->>'startsAt')::timestamptz at time zone 'Europe/Berlin')::time<>time '12:00'
+    ));
   if v_bad<>0 then raise exception 'F16-01 future reschedule rewrote protected history or missed future targets'; end if;
 
   -- Exact replay returns the already-mutated series without another version bump.
@@ -348,9 +354,8 @@ begin
   if (v_replay->>'version')::integer<>2 then
     raise exception 'F16-01 future reschedule replay mutated series again: %',v_replay;
   end if;
-  if (select count(*) from public.appointment_series_events
-      where business_id='f1610000-0000-4000-8000-000000000001'
-        and series_id=v_series and event_type='future_rescheduled')<>1 then
+  if (select count(*) from jsonb_array_elements(v_replay->'events') e
+      where e->>'eventType'='future_rescheduled')<>1 then
     raise exception 'F16-01 future reschedule replay duplicated audit';
   end if;
 
@@ -363,20 +368,16 @@ begin
   end if;
 
   select count(*)::integer into v_bad
-  from public.appointment_groups g
-  join public.appointments a
-    on a.business_id=g.business_id and a.group_id=g.id
-  where g.business_id='f1610000-0000-4000-8000-000000000001'
-    and g.series_id=v_series
-    and (
-      (g.series_ordinal=1 and a.status<>'completed')
-      or (g.series_ordinal in (2,3) and a.status<>'cancelled')
-    );
+  from jsonb_array_elements(v_cancel->'occurrences') o
+  cross join lateral jsonb_array_elements(o->'lines') l
+  where
+    ((o->>'seriesOrdinal')::integer=1 and l->>'status'<>'completed')
+    or
+    ((o->>'seriesOrdinal')::integer in (2,3) and l->>'status'<>'cancelled');
   if v_bad<>0 then raise exception 'F16-01 future cancel touched completed history or missed future groups'; end if;
 
-  if (select count(*) from public.appointment_series_events
-      where business_id='f1610000-0000-4000-8000-000000000001'
-        and series_id=v_series and event_type='future_cancelled')<>1 then
+  if (select count(*) from jsonb_array_elements(v_cancel->'events') e
+      where e->>'eventType'='future_cancelled')<>1 then
     raise exception 'F16-01 future cancel audit missing';
   end if;
 end
