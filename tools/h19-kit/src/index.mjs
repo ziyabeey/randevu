@@ -34,3 +34,4 @@ export * from './experiments/ledger.mjs';
 export * from './mutations/history.mjs';
 export * from './adapters/scip.mjs';\nexport * from './graph/symbol-graph.mjs';\nexport * from './impact/blast-radius.mjs';\nexport * from './impact/evidence.mjs';\nexport * from './core/artifact-cache.mjs';\nexport * from './indexing/project-fingerprint.mjs';\nexport * from './indexing/scip-launcher.mjs';\nexport * from './indexing/surface-digest.mjs';\nexport * from './indexing/head-manifest.mjs';\nexport * from './impact/project-graph.mjs';\nexport * from './adapters/nx.mjs';\nexport * from './adapters/turbo.mjs';
 export * from './indexing/graph-cache.mjs';
+export * from './adapters/tree-sitter.mjs';\nexport * from './extractors/tree-sitter-units.mjs';\nexport * from './extractors/tree-sitter-profiles.mjs';\n
