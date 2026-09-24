@@ -22,6 +22,7 @@ import f16Series from './f16-series-http.ts';
 import f16Packages from './f16-packages-http.ts';
 import f16Promo from './f16-promo-http.ts';
 import f16Feedback from './f16-feedback-http.ts';
+import f16Commission from './f16-commission-http.ts';
 import onboarding from './onboarding.ts';
 import {
   mutationSecurityError,
@@ -132,6 +133,8 @@ app.route('/api', f16Promo);
 app.route('/api', products);
 app.route('/api', expenses);
 app.route('/api', reports);
+// F16-07 staff commission report and owner/manager rate versions.
+app.route('/api', f16Commission);
 app.route('/api/onboarding', onboarding);
 
 export default app;

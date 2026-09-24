@@ -104,6 +104,28 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **Kabul:** Hesap tanımı raporda görünür; dağıtılan pay kaynak tutarı aşmaz. Düzeltme/iade prim etkisi izlenir, personel doğru satıra bağlanır. Yetkisiz staff başkasının/işletmenin mali raporunu göremez. Bordro/maaş motoru eklenmez.
 - **Devir:** Onaylı hesap örnekleri, tarihli oran/snapshot yaklaşımı ve kaynak hareketlerle mutabakat.
 - **v3 mali sözleşme:** K02 kaynak hareketi, fiyat ve oran sürümü kullanılır. Hak kazanmanın hizmet mi tahsilat mı temelli olduğu, paket/iskonto/kısmi ödeme/iade etkisi koddan önce Ziya’nın örnekleriyle kesinleşir. Bu bir performans deneyi değildir; karar değişirse tarihli yeni politika olur.
+- **Uygulanan model (2026-09-24, Ziya kararı: kapanan adisyon satırına göre; çalışan + hizmet/ürün istisnası):**
+  - **Hak kazanma.** Prim adisyon kapanınca satır bazında yazılır: oran × (satır fiyatı − satır iskontosu − kampanya payı). Ziya örneği: 1.000 TL hizmet, 100 TL iskonto, %10 → 90 TL. Müşteri 450 TL ödemişken adisyon açıktır ve prim yazılmaz. Adisyon yalnız tamamen ödenince kapanır; kısmi tahsilat primi değiştirmez.
+  - **Paket, ürün ve personelsiz satırlar.**
+    - Paketten karşılanan seans, paket birim değeri (satış ÷ seans, `customer_package_usages.value_minor`) üzerinden prim alır. Paket satış satırının kendisi prim üretmez.
+    - Ürün satırı, satırı giren üyenin personel profiline, o personelin ürün oranıyla yazılır.
+    - Personeli olmayan hizmet satırı ve personel profili olmayan üyenin ürün satışı prim üretmez.
+  - **Oran sürümleri.**
+    - `staff_commission_rates`: personel başına varsayılan hizmet ve ürün oranı (baz puan).
+    - `staff_service_commission_rates`: personel × hizmet istisnası; `null` istisnayı kaldırır.
+    - Her ikisi de eklemeli, sürüm CAS'lı ve değiştirilemez. Yalnız owner/manager yazar; staff kendi oranını değiştiremez.
+    - Kapanışta geçerli olan sürüm `staff_commission_lines` satırına snapshot'lanır: oran, kaynak (`service_default`/`service_override`/`product_default`/`none`) ve sürüm kimliği. Sonraki oran değişikliği eski raporu değiştirmez.
+  - **Kapanış sonrası hareketler.** `staff_commission_entries` değiştirilemez bir hareket defteridir; her hareket satırın kümülatif matrahını ve primini taşır.
+    - **Ürün iadesi:** aynı personel satırına negatif `product_return` hareketi yazar.
+    - **Diğer iadeler ve düzeltmeler:** iyi niyet iadesi ve tahsilat düzeltmesi, adisyonun kalan bakiyesidir (toplam − tahsilat). Bu tutar satırların adisyon tutarındaki payına göre, en büyük kalan yöntemiyle dağıtılır ve aynı personele `payment_adjustment` olarak yazılır. Paket satışı ve personelsiz satırlar kendi paylarını alır ama prim üretmez.
+    - **Paket iadesi:** kullanılmış seansın primini değiştirmez.
+    - **Yuvarlama:** prim her zaman yarım kuruşta yukarı yuvarlanmış `oran × kümülatif matrah` değeridir. Bu yüzden yuvarlama birikmez ve dağıtılan matrah adisyonun tuttuğu parayı aşmaz. Kümülatif matrah hiçbir ara adımda negatife düşmez.
+    - **İade ile satır ayrımı:** ürün iadesinin iade kaydı, toplamı düşüren satırdan önce yazıldığı için tahsilat tetikleyicisi commit anına ertelenmiştir. Commit'lenen yol ve iki eşzamanlı iade dblink testiyle kanıtlanır.
+  - **Rapor.** `GET /api/reports/commission` en fazla 92 günlük aralık kabul eder; hareket zamanı işletme saat dilimine göre alınır.
+    - Kapsam: mali rapor yetkisi olan üye tüm personeli, diğer üyeler yalnız kendi personel profilini görür.
+    - Personel satırında hizmet, paket seansı, ürün ve iade/düzeltme matrahları ile prim yer alır. Son 500 hareket listelenir.
+    - Hesap tanımı raporla birlikte döner.
+    - Oran düzenleyici "Kasa ve raporlar" sayfasındadır. Bordro/maaş motoru eklenmez.
 
 ## F16-08
 
