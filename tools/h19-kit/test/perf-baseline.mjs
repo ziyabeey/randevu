@@ -34,9 +34,11 @@ try {
     syntheticReferences: 200,
   });
 
-  assert.equal(report.schemaVersion, 2);
+  assert.equal(report.schemaVersion, 3);
   assert.equal(report.kind, 'h19-performance-baseline');
   assert.ok(report.repository.sourceFiles >= 2);
+  assert.ok(report.repository.scipProjectShards >= 1);
+  assert.ok(report.repository.scipIndexedFiles >= 1);
   assert.ok(report.measurements.inventory.units >= 2);
   assert.equal(report.measurements.history.coldCache, 'miss');
   assert.equal(report.measurements.history.warmCache, 'hit');
