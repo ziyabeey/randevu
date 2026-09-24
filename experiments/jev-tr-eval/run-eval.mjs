@@ -37,13 +37,17 @@ const concurrency = Number(args.concurrency);
 const pricePerMillion = Number(args.price);
 const threshold = Number(args.threshold);
 
-if (!args.mock && !process.env.TYPESAFE_API_KEY?.trim()) {
-  fail('TYPESAFE_API_KEY bu oturumda yok. Ortam ayarlarına ekleyip yeni oturum açın ya da --mock ile kuru çalıştırın.');
+// Anahtar ortamın "API credentials" bölümüne eklendiyse oturum onu hiç görmez; ajan proxy'si
+// api.typesafe.ai isteklerine Authorization başlığını kendisi ekler. SDK boş anahtarı kabul
+// etmediği için o durumda yer tutucu gönderilir.
+const apiKey = process.env.TYPESAFE_API_KEY?.trim() || 'proxy-injected';
+if (!args.mock && apiKey === 'proxy-injected') {
+  console.error('Not: TYPESAFE_API_KEY ortam değişkeni yok; anahtarın proxy tarafından eklendiği varsayılıyor.');
 }
 
 const client = args.mock
   ? new TypeSafeClient({ apiKey: 'mock', fetch: mockFetch, retry: { maxRetries: 0 } })
-  : new TypeSafeClient({ timeout: 15_000 });
+  : new TypeSafeClient({ apiKey, timeout: 15_000 });
 
 // ---------------------------------------------------------------- çalıştırma
 

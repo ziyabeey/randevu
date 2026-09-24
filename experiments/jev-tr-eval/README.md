@@ -8,8 +8,9 @@ seçenek açıklamalarını randevu diline göre "hazırlamanın" doğruluğu ne
 
 ## Gerekenler
 
-- Ortam secret'i: `TYPESAFE_API_KEY`
-- Ağ izni: `api.typesafe.ai` (dokümanlar için ayrıca `docs.typesafe.ai`)
+- Anahtar: ortamın **API credentials** bölümünde `api.typesafe.ai` için Bearer credential (oturum anahtarı
+  görmez, proxy ekler). Alternatif olarak `TYPESAFE_API_KEY` ortam değişkeni de okunur.
+- Dokümanlar için ağ izni: **Custom** erişimde `docs.typesafe.ai`
 - Node 20+
 
 Ortam ayarları yeni oturumda geçerli olur.
