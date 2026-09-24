@@ -32,4 +32,9 @@ export * from './experiments/protocol.mjs';
 export * from './experiments/blind-packet.mjs';
 export * from './experiments/ledger.mjs';
 export * from './mutations/history.mjs';
-export * from './graph/code-graph.mjs';\nexport * from './adapters/scip.mjs';\nexport * from './adapters/tree-sitter-tags.mjs';\nexport * from './adapters/nx-affected.mjs';\nexport * from './adapters/turbo-affected.mjs';\nexport * from './adapters/code-impact-evidence.mjs';\n
+export * from './graph/code-graph.mjs';
+export * from './adapters/scip.mjs';
+export * from './adapters/tree-sitter-tags.mjs';
+export * from './adapters/nx-affected.mjs';
+export * from './adapters/turbo-affected.mjs';
+export * from './adapters/code-impact-evidence.mjs';
