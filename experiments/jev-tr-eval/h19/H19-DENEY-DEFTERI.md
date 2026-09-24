@@ -21,7 +21,7 @@ aynı hattın deneyleridir. İsimler tarihsel provenance için korunur; yeni ara
 | **H19b′** | Zor negatiflerde facts ve Choice gerçekten V'yi geçiyor mu? | V AUC 0.92, J0 0.86, JF 0.82. Facts yanlış yönde prior oldu; direction %71.9. | Çıkarılabilir facts varsayılan olarak prompt premise'i yapılmaz. Detection ve direction ayrılır. | tamamlandı / failed |
 | **H19d** | Göreli eksen matematiği `D5-max(other)` ham D5'i geçiyor mu? | Ham D5 AUC 0.934, S0 0.890. P-pair recall %60. | Başka eksenle gerçek D5 birlikte değişebilir; "baskın eksen" varsayımı yanlış. Post-hoc geometri promosyon edilmez. | tamamlandı / failed |
 | **H19t** | Ham D5 için geçmiş veriden sabitlenen `τ=.64` gerçek router olur mu? | Recall 39/40; fakat D1 negatif FPR %66.7 ve yük azalması 8.8 puan. T2 kaldı. | Sorun threshold değil, D1/D5 semantik karışması. Ham D5 iyi ranker, tek eşikli router değil. | tamamlandı / failed |
-| **H19u** | D1/D5 belirsizliğini ikinci ucuz Choice ayırabilir mi? | Protokol mühürlü; henüz vaka/ölçüm yok. | V skorlarını ikinci modele premise olarak verme; resolver yalnız aynı diff'i görsün. | preregistered / pending |
+| **H19u** | D1/D5 belirsizliğini ikinci ucuz Choice ayırabilir mi? | 80 vaka donduruldu (`ba531c86…`); kör kontrol 15/16, A16 protokol gereği düştü; canlı ölçüm henüz yok. | V skorlarını ikinci modele premise olarak verme; resolver yalnız aynı diff'i görsün. | measurement-ready |
 | **H19s** | Gerçek PR akışında shadow router ekonomik ve güvenli mi? | Henüz açılmadı. | Yalnız önceki gate'ler geçerse gerçek prevalans ve çağrı maliyeti ölçülür. | locked |
 
 ## 3. Şu anda gerçekten desteklenenler
