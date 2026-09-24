@@ -35,7 +35,7 @@ test('F16-02 public WhatsApp OTP start is an explicit public mutation and reache
     calls.push(url);
     if (url.endsWith('/rest/v1/rpc/execute_public_operation')) {
       const wire = JSON.parse(String(init.body));
-      assert.equal(wire.p_action, 'business');
+      assert.equal(wire.p_action, 'phone_verify');
       assert.equal(wire.p_args.p_slug, 'salon-a');
       assert.match(wire.p_actor_hash, /^[0-9a-f]{64}$/);
       assert.match(wire.p_network_hash, /^[0-9a-f]{64}$/);
