@@ -1,0 +1,59 @@
+name: Kepenk root site
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "workers/kepenk-site/**"
+      - ".github/workflows/kepenk-root-site.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kepenk-root-site
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy kepenk.ai root landing
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate Cloudflare credential
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN in staging environment"; exit 1; }
+          npx --yes wrangler@4.135.0 whoami
+
+      - name: Deploy root landing
+        run: npx --yes wrangler@4.135.0 deploy --config workers/kepenk-site/wrangler.jsonc
+
+      - name: Verify public root
+        shell: bash
+        run: |
+          for attempt in {1..15}; do
+            body="$(curl -fsS --max-time 15 https://kepenk.ai/ || true)"
+            privacy="$(curl -fsS --max-time 15 https://kepenk.ai/gizlilik || true)"
+            if grep -q 'data-kepenk-root="v1"' <<<"$body" && grep -q 'Gizlilik Politikası' <<<"$privacy"; then
+              echo "kepenk.ai root landing is live."
+              exit 0
+            fi
+            echo "Waiting for route propagation (attempt $attempt/15)..."
+            sleep 4
+          done
+          echo "::error::kepenk.ai did not serve the expected root landing after deployment."
+          exit 1
