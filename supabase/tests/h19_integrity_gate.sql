@@ -38,6 +38,7 @@ select pg_temp.h19_expect('payments.d1d2.replay_snapshot','payments','D1','D2','
 select pg_temp.h19_expect('payments.d2d5.snapshot_concurrency','payments','D2','D5','holdout',2436,2441,2444);
 select pg_temp.h19_expect('team.d0d1.invite_scope','team','D0','D1','prospective',2513,2518,2519);
 select pg_temp.h19_expect('catalog.d0d2.history_scope','catalog','D0','D2','prospective',2544,2551,2552);
+select pg_temp.h19_expect('public-booking.d0d4.slot_scope','public-booking','D0','D4','prospective',2557,2582,2583);
 
 \echo 'H19 Integrity Gate: D0xD1 tenant/idempotency'
 \ir h19_d0_d1_tenant_idempotency.sql
@@ -95,10 +96,14 @@ select pg_temp.h19_pass('team.d0d1.invite_scope');
 \ir h19_catalog_d0_d2_history_scope.sql
 select pg_temp.h19_pass('catalog.d0d2.history_scope');
 
-select pg_temp.h19_assert_complete(14);
+\echo 'H19 Integrity Gate: F12 public-booking D0xD4 slot authority'
+\ir h19_public_booking_d0_d4_slot_scope.sql
+select pg_temp.h19_pass('public-booking.d0d4.slot_scope');
+
+select pg_temp.h19_assert_complete(15);
 
 do $h19done$
 begin
-  raise notice 'H19 INTEGRITY GATE PASS: 14/14 registered interaction invariants accepted';
+  raise notice 'H19 INTEGRITY GATE PASS: 15/15 registered interaction invariants accepted';
 end
 $h19done$;
