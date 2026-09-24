@@ -19,13 +19,14 @@ const scip = normalizeScipIndex({
     {
       relative_path: 'src/b.ts',
       language: 'typescript',
-      occurrences: [{ range: [2, 4, 7], symbol, symbol_roles: 8 }],
+      occurrences: [{ single_line_range: { line: 2, start_character: 4, end_character: 7 }, symbol, symbol_roles: 8 }],
     },
   ],
 });
 assert.equal(scip.nodes('document').length, 2);
 assert.equal(scip.edges('scip:defines').length, 1);
 assert.equal(scip.edges('scip:references').length, 1);
+assert.deepEqual(scip.edges('scip:references')[0].range, [2, 4, 7]);
 const impact = scipImpact(scip, ['src/a.ts']);
 assert.deepEqual(impact.affectedDocuments, ['doc:src/a.ts', 'doc:src/b.ts']);
 assert.equal(impact.changedSymbols.length, 1);
