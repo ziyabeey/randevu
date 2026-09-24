@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 3,
+  "kind": "h19-performance-baseline",
+  "generatedAt": "2026-09-24T20:45:09.182Z",
+  "environment": {
+    "node": "v24.21.0",
+    "platform": "linux",
+    "arch": "x64",
+    "cpuCount": 4,
+    "cpuModel": "AMD EPYC 7763 64-Core Processor",
+    "totalMemoryBytes": 16770748416
+  },
+  "repository": {
+    "root": "/home/runner/work/randevu/randevu",
+    "sourceFiles": 532,
+    "sourceBytes": 5446268,
+    "sourceLines": 131394,
+    "tsJsFiles": 331,
+    "tsJsLines": 67086,
+    "scipProjectShards": 3,
+    "scipIndexedFiles": 77,
+    "scipIndexedLines": 21124,
+    "scipUnindexedTsJsFiles": 254
+  },
+  "measurements": {
+    "discovery": {
+      "sourceWalkMs": 14.013,
+      "sourceStatsMs": 105.381,
+      "typescriptProjectDiscoveryMs": 24.343,
+      "scipIndexedStatsMs": 15.951
+    },
+    "inventory": {
+      "filesScanned": 532,
+      "units": 6452,
+      "errors": 0,
+      "firstMs": 1019.052,
+      "repeatMedianMs": 636.171,
+      "repeatP95Ms": 686.577,
+      "filesPerSecond": 522.1,
+      "unitsPerSecond": 6331.4
+    },
+    "history": {
+      "coldMs": 283.379,
+      "warmHitMs": 7.052,
+      "coldCache": "miss",
+      "warmCache": "hit",
+      "warmSpeedup": 40.18,
+      "couplings": 888,
+      "hotspots": 770
+    },
+    "syntheticScale": {
+      "projects": 200,
+      "references": 5000,
+      "impactMedianMs": 8.227,
+      "impactP95Ms": 12.823,
+      "impactedPaths": 5000,
+      "candidateTests": 2500,
+      "discoveryMedianMs": 4.891,
+      "discoveryP95Ms": 9.158,
+      "hypotheses": 1767
+    },
+    "scipTypescript": {
+      "status": "measured",
+      "version": "0.4.0",
+      "repositoryTsJsFiles": 331,
+      "repositoryTsJsLines": 67086,
+      "sourceFiles": 77,
+      "sourceLines": 21124,
+      "unindexedTsJsFiles": 254,
+      "firstIndexMs": 8996.852,
+      "repeatH19CacheMissMs": 8411.504,
+      "exactContentWarmHitMs": 5.903,
+      "exactContentWarmSpeedup": 1524.12,
+      "indexBytes": 5181665,
+      "firstIndexLinesPerSecond": 2347.9,
+      "singleFileChange": {
+        "status": "measured",
+        "path": "src/App.tsx",
+        "reindexMs": 8458.628,
+        "vsExactWarmRatio": 1432.94,
+        "vsFirstIndexRatio": 0.94
+      },
+      "unindexedFileChange": {
+        "status": "measured",
+        "path": "scripts/browser-booking-recovery.mjs",
+        "cache": "hit",
+        "wallMs": 6.727
+      },
+      "projectShards": {
+        "count": 3,
+        "coldTotalMs": 9700.721,
+        "warmHitTotalMs": 8.592,
+        "coldVsMonolithicRatio": 1.078,
+        "rows": [
+          {
+            "id": "tsconfig.app.json",
+            "configPath": "tsconfig.app.json",
+            "sourceFiles": 41,
+            "sourceLines": 11320,
+            "coldMs": 5577.134,
+            "warmHitMs": 3.486,
+            "indexBytes": 2928670
+          },
+          {
+            "id": "tsconfig.node.json",
+            "configPath": "tsconfig.node.json",
+            "sourceFiles": 1,
+            "sourceLines": 19,
+            "coldMs": 1208.055,
+            "warmHitMs": 1.933,
+            "indexBytes": 2658
+          },
+          {
+            "id": "tsconfig.worker.json",
+            "configPath": "tsconfig.worker.json",
+            "sourceFiles": 35,
+            "sourceLines": 9785,
+            "coldMs": 2915.532,
+            "warmHitMs": 3.173,
+            "indexBytes": 2250481
+          }
+        ],
+        "singleFileChange": {
+          "status": "measured",
+          "path": "src/App.tsx",
+          "owningShard": "tsconfig.app.json",
+          "totalMs": 5579.936,
+          "misses": 1,
+          "hits": 2,
+          "perShard": [
+            {
+              "id": "tsconfig.app.json",
+              "cache": "miss",
+              "wallMs": 5576.238
+            },
+            {
+              "id": "tsconfig.node.json",
+              "cache": "hit",
+              "wallMs": 0.721
+            },
+            {
+              "id": "tsconfig.worker.json",
+              "cache": "hit",
+              "wallMs": 2.722
+            }
+          ],
+          "vsMonolithicChangedFileSpeedup": 1.52
+        }
+      }
+    }
+  },
+  "interpretation": {
+    "thresholdsFrozen": false,
+    "note": "This is a measurement baseline, not a pass/fail performance gate. Freeze regression thresholds only after baseline evidence exists."
+  }
+}
