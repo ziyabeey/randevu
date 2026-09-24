@@ -1,9 +1,9 @@
-import * as tsModule from 'typescript';
+import ts from '@typescript/typescript6';
 import { createHash } from 'node:crypto';
 
-// TypeScript 7's Node ESM interop exposes the API under `default` in this runtime.
-// Older TypeScript releases expose the namespace directly. Normalize both shapes.
-const ts = tsModule.default ?? tsModule;
+// TypeScript 7 intentionally removed the classic in-process compiler API.
+// H19 Kit pins Microsoft's official TS6 compatibility package for AST extraction,
+// keeping the host application's TypeScript version independent.
 
 const sha = (text) => createHash('sha256').update(String(text)).digest('hex');
 
