@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { temporalCoupling } from '../src/adapters/git-history.mjs';
+import { scan } from '../src/pipeline/scan.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -27,5 +29,14 @@ if (command === 'history') {
   process.exit(0);
 }
 
-console.error('usage: h19-kit <doctor|history [repo]>');
+if (command === 'scan') {
+  const file = args[0];
+  if (!file) throw new Error('scan requires an input JSON file');
+  const result = scan(JSON.parse(readFileSync(file, 'utf8')));
+  const sarifOnly = args.includes('--sarif');
+  console.log(JSON.stringify(sarifOnly ? result.sarif : result, null, 2));
+  process.exit(0);
+}
+
+console.error('usage: h19-kit <doctor|history [repo]|scan <input.json> [--sarif]>');
 process.exit(2);
