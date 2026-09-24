@@ -124,3 +124,55 @@ The next measurement must test two separate improvements without changing the ex
 
 PERF-002 must continue reporting monolithic cold/warm values so the sharded result can be compared against the
 same runner and same pinned indexer. No performance pass/fail threshold is introduced until PERF-002 exists.
+
+
+## PERF-002 — exact inputs + tsconfig shards
+
+PERF-002 ran on the same runner class and pinned `scip-typescript 0.4.0`.
+
+Key observations:
+
+| Metric | PERF-001 | PERF-002 |
+| --- | ---: | ---: |
+| exact-content cache hit | 28.1 ms | 5.9 ms |
+| unrelated TS/JS file change | ~8,950 ms re-index | 6.7 ms cache hit |
+| indexed app file, monolithic re-index | n/a cleanly measured | 8,459 ms |
+| indexed app file, sharded re-index | n/a | 5,580 ms |
+| sharded vs monolithic changed-file speedup | n/a | 1.52x |
+| monolithic cold index | 9,303 ms | 8,997 ms |
+| sharded cold total | n/a | 9,701 ms |
+| shard cold overhead vs monolithic | n/a | +7.8% |
+| app shard cold | n/a | 5,577 ms |
+| worker shard cold | n/a | 2,916 ms |
+| node shard cold | n/a | 1,208 ms |
+
+The TypeScript project graph contains 77 indexed files / 21,124 lines out of 331 repository TS/JS files /
+67,086 lines. 254 TS/JS files are outside the SCIP TypeScript project graph.
+
+### Conclusions
+
+1. **False invalidation was real and is fixed.**
+   A change to `scripts/browser-booking-recovery.mjs` now remains an H19 cache hit instead of paying a full
+   SCIP re-index.
+
+2. **Project sharding helps real indexed changes.**
+   The measured app-file mutation fell from 8.46s monolithic re-indexing to 5.58s with app/worker/node shard
+   reuse, while the other two shards remained cache hits.
+
+3. **Sharding is not free on cold start.**
+   Three separate SCIP processes cost about 7.8% more total cold time than one monolithic root-index invocation.
+
+4. **The remaining bottleneck is the changed shard itself.**
+   M4/M5 stay in low-millisecond territory; the app shard still needs roughly 5.6s to rebuild after an app
+   source change.
+
+### Next measurement rule
+
+Do not split the app shard heuristically just to improve one number.
+
+Before another granularity change:
+
+- repeat PERF-002 on the same head to estimate runner noise;
+- freeze relative regression bands only after repeat evidence;
+- prefer compiler/indexer-provided incremental state or durable local/cloud state over manually patching SCIP
+  symbol graphs.
