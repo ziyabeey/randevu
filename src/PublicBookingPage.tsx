@@ -325,6 +325,13 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
   const [settleTick, setSettleTick] = useState(0);
   const [notice, setNotice] = useState('');
   const [contactError, setContactError] = useState('');
+  const [customerPhoneValue, setCustomerPhoneValue] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpBusy, setOtpBusy] = useState(false);
+  const [otpNotice, setOtpNotice] = useState('');
+  const [verifiedPhone, setVerifiedPhone] = useState('');
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState('');
   const clockSample = useRef<ClockSample | null>(null);
   const storageRequest = useRef(0);
   const resolvingIds = useRef(new Set<string>());
@@ -629,6 +636,109 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     }
   }
 
+  function changeCustomerPhone(value: string) {
+    setCustomerPhoneValue(value);
+    setContactError('');
+    if (value !== verifiedPhone) {
+      setVerifiedPhone('');
+      setPhoneVerificationToken('');
+      setOtpCode('');
+      setOtpSent(false);
+      setOtpNotice('');
+    }
+  }
+
+  async function sendWhatsappOtp() {
+    const phone = customerPhoneValue.trim();
+    if (!phone) {
+      setContactError('Telefon bilgisi zorunlu.');
+      return;
+    }
+    setOtpBusy(true);
+    setOtpNotice('');
+    try {
+      await api('/api/public/verify/whatsapp/start', {
+        method: 'POST',
+        csrf: 'skip',
+        body: JSON.stringify({ slug, phone }),
+      });
+      setOtpSent(true);
+      setOtpNotice('WhatsApp doğrulama kodu gönderildi.');
+    } catch (error) {
+      setOtpNotice(messageFor(error, 'WhatsApp doğrulama kodu gönderilemedi.'));
+    } finally {
+      setOtpBusy(false);
+    }
+  }
+
+  async function verifyWhatsappOtpCode() {
+    const phone = customerPhoneValue.trim();
+    if (!phone || !/^\\d{4,10}$/.test(otpCode.trim())) {
+      setOtpNotice('WhatsApp kodunu kontrol edin.');
+      return;
+    }
+    setOtpBusy(true);
+    setOtpNotice('');
+    try {
+      const result = await api<{ phoneVerificationToken: string }>('/api/public/verify/whatsapp/check', {
+        method: 'POST',
+        csrf: 'skip',
+        body: JSON.stringify({ slug, phone, code: otpCode.trim() }),
+      });
+      if (!result.phoneVerificationToken) throw new Error('Telefon doğrulama kanıtı alınamadı.');
+      setPhoneVerificationToken(result.phoneVerificationToken);
+      setVerifiedPhone(phone);
+      setOtpNotice('Telefon WhatsApp ile doğrulandı.');
+    } catch (error) {
+      setPhoneVerificationToken('');
+      setVerifiedPhone('');
+      setOtpNotice(messageFor(error, 'WhatsApp kodu doğrulanamadı.'));
+    } finally {
+      setOtpBusy(false);
+    }
+  }
+
+  function phoneVerificationFields() {
+    const verified = Boolean(phoneVerificationToken && verifiedPhone === customerPhoneValue.trim());
+    return <>
+      <label>
+        <span>Telefon <small>(WhatsApp doğrulaması zorunlu)</small></span>
+        <input
+          name="customerPhone"
+          maxLength={40}
+          autoComplete="tel"
+          placeholder="05xx…"
+          aria-required="true"
+          value={customerPhoneValue}
+          aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`}
+          aria-invalid={Boolean(contactError)}
+          onChange={(event) => changeCustomerPhone(event.target.value)}
+        />
+      </label>
+      <div className="public-otp-controls" aria-label="WhatsApp telefon doğrulaması">
+        {!verified && <button className="public-secondary" type="button" disabled={otpBusy || !customerPhoneValue.trim()} onClick={() => void sendWhatsappOtp()}>
+          {otpBusy ? 'Gönderiliyor…' : otpSent ? 'Kodu yeniden gönder' : 'WhatsApp kodu gönder'}
+        </button>}
+        {otpSent && !verified && <>
+          <input
+            aria-label="WhatsApp doğrulama kodu"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={otpCode}
+            maxLength={10}
+            placeholder="Doğrulama kodu"
+            onChange={(event) => setOtpCode(event.target.value.replace(/\\D/g, ''))}
+          />
+          <button className="public-secondary" type="button" disabled={otpBusy || otpCode.length < 4} onClick={() => void verifyWhatsappOtpCode()}>
+            Kodu doğrula
+          </button>
+        </>}
+        {verified && <strong className="public-otp-ok">✓ WhatsApp doğrulandı</strong>}
+      </div>
+      {otpNotice && <small className="public-field-hint" role="status">{otpNotice}</small>}
+    </>;
+  }
+
   async function book(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (blockingRecord || !storageReady
@@ -642,6 +752,10 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       setContactError('Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.');
       return;
     }
+    if (!phoneVerificationToken || verifiedPhone !== customerPhone) {
+      setContactError('Telefon numarasını WhatsApp koduyla doğrulayın.');
+      return;
+    }
     setContactError('');
     const payload = isGroupMode
       ? {
@@ -649,6 +763,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           customerPhone: customerPhone || null,
           customerEmail: customerEmail || null,
           notes: notes || null,
+          phoneVerificationToken,
           startsAt: multiServiceSelection!.slot.startsAt,
           lines: multiServiceSelection!.lines,
         }
@@ -657,6 +772,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           customerPhone: customerPhone || null,
           customerEmail: customerEmail || null,
           notes: notes || null,
+          phoneVerificationToken,
           serviceId: selectedService!.service_id,
           staffId: selectedSlot!.staff_id,
           startsAt: selectedSlot!.starts_at,
@@ -840,12 +956,12 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         </div>
         <form className="public-customer-form" onSubmit={(event) => void book(event)}>
           <label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label>
-          <div className="public-two-columns"><label><span>Telefon <small>(zorunlu)</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div>
-          <small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>
+          <div className="public-two-columns"><div>{phoneVerificationFields()}</div><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div>
+          <small id="public-contact-help" className="public-field-hint">Telefon WhatsApp koduyla doğrulanır. E-posta isteğe bağlıdır.</small>
           {contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}
           <label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={1000} rows={3} /></label>
           <PublicBookingInformation slug={slug} contact={informationContact} prefix="group-booking" />
-          <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Planı onayla ve randevuyu oluştur'}</button>
+          <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady || !phoneVerificationToken || verifiedPhone !== customerPhoneValue.trim()}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Planı onayla ve randevuyu oluştur'}</button>
         </form>
       </> : <p className="public-muted">İletişim formunu açmak için yukarıdan hizmetlerinizi ve birlikte uygun bir saati seçin.</p>}
     </section>
@@ -876,9 +992,9 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       </section>
       <section className={`public-booking-card public-customer-card ${selectedSlot ? 'is-ready' : ''}`}><span className="public-step">3</span><h2>İletişim bilgileri</h2>
         {selectedSlot && selectedService ? <><div className="public-selection-summary"><strong>{selectedService.name}</strong><span>{formatDateTime(selectedSlot.starts_at, selectedSlot.timezone)} · {selectedSlot.staff_name}</span></div>
-          <form className="public-customer-form" onSubmit={(event) => void book(event)}><label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label><div className="public-two-columns"><label><span>Telefon <small>(zorunlu)</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div><small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>{contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}<label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
+          <form className="public-customer-form" onSubmit={(event) => void book(event)}><label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label><div className="public-two-columns"><div>{phoneVerificationFields()}</div><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div><small id="public-contact-help" className="public-field-hint">Telefon WhatsApp koduyla doğrulanır. E-posta isteğe bağlıdır.</small>{contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}<label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
             <PublicBookingInformation slug={slug} contact={informationContact} prefix="booking" />
-            <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
+            <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady || !phoneVerificationToken || verifiedPhone !== customerPhoneValue.trim()}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
           </form></> : <p className="public-muted">Bir saat seçtiğinizde iletişim formu burada açılır.</p>}
       </section>
     </div>
