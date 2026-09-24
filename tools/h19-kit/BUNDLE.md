@@ -49,7 +49,9 @@ Hypotheses are frozen into a content-addressed validation packet and later recor
 
 A surviving mutant is ranked ahead of a plain coverage-gap hypothesis only when priority and target path are otherwise equal.
 
-## Next authorized gate
+## Active milestone — M6 Minimal Test Specification
+
+The gate was frozen before implementation in `specs/TEST_SPEC_GATE-v0.1.md` and passed exact-head CI #2837 at freeze head `82066517d86cf2d284356f5eb0f277bde83523ac`.
 
 **Minimal test specification from validated/high-value coverage hypotheses.**
 
@@ -63,9 +65,9 @@ setup
 → required observations
 ```
 
-This is the next planned bundle gate.
+This is Bundle **M6**. Its implementation is limited to the frozen TS1–TS8 acceptance gates.
 
-**No M6 number is assigned here yet.** Freeze the scope and acceptance contract before naming/promoting the next milestone.
+M6 does not generate executable test source code.
 
 ## Side-hardening HOLD
 
