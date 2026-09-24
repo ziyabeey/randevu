@@ -1,3 +1,5 @@
+> **SUPERSEDED / UYGULANMAZ:** Bu v1.0 ekindeki OpenAI API reader, pricing ve `H19S_OPENAI_API_KEY` hükümleri H19S-PROTOKOL-v0.2 ve CLARIFICATIONS-v0.2.1 tarafından ilk eligible birimden önce geçersiz kılındı. Tarihsel provenance için tutulur.
+
 # H19s uygulama eki v1.0 — MÜHÜRLÜ
 
 - **Ana protokol:** `../H19S-PROTOKOL.md` v0.1, commit `c9b6fcaca9a83d7cc8fa1ea162f6e4dd90fd6b59`.
