@@ -6,6 +6,7 @@ import path from 'node:path';
 import { evidence } from '../src/core/contracts.mjs';
 import { runRules, route } from '../src/core/dispatcher.mjs';
 import { EvidenceStore } from '../src/core/evidence-store.mjs';
+import { createRunManifest } from '../src/core/run-manifest.mjs';
 import { FileCache, cacheKey } from '../src/core/cache.mjs';
 import { PluginRegistry } from '../src/core/plugin-registry.mjs';
 import { loadConfig } from '../src/core/config.mjs';
@@ -105,6 +106,21 @@ assert.equal(plugins.list('static').length, 1);
 const config = await loadConfig();
 assert.equal(config.version, 1);
 assert.equal(config.policy.unknown, 'escalate');
+
+const manifestA = createRunManifest({
+  repository: { base: 'a'.repeat(40), head: 'b'.repeat(40) },
+  config,
+  adapters: plugins.list(),
+  units: changed.map((x) => ({ id: x.id, digest: x.afterBodySha256 })),
+});
+const manifestB = createRunManifest({
+  repository: { base: 'a'.repeat(40), head: 'b'.repeat(40) },
+  config,
+  adapters: plugins.list(),
+  units: changed.map((x) => ({ id: x.id, digest: x.afterBodySha256 })),
+});
+assert.equal(manifestA.runId, manifestB.runId);
+assert.match(manifestA.runId, /^[a-f0-9]{64}$/);
 
 const temp = await mkdtemp(path.join(os.tmpdir(), 'h19-kit-'));
 try {
