@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import react from '@vitejs/plugin-react';
 import { createServer } from 'vite';
-import { holdBrowserSlot } from './helpers/marketing-chrome.mjs';
+import { closeAfterFile, holdBrowserSlot } from './helpers/marketing-chrome.mjs';
 
 holdBrowserSlot();
 
@@ -127,6 +127,7 @@ async function createHarnessServer(frameStats) {
     logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, strictPort: false },
   });
+  closeAfterFile(() => server.close());
   await server.listen();
   const address = server.httpServer?.address();
   assert.ok(address && typeof address === 'object');
@@ -190,6 +191,9 @@ async function launchDebugChrome(chromeBin, work) {
     '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
     '--remote-debugging-port=0', '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
   ], { cwd: repoRoot, stdio: 'ignore' });
+  closeAfterFile(() => {
+    if (chrome.exitCode === null) chrome.kill('SIGKILL');
+  });
 
   const activePortFile = path.join(profile, 'DevToolsActivePort');
   const port = await waitFor(() => {

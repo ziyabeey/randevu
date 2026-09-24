@@ -84,12 +84,31 @@ async function acquireBrowserSlot() {
   }
 }
 
+// A test that times out never reaches its finally: its Chrome and Vite server
+// would keep the file's process (and the whole node --test run) alive. Every
+// browser and server registers here; the slot's after hook closes what is left.
+const leftovers = new Set();
+
+export function closeAfterFile(close) {
+  leftovers.add(close);
+}
+
 export function holdBrowserSlot() {
   let release;
   before(async () => {
     release = await acquireBrowserSlot();
   }, { timeout: 600_000 });
-  after(() => release?.());
+  after(async () => {
+    for (const close of leftovers) {
+      try {
+        await close();
+      } catch {
+        // Already closed by the test itself.
+      }
+    }
+    leftovers.clear();
+    release?.();
+  });
 }
 
 export async function createPreviewServer() {
@@ -101,6 +120,7 @@ export async function createPreviewServer() {
     logLevel: 'error',
     server: { host: '127.0.0.1', port: 0, strictPort: false },
   });
+  closeAfterFile(() => server.close());
   await server.listen();
   const address = server.httpServer?.address();
   assert.ok(address && typeof address === 'object');
@@ -222,6 +242,9 @@ export async function launchDebugChrome(chromeBin, work) {
     '--headless=new', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
     '--remote-debugging-port=0', '--remote-allow-origins=*', `--user-data-dir=${profile}`, 'about:blank',
   ], { cwd: repoRoot, stdio: 'ignore' });
+  closeAfterFile(() => {
+    if (chrome.exitCode === null) chrome.kill('SIGKILL');
+  });
 
   const activePortFile = path.join(profile, 'DevToolsActivePort');
   const port = await waitFor(() => {
