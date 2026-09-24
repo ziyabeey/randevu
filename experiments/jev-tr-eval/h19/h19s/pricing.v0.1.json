@@ -1,0 +1,49 @@
+{
+  "version": "H19S-PRICING-0.1",
+  "frozen_date": "2026-09-24",
+  "currency": "USD",
+  "unit": "per_1m_tokens",
+  "processing": "standard",
+  "context_assumption": "<=272k input tokens per request",
+  "providers": {
+    "typesafe_jev": {
+      "model": "jev-1.13.0",
+      "input_usd": 0.042,
+      "output_usd": 0,
+      "source": "https://typesafe.ai/blog/introducing-system-one-models-and-jev",
+      "note": "Published Jev price: $0.042/MTok input; output free."
+    },
+    "openai_reader_A": {
+      "model": "gpt-6-sol",
+      "input_usd": 2,
+      "cached_input_usd": 0.2,
+      "cache_write_usd": 2.5,
+      "output_usd": 10,
+      "source": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+      "reasoning_effort": "medium"
+    },
+    "openai_reader_B": {
+      "model": "gpt-5.6-sol",
+      "input_usd": 4,
+      "cached_input_usd": 0.4,
+      "cache_write_usd": 5,
+      "output_usd": 20,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+      "reasoning_effort": "medium",
+      "note": "Promotional price snapshot frozen for H19s; later list-price changes do not alter primary analysis."
+    }
+  },
+  "primary_cost_includes": [
+    "typesafe_jev V",
+    "typesafe_jev resolver when ambiguous",
+    "reader_A only on candidate routed units"
+  ],
+  "baseline_cost_includes": [
+    "reader_A on all eligible units"
+  ],
+  "excluded_experiment_overhead": [
+    "reader_B",
+    "owner adjudication",
+    "shadow storage/CI"
+  ]
+}
