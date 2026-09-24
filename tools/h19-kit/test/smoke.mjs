@@ -24,6 +24,8 @@ import { semanticRiskWithoutTestRule, missingHistoricalCompanionRule } from '../
 import { failedPatterns, shouldBlockProposal } from '../src/ledger/experiment-memory.mjs';
 import { toSarif } from '../src/reporters/sarif.mjs';
 import { declarativeRule } from '../src/rules/declarative.mjs';
+import { loadRuleCard } from '../src/rules/loader.mjs';
+import { semgrepEvidence } from '../src/adapters/semgrep-evidence.mjs';
 import { freezeCases } from '../src/experiments/freeze.mjs';
 import { blindSample } from '../src/experiments/blind-sample.mjs';
 import { auc, leakageGate } from '../src/experiments/auc.mjs';
@@ -247,6 +249,25 @@ assert.equal(runRules({
   rules: [declarative],
   evidences: [evidence('semantic.risk.high', 'present')],
 }).length, 1);
+
+const loadedCard = await loadRuleCard(new URL('../rules/semantic-test-gap.v0.1.json', import.meta.url));
+assert.equal(loadedCard.metadata.id, 'semantic-test-gap');
+
+const staticEvidence = semgrepEvidence({
+  results: [{
+    checkId: 'h19.sql.row-lock-present',
+    path: 'demo.sql',
+    start: { line: 2 },
+    end: { line: 2 },
+    message: 'row lock',
+  }],
+  checks: [
+    { checkId: 'h19.sql.row-lock-present', evidenceId: 'static.sql.row_lock.present' },
+    { checkId: 'h19.sql.idempotency-present', evidenceId: 'static.sql.idempotency.present' },
+  ],
+});
+assert.equal(staticEvidence[0].state, 'present');
+assert.equal(staticEvidence[1].state, 'absent');
 
 const frozen = freezeCases([
   { case_id: 'A01', label: true, feature: 0 },
