@@ -26,7 +26,10 @@
     "perf:baseline": "node perf/run-baseline.mjs",
     "test:ts-shards": "node test/typescript-project-shards.mjs",
     "perf:ts-shards": "node perf/run-shard-baseline.mjs",
-    "perf:persistent-cache": "node perf/run-persistent-cache-probe.mjs"
+    "perf:persistent-cache": "node perf/run-persistent-cache-probe.mjs",
+    "test:cache-plan": "node test/typescript-shard-plan.mjs",
+    "perf:plan-cache": "node perf/plan-shard-cache.mjs",
+    "perf:materialize-cache": "node perf/materialize-shard-cache.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
