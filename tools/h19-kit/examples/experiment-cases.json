@@ -1,0 +1,22 @@
+[
+  {
+    "case_id": "DEMO01",
+    "label": true,
+    "feature": 0.2
+  },
+  {
+    "case_id": "DEMO02",
+    "label": false,
+    "feature": 0.8
+  },
+  {
+    "case_id": "DEMO03",
+    "label": true,
+    "feature": 0.3
+  },
+  {
+    "case_id": "DEMO04",
+    "label": false,
+    "feature": 0.7
+  }
+]
