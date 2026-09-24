@@ -5,10 +5,10 @@
   "purpose": "Classify whether a code change touches each frozen H19 semantic axis. Facts are advisory evidence, never authority or a merge decision.",
   "output_contract": {
     "per_axis": {
-      "answer": "boolean",
-      "confidence": "number in [0,1] representing confidence that the boolean answer is correct"
+      "type": "noul",
+      "value": "number in [0,1], interpreted directly as P(axis=yes)"
     },
-    "notes": "The deterministic scorer converts each answer/confidence pair into P(axis=yes). Pair ranking is computed in code, not by the model."
+    "notes": "Jev returns one Noul probability for each axis in the same request. Pair ranking is computed deterministically in code; the model never selects an H19 pair."
   },
   "axes": [
     {
