@@ -76,3 +76,51 @@ exact-content warm hit
 ```
 
 A large warm speedup does not prove that cold indexing is cheap. Both values must be reported.
+
+
+## PERF-001 — first real repository result
+
+Reference environment: GitHub hosted Linux runner, 4 vCPU, Node 24, pinned `scip-typescript 0.4.0`.
+
+Observed repository scale:
+
+- 530 source files;
+- 131,019 source lines;
+- 6,415 semantic units;
+- 329 TS/JS files, 66,711 TS/JS lines.
+
+Observed latency:
+
+| Layer | PERF-001 |
+| --- | ---: |
+| semantic inventory first run | 1,067 ms |
+| semantic inventory repeat median | 698 ms |
+| Git history cold | 307 ms |
+| Git history warm cache hit | 9 ms |
+| M4 impact p95 @ 200 projects / 5,000 refs | 13.3 ms |
+| M5 discovery p95 | 6.8 ms |
+| SCIP first index | 9,303 ms |
+| SCIP exact-content H19 cache hit | 28 ms |
+| single-file-triggered full re-index | 8,950 ms |
+
+The dominant latency is external TypeScript/SCIP indexing, not M4/M5 orchestration.
+
+PERF-001 also exposed an invalidation bug in the benchmark/cache input contract: the selected mutation target was
+`scripts/browser-booking-recovery.mjs`, while the root TypeScript project graph references only
+`tsconfig.app.json`, `tsconfig.worker.json`, and `tsconfig.node.json`. The cache fingerprint had been
+including repository-wide TS/JS files instead of only the files actually indexed by the TypeScript project graph.
+
+## PERF-002 hypothesis
+
+The next measurement must test two separate improvements without changing the external indexer version:
+
+1. **Exact input fingerprinting**
+   - derive indexed files from the TypeScript config graph;
+   - a TS/JS file outside that graph must not invalidate the SCIP cache.
+
+2. **Project sharding**
+   - cache `tsconfig.app.json`, `tsconfig.worker.json`, and `tsconfig.node.json` separately;
+   - an indexed-file change should re-index only the owning shard while unchanged shards remain hits.
+
+PERF-002 must continue reporting monolithic cold/warm values so the sharded result can be compared against the
+same runner and same pinned indexer. No performance pass/fail threshold is introduced until PERF-002 exists.
