@@ -34,8 +34,9 @@ function baseFetch(rpc){
     return rpc(url,init);
   };
 }
-const headers=()=>({Cookie:cookie(),Origin:'http://localhost','X-YZT-CSRF':'series-csrf', 'Content-Type':'application/json'});
-const mutationCookie=()=>`${cookie()}; yzt_csrf=series-csrf`;
+const csrf='S'.repeat(43);
+const headers=()=>({Cookie:cookie(),Origin:'http://localhost','X-YZT-CSRF':csrf,'Content-Type':'application/json'});
+const mutationCookie=()=>cookie()+`; yzt_csrf=${csrf}`;
 
 await test('F16-01 preview derives tenant and forwards only bounded recurrence inputs',async()=>{
   const real=globalThis.fetch;
