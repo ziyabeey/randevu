@@ -176,3 +176,35 @@ Before another granularity change:
 - freeze relative regression bands only after repeat evidence;
 - prefer compiler/indexer-provided incremental state or durable local/cloud state over manually patching SCIP
   symbol graphs.
+
+
+## PERF-002 repeat and frozen regression guard
+
+A second same-design hosted-runner sample reproduced the main results:
+
+- monolithic changed-file re-index: 8.32s vs 8.46s;
+- sharded changed-file re-index: 5.56s vs 5.58s;
+- shard cold total: 9.71s vs 9.70s;
+- unindexed-file cache hit: 6.9ms vs 6.7ms;
+- sharded changed-file speedup: 1.50x vs 1.52x.
+
+The repeat is stored as `PERF-002R1.github-ubuntu.json`.
+
+Based on those two samples, `PERF_THRESHOLDS.v1.json` freezes a **regression guard**, not a product target.
+
+Current guarded limits include:
+
+- inventory repeat p95 <= 1000ms;
+- Git-history warm hit <= 25ms;
+- M4 synthetic impact p95 <= 30ms;
+- M5 discovery p95 <= 20ms;
+- exact SCIP cache hit <= 25ms;
+- sharded cold / monolithic cold ratio <= 1.20;
+- sharded changed-file / monolithic changed-file ratio <= 0.80;
+- shard warm-hit total <= 30ms;
+- changed-file shard execution must retain at least one cache hit and at most one miss in the reference scenario.
+
+Absolute cold SCIP/indexer times remain report-only because hosted-runner and external-indexer variance should not be
+confused with H19-owned regression.
+
+No interactive product-latency target is frozen yet.
