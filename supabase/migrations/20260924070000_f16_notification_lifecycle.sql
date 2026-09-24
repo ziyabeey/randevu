@@ -16,7 +16,7 @@ alter table public.appointment_notification_jobs
     check (channel in ('email','sms')),
   drop constraint if exists appointment_notification_jobs_provider_check,
   add constraint appointment_notification_jobs_provider_check
-    check (provider in ('resend','netgsm')),
+    check (provider in ('resend','netgsm','twilio')),
   drop constraint if exists appointment_notification_jobs_event_reason_check,
   add constraint appointment_notification_jobs_event_reason_check
     check (event_reason in ('created','rescheduled','cancelled','reminder'));
@@ -249,7 +249,7 @@ begin
     and j.kind=p_kind
     and j.channel=p_channel;
 
-  v_provider:=case when p_channel='email' then 'resend' else 'netgsm' end;
+  v_provider:=case when p_channel='email' then 'resend' else 'twilio' end;
   v_reference:=case when p_channel='sms'
     then 'kepenk-'||replace(v_event_id::text,'-','')
     else null end;
@@ -757,9 +757,9 @@ begin
   update public.appointment_notification_jobs j
   set state='failed_terminal',
       terminal_at=coalesce(j.terminal_at,clock_timestamp()),
-      last_error_class='netgsm_ambiguous_lease_expired',
+      last_error_class='sms_provider_ambiguous_lease_expired',
       lease_token=null,lease_expires_at=null,updated_at=clock_timestamp()
-  where j.provider='netgsm'
+  where j.provider in ('netgsm','twilio')
     and j.state='leased'
     and j.lease_expires_at<=clock_timestamp()
     and j.first_provider_attempt_at is not null
@@ -785,7 +785,7 @@ begin
       and j.retry_until>clock_timestamp()
       and j.attempt_count<j.max_attempts
       and not (
-        j.provider='netgsm'
+        j.provider in ('netgsm','twilio')
         and j.first_provider_attempt_at is not null
         and j.delivery_certainty='ambiguous'
       )
@@ -960,6 +960,7 @@ create or replace function public.claim_notification_delivery_checks(
   p_limit integer default 50
 )
 returns table(
+  provider text,
   provider_message_id text,
   provider_reference_id text
 )
@@ -980,7 +981,7 @@ begin
   with candidates as (
     select j.id
     from public.appointment_notification_jobs j
-    where j.provider='netgsm'
+    where j.provider in ('netgsm','twilio')
       and j.state='sent'
       and j.provider_message_id is not null
       and j.delivered_at is null
@@ -997,9 +998,9 @@ begin
         updated_at=clock_timestamp()
     from candidates c
     where j.id=c.id
-    returning j.provider_message_id,j.provider_reference_id
+    returning j.provider,j.provider_message_id,j.provider_reference_id
   )
-  select m.provider_message_id,m.provider_reference_id
+  select m.provider,m.provider_message_id,m.provider_reference_id
   from marked m;
 end
 $f16$;
@@ -1028,7 +1029,7 @@ begin
   if not public.notification_dispatch_authorized(p_dispatch_secret) then
     raise exception 'NOTIFICATION_DISPATCH_UNAUTHORIZED';
   end if;
-  if p_provider not in ('resend','netgsm')
+  if p_provider not in ('resend','netgsm','twilio')
      or p_provider_message_id is null
      or char_length(p_provider_message_id) not between 1 and 200
      or p_status is null or char_length(p_status) not between 1 and 80 then
