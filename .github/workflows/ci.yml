@@ -241,12 +241,18 @@ jobs:
       - name: Run H19 Kit TypeScript shard smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:perf-shards
+      - name: Run H19 Kit performance regression-gate smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:perf-gate
       - name: Install pinned SCIP TypeScript for performance baseline
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
         run: npm install --global @sourcegraph/scip-typescript@0.4.0
       - name: Measure H19 Kit performance baseline
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
         run: npm --prefix tools/h19-kit run perf:baseline -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-perf-baseline.json" --require-scip
+      - name: Check H19 Kit performance regression gate
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
+        run: npm --prefix tools/h19-kit run perf:check -- "${RUNNER_TEMP}/h19-perf-baseline.json"
       - name: Upload H19 Kit performance baseline
         if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
         uses: actions/upload-artifact@v4
