@@ -25,7 +25,7 @@ on:
         default: false
         type: boolean
       run_f16_sms_acceptance:
-        description: Run real F16-02 NetGSM SMS delivery and segment/tariff gate
+        description: Run real F16-02 Twilio SMS delivery gate
         required: false
         default: false
         type: boolean
@@ -78,6 +78,10 @@ jobs:
       NETGSM_APPNAME: kepenk
       NETGSM_TEST_RECIPIENT: ${{ secrets.NETGSM_TEST_RECIPIENT }}
       NETGSM_SMS_SEGMENT_PRICE_TRY: ${{ vars.NETGSM_SMS_SEGMENT_PRICE_TRY }}
+      TWILLO_ID: ${{ secrets.TWILLO_ID }}
+      TWILLO_SECRET_API: ${{ secrets.TWILLO_SECRET_API }}
+      TWILIO_TEST_RECIPIENT: ${{ secrets.TWILIO_TEST_RECIPIENT }}
+      TWILIO_TRIAL_MODE: 'true'
 
     steps:
       - name: Checkout
@@ -166,11 +170,15 @@ jobs:
           if (configuredNetgsm !== 0 && configuredNetgsm !== netgsmRuntime.length) {
             throw new Error('NetGSM staging runtime credentials must be configured together');
           }
+          const twilioRuntime = ['TWILLO_ID', 'TWILLO_SECRET_API'];
+          const configuredTwilio = twilioRuntime.filter((name) => Boolean(process.env[name])).length;
+          if (configuredTwilio !== 0 && configuredTwilio !== twilioRuntime.length) {
+            throw new Error('Twilio staging runtime credentials must be configured together');
+          }
           if (process.env.RUN_F16_SMS_ACCEPTANCE === 'true') {
             const f16Required = [
-              ...netgsmRuntime,
-              'NETGSM_TEST_RECIPIENT',
-              'NETGSM_SMS_SEGMENT_PRICE_TRY',
+              ...twilioRuntime,
+              'TWILIO_TEST_RECIPIENT',
             ];
             const missingF16 = f16Required.filter((name) => !process.env[name]);
             if (missingF16.length) {
