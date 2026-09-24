@@ -1,0 +1,1095 @@
+{
+  "arm": "JF2",
+  "model": "jev-1.13.0",
+  "cases_sha256": "2ca2e3fce5daa98817424e7903fb4431a4eae586df615589580f8b247d496c41",
+  "rows": [
+    {
+      "case_id": "AP01",
+      "input_digest": "c16de483b951b7fd3d910788f8b036d6024f44c9af2488ea872c490a7fb8642b",
+      "input_tokens": 775,
+      "latency_ms": 264,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.36,
+        "probabilities": {
+          "undetermined": 0,
+          "no_effect": 0.04,
+          "strengthens": 0.44,
+          "weakens": 0.52
+        }
+      }
+    },
+    {
+      "case_id": "CP01",
+      "input_digest": "08e1ee65fe6f8cdbff73af8dbd83504e710c7ba1086efeba68f848a1ed185d58",
+      "input_tokens": 713,
+      "latency_ms": 259,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.63,
+        "probabilities": {
+          "strengthens": 0.73,
+          "weakens": 0.15,
+          "no_effect": 0.11,
+          "undetermined": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "AP02",
+      "input_digest": "1eda7db1f472ee56a4b1b1cd5afd0f4d2eb4c804433acc1993265eb5687e6452",
+      "input_tokens": 678,
+      "latency_ms": 262,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.41,
+        "probabilities": {
+          "undetermined": 0.01,
+          "no_effect": 0.04,
+          "strengthens": 0.4,
+          "weakens": 0.55
+        }
+      }
+    },
+    {
+      "case_id": "CP02",
+      "input_digest": "67c0865ba3b9c493f19dcb91a0107bfebc27413b1ac31bdad630bcf661489ef0",
+      "input_tokens": 696,
+      "latency_ms": 189,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.31,
+        "probabilities": {
+          "weakens": 0.48,
+          "undetermined": 0.03,
+          "no_effect": 0.33,
+          "strengthens": 0.16
+        }
+      }
+    },
+    {
+      "case_id": "AP03",
+      "input_digest": "3b060c1b0cfb5e5f084c364fc7123d815402b098ea3b9296fed56d2223ae8b07",
+      "input_tokens": 687,
+      "latency_ms": 738,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.9,
+        "probabilities": {
+          "no_effect": 0.04,
+          "strengthens": 0.03,
+          "weakens": 0.92,
+          "undetermined": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "CP03",
+      "input_digest": "66d6927e225f73cbd1e697f701efae092e8139b4a1d5291d064c53c7ca98eece",
+      "input_tokens": 759,
+      "latency_ms": 698,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.5,
+        "probabilities": {
+          "strengthens": 0.08,
+          "no_effect": 0.62,
+          "weakens": 0.29,
+          "undetermined": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "AP04",
+      "input_digest": "7b4fd4dd2ff3de8dd5f64ec4c08372f06170d357de1117dfa7156eb5c02fdba0",
+      "input_tokens": 677,
+      "latency_ms": 310,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.4,
+        "probabilities": {
+          "weakens": 0.55,
+          "undetermined": 0.01,
+          "strengthens": 0.37,
+          "no_effect": 0.07
+        }
+      }
+    },
+    {
+      "case_id": "CP04",
+      "input_digest": "033ff381244347749744ac2fa48502e791327a1d6c63f2302ab07a1ef63d4bb1",
+      "input_tokens": 1097,
+      "latency_ms": 724,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.81,
+        "probabilities": {
+          "no_effect": 0.85,
+          "weakens": 0.12,
+          "undetermined": 0.01,
+          "strengthens": 0.02
+        }
+      }
+    },
+    {
+      "case_id": "AP05",
+      "input_digest": "c408b92f2a10c3fe43d3376a3d21b7fcc5b59468b6cff480329c42f9d59dba37",
+      "input_tokens": 683,
+      "latency_ms": 236,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.9,
+        "probabilities": {
+          "weakens": 0.92,
+          "undetermined": 0.01,
+          "strengthens": 0.04,
+          "no_effect": 0.03
+        }
+      }
+    },
+    {
+      "case_id": "CP05",
+      "input_digest": "7708d18c410f2e4292bcb04d68fd0e11a332ec6ee58f6cd2a691ec8e0c3566a4",
+      "input_tokens": 981,
+      "latency_ms": 212,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.59,
+        "probabilities": {
+          "weakens": 0.21,
+          "strengthens": 0.07,
+          "undetermined": 0.02,
+          "no_effect": 0.7
+        }
+      }
+    },
+    {
+      "case_id": "AP06",
+      "input_digest": "2a0c2428c9a504240d9eefa2bc37ebe4f895a31c0582c9d62b47a2c43caece0b",
+      "input_tokens": 686,
+      "latency_ms": 215,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.71,
+        "probabilities": {
+          "weakens": 0.15,
+          "undetermined": 0.01,
+          "no_effect": 0.06,
+          "strengthens": 0.78
+        }
+      }
+    },
+    {
+      "case_id": "CP06",
+      "input_digest": "4050e146d0233cb0475315abd8cb23e75d03a5e66434846e3b004d7597a918ea",
+      "input_tokens": 742,
+      "latency_ms": 225,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.65,
+        "probabilities": {
+          "strengthens": 0.1,
+          "no_effect": 0.74,
+          "undetermined": 0.02,
+          "weakens": 0.14
+        }
+      }
+    },
+    {
+      "case_id": "AP07",
+      "input_digest": "457c8f2e0ba9ab4255a25f08156578d5b9c773572034f00f3125b9a85ddbf4fe",
+      "input_tokens": 678,
+      "latency_ms": 625,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.8,
+        "probabilities": {
+          "no_effect": 0.05,
+          "strengthens": 0.84,
+          "undetermined": 0.01,
+          "weakens": 0.1
+        }
+      }
+    },
+    {
+      "case_id": "CP07",
+      "input_digest": "4b004d0a2b16e44e393d81efbebfaa023828dfaad03a9753f0eddac5a609ee66",
+      "input_tokens": 737,
+      "latency_ms": 655,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.79,
+        "probabilities": {
+          "no_effect": 0.85,
+          "weakens": 0.07,
+          "undetermined": 0.01,
+          "strengthens": 0.07
+        }
+      }
+    },
+    {
+      "case_id": "AP08",
+      "input_digest": "fab34ef9412bfa1d3ee84dc38803cf683d0e50ae841432370541fc0e374d9fbd",
+      "input_tokens": 678,
+      "latency_ms": 624,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.64,
+        "probabilities": {
+          "strengthens": 0.73,
+          "undetermined": 0.01,
+          "weakens": 0.24,
+          "no_effect": 0.02
+        }
+      }
+    },
+    {
+      "case_id": "CP08",
+      "input_digest": "4cb6a8fef5cc297d72f5ca89354f2ef42f12ce0ddb92557534343cc236544744",
+      "input_tokens": 684,
+      "latency_ms": 715,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.97,
+        "probabilities": {
+          "weakens": 0.01,
+          "undetermined": 0,
+          "strengthens": 0.01,
+          "no_effect": 0.98
+        }
+      }
+    },
+    {
+      "case_id": "AP09",
+      "input_digest": "4f658ca458da6645698408a7e1fc174590fcd013a81a241cae5304867421a686",
+      "input_tokens": 712,
+      "latency_ms": 219,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.33,
+        "probabilities": {
+          "strengthens": 0.5,
+          "undetermined": 0.01,
+          "weakens": 0.48,
+          "no_effect": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "CP09",
+      "input_digest": "4fe75a004a70acae63f836395614ab40827371ad4e264a5fc20714aecafd6fae",
+      "input_tokens": 658,
+      "latency_ms": 250,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.61,
+        "probabilities": {
+          "undetermined": 0.02,
+          "strengthens": 0.13,
+          "weakens": 0.7,
+          "no_effect": 0.15
+        }
+      }
+    },
+    {
+      "case_id": "AP10",
+      "input_digest": "996c1d6aae51ba4ea18e1008e97b762af8b58ea4511344615af4cb69164d6556",
+      "input_tokens": 685,
+      "latency_ms": 204,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.57,
+        "probabilities": {
+          "undetermined": 0.01,
+          "strengthens": 0.29,
+          "no_effect": 0.03,
+          "weakens": 0.67
+        }
+      }
+    },
+    {
+      "case_id": "CP10",
+      "input_digest": "6ac9f58eda7c5ebb59348158b5a2f6878d33d289de107a1ce9992b5c6eb25b6a",
+      "input_tokens": 702,
+      "latency_ms": 213,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.34,
+        "probabilities": {
+          "no_effect": 0.13,
+          "undetermined": 0.02,
+          "weakens": 0.51,
+          "strengthens": 0.34
+        }
+      }
+    },
+    {
+      "case_id": "AP11",
+      "input_digest": "afb426cf57ddc040eca062eac498f44b72258cbdd07611542bf1cc5875dad588",
+      "input_tokens": 883,
+      "latency_ms": 298,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.32,
+        "probabilities": {
+          "undetermined": 0,
+          "strengthens": 0.5,
+          "weakens": 0.47,
+          "no_effect": 0.03
+        }
+      }
+    },
+    {
+      "case_id": "CP11",
+      "input_digest": "a452b44847110fbd51ab5ceffdc2aa99ee87a74f05bb542f9de5984a0d75b2bd",
+      "input_tokens": 732,
+      "latency_ms": 640,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.62,
+        "probabilities": {
+          "strengthens": 0.08,
+          "no_effect": 0.71,
+          "undetermined": 0.02,
+          "weakens": 0.19
+        }
+      }
+    },
+    {
+      "case_id": "AP12",
+      "input_digest": "dbb8c95998ebec13ed14606ae59194a5f8ac11dd249206405a156d4a0d73f186",
+      "input_tokens": 647,
+      "latency_ms": 600,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.77,
+        "probabilities": {
+          "weakens": 0.83,
+          "strengthens": 0.01,
+          "no_effect": 0.15,
+          "undetermined": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "CP12",
+      "input_digest": "46e27134f46b07de18228066e58525c353f591e2b9a9251ec294db55aec48ca6",
+      "input_tokens": 814,
+      "latency_ms": 569,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.61,
+        "probabilities": {
+          "weakens": 0.71,
+          "undetermined": 0.02,
+          "no_effect": 0.23,
+          "strengthens": 0.04
+        }
+      }
+    },
+    {
+      "case_id": "AP13",
+      "input_digest": "5e1810f768d2ee67e2f3df427094f90e5e914cdf91c1dbfb033255c5c206348f",
+      "input_tokens": 657,
+      "latency_ms": 219,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.42,
+        "probabilities": {
+          "no_effect": 0.02,
+          "weakens": 0.5700000000000001,
+          "strengthens": 0.36,
+          "undetermined": 0.05
+        }
+      }
+    },
+    {
+      "case_id": "CP13",
+      "input_digest": "fb622dce49d09f301ee42dcc1bc5418c634821ee51ecb1fa8908d0ca7288a823",
+      "input_tokens": 715,
+      "latency_ms": 214,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.54,
+        "probabilities": {
+          "weakens": 0.23,
+          "undetermined": 0.01,
+          "strengthens": 0.11,
+          "no_effect": 0.65
+        }
+      }
+    },
+    {
+      "case_id": "AP14",
+      "input_digest": "561c762476b9bd3993369e5d761349c288e85894477efa6569865074c1354542",
+      "input_tokens": 663,
+      "latency_ms": 224,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.65,
+        "probabilities": {
+          "undetermined": 0.02,
+          "weakens": 0.19,
+          "strengthens": 0.74,
+          "no_effect": 0.05
+        }
+      }
+    },
+    {
+      "case_id": "CP14",
+      "input_digest": "bd7f428f91aadafb7a0e80962c185bd9cef5a28e490e48d31471b076ed9e15b0",
+      "input_tokens": 724,
+      "latency_ms": 205,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.32,
+        "probabilities": {
+          "strengthens": 0.5,
+          "undetermined": 0.02,
+          "no_effect": 0.13,
+          "weakens": 0.35
+        }
+      }
+    },
+    {
+      "case_id": "AP15",
+      "input_digest": "a1f1c9bf7d99db8716129a78c125473c6c7fb559f2578e39bd4a5ccc8738b27c",
+      "input_tokens": 664,
+      "latency_ms": 667,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.7,
+        "probabilities": {
+          "undetermined": 0.01,
+          "weakens": 0.2,
+          "no_effect": 0.01,
+          "strengthens": 0.78
+        }
+      }
+    },
+    {
+      "case_id": "CP15",
+      "input_digest": "193374b33d8fa4116a8691cbcca417550947f034d0141dce125297eac29b854e",
+      "input_tokens": 640,
+      "latency_ms": 677,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.74,
+        "probabilities": {
+          "no_effect": 0.13,
+          "strengthens": 0.04,
+          "weakens": 0.8,
+          "undetermined": 0.03
+        }
+      }
+    },
+    {
+      "case_id": "AP16",
+      "input_digest": "2b31cc61229d26ebca5ce9df3c87ad3415a60e3884782acb924d380f3084d9e9",
+      "input_tokens": 689,
+      "latency_ms": 623,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.83,
+        "probabilities": {
+          "undetermined": 0.01,
+          "no_effect": 0.02,
+          "strengthens": 0.87,
+          "weakens": 0.1
+        }
+      }
+    },
+    {
+      "case_id": "CP16",
+      "input_digest": "08a6f4239f210367157ea942e1c068da7b2120e2c23b40135bd352cb4b714407",
+      "input_tokens": 755,
+      "latency_ms": 637,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.45,
+        "probabilities": {
+          "no_effect": 0.59,
+          "weakens": 0.26,
+          "strengthens": 0.14,
+          "undetermined": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "BP01",
+      "input_digest": "d146b3e3811229ddc9ad183173c075eae8c29d6e93a86478a07498a576a1bde6",
+      "input_tokens": 725,
+      "latency_ms": 239,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.45,
+        "probabilities": {
+          "no_effect": 0.19,
+          "strengthens": 0.2,
+          "weakens": 0.59,
+          "undetermined": 0.02
+        }
+      }
+    },
+    {
+      "case_id": "DP01",
+      "input_digest": "f158030ac38b76d38c06099436df4ae4db60c0ff601a899ddd40ccd8916cd6dc",
+      "input_tokens": 640,
+      "latency_ms": 240,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.45,
+        "probabilities": {
+          "undetermined": 0.03,
+          "weakens": 0.11,
+          "no_effect": 0.27,
+          "strengthens": 0.59
+        }
+      }
+    },
+    {
+      "case_id": "BP02",
+      "input_digest": "749b36649a6282c8a886ddf8ed4f97c929b4516c518e08fb753defc6f122fd79",
+      "input_tokens": 726,
+      "latency_ms": 199,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.32,
+        "probabilities": {
+          "no_effect": 0.23,
+          "strengthens": 0.26,
+          "weakens": 0.49,
+          "undetermined": 0.02
+        }
+      }
+    },
+    {
+      "case_id": "DP02",
+      "input_digest": "096b71d8b07ddb6748c0589605b2ae2c8d271dee674f503bd172d6aece679ed5",
+      "input_tokens": 673,
+      "latency_ms": 246,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.56,
+        "probabilities": {
+          "weakens": 0.27,
+          "strengthens": 0.04,
+          "undetermined": 0.03,
+          "no_effect": 0.66
+        }
+      }
+    },
+    {
+      "case_id": "BP03",
+      "input_digest": "52e1cae007af06b74b2f0fc13841703eed1ea30ef7d2330d23c512439d6bc41b",
+      "input_tokens": 671,
+      "latency_ms": 645,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.75,
+        "probabilities": {
+          "undetermined": 0.01,
+          "no_effect": 0.13,
+          "weakens": 0.8,
+          "strengthens": 0.06
+        }
+      }
+    },
+    {
+      "case_id": "DP03",
+      "input_digest": "c2d9f97f286eef13abca1ed51a7d8798fa3480025f55068f7e9ea3b8e6526dd2",
+      "input_tokens": 684,
+      "latency_ms": 575,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.44,
+        "probabilities": {
+          "no_effect": 0.59,
+          "weakens": 0.14,
+          "undetermined": 0.01,
+          "strengthens": 0.26
+        }
+      }
+    },
+    {
+      "case_id": "BP04",
+      "input_digest": "c82918820357583d98b238af2587c2262dc506fa8112251c040ab1fd85aae8b4",
+      "input_tokens": 697,
+      "latency_ms": 614,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.68,
+        "probabilities": {
+          "no_effect": 0.03,
+          "weakens": 0.2,
+          "strengthens": 0.76,
+          "undetermined": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "DP04",
+      "input_digest": "4cccd9184b7e5ced06bf7b3ac7704cdf371485730cfdbe79e45d18720f73a766",
+      "input_tokens": 738,
+      "latency_ms": 589,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.76,
+        "probabilities": {
+          "weakens": 0.15,
+          "undetermined": 0.01,
+          "strengthens": 0.02,
+          "no_effect": 0.82
+        }
+      }
+    },
+    {
+      "case_id": "BP05",
+      "input_digest": "8f47e01142330e2470182d23116dc549bc01104f5035a7b1a70537134c36a05d",
+      "input_tokens": 696,
+      "latency_ms": 221,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.57,
+        "probabilities": {
+          "undetermined": 0.01,
+          "no_effect": 0.03,
+          "strengthens": 0.68,
+          "weakens": 0.28
+        }
+      }
+    },
+    {
+      "case_id": "DP05",
+      "input_digest": "65c3e1f8b0f495251b443aad410bce4cb81c7dae5fb3a567d2a5d72efda9653f",
+      "input_tokens": 705,
+      "latency_ms": 203,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.49,
+        "probabilities": {
+          "strengthens": 0.62,
+          "undetermined": 0.01,
+          "no_effect": 0.13,
+          "weakens": 0.24
+        }
+      }
+    },
+    {
+      "case_id": "BP06",
+      "input_digest": "01131f9567d4aefb25838e4d028e4f63fe06f33bca7b0650455f4d1ae8b93b46",
+      "input_tokens": 704,
+      "latency_ms": 205,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.68,
+        "probabilities": {
+          "weakens": 0.75,
+          "strengthens": 0.05,
+          "no_effect": 0.19,
+          "undetermined": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "DP06",
+      "input_digest": "1a9ca83f22902bc9590fa63abe57f33d948e9aa9fb4f698df3eac31a544b253a",
+      "input_tokens": 765,
+      "latency_ms": 193,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.56,
+        "probabilities": {
+          "no_effect": 0.31,
+          "weakens": 0.67,
+          "undetermined": 0,
+          "strengthens": 0.02
+        }
+      }
+    },
+    {
+      "case_id": "BP07",
+      "input_digest": "d2b4b4e4cccff56331799cefcc64191f18db76fd17528bc2541d35072aa85c16",
+      "input_tokens": 762,
+      "latency_ms": 670,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.77,
+        "probabilities": {
+          "strengthens": 0.05,
+          "no_effect": 0.11,
+          "undetermined": 0,
+          "weakens": 0.84
+        }
+      }
+    },
+    {
+      "case_id": "DP07",
+      "input_digest": "7f8b056e5d04cbbbc70a9b36e4e35268b8cb34e3a548aae58d1b2e5f16dca9ec",
+      "input_tokens": 697,
+      "latency_ms": 581,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.87,
+        "probabilities": {
+          "no_effect": 0.07,
+          "undetermined": 0,
+          "weakens": 0.91,
+          "strengthens": 0.02
+        }
+      }
+    },
+    {
+      "case_id": "BP08",
+      "input_digest": "5e9fd2a45e7f7f069315bf11d851f6fbf089e7d4de8560e912ece1cc6cf928a9",
+      "input_tokens": 837,
+      "latency_ms": 692,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.94,
+        "probabilities": {
+          "strengthens": 0.01,
+          "undetermined": 0,
+          "no_effect": 0.03,
+          "weakens": 0.96
+        }
+      }
+    },
+    {
+      "case_id": "DP08",
+      "input_digest": "de4dc9679d69188ad8d273a9e737dd7a79a17819c6b3a61faf1c404da39efdec",
+      "input_tokens": 661,
+      "latency_ms": 667,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.82,
+        "probabilities": {
+          "no_effect": 0.11,
+          "strengthens": 0.01,
+          "undetermined": 0.01,
+          "weakens": 0.87
+        }
+      }
+    },
+    {
+      "case_id": "BP09",
+      "input_digest": "e99ce7ab270a92c8ede27d6933c989337865bf7c5c23c9cc36c657eeba6711c7",
+      "input_tokens": 685,
+      "latency_ms": 220,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.31,
+        "probabilities": {
+          "weakens": 0.28,
+          "undetermined": 0.01,
+          "no_effect": 0.23,
+          "strengthens": 0.48
+        }
+      }
+    },
+    {
+      "case_id": "DP09",
+      "input_digest": "0f7dbc3b94e06493ec1c58773ff7206ce272358e40cb518eb55f046664dcea55",
+      "input_tokens": 708,
+      "latency_ms": 215,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.69,
+        "probabilities": {
+          "strengthens": 0.02,
+          "no_effect": 0.77,
+          "undetermined": 0.01,
+          "weakens": 0.2
+        }
+      }
+    },
+    {
+      "case_id": "BP10",
+      "input_digest": "79db72a2e60078eaef091fce6e950835c8741f3866b4ad5cb6e13952a142081e",
+      "input_tokens": 710,
+      "latency_ms": 221,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.67,
+        "probabilities": {
+          "undetermined": 0.01,
+          "weakens": 0.75,
+          "strengthens": 0.17,
+          "no_effect": 0.07
+        }
+      }
+    },
+    {
+      "case_id": "DP10",
+      "input_digest": "08f63d1d9a1d723d11bdfb07a964d79b0e2a5eb1cf8e31970566454c706c1e17",
+      "input_tokens": 655,
+      "latency_ms": 245,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.81,
+        "probabilities": {
+          "undetermined": 0.01,
+          "weakens": 0.86,
+          "strengthens": 0.01,
+          "no_effect": 0.12
+        }
+      }
+    },
+    {
+      "case_id": "BP11",
+      "input_digest": "a5f06272e48b8a76f95a75afaaaa30b4c808764449b7bb5dd7da5a6909d1753d",
+      "input_tokens": 816,
+      "latency_ms": 373,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.89,
+        "probabilities": {
+          "weakens": 0.91,
+          "undetermined": 0.01,
+          "no_effect": 0.07,
+          "strengthens": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "DP11",
+      "input_digest": "6fdcc3a5257eafd2fab49f25739882c399d6998639cf0940d0598f375d16b752",
+      "input_tokens": 663,
+      "latency_ms": 852,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.44,
+        "probabilities": {
+          "no_effect": 0.38,
+          "strengthens": 0.02,
+          "weakens": 0.58,
+          "undetermined": 0.02
+        }
+      }
+    },
+    {
+      "case_id": "BP12",
+      "input_digest": "46a7f920fd6ee0e59eb322c55b00edec71e22902ecebbd26ece525d209c1cbae",
+      "input_tokens": 969,
+      "latency_ms": 347,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.7,
+        "probabilities": {
+          "weakens": 0.77,
+          "strengthens": 0.05,
+          "undetermined": 0.01,
+          "no_effect": 0.17
+        }
+      }
+    },
+    {
+      "case_id": "DP12",
+      "input_digest": "017fc67c36b910acd88a0445253e83464774f6953b505a2376d65b5980a3b4bf",
+      "input_tokens": 747,
+      "latency_ms": 728,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.65,
+        "probabilities": {
+          "no_effect": 0.73,
+          "undetermined": 0.01,
+          "weakens": 0.19,
+          "strengthens": 0.07
+        }
+      }
+    },
+    {
+      "case_id": "BP13",
+      "input_digest": "f455f689e9ffe4bade55a8be1726bea1621e62280f5e42d729a66fbf88b7d573",
+      "input_tokens": 654,
+      "latency_ms": 206,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.95,
+        "probabilities": {
+          "no_effect": 0.02,
+          "weakens": 0.97,
+          "strengthens": 0.01,
+          "undetermined": 0
+        }
+      }
+    },
+    {
+      "case_id": "DP13",
+      "input_digest": "e5014a31c48fb812a9dec2847414fa8a8b4ccb51d21a36e80198a98364f79ab0",
+      "input_tokens": 669,
+      "latency_ms": 211,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.59,
+        "probabilities": {
+          "no_effect": 0.14,
+          "strengthens": 0.69,
+          "weakens": 0.16,
+          "undetermined": 0.01
+        }
+      }
+    },
+    {
+      "case_id": "BP14",
+      "input_digest": "f65538c5177865b64576135973b1c48e934740d41788d9638850809fda4374de",
+      "input_tokens": 711,
+      "latency_ms": 214,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.19,
+        "probabilities": {
+          "undetermined": 0.12,
+          "no_effect": 0.31,
+          "weakens": 0.18,
+          "strengthens": 0.39
+        }
+      }
+    },
+    {
+      "case_id": "DP14",
+      "input_digest": "34f7b536f878934bd74478f2369c007de0376972be3e5ed929f4577dd5b8ae2f",
+      "input_tokens": 672,
+      "latency_ms": 250,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.93,
+        "probabilities": {
+          "weakens": 0.03,
+          "no_effect": 0.94,
+          "undetermined": 0.01,
+          "strengthens": 0.02
+        }
+      }
+    },
+    {
+      "case_id": "BP15",
+      "input_digest": "8629aabbd89f5c96b9e0e00c11dd3f20c3cee73b8567aa6de904ff49b0e111c5",
+      "input_tokens": 709,
+      "latency_ms": 620,
+      "verdict": {
+        "type": "choice",
+        "choice": "no_effect",
+        "confidence": 0.28,
+        "probabilities": {
+          "weakens": 0.21,
+          "no_effect": 0.46,
+          "strengthens": 0.27,
+          "undetermined": 0.06
+        }
+      }
+    },
+    {
+      "case_id": "DP15",
+      "input_digest": "ede5e067eb44f8f6711a05d5e88cd5cba53ffdc2fa952f83c20bf51690ab984a",
+      "input_tokens": 657,
+      "latency_ms": 321,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.61,
+        "probabilities": {
+          "weakens": 0.71,
+          "undetermined": 0.01,
+          "no_effect": 0.26,
+          "strengthens": 0.02
+        }
+      }
+    },
+    {
+      "case_id": "BP16",
+      "input_digest": "a6dfc5d970ab253b6e9a3449ed219eae2e6b0a72e56d43aac9fa84ac53c0606e",
+      "input_tokens": 696,
+      "latency_ms": 661,
+      "verdict": {
+        "type": "choice",
+        "choice": "strengthens",
+        "confidence": 0.17,
+        "probabilities": {
+          "strengthens": 0.37,
+          "no_effect": 0.36,
+          "weakens": 0.17,
+          "undetermined": 0.1
+        }
+      }
+    },
+    {
+      "case_id": "DP16",
+      "input_digest": "ed93018e9bcad9cb5545b1b788597ff4d664836b301027465f16f7a96913501c",
+      "input_tokens": 639,
+      "latency_ms": 293,
+      "verdict": {
+        "type": "choice",
+        "choice": "weakens",
+        "confidence": 0.54,
+        "probabilities": {
+          "no_effect": 0.31,
+          "weakens": 0.65,
+          "undetermined": 0.02,
+          "strengthens": 0.02
+        }
+      }
+    }
+  ]
+}
