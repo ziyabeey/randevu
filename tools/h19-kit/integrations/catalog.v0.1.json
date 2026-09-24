@@ -138,6 +138,18 @@
       "use": [
         "affected package/task evidence"
       ]
+    },
+    {
+      "id": "scip-typescript-indexer",
+      "project": "@sourcegraph/scip-typescript",
+      "license": "Apache-2.0",
+      "mode": "external-process",
+      "use": [
+        "TypeScript/JavaScript SCIP index generation"
+      ],
+      "notes": [
+        "Never auto-install. H19 Kit only invokes an already-installed scip-typescript binary."
+      ]
     }
   ]
 }
