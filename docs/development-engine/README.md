@@ -230,7 +230,7 @@ is satisfied by this work.
 | DE-R0 | SHADOW | bounded DISCOVERY → frozen blockers → VERIFICATION; reinforces scoped implementation and overlaps R1/R2, never replaces them |
 | DE-STATE | SHADOW | depends_on main/PR/#65 provenance; reinforces Context Refresh |
 | DE-STALE | SHADOW | reinforces SHA fencing; overlaps stale approval dismissal |
-| DE-TELEMETRY | SHADOW | depends_on exact receipts; overlaps CI/review measurements |
+| DE-TELEMETRY | SHADOW | depends_on exact receipts; overlaps CI/review measurements |\n| DE-JEV-H19-R0 | SHADOW | sidecar System-One H19 axis fact; no selection/merge authority; labels remain blinded from model inputs |
 | Static artifact checks | Ordinary code correctness | Tests authored syntax/shape, not live governance or new merge authority |
 
 Use `reinforces / depends_on / overlaps / narrows / supersedes / conflicts_with`
