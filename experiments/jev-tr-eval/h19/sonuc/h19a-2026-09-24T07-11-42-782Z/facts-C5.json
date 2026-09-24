@@ -1,0 +1,268 @@
+{
+  "version": "h19a",
+  "protocol": "DE-JEV-H19-R0",
+  "model": "jev-1.13.0",
+  "condition": {
+    "id": "C5",
+    "scope": "v0.1",
+    "variant": "nolockctx"
+  },
+  "cases": [
+    {
+      "case_key": "C01",
+      "input_digest": "e215416b4ee250c9fea3a287664506727a8f358d5e2e2e27a8cc1ed1dead0cee",
+      "axis_probabilities": {
+        "D0": 0.14,
+        "D1": 0.67,
+        "D2": 0.33,
+        "D3": 0.67,
+        "D4": 0.46,
+        "D5": 0.78
+      },
+      "usage": {
+        "input_tokens": 819
+      },
+      "latency_ms": 231
+    },
+    {
+      "case_key": "C02",
+      "input_digest": "42949b47bbe367a2d345dcd697a4900f4789d71f12235252ba4622bbcb38545b",
+      "axis_probabilities": {
+        "D0": 0.51,
+        "D1": 0.83,
+        "D2": 0.52,
+        "D3": 0.04,
+        "D4": 0.02,
+        "D5": 0.8
+      },
+      "usage": {
+        "input_tokens": 814
+      },
+      "latency_ms": 229
+    },
+    {
+      "case_key": "C03",
+      "input_digest": "c969f45afdad91d1c9477667810fe62b62678e9bc090079beada51fabd9e4434",
+      "axis_probabilities": {
+        "D0": 0.1,
+        "D1": 0.19,
+        "D2": 0.14,
+        "D3": 0.38,
+        "D4": 0.71,
+        "D5": 0.1
+      },
+      "usage": {
+        "input_tokens": 810
+      },
+      "latency_ms": 238
+    },
+    {
+      "case_key": "C04",
+      "input_digest": "db5518ffc49deb9e10fca3fcbd1456be801ba014f198e7ff2703641501f0ba73",
+      "axis_probabilities": {
+        "D0": 0.08,
+        "D1": 0.32,
+        "D2": 0.58,
+        "D3": 0.92,
+        "D4": 0.08,
+        "D5": 0.85
+      },
+      "usage": {
+        "input_tokens": 1073
+      },
+      "latency_ms": 250
+    },
+    {
+      "case_key": "C05",
+      "input_digest": "dd94b3034e897ba36226293d8848cc6a129a648bd70e19f0f3f1bfc8267539b1",
+      "axis_probabilities": {
+        "D0": 0.21,
+        "D1": 0.7,
+        "D2": 0.42,
+        "D3": 0.04,
+        "D4": 0.03,
+        "D5": 0.68
+      },
+      "usage": {
+        "input_tokens": 818
+      },
+      "latency_ms": 678
+    },
+    {
+      "case_key": "C06",
+      "input_digest": "82233ecd57c5a37fe4f1fcdab5a02f84e55e2123b7574baea6bfd12acf47f476",
+      "axis_probabilities": {
+        "D0": 0.21,
+        "D1": 0.85,
+        "D2": 0.3,
+        "D3": 0.04,
+        "D4": 0.03,
+        "D5": 0.8
+      },
+      "usage": {
+        "input_tokens": 936
+      },
+      "latency_ms": 376
+    },
+    {
+      "case_key": "C07",
+      "input_digest": "411b597186654563d0444f7cecabde7eadfa79de72cc567ff2aee548905e3e18",
+      "axis_probabilities": {
+        "D0": 0.81,
+        "D1": 0.34,
+        "D2": 0.29,
+        "D3": 0.83,
+        "D4": 0.18,
+        "D5": 0.76
+      },
+      "usage": {
+        "input_tokens": 844
+      },
+      "latency_ms": 713
+    },
+    {
+      "case_key": "C08",
+      "input_digest": "799b63ae599e749ec09f604bcb9c3a98537e86e50be17ba5b8b900c9c7459b70",
+      "axis_probabilities": {
+        "D0": 0.46,
+        "D1": 0.5,
+        "D2": 0.46,
+        "D3": 0.52,
+        "D4": 0.83,
+        "D5": 0.65
+      },
+      "usage": {
+        "input_tokens": 963
+      },
+      "latency_ms": 666
+    },
+    {
+      "case_key": "C09",
+      "input_digest": "4d2efefaba632517b9923b2e1d208febeaa646b1bdcb4e919c15dcc712f7d336",
+      "axis_probabilities": {
+        "D0": 0.09,
+        "D1": 0.52,
+        "D2": 0.1,
+        "D3": 0.02,
+        "D4": 0.02,
+        "D5": 0.76
+      },
+      "usage": {
+        "input_tokens": 795
+      },
+      "latency_ms": 650
+    },
+    {
+      "case_key": "C10",
+      "input_digest": "ac934ca288224c0c27b24b9381ba0fc0b8f291ef9e19101f74dd15fb6301fc51",
+      "axis_probabilities": {
+        "D0": 0.15,
+        "D1": 0.81,
+        "D2": 0.36,
+        "D3": 0.02,
+        "D4": 0.03,
+        "D5": 0.71
+      },
+      "usage": {
+        "input_tokens": 1004
+      },
+      "latency_ms": 872
+    },
+    {
+      "case_key": "C11",
+      "input_digest": "439c5fbd1ce6ef2ee8a1f0712b4757456de3f41b726d9d1d9c76be8f3ddd41ce",
+      "axis_probabilities": {
+        "D0": 0.22,
+        "D1": 0.84,
+        "D2": 0.5,
+        "D3": 0.02,
+        "D4": 0.03,
+        "D5": 0.62
+      },
+      "usage": {
+        "input_tokens": 844
+      },
+      "latency_ms": 745
+    },
+    {
+      "case_key": "C12",
+      "input_digest": "52c516a27f3a0b89991075c6492c7b5ee536ace813f99050bcd4c061dfedceb0",
+      "axis_probabilities": {
+        "D0": 0.06,
+        "D1": 0.36,
+        "D2": 0.18,
+        "D3": 0.02,
+        "D4": 0.03,
+        "D5": 0.44
+      },
+      "usage": {
+        "input_tokens": 933
+      },
+      "latency_ms": 369
+    },
+    {
+      "case_key": "C13",
+      "input_digest": "2d8936f56988aa34a94ff3dde7ebadf7f53ac817c57809a7797dbc905dde9830",
+      "axis_probabilities": {
+        "D0": 0.88,
+        "D1": 0.51,
+        "D2": 0.36,
+        "D3": 0.17,
+        "D4": 0.02,
+        "D5": 0.61
+      },
+      "usage": {
+        "input_tokens": 824
+      },
+      "latency_ms": 701
+    },
+    {
+      "case_key": "C14",
+      "input_digest": "706e319338e84cd9ae73ea421fd2b2b22c340ec82a0ee4593bd771307a2d7e67",
+      "axis_probabilities": {
+        "D0": 0.7,
+        "D1": 0.74,
+        "D2": 0.84,
+        "D3": 0.03,
+        "D4": 0.03,
+        "D5": 0.65
+      },
+      "usage": {
+        "input_tokens": 991
+      },
+      "latency_ms": 708
+    },
+    {
+      "case_key": "C15",
+      "input_digest": "337a5d23dbb4aef323d7d1ee9ac76c53fb02e247f82a5c03f6e337f76937e0e1",
+      "axis_probabilities": {
+        "D0": 0.49,
+        "D1": 0.15,
+        "D2": 0.13,
+        "D3": 0.75,
+        "D4": 0.45,
+        "D5": 0.2
+      },
+      "usage": {
+        "input_tokens": 839
+      },
+      "latency_ms": 706
+    },
+    {
+      "case_key": "C16",
+      "input_digest": "378b0e9bd966e3d722c5133df6cf669138abf642a38ae1d82baacbf107a08cde",
+      "axis_probabilities": {
+        "D0": 0.18,
+        "D1": 0.61,
+        "D2": 0.64,
+        "D3": 0.09,
+        "D4": 0.93,
+        "D5": 0.39
+      },
+      "usage": {
+        "input_tokens": 895
+      },
+      "latency_ms": 769
+    }
+  ]
+}

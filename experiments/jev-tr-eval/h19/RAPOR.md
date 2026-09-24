@@ -79,3 +79,7 @@ unlabeled cases) and D1×D5 is the top pair in 6/16 cases. Lock keywords appear 
 lines, which may drive D5 via literal reading; test a changed-lines-only scope as v0.2 on today's new bench
 HITs, not on these 16. `tests/h19-axis-benchmark-artifacts.test.mjs:33` fails to parse (regex literal escaping).
 Facts and scores: `experiments/jev-tr-eval/h19/sonuc/` on `claude/upbeat-maxwell-kiof98`.
+
+## Devamı
+
+D5 eğilimi üzerine bağlam ablation deneyi (H19a): [`H19A-RAPOR.md`](H19A-RAPOR.md).

@@ -1,0 +1,301 @@
+{
+  "benchmark_id": "DE-JEV-H19-R0",
+  "version": "0.1.0",
+  "maturity": "SHADOW",
+  "source_gate": "supabase/tests/h19_integrity_gate.sql",
+  "frozen_holdout_pairs": [
+    "D0xD3",
+    "D1xD4",
+    "D2xD5"
+  ],
+  "registered_holdout_pairs": [
+    "D0xD3",
+    "D2xD5"
+  ],
+  "missing_registered_holdout_pairs": [
+    "D1xD4"
+  ],
+  "input_leakage_rule": "Never score from H19 scenario filenames, test SQL, branch names, PR titles or prose containing D0-D5 labels. Reconstruct model inputs from production-code diffs bound to the baseline/current-suite receipt and strip H19 benchmark metadata before inference.",
+  "receipt_semantics": {
+    "baseline_current_suite": "Frozen variation under the then-current suite before the prospective probe is introduced.",
+    "probe": "Same variation plus the frozen H19 probe.",
+    "clean_control": "Frozen probe on clean implementation."
+  },
+  "cases": [
+    {
+      "case_key": "C02",
+      "id": "booking.d0d1.tenant_idempotency",
+      "domain": "booking",
+      "expected_pair": [
+        "D0",
+        "D1"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2131,
+        "probe": 2135,
+        "clean_control": 2136
+      },
+      "source_head_sha": "e089f662ba8a4e0f505c46f128467e52e0edf281",
+      "source_parent_sha": "7746e4e0f85854bb050971874546e4193c3854d7"
+    },
+    {
+      "case_key": "C06",
+      "id": "booking.d1d5.idempotency_concurrency",
+      "domain": "booking",
+      "expected_pair": [
+        "D1",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2197,
+        "probe": 2200,
+        "clean_control": 2202
+      },
+      "source_head_sha": "5dcd10d1069669c25dcb234985a6abb16d2196c0",
+      "source_parent_sha": "8760fb536427f47681ad87a531d1d66b5a6f0910"
+    },
+    {
+      "case_key": "C03",
+      "id": "booking.d0d4.tenant_time_boundary",
+      "domain": "booking",
+      "expected_pair": [
+        "D0",
+        "D4"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2152,
+        "probe": 2174,
+        "clean_control": 2175
+      },
+      "source_head_sha": "8d1a87df6181029c219b9dcdca13f2aa3b118564",
+      "source_parent_sha": "aa8f8e68f3c3d67a03d59c1f502adf6813f0d628"
+    },
+    {
+      "case_key": "C05",
+      "id": "booking.d0d5.tenant_lock_isolation",
+      "domain": "booking",
+      "expected_pair": [
+        "D0",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2177,
+        "probe": 2181,
+        "clean_control": 2249
+      },
+      "source_head_sha": "d78faddfb1afd7e021f5d3ed7195c6e095d3c8cb",
+      "source_parent_sha": "2a6cebb58ae1bfc5edee5b9f91d6decf65600ac0"
+    },
+    {
+      "case_key": "C08",
+      "id": "booking.d4d5.cross_day_authority",
+      "domain": "booking",
+      "expected_pair": [
+        "D4",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2216,
+        "probe": 2232,
+        "clean_control": 2233
+      },
+      "source_head_sha": "380ab52abc904ddf945cbfa76811e21813a12f3d",
+      "source_parent_sha": "ad24606f6b10993a60a323bf8c4bb35005fe6329"
+    },
+    {
+      "case_key": "C07",
+      "id": "booking.d0d3.tenant_capacity",
+      "domain": "booking",
+      "expected_pair": [
+        "D0",
+        "D3"
+      ],
+      "origin": "holdout",
+      "receipts": {
+        "baseline_current_suite": 2207,
+        "probe": 2212,
+        "clean_control": 2213
+      },
+      "source_head_sha": "5829958cfe256f734ca6d5d9d928eb35863ae4a4",
+      "source_parent_sha": "8f8816b1139dee07cdf2720fe033c4915331e395"
+    },
+    {
+      "case_key": "C04",
+      "id": "booking.d3d4.staff_hours_fallback",
+      "domain": "booking",
+      "expected_pair": [
+        "D3",
+        "D4"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2162,
+        "probe": 2164,
+        "clean_control": 2285
+      },
+      "source_head_sha": "1a23806829fc457c464065c8a1b5c6815d49c7a4",
+      "source_parent_sha": "5f7af8430da8c10785a8dec8d80f74cba246418f"
+    },
+    {
+      "case_key": "C09",
+      "id": "inventory.d0d1.actor_idempotency",
+      "domain": "inventory",
+      "expected_pair": [
+        "D0",
+        "D1"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2283,
+        "probe": 2287,
+        "clean_control": 2288
+      },
+      "source_head_sha": "69ff7ed8d04039b0292a88aecdceaa734a3f59ad",
+      "source_parent_sha": "f8af9f85bde072f5f0f4dd635de5f667a0311c97"
+    },
+    {
+      "case_key": "C10",
+      "id": "inventory.d1d5.idempotency_concurrency",
+      "domain": "inventory",
+      "expected_pair": [
+        "D1",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2355,
+        "probe": 2359,
+        "clean_control": 2360
+      },
+      "source_head_sha": "d5233239eacc07ca1dcceb097de80af12a88f3fd",
+      "source_parent_sha": "82c8d6e904479e7652aafa5cefe1911f3b628395"
+    },
+    {
+      "case_key": "C01",
+      "id": "booking.d2d3.snapshot_staff_coherence",
+      "domain": "booking",
+      "expected_pair": [
+        "D2",
+        "D3"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2106,
+        "probe": 2107,
+        "clean_control": 2098
+      },
+      "source_head_sha": "38e4b0829e6691de12c110cf428dc6bbb50716aa",
+      "source_parent_sha": "086316e06d49005d94d6316200046d1b89a40d76"
+    },
+    {
+      "case_key": "C11",
+      "id": "payments.d1d2.replay_snapshot",
+      "domain": "payments",
+      "expected_pair": [
+        "D1",
+        "D2"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2386,
+        "probe": 2389,
+        "clean_control": 2390
+      },
+      "source_head_sha": "bd70bd16b0e5b2ada56e6bd0ee5ebdbada031b0d",
+      "source_parent_sha": "ff5590be12e66d8f0aa1eb6ad8458c1df9256e40"
+    },
+    {
+      "case_key": "C12",
+      "id": "payments.d2d5.snapshot_concurrency",
+      "domain": "payments",
+      "expected_pair": [
+        "D2",
+        "D5"
+      ],
+      "origin": "holdout",
+      "receipts": {
+        "baseline_current_suite": 2436,
+        "probe": 2441,
+        "clean_control": 2444
+      },
+      "source_head_sha": "8a6bf5db264db2794a320d3361543730f2317047",
+      "source_parent_sha": "0971ead70c1dfedfec4bc35dcea7fe69a874e400"
+    },
+    {
+      "case_key": "C13",
+      "id": "team.d0d1.invite_scope",
+      "domain": "team",
+      "expected_pair": [
+        "D0",
+        "D1"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2513,
+        "probe": 2518,
+        "clean_control": 2519
+      },
+      "source_head_sha": "dd90e9c0eca952dff5bbc96f0267361f38c05b6f",
+      "source_parent_sha": "be527c311c92cfbb383c02ddde0c688a2549160c"
+    },
+    {
+      "case_key": "C14",
+      "id": "catalog.d0d2.history_scope",
+      "domain": "catalog",
+      "expected_pair": [
+        "D0",
+        "D2"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2544,
+        "probe": 2551,
+        "clean_control": 2552
+      },
+      "source_head_sha": "fba09ee2c62731cbd5e7c3cf181cbecc1e4409a7",
+      "source_parent_sha": "61dd6b6a7d43c8120b7b77c902324b98e8ea79d5"
+    },
+    {
+      "case_key": "C15",
+      "id": "public-booking.d0d4.slot_scope",
+      "domain": "public-booking",
+      "expected_pair": [
+        "D0",
+        "D4"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2557,
+        "probe": 2582,
+        "clean_control": 2583
+      },
+      "source_head_sha": "0dc1845248d990f1dd64ad25025342663776e345",
+      "source_parent_sha": "883e77bf7d2c1dfaa6b00c0caeff1dec7f2ad646"
+    },
+    {
+      "case_key": "C16",
+      "id": "calendar.d4d5.range_revision",
+      "domain": "calendar",
+      "expected_pair": [
+        "D4",
+        "D5"
+      ],
+      "origin": "prospective",
+      "receipts": {
+        "baseline_current_suite": 2597,
+        "probe": 2609,
+        "clean_control": 2610
+      },
+      "source_head_sha": "13371d9f71323103dd44dafb1dbc7ee32160a91e",
+      "source_parent_sha": "c438610a1f7eca449547d78aa74a900febebd948"
+    }
+  ],
+  "label_visibility": "This file is scorer-only ground truth. Never provide it to the axis classifier.",
+  "case_count": 16,
+  "provenance_rule": "For every opaque case_key, scorer-only source_head_sha/source_parent_sha must exactly equal the model-input corpus provenance. This prevents label/input key permutation."
+}
