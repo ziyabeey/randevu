@@ -145,6 +145,10 @@ const server = createServer(async (request, response) => {
   const bookingMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)$/);
   if (request.method === 'GET' && bookingMatch) return sendJson(response, 200, bookingPayload(decodeURIComponent(bookingMatch[1])));
   if (request.method === 'GET' && url.pathname === `/api/public/media/${brokenMediaId}`) return sendJson(response, 404, { error: { code: 'PUBLIC_MEDIA_NOT_FOUND' } });
+  // F16-04: the salon page now reads published reviews; this fixture has none.
+  if (request.method === 'GET' && /^\/api\/public\/business\/[^/]+\/reviews$/.test(url.pathname)) {
+    return sendJson(response, 200, { reviews: [], summary: { count: 0, average: null } });
+  }
   return sendJson(response, 404, { error: { code: 'NOT_FOUND' } });
 });
 server.on('connection', (socket) => { sockets.add(socket); socket.on('close', () => sockets.delete(socket)); });
@@ -217,9 +221,11 @@ async function inspectViewport(debugUrl, origin, slug, width) {
     await page.send('Page.enable');
     await page.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: true });
     await page.send('Page.navigate', { url: `${origin}/harness/${slug}` });
+    // The reviews section loads independently (F16-04); wait for it to settle so the snapshot is not racing the fetch.
+    const reviewsSettled = '!document.querySelector("#salon-yorumlar")?.innerText.includes("Yorumlar yükleniyor")';
     const readyExpression = slug === 'broken-salon'
-      ? 'document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav")) && document.body.innerText.includes("Fotoğraf yüklenemedi")'
-      : 'document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav"))';
+      ? `document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav")) && document.body.innerText.includes("Fotoğraf yüklenemedi") && ${reviewsSettled}`
+      : `document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav")) && ${reviewsSettled}`;
     await waitFor(() => page.evaluate(readyExpression), `F12 ${width}px harness did not become ready`);
     const result = await page.evaluate(`(() => {
       const root = document.documentElement;
@@ -392,7 +398,9 @@ function assertCommon(result, width) {
   assert.match(result.html, />Hizmetler</);
   assert.match(result.html, />Bilgiler</);
   assert.match(result.html, /Şu anda seçilebilecek hizmet bulunmuyor\./);
-  assert.doesNotMatch(result.html, />Yorumlar</);
+  // F16-04 made reviews real: the section is present with an honest empty state.
+  assert.match(result.html, />Yorumlar</);
+  assert.match(result.html, /Henüz yayınlanmış yorum yok\./);
   assert.doesNotMatch(result.html, /\btenant\b|\bRPC\b|\bFAZ\b/i);
 }
 

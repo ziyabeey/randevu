@@ -4,6 +4,7 @@ import PublicBookingPage from './PublicBookingPage';
 import PublicMultiServiceSelection from './PublicMultiServiceSelection';
 import type { PublicMultiServiceSelectionState } from './PublicMultiServiceSelection';
 import './public-multi-service.css';
+import PublicReviews from './PublicReviews';
 
 type PublicMedia = {
   id: string;
@@ -289,6 +290,7 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
           {profile.short_description && <p className="public-salon-lead">{profile.short_description}</p>}
           <nav className="public-salon-section-nav" aria-label="Salon bölümleri">
             <a href="#randevu">Hizmetler</a>
+            <a href="#salon-yorumlar">Yorumlar</a>
             <a href="#salon-bilgileri">Bilgiler</a>
           </nav>
           <div className="public-salon-actions" aria-label="Salon işlemleri">
@@ -310,6 +312,8 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
           {gallery.map((media) => <MediaImage key={media.id} media={media} className="public-salon-gallery-image" fallbackName={profile.public_name} />)}
         </div>
       </section>}
+
+      <PublicReviews slug={slug} />
 
       <section id="salon-bilgileri" className="public-salon-info" aria-labelledby="salon-info-title">
         <div className="public-salon-info-copy">
