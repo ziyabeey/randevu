@@ -164,10 +164,12 @@ begin
   ),
   appointment_expected as (
     select
-      coalesce(sum(a.price_min_minor_snapshot::bigint),0)::bigint as min_minor,
-      coalesce(sum(a.price_max_minor_snapshot::bigint),0)::bigint as max_minor,
+      coalesce(sum(coalesce(s.price_min_minor,a.price_min_minor_snapshot)::bigint),0)::bigint as min_minor,
+      coalesce(sum(coalesce(s.price_max_minor,a.price_max_minor_snapshot)::bigint),0)::bigint as max_minor,
       count(*)::integer as appointment_count
     from public.appointments a
+    left join public.services s
+      on s.business_id=a.business_id and s.id=a.service_id
     where a.business_id=p_business_id
       and a.status<>'cancelled'
       and a.starts_at>=v_from and a.starts_at<v_to
