@@ -21,3 +21,6 @@ export * from './adapters/history-cache.mjs';
 export * from './adapters/test-impact-store.mjs';
 export * from './adapters/coverage-impact.mjs';
 export * from './repository/inventory.mjs';
+export * from './adapters/semgrep-evidence.mjs';
+export * from './rules/declarative.mjs';
+export * from './rules/loader.mjs';

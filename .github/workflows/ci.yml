@@ -202,6 +202,9 @@ jobs:
       - name: Run H19 Kit M1 repository-intelligence smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m1
+      - name: Run H19 Kit M2 static-evidence smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m2
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:

@@ -37,7 +37,10 @@ semantic probes        deterministic rules
 - test-impact adapter contract;
 - mutation registry;
 - SARIF reporter;
-- small CLI and smoke tests.
+- repository inventory for SQL/TS/JS/Python;
+- persistent test-impact and git-history intelligence;
+- H19-owned static transaction facts and declarative rule cards;
+- small CLI and layered smoke tests.
 
 No Jev call and no external AI call is performed by this package yet.
 
@@ -56,6 +59,8 @@ node tools/h19-kit/bin/h19-kit.mjs history .
 node tools/h19-kit/bin/h19-kit.mjs scan tools/h19-kit/examples/scan-input.json
 node tools/h19-kit/bin/h19-kit.mjs scan tools/h19-kit/examples/scan-input.json --sarif
 npm run test:h19-kit
+npm --prefix tools/h19-kit run test:m1
+npm --prefix tools/h19-kit run test:m2
 ```
 
 The `scan` command is intentionally model-free. It combines already-produced evidence through deterministic
