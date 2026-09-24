@@ -49,7 +49,21 @@ Hypotheses are frozen into a content-addressed validation packet and later recor
 
 A surviving mutant is ranked ahead of a plain coverage-gap hypothesis only when priority and target path are otherwise equal.
 
-## Next authorized gate
+## Performance evidence gate
+
+Before the next feature milestone, freeze a reproducible performance baseline for the current M0→M5 engine.
+
+Required measurements:
+
+- real-repository semantic inventory wall time and throughput;
+- Git-history cold vs warm-cache wall time;
+- real scip-typescript cold indexing time and index size;
+- H19 project-shard warm cache-hit time;
+- deterministic M4/M5 synthetic scale probe.
+
+The first run is measurement-only. Do not invent pass/fail thresholds before the baseline is captured.
+
+## Next authorized feature gate
 
 **Minimal test specification from validated/high-value coverage hypotheses.**
 
