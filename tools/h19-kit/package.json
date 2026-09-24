@@ -23,7 +23,8 @@
     "test:m5-coverage-discovery": "node test/m5-coverage-discovery.mjs",
     "test:m5-validation-packet": "node test/m5-validation-packet.mjs",
     "test:perf-baseline": "node test/perf-baseline.mjs",
-    "perf:baseline": "node perf/run-baseline.mjs"
+    "perf:baseline": "node perf/run-baseline.mjs",
+    "test:perf-shards": "node test/perf-shards.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
