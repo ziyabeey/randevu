@@ -34,7 +34,7 @@ try {
     syntheticReferences: 200,
   });
 
-  assert.equal(report.schemaVersion, 1);
+  assert.equal(report.schemaVersion, 2);
   assert.equal(report.kind, 'h19-performance-baseline');
   assert.ok(report.repository.sourceFiles >= 2);
   assert.ok(report.measurements.inventory.units >= 2);
