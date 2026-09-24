@@ -1,131 +1,251 @@
-# H19s uygulama eki (TASLAK, mühürsüz)
+# H19s uygulama eki v1.0 — MÜHÜRLÜ
 
-- **Protokol:** [`../H19S-PROTOKOL.md`](../H19S-PROTOKOL.md) v0.1 (c9b6fca, 2026-09-24T12:13:53Z).
-- **Durum:** Bu ek bir **öneridir**. §3'teki açık kararlar H19 sahibi tarafından verilip ek mühürlenmeden ilk
-  uygun birim ölçülmez.
-  - İlk uygun birim, protokol commit'inden sonra main'e merge edilen ve bir rutin gövdesini değiştiren ilk PR'dır.
-  - Bu ek yazılırken protokolden sonra main'e hiçbir PR merge edilmemişti.
-- **H19s Jev çağrısı yapılmadı.**
+- **Ana protokol:** `../H19S-PROTOKOL.md` v0.1, commit `c9b6fcaca9a83d7cc8fa1ea162f6e4dd90fd6b59`.
+- **Extractor taslağı:** `cikar.mjs`, ilk uygulama commit'i `d6a240b`.
+- **Bu ekin amacı:** ana protokolün açık bıraktığı uygulama ayrıntılarını ilk eligible birimden önce sabitlemek.
+- **Başlangıç temizliği:** GitHub main geçmişi kontrol edildi; ana protokol zamanından bu ek/pricing mühürlenene kadar `main` üzerinde yeni commit yoktu. Bu nedenle örneklem kaybı yoktur.
+- **Shadow:** H19 sonucu PR/CI/merge kararını değiştirmez.
 
-Protokol birim tanımını, "System Two maliyeti"nin birimini ve etiketleyicileri yöntem düzeyinde bırakıyor.
-Bu ek, deterministik uygulamanın o boşlukları nasıl kapattığını yazar.
+## 1. Birim çıkarımı
 
-## 1. Birim çıkarımı: `cikar.mjs` (uygulandı)
+`cikar.mjs` tanımı korunur:
 
-**PR.** `main`'in ilk ebeveyn hattında, protokol commit zamanından sonra gelen merge commit'i. PR numarası şu
-mesajlardan okunur:
-- merge commit'i: `Merge pull request #N from …`;
-- squash merge: başlık sonunda `(#N)`.
+- final PR farkı: `merge^1 → merge`;
+- `supabase/migrations/**/*.sql`;
+- final-effective function/procedure/executable trigger-function gövdesi;
+- yorum/boşluk-only değişiklik dışarıda;
+- aynı PR içinde aynı rutin tek birim;
+- rutin kimliği `schema.name/arity`;
+- aynı rutin sonraki başka PR'da değişirse yeni trafik birimi.
 
-**Final fark.** `merge^1 → merge`. Aynı PR'ın ara head'leri okunmaz.
+### Karar A — yeni rutinler DAHİL
 
-**Dosya.** Final farkta eklenen, değişen ya da yeniden adlandırılan `supabase/migrations/**/*.sql`.
+Base'de tanımı olmayan, merge'de yeni executable routine olarak bulunan rutinler eligible unit'tir.
 
-**Rutin kimliği.** `şema.ad/argüman sayısı`. Şema yazılmamışsa `public` kabul edilir; ad küçük harfe çevrilir.
+Gerekçe:
+- H19s sentetik dağılımı yeniden üretmek için değil, gerçek trafik dağılımında candidate router'ın çalışıp
+  çalışmadığını ölçmek için vardır.
+- Protokol öncesi kalibrasyonda eligible birimlerin %87'si yeni rutindi; bunları çıkarmak gerçek trafik
+  prevalansını yapay biçimde değiştirir.
 
-**Geçerli tanım.** Migration'lar dosya adı sırasıyla uygulanır:
-- aynı kimliğin son tanımı geçerlidir;
-- sonradan gelen bir `drop function` tanımı siler.
+`new|modified` alanı her birimde kaydedilir ve §12 ikincil raporda zorunlu kırılımdır. Primary gate değildir.
+Sonuç yalnız new rutinler tarafından taşınıyorsa bu açıkça raporlanır.
 
-**Birim.** Bir rutin şu koşulların hepsini sağlıyorsa birimdir:
-- değişen dosyalardan birinde tanımlanmıştır;
-- merge ağacındaki geçerli tanımı değişen bir dosyadadır;
-- yorum ve boşluk atılmış gövdesi, base ağacındaki geçerli tanımdan farklıdır. Base'de tanım yoksa rutin
-  `new` olarak işaretlenir (bkz. §3a).
+Yeni rutin Jev girdisi:
+- `files: [{path, patch}]`;
+- patch, tüm yeni routine tanımının eklenen satırlarıdır.
 
-**Dışarıda kalanlar** (kayıtta sayılır):
-- yalnız başlığı değişip gövdesi aynı kalan rutin;
-- düşürülen ya da sonraki bir dosyada yeniden tanımlanan rutin;
-- tablo, index, grant ve trigger DDL'i (rutin değildir).
+Referans okuyucu paketinde ayrıca `before_definition=null`, `after_definition=<tam rutin>` bulunur.
 
-**Jev girdisi.**
-- `files: [{ path: <yeni tanımın migration yolu>, patch }]`.
-- `patch`, base'deki geçerli `create … function` ifadesinden merge'deki geçerli ifadeye `-U3` birleşik farktır.
-- `new` rutinde bu fark yalnız eklenen satırlardan oluşur.
-- H19u'daki girdi biçimiyle aynıdır: yol + hunk.
+## 2. Sabit System Two referans okuyucuları
 
-**Sıra.** Merge sırası; aynı PR içinde rutin kimliği sırası. S5'teki iki yarı bu sıraya göre ayrılır.
+Mevcut R1/R2 Routine endpoint'leri **H19s referans labeler'ı olarak kullanılmaz**. Repository tasarımı gereği bu
+rollerin arkasındaki provider/model değiştirilebilir; H19s ise model ve fiyatı dondurmak zorundadır.
 
-**Stop rule sayımı.** "25 ayrı merged PR", en az bir birimi olan PR sayısıdır. Birimsiz PR'lar kayıtta
-tutulur ama sayılmaz.
+İki bağımsız, birbirinin cevabını ve H19 shadow sonucunu görmeyen okuyucu:
 
-## 2. Kalibrasyon (protokolden önceki trafik; örnekleme dahil değil, Jev çağrısı yok)
+### Reader A — primary + maliyet proxy'si
 
-Klon sığ olduğu için elde yalnız 2026-09-23T06:02'den protokole kadar olan `main` geçmişi vardı. Bu yaklaşık
-28 saatte 55 PR merge edildi; yalnız 6'sında birim çıktı.
+- provider: OpenAI API
+- model: `gpt-6-sol`
+- reasoning effort: `medium`
+- processing: Standard
+- araç/web yok
+- her eligible unit için tek uncached request
+- aynı frozen prompt/schema: `referans-okuyucu.v0.1.json`
 
-| PR | Birim | `new` | `modified` |
-|---|---|---|---|
-| #333 | 1 | 1 | 0 |
-| #363 | 17 | 17 | 0 |
-| #385 | 10 | 10 | 0 |
-| #394 | 12 | 6 | 6 |
-| #452 | 1 | 1 | 0 |
-| #475 | 13 | 12 | 1 |
-| **Toplam** | **54** | **47 (%87)** | **7 (%13)** |
+Reader A'nın gerçek token usage'ı **birim System Two maliyeti**dir.
 
-- Ayrıştırma hatası çıkmadı.
-- Hiçbir `new` rutin, base'de başka argüman sayısıyla var olan bir adın imza değişikliği değil.
-- `new` farkların boyu 6–251 eklenen satır.
+### Reader B — bağımsız label kontrolü
 
-## 3. Sahibin vermesi gereken kararlar
+- provider: OpenAI API
+- model: `gpt-5.6-sol`
+- reasoning effort: `medium`
+- processing: Standard
+- araç/web yok
+- her eligible unit için Reader A'dan bağımsız request
+- aynı frozen prompt/schema
 
-### a. Yeni rutinler birim mi?
+Reader B yalnız referans etiket güvenilirliği içindir. Reader B maliyeti:
+- deney operasyon maliyetinde raporlanır;
+- **baseline veya candidate simulated production cost'a dahil edilmez**.
 
-Protokol "gövdesi değişen" diyor. Yeni bir rutinin öncesi yok.
+Bu, iki okuyuculu bilimsel etiketleme overhead'inin candidate ekonomisini yapay olarak cezalandırmasını engeller.
 
-| Seçenek | Sonuç |
-|---|---|
-| **Dahil** | Örneklem büyük ölçüde (kalibrasyonda %87) tamamen yeni fonksiyonlardan oluşur. H19u yalnız mevcut fonksiyonlardaki değişikliği sınadı; tamamen eklenen girdi dağılım dışıdır. 150 birim / 25 PR tahminen birkaç günde dolar. |
-| **Hariç** | H19u ile aynı türde girdi. Ama kalibrasyon hızıyla 150 birim yaklaşık bir ay sürer; birimli PR sayısı da yavaş artar (6 PR'ın 2'si). |
-| **Dahil, ama gate'ler `modified` için ayrıca** | Bu protokolde yok; yeni bir gate eklemek olur. Önermiyorum. |
+### Referans paket
 
-**Öneri:** Protokolün yazıldığı biçimde (gerçek trafik) dahil. `new` / `modified` kırılımı yalnız ikincil rapor
-olur (§12, gate değil).
+İki okuyucu da yalnız:
+- PR numarası ve başlığı;
+- routine kimliği/path;
+- `new|modified`;
+- `patch`;
+- `before_definition` (new ise null);
+- `after_definition`
 
-### b. "System Two maliyeti" hangi birimle ölçülür?
+görür.
 
-Mevcut review PR başına çalışıyor. Protokol ise birim başına baseline ve aday maliyeti istiyor (§6).
+Görmez:
+- Jev/V skorları;
+- resolver sonucu;
+- candidate route;
+- mevcut PR review yorumları/CI verdictleri;
+- diğer okuyucunun cevabı.
 
-**Öneri:** Her birim, H19'dan kör bir System Two birim okumasıyla bir kez okunur:
-- aynı sabit istem ve aynı model kullanılır;
-- girdi birimin `files` alanıdır.
+## 3. Referans etiketi ve adjudication
 
-Bu okumanın gerçek token sayısı, dondurulmuş fiyatla birimin System Two maliyetidir:
-- baseline = bütün birimlerin toplamı;
-- aday = yalnız route edilen birimlerin toplamı + V + resolver.
+Her okuyucu structured olarak:
+- `d1: yes|no|undetermined`
+- `d5: yes|no|undetermined`
+- `actionable_d5: yes|no|undetermined`
+- `reason`
 
-Bu okuma §5'teki 1. referans okuyucu ile aynı çağrı olabilir.
+döndürür.
 
-### c. Referans etiketleyiciler (§5)
+`actionable_d5=yes` şu dar anlama gelir:
+> Bu routine değişikliğinde concurrency/version/locking/serialization/race davranışıyla ilgili bir sorun
+> nedeniyle reviewer merge öncesi kod veya hedefli regression test değişikliği isterdi.
 
-**Öneri:** İki bağımsız System Two okuyucu.
-- Her biri yalnız birim paketini görür: `files` + PR başlığı. H19 çıktısı görmez.
-- Çıktı: D1 ve D5 için yes/no/undetermined, `actionable_D5`, kısa gerekçe.
-- Okuyucular iki ayrı model/oturum olabilir.
-- D5 uyuşmazlığında sahip, H19 çıktısını görmeden hakemlik eder.
+Sadece "D5 semantiğine dokunuyor" actionable değildir.
 
-**Karar:** Hangi iki okuyucu olacak ve H19 shadow'unu çalıştıran oturum olmayacaklar.
+### Okuyucu uyuşmazlığı
 
-### d. `pricing.v0.1.json` (§6)
+- D5 aynıysa primary D5 etiketi odur.
+- D5 uyuşmazsa veya biri `undetermined` ise H19 sahibi adjudication yapar.
+- H19 sahibi adjudication sırasında H19/V/resolver/candidate sonucunu görmez.
+- Adjudication paketi iki gerekçeyi + aynı referans paketi içerir.
+- H19 sahibi de undetermined bırakırsa birim primary D5 recall/FPR denominator'ından çıkar, fakat örneklem/route
+  ve maliyet sayımında kalır; protocol §5'e uygun olarak undetermined oranı ayrıca raporlanır.
 
-İlk birimden önce commitlenmeli:
-- Jev çağrı veya token fiyatı;
-- System Two okuyucu modelinin input/output fiyatı;
-- para birimi ve tarih.
+Actionable D5 için de iki okuyucu uyuşmazsa aynı kör adjudication uygulanır.
 
-**Fiyatları ve model kimliklerini sahip yazmalı.** Ben Jev fiyatını bilmiyorum.
+## 4. Baseline ve candidate maliyeti
 
-### e. Gözlenen actionable D5 (§5)
+### Baseline production proxy
 
-Mevcut review/CI kayıtlarından hangi kaynak okunacak:
-- review yorumları;
-- `development-review-*` iş akışı kayıtları;
-- ya da PR'daki takip commit'leri.
+```text
+baseline_cost =
+  sum(Reader A actual token cost for every eligible unit)
+```
 
-Bu kaynak ve eşleme kuralı sabitlenmeli.
+Reader A aynı zamanda birinci reference labeler olduğu için ayrı bir duplicate System Two baseline çağrısı yapılmaz.
 
-### f. Zamanlama
+### Candidate simulated production cost
 
-Bu ek ve `pricing.v0.1.json` mühürlenene kadar rutin gövdesi değiştiren PR'ların merge edilmemesi en temiz yol.
-Aksi hâlde örneklemin ilk PR'ı fiyat tablosundan önce gözlenmiş olur (§6).
+```text
+candidate_cost =
+  Jev V cost (all eligible units)
++ Jev resolver cost (ambiguous units only)
++ Reader A cost (candidate routed units only)
+```
+
+Shadow sırasında Reader A gerçekte bütün birimlerde çalışır. Candidate'ın no-route ettiği birimlerdeki Reader A
+çağrısı deneysel counterfactual doğrulama gideridir ve candidate simulated production cost'a girmez.
+
+### Deney overhead'i, primary ekonomi dışında
+
+Ayrıca raporlanır:
+- Reader B tüm çağrıları;
+- adjudication maliyeti/iş yükü;
+- H19 shadow artifact/storage/CI overhead.
+
+Bunlar production candidate maliyetinden ayrıdır.
+
+## 5. Frozen pricing
+
+Fiyatlar `pricing.v0.1.json` dosyasındadır ve ilk eligible birimden önce sabitlenir.
+
+Kurallar:
+- USD;
+- 1M token birimi;
+- gerçek API usage alanları kullanılır;
+- Reader promptları 272K altında tutulur;
+- Standard processing;
+- bölgesel/Fast/Batch fiyatı kullanılmaz;
+- deney sırasında liste fiyatı değişirse primary hesap değişmez.
+
+Jev output ücretsiz olduğundan yalnız input token maliyeti hesaplanır.
+
+## 6. Gözlenen actionable D5 kaynağı
+
+Bu metrik reference labeler `actionable_d5` ile **aynı şey değildir**. Var olan geliştirme sürecinde gerçekten
+ortaya çıkmış D5 müdahalesini ölçer.
+
+Her sampled PR için merge'den sonra şu **önceden belirlenmiş evidence set** alınır:
+
+1. PR review kayıtları;
+2. PR issue comments;
+3. SHA-bound development R0/R1/R2 receipt/yorumları;
+4. check-run / CI özetleri;
+5. bir blocker artifact'ından sonra, merge'den önce gelen follow-up commit diff'leri.
+
+H19 shadow çıktıları bu evidence set'e eklenmez ve mapper'a gösterilmez.
+
+### observed_actionable_D5 = yes
+
+Ancak şu koşulların tamamı varsa:
+- merge öncesi bir review/CI artifact'ı açıkça bir **değişiklik** ister veya blocker/failing invariant bildirir;
+- neden D5 semantiğidir: race/interleaving, row/advisory lock/serialization/deadlock-order, stale-write/optimistic
+  version/CAS, concurrency-safe atomicity veya concurrent request interference;
+- artifact routine'i açıkça adlandırır **veya** takip diff'i blocker'ı bu eligible routine'de giderdiğini
+  tartışmasız gösterir.
+
+Sadece "idempotency" veya "request hash" D1 bulgusu, concurrency mekanizması açıkça yoksa observed D5 sayılmaz.
+
+### no / unknown
+
+- evidence set'te böyle artifact yoksa: `no`;
+- artifact PR düzeyinde olup routine'e güvenilir biçimde eşlenemiyorsa: `unknown`.
+
+`unknown` observed-actionable miss gate'inde olumlu/olumsuz sayılmaz; sayısı raporlanır.
+
+### Mapper
+
+Observed evidence eşlemesi H19 sahibi tarafından, H19 shadow sonucu kapalıyken yapılır.
+Bu işlem referans D1/D5 label'larından sonra yapılabilir, fakat candidate route açılmadan tamamlanır.
+
+## 7. Mevcut development review ile ilişki
+
+H19s mevcut development-engine R0/R1/R2 akışını değiştirmez.
+
+- mevcut review PR başına/risk bazlı şekilde normal çalışır;
+- H19s Reader A/B birim bazlı **ölçüm okuyucularıdır**, normal merge authority değildir;
+- H19s pass olsa bile bu deney tek başına R0/R1/R2 sözleşmesini değiştirmez.
+
+H19s'in ekonomik karşılaştırması "her eligible routine'i System Two ile okumak" baseline'ı ile candidate
+unit-router arasındadır. Mevcut PR-level reviewer faturası ikincil gerçek-world context olarak raporlanabilir,
+ama primary S4 hesabına karıştırılmaz.
+
+## 8. Örneklem başlangıcı ve zamanlama
+
+Ana protokol commit zamanından bu ek + pricing freeze'e kadar `main` üzerinde yeni commit olmadığı doğrulandı.
+Dolayısıyla arada eligible unit yoktur.
+
+**Örneklem başlangıcı**, bu uygulama eki, `pricing.v0.1.json` ve `referans-okuyucu.v0.1.json` birlikte
+mühürlendikten sonraki ilk `main` merge'dir.
+
+Bu üç artifact commitlenmeden routine gövdesi değiştiren PR merge edilmez.
+
+Mühürden sonra normal geliştirme devam eder. Örnekleme sonucu görmek için merge durdurulmaz.
+
+## 9. Stop rule
+
+Ana protokol aynen:
+- ≥150 eligible unit;
+- ≥25 birimli merged PR;
+- iki eşiği aşan son PR'ın bütün birimleri dahil;
+- sonuç/H19 skoruna göre erken durma veya uzatma yok.
+
+## 10. Değiştirilemez uygulama kararları
+
+H19s başladığında aynı kohortta:
+- new rutinleri çıkarma;
+- Reader modelini değiştirme;
+- reference prompt/schema değiştirme;
+- System Two baseline birimini PR'a çevirme;
+- pricing değiştirme;
+- observed-actionable kaynağını genişletme/daraltma;
+- threshold/prompt/router tuning
+
+yasaktır.
+
+Bu ek, ana protokolün geçiş eşiklerini değiştirmez.
