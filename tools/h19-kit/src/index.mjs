@@ -4,6 +4,7 @@ export * from './core/plugin-registry.mjs';
 export * from './core/cache.mjs';
 export * from './core/config.mjs';
 export * from './core/evidence-store.mjs';
+export * from './core/run-manifest.mjs';
 export * from './context/packer.mjs';
 export * from './extractors/sql-routines.mjs';
 export * from './extractors/diff-units.mjs';
