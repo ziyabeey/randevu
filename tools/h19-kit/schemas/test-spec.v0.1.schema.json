@@ -87,7 +87,8 @@
           "items": {
             "type": "string"
           },
-          "uniqueItems": true
+          "uniqueItems": true,
+          "minItems": 1
         },
         "recipe": {
           "type": [
@@ -96,10 +97,12 @@
           ],
           "properties": {
             "recipeId": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "version": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "digest": {
               "type": "string",
@@ -160,7 +163,46 @@
           "uniqueItems": true
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "known"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mutationId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mutatorId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provenance": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "mutationId": {
+                "type": "null"
+              },
+              "mutatorId": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     },
     "requiredObservations": {
       "$ref": "#/$defs/listSection"
@@ -215,7 +257,39 @@
           "uniqueItems": true
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "known"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provenance": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
     },
     "listSection": {
       "type": "object",
@@ -245,7 +319,38 @@
           "uniqueItems": true
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "known"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "minItems": 1
+              },
+              "provenance": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "additionalProperties": false
