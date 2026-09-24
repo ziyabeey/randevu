@@ -333,7 +333,7 @@ export async function runPerformanceBaseline({
     const inventoryMs = inventoryFirst.wallMs;
 
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: 'h19-performance-baseline',
       generatedAt: new Date().toISOString(),
       environment: {
