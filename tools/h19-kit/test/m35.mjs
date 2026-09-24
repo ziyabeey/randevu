@@ -40,6 +40,7 @@ assert.deepEqual(scip.edges('scip:references')[0].range, [2, 4, 7]);
 const impact = scipImpact(scip, ['src/a.ts']);
 assert.deepEqual(impact.affectedDocuments, ['doc:src/a.ts', 'doc:src/b.ts']);
 assert.equal(impact.changedSymbols.length, 1);
+assert.equal(impact.impactedSymbols.length, 2);
 const impactEvidence = scipImpactEvidence(impact);
 assert.equal(impactEvidence.find((x) => x.id === 'impact.cross_file').state, 'present');
 
