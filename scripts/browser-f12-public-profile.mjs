@@ -221,9 +221,11 @@ async function inspectViewport(debugUrl, origin, slug, width) {
     await page.send('Page.enable');
     await page.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: true });
     await page.send('Page.navigate', { url: `${origin}/harness/${slug}` });
+    // The reviews section loads independently (F16-04); wait for it to settle so the snapshot is not racing the fetch.
+    const reviewsSettled = '!document.querySelector("#salon-yorumlar")?.innerText.includes("Yorumlar yükleniyor")';
     const readyExpression = slug === 'broken-salon'
-      ? 'document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav")) && document.body.innerText.includes("Fotoğraf yüklenemedi")'
-      : 'document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav"))';
+      ? `document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav")) && document.body.innerText.includes("Fotoğraf yüklenemedi") && ${reviewsSettled}`
+      : `document.documentElement.dataset.f12Ready === "true" && Boolean(document.querySelector(".public-salon-section-nav")) && ${reviewsSettled}`;
     await waitFor(() => page.evaluate(readyExpression), `F12 ${width}px harness did not become ready`);
     const result = await page.evaluate(`(() => {
       const root = document.documentElement;
