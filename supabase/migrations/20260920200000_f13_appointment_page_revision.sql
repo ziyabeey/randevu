@@ -48,6 +48,20 @@ begin
     return new;
   end if;
 
+  -- H19 D4xD5 experimental variation: keep same-day revision behavior intact,
+  -- but incorrectly treat a cross-local-day retime as revision-neutral.
+  if old.business_id is not distinct from new.business_id
+     and exists (
+       select 1
+       from public.businesses b
+       where b.id = old.business_id
+         and (old.starts_at at time zone b.timezone)::date
+             is distinct from
+             (new.starts_at at time zone b.timezone)::date
+     ) then
+    return new;
+  end if;
+
   insert into private.appointment_page_revisions(business_id, revision)
   values (old.business_id, gen_random_uuid())
   on conflict (business_id) do update
