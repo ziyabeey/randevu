@@ -74,6 +74,18 @@ export function secretBundle(env, generated = {}) {
     COOKIE_SECURE: 'true', RESEND_API_KEY: env.RESEND_API_KEY,
     NOTIFICATION_FROM_EMAIL: env.NOTIFICATION_FROM_EMAIL, PUBLIC_APP_ORIGIN: env.STAGING_APP_ORIGIN,
   };
+  const netgsmNames = ['NETGSM_USERCODE', 'NETGSM_PASSWORD', 'NETGSM_MSGHEADER'];
+  const netgsmValues = netgsmNames.map((name) => typeof env[name] === 'string' ? env[name].trim() : '');
+  const configuredNetgsm = netgsmValues.filter(Boolean).length;
+  if (configuredNetgsm !== 0 && configuredNetgsm !== netgsmNames.length) {
+    throw new Error('NetGSM Worker configuration must be supplied as a complete credential tuple');
+  }
+  if (configuredNetgsm === netgsmNames.length) {
+    for (let index = 0; index < netgsmNames.length; index += 1) payload[netgsmNames[index]] = netgsmValues[index];
+    if (typeof env.NETGSM_APPNAME === 'string' && env.NETGSM_APPNAME.trim()) {
+      payload.NETGSM_APPNAME = env.NETGSM_APPNAME.trim();
+    }
+  }
   for (const name of KEY_NAMES) if (Object.hasOwn(generated, name)) payload[name] = generated[name];
   if (Object.values(payload).some((value) => typeof value !== 'string' || !value)) throw new Error('Worker configuration incomplete');
   return payload;
@@ -116,7 +128,7 @@ export async function probe(fetcher, origin, pair, version, evidence = {}) {
 
 export function requireResumeContract(pending, commit, gates) {
   if (pending.commit_sha !== commit) throw new Error('Resume must run the original rotation commit; use rollback before deploying a repair');
-  for (const name of ['f10', 's01']) {
+  for (const name of ['f10', 's01', 'f16sms']) {
     if (pending.evidence.gates[name] && !gates[name]) throw new Error('Resume cannot drop a required acceptance gate');
   }
   if (pending.evidence.gates.s01 && gates.mailbox !== pending.evidence.gates.mailbox) throw new Error('Resume requires the original S01 mailbox');
