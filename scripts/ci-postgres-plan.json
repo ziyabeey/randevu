@@ -1243,6 +1243,10 @@
           "file": "supabase/tests/f13_booking_date_range.sql"
         },
         {
+          "database": "yzt_test",
+          "file": "supabase/tests/exp_h19_calendar_d4_d5_range_revision.sql"
+        },
+        {
           "database": "yzt_s08_upgrade",
           "file": "supabase/migrations/20260920200000_f13_appointment_page_revision.sql"
         },
