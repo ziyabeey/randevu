@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 import PublicBookingInformation from './PublicBookingInformation';
 import PublicNotificationStatus from './PublicNotificationStatus';
+import ManageFeedback from './ManageFeedback';
 import { customerNotificationStatus, type CustomerNotificationStatus } from '../shared/customer-notification-status';
 
 type ManagedAppointment = {
@@ -420,6 +421,8 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
           ) : <p className="public-muted">Bu {group ? 'rezervasyon' : 'randevu'} artık iptal edilemez.</p>}
         </section>
       </div>
+
+      <ManageFeedback token={token} />
 
       <PublicBookingInformation
         slug={appointment.support_slug}
