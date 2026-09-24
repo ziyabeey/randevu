@@ -32,9 +32,10 @@ The benchmark verifies:
 
 1. cold index of every shard;
 2. exact-content warm hit of every shard;
-3. a real source-file mutation invalidates only its owning shard;
-4. all unaffected shards remain cache hits;
-5. a `scripts/*.mjs` change outside every declared TypeScript project invalidates zero shards.
+3. the same real source-file mutation is measured once through full-root indexing and once through owning-shard indexing;
+4. that mutation invalidates only its owning shard;
+5. all unaffected shards remain cache hits;
+6. a `scripts/*.mjs` change outside every declared TypeScript project invalidates zero shards.
 
 ## Boundary
 
