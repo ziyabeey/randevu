@@ -241,6 +241,14 @@ jobs:
       - name: Run H19 Kit TypeScript shard resolver smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:ts-shards
+      - name: Restore H19 persistent shard cache
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-persistent-cache' }}
+        uses: actions/cache@v4
+        with:
+          path: .h19/perf-shard-artifacts
+          key: h19-perf-shards-${{ runner.os }}-scip-0.4.0-${{ github.sha }}
+          restore-keys: |
+            h19-perf-shards-${{ runner.os }}-scip-0.4.0-
       - name: Install pinned SCIP TypeScript for performance baseline
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
         run: npm install --global @sourcegraph/scip-typescript@0.4.0
@@ -263,6 +271,16 @@ jobs:
         with:
           name: h19-ts-shard-performance
           path: ${{ runner.temp }}/h19-ts-shard-performance.json
+          if-no-files-found: error
+      - name: Probe H19 cross-run persistent shard cache
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-persistent-cache' }}
+        run: npm --prefix tools/h19-kit run perf:persistent-cache -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-persistent-cache-probe.json" --cache-root ".h19/perf-shard-artifacts" --scip-version 0.4.0
+      - name: Upload H19 persistent shard cache probe
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-persistent-cache' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-persistent-cache-probe
+          path: ${{ runner.temp }}/h19-persistent-cache-probe.json
           if-no-files-found: error
       - name: Require the selected checks to complete
         if: ${{ always() }}
