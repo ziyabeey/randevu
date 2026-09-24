@@ -232,6 +232,9 @@ jobs:
       - name: Run H19 Kit M5 coverage-discovery smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m5-coverage-discovery
+      - name: Run H19 Kit M5 coverage validation-packet smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m5-validation-packet
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
