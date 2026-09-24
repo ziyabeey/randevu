@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import react from '@vitejs/plugin-react';
 import { createServer } from 'vite';
+import { holdBrowserSlot } from './helpers/marketing-chrome.mjs';
+
+holdBrowserSlot();
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -64,9 +67,8 @@ function harnessPlugin(frameStats) {
       server.middlewares.use((req, res, next) => {
         const pathname = req.url?.split('?')[0] ?? '';
         if (pathname === '/__mkt-scrub-harness.html') {
-          res.statusCode = 200;
-          res.setHeader('Content-Type', 'text/html; charset=utf-8');
-          res.end(`<!doctype html>
+          // Through transformIndexHtml so plugin-react injects its refresh preamble.
+          server.transformIndexHtml(pathname, `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -77,7 +79,11 @@ function harnessPlugin(frameStats) {
     <div id="root"></div>
     <script type="module" src="/tests/fixtures/mkt-scrub-harness.jsx"></script>
   </body>
-</html>`);
+</html>`).then((html) => {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.end(html);
+          }, next);
           return;
         }
 
@@ -375,7 +381,7 @@ test('MKT-01 Chrome video control and frame renderer preserve scroll parity and 
     await isolatePage(page, frameStats, 'desktop frame isolation');
     await page.send('Emulation.setEmulatedMedia', { features: [] });
     frameStats.failFrames = false;
-    const framePreview = `${origin}/marketing-preview.html?renderer=frames&clean=1`;
+    const framePreview = `${origin}/marketing-preview.html?legacy=1&renderer=frames&clean=1`;
     await navigatePreview(page, `${framePreview}&run=desktop`, { width: 1440, height: 900, mobile: false });
     for (const [progress, phase] of checkpoints) await scrollFramesToProgress(page, progress, phase);
     await scrollSectionToProgress(page, 0.1);

@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import react from '@vitejs/plugin-react';
 import { createServer } from 'vite';
+import { holdBrowserSlot } from './helpers/marketing-chrome.mjs';
+
+holdBrowserSlot();
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -145,7 +148,7 @@ test('MKT-01 video request failure degrades to a usable static transformation st
 
   try {
     // The video arm is an explicit A/B override now that the WebP sequence is the production renderer.
-    const url = `${origin}/marketing-preview.html?renderer=video&clean=1`;
+    const url = `${origin}/marketing-preview.html?legacy=1&renderer=video&clean=1`;
     await waitFor(async () => {
       const response = await fetch(url, { signal: AbortSignal.timeout(1_000) });
       return response.ok;

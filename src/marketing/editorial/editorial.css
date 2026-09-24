@@ -143,6 +143,7 @@
   display: inline-flex;
   align-items: center;
   gap: 12px;
+  min-height: 44px;
   font-family: var(--ed-display);
   font-size: 15px;
   font-weight: 650;
@@ -316,7 +317,8 @@
 
 .ed-menu-button {
   display: none;
-  padding: 10px 14px;
+  min-height: 44px;
+  padding: 10px 16px;
   border: 1px solid currentColor;
   border-radius: 999px;
   background: transparent;
@@ -391,6 +393,9 @@ html.ed-menu-open .ed-nav::before {
 }
 
 .ed-menu-login {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   margin-top: auto;
   font: 600 13px var(--ed-mono);
   letter-spacing: 0.1em;

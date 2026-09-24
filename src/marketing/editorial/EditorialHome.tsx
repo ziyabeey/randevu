@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState, type CSSProperties } from "react";
+import { forwardRef, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 
 import { EDITORIAL_ASSETS } from "./assets";
 import { SALON_FILM, SALON_FILM_POSTER, useSalonFilmSupport } from "./salonFilm";
@@ -41,9 +41,16 @@ const menuChapters = [
 
 function EdNav() {
   const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const wasOpen = useRef(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("ed-menu-open", open);
+    // Keyboard users land inside the opened menu and back on its button when it closes.
+    if (open) menuRef.current?.querySelector<HTMLElement>("a")?.focus({ preventScroll: true });
+    else if (wasOpen.current) buttonRef.current?.focus({ preventScroll: true });
+    wasOpen.current = open;
     if (!open) return undefined;
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -51,6 +58,16 @@ function EdNav() {
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [open]);
+
+  const followChapter = (event: MouseEvent<HTMLAnchorElement>, href: string) => {
+    setOpen(false);
+    // A keyboard fragment jump would drop focus on <body>; scroll here instead
+    // so focus can go back to the menu button.
+    if (event.detail !== 0) return;
+    event.preventDefault();
+    window.history.pushState(null, "", href);
+    document.querySelector<HTMLElement>(href)?.scrollIntoView({ block: "start" });
+  };
 
   return (
     <header className="ed-nav">
@@ -68,23 +85,23 @@ function EdNav() {
       <div className="ed-nav-actions">
         <a className="ed-login" href={WORKSPACE_HOME_PATH}>Giriş yap</a>
         <a className="ed-cta" href="#kurulum"><span>Birlikte kuralım</span><b aria-hidden="true">→</b></a>
-        <button className="ed-menu-button" type="button" aria-expanded={open} aria-controls="ed-menu" onClick={() => setOpen((value) => !value)}>
+        <button ref={buttonRef} className="ed-menu-button" type="button" aria-expanded={open} aria-controls="ed-menu" onClick={() => setOpen((value) => !value)}>
           {open ? "Kapat" : "Menü"}
         </button>
       </div>
-      <div className="ed-menu" id="ed-menu" data-open={open ? "true" : "false"} aria-hidden={!open}>
+      <div ref={menuRef} className="ed-menu" id="ed-menu" data-open={open ? "true" : "false"} aria-hidden={!open}>
         <p className="ed-menu-kicker">Bugünün akışı</p>
         <ol>
           {menuChapters.map((chapter) => (
             <li key={chapter.href}>
-              <a href={chapter.href} tabIndex={open ? 0 : -1} onClick={() => setOpen(false)}>
+              <a href={chapter.href} tabIndex={open ? 0 : -1} onClick={(event) => followChapter(event, chapter.href)}>
                 <time>{chapter.time}</time>
                 <span>{chapter.label}</span>
               </a>
             </li>
           ))}
         </ol>
-        <a className="ed-menu-login" href={WORKSPACE_HOME_PATH} tabIndex={open ? 0 : -1}>Giriş yap →</a>
+        <a className="ed-menu-login" href={WORKSPACE_HOME_PATH} tabIndex={open ? 0 : -1} onClick={() => setOpen(false)}>Giriş yap →</a>
       </div>
     </header>
   );
