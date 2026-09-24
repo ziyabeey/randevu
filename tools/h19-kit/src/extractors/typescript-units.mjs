@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import * as ts from 'typescript';
 import { createHash } from 'node:crypto';
 
 const sha = (text) => createHash('sha256').update(String(text)).digest('hex');
