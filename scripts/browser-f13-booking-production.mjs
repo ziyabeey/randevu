@@ -439,7 +439,7 @@ try {
     return true;
   })()`);
 
-  assert.equal(await setControl('Müşteri adı', 'F16 Seri Müşteri'), true, 'F16-01 customer input missing');
+  assert.equal(await setControl('Müşteri', 'F16 Seri Müşteri'), true, 'F16-01 customer input missing');
   await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.includes('Uygun saatleri getir')).click()`);
   await waitFor(
     () => page.evaluate(`[...document.querySelectorAll('.slot-button')].some((node)=>node.textContent.includes('10:00'))`),
