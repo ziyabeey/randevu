@@ -238,6 +238,9 @@ jobs:
       - name: Run H19 Kit M6 minimal test-spec smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m6-test-spec
+      - name: Run H19 Kit M7 executable test-candidate smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m7-test-candidate
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
