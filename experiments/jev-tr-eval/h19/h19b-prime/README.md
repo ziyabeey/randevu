@@ -4,8 +4,7 @@
 - **Vaka üreticisi:** Claude.
 - **Kör ikinci okuyucu:** H19 sahibi.
 
-**Durum:** Vakalar donduruldu. **Hiçbir H19b′ Jev çağrısı yapılmadı.** Ölçüm, 16 vakalık kör kontrol
-commit'lendikten sonra yapılır (protokol §4).
+**Durum:** Vakalar donduruldu. **Hiçbir H19b′ Jev çağrısı yapılmadı.** Kör ikinci okuyucu kontrolü ölçümden önce tamamlandı: 16/16 D5 etiketi ve no_effect ekseni anahtarla uyuştu, 0 vaka düştü. Etiketler `55e0e4c795edca20602fbf7f21c786a6c21a9231` commitinde mühürlü; ölçüm kapısı açıktır.
 
 ```text
 vakalar.v0.1.json sha256 2ca2e3fce5daa98817424e7903fb4431a4eae586df615589580f8b247d496c41
