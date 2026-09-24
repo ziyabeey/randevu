@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiRequestError, api } from './api';
+import { PromoAttachResult, PublicPromoField } from './PublicPromo';
 import {
   PUBLIC_BOOKING_RECOVERY_TTL_MS,
   PUBLIC_BOOKING_SETTLE_MS,
@@ -313,6 +314,9 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
   const [slots, setSlots] = useState<PublicSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<PublicSlot | null>(null);
   const [confirmation, setConfirmation] = useState<ConfirmedResult | null>(null);
+  // F16-06: a checked campaign code is reserved after the booking exists,
+  // through that booking's own management link.
+  const [promoCode, setPromoCode] = useState<string | null>(null);
   const [confirmationRecordId, setConfirmationRecordId] = useState<string | null>(null);
   const [unpersistedConfirmation, setUnpersistedConfirmation] = useState<UnpersistedConfirmation | null>(null);
   const [confirmationStorageError, setConfirmationStorageError] = useState('');
@@ -789,6 +793,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         <p className="public-confirmation-note">Bu tutar rezervasyon tahminidir. Kesin tahsilat tutarı değildir.</p>
       </> : <dl className="public-confirmation-list"><div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div><div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div><div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div><div><dt>Ücret</dt><dd>{appointment.price_minor === null ? 'İşletmede netleşecek' : money(appointment.price_minor, appointment.currency)}</dd></div></dl>}
       <div className={`public-result-status is-${outcome.tone}`} aria-label="Rezervasyon ve bildirim durumu"><p><strong>Kayıt durumu:</strong> {outcome.state}</p><PublicNotificationStatus notification={confirmation.notification} /></div>
+      {promoCode && outcome.active && <PromoAttachResult manageUrl={confirmation.manageUrl} code={promoCode} />}
       <p className="public-confirmation-note">{outcome.active ? 'Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.' : 'Randevu ayrıntılarınızı yönetim bağlantısından görüntüleyebilirsiniz.'}</p>
       <PublicBookingInformation slug={slug} contact={informationContact} prefix="result" />
       <a className="public-primary" href={confirmation.manageUrl}>{outcome.active ? 'Randevumu yönet' : 'Randevu ayrıntılarını aç'}</a>
@@ -844,6 +849,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           <small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>
           {contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}
           <label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={1000} rows={3} /></label>
+          <PublicPromoField slug={slug} serviceIds={multiServiceSelection.lines.map((line) => line.serviceId)} onChange={setPromoCode} />
           <PublicBookingInformation slug={slug} contact={informationContact} prefix="group-booking" />
           <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Planı onayla ve randevuyu oluştur'}</button>
         </form>
@@ -877,6 +883,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       <section className={`public-booking-card public-customer-card ${selectedSlot ? 'is-ready' : ''}`}><span className="public-step">3</span><h2>İletişim bilgileri</h2>
         {selectedSlot && selectedService ? <><div className="public-selection-summary"><strong>{selectedService.name}</strong><span>{formatDateTime(selectedSlot.starts_at, selectedSlot.timezone)} · {selectedSlot.staff_name}</span></div>
           <form className="public-customer-form" onSubmit={(event) => void book(event)}><label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label><div className="public-two-columns"><label><span>Telefon <small>(zorunlu)</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div><small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>{contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}<label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
+            <PublicPromoField slug={slug} serviceIds={selectedService ? [selectedService.service_id] : []} onChange={setPromoCode} />
             <PublicBookingInformation slug={slug} contact={informationContact} prefix="booking" />
             <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
           </form></> : <p className="public-muted">Bir saat seçtiğinizde iletişim formu burada açılır.</p>}

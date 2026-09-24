@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { api } from './api';
 import { useWorkspace } from './workspace-context';
 import ServicePackagesPanel from './ServicePackagesPanel';
+import PromoCodesPanel from './PromoCodesPanel';
 
 type Service = {
   id: string;
@@ -181,6 +182,7 @@ export default function ServicesPage() {
         </section>
 
         <ServicePackagesPanel businessId={catalog.membership.business_id} services={catalog.services} canManage={canManage} />
+        <PromoCodesPanel businessId={catalog.membership.business_id} services={catalog.services} canManage={canManage} />
       </div>
     </main>
   );

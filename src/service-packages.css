@@ -19,3 +19,13 @@
   .service-package-list > li { grid-template-columns: 1fr; }
   .service-package-form, .service-package-form.create { grid-template-columns: 1fr; }
 }
+
+/* F16-06 campaign codes reuse the package panel layout. */
+.promo-code-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.promo-code-form.create { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.promo-code-services { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; border: 1px solid var(--border, #d9dde5); border-radius: 12px; padding: 10px; min-width: 0; }
+.promo-code-services legend { font-size: .78rem; color: var(--muted, #667085); padding: 0 4px; }
+.promo-code-services .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; box-sizing: border-box; padding: 0 12px; }
+@media (max-width: 560px) {
+  .promo-code-form, .promo-code-form.create { grid-template-columns: 1fr; }
+}

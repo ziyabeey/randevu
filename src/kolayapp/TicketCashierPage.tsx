@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { ApiRequestError, api } from '../api';
 import type { ManagedCatalog } from '../CatalogSettingsPanel';
 import type { ServicePackage } from '../ServicePackagesPanel';
+import { promoValueText } from '../PublicPromo';
 import { useWorkspace } from '../workspace-context';
 import './ticket-cashier.css';
 
@@ -101,6 +102,16 @@ export type TicketContract = {
   packageCoveredMinor?: number | null;
   returnedMinor?: number;
   packageRefundedMinor?: number;
+  promoDiscountMinor?: number;
+  promo?: {
+    redemptionId: string;
+    code: string;
+    kind: 'percent' | 'fixed';
+    percentBps: number | null;
+    amountMinor: number | null;
+    source: 'booking' | 'ticket';
+    status: 'reserved' | 'consumed';
+  } | null;
   totalMinor: number | null;
   paymentStatus: 'unpaid' | 'partial' | 'paid';
   paidMinor: number;
@@ -662,6 +673,36 @@ export default function TicketCashierPage() {
     );
   }
 
+  async function applyPromo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    const form = event.currentTarget;
+    const code = String(new FormData(form).get('code') ?? '').trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9-]{2,31}$/.test(code)) return setNotice('Kampanya kodu 3–32 harf, rakam veya tire olmalı.');
+    const ticket = await mutation(
+      `promo-apply:${selected.ticketId}:${selected.version}:${code.toUpperCase()}`,
+      `/api/tickets/${selected.ticketId}/promo`,
+      { method: 'POST', body: JSON.stringify({ code, expectedVersion: selected.version }) },
+      'Kampanya kodu adisyona uygulandı; indirim sunucuda hesaplandı.',
+      selected.ticketId,
+    );
+    if (ticket) form.reset();
+  }
+
+  async function removePromo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    const reason = String(new FormData(event.currentTarget).get('reason') ?? '').trim();
+    if (reason.length < 2) return setNotice('Kaldırma gerekçesi girin.');
+    await mutation(
+      `promo-remove:${selected.ticketId}:${selected.version}`,
+      `/api/tickets/${selected.ticketId}/promo/remove`,
+      { method: 'POST', body: JSON.stringify({ reason, expectedVersion: selected.version }) },
+      'Kampanya kodu adisyondan kaldırıldı; kodun kullanım hakkı serbest kaldı.',
+      selected.ticketId,
+    );
+  }
+
   async function addService(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
@@ -853,6 +894,9 @@ export default function TicketCashierPage() {
                 {(selected.packageCoveredMinor ?? 0) > 0 && (
                   <div><span>Paket hakkı</span><strong>{money(selected.packageCoveredMinor ?? 0, selected.currency)}</strong></div>
                 )}
+                {selected.promo && (
+                  <div><span>Kampanya ({selected.promo.code})</span><strong>{money(-(selected.promoDiscountMinor ?? 0), selected.currency)}</strong></div>
+                )}
                 {(selected.packageRefundedMinor ?? 0) > 0 && (
                   <div><span>Paket iadesi</span><strong>{money(selected.packageRefundedMinor ?? 0, selected.currency)}</strong></div>
                 )}
@@ -977,6 +1021,22 @@ export default function TicketCashierPage() {
                   <input name="amount" inputMode="decimal" placeholder="Tahsilat" required />
                   <button disabled={busy}>Tahsilatı kaydet</button>
                 </form>
+              )}
+
+              {selected.status === 'open' && (selected.promo ? (
+                <form className="ticket-promo" onSubmit={removePromo}>
+                  <p>{selected.promo.code} · {promoValueText({ ...selected.promo, currency: selected.currency })} · {selected.promo.source === 'booking' ? 'online randevuda ayrıldı' : 'adisyonda uygulandı'}. Adisyon kapanınca kullanılmış sayılır.</p>
+                  <input name="reason" placeholder="Kaldırma gerekçesi" minLength={2} required aria-label="Kampanya kodunu kaldırma gerekçesi" />
+                  <button disabled={busy}>Kampanyayı kaldır</button>
+                </form>
+              ) : (
+                <form className="ticket-promo" onSubmit={applyPromo}>
+                  <input name="code" placeholder="Kampanya kodu" maxLength={32} required aria-label="Kampanya kodu" />
+                  <button disabled={busy}>Kodu uygula</button>
+                </form>
+              ))}
+              {selected.status !== 'open' && selected.promo && (
+                <p className="ticket-promo-note">Kampanya {selected.promo.code}: {promoValueText({ ...selected.promo, currency: selected.currency })} · {selected.promo.status === 'consumed' ? 'kullanıldı' : 'ayrıldı'}</p>
               )}
 
               {customerPackages.length > 0 && (
