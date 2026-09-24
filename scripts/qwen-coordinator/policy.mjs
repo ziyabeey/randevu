@@ -268,28 +268,8 @@ export function canonicalTaskBinding(tasks, pulls, prNumber) {
   return { task: matchingTasks[0], reason: null };
 }
 function escapedPattern(value) {
-  return text(value).replace(/[.*+?^$(){}|[\]\\]/g, '\\export function canonicalTaskBinding(tasks, pulls, prNumber) {
-  const matchingTasks = (tasks ?? []).filter((task) => task.prNumbers?.includes(prNumber));
-  if (matchingTasks.length !== 1) {
-    return {
-      task: null,
-      reason: matchingTasks.length === 0 ? 'TASK_NOT_MAPPED' : 'TASK_BINDING_AMBIGUOUS',
-    };
-  }
-  const openPullNumbers = new Set((pulls ?? []).map((pull) => pull.number));
-  const competingOpenPulls = matchingTasks[0].prNumbers
-    .filter((number) => number !== prNumber && openPullNumbers.has(number));
-  if (competingOpenPulls.length > 0) {
-    return {
-      task: null,
-      reason: 'TASK_ROW_SHARED_BY_OPEN_PULLS',
-    };
-  }
-  return { task: matchingTasks[0], reason: null };
+  return text(value).replace(/[.*+?^$(){}|[\]\\]/g, '\\$&');
 }
-');
-}
-
 function taskDependsOn(task, dependencyId) {
   if (!task || !dependencyId) return false;
   const source = text(task.dependencies);
