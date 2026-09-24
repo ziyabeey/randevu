@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import bookingRecovery from '../worker/public-booking-recovery.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 
 const managementToken = 'ccccccccccccccccccccccccccccccccccccccccccc';
 const recoverySecret = 'ddddddddddddddddddddddddddddddddddddddddddd';
@@ -9,16 +10,20 @@ const idempotencyKey = 'phase9-http-create-0001';
 const encryptionKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 const gateSecret = 'ggggggggggggggggggggggggggggggggggggggggggg';
 const clientIp = '203.0.113.44';
+const phoneProofSecret = 'P'.repeat(48);
+const phoneProof = (slug, phone) => issueWhatsappPhoneProof(phoneProofSecret, slug, phone);
 const env = {
   SUPABASE_URL: 'https://supabase.example.test',
   SUPABASE_ANON_KEY: 'anon-test-key',
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1: encryptionKey,
   PUBLIC_BOOKING_GATE_SECRET: gateSecret,
+  PHONE_VERIFICATION_PROOF_SECRET: phoneProofSecret,
   COOKIE_SECURE: 'false',
 };
 const bookingBody = {
   customerName: 'HTTP Recovery',
   customerPhone: '+90 555 900 00 01',
+  phoneVerificationToken: await phoneProof('recovery-test', '+90 555 900 00 01'),
   customerEmail: 'http-recovery@example.test',
   notes: null,
   serviceId: '6a000000-0000-4000-8000-000000000001',
@@ -82,6 +87,7 @@ test('F09-02 booking recovery HTTP contract under F09-04 guard', async (t) => {
         SUPABASE_URL: env.SUPABASE_URL,
         SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
         PUBLIC_BOOKING_GATE_SECRET: gateSecret,
+        PHONE_VERIFICATION_PROOF_SECRET: phoneProofSecret,
         COOKIE_SECURE: 'false',
       },
       { 'Idempotency-Key': idempotencyKey },

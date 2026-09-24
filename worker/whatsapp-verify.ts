@@ -4,7 +4,7 @@ export type TwilioVerifyEnv = {
   TWILLO_ID?: string;
   TWILLO_SECRET_API?: string;
   TWILIO_VERIFY_SERVICE_SID?: string;
-  PUBLIC_BOOKING_GATE_SECRET?: string;
+  PHONE_VERIFICATION_PROOF_SECRET?: string;
 };
 
 export type VerifyStartResult =
@@ -18,6 +18,7 @@ export type VerifyCheckResult =
 const VERIFY_ROOT = 'https://verify.twilio.com/v2';
 const REQUEST_TIMEOUT_MS = 10_000;
 const PROOF_TTL_SECONDS = 10 * 60;
+const MIN_PROOF_SECRET_LENGTH = 43;
 
 function clean(value: string | undefined) {
   const result = value?.trim() ?? '';
@@ -69,6 +70,14 @@ export function normalizeWhatsappPhone(value: string) {
   if (/^0(5\d{9})$/.test(digits)) return `+90${digits.slice(1)}`;
   if (/^5\d{9}$/.test(digits)) return `+90${digits}`;
   return null;
+}
+
+// Phone proofs use their own signing key: the public abuse gate secret keeps a
+// single purpose, and an operator acceptance runner can hold this key without
+// being able to forge public-gate or deployment-health signatures.
+export function phoneProofSecret(env: TwilioVerifyEnv) {
+  const secret = clean(env.PHONE_VERIFICATION_PROOF_SECRET);
+  return secret && secret.length >= MIN_PROOF_SECRET_LENGTH && secret.length <= 512 ? secret : null;
 }
 
 export function twilioVerifyConfigured(env: TwilioVerifyEnv) {
@@ -207,7 +216,7 @@ export async function issueWhatsappPhoneProof(
   phone: string,
   nowSeconds = Math.floor(Date.now() / 1000),
 ) {
-  if (secret.trim().length < 43 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(slug)) return null;
+  if (secret.trim().length < MIN_PROOF_SECRET_LENGTH || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(slug)) return null;
   const normalized = normalizeWhatsappPhone(phone);
   if (!normalized) return null;
   const payload = {
@@ -228,7 +237,7 @@ export async function verifyWhatsappPhoneProof(
   phone: string,
   nowSeconds = Math.floor(Date.now() / 1000),
 ) {
-  if (secret.trim().length < 43 || token.length > 2048) return false;
+  if (secret.trim().length < MIN_PROOF_SECRET_LENGTH || token.length > 2048) return false;
   const parts = token.split('.');
   if (parts.length !== 2) return false;
   const [encoded = '', signature = ''] = parts;

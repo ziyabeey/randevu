@@ -44,3 +44,10 @@ test('F09 live acceptance never depends on a personal inbox', () => {
   assert.doesNotMatch(script, /gmail\.com|hotmail\.com|outlook\.com|yahoo\.com/i);
   assert.match(script, /delivered\+f0905/);
 });
+
+test('F16-02 staging F09 acceptance signs its own fixture phone proof with the derived staging key', () => {
+  assert.match(script, /import \{ issueWhatsappPhoneProof \} from '\.\.\/worker\/whatsapp-verify\.ts'/);
+  assert.match(script, /stagingPhoneProofSecret\(process\.env\)/);
+  assert.match(script, /phoneVerificationToken,/);
+  assert.doesNotMatch(script, /PUBLIC_BOOKING_GATE_SECRET/);
+});

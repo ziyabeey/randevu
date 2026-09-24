@@ -9,17 +9,21 @@ import {
   parsePublicBookingIntentV2Key,
   verifyPublicBookingIntentV2,
 } from '../shared/public-booking-intent.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 
 const recoveryId = '8c000000-0000-4000-8000-000000000207';
 const recoverySecret = 'A'.repeat(43);
 const managementToken = Buffer.alloc(32, 1).toString('base64url');
 const encryptionKey = 'A'.repeat(43);
 const gateSecret = 'g'.repeat(43);
+const phoneProofSecret = 'P'.repeat(48);
+const phoneProof = (slug, phone) => issueWhatsappPhoneProof(phoneProofSecret, slug, phone);
 const env = {
   SUPABASE_URL: 'https://supabase.example.test',
   SUPABASE_ANON_KEY: 'anon-test-key',
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1: encryptionKey,
   PUBLIC_BOOKING_GATE_SECRET: gateSecret,
+  PHONE_VERIFICATION_PROOF_SECRET: phoneProofSecret,
   COOKIE_SECURE: 'false',
 };
 
@@ -104,6 +108,7 @@ await test('S07 v2 create verifies the exact proof and sends the immutable key/h
   const booking = {
     customerName: 'S07 Customer',
     customerPhone: '+90 555 207 00 01',
+    phoneVerificationToken: await phoneProof('s07-salon', '+90 555 207 00 01'),
     customerEmail: 's07@example.test',
     notes: null,
     serviceId: '6c000000-0000-4000-8000-000000000207',

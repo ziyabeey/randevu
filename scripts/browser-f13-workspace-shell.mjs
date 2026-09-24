@@ -49,6 +49,7 @@ let ticketPaymentEvents = [];
 let ambiguousCashCommitted = false;
 const ticketPaymentReplays = new Map();
 let publicBookingCreated = false;
+const publicOtpSteps = [];
 let publicCreateRequest = null;
 let paymentsWriteAllowed = true;
 let productState = null;
@@ -645,7 +646,19 @@ try {
       assert.deepEqual(body.lines, [{ serviceId: SERVICE, staffId: null }], 'F14-05 public availability lost the canonical service request');
       return sendJson(response, 200, { slots: [publicGroupSlot()] });
     }
+    if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/start') {
+      assert.deepEqual(body, { slug: 'salon-a', phone: '05550001122' }, 'F16-02 WhatsApp start used another slug or phone');
+      publicOtpSteps.push('start');
+      return sendJson(response, 202, { ok: true, channel: 'whatsapp', expiresInSeconds: 600, retryAfterSeconds: 30 });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/check') {
+      assert.deepEqual(body, { slug: 'salon-a', phone: '05550001122', code: '123456' }, 'F16-02 WhatsApp check used another code or phone');
+      publicOtpSteps.push('check');
+      return sendJson(response, 200, { ok: true, channel: 'whatsapp', phoneVerificationToken: 'wa-proof:salon-a:05550001122', expiresInSeconds: 600 });
+    }
     if (request.method === 'POST' && url.pathname === '/api/public/business/salon-a/group-book') {
+      assert.equal(body.phoneVerificationToken, 'wa-proof:salon-a:05550001122', 'F16-02 public create omitted the WhatsApp phone proof');
+      assert.deepEqual(publicOtpSteps, ['start', 'check'], 'F16-02 public create ran before WhatsApp send -> check');
       assert.equal(body.customerName, 'Ada Public', 'F14-05 public create changed the canonical customer name');
       assert.equal(body.customerPhone, '05550001122', 'F14-05 public create changed the canonical customer phone');
       assert.deepEqual(body.lines, [{ serviceId: SERVICE, staffId: null }], 'F14-05 public create lost the canonical service request');
@@ -1154,8 +1167,28 @@ try {
     name.dispatchEvent(new Event('input', { bubbles: true }));
     setter.call(phone, '05550001122');
     phone.dispatchEvent(new Event('input', { bubbles: true }));
-    [...document.querySelectorAll('button')].find((node) => node.textContent.includes('Planı onayla')).click();
+    [...document.querySelectorAll('button')].find((node) => node.textContent.includes('WhatsApp kodu gönder')).click();
   })()`);
+  await waitFor(
+    () => publicPage.evaluate(`Boolean(document.querySelector('input[aria-label="WhatsApp doğrulama kodu"]'))`),
+    'F16-02 public customer WhatsApp code input did not appear',
+  );
+  await publicPage.evaluate(`(() => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    const code = document.querySelector('input[aria-label="WhatsApp doğrulama kodu"]');
+    setter.call(code, '123456');
+    code.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await waitFor(
+    () => publicPage.evaluate(`Boolean([...document.querySelectorAll('button')].find((node) => node.textContent.includes('Kodu doğrula') && !node.disabled))`),
+    'F16-02 public customer WhatsApp check did not enable',
+  );
+  await publicPage.evaluate(`[...document.querySelectorAll('button')].find((node) => node.textContent.includes('Kodu doğrula')).click()`);
+  await waitFor(
+    () => publicPage.evaluate(`document.body.innerText.includes('WhatsApp doğrulandı')`),
+    'F16-02 public customer WhatsApp verification did not complete',
+  );
+  await publicPage.evaluate(`[...document.querySelectorAll('button')].find((node) => node.textContent.includes('Planı onayla')).click()`);
   await waitFor(
     () => publicPage.evaluate(`document.body.innerText.includes('RANDEVU OLUŞTURULDU')`),
     'F14-05 public customer booking did not produce a committed confirmation',

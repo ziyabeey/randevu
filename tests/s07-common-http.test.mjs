@@ -3,6 +3,7 @@ import test from 'node:test';
 import app from '../worker/app.ts';
 import { supabaseRequest } from '../worker/auth.ts';
 import bookingRecovery from '../worker/public-booking-recovery.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 
 const env = {
   SUPABASE_URL: 'https://supabase.example.test',
@@ -226,6 +227,7 @@ await test('S07 legacy first-create cutover error is mapped without another requ
     ...env,
     MANAGEMENT_LINK_ENCRYPTION_KEY_V1: 'A'.repeat(43),
     PUBLIC_BOOKING_GATE_SECRET: 'g'.repeat(43),
+    PHONE_VERIFICATION_PROOF_SECRET: 'P'.repeat(48),
   };
   const recoveryId = '8c000000-0000-4000-8000-000000000230';
   const key = 's07-legacy-client-cutover-0001';
@@ -249,6 +251,7 @@ await test('S07 legacy first-create cutover error is mapped without another requ
     body: JSON.stringify({
       customerName: 'Legacy Client',
       customerPhone: '05550000230',
+      phoneVerificationToken: await issueWhatsappPhoneProof('P'.repeat(48), 's07-salon', '05550000230'),
       customerEmail: 'legacy-cutover@example.test',
       notes: null,
       serviceId: '6c000000-0000-4000-8000-000000000230',

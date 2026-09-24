@@ -5,6 +5,7 @@ import {
   checkWhatsappVerification,
   issueWhatsappPhoneProof,
   normalizeWhatsappPhone,
+  phoneProofSecret,
   startWhatsappVerification,
   twilioVerifyConfigured,
   verifyWhatsappPhoneProof,
@@ -14,7 +15,7 @@ const env = {
   TWILLO_ID: 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
   TWILLO_SECRET_API: 'test-auth-token-1234567890',
   TWILIO_VERIFY_SERVICE_SID: 'VAbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-  PUBLIC_BOOKING_GATE_SECRET: 'g'.repeat(48),
+  PHONE_VERIFICATION_PROOF_SECRET: 'p'.repeat(48),
 };
 
 test('F16-02 WhatsApp Verify config uses the connected Twilio secret aliases', () => {
@@ -68,12 +69,21 @@ test('F16-02 checks the OTP through Twilio Verify and accepts only approved stat
 
 test('F16-02 WhatsApp proof is bound to slug, normalized phone and ten-minute lifetime', async () => {
   const now = 2_000_000_000;
-  const token = await issueWhatsappPhoneProof(env.PUBLIC_BOOKING_GATE_SECRET, 'salon-a', '05551602001', now);
+  const token = await issueWhatsappPhoneProof(env.PHONE_VERIFICATION_PROOF_SECRET, 'salon-a', '05551602001', now);
   assert.ok(token);
-  assert.equal(await verifyWhatsappPhoneProof(env.PUBLIC_BOOKING_GATE_SECRET, token, 'salon-a', '+905551602001', now + 30), true);
-  assert.equal(await verifyWhatsappPhoneProof(env.PUBLIC_BOOKING_GATE_SECRET, token, 'salon-b', '+905551602001', now + 30), false);
-  assert.equal(await verifyWhatsappPhoneProof(env.PUBLIC_BOOKING_GATE_SECRET, token, 'salon-a', '+905551602002', now + 30), false);
-  assert.equal(await verifyWhatsappPhoneProof(env.PUBLIC_BOOKING_GATE_SECRET, token, 'salon-a', '+905551602001', now + 601), false);
+  assert.equal(await verifyWhatsappPhoneProof(env.PHONE_VERIFICATION_PROOF_SECRET, token, 'salon-a', '+905551602001', now + 30), true);
+  assert.equal(await verifyWhatsappPhoneProof(env.PHONE_VERIFICATION_PROOF_SECRET, token, 'salon-b', '+905551602001', now + 30), false);
+  assert.equal(await verifyWhatsappPhoneProof(env.PHONE_VERIFICATION_PROOF_SECRET, token, 'salon-a', '+905551602002', now + 30), false);
+  assert.equal(await verifyWhatsappPhoneProof(env.PHONE_VERIFICATION_PROOF_SECRET, token, 'salon-a', '+905551602001', now + 601), false);
+  assert.equal(await verifyWhatsappPhoneProof('q'.repeat(48), token, 'salon-a', '+905551602001', now + 30), false);
+  assert.equal(await issueWhatsappPhoneProof('short', 'salon-a', '05551602001', now), null);
+});
+
+test('F16-02 proof key configuration requires a dedicated high-entropy secret', () => {
+  assert.equal(phoneProofSecret({}), null);
+  assert.equal(phoneProofSecret({ PHONE_VERIFICATION_PROOF_SECRET: 'x'.repeat(42) }), null);
+  assert.equal(phoneProofSecret({ PHONE_VERIFICATION_PROOF_SECRET: ` ${'x'.repeat(43)} ` }), 'x'.repeat(43));
+  assert.equal(phoneProofSecret({ PUBLIC_BOOKING_GATE_SECRET: 'g'.repeat(48) }), null, 'the abuse gate secret is never reused');
 });
 
 test('F16-02 provider failures stay sanitized and expose retryability only', async () => {

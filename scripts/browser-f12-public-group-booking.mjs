@@ -266,6 +266,17 @@ const server = createServer(async (request, response) => {
 
   const body = request.method === 'POST' ? await readJson(request) : {};
   requests.push({ method: request.method, path: url.pathname, body, idempotencyKey: request.headers['idempotency-key'] ?? null });
+  if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/start') {
+    return sendJson(response, 202, { ok: true, channel: 'whatsapp', expiresInSeconds: 600, retryAfterSeconds: 30 });
+  }
+  if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/check') {
+    if (body.code !== '123456') return sendJson(response, 400, { error: { code: 'WHATSAPP_OTP_INVALID', message: 'Kod yanlış veya süresi dolmuş.' } });
+    return sendJson(response, 200, { ok: true, channel: 'whatsapp', phoneVerificationToken: phoneProofFor(body.slug, body.phone), expiresInSeconds: 600 });
+  }
+  const proofTarget = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/(?:group-book|book)$/);
+  if (request.method === 'POST' && proofTarget && body.phoneVerificationToken !== phoneProofFor(proofTarget[1], body.customerPhone)) {
+    return sendJson(response, 403, { error: { code: 'PHONE_VERIFICATION_REQUIRED', message: 'Telefon numarasını WhatsApp koduyla doğrulayın.' } });
+  }
   const profileMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/profile$/);
   if (request.method === 'GET' && profileMatch) {
     if (profileMatch[1] === 'loading-salon') await sleep(500);
@@ -519,8 +530,28 @@ async function preparePlan(page, slug, pinFirstStaff = false, checkKeyboard = tr
   await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-customer-card input[name=customerName]"))'), `${slug} contact form did not open`);
 }
 
+function phoneProofFor(slug, phone) {
+  return `wa-proof:${slug}:${phone}`;
+}
+
+// F16-02: the customer sends a WhatsApp code, enters it and only then creates.
+async function verifyPhone(page, label) {
+  await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("WhatsApp kodu gönder"))?.click()');
+  await waitFor(() => page.evaluate('Boolean(document.querySelector("input[aria-label=\\"WhatsApp doğrulama kodu\\"]"))'), `${label} WhatsApp code input did not appear`);
+  await page.evaluate('(() => { const input=document.querySelector("input[aria-label=\\"WhatsApp doğrulama kodu\\"]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"123456"); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await waitFor(() => page.evaluate('Array.from(document.querySelectorAll("button")).some((button)=>button.textContent.includes("Kodu doğrula") && !button.disabled)'), `${label} WhatsApp check did not enable`);
+  await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Kodu doğrula"))?.click()');
+  await waitFor(() => page.evaluate('document.body.innerText.includes("WhatsApp doğrulandı")'), `${label} WhatsApp verification did not complete`);
+}
+
+async function fillContact(page) {
+  await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const phone=document.querySelector("input[name=customerPhone]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(phone,"05550001122"); phone.dispatchEvent(new Event("input",{bubbles:true})); })()');
+}
+
 async function submitContact(page) {
-  await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const phone=document.querySelector("input[name=customerPhone]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(phone,"05550001122"); phone.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
+  await fillContact(page);
+  await verifyPhone(page, 'contact');
+  await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click()');
 }
 
 async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
@@ -547,6 +578,10 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.deepEqual(relation, { invalid: 'true', required: 'true', describedBy: 'public-contact-help public-contact-error', emailRequired: null, role: 'alert' });
 
     await page.evaluate('(() => { const input=document.querySelector("input[name=customerPhone]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"05550001122"); input.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
+    await waitFor(() => page.evaluate('document.querySelector("#public-contact-error")?.textContent?.includes("WhatsApp koduyla doğrulayın")'), `${slug} unverified phone did not explain the WhatsApp requirement`);
+    assert.equal(requests.slice(start).filter((item) => item.path.endsWith('/group-book')).length, 0, `${slug} unverified phone reached group create`);
+    await verifyPhone(page, slug);
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click()');
     await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), `${slug} confirmation did not appear`);
     const result = await page.evaluate('(() => { const root=document.documentElement; const controls=Array.from(document.querySelectorAll("button,input,textarea,a.public-primary")); const status=document.querySelector(".public-result-status"); const marker=document.querySelector(".public-result-mark"); return {text:document.body.innerText,overflow:root.scrollWidth>root.clientWidth+1,targets:controls.length>0&&controls.every((node)=>node.getBoundingClientRect().height>=44),shortControls:controls.map((node)=>({tag:node.tagName,className:node.className,text:(node.textContent||node.name||"").trim(),height:node.getBoundingClientRect().height})).filter((item)=>item.height<44),planner:Boolean(document.querySelector(".public-multi-service")),href:document.querySelector("a.public-primary")?.getAttribute("href"),statusClass:status?.className,markerClass:marker?.className}; })()');
     assert.equal(result.overflow, false, `${slug} overflowed at ${width}px`);
@@ -574,6 +609,11 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.ok(create.idempotencyKey);
     assert.deepEqual(create.body.lines, [{ serviceId: serviceA, staffId: null }, { serviceId: serviceB, staffId: null }]);
     assert.equal(create.body.customerPhone, '05550001122');
+    assert.equal(create.body.phoneVerificationToken, phoneProofFor(slug, '05550001122'), `${slug} create did not carry the WhatsApp proof`);
+    const otpStart = journeyRequests.findIndex((item) => item.path === '/api/public/verify/whatsapp/start');
+    const otpCheck = journeyRequests.findIndex((item) => item.path === '/api/public/verify/whatsapp/check');
+    const createIndex = journeyRequests.findIndex((item) => item.path.endsWith('/group-book'));
+    assert.ok(otpStart >= 0 && otpStart < otpCheck && otpCheck < createIndex, `${slug} did not order WhatsApp send -> check -> create`);
     assert.equal(create.body.customerEmail, null, 'email must stay optional when phone is present');
 
     await page.evaluate('document.querySelector("a.public-primary")?.click()');
@@ -811,7 +851,9 @@ async function runLegacyFallback(debugUrl, origin) {
     await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-slot"))'), 'legacy slot did not load');
     await page.evaluate('document.querySelector(".public-slot")?.click()');
     await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-customer-card input[name=customerName]"))'), 'legacy contact form did not open');
-    await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const phone=document.querySelector("input[name=customerPhone]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(phone,"05550001122"); phone.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Randevuyu oluştur"))?.click(); })()');
+    await fillContact(page);
+    await verifyPhone(page, slug);
+    await page.evaluate('Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Randevuyu oluştur"))?.click()');
     await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), 'legacy /book fallback did not complete');
     const journeyRequests = requests.slice(start);
     assert.equal(journeyRequests.filter((item) => item.path.endsWith('/book')).length, 1, 'legacy fallback did not issue one /book create');

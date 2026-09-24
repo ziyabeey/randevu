@@ -3,7 +3,7 @@ import test from 'node:test';
 import { randomBytes } from 'node:crypto';
 import app from '../worker/app.ts';
 import { recordStagingHeartbeat } from '../worker/deployment-health.ts';
-import { KEY_NAMES, newKeys, keyPair, challenge, verifyProof, inheritBindings, secretBundle, executeCutover, requireResumeContract } from '../scripts/staging-deployment.mjs';
+import { KEY_NAMES, newKeys, keyPair, challenge, verifyProof, inheritBindings, secretBundle, executeCutover, requireResumeContract, stagingPhoneProofSecret } from '../scripts/staging-deployment.mjs';
 const oldVersion = '50500000-0000-4000-8000-000000000001';
 const nextVersion = '50500000-0000-4000-8000-000000000002';
 const keys = newKeys(true);
@@ -72,10 +72,18 @@ test('S05 supported inheritance preserves required bindings and never imports am
   assert.throws(() => inheritBindings(config, { id: 'latest', number: 12 }, {}));
   const supplied = secretBundle({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'public', RESEND_API_KEY: 'sending',
     NOTIFICATION_FROM_EMAIL: 'test@example.com', STAGING_APP_ORIGIN: 'https://example.com', SUPABASE_ADMIN_KEY: 'never-deploy',
+    SUPABASE_DB_PASSWORD: 'never-deploy-db-password',
     TWILLO_ID: 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', TWILLO_SECRET_API: 'twilio-test-secret-1234567890',
     TWILIO_VERIFY_SERVICE_SID: 'VAbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
     TWILIO_TEST_RECIPIENT: '+905551602001', ...keys });
   assert.equal('SUPABASE_ADMIN_KEY' in supplied, false);
+  assert.equal('SUPABASE_DB_PASSWORD' in supplied, false);
+  assert.equal(Object.values(supplied).includes('never-deploy-db-password'), false, 'DB secret must never be uploaded to the Worker');
+  assert.match(supplied.PHONE_VERIFICATION_PROOF_SECRET, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(supplied.PHONE_VERIFICATION_PROOF_SECRET, stagingPhoneProofSecret({ SUPABASE_DB_PASSWORD: 'never-deploy-db-password' }),
+    'deploy, rotate and resume must upload the same derived phone proof key');
+  assert.notEqual(supplied.PHONE_VERIFICATION_PROOF_SECRET, stagingPhoneProofSecret({ SUPABASE_DB_PASSWORD: 'another-db-password-value' }));
+  assert.throws(() => stagingPhoneProofSecret({}), /derivation secret missing/);
   assert.equal(supplied.TWILLO_ID, 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
   assert.equal(supplied.TWILLO_SECRET_API, 'twilio-test-secret-1234567890');
   assert.equal(supplied.TWILIO_VERIFY_SERVICE_SID, 'VAbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
@@ -83,6 +91,7 @@ test('S05 supported inheritance preserves required bindings and never imports am
   for (const name of KEY_NAMES) assert.equal(name in supplied, false, 'routine must not source critical keys from ambient env');
   assert.throws(() => secretBundle({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'public', RESEND_API_KEY: 'sending',
     NOTIFICATION_FROM_EMAIL: 'test@example.com', STAGING_APP_ORIGIN: 'https://example.com',
+    SUPABASE_DB_PASSWORD: 'never-deploy-db-password',
     TWILLO_ID: 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }), /complete tuple/);
 });
 

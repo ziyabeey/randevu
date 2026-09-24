@@ -78,7 +78,7 @@ test('F12-05 resolves uncertain submissions without issuing a second create', ()
 test('F12-05 exposes associated contact errors and non-color result cues', () => {
   assert.match(booking, /if \(!customerPhone\)/);
   assert.doesNotMatch(booking, /!customerPhone && !customerEmail/);
-  assert.match(booking, /Telefon zorunlu\. E-posta isteğe bağlıdır\./);
+  assert.match(booking, /Telefon WhatsApp koduyla doğrulanır\. E-posta isteğe bağlıdır\./);
   assert.match(booking, /aria-required="true"/);
   assert.match(booking, /id="public-contact-help"/);
   assert.match(booking, /id="public-contact-error"/);

@@ -12,6 +12,7 @@ import {
   checkWhatsappVerification,
   issueWhatsappPhoneProof,
   normalizeWhatsappPhone,
+  phoneProofSecret,
   startWhatsappVerification,
   twilioVerifyConfigured,
   type TwilioVerifyEnv,
@@ -71,7 +72,7 @@ router.post('/verify/whatsapp/start', async (context) => {
       error: { code: 'INVALID_WHATSAPP_OTP_REQUEST', message: 'Telefon bilgisi geçerli değil.' },
     }, 400);
   }
-  if (!twilioVerifyConfigured(context.env)) {
+  if (!twilioVerifyConfigured(context.env) || !phoneProofSecret(context.env)) {
     return context.json({
       error: { code: 'WHATSAPP_OTP_UNAVAILABLE', message: 'WhatsApp doğrulama henüz hazır değil.' },
     }, 503);
@@ -111,7 +112,7 @@ router.post('/verify/whatsapp/check', async (context) => {
       error: { code: 'INVALID_WHATSAPP_OTP_CHECK', message: 'Doğrulama kodu geçerli değil.' },
     }, 400);
   }
-  if (!twilioVerifyConfigured(context.env)) {
+  if (!twilioVerifyConfigured(context.env) || !phoneProofSecret(context.env)) {
     return context.json({
       error: { code: 'WHATSAPP_OTP_UNAVAILABLE', message: 'WhatsApp doğrulama henüz hazır değil.' },
     }, 503);
@@ -132,7 +133,7 @@ router.post('/verify/whatsapp/check', async (context) => {
     }, result.retryable ? 503 : 400);
   }
 
-  const proof = await issueWhatsappPhoneProof(validated.abuse.gateSecret, slug, phone);
+  const proof = await issueWhatsappPhoneProof(phoneProofSecret(context.env) ?? '', slug, phone);
   if (!proof) {
     return context.json({
       error: { code: 'WHATSAPP_OTP_UNAVAILABLE', message: 'Telefon doğrulama kanıtı hazırlanamadı.' },

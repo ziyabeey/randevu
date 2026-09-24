@@ -200,6 +200,19 @@ async function uiSubmit() {
   );
   setValue(form.elements.namedItem('customerName') as HTMLInputElement, 'Browser Customer');
   setValue(form.elements.namedItem('customerPhone') as HTMLInputElement, '05550000707');
+  clickButton('WhatsApp kodu gönder');
+  const code = await until(
+    () => document.querySelector<HTMLInputElement>('input[aria-label="WhatsApp doğrulama kodu"]'),
+    'WhatsApp OTP code input',
+  );
+  setValue(code, '123456');
+  await until(() => {
+    const button = [...document.querySelectorAll<HTMLButtonElement>('button')]
+      .find((item) => item.textContent?.includes('Kodu doğrula'));
+    return button && !button.disabled ? button : null;
+  }, 'enabled WhatsApp OTP check');
+  clickButton('Kodu doğrula');
+  await until(() => document.body.innerText.includes('WhatsApp doğrulandı') ? true : null, 'verified WhatsApp phone');
   await until(() => {
     const button = form.querySelector<HTMLButtonElement>('.public-book-button');
     return button && !button.disabled ? button : null;

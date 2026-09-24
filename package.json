@@ -21,6 +21,7 @@
     "staging:reset": "node scripts/staging-db.mjs reset",
     "staging:smoke": "node scripts/staging-smoke.mjs",
     "staging:f09-acceptance": "node scripts/staging-f09-acceptance-runner.mjs",
+    "staging:f16-whatsapp-acceptance": "node scripts/staging-f16-whatsapp-acceptance.mjs",
     "staging:f10-auth-acceptance": "node scripts/staging-f10-auth-acceptance.mjs",
     "staging:f10-team-acceptance": "node scripts/staging-f10-team-acceptance.mjs",
     "staging:s01-acceptance": "node scripts/staging-s01-recovery-acceptance-runner.mjs",

@@ -2,8 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import publicBooking from '../worker/public-booking.ts';
 import bookingRecovery from '../worker/public-booking-recovery.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 
 const gateSecret = 'ggggggggggggggggggggggggggggggggggggggggggg';
+const phoneProofSecret = 'P'.repeat(48);
+const phoneProof = (slug, phone) => issueWhatsappPhoneProof(phoneProofSecret, slug, phone);
 const encryptionKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 const managementToken = 'ccccccccccccccccccccccccccccccccccccccccccc';
 const recoverySecret = 'ddddddddddddddddddddddddddddddddddddddddddd';
@@ -12,6 +15,7 @@ const env = {
   SUPABASE_ANON_KEY: 'anon-test-key',
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1: encryptionKey,
   PUBLIC_BOOKING_GATE_SECRET: gateSecret,
+  PHONE_VERIFICATION_PROOF_SECRET: phoneProofSecret,
   COOKIE_SECURE: 'false',
 };
 const business = {
@@ -223,6 +227,7 @@ test('F09-04 public abuse Worker boundary', async (t) => {
         body: JSON.stringify({
           customerName: 'Rate Limit Test',
           customerPhone: '+90 555 900 00 44',
+          phoneVerificationToken: await phoneProof('abuse-test', '+90 555 900 00 44'),
           customerEmail: 'ratelimit@example.test',
           serviceId: service.service_id,
           staffId: '7b000000-0000-4000-8000-000000000001',

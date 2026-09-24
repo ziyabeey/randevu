@@ -5,6 +5,17 @@ export const sha256 = (value) => createHash('sha256').update(value).digest('hex'
 export const sign = (hash, value) => createHmac('sha256', Buffer.from(hash, 'hex')).update(value).digest('hex');
 const equal = (a, b) => /^[a-f0-9]{64}$/.test(a ?? '') && /^[a-f0-9]{64}$/.test(b ?? '') && timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
 export const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+export const PHONE_PROOF_DERIVATION = 'randevu:staging:phone-verification-proof:v1';
+
+// F16-02 phone proofs are short-lived (10 min) HMAC tokens. Staging derives the
+// signing key from its persistent DB secret so deploy, rotate and resume all
+// upload the same key and the operator-run F09 acceptance can sign a proof for
+// its own fixture phone. The DB secret itself is never uploaded to the Worker.
+export function stagingPhoneProofSecret(env) {
+  const root = typeof env.SUPABASE_DB_PASSWORD === 'string' ? env.SUPABASE_DB_PASSWORD : '';
+  if (root.length < 16) throw new Error('Staging phone proof derivation secret missing');
+  return createHmac('sha256', root).update(PHONE_PROOF_DERIVATION).digest('base64url');
+}
 
 // The hosted API accepts only latest (observed 10057 for explicit UUIDs).
 // Inheritance is not proof: only deployCandidate may activate the uploaded code,
@@ -73,6 +84,7 @@ export function secretBundle(env, generated = {}) {
     SUPABASE_URL: env.SUPABASE_URL, SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
     COOKIE_SECURE: 'true', RESEND_API_KEY: env.RESEND_API_KEY,
     NOTIFICATION_FROM_EMAIL: env.NOTIFICATION_FROM_EMAIL, PUBLIC_APP_ORIGIN: env.STAGING_APP_ORIGIN,
+    PHONE_VERIFICATION_PROOF_SECRET: stagingPhoneProofSecret(env),
   };
   const twilioNames = ['TWILLO_ID', 'TWILLO_SECRET_API', 'TWILIO_VERIFY_SERVICE_SID'];
   const twilioValues = twilioNames.map((name) => typeof env[name] === 'string' ? env[name].trim() : '');

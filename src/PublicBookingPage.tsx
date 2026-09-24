@@ -673,7 +673,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
 
   async function verifyWhatsappOtpCode() {
     const phone = customerPhoneValue.trim();
-    if (!phone || !/^\\d{4,10}$/.test(otpCode.trim())) {
+    if (!phone || !/^\d{4,10}$/.test(otpCode.trim())) {
       setOtpNotice('WhatsApp kodunu kontrol edin.');
       return;
     }
@@ -727,7 +727,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
             value={otpCode}
             maxLength={10}
             placeholder="Doğrulama kodu"
-            onChange={(event) => setOtpCode(event.target.value.replace(/\\D/g, ''))}
+            onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, ''))}
           />
           <button className="public-secondary" type="button" disabled={otpBusy || otpCode.length < 4} onClick={() => void verifyWhatsappOtpCode()}>
             Kodu doğrula
@@ -961,7 +961,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           {contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}
           <label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={1000} rows={3} /></label>
           <PublicBookingInformation slug={slug} contact={informationContact} prefix="group-booking" />
-          <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady || !phoneVerificationToken || verifiedPhone !== customerPhoneValue.trim()}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Planı onayla ve randevuyu oluştur'}</button>
+          <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Planı onayla ve randevuyu oluştur'}</button>
         </form>
       </> : <p className="public-muted">İletişim formunu açmak için yukarıdan hizmetlerinizi ve birlikte uygun bir saati seçin.</p>}
     </section>
@@ -994,7 +994,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         {selectedSlot && selectedService ? <><div className="public-selection-summary"><strong>{selectedService.name}</strong><span>{formatDateTime(selectedSlot.starts_at, selectedSlot.timezone)} · {selectedSlot.staff_name}</span></div>
           <form className="public-customer-form" onSubmit={(event) => void book(event)}><label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label><div className="public-two-columns"><div>{phoneVerificationFields()}</div><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div><small id="public-contact-help" className="public-field-hint">Telefon WhatsApp koduyla doğrulanır. E-posta isteğe bağlıdır.</small>{contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}<label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
             <PublicBookingInformation slug={slug} contact={informationContact} prefix="booking" />
-            <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady || !phoneVerificationToken || verifiedPhone !== customerPhoneValue.trim()}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
+            <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
           </form></> : <p className="public-muted">Bir saat seçtiğinizde iletişim formu burada açılır.</p>}
       </section>
     </div>

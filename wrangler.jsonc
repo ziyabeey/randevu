@@ -26,7 +26,8 @@
           "NOTIFICATION_DISPATCH_SECRET",
           "RESEND_API_KEY",
           "NOTIFICATION_FROM_EMAIL",
-          "PUBLIC_APP_ORIGIN"
+          "PUBLIC_APP_ORIGIN",
+          "PHONE_VERIFICATION_PROOF_SECRET"
         ]
       }
     }

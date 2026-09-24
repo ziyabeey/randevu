@@ -15,7 +15,7 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **İş ve çıktı:** Sıklık/adet, seri önizlemesi, çakışma listesi, tek oluşum ve gelecek oluşumlar için açık değişiklik kapsamı ekle. İlk sürümde sınırlı adetli seri atomik oluşturulur; bir oluşum çakışırsa tüm seri reddedilir. Adet üst sınırını performans ölçümüyle belgeleyip sunucuda uygula.
 - **Kabul:** DST/izin/kapanış içeren seri yanlış saate kaymaz; çakışmalar kullanıcıya hangi tarihte olduğunu gösterir. Tekrar istek ikinci seri üretmez. Tamamlanan geçmiş oluşum değişmez; geleceği taşıma/iptalde kapsam önizlemesi ve audit vardır.
 - **Devir:** Seri/oluşum kimlikleri, durum olayları, limit ve F16-02'nin kullanacağı güncel sürüm bilgisi.
-- **v3 olay kabulü:** Her seri oluşumu K01 grup kimliği ve S03/F16-02 olay-sürüm sözleşmesini kullanır. K03 başlangıç seri sınırı uygulanır. F16-02 henüz bitmediyse olay kontratı test edilir; G16’da gelecek seriyi taşıma/iptal ile eski hatırlatma baskılama birlikte doğrulanır.
+- **v3 olay kabulü:** Her seri oluşumu K01 grup kimliği ve S03/F16-02 olay-sürüm sözleşmesini kullanır. K03 başlangıç seri sınırı uygulanır. 2026-09-24 ürün kararıyla hatırlatma/SMS kapsamı F16-02'den çıkarıldığı için G16'da seri–hatırlatma baskılama kabulü aranmaz; seri olay-sürüm kontratı ileride bir bildirim görevi açılırsa onun girdisidir.
 
 ## F16-02
 
@@ -29,6 +29,7 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 - **Twilio sınırı:** Verify Service ve WhatsApp Sender hesabında hazır olmalıdır. Trial hesabında yalnız doğrulanmış test alıcısı kullanılabilir. Production sender/WABA kurulumu ayrı provider provisioning adımıdır; hazır değilse booking doğrulaması bypass edilmez.
 - **Kabul:** `Channel=whatsapp` gerçek provider isteğinde kanıtlanır; yanlış/süresi dolmuş OTP proof üretmez; proof başka telefon/slug'da reddedilir; verified telefonla tekli ve grup booking geçer; OTP olmadan ikisi de reddedilir; 390/360 px mobil akış kod gönder → doğrula → booking sırasını açık gösterir.
 - **Devir:** Verify Service SID, sender/WABA provisioning durumu, hosted verified-recipient kanıtı, proof TTL/sözleşmesi ve provider hata/rate-limit davranışı.
+- **Kanıt anahtarı ve hosted kabul:** Telefon kanıtı public-abuse gate secret'ından ayrı `PHONE_VERIFICATION_PROOF_SECRET` ile imzalanır; anahtar yoksa OTP başlatma/kontrol ve booking fail-closed kalır. Staging bu anahtarı kalıcı DB secret'ından HMAC ile türetir; böylece deploy/rotate/resume aynı anahtarı yükler ve operatörün F09 kabulü kendi fixture telefonu için kanıt imzalayabilir. Worker'da bypass yolu yoktur. Gerçek WhatsApp kodu insan tarafından okunduğu için hosted verified-recipient kanıtı `npm run staging:f16-whatsapp-acceptance` operatör komutuyla alınır.
 - **Kapsam dışı:** SMS, SMS fallback, appointment reminder mesajları, WhatsApp kampanya/marketing, çalışan login OTP, yeni auth/session sistemi veya ikinci notification queue.
 
 ## F16-03

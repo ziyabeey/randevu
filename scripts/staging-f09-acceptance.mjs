@@ -1,6 +1,8 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { derivePublicBookingIntentV2 } from '../shared/public-booking-intent.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
+import { stagingPhoneProofSecret } from './staging-deployment.mjs';
 
 const required = [
   'STAGING_APP_ORIGIN',
@@ -285,9 +287,17 @@ const idempotencyKey = intent.idempotencyKey;
 const runLabel = String(process.env.GITHUB_RUN_ID ?? Date.now()).replace(/\D/g, '').slice(-30) || Date.now().toString();
 const recipient = `delivered+f0905${runLabel}@resend.dev`;
 
+// F16-02: public create requires a WhatsApp phone proof. The operator-run
+// acceptance signs one for its own fixture phone with the same derived staging
+// key uploaded to the Worker; the Worker itself has no bypass path.
+const acceptancePhone = '05550009005';
+const phoneVerificationToken = await issueWhatsappPhoneProof(stagingPhoneProofSecret(process.env), slug, acceptancePhone);
+if (!phoneVerificationToken) throw new Error('Could not sign the F16-02 staging phone proof');
+
 const payload = {
   customerName: 'F09-05 Acceptance',
-  customerPhone: '05550009005',
+  customerPhone: acceptancePhone,
+  phoneVerificationToken,
   customerEmail: recipient,
   notes: 'Automated staging integration acceptance',
   serviceId: selected.service.service_id,

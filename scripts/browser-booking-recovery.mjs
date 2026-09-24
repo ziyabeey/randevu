@@ -94,7 +94,19 @@ const server = createServer(async (request, response) => {
         bookingClock: { serverNowEpochSeconds: Math.floor(Date.now() / 1000) + fixture.clockOffsetSeconds, submitWindowSeconds: 300 },
       });
     }
+    if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/start') {
+      assert.equal(requestBody?.phone, '05550000707');
+      return sendJson(response, 202, { ok: true, channel: 'whatsapp', expiresInSeconds: 600, retryAfterSeconds: 30 });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/check') {
+      if (requestBody?.code !== '123456') return sendJson(response, 400, { error: { code: 'WHATSAPP_OTP_INVALID', message: 'Kod yanlış veya süresi dolmuş.' } });
+      return sendJson(response, 200, { ok: true, channel: 'whatsapp', phoneVerificationToken: `wa-proof:${requestBody.slug}:${requestBody.phone}`, expiresInSeconds: 600 });
+    }
     if (request.method === 'POST' && /\/api\/public\/business\/[^/]+\/book$/.test(url.pathname)) {
+      const bookSlug = decodeURIComponent(url.pathname.split('/')[4]);
+      if (requestBody?.phoneVerificationToken !== `wa-proof:${bookSlug}:${requestBody?.customerPhone}`) {
+        return sendJson(response, 403, { error: { code: 'PHONE_VERIFICATION_REQUIRED', message: 'Telefon numarasını WhatsApp koduyla doğrulayın.' } });
+      }
       if (fixture.bookMode === 'hang') return hold(response);
       assert.equal(typeof requestBody?.managementToken, 'string');
       return sendJson(response, 201, {

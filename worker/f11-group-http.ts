@@ -10,7 +10,7 @@ import {
 import { publicOperation } from './public-rpc.ts';
 import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';
 import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
-import { verifyWhatsappPhoneProof } from './whatsapp-verify.ts';
+import { phoneProofSecret, verifyWhatsappPhoneProof, type TwilioVerifyEnv } from './whatsapp-verify.ts';
 import {
   publicGateUnavailableBody,
   publicRateLimitedBody,
@@ -27,7 +27,7 @@ import {
   verifyPublicBookingIntentV2,
 } from '../shared/public-booking-intent.ts';
 
-type Env = AuthEnv & PublicAbuseEnv & {
+type Env = AuthEnv & PublicAbuseEnv & TwilioVerifyEnv & {
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
 };
 
@@ -341,7 +341,7 @@ groups.post('/public/business/:slug/group-book', async (context) => {
     return context.json({ error: { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.' } }, 400);
   }
   if (!phoneVerificationToken || !await verifyWhatsappPhoneProof(
-    context.env.PUBLIC_BOOKING_GATE_SECRET ?? '',
+    phoneProofSecret(context.env) ?? '',
     phoneVerificationToken,
     slug,
     customerPhone,
