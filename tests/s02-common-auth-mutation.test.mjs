@@ -350,6 +350,7 @@ const exceptions = [
   '/api/public/business/:slug/book',
   '/api/public/business/:slug/group-slots',
   '/api/public/business/:slug/group-book',
+  '/api/public/verify/whatsapp/start', '/api/public/verify/whatsapp/check',
   '/api/public/booking/recover', '/api/public/booking/resolve',
   '/api/manage/view', '/api/manage/slots', '/api/manage/reschedule', '/api/manage/cancel',
 ];
