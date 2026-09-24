@@ -590,13 +590,15 @@ export default function BookingPage() {
         })),
         startsAt: selectedCreateSlot.starts_at,
       };
+      const successMessage = recurrenceFrequency === 'none'
+        ? 'Rezervasyon atomik olarak oluşturuldu.'
+        : `${recurrenceCount} randevuluk seri atomik olarak oluşturuldu.`;
       if (recurrenceFrequency === 'none') {
         await api('/api/bookings/groups', {
           method: 'POST',
           headers: { 'Idempotency-Key': createKey },
           body: JSON.stringify(payload),
         });
-        setNotice('Rezervasyon atomik olarak oluşturuldu.');
       } else {
         await api('/api/bookings/series', {
           method: 'POST',
@@ -607,17 +609,21 @@ export default function BookingPage() {
             count: recurrenceCount,
           }),
         });
-        setNotice(`${recurrenceCount} randevuluk seri atomik olarak oluşturuldu.`);
       }
       if (scopeGeneration !== workspaceGeneration.current) return;
+      setNotice(successMessage);
       setCustomerName(''); setCustomerPhone(''); setCustomerEmail(''); setNotes('');
       const firstService = activeServices[0]?.id ?? '';
       setCreateLines([{ key: commandKey(), serviceId: firstService, staffId: 'any' }]);
       setCreateSlots([]); setSelectedCreateSlot(null); setCreateKey(commandKey());
       setRecurrenceFrequency('none'); setRecurrenceCount(2); setSeriesPreview(null);
       await load();
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Randevu oluşturulamadı.'); }
-    finally { setBusy(false); }
+    } catch (error) {
+      if (scopeGeneration !== workspaceGeneration.current) return;
+      setNotice(error instanceof Error ? error.message : 'Randevu oluşturulamadı.');
+    } finally {
+      if (scopeGeneration === workspaceGeneration.current) setBusy(false);
+    }
   }
 
   async function createCloseBlock() {
