@@ -323,7 +323,7 @@ begin
     raise exception 'NOTES_TOO_LONG';
   end if;
 
-  perform pg_advisory_xact_lock(hashtextextended(p_business_id::text, 0));
+  perform pg_advisory_xact_lock(hashtextextended('f10_customer_update', 0));
 
   select * into v_current
   from public.customers c
