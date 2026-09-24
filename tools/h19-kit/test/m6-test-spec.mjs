@@ -142,6 +142,20 @@ assert.throws(() => buildTestSpecification({
   packet,
   hypothesisId: mutantHypothesis.id,
   recipe: freezeTestRecipe({
+    recipeId: 'missing-reason',
+    version: '1',
+    matches: {},
+    setup: ['x'],
+    action: 'x',
+    expectedInvariant: 'x',
+    observations: ['x'],
+  }),
+}), /requires a reason match/);
+
+assert.throws(() => buildTestSpecification({
+  packet,
+  hypothesisId: mutantHypothesis.id,
+  recipe: freezeTestRecipe({
     recipeId: 'wrong',
     version: '1',
     matches: { reason: 'surviving-mutant', mutatorId: 'other' },
@@ -206,6 +220,21 @@ assert.equal(confirmedSpec.readyForExecution, true);
 assert.equal(confirmedSpec.mutationToKill.state, 'unknown');
 assert.equal(confirmedSpec.origin.validation.status, 'confirmed');
 assert.match(confirmedSpec.origin.validation.digest, /^[a-f0-9]{64}$/);
+
+// TS1: confirmed validation content participates in spec identity.
+const confirmedDifferentObservation = coverageValidationResult({
+  packet: packetCoverage,
+  hypothesisId: coverageHypothesis.id,
+  status: 'confirmed',
+  observed: { coverageGapReproduced: true, probe: 'different-observation' },
+});
+const confirmedSpec2 = buildTestSpecification({
+  packet: packetCoverage,
+  hypothesisId: coverageHypothesis.id,
+  validationResult: confirmedDifferentObservation,
+  recipe: coverageRecipe,
+});
+assert.notEqual(confirmedSpec.specSha256, confirmedSpec2.specSha256);
 
 const rejected = coverageValidationResult({
   packet: packetCoverage,
