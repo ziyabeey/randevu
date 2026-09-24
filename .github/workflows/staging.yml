@@ -66,6 +66,10 @@ jobs:
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       NOTIFICATION_FROM_EMAIL: randevu@notify.kepenk.ai
+      TWILLO_ID: ${{ secrets.TWILLO_ID }}
+      TWILLO_SECRET_API: ${{ secrets.TWILLO_SECRET_API }}
+      TWILIO_VERIFY_SERVICE_SID: ${{ vars.TWILIO_VERIFY_SERVICE_SID }}
+      TWILIO_TEST_RECIPIENT: ${{ secrets.TWILIO_TEST_RECIPIENT }}
 
     steps:
       - name: Checkout
@@ -147,6 +151,12 @@ jobs:
           const missingExternal = requiredExternal.filter((name) => !process.env[name]);
           if (missingExternal.length) {
             throw new Error(`Missing staging external settings: ${missingExternal.join(', ')}`);
+          }
+
+          const twilioRuntime = ['TWILLO_ID', 'TWILLO_SECRET_API', 'TWILIO_VERIFY_SERVICE_SID'];
+          const configuredTwilio = twilioRuntime.filter((name) => Boolean(process.env[name])).length;
+          if (configuredTwilio !== 0 && configuredTwilio !== twilioRuntime.length) {
+            throw new Error('Twilio Verify staging settings must be configured together');
           }
 
           const requiredWorkflow = [
