@@ -27,3 +27,5 @@ export * from './experiments/blind-sample.mjs';
 export * from './experiments/auc.mjs';
 export * from './experiments/gates.mjs';
 export * from './mutations/history.mjs';
+export * from './rules/loader.mjs';
+export * from './adapters/semgrep-evidence.mjs';
