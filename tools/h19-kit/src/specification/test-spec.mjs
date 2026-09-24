@@ -76,6 +76,9 @@ export function verifyTestRecipe(recipe, hypothesis) {
   }
 
   const hypothesisMutator = hypothesis.validation?.mutatorId ?? null;
+  if (hypothesis.reason === 'surviving-mutant' && !nonEmptyString(matches.mutatorId)) {
+    throw new Error('surviving-mutant recipe requires a mutator match');
+  }
   if (matches.mutatorId != null && matches.mutatorId !== hypothesisMutator) {
     throw new Error('test recipe mutator does not match hypothesis');
   }
@@ -263,6 +266,12 @@ export function validateTestSpecification(spec) {
       if (!hasPayload || !Array.isArray(section.provenance) || !section.provenance.length) {
         throw new Error(`known ${name} requires payload and provenance`);
       }
+    } else {
+      const value = section[payload];
+      const hasPayload = Array.isArray(value) ? value.length > 0 : value != null;
+      if (hasPayload || !Array.isArray(section.provenance) || section.provenance.length > 0) {
+        throw new Error(`unknown ${name} must not carry payload or provenance`);
+      }
     }
   }
 
@@ -280,8 +289,11 @@ export function validateTestSpecification(spec) {
       || spec.mutationToKill.provenance.length === 0) {
       throw new Error('known mutationToKill requires IDs and provenance');
     }
-  } else if (spec.mutationToKill.mutationId !== null || spec.mutationToKill.mutatorId !== null) {
-    throw new Error('unknown mutationToKill must not carry mutation IDs');
+  } else if (spec.mutationToKill.mutationId !== null
+    || spec.mutationToKill.mutatorId !== null
+    || !Array.isArray(spec.mutationToKill.provenance)
+    || spec.mutationToKill.provenance.length > 0) {
+    throw new Error('unknown mutationToKill must not carry mutation IDs or provenance');
   }
 
   const survivingMutant = spec.origin?.reason === 'surviving-mutant';
