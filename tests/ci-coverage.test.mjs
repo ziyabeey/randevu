@@ -151,17 +151,21 @@ test('H19 manifest integrity accepts one canonical gate with matched expect/incl
     await writeFile(path.join(root, 'supabase/tests/h19_test_support.sql'), '-- support\n');
     await writeFile(path.join(root, 'supabase/tests/h19_alpha.sql'), '-- scenario alpha\n');
     await writeFile(path.join(root, 'supabase/tests/h19_beta.sql'), '-- scenario beta\n');
+    await writeFile(path.join(root, 'supabase/tests/h19_gamma.sql'), '-- scenario gamma\n');
     await writeFile(
       path.join(root, 'supabase/tests/h19_integrity_gate.sql'),
       [
         '\\ir h19_test_support.sql',
         "select pg_temp.h19_expect('booking.alpha','booking','D0','D1','prospective',1001,1002,1003);",
         "select pg_temp.h19_expect('inventory.beta','inventory','D2','D5','holdout',2001,2002,2003);",
+        "select pg_temp.h19_expect('customers.gamma','customers','D0','D2','coverage-first',3001,3002,3003);",
         '\\ir h19_alpha.sql',
         "select pg_temp.h19_pass('booking.alpha');",
         '\\ir h19_beta.sql',
         "select pg_temp.h19_pass('inventory.beta');",
-        'select pg_temp.h19_assert_complete(2);',
+        '\\ir h19_gamma.sql',
+        "select pg_temp.h19_pass('customers.gamma');",
+        'select pg_temp.h19_assert_complete(3);',
         '',
       ].join('\n'),
     );
