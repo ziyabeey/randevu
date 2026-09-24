@@ -41,7 +41,8 @@ assert.deepEqual(sampleA.map((x) => x.case_id), sampleB.map((x) => x.case_id));
 
 const packet = createBlindPacket(sampleA, { packetId: 'demo' });
 const key = createBlindKey(sampleA, { packetId: 'demo' });
-assert.equal(JSON.stringify(packet).includes('rationale'), false);
+assert.equal(JSON.stringify(packet.cases).includes('rationale'), false);
+assert.equal(packet.hidden_keys.includes('rationale'), true);
 assert.equal(key.answers.length, 2);
 assert.match(packet.packet_sha256, /^[a-f0-9]{64}$/);
 
