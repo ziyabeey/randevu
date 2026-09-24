@@ -17,7 +17,8 @@
     "test:m35-cache": "node test/m35-cache.mjs",
     "test:m35-affected": "node test/m35-affected.mjs",
     "test:m35-graph-cache": "node test/m35-graph-cache.mjs",
-    "test:m35-tree-sitter": "node test/m35-tree-sitter.mjs"
+    "test:m35-tree-sitter": "node test/m35-tree-sitter.mjs",
+    "test:m35-unit-symbol": "node test/m35-unit-symbol-map.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
