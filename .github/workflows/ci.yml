@@ -193,6 +193,9 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: node scripts/ci-code.mjs
+      - name: Run H19 Kit foundation smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm run test:h19-kit
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
