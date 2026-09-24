@@ -36,3 +36,30 @@ test('committed blinded inputs contain no H19 or axis-pair labels', () => {
     assert.doesNotMatch(state, forbidden, entry.case_key + ' leaks benchmark labels');
   }
 });
+
+test('coverage-outcome memory preserves frozen three-arm semantics', () => {
+  const outcomes = readJson('docs/development-engine/benchmarks/h19-coverage-outcomes.v0.1.json');
+  const actual = { geometry_hit: 0, already_covered: 0, miss: 0, invalid: 0 };
+  const runNumbers = new Set();
+  for (const row of outcomes.rows) {
+    assert.ok(Object.hasOwn(actual, row.outcome), 'unknown outcome ' + row.outcome);
+    actual[row.outcome] += 1;
+    assert.ok(row.phase1 && Number.isInteger(row.phase1.run_number));
+    assert.equal(runNumbers.has(row.phase1.run_number), false, 'duplicate Phase-1 run');
+    runNumbers.add(row.phase1.run_number);
+
+    if (row.outcome === 'geometry_hit') {
+      assert.equal(row.phase1.conclusion, 'success');
+      assert.equal(row.probe?.conclusion, 'failure');
+      assert.equal(row.clean?.conclusion, 'success');
+      assert.ok(Number.isInteger(row.probe?.run_number));
+      assert.ok(Number.isInteger(row.clean?.run_number));
+    }
+    if (row.outcome === 'already_covered') {
+      assert.equal(row.phase1.conclusion, 'failure');
+      assert.equal(row.probe, null);
+      assert.equal(row.clean, null);
+    }
+  }
+  assert.deepEqual(actual, outcomes.counts);
+});
