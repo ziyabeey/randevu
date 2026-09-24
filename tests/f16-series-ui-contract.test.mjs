@@ -53,6 +53,7 @@ test('F16-01 series reads are fenced across workspace and composer changes',()=>
   assert.match(page,/seriesReadGeneration\.current \+= 1/);
   assert.match(page,/seriesReadController\.current\?\.abort\(\)/);
   assert.match(page,/result\.series\.businessId !== activeBusinessId/);
+  assert.match(page,/refreshed\.series\.businessId !== activeBusinessId/);
   assert.match(page,/result\.preview\.seriesId !== requestedSeriesId/);
   assert.match(page,/scopeGeneration !== workspaceGeneration\.current/);
   assert.match(page,/invalidateSeriesRead\(\)/);
