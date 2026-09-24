@@ -11,6 +11,7 @@ import path from 'node:path';
 import {
   CHOICES,
   automaticActionAllowed,
+  canonicalPullBaseRelation,
   canonicalTaskBinding,
   ciForPull,
   classifyPull,
@@ -467,10 +468,18 @@ function buildDecisions(config, remote, state) {
     const pullEvidenceComplete = pr.reviewsTruncated !== true
       && pr.commentsTruncated !== true
       && pr.checksTruncated !== true;
+    const baseRelation = canonicalPullBaseRelation(pr, {
+      mainSha: remote.mainSha,
+      mainBranch: remote.mainBranch,
+      task,
+      tasks: remote.tasks,
+      pulls: remote.pulls,
+    });
     const result = classifyPull(pr, {
       config,
       mainSha: remote.mainSha,
       task,
+      baseRelation,
       remoteComplete: remote.available === true
         && remote.complete === true
         && pullEvidenceComplete,
