@@ -13,6 +13,8 @@ test('F16-02 public booking exposes WhatsApp OTP start and check before create',
   assert.match(booking, /WhatsApp doğrulandı/);
   assert.match(booking, /autoComplete="one-time-code"/);
   assert.match(booking, /inputMode="numeric"/);
+  assert.match(booking, /verificationChallenge/);
+  assert.match(booking, /otpCode\.length !== 6/);
 });
 
 test('F16-02 changing the phone invalidates the previous OTP proof', () => {
@@ -20,6 +22,7 @@ test('F16-02 changing the phone invalidates the previous OTP proof', () => {
   assert.match(booking, /if \(value !== verifiedPhone\)/);
   assert.match(booking, /setVerifiedPhone\(''\)/);
   assert.match(booking, /setPhoneVerificationToken\(''\)/);
+  assert.match(booking, /setVerificationChallenge\(''\)/);
   assert.match(booking, /setOtpCode\(''\)/);
   assert.match(booking, /setOtpSent\(false\)/);
 });
