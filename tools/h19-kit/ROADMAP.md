@@ -63,7 +63,8 @@ M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf3
 - [x] content-addressed SCIP project-shard cache
 - [x] exact-head provenance manifest
 - [x] indexer version/config/source/dependency-surface invalidation
-- [ ] normalized document/symbol graph shard cache
+- [x] normalized project graph cache
+- [ ] per-document/symbol graph shard cache if profiling justifies it
 
 M3.5 deliberately does not convert reference count or D5 probability into severity. It emits evidence only.
 
