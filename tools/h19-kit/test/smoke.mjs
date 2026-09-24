@@ -11,8 +11,12 @@ import { FileCache, cacheKey } from '../src/core/cache.mjs';
 import { PluginRegistry } from '../src/core/plugin-registry.mjs';
 import { loadConfig } from '../src/core/config.mjs';
 import { normalizeTestImpact, hasBlindSpot } from '../src/adapters/test-impact.mjs';
+import { TestImpactStore } from '../src/adapters/test-impact-store.mjs';
+import { missingCompanions } from '../src/adapters/git-hotspots.mjs';
 import { packUnits, semanticUnit } from '../src/context/packer.mjs';
 import { extractSqlRoutines, routineMap } from '../src/extractors/sql-routines.mjs';
+import { extractTypeScriptUnits } from '../src/extractors/typescript-units.mjs';
+import { extractPythonUnits } from '../src/extractors/python-units.mjs';
 import { diffRoutineMaps } from '../src/extractors/diff-units.mjs';
 import { semanticRiskWithoutTestRule, missingHistoricalCompanionRule } from '../src/rules/builtin.mjs';
 import { failedPatterns, shouldBlockProposal } from '../src/ledger/experiment-memory.mjs';
@@ -75,6 +79,33 @@ $demo$;
 const beforeRoutines = extractSqlRoutines(sqlBefore, { path: 'before.sql' });
 assert.equal(beforeRoutines.length, 1);
 assert.equal(beforeRoutines[0].id, 'public.demo/1');
+
+const tsUnits = extractTypeScriptUnits(`
+export function outer(x: number) {
+  const inner = (y: number) => y + x;
+  return inner(x);
+}
+class Demo {
+  run() { return 1; }
+}
+`, { path: 'demo.ts' });
+assert.equal(tsUnits.some((x) => x.symbol === 'outer'), true);
+assert.equal(tsUnits.some((x) => x.symbol.includes('inner')), true);
+assert.equal(tsUnits.some((x) => x.symbol === 'Demo.run'), true);
+
+const pyUnits = await extractPythonUnits(`
+def outer(x):
+    def inner(y):
+        return x + y
+    return inner(x)
+
+class Demo:
+    def run(self):
+        return 1
+`, { path: 'demo.py' });
+assert.equal(pyUnits.some((x) => x.symbol === 'outer'), true);
+assert.equal(pyUnits.some((x) => x.symbol === 'outer.inner'), true);
+assert.equal(pyUnits.some((x) => x.symbol === 'Demo.run'), true);
 const changed = diffRoutineMaps(
   routineMap(sqlBefore, { path: 'before.sql' }),
   routineMap(sqlAfter, { path: 'after.sql' }),
@@ -124,14 +155,29 @@ assert.match(manifestA.runId, /^[a-f0-9]{64}$/);
 
 const temp = await mkdtemp(path.join(os.tmpdir(), 'h19-kit-'));
 try {
-  const cache = new FileCache(temp);
+  const cache = new FileCache(path.join(temp, 'cache'));
   const key = cacheKey('demo', { b: 2, a: 1 });
   const file = await cache.set('demo', key, { ok: true });
   assert.equal(JSON.parse(await readFile(file, 'utf8')).ok, true);
   assert.equal((await cache.get('demo', key)).ok, true);
+
+  const impactStore = await new TestImpactStore(path.join(temp, 'impact.json')).load();
+  impactStore.record('unit-a', { tests: ['test-a', 'test-b'], provider: 'smoke' });
+  impactStore.record('unit-b', { tests: ['test-b', 'test-c'], provider: 'smoke' });
+  await impactStore.save();
+  const reloaded = await new TestImpactStore(path.join(temp, 'impact.json')).load();
+  const impacted = reloaded.impacted(['unit-a', 'unit-b']);
+  assert.deepEqual(impacted.impactedTests, ['test-a', 'test-b', 'test-c']);
+  assert.equal(impacted.known, true);
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
+
+const companions = missingCompanions([
+  { a: 'a.ts', b: 'b.ts', shared: 8, confidenceAtoB: 0.8, confidenceBtoA: 0.5 },
+], ['a.ts']);
+assert.equal(companions.length, 1);
+assert.equal(companions[0].missing, 'b.ts');
 
 const sarif = toSarif(findings);
 assert.equal(sarif.version, '2.1.0');
