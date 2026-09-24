@@ -144,3 +144,13 @@
 @media (prefers-reduced-motion: reduce) {
   .public-salon-page *, .public-salon-page *::before, .public-salon-page *::after { transition: none !important; animation: none !important; }
 }
+
+/* F16-04 published reviews */
+.public-salon-reviews { padding: clamp(1.2rem, 3vw, 2.2rem); margin-bottom: 1rem; background: #fff; border: 1px solid #dfe5ef; border-radius: 1.15rem; }
+.public-salon-reviews .public-salon-section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.public-review-list { display: grid; gap: .75rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.public-review-list li { padding: .85rem 1rem; border: 1px solid #e4e9f3; border-radius: .85rem; background: #fbfcff; overflow-wrap: anywhere; }
+.public-review-list li > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
+.public-review-list li > div span { color: #b7791f; letter-spacing: .08em; }
+.public-review-list p { margin: .45rem 0; line-height: 1.55; }
+.public-review-list time { color: #6d7890; font-size: .8rem; }
