@@ -18,6 +18,7 @@ import tickets from './tickets.ts';
 import products from './products.ts';
 import expenses from './expenses.ts';
 import reports from './reports.ts';
+import f16Series from './f16-series-http.ts';
 import onboarding from './onboarding.ts';
 import {
   mutationSecurityError,
@@ -103,6 +104,8 @@ app.route('/', coreApp);
 app.route('/api', f11GroupLineManagement);
 app.route('/api', f11GroupManagement);
 // F11-02 exact group create/availability routes stay isolated behind management.
+// F16-01 recurring-series preview/create/read reuses the F11 physical group authority.
+app.route('/api', f16Series);
 app.route('/api', f11Groups);
 app.route('/api/availability', availability);
 app.route('/api/bookings', bookings);
