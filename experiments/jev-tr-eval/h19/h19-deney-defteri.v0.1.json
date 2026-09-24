@@ -207,7 +207,7 @@
         "TYPESAFE_API_KEY",
         "H19S_OPENAI_API_KEY"
       ],
-      "protocol_version": "0.2",
+      "protocol_version": "0.2 + clarifications 0.2.1",
       "label_contract_commit": "960e566a235b4a71ae47f6e63d6505e0b30d6c72",
       "api_policy": "Jev/TypeSafe only; no new OpenAI API reader lane",
       "reference_readers": "two independent blind product sessions (ChatGPT + Claude)",
@@ -217,7 +217,14 @@
         "h19s/referans-okuyucu.v0.1.json",
         "h19s/pricing.v0.1.json",
         "H19S_OPENAI_API_KEY requirement"
-      ]
+      ],
+      "clarifications_commit": "abcdbfe575473cb9fb0bd8c37c0360b6ee2ae7bd",
+      "shadow_timing": "deferred until blind labels/tiebreak/observed evidence are committed",
+      "zero_denominator_policy": "primary ratio gate with n=0 => insufficient-n; no full PASS",
+      "current_cohort": {
+        "eligible_units": 0,
+        "note": "merged PRs observed after v0.2 start had no migration routine units at last check"
+      }
     }
   ],
   "invariant_rules": [
