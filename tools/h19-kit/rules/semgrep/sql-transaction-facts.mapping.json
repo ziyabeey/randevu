@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "checks": [
+    {
+      "checkId": "h19.sql.row-lock-present",
+      "evidenceId": "static.sql.row_lock.present"
+    },
+    {
+      "checkId": "h19.sql.advisory-lock-present",
+      "evidenceId": "static.sql.advisory_lock.present"
+    },
+    {
+      "checkId": "h19.sql.optimistic-version-present",
+      "evidenceId": "static.sql.optimistic_version.present"
+    },
+    {
+      "checkId": "h19.sql.idempotency-present",
+      "evidenceId": "static.sql.idempotency.present"
+    }
+  ]
+}
