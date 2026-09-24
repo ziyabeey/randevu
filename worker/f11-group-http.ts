@@ -32,6 +32,11 @@ type Env = AuthEnv & PublicAbuseEnv & {
 
 type SupabaseError = { message?: string };
 type GroupLine = { serviceId: string; staffId: string | null };
+type NotificationPreferenceInput = {
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  reminderMinutesBefore: number | null;
+};
 type PublicGroupCreateRow = {
   appointment_id: string;
   group_payload: Record<string, unknown>;
@@ -68,6 +73,23 @@ function cleanOptional(value: unknown, max: number) {
 function idempotencyKey(value: string | undefined) {
   const key = value?.trim() ?? '';
   return key.length >= 8 && key.length <= 128 ? key : null;
+}
+function parseNotificationPreference(value: unknown): NotificationPreferenceInput | null | undefined {
+  if (value === undefined) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.emailEnabled !== 'boolean' || typeof raw.smsEnabled !== 'boolean') return undefined;
+  const reminder = raw.reminderMinutesBefore === null || raw.reminderMinutesBefore === undefined
+    ? null
+    : Number(raw.reminderMinutesBefore);
+  if (reminder !== null && (!Number.isInteger(reminder) || reminder < 15 || reminder > 10080)) {
+    return undefined;
+  }
+  return {
+    emailEnabled: raw.emailEnabled,
+    smsEnabled: raw.smsEnabled,
+    reminderMinutesBefore: reminder,
+  };
 }
 function parseLines(value: unknown): GroupLine[] | null {
   if (!Array.isArray(value) || value.length < 1 || value.length > GROUP_LINE_LIMIT) return null;
@@ -116,6 +138,9 @@ function groupError(message: string) {
   }
   if (message.includes('DATE_OUT_OF_RANGE')) {
     return { code: 'DATE_OUT_OF_RANGE', message: 'Seçilen tarih rezervasyon aralığının dışında.', status: 400 as const };
+  }
+  if (message.includes('INVALID_NOTIFICATION_PREFERENCE') || message.includes('INVALID_REMINDER_OFFSET')) {
+    return { code: 'INVALID_NOTIFICATION_PREFERENCE', message: 'Bildirim tercihleri geçerli değil.', status: 400 as const };
   }
   return { code: 'GROUP_BOOKING_FAILED', message: 'Grup rezervasyonu işlenemedi.', status: 400 as const };
 }
@@ -251,8 +276,10 @@ groups.post('/bookings/groups', async (context) => {
   const customerEmail = cleanOptional(body?.customerEmail, 254);
   const notes = cleanOptional(body?.notes, 1000);
   const lines = parseLines(body?.lines);
+  const notifications = parseNotificationPreference(body?.notifications);
   if (!key || customerName.length < 2 || customerName.length > 120
       || customerPhone === undefined || customerEmail === undefined || notes === undefined
+      || notifications === undefined
       || lines === null || !isTimestamp(body?.startsAt)
       || (customerEmail !== null && !customerEmail.includes('@'))) {
     return context.json({ error: { code: 'INVALID_BOOKING', message: 'Müşteri, hizmet listesi veya saat bilgileri geçerli değil.' } }, 400);
@@ -260,7 +287,9 @@ groups.post('/bookings/groups', async (context) => {
 
   const result = await supabaseRequest<Record<string, unknown>>(
     context.env,
-    'rest/v1/rpc/create_appointment_group',
+    notifications
+      ? 'rest/v1/rpc/create_appointment_group_with_notifications'
+      : 'rest/v1/rpc/create_appointment_group',
     {
       method: 'POST',
       body: JSON.stringify({
@@ -272,6 +301,11 @@ groups.post('/bookings/groups', async (context) => {
         p_customer_phone: customerPhone,
         p_customer_email: customerEmail,
         p_notes: notes,
+        ...(notifications ? {
+          p_email_enabled: notifications.emailEnabled,
+          p_sms_enabled: notifications.smsEnabled,
+          p_reminder_minutes_before: notifications.reminderMinutesBefore,
+        } : {}),
       }),
     },
     access.auth.accessToken,

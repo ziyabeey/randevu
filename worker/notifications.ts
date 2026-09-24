@@ -1,7 +1,8 @@
 import { base64UrlToBytes } from '../shared/base64.ts';
 import { fetchTextWithTimeout } from './outbound-request.ts';
+import { netgsmConfigured, sendNetgsmSms, type NetgsmEnv } from './netgsm.ts';
 
-export type NotificationEnv = {
+export type NotificationEnv = NetgsmEnv & {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
@@ -16,12 +17,18 @@ type ClaimRow = {
   lease_token: string;
   event_id: string;
   event_version: number;
+  event_reason: 'created' | 'rescheduled' | 'cancelled' | 'reminder';
   template_version: number;
-  appointment_id: string;
-  recovery_id: string;
+  business_id: string;
+  group_id: string;
+  appointment_id: string | null;
+  recovery_id: string | null;
+  kind: 'public_booking_confirmation' | 'booking_lifecycle' | 'booking_reminder';
+  channel: 'email' | 'sms';
   recipient: string;
-  provider: string;
+  provider: 'resend' | 'netgsm';
   provider_idempotency_key: string;
+  provider_reference_id: string | null;
   attempt_count: number;
   retry_until: string;
   business_name_snapshot: string;
@@ -66,6 +73,7 @@ type PreparedProviderRequest = {
   origin: string;
   body: string;
   fingerprint: string;
+  smsMessage: string | null;
 };
 
 type ProviderResult =
@@ -362,8 +370,69 @@ function renderTemplateV2(row: ClaimRow, summary: GroupSummary, sender: string, 
   });
 }
 
+function lifecycleCopy(row: ClaimRow) {
+  const when = formatDateTime(row.starts_at_snapshot, row.timezone_snapshot);
+  const action = row.event_reason === 'created'
+    ? 'oluşturuldu'
+    : row.event_reason === 'rescheduled'
+      ? 'güncellendi'
+      : row.event_reason === 'cancelled'
+        ? 'iptal edildi'
+        : 'yaklaşıyor';
+  const title = row.event_reason === 'reminder' ? 'Randevu hatırlatması' : 'Randevu bildirimi';
+  const text = [
+    row.business_name_snapshot,
+    `${row.customer_name_snapshot}, randevunuz ${action}.`,
+    `Hizmet: ${row.service_name_snapshot}`,
+    `Tarih: ${when}`,
+  ].join('\n');
+  return { title, text, when };
+}
+
+function renderTemplateV3Email(row: ClaimRow, sender: string) {
+  const copy = lifecycleCopy(row);
+  const html = `<!doctype html>
+<html lang="tr"><body style="font-family:Arial,sans-serif;background:#f7f7f8;color:#18181b;margin:0;padding:32px 16px">
+<div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e4e4e7;border-radius:16px;padding:28px">
+<p style="margin:0 0 8px;font-size:12px;letter-spacing:.08em;color:#71717a">${escapeHtml(copy.title.toUpperCase())}</p>
+<h1 style="font-size:24px;margin:0 0 20px">${escapeHtml(row.business_name_snapshot)}</h1>
+<p>${escapeHtml(row.customer_name_snapshot)}, randevunuz ${escapeHtml(
+    row.event_reason === 'created' ? 'oluşturuldu'
+      : row.event_reason === 'rescheduled' ? 'güncellendi'
+        : row.event_reason === 'cancelled' ? 'iptal edildi' : 'yaklaşıyor',
+  )}.</p>
+<table style="width:100%;border-collapse:collapse;margin:20px 0">
+<tr><td style="padding:8px 0;color:#71717a">Hizmet</td><td style="padding:8px 0;text-align:right">${escapeHtml(row.service_name_snapshot)}</td></tr>
+<tr><td style="padding:8px 0;color:#71717a">Tarih</td><td style="padding:8px 0;text-align:right">${escapeHtml(copy.when)}</td></tr>
+</table>
+</div></body></html>`;
+  return JSON.stringify({
+    from: sender,
+    to: [row.recipient],
+    subject: `${row.business_name_snapshot} · ${copy.title}`,
+    text: copy.text,
+    html,
+    tags: [
+      { name: 'category', value: row.kind },
+      { name: 'notification_event', value: row.event_id },
+    ],
+  });
+}
+
+function renderTemplateV3Sms(row: ClaimRow) {
+  const copy = lifecycleCopy(row);
+  return `${row.business_name_snapshot}: ${row.customer_name_snapshot}, randevunuz ${
+    row.event_reason === 'created' ? 'oluşturuldu'
+      : row.event_reason === 'rescheduled' ? 'güncellendi'
+        : row.event_reason === 'cancelled' ? 'iptal edildi' : 'yaklaşıyor'
+  }. ${row.service_name_snapshot} · ${copy.when}`;
+}
+
 async function fingerprintProviderRequest(row: ClaimRow, body: string) {
-  const canonical = ['POST', PROVIDER_ENDPOINT, row.provider_idempotency_key, body].join('\n');
+  const endpoint = row.provider === 'netgsm'
+    ? 'https://api.netgsm.com.tr/sms/rest/v2/send'
+    : PROVIDER_ENDPOINT;
+  const canonical = ['POST', endpoint, row.provider_idempotency_key, body].join('\n');
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
   return bytesToHex(new Uint8Array(digest));
 }
@@ -371,27 +440,56 @@ async function fingerprintProviderRequest(row: ClaimRow, body: string) {
 async function prepareProviderRequest(
   env: NotificationEnv,
   row: ClaimRow,
-  managementToken: string,
+  managementToken: string | null,
   groupSummary: GroupSummary | null,
 ): Promise<PreparedProviderRequest | null> {
-  const runtimeSender = validSender(env.NOTIFICATION_FROM_EMAIL);
-  const runtimeOrigin = validOrigin(env.PUBLIC_APP_ORIGIN);
-  const sender = row.sender_snapshot === null ? runtimeSender : validSender(row.sender_snapshot);
-  const origin = row.origin_snapshot === null ? runtimeOrigin : validOrigin(row.origin_snapshot);
-  if (!sender || !origin) return null;
+  const origin = row.origin_snapshot === null
+    ? validOrigin(env.PUBLIC_APP_ORIGIN)
+    : validOrigin(row.origin_snapshot);
+  if (!origin) return null;
 
-  const manageUrl = `${origin}/m#${encodeURIComponent(managementToken)}`;
+  let sender: string | null = null;
   let body: string;
-  if (row.template_version === 1) {
-    body = renderTemplateV1(row, sender, manageUrl);
-  } else if (row.template_version === 2 && validGroupSummary(groupSummary)) {
-    body = renderTemplateV2(row, groupSummary, sender, manageUrl);
+  let smsMessage: string | null = null;
+
+  if (row.template_version === 1 || row.template_version === 2) {
+    sender = row.sender_snapshot === null
+      ? validSender(env.NOTIFICATION_FROM_EMAIL)
+      : validSender(row.sender_snapshot);
+    if (!sender || !managementToken || row.provider !== 'resend' || row.channel !== 'email') return null;
+    const manageUrl = `${origin}/m#${encodeURIComponent(managementToken)}`;
+    if (row.template_version === 1) {
+      body = renderTemplateV1(row, sender, manageUrl);
+    } else if (validGroupSummary(groupSummary)) {
+      body = renderTemplateV2(row, groupSummary, sender, manageUrl);
+    } else {
+      return null;
+    }
+  } else if (row.template_version === 3 && row.channel === 'email' && row.provider === 'resend') {
+    sender = row.sender_snapshot === null
+      ? validSender(env.NOTIFICATION_FROM_EMAIL)
+      : validSender(row.sender_snapshot);
+    if (!sender) return null;
+    body = renderTemplateV3Email(row, sender);
+  } else if (row.template_version === 3 && row.channel === 'sms' && row.provider === 'netgsm') {
+    const config = netgsmConfigured(env);
+    sender = row.sender_snapshot === null
+      ? validSender(config?.msgheader)
+      : validSender(row.sender_snapshot);
+    if (!sender || !row.provider_reference_id) return null;
+    smsMessage = renderTemplateV3Sms(row);
+    body = JSON.stringify({
+      recipient: row.recipient,
+      message: smsMessage,
+      referenceId: row.provider_reference_id,
+    });
   } else {
     return null;
   }
+
   const fingerprint = await fingerprintProviderRequest(row, body);
   if (row.request_fingerprint && row.request_fingerprint !== fingerprint) return null;
-  return { sender, origin, body, fingerprint };
+  return { sender, origin, body, fingerprint, smsMessage };
 }
 
 async function sendResend(
@@ -483,13 +581,11 @@ export async function dispatchNotificationBatch(
 ): Promise<NotificationDispatchSummary> {
   const dispatchSecret = validSecret(env.NOTIFICATION_DISPATCH_SECRET);
   const origin = validOrigin(env.PUBLIC_APP_ORIGIN);
-  const sender = validSender(env.NOTIFICATION_FROM_EMAIL);
-  const encryption = await encryptionKey(env);
-  if (!dispatchSecret || !origin || !sender || !encryption || !env.RESEND_API_KEY?.trim()) {
+  if (!dispatchSecret || !origin) {
     return { status: 'disabled', claimed: 0, sent: 0, retrying: 0, failedTerminal: 0, leaseErrors: 0 };
   }
 
-  const claimed = await rpc<ClaimRow[]>(env, 'claim_notification_jobs_v2', {
+  const claimed = await rpc<ClaimRow[]>(env, 'claim_notification_jobs_v3', {
     p_dispatch_secret: dispatchSecret,
     p_limit: 10,
     p_lease_seconds: 45,
@@ -508,11 +604,35 @@ export async function dispatchNotificationBatch(
   };
 
   await Promise.all(claimed.data.map(async (row) => {
-    const managementToken = await decryptManagementToken(env, row);
-    if (!managementToken) {
+    let managementToken: string | null = null;
+    if (row.template_version === 1 || row.template_version === 2) {
+      managementToken = await decryptManagementToken(env, row);
+      if (!managementToken) {
+        const released = await release(
+          env, dispatchSecret, row, 'management_decrypt_failed',
+          true, false, retryDelay(row.attempt_count), fetchImpl,
+        );
+        if (!released.ok) summary.leaseErrors += 1;
+        else if (released.data === 'failed_terminal') summary.failedTerminal += 1;
+        else summary.retrying += 1;
+        return;
+      }
+    }
+
+    if (row.provider === 'resend' && (!env.RESEND_API_KEY?.trim() || !validSender(env.NOTIFICATION_FROM_EMAIL))) {
       const released = await release(
-        env, dispatchSecret, row, 'management_decrypt_failed',
-        true, false, retryDelay(row.attempt_count), fetchImpl,
+        env, dispatchSecret, row, 'resend_not_configured',
+        true, true, retryDelay(row.attempt_count), fetchImpl,
+      );
+      if (!released.ok) summary.leaseErrors += 1;
+      else if (released.data === 'failed_terminal') summary.failedTerminal += 1;
+      else summary.retrying += 1;
+      return;
+    }
+    if (row.provider === 'netgsm' && !netgsmConfigured(env)) {
+      const released = await release(
+        env, dispatchSecret, row, 'netgsm_not_configured',
+        true, true, retryDelay(row.attempt_count), fetchImpl,
       );
       if (!released.ok) summary.leaseErrors += 1;
       else if (released.data === 'failed_terminal') summary.failedTerminal += 1;
@@ -551,7 +671,7 @@ export async function dispatchNotificationBatch(
     }
 
     const lockStarted = performance.now();
-    const locked = await rpc<SendPermission>(env, 'lock_notification_request_v2', {
+    const locked = await rpc<SendPermission>(env, 'lock_notification_request_v3', {
       p_dispatch_secret: dispatchSecret,
       p_job_id: row.job_id,
       p_lease_token: row.lease_token,
@@ -570,7 +690,13 @@ export async function dispatchNotificationBatch(
       return;
     }
 
-    const provider = await sendResend(env, row, prepared, fetchImpl);
+    const provider: ProviderResult = row.provider === 'netgsm'
+      ? await sendNetgsmSms(env, {
+        recipient: row.recipient,
+        message: prepared.smsMessage ?? '',
+        referenceId: row.provider_reference_id ?? '',
+      }, fetchImpl)
+      : await sendResend(env, row, prepared, fetchImpl);
     if (provider.status === 'accepted') {
       const completed = await rpc<boolean>(env, 'complete_notification_job_v2', {
         p_dispatch_secret: dispatchSecret,
