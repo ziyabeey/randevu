@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import app from '../worker/app.ts';
-import { verifyWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
+import { issueWhatsappOtpChallenge, verifyWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 
 const gateSecret = 'g'.repeat(48);
 const env = {
@@ -10,9 +10,10 @@ const env = {
   SUPABASE_ANON_KEY: 'anon-test-key',
   COOKIE_SECURE: 'false',
   PUBLIC_BOOKING_GATE_SECRET: gateSecret,
-  TWILLO_ID: 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-  TWILLO_SECRET_API: 'test-auth-token-1234567890',
-  TWILIO_VERIFY_SERVICE_SID: 'VAbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+  ZERNIO_API_KEY: `sk_${'a'.repeat(64)}`,
+  ZERNIO_WHATSAPP_ACCOUNT_ID: '0123456789abcdef01234567',
+  ZERNIO_WHATSAPP_TEMPLATE_NAME: 'randevu_phone_verification',
+  ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE: 'tr',
 };
 
 function json(data, status = 200) {
@@ -26,7 +27,7 @@ function rpc(data) {
   return json({ ok: true, data });
 }
 
-test('F16-02 public WhatsApp OTP start is an explicit public mutation and reaches Twilio Verify', async () => {
+test('F16-02 public WhatsApp OTP start is an explicit public mutation and reaches Zernio transport', async () => {
   const original = globalThis.fetch;
   const calls = [];
   globalThis.fetch = async (input, init = {}) => {
@@ -40,13 +41,19 @@ test('F16-02 public WhatsApp OTP start is an explicit public mutation and reache
       assert.match(wire.p_network_hash, /^[0-9a-f]{64}$/);
       return rpc([{ name: 'Salon A', slug: 'salon-a' }]);
     }
-    if (url.endsWith('/Verifications')) {
-      const form = new URLSearchParams(String(init.body));
-      assert.equal(form.get('To'), '+905551602001');
-      assert.equal(form.get('Channel'), 'whatsapp');
+    if (url === 'https://zernio.com/api/v1/inbox/conversations') {
+      const headers = new Headers(init.headers);
+      assert.equal(headers.get('Authorization'), `Bearer ${env.ZERNIO_API_KEY}`);
+      const wire = JSON.parse(String(init.body));
+      assert.equal(wire.accountId, env.ZERNIO_WHATSAPP_ACCOUNT_ID);
+      assert.equal(wire.participantId, '905551602001');
+      assert.equal(wire.templateName, env.ZERNIO_WHATSAPP_TEMPLATE_NAME);
+      assert.equal(wire.templateLanguage, 'tr');
+      assert.equal(wire.templateParams.length, 1);
+      assert.match(wire.templateParams[0], /^\d{6}$/);
       return json({
-        sid: 'VEcccccccccccccccccccccccccccccccc',
-        status: 'pending',
+        success: true,
+        data: { messageId: 'msg_123', conversationId: 'conv_456', participantId: wire.participantId },
       }, 201);
     }
     throw new Error(`unexpected fetch ${url}`);
@@ -59,30 +66,26 @@ test('F16-02 public WhatsApp OTP start is an explicit public mutation and reache
       body: JSON.stringify({ slug: 'salon-a', phone: '0555 160 20 01' }),
     }, env);
     assert.equal(response.status, 202);
-    assert.deepEqual(await response.json(), {
-      ok: true,
-      channel: 'whatsapp',
-      expiresInSeconds: 600,
-      retryAfterSeconds: 30,
-    });
+    const body = await response.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.channel, 'whatsapp');
+    assert.equal(body.expiresInSeconds, 600);
+    assert.equal(body.retryAfterSeconds, 30);
+    assert.ok(typeof body.verificationChallenge === 'string' && body.verificationChallenge.length > 80);
     assert.equal(calls.length, 2);
   } finally {
     globalThis.fetch = original;
   }
 });
 
-test('F16-02 approved WhatsApp OTP returns a slug-and-phone-bound booking proof', async () => {
+test('F16-02 approved app-issued WhatsApp OTP returns a slug-and-phone-bound booking proof', async () => {
   const original = globalThis.fetch;
-  globalThis.fetch = async (input, init = {}) => {
+  const verificationChallenge = await issueWhatsappOtpChallenge(gateSecret, 'salon-a', '05551602001', '123456');
+  assert.ok(verificationChallenge);
+  globalThis.fetch = async (input) => {
     const url = String(input);
     if (url.endsWith('/rest/v1/rpc/execute_public_operation')) {
       return rpc([{ name: 'Salon A', slug: 'salon-a' }]);
-    }
-    if (url.endsWith('/VerificationCheck')) {
-      const form = new URLSearchParams(String(init.body));
-      assert.equal(form.get('To'), '+905551602001');
-      assert.equal(form.get('Code'), '123456');
-      return json({ status: 'approved' });
     }
     throw new Error(`unexpected fetch ${url}`);
   };
@@ -91,7 +94,7 @@ test('F16-02 approved WhatsApp OTP returns a slug-and-phone-bound booking proof'
     const response = await app.request('http://localhost/api/public/verify/whatsapp/check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.45' },
-      body: JSON.stringify({ slug: 'salon-a', phone: '05551602001', code: '123456' }),
+      body: JSON.stringify({ slug: 'salon-a', phone: '05551602001', code: '123456', verificationChallenge }),
     }, env);
     assert.equal(response.status, 200);
     const body = await response.json();
