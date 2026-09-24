@@ -24,21 +24,21 @@ type TicketWriteAccess = { auth: { accessToken: string }; membership: { business
 
 const tickets = new Hono<{ Bindings: AuthEnv }>();
 
-function isUuid(value: unknown): value is string {
+export function isUuid(value: unknown): value is string {
   return typeof value === 'string'
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function integerIn(value: unknown, min: number, max: number): value is number {
+export function integerIn(value: unknown, min: number, max: number): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
 }
 
-function idempotencyKey(value: string | undefined) {
+export function idempotencyKey(value: string | undefined) {
   const key = value?.trim() ?? '';
   return key.length >= 8 && key.length <= 128 ? key : null;
 }
 
-function cleanReason(value: unknown) {
+export function cleanReason(value: unknown) {
   if (typeof value !== 'string') return null;
   const reason = value.trim();
   return reason.length >= 2 && reason.length <= 240 ? reason : null;
@@ -49,7 +49,7 @@ async function sha256Hex(value: string) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function requestHash(command: string, payload: Record<string, unknown>) {
+export async function requestHash(command: string, payload: Record<string, unknown>) {
   return sha256Hex(JSON.stringify({ command, ...payload }));
 }
 
@@ -59,7 +59,37 @@ function rpcMessage(data: unknown) {
     : '';
 }
 
-function ticketError(message: string) {
+// F16-05 package sale/usage/refund refusals. Codes are exact server words.
+const PACKAGE_ERRORS: Array<[string, string, 404 | 409]> = [
+  ['PACKAGE_NOT_FOUND', 'Paket bulunamadı veya bu işletmeye ait değil.', 404],
+  ['PACKAGE_ID_CONFLICT', 'Bu paket kimliği başka bir tanım için kullanılmış.', 409],
+  ['PACKAGE_INACTIVE', 'Pasif paket satılamaz.', 409],
+  ['STALE_PACKAGE_WRITE', 'Paket tanımı başka bir işlemde değişti. Güncel listeyi yükleyip tekrar deneyin.', 409],
+  ['PACKAGE_LINE_NOT_SERVICE', 'Paket hakkı yalnız hizmet satırına uygulanır.', 409],
+  ['LINE_ALREADY_COVERED', 'Bu hizmet zaten paket hakkıyla karşılandı.', 409],
+  ['LINE_HAS_DISCOUNT', 'İskontolu satıra paket hakkı uygulanamaz; önce iskontoyu kaldırın.', 409],
+  ['LINE_COVERED_BY_PACKAGE', 'Paket hakkıyla karşılanan satırın tutarı değiştirilemez; önce paket kullanımını geri alın.', 409],
+  ['LINE_NOT_COVERED', 'Bu satırda geri alınacak paket kullanımı yok.', 409],
+  ['PACKAGE_CUSTOMER_MISMATCH', 'Paket bu adisyonun müşterisine ait değil.', 409],
+  ['PACKAGE_NOT_ACTIVE', 'Paket iptal edilmiş veya iade edilmiş.', 409],
+  ['PACKAGE_EXPIRED', 'Paketin geçerlilik süresi dolmuş.', 409],
+  ['PACKAGE_SERVICE_MISMATCH', 'Paket bu hizmeti kapsamıyor.', 409],
+  ['PACKAGE_EXHAUSTED', 'Pakette kullanılabilir seans kalmadı.', 409],
+  ['PACKAGE_SALE_NOT_SETTLED', 'Paket satışı tahsil edilip kapatılmadan başka adisyonda kullanılamaz.', 409],
+  ['PACKAGE_SALE_NOT_CLOSED', 'Paket iadesi için satış adisyonu kapalı olmalı.', 409],
+  ['PACKAGE_USAGE_OPEN', 'Açık adisyonda kullanılan seans varken paket iade edilemez.', 409],
+  ['PACKAGE_FULLY_USED', 'Tüm seanslar kullanıldı; iade edilecek hak yok.', 409],
+  ['PACKAGE_REFUND_CHANGED', 'İade tutarı değişti. Güncel tutarı yükleyip tekrar deneyin.', 409],
+  ['PACKAGE_REFUND_SOURCES_MISMATCH', 'İade kaynaklarının toplamı iade tutarına eşit olmalı.', 409],
+  ['PACKAGE_IN_USE', 'Seansı kullanılmış paket satışı iptal edilemez.', 409],
+];
+
+function packageTicketError(message: string) {
+  const match = PACKAGE_ERRORS.find(([code]) => message.includes(code));
+  return match ? { code: match[0], message: match[1], status: match[2] } : null;
+}
+
+export function ticketError(message: string) {
   if (message.includes('INVALID_TICKET_STATUS')) {
     return { code: 'INVALID_TICKET_STATUS', message: 'Adisyon durum filtresi geçerli değil.', status: 400 as const };
   }
@@ -192,13 +222,15 @@ function ticketError(message: string) {
   if (message.includes('PRODUCT_SALE_MOVEMENT_NOT_FOUND')) {
     return { code: 'PRODUCT_SALE_MOVEMENT_NOT_FOUND', message: 'Ürün satış stok hareketi bulunamadı.', status: 409 as const };
   }
+  const packageError = packageTicketError(message);
+  if (packageError) return packageError;
   if (message.includes('INVALID_')) {
     return { code: 'INVALID_TICKET', message: 'Adisyon isteği geçerli değil.', status: 400 as const };
   }
   return { code: 'TICKET_WRITE_FAILED', message: 'Adisyon işlemi tamamlanamadı.', status: 400 as const };
 }
 
-async function requireStandardMember(context: TicketContext) {
+export async function requireStandardMember(context: TicketContext) {
   const access = await requireMember(context);
   if ('error' in access) return access;
   if (access.auth.passwordRecovery) {
@@ -211,7 +243,7 @@ async function requireStandardMember(context: TicketContext) {
   return access;
 }
 
-async function requirePricingWrite(context: TicketContext) {
+export async function requirePricingWrite(context: TicketContext) {
   const access = await requireStandardMember(context);
   if ('error' in access) return access;
 
@@ -246,7 +278,7 @@ async function requirePricingWrite(context: TicketContext) {
   return access;
 }
 
-async function requirePaymentsWrite(context: TicketContext) {
+export async function requirePaymentsWrite(context: TicketContext) {
   const access = await requireStandardMember(context);
   if ('error' in access) return access;
 
@@ -329,7 +361,7 @@ async function requireProductReturnWrite(context: TicketContext) {
   return access;
 }
 
-async function rpcWrite(
+export async function rpcWrite(
   context: TicketContext,
   access: TicketWriteAccess,
   name: string,
