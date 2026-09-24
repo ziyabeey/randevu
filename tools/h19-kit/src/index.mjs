@@ -40,3 +40,4 @@ export * from './discovery/coverage-discovery.mjs';
 export * from './discovery/validation-packet.mjs';
 export * from './perf/baseline.mjs';
 export * from './indexing/typescript-projects.mjs';
+export * from './perf/regression-gate.mjs';
