@@ -45,5 +45,11 @@
     "reader_B",
     "owner adjudication",
     "shadow storage/CI"
-  ]
+  ],
+  "superseded": true,
+  "superseded_by": [
+    "H19S-PROTOKOL-v0.2",
+    "CLARIFICATIONS-v0.2.1"
+  ],
+  "do_not_use": true
 }
