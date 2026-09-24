@@ -65,7 +65,20 @@ Required measurements:
 
 The first run is measurement-only. Do not invent pass/fail thresholds before the baseline is captured.
 
-PERF-002 established a concrete bottleneck: a single changed file caused ~8.95 s reindex, ~96% of whole-repository first-index cost, while exact-content cache hit was ~28 ms. The next performance experiment therefore targets TypeScript-project-scoped invalidation before any new feature milestone.
+PERF-002 established a concrete bottleneck: a single changed file caused ~8.95 s reindex, ~96% of whole-repository first-index cost, while exact-content cache hit was ~28 ms.
+
+PERF-003 then showed TypeScript-project-scoped invalidation:
+- an irrelevant scripts/*.mjs change invalidated zero shards;
+- an app-project edit reindexed one shard and reduced same-run reindex wall time by 31.5%;
+- sequential cold shard indexing was not faster than whole-root cold indexing.
+
+PERF-004 proved cross-workflow reuse:
+- seed: 0/3 hits, 8005.429 ms;
+- next workflow: 3/3 hits, 0 misses, 9.18 ms;
+- all shard fingerprints were identical;
+- Actions cache transported artifacts while H19 fingerprints remained reuse authority.
+
+Performance observability and cross-run cache reuse are now established. Cold-start and changed-shard latency remain optimization targets, not hidden unknowns.
 
 ## Next authorized feature gate
 
