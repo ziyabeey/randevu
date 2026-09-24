@@ -434,7 +434,7 @@ function renderTemplateV3Email(row: ClaimRow, sender: string) {
   });
 }
 
-function renderTemplateV3Sms(row: ClaimRow) {
+export function renderTemplateV3Sms(row: ClaimRow) {
   const copy = lifecycleCopy(row);
   return `${row.business_name_snapshot}: ${row.customer_name_snapshot}, randevunuz ${
     row.event_reason === 'created' ? 'oluşturuldu'
