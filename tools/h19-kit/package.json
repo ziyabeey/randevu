@@ -13,7 +13,8 @@
     "test:m1": "node test/m1.mjs",
     "test:m2": "node test/m2.mjs",
     "test:m3": "node test/m3.mjs",
-    "test:m35": "node test/m35.mjs"
+    "test:m35": "node test/m35.mjs",
+    "test:m35-cache": "node test/m35-cache.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
