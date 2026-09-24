@@ -19,6 +19,20 @@ type Catalog = {
 type Setup = { timezone: string };
 type Slot = { staff_id: string; staff_name: string; starts_at: string; ends_at: string; timezone: string };
 type GroupSlot = { starts_at: string; ends_at: string; timezone: string; total_duration_minutes: number; lines: unknown[] };
+type SeriesPreviewOccurrence = {
+  ordinal: number;
+  startsAt: string;
+  localDate: string;
+  localTime: string;
+  available: boolean;
+};
+type SeriesPreview = {
+  frequency: 'daily' | 'weekly';
+  occurrenceCount: number;
+  timezone: string;
+  allAvailable: boolean;
+  occurrences: SeriesPreviewOccurrence[];
+};
 type AppointmentStatus = 'scheduled' | 'confirmed' | 'completed' | 'no_show' | 'cancelled';
 type GroupStatus = AppointmentStatus | 'partial';
 type BookingLine = {
@@ -65,6 +79,8 @@ type BookingGroup = {
   customerPhone: string | null;
   customerEmail: string | null;
   notes: string | null;
+  seriesId?: string | null;
+  seriesOrdinal?: number | null;
 };
 type AppointmentEvent = {
   id: string; event_type: string; actor_user_id: string; from_status: string | null;
@@ -186,6 +202,10 @@ export default function BookingPage() {
   const createSlotGeneration = useRef(0);
   const createSlotController = useRef<AbortController | null>(null);
   const [createKey, setCreateKey] = useState(commandKey);
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState<'none' | 'daily' | 'weekly'>('none');
+  const [recurrenceCount, setRecurrenceCount] = useState(2);
+  const [seriesPreview, setSeriesPreview] = useState<SeriesPreview | null>(null);
+  const [seriesPreviewBusy, setSeriesPreviewBusy] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [closeDate, setCloseDate] = useState(dateToday());
   const [closeStart, setCloseStart] = useState('09:00');
@@ -338,6 +358,8 @@ export default function BookingPage() {
     setCreateSlotsBusy(false);
     setCreateSlots([]);
     setSelectedCreateSlot(null);
+    setSeriesPreview(null);
+    setSeriesPreviewBusy(false);
     if (rotateKey) setCreateKey(commandKey());
   }
 
@@ -399,27 +421,71 @@ export default function BookingPage() {
     }
   }
 
-  async function createBooking() {
-    if (!selectedCreateSlot || !createLines.length) return;
-    setBusy(true); setNotice('');
+  async function previewSeriesCreate() {
+    if (!selectedCreateSlot || recurrenceFrequency === 'none') return;
+    setSeriesPreviewBusy(true); setNotice(''); setSeriesPreview(null);
     try {
-      await api('/api/bookings/groups', {
+      const result = await api<{ preview: SeriesPreview }>('/api/bookings/series/preview', {
         method: 'POST',
-        headers: { 'Idempotency-Key': createKey },
         body: JSON.stringify({
-          customerName, customerPhone, customerEmail, notes,
           lines: createLines.map((line) => ({
             serviceId: line.serviceId,
             staffId: line.staffId === 'any' ? null : line.staffId,
           })),
           startsAt: selectedCreateSlot.starts_at,
+          frequency: recurrenceFrequency,
+          count: recurrenceCount,
         }),
       });
-      setNotice('Rezervasyon atomik olarak oluşturuldu.');
+      setSeriesPreview(result.preview);
+      setNotice(result.preview.allAvailable
+        ? `${result.preview.occurrenceCount} tekrarın tamamı uygun.`
+        : 'Serideki en az bir tekrar uygun değil. Tarih veya saati değiştirin.');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Seri önizlemesi hazırlanamadı.');
+    } finally { setSeriesPreviewBusy(false); }
+  }
+
+  async function createBooking() {
+    if (!selectedCreateSlot || !createLines.length) return;
+    if (recurrenceFrequency !== 'none' && (!seriesPreview || !seriesPreview.allAvailable)) {
+      setNotice('Seriyi oluşturmadan önce tüm tekrarları önizleyin.');
+      return;
+    }
+    setBusy(true); setNotice('');
+    try {
+      const payload = {
+        customerName, customerPhone, customerEmail, notes,
+        lines: createLines.map((line) => ({
+          serviceId: line.serviceId,
+          staffId: line.staffId === 'any' ? null : line.staffId,
+        })),
+        startsAt: selectedCreateSlot.starts_at,
+      };
+      if (recurrenceFrequency === 'none') {
+        await api('/api/bookings/groups', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': createKey },
+          body: JSON.stringify(payload),
+        });
+        setNotice('Rezervasyon atomik olarak oluşturuldu.');
+      } else {
+        await api('/api/bookings/series', {
+          method: 'POST',
+          headers: { 'Idempotency-Key': createKey },
+          body: JSON.stringify({
+            ...payload,
+            frequency: recurrenceFrequency,
+            count: recurrenceCount,
+          }),
+        });
+        setNotice(`${recurrenceCount} randevuluk seri atomik olarak oluşturuldu.`);
+      }
       setCustomerName(''); setCustomerPhone(''); setCustomerEmail(''); setNotes('');
       const firstService = activeServices[0]?.id ?? '';
       setCreateLines([{ key: commandKey(), serviceId: firstService, staffId: 'any' }]);
       setCreateSlots([]); setSelectedCreateSlot(null); setCreateKey(commandKey());
+      setRecurrenceFrequency('none'); setRecurrenceCount(2); setSeriesPreview(null);
       await load();
     } catch (error) { setNotice(error instanceof Error ? error.message : 'Randevu oluşturulamadı.'); }
     finally { setBusy(false); }
@@ -695,7 +761,7 @@ export default function BookingPage() {
         <div className="booking-actions"><button className="secondary-button" type="button" disabled={busy || createSlotsBusy || createLines.some((line) => !line.serviceId)} onClick={() => void previewCreateSlots()}>{createSlotsBusy ? 'Saatler aranıyor…' : 'Uygun saatleri getir'}</button></div>
 
         <div className="slot-cloud">
-          {createSlots.map((slot) => <button type="button" className={selectedCreateSlot?.starts_at === slot.starts_at ? 'slot-button selected' : 'slot-button'} key={slot.starts_at} onClick={() => setSelectedCreateSlot(slot)}>
+          {createSlots.map((slot) => <button type="button" className={selectedCreateSlot?.starts_at === slot.starts_at ? 'slot-button selected' : 'slot-button'} key={slot.starts_at} onClick={() => { setSelectedCreateSlot(slot); setSeriesPreview(null); setCreateKey(commandKey()); }}>
             <strong>{formatTime(slot.starts_at, slot.timezone)}</strong><span>{createLines.length} hizmet · {slot.total_duration_minutes} dk</span>
           </button>)}
         </div>
@@ -705,11 +771,46 @@ export default function BookingPage() {
           <div><strong>Not ve oluştur</strong><small>Tek tıklama, tek idempotency anahtarı; grup ya bütünüyle oluşur ya hiç oluşmaz.</small></div>
         </div>
         <div className="booking-fields"><label className="wide-field">Not<textarea value={notes} onChange={(event) => { setNotes(event.target.value); setCreateKey(commandKey()); }} maxLength={1000} placeholder="İsteğe bağlı not" /></label></div>
-        <div className="booking-future-hints" aria-label="Sonraki özellik bağlantıları">
-          <span><strong>Tekrar</strong><small>F16-01 ile açılacak</small></span>
+        <div className="booking-future-hints" aria-label="Tekrarlayan randevu">
+          <label>
+            <strong>Tekrar</strong>
+            <select value={recurrenceFrequency} onChange={(event) => {
+              setRecurrenceFrequency(event.target.value as 'none' | 'daily' | 'weekly');
+              setSeriesPreview(null);
+              setCreateKey(commandKey());
+            }}>
+              <option value="none">Tek sefer</option>
+              <option value="daily">Her gün</option>
+              <option value="weekly">Her hafta</option>
+            </select>
+          </label>
+          {recurrenceFrequency !== 'none' && <label>
+            <strong>Adet</strong>
+            <input type="number" min={2} max={12} value={recurrenceCount} onChange={(event) => {
+              const next = Math.max(2, Math.min(12, Number(event.target.value) || 2));
+              setRecurrenceCount(next);
+              setSeriesPreview(null);
+              setCreateKey(commandKey());
+            }} />
+            <small>En fazla 12 randevu</small>
+          </label>}
           <span><strong>SMS</strong><small>F16-02 ile açılacak</small></span>
         </div>
-        {selectedCreateSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedCreateSlot.starts_at, selectedCreateSlot.timezone)}</strong><span>{createLines.length} hizmet tek rezervasyon olarak oluşturulacak.</span></div><button className="primary-button" type="button" disabled={busy || createSlotsBusy || customerName.trim().length < 2} onClick={() => void createBooking()}>{busy ? 'Oluşturuluyor…' : 'Randevuyu oluştur'}</button></div>}
+        {selectedCreateSlot && recurrenceFrequency !== 'none' && <div className="booking-actions">
+          <button className="secondary-button" type="button" disabled={busy || seriesPreviewBusy} onClick={() => void previewSeriesCreate()}>
+            {seriesPreviewBusy ? 'Seri kontrol ediliyor…' : 'Tüm tekrarları önizle'}
+          </button>
+        </div>}
+        {seriesPreview && <div className="appointment-list" aria-label="Seri önizlemesi">
+          {seriesPreview.occurrences.map((occurrence) => <div className="appointment-row" key={occurrence.ordinal}>
+            <div className="appointment-time">
+              <strong>{occurrence.ordinal}. tekrar</strong>
+              <span>{occurrence.localDate} · {occurrence.localTime.slice(0,5)}</span>
+            </div>
+            <span className="status-pill">{occurrence.available ? 'Uygun' : 'Dolu'}</span>
+          </div>)}
+        </div>}
+        {selectedCreateSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedCreateSlot.starts_at, selectedCreateSlot.timezone)}</strong><span>{recurrenceFrequency === 'none' ? `${createLines.length} hizmet tek rezervasyon olarak oluşturulacak.` : `${recurrenceCount} randevu, ${recurrenceFrequency === 'daily' ? 'günlük' : 'haftalık'} seri olarak atomik oluşturulacak.`}</span></div><button className="primary-button" type="button" disabled={busy || createSlotsBusy || seriesPreviewBusy || customerName.trim().length < 2 || (recurrenceFrequency !== 'none' && !seriesPreview?.allAvailable)} onClick={() => void createBooking()}>{busy ? 'Oluşturuluyor…' : recurrenceFrequency === 'none' ? 'Randevuyu oluştur' : 'Seriyi oluştur'}</button></div>}
       </section>
 
       <section className="booking-card booking-list-card">
