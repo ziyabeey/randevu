@@ -199,22 +199,41 @@ export async function scipGraph(options = {}) {
   return normalizeScipIndex(index, { source: `scip:${options.indexPath ?? 'index.scip'}` });
 }
 
-export function scipImpact(graph, changedPaths = []) {
+export function scipImpact(graph, changedPaths = [], {
+  maxSymbolDepth = 3,
+} = {}) {
   const changedDocs = changedPaths.map((path) => `doc:${path}`);
-  const definedSymbols = new Set();
+  const changedSymbols = new Set();
 
   for (const docId of changedDocs) {
-    for (const edge of graph.outgoing(docId, 'scip:defines')) definedSymbols.add(edge.to);
+    for (const edge of graph.outgoing(docId, 'scip:defines')) changedSymbols.add(edge.to);
+  }
+
+  const impactedSymbols = new Set(changedSymbols);
+  let frontier = [...changedSymbols];
+  for (let depth = 0; depth < maxSymbolDepth && frontier.length; depth++) {
+    const next = [];
+    for (const symbolId of frontier) {
+      for (const edge of graph.incoming(symbolId, 'scip:uses')) {
+        if (!impactedSymbols.has(edge.from)) {
+          impactedSymbols.add(edge.from);
+          next.push(edge.from);
+        }
+      }
+    }
+    frontier = next;
   }
 
   const affectedDocs = new Set(changedDocs);
-  for (const symbolId of definedSymbols) {
-    for (const edge of graph.incoming(symbolId, 'scip:references')) affectedDocs.add(edge.from);
+  for (const symbolId of impactedSymbols) {
+    for (const edge of graph.incoming(symbolId, ['scip:references', 'scip:defines'])) affectedDocs.add(edge.from);
   }
 
   return {
     changedDocuments: changedDocs,
-    changedSymbols: [...definedSymbols].sort(),
+    changedSymbols: [...changedSymbols].sort(),
+    impactedSymbols: [...impactedSymbols].sort(),
     affectedDocuments: [...affectedDocs].sort(),
+    maxSymbolDepth,
   };
 }
