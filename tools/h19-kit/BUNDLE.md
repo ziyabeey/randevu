@@ -80,6 +80,13 @@ PERF-004 proved cross-workflow reuse:
 
 Performance observability and cross-run cache reuse are now established. Cold-start and changed-shard latency remain optimization targets, not hidden unknowns.
 
+PERF-005 cache-first execution is the next performance gate:
+- plan exact shard fingerprints before installing the external indexer;
+- all-hit path must skip SCIP install and indexing;
+- miss path must materialize only missing shards and finish with zero misses.
+
+This optimization must pass before returning to the next feature milestone.
+
 ## Next authorized feature gate
 
 **Minimal test specification from validated/high-value coverage hypotheses.**
