@@ -24,7 +24,7 @@ export function normalizeCandidatePath(value) {
   if (value.includes('\0')) throw new Error('candidate path contains NUL');
 
   const raw = value.replaceAll('\\', '/');
-  if (raw.startsWith('/') || raw.startsWith('//') || /^[A-Za-z]:\//.test(raw)) {
+  if (raw.startsWith('/') || raw.startsWith('//') || /^[A-Za-z]:/.test(raw)) {
     throw new Error('candidate path must be repository-relative');
   }
 
