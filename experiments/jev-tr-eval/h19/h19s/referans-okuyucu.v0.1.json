@@ -61,5 +61,11 @@
   },
   "max_output_tokens": 300,
   "tools": false,
-  "web": false
+  "web": false,
+  "superseded": true,
+  "superseded_by": [
+    "H19S-PROTOKOL-v0.2",
+    "CLARIFICATIONS-v0.2.1"
+  ],
+  "do_not_use": true
 }
