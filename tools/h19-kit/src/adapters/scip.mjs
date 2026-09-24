@@ -24,6 +24,77 @@ export async function readScipJson({
   return JSON.parse(stdout);
 }
 
+function finite(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export function normalizeScipRange(value) {
+  if (!value) return null;
+
+  if (Array.isArray(value)) {
+    if (value.length === 3) {
+      return Object.freeze({
+        startLine: finite(value[0]),
+        startCharacter: finite(value[1]),
+        endLine: finite(value[0]),
+        endCharacter: finite(value[2]),
+      });
+    }
+    if (value.length === 4) {
+      return Object.freeze({
+        startLine: finite(value[0]),
+        startCharacter: finite(value[1]),
+        endLine: finite(value[2]),
+        endCharacter: finite(value[3]),
+      });
+    }
+    return null;
+  }
+
+  if (typeof value === 'object') {
+    if ('line' in value) {
+      const line = finite(value.line);
+      return Object.freeze({
+        startLine: line,
+        startCharacter: finite(value.startCharacter ?? value.start_character),
+        endLine: line,
+        endCharacter: finite(value.endCharacter ?? value.end_character),
+      });
+    }
+
+    const startLine = value.startLine ?? value.start_line;
+    const endLine = value.endLine ?? value.end_line;
+    if (startLine != null && endLine != null) {
+      return Object.freeze({
+        startLine: finite(startLine),
+        startCharacter: finite(value.startCharacter ?? value.start_character),
+        endLine: finite(endLine),
+        endCharacter: finite(value.endCharacter ?? value.end_character),
+      });
+    }
+  }
+
+  return null;
+}
+
+function occurrenceRange(occ) {
+  return normalizeScipRange(
+    occ.singleLineRange ?? occ.single_line_range
+      ?? occ.multiLineRange ?? occ.multi_line_range
+      ?? occ.range ?? null,
+  );
+}
+
+function occurrenceEnclosingRange(occ) {
+  return normalizeScipRange(
+    occ.singleLineEnclosingRange ?? occ.single_line_enclosing_range
+      ?? occ.multiLineEnclosingRange ?? occ.multi_line_enclosing_range
+      ?? occ.enclosingRange ?? occ.enclosing_range
+      ?? null,
+  );
+}
+
 export function normalizeScipIndex(raw = {}) {
   const documents = raw.documents ?? [];
   return {
@@ -34,9 +105,8 @@ export function normalizeScipIndex(raw = {}) {
       occurrences: (doc.occurrences ?? []).map((occ) => ({
         symbol: occ.symbol ?? '',
         symbolRoles: Number(occ.symbolRoles ?? occ.symbol_roles ?? 0),
-        range: occ.singleLineRange ?? occ.single_line_range
-          ?? occ.multiLineRange ?? occ.multi_line_range
-          ?? occ.range ?? null,
+        range: occurrenceRange(occ),
+        enclosingRange: occurrenceEnclosingRange(occ),
       })),
       symbols: (doc.symbols ?? []).map((info) => ({
         symbol: info.symbol ?? '',
