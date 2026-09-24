@@ -21,8 +21,8 @@ aynı hattın deneyleridir. İsimler tarihsel provenance için korunur; yeni ara
 | **H19b′** | Zor negatiflerde facts ve Choice gerçekten V'yi geçiyor mu? | V AUC 0.92, J0 0.86, JF 0.82. Facts yanlış yönde prior oldu; direction %71.9. | Çıkarılabilir facts varsayılan olarak prompt premise'i yapılmaz. Detection ve direction ayrılır. | tamamlandı / failed |
 | **H19d** | Göreli eksen matematiği `D5-max(other)` ham D5'i geçiyor mu? | Ham D5 AUC 0.934, S0 0.890. P-pair recall %60. | Başka eksenle gerçek D5 birlikte değişebilir; "baskın eksen" varsayımı yanlış. Post-hoc geometri promosyon edilmez. | tamamlandı / failed |
 | **H19t** | Ham D5 için geçmiş veriden sabitlenen `τ=.64` gerçek router olur mu? | Recall 39/40; fakat D1 negatif FPR %66.7 ve yük azalması 8.8 puan. T2 kaldı. | Sorun threshold değil, D1/D5 semantik karışması. Ham D5 iyi ranker, tek eşikli router değil. | tamamlandı / failed |
-| **H19u** | D1/D5 belirsizliğini ikinci ucuz Choice ayırabilir mi? | 80 vaka donduruldu (`ba531c86…`); kör kontrol 15/16, A16 protokol gereği düştü; canlı ölçüm henüz yok. | V skorlarını ikinci modele premise olarak verme; resolver yalnız aynı diff'i görsün. | measurement-ready |
-| **H19s** | Gerçek PR akışında shadow router ekonomik ve güvenli mi? | Henüz açılmadı. | Yalnız önceki gate'ler geçerse gerçek prevalans ve çağrı maliyeti ölçülür. | locked |
+| **H19u** | D1/D5 belirsizliğini ikinci ucuz Choice ayırabilir mi? | **U1–U5 geçti.** Kör kontrol 14/16; A16 ve C20 ölçümden önce düştü. Resmî 78 vakada D5 recall 39/39; D1-only FPR 9/19 → 0/19; System Two route %64.1 → %52.6. | İkinci küçük Choice, ilk V skorlarını premise olarak görmeden D1/D5 belirsizliğini ikili routing için ayırabildi. Dört sınıf ayrımı daha zayıf (%75.6). | tamamlandı / passed |
+| **H19s** | Gerçek PR akışında shadow router ekonomik ve güvenli mi? | H19u geçti; **ön kayda açıldı**. Gerçek prevalans, D5 kaçırma ve toplam maliyet ölçülecek. | Bu Kepenk adapter hattının terminal gate'idir: geçerse v1 paketlenir; kalırsa üretim router'ı açılmaz. | open / preregister next |
 
 ## 3. Şu anda gerçekten desteklenenler
 
@@ -36,6 +36,8 @@ aynı hattın deneyleridir. İsimler tarihsel provenance için korunur; yeni ara
    Kodun çıkardığı doğru olgu bile model için güçlü bir prior/cue olabilir.
 5. **Prospective kontrol mekanizması işe yarıyor.**
    Post-hoc umut verici görünen S0, yeni sette tersine döndü; protokol yanlış promosyona engel oldu.
+6. **D1/D5 belirsizliği ikinci küçük bir resolver ile ayrıştırılabilir görünüyor.**
+   H19u'da resmî 78 vakada D5 recall korunurken D1-only yanlış alarmları 9/19'dan 0/19'a indi ve System Two route oranı 11.5 puan düştü. Bu sonuç gerçek PR prevalansı veya ekonomik kazanç kanıtı değildir; H19s bunu ölçer.
 
 Bunlar "H19 genel olarak kanıtlandı" anlamına gelmez. Bunlar Kepenk/Randevu üzerinde, mevcut model ve soru
 sürümleriyle desteklenen dar bulgulardır.
@@ -163,9 +165,6 @@ Tarihsel H19 kimliği her kayıtta `legacy_id` olarak tutulabilir.
 
 ## 9. Açık araştırma kuyruğu
 
-1. **H19u / RESOLVE-01:** D1_ONLY / D5_ONLY / BOTH / NEITHER ayrımı.
-2. Geçerse **H19s / SHADOW-01:** gerçek PR prevalansı ve ekonomik yük.
-3. H19u kalırsa yeni prompt/threshold aynı sette aranmaz. Ham V vektörü yalnız ranker/sinyal olarak ürünleştirme
-   dışı araştırma çıktısı olarak kalır.
-4. Genel araç ürünü, Kepenk D0–D5'i hard-code etmeden önce ikinci bir bağımsız repo/domain üzerinde domain-adapter
-   kurulumu test etmelidir.
+1. **H19s / SHADOW-01:** gerçek PR prevalansı, D5 kaçırma ve ekonomik yük. H19u bunu açtı.
+2. H19s **terminal Kepenk-adapter gate'idir**. Geçerse H19 v1 dondurulur ve araç paketleme aşamasına geçilir; kalırsa yeni prompt/threshold aynı gerçek trafik üzerinde aranmaz ve router üretime terfi etmez.
+3. Genel araç ürünü, Kepenk D0–D5'i hard-code etmeden önce ikinci bir bağımsız repo/domain üzerinde domain-adapter kurulumu test etmelidir.
