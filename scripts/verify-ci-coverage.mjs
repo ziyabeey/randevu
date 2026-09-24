@@ -85,7 +85,7 @@ function verifyH19Manifest(root, sqlTests, planFiles) {
     .filter(({ origin }) => origin === null)
     .map(({ id }) => id);
   const invalidOrigin = expectRows
-    .filter(({ origin }) => origin !== null && !['prospective', 'holdout'].includes(origin))
+    .filter(({ origin }) => origin !== null && !['prospective', 'holdout', 'coverage-first'].includes(origin))
     .map(({ id, origin }) => id + '=' + origin);
   const originMismatches = expectRows
     .filter(({ axisA, axisB, origin }) => {

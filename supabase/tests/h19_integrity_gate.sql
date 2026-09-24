@@ -21,7 +21,7 @@
 -- Canonical scenario manifest. Axis pairs may repeat across domains when the
 -- same interaction geometry protects a distinct authority model.
 -- Each permanent scenario also carries its selection origin plus frozen three-arm evidence:
--- origin is prospective or holdout; evidence is baseline/current-suite PASS,
+-- origin is prospective, holdout, or coverage-first; evidence is baseline/current-suite PASS,
 -- prospective-probe FAIL, clean-control PASS.
 select pg_temp.h19_expect('booking.d0d1.tenant_idempotency','booking','D0','D1','prospective',2131,2135,2136);
 select pg_temp.h19_expect('booking.d1d5.idempotency_concurrency','booking','D1','D5','prospective',2197,2200,2202);
@@ -40,6 +40,11 @@ select pg_temp.h19_expect('team.d0d1.invite_scope','team','D0','D1','prospective
 select pg_temp.h19_expect('catalog.d0d2.history_scope','catalog','D0','D2','prospective',2544,2551,2552);
 select pg_temp.h19_expect('public-booking.d0d4.slot_scope','public-booking','D0','D4','prospective',2557,2582,2583);
 select pg_temp.h19_expect('calendar.d4d5.range_revision','calendar','D4','D5','prospective',2597,2609,2610);
+select pg_temp.h19_expect('customers.d1d5.version_serialization','customers','D1','D5','prospective',2620,2624,2625);
+select pg_temp.h19_expect('customers.d0d5.tenant_serialization','customers','D0','D5','coverage-first',2626,2627,2628);
+select pg_temp.h19_expect('product-sales.d0d2.snapshot_scope','product-sales','D0','D2','coverage-first',2630,2631,2632);
+select pg_temp.h19_expect('expenses.d1d2.replay_snapshot','expenses','D1','D2','prospective',2633,2635,2636);
+select pg_temp.h19_expect('reporting.d2d4.local_day_snapshot','reporting','D2','D4','coverage-first',2642,2646,2647);
 
 \echo 'H19 Integrity Gate: D0xD1 tenant/idempotency'
 \ir h19_d0_d1_tenant_idempotency.sql
@@ -105,10 +110,30 @@ select pg_temp.h19_pass('public-booking.d0d4.slot_scope');
 \ir h19_calendar_d4_d5_range_revision.sql
 select pg_temp.h19_pass('calendar.d4d5.range_revision');
 
-select pg_temp.h19_assert_complete(16);
+\echo 'H19 Integrity Gate: benchmark customers D1xD5 version serialization'
+\ir h19_bench_customers_d1_d5.sql
+select pg_temp.h19_pass('customers.d1d5.version_serialization');
+
+\echo 'H19 Integrity Gate: benchmark customers D0xD5 tenant serialization'
+\ir h19_bench_customers_d0_d5.sql
+select pg_temp.h19_pass('customers.d0d5.tenant_serialization');
+
+\echo 'H19 Integrity Gate: benchmark product-sales D0xD2 snapshot scope'
+\ir h19_bench_product_sales_d0_d2.sql
+select pg_temp.h19_pass('product-sales.d0d2.snapshot_scope');
+
+\echo 'H19 Integrity Gate: benchmark expenses D1xD2 replay snapshot'
+\ir h19_bench_expenses_d1_d2.sql
+select pg_temp.h19_pass('expenses.d1d2.replay_snapshot');
+
+\echo 'H19 Integrity Gate: benchmark reporting D2xD4 local-day snapshot'
+\ir h19_bench_reporting_d2_d4.sql
+select pg_temp.h19_pass('reporting.d2d4.local_day_snapshot');
+
+select pg_temp.h19_assert_complete(21);
 
 do $h19done$
 begin
-  raise notice 'H19 INTEGRITY GATE PASS: 16/16 registered interaction invariants accepted';
+  raise notice 'H19 INTEGRITY GATE PASS: 21/21 registered interaction invariants accepted';
 end
 $h19done$;

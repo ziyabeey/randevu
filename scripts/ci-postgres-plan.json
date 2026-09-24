@@ -1418,10 +1418,6 @@
         },
         {
           "database": "yzt_test",
-          "file": "supabase/tests/h19_integrity_gate.sql"
-        },
-        {
-          "database": "yzt_test",
           "file": "supabase/tests/f15_product_stock_ledger.sql"
         },
         {
@@ -1516,6 +1512,10 @@
           "file": "supabase/tests/f15_day_report.sql"
         },
         {
+          "database": "yzt_test",
+          "file": "supabase/tests/h19_integrity_gate.sql"
+        },
+        {
           "database": "yzt_s08_upgrade",
           "file": "supabase/migrations/20260923170000_f15_day_report.sql"
         },
@@ -1551,6 +1551,27 @@
         {
           "database": "yzt_s08_upgrade",
           "file": "supabase/tests/f16_recurring_series_concurrency.sql"
+        }
+      ]
+    },
+    {
+      "name": "Verify F16-04 feedback and reviews",
+      "steps": [
+        {
+          "database": "yzt_test",
+          "file": "supabase/migrations/20260924180000_f16_feedback_reviews.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/f16_feedback_reviews.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/migrations/20260924180000_f16_feedback_reviews.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f16_feedback_reviews.sql"
         }
       ]
     }

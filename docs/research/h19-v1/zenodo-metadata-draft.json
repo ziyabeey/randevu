@@ -1,0 +1,47 @@
+{
+  "record_status": "draft metadata only; not a published Zenodo record",
+  "title": "H19 v1: A Preregistered Semantic Interaction Method for Prospective Regression-Test Discovery",
+  "version": "1.0.0",
+  "publication_date": "2026-09-24",
+  "creators": [
+    {
+      "family_name": "Terzioğlu",
+      "given_names": "Yusuf Ziya",
+      "orcid": null,
+      "affiliation": null
+    }
+  ],
+  "resource_type_recommendation": "Publication; use a precise report/technical-note subtype if the Zenodo UI offers one and it accurately describes the record",
+  "language": "eng",
+  "publisher": "Zenodo",
+  "license": "AUTHOR_CONFIRMATION_REQUIRED; suggested default CC-BY-4.0",
+  "keywords": [
+    "H19",
+    "software testing",
+    "regression testing",
+    "interaction testing",
+    "combinatorial testing",
+    "mutation testing",
+    "concurrency testing",
+    "idempotency",
+    "database testing",
+    "PostgreSQL",
+    "preregistration",
+    "test selection"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/ziyabeey/randevu/tree/3e48d2958607ef20660835cdabd884cc7d3738e2",
+      "relation": "related source/evidence snapshot"
+    },
+    {
+      "identifier": "https://github.com/ziyabeey/randevu/issues/454",
+      "relation": "blind queue v2 preregistration/evidence"
+    },
+    {
+      "identifier": "https://github.com/ziyabeey/randevu/issues/485",
+      "relation": "benchmark v1 preregistration/evidence"
+    }
+  ],
+  "doi": null
+}
