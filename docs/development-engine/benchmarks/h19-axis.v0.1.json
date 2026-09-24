@@ -263,5 +263,6 @@
       }
     }
   ],
-  "label_visibility": "This file is scorer-only ground truth. Never provide it to the axis classifier."
+  "label_visibility": "This file is scorer-only ground truth. Never provide it to the axis classifier.",
+  "case_count": 16
 }
