@@ -4,6 +4,7 @@ function location(path, occurrence) {
   return Object.freeze({
     path,
     range: occurrence.range ?? null,
+    enclosingRange: occurrence.enclosingRange ?? null,
     roles: occurrence.symbolRoles,
     isTest: hasScipRole(occurrence.symbolRoles, SCIP_ROLES.TEST),
     isRead: hasScipRole(occurrence.symbolRoles, SCIP_ROLES.READ),
