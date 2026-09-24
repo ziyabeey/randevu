@@ -12,6 +12,7 @@ const CalendarPage = lazy(() => import('./CalendarPage'));
 const BookingPage = lazy(() => import('./BookingPage'));
 const CustomersPage = lazy(() => import('./CustomersPage'));
 const ServicesPage = lazy(() => import('./ServicesPage'));
+const FeedbackPage = lazy(() => import('./FeedbackPage'));
 const ProductsPage = lazy(() => import('./ProductsPage'));
 const ExpensesPage = lazy(() => import('./ExpensesPage'));
 const FinancialReportsPage = lazy(() => import('./FinancialReportsPage'));
@@ -35,6 +36,7 @@ const NAV_ITEMS: Array<{ page: Exclude<WorkspacePage, 'not-found'>; label: strin
   { page: 'availability', label: 'Müsaitlik' },
   { page: 'setup', label: 'Kurulum' },
   { page: 'public-booking', label: 'Online Randevu' },
+  { page: 'feedback', label: 'Yorumlar' },
 ];
 
 function isRetryableApiError(error: unknown) {
@@ -63,6 +65,7 @@ function WorkspaceOutlet({ page }: { page: WorkspacePage }) {
   if (page === 'setup') return <OnboardingPage />;
   if (page === 'team') return <TeamPage />;
   if (page === 'public-booking') return <PublicBookingSettingsPage />;
+  if (page === 'feedback') return <FeedbackPage />;
   return (
     <main className="workspace-page">
       <section className="panel workspace-not-found">
