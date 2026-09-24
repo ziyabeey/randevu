@@ -167,7 +167,7 @@
     },
     {
       "id": "H19s",
-      "status": "preregistered",
+      "status": "measurement-ready",
       "hypothesis": "Validated composite router reduces real System Two work in shadow PR traffic while preserving actionable D5 recall.",
       "unlock_condition": "H19u passed all preregistered gates.",
       "terminal_for_current_adapter": true,
@@ -186,7 +186,27 @@
         "S5 drift"
       ],
       "next_if_pass": "freeze Kepenk adapter v1 and package tool",
-      "next_if_fail": "keep router research-only; stop new synthetic suffix experiments for this adapter"
+      "next_if_fail": "keep router research-only; stop new synthetic suffix experiments for this adapter",
+      "application_appendix_commit": "991466fdc5e890c2e016bb87fe207465473742d4",
+      "reader_contract_commit": "f73f60596c2854e63f7cbc1372eb3c932b062ed6",
+      "pricing_commit": "7cc3eb46e9d404da0d73e66abc001f90f67144fb",
+      "start_record_commit": "2f4e737dcd8e9c12cdf271cb411f679bce1a4005",
+      "include_new_routines": true,
+      "readers": {
+        "A": {
+          "model": "gpt-6-sol",
+          "role": "primary_reference_and_cost_proxy"
+        },
+        "B": {
+          "model": "gpt-5.6-sol",
+          "role": "independent_reference_only"
+        }
+      },
+      "sample_start": "first main merge after frozen start record",
+      "runtime_secrets": [
+        "TYPESAFE_API_KEY",
+        "H19S_OPENAI_API_KEY"
+      ]
     }
   ],
   "invariant_rules": [
