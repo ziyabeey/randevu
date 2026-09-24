@@ -134,13 +134,15 @@ $$;
 
 
 -- Structured result registry for the single H19 Integrity Gate.
+-- origin records the selector provenance: H19 prospective, frozen holdout control,
+-- or the preregistered coverage-first baseline.
 -- Scenario files stay focused on behavior; the gate owns registration/reporting.
 create temporary table if not exists h19_gate_results (
   scenario_id text primary key,
   domain text not null,
   axis_a text not null check (axis_a ~ '^D[0-5]$'),
   axis_b text not null check (axis_b ~ '^D[0-5]$'),
-  origin text not null check (origin in ('prospective','holdout')),
+  origin text not null check (origin in ('prospective','holdout','coverage-first')),
   baseline_ci integer not null check (baseline_ci > 0),
   probe_ci integer not null check (probe_ci > 0),
   clean_ci integer not null check (clean_ci > 0),
@@ -169,7 +171,7 @@ begin
      or p_axis_b !~ '^D[0-5]$'
      or p_axis_a=p_axis_b
      or p_origin is null
-     or p_origin not in ('prospective','holdout')
+     or p_origin not in ('prospective','holdout','coverage-first')
      or p_baseline_ci is null or p_baseline_ci<1
      or p_probe_ci is null or p_probe_ci<1
      or p_clean_ci is null or p_clean_ci<1 then

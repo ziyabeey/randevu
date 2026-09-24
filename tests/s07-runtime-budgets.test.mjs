@@ -323,7 +323,7 @@ test('S07 notification DB deadlines prevent unsafe or unbounded provider progres
   });
 });
 
-test('S07 scheduled work starts maintenance, dispatch and heartbeat independently', async (t) => {
+test('S07 scheduled work starts maintenance, dispatch, delivery reconciliation and heartbeat independently', async (t) => {
   const calls = [];
   const realSetTimeout = globalThis.setTimeout;
   const realClearTimeout = globalThis.clearTimeout;
@@ -364,7 +364,7 @@ test('S07 scheduled work starts maintenance, dispatch and heartbeat independentl
   t.after(() => t.mock.restoreAll());
   const pending = [];
   entry.scheduled({}, env, { waitUntil: (promise) => pending.push(promise) });
-  assert.equal(pending.length, 3);
+  assert.equal(pending.length, 4);
   let guard;
   try {
     await Promise.race([
@@ -380,6 +380,7 @@ test('S07 scheduled work starts maintenance, dispatch and heartbeat independentl
   assert.ok(calls.some((url) => url.endsWith('/rpc/maintain_notification_jobs')));
   assert.ok(calls.some((url) => url.endsWith('/rpc/claim_notification_jobs_v3')));
   releaseMaintenanceDeadline();
-  await Promise.all(pending);
+  const scheduledResults = await Promise.all(pending);
+  assert.equal(scheduledResults[3]?.status, 'disabled', 'delivery reconciliation fails closed without NetGSM configuration');
   assert.ok(productionDeadlines >= 2, 'maintenance and claim each arm the production deadline');
 });
