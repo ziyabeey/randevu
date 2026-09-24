@@ -266,16 +266,29 @@ end
 $f1602_cancel_shape$;
 
 -- Operator jobs have no public recovery record but must still be claimable by
--- the same server-secret-gated dispatcher.
+-- the same server-secret-gated dispatcher. The dispatcher claims from the
+-- shared global outbox, so isolate this group's cancellation rows instead of
+-- assuming the fixture owns every eligible job in the database.
 do $f1602_claim$
 declare
+  v_group uuid:=current_setting('f1602.group_id')::uuid;
   v_count integer;
   v_null_recovery integer;
 begin
-  select count(*)::integer,
-         count(*) filter (where recovery_id is null)::integer
+  select
+    count(*) filter (
+      where group_id=v_group
+        and event_reason='cancelled'
+        and kind='booking_lifecycle'
+    )::integer,
+    count(*) filter (
+      where group_id=v_group
+        and event_reason='cancelled'
+        and kind='booking_lifecycle'
+        and recovery_id is null
+    )::integer
   into v_count,v_null_recovery
-  from public.claim_notification_jobs_v3(repeat('s',43),10,45);
+  from public.claim_notification_jobs_v3(repeat('s',43),50,45);
   if v_count<>2 or v_null_recovery<>2 then
     raise exception 'F16-02 v3 claim did not expose the two operator cancellation jobs: count=% nullRecovery=%',
       v_count,v_null_recovery;
