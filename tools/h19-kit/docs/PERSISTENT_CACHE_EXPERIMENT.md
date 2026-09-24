@@ -68,3 +68,26 @@ A partial hit (1/3 or 2/3) is also a failure for this docs-only continuation.
 
 No performance regression threshold is frozen yet; this gate establishes whether cross-run reuse is operationally
 real.
+
+## Result — PASS
+
+Observed evidence:
+
+| Phase | Hits | Misses | Total |
+| --- | ---: | ---: | ---: |
+| PERF-004-A seed | 0 | 3 | 8005.429 ms |
+| PERF-004-B next workflow | 3 | 0 | 9.18 ms |
+
+All three shard fingerprints were byte-identical between Run A and Run B.
+
+Observed cross-run reuse speedup:
+
+```text
+8005.429 / 9.18 ≈ 872×
+```
+
+This number describes the measured seed-vs-reuse probe on the reference runner. It is not a universal product
+speed claim.
+
+Actions cache transported the old artifacts; H19's content fingerprints independently accepted all three as
+valid. The cross-run reuse mechanism is therefore operationally real.
