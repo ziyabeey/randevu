@@ -51,3 +51,20 @@ Run B must be a commit that changes no TypeScript project inputs. On Run B:
 - exact fingerprints must match Run A.
 
 Only after this succeeds should cross-run caching be considered real rather than theoretical.
+
+## Pass/fail rule
+
+The experiment is successful only if the second workflow run, triggered by a docs-only commit that leaves every
+TypeScript project input unchanged, reports:
+
+- shard count = 3;
+- hits = 3;
+- misses = 0;
+- every row has `cache: hit`;
+- no shard fingerprint differs from Run A.
+
+A successful Actions cache restore without H19 shard hits is a failure.
+A partial hit (1/3 or 2/3) is also a failure for this docs-only continuation.
+
+No performance regression threshold is frozen yet; this gate establishes whether cross-run reuse is operationally
+real.
