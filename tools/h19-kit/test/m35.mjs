@@ -6,6 +6,7 @@ import { parseTreeSitterTags, treeSitterTagsGraph } from '../src/adapters/tree-s
 import { parseNxAffected } from '../src/adapters/nx-affected.mjs';
 import { parseTurboAffected } from '../src/adapters/turbo-affected.mjs';
 import { scipImpactEvidence, workspaceAffectedEvidence } from '../src/adapters/code-impact-evidence.mjs';
+import { scipTypeScriptArgs } from '../src/adapters/scip-indexer.mjs';
 
 const symbol = 'scip-typescript npm demo 1.0.0 src/a.ts/foo().';
 const scip = normalizeScipIndex({
@@ -82,6 +83,15 @@ assert.equal(turbo.packages.length, 2);
 assert.equal(turbo.tasks.length, 1);
 assert.equal(turbo.packages[0].name, '@demo/ui');
 assert.equal(workspaceAffectedEvidence(turbo)[0].state, 'present');
+
+assert.deepEqual(
+  scipTypeScriptArgs({ pnpmWorkspaces: true }),
+  ['index', '--pnpm-workspaces', '--no-global-caches'],
+);
+assert.throws(
+  () => scipTypeScriptArgs({ pnpmWorkspaces: true, yarnWorkspaces: true }),
+  /at most one workspace mode/,
+);
 
 const graph = new CodeGraph();
 graph.addNode('a', 'symbol');
