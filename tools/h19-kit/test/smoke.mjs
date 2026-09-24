@@ -9,6 +9,7 @@ import { EvidenceStore } from '../src/core/evidence-store.mjs';
 import { createRunManifest } from '../src/core/run-manifest.mjs';
 import { FileCache, cacheKey } from '../src/core/cache.mjs';
 import { PluginRegistry } from '../src/core/plugin-registry.mjs';
+import { H19Engine } from '../src/core/engine.mjs';
 import { loadConfig } from '../src/core/config.mjs';
 import { normalizeTestImpact, hasBlindSpot } from '../src/adapters/test-impact.mjs';
 import { TestImpactStore } from '../src/adapters/test-impact-store.mjs';
@@ -143,9 +144,46 @@ plugins.register({
   id: 'demo',
   kind: 'static',
   version: '1.0.0',
-  run: async () => [],
+  produces: ['static.demo.present'],
+  run: async () => [{ id: 'static.demo.present', state: 'present', details: { ok: true } }],
 });
-assert.equal(plugins.list('static').length, 1);
+plugins.register({
+  id: 'broken',
+  kind: 'static',
+  version: '1.0.0',
+  produces: ['static.broken.present'],
+  run: async () => { throw new Error('boom'); },
+});
+assert.equal(plugins.list('static').length, 2);
+
+const engineRule = declarativeRule({
+  id: 'engine-demo',
+  version: '0.1.0',
+  when: { all: [{ evidence: 'static.demo.present', state: 'present' }] },
+  emit: {
+    id: 'H19.ENGINE_DEMO',
+    title: 'Engine collected declared evidence',
+    severity: 'warning',
+    action: 'escalate',
+  },
+});
+const engine = new H19Engine({
+  registry: plugins,
+  rules: [engineRule],
+  config: { version: 1 },
+  failurePolicy: 'unknown',
+});
+const engineResult = await engine.analyze({
+  unit: { id: 'demo-unit', digest: 'e'.repeat(64) },
+  pluginRefs: [
+    { kind: 'static', id: 'demo' },
+    { kind: 'static', id: 'broken' },
+  ],
+  repository: { base: 'a'.repeat(40), head: 'b'.repeat(40) },
+});
+assert.equal(engineResult.route, 'escalate');
+assert.equal(engineResult.pluginErrors.length, 1);
+assert.equal(engineResult.evidence.items.find((x) => x.id === 'static.broken.present').state, 'unknown');
 
 const config = await loadConfig();
 assert.equal(config.version, 1);
