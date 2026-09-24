@@ -29,7 +29,7 @@ Fonksiyon: `public.close_ticket_guarded` (`supabase/migrations/20260922111500_f1
  $$;
 ```
 
-Etiket: `________`
+Etiket: `D1_ONLY`
 
 ## Vaka 2
 
@@ -48,7 +48,7 @@ Fonksiyon: `public.reschedule_public_managed_group` (`supabase/migrations/202609
  
 ```
 
-Etiket: `________`
+Etiket: `NEITHER_OR_OTHER`
 
 ## Vaka 3
 
@@ -65,7 +65,7 @@ Fonksiyon: `core.command_provision_business` (`supabase/migrations/2026091619000
      where a.provider = v_alias_provider and a.external_id = v_alias_external_id;
 ```
 
-Etiket: `________`
+Etiket: `BOTH`
 
 ## Vaka 4
 
@@ -83,7 +83,7 @@ Fonksiyon: `public.f11_validate_native_group_schedule_authority` (`supabase/migr
          )
 ```
 
-Etiket: `________`
+Etiket: `NEITHER_OR_OTHER`
 
 ## Vaka 5
 
@@ -110,7 +110,7 @@ Fonksiyon: `public.f11_validate_native_group_schedule_authority` (`supabase/migr
    from public.staff_services ss
 ```
 
-Etiket: `________`
+Etiket: `D5_ONLY`
 
 ## Vaka 6
 
@@ -128,7 +128,7 @@ Fonksiyon: `public.create_public_booking_confirmation_event` (`supabase/migratio
      p_event_reason,
 ```
 
-Etiket: `________`
+Etiket: `D1_ONLY`
 
 ## Vaka 7
 
@@ -145,7 +145,7 @@ Fonksiyon: `public.set_appointment_status` (`supabase/migrations/20260911120000_
    end if;
 ```
 
-Etiket: `________`
+Etiket: `BOTH`
 
 ## Vaka 8
 
@@ -171,7 +171,7 @@ Fonksiyon: `public.reschedule_appointment` (`supabase/migrations/20260911120000_
    if v_current.status not in ('scheduled','confirmed') then
 ```
 
-Etiket: `________`
+Etiket: `BOTH`
 
 ## Vaka 9
 
@@ -190,7 +190,7 @@ Fonksiyon: `public.f12_require_public_support_contact` (`supabase/migrations/202
       or nullif(trim(coalesce(new.public_whatsapp,'')),'') is not null then
 ```
 
-Etiket: `________`
+Etiket: `D5_ONLY`
 
 ## Vaka 10
 
@@ -217,7 +217,7 @@ Fonksiyon: `public.archive_product_guarded` (`supabase/migrations/20260923051000
  end
 ```
 
-Etiket: `________`
+Etiket: `D1_ONLY`
 
 ## Vaka 11
 
@@ -236,7 +236,7 @@ Fonksiyon: `public.open_ticket_from_booking_group_guarded` (`supabase/migrations
    from public.appointment_groups g
 ```
 
-Etiket: `________`
+Etiket: `D5_ONLY`
 
 ## Vaka 12
 
@@ -254,7 +254,7 @@ Fonksiyon: `public.record_ticket_refund_guarded` (`supabase/migrations/202609221
      p_idempotency_key, p_request_hash
 ```
 
-Etiket: `________`
+Etiket: `NEITHER_OR_OTHER`
 
 ## Vaka 13
 
@@ -272,7 +272,7 @@ Fonksiyon: `public.open_product_sale_guarded` (`supabase/migrations/202609231136
      0,v_actor.id
 ```
 
-Etiket: `________`
+Etiket: `NEITHER_OR_OTHER`
 
 ## Vaka 14
 
@@ -299,7 +299,7 @@ Fonksiyon: `public.set_ticket_service_discount_guarded` (`supabase/migrations/20
    if p_discount_minor > v_line.final_unit_price_minor then raise exception 'DISCOUNT_EXCEEDS_LINE'; end if;
 ```
 
-Etiket: `________`
+Etiket: `D5_ONLY`
 
 ## Vaka 15
 
@@ -318,7 +318,7 @@ Fonksiyon: `public.f11_create_group_internal` (`supabase/migrations/202609180700
    where bc.business_id = p_business_id
 ```
 
-Etiket: `________`
+Etiket: `BOTH`
 
 ## Vaka 16
 
@@ -336,5 +336,5 @@ Fonksiyon: `public.f11_reschedule_group_core` (`supabase/migrations/202609171600
    v_plan := public.f11_plan_existing_group_at(p_business_id,p_group_id,p_starts_at);
 ```
 
-Etiket: `________`
+Etiket: `D5_ONLY`
 
