@@ -47,3 +47,18 @@ This incubator is currently `UNLICENSED` while it lives inside the application r
 into a public repository, the owner can choose the public license (Apache-2.0 is the current design target).
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The current code does not vendor third-party source code.
+
+## Local commands
+
+```bash
+node tools/h19-kit/bin/h19-kit.mjs doctor
+node tools/h19-kit/bin/h19-kit.mjs history .
+node tools/h19-kit/bin/h19-kit.mjs scan tools/h19-kit/examples/scan-input.json
+node tools/h19-kit/bin/h19-kit.mjs scan tools/h19-kit/examples/scan-input.json --sarif
+npm run test:h19-kit
+```
+
+The `scan` command is intentionally model-free. It combines already-produced evidence through deterministic
+rules. H19s decides whether the Kepenk semantic router is eligible to become a packaged adapter later.
+
+See [ROADMAP.md](ROADMAP.md) and [integrations/catalog.v0.1.json](integrations/catalog.v0.1.json).
