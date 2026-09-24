@@ -1,8 +1,18 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
 import { evidence } from '../src/core/contracts.mjs';
 import { runRules, route } from '../src/core/dispatcher.mjs';
+import { EvidenceStore } from '../src/core/evidence-store.mjs';
+import { FileCache, cacheKey } from '../src/core/cache.mjs';
+import { PluginRegistry } from '../src/core/plugin-registry.mjs';
+import { loadConfig } from '../src/core/config.mjs';
 import { normalizeTestImpact, hasBlindSpot } from '../src/adapters/test-impact.mjs';
 import { packUnits, semanticUnit } from '../src/context/packer.mjs';
+import { extractSqlRoutines, routineMap } from '../src/extractors/sql-routines.mjs';
+import { diffRoutineMaps } from '../src/extractors/diff-units.mjs';
 import { semanticRiskWithoutTestRule, missingHistoricalCompanionRule } from '../src/rules/builtin.mjs';
 import { failedPatterns, shouldBlockProposal } from '../src/ledger/experiment-memory.mjs';
 import { toSarif } from '../src/reporters/sarif.mjs';
@@ -40,6 +50,72 @@ const ledger = {
 };
 assert.equal(failedPatterns(ledger).length, 1);
 assert.equal(shouldBlockProposal(ledger, 'threshold tuning')?.experiment, 'H19t');
+
+const sqlBefore = `
+create or replace function public.demo(p_id uuid)
+returns void
+language plpgsql
+as $demo$
+begin
+  perform 1 from public.items where id=p_id for update;
+end
+$demo$;
+`;
+const sqlAfter = `
+create or replace function public.demo(p_id uuid)
+returns void
+language plpgsql
+as $demo$
+begin
+  perform 1 from public.items where id=p_id;
+end
+$demo$;
+`;
+const beforeRoutines = extractSqlRoutines(sqlBefore, { path: 'before.sql' });
+assert.equal(beforeRoutines.length, 1);
+assert.equal(beforeRoutines[0].id, 'public.demo/1');
+const changed = diffRoutineMaps(
+  routineMap(sqlBefore, { path: 'before.sql' }),
+  routineMap(sqlAfter, { path: 'after.sql' }),
+);
+assert.equal(changed.length, 1);
+assert.equal(changed[0].changeKind, 'modified');
+
+const store = new EvidenceStore();
+const stored = store.put({
+  id: 'static.row_lock_removed',
+  state: 'present',
+  producer: 'sql-extractor',
+  producerVersion: '0.1.0',
+  inputDigest: changed[0].afterBodySha256,
+  source: 'after.sql',
+});
+assert.match(stored.provenanceDigest, /^[a-f0-9]{64}$/);
+assert.equal(store.snapshot().items.length, 1);
+
+const plugins = new PluginRegistry();
+plugins.register({
+  id: 'demo',
+  kind: 'static',
+  version: '1.0.0',
+  run: async () => [],
+});
+assert.equal(plugins.list('static').length, 1);
+
+const config = await loadConfig();
+assert.equal(config.version, 1);
+assert.equal(config.policy.unknown, 'escalate');
+
+const temp = await mkdtemp(path.join(os.tmpdir(), 'h19-kit-'));
+try {
+  const cache = new FileCache(temp);
+  const key = cacheKey('demo', { b: 2, a: 1 });
+  const file = await cache.set('demo', key, { ok: true });
+  assert.equal(JSON.parse(await readFile(file, 'utf8')).ok, true);
+  assert.equal((await cache.get('demo', key)).ok, true);
+} finally {
+  await rm(temp, { recursive: true, force: true });
+}
 
 const sarif = toSarif(findings);
 assert.equal(sarif.version, '2.1.0');
