@@ -4,7 +4,7 @@
 - **Vaka üreticisi:** Claude.
 - **Kör ikinci okuyucu:** H19 sahibi.
 
-**Durum:** Vakalar donduruldu. **Hiçbir H19u Jev çağrısı yapılmadı.** Kör ikinci okuyucu kontrolü ölçümden önce tamamlandı: 14/16 uyum. İki uyuşmazlık: A16 (kör `BOTH`, anahtar `D1_ONLY`) ve C20 (kör `D5_ONLY`, anahtar `BOTH`). İlk sayımda 15/16 yazılmıştı; C20 uyuşmazlığı ilk Jev çağrısından önce, kör etiket commit'i ile anahtar karşılaştırılırken fark edildi. Protokol §4 gereği ikisi de yeniden etiketlenmedi, `dusen.json` ile düşürüldü ve yerine vaka konmadı. Çağrılar 80 vakada yapılır; U1–U5 analizi 78 vaka üzerindedir. Kör etiketler `1afdf35483b4d3c43c217c54de73a20f329158c5` commitinde mühürlü. Ölçüm kapısı açıktır.
+**Durum:** Ölçüm tamamlandı. Kör kontrol **14/16** uyum; A16 ve C20 ilk çağrıdan önce protokol gereği düşürüldü. Donmuş 80 vakada V1 + R1 + R2 = **240 çağrı** yapıldı; resmî analiz 78 vaka üzerindedir. **U1–U5'in tamamı geçti.** Sonuç: [`SONUC.md`](SONUC.md), commit `32899f1`. H19s için ayrı shadow ön kaydı açılabilir.
 
 ```text
 vakalar.v0.1.json sha256 ba531c863b5ff27b382008dfd55d4f5d8f898c62b15bc8c9d6c652301a859914
