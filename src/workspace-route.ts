@@ -5,6 +5,7 @@ export type WorkspacePage =
   | 'services'
   | 'products'
   | 'expenses'
+  | 'reports'
   | 'availability'
   | 'setup'
   | 'team'
@@ -31,6 +32,7 @@ const legacyWorkspaceRoutes: Record<string, string> = {
   '/services': '/app/services',
   '/products': '/app/products',
   '/expenses': '/app/expenses',
+  '/reports': '/app/reports',
   '/availability': '/app/availability',
   '/setup': '/app/setup',
   '/team': '/app/team',
@@ -47,6 +49,7 @@ const workspaceRoutes: Record<string, WorkspacePage> = {
   '/app/services': 'services',
   '/app/products': 'products',
   '/app/expenses': 'expenses',
+  '/app/reports': 'reports',
   '/app/availability': 'availability',
   '/app/setup': 'setup',
   '/app/team': 'team',

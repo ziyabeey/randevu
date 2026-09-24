@@ -17,6 +17,7 @@ import team from './team.ts';
 import tickets from './tickets.ts';
 import products from './products.ts';
 import expenses from './expenses.ts';
+import reports from './reports.ts';
 import onboarding from './onboarding.ts';
 import {
   mutationSecurityError,
@@ -115,6 +116,7 @@ app.route('/api/team', team);
 app.route('/api', tickets);
 app.route('/api', products);
 app.route('/api', expenses);
+app.route('/api', reports);
 app.route('/api/onboarding', onboarding);
 
 export default app;

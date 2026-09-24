@@ -60,11 +60,11 @@ function MoreActions() {
       <section className="kolay-action-group" aria-labelledby="kolay-more-reports">
         <h2 id="kolay-more-reports">Raporlar</h2>
         <div className="kolay-action-list">
-          <DisabledAction title="Kasa" description="Henüz kullanıma açık değil." />
+          <AppLink href="/app/reports"><strong>Kasa</strong><span>Tahsilat, masraf ve net hareketi görüntüle</span></AppLink>
           <DisabledAction title="Çalışan primleri" description="Henüz kullanıma açık değil." />
           <AppLink href="/app/expenses"><strong>Masraflar</strong><span>Gider hareketlerini görüntüle ve düzelt</span></AppLink>
-          <DisabledAction title="Ürün satışları" description="Henüz kullanıma açık değil." />
-          <DisabledAction title="Gelir-gider" description="Henüz kullanıma açık değil." />
+          <AppLink href="/app/reports"><strong>Ürün satışları</strong><span>Ürün ve hizmet satış değerlerini karşılaştır</span></AppLink>
+          <AppLink href="/app/reports"><strong>Gelir-gider</strong><span>Tahsilat, iade ve masraf mutabakatını aç</span></AppLink>
           <DisabledAction title="Detaylı çalışan raporu" description="Henüz kullanıma açık değil." />
         </div>
       </section>

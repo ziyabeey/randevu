@@ -794,6 +794,78 @@ try {
         page: { limit: 25, hasMore: false, nextCursor: null },
       });
     }
+    if (request.method === 'GET' && url.pathname === '/api/reports/financial') {
+      const startDate = url.searchParams.get('startDate') ?? '2026-09-23';
+      const endDate = url.searchParams.get('endDate') ?? startDate;
+      const report = activeBusinessId === BUSINESS_A ? {
+        businessId: BUSINESS_A,
+        startDate,
+        endDate,
+        timezone: 'Europe/Istanbul',
+        fromInstant: `${startDate}T00:00:00+03:00`,
+        toInstant: `${endDate}T23:59:59+03:00`,
+        asOf: '2026-09-23T16:50:00.000Z',
+        currency: 'TRY',
+        collectedMinor: 100000,
+        cashCollectedMinor: 60000,
+        cardCollectedMinor: 40000,
+        refundMinor: 10000,
+        correctionIncreaseMinor: 5000,
+        correctionDecreaseMinor: 5000,
+        paymentNetMinor: 90000,
+        expenseMinor: 15000,
+        cashExpenseMinor: 15000,
+        cardExpenseMinor: 0,
+        netMovementMinor: 75000,
+        cashNetMovementMinor: 35000,
+        cardNetMovementMinor: 40000,
+        expectedMinMinor: 140000,
+        expectedMaxMinor: 140000,
+        expectedAppointmentMinMinor: 20000,
+        expectedAppointmentMaxMinor: 20000,
+        appointmentCount: 1,
+        serviceSaleMinor: 20000,
+        productSaleMinor: 120000,
+        saleValueMinor: 140000,
+        outstandingMinor: 30000,
+        ticketCount: 3,
+        unsettledTicketCount: 0,
+      } : {
+        businessId: BUSINESS_B,
+        startDate,
+        endDate,
+        timezone: 'Europe/Istanbul',
+        fromInstant: `${startDate}T00:00:00+03:00`,
+        toInstant: `${endDate}T23:59:59+03:00`,
+        asOf: '2026-09-23T16:50:00.000Z',
+        currency: 'TRY',
+        collectedMinor: 0,
+        cashCollectedMinor: 0,
+        cardCollectedMinor: 0,
+        refundMinor: 0,
+        correctionIncreaseMinor: 0,
+        correctionDecreaseMinor: 0,
+        paymentNetMinor: 0,
+        expenseMinor: 0,
+        cashExpenseMinor: 0,
+        cardExpenseMinor: 0,
+        netMovementMinor: 0,
+        cashNetMovementMinor: 0,
+        cardNetMovementMinor: 0,
+        expectedMinMinor: 0,
+        expectedMaxMinor: 0,
+        expectedAppointmentMinMinor: 0,
+        expectedAppointmentMaxMinor: 0,
+        appointmentCount: 0,
+        serviceSaleMinor: 0,
+        productSaleMinor: 0,
+        saleValueMinor: 0,
+        outstandingMinor: 0,
+        ticketCount: 0,
+        unsettledTicketCount: 0,
+      };
+      return sendJson(response, 200, { report });
+    }
     if (request.method === 'POST' && url.pathname === '/api/expenses') {
       assert.equal(activeBusinessId, BUSINESS_A, 'expense create escaped active business A');
       assert.ok(request.headers['idempotency-key'], 'expense create omitted Idempotency-Key');
@@ -1723,6 +1795,51 @@ try {
     'F15-03 returning to business A did not re-read expense ledger',
   );
   console.log('F15-03 expense create, reversal, 390px and tenant-switch acceptance passed.');
+
+  await page.send('Page.navigate', { url: `${origin}/app/reports` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/reports' && document.body.innerText.includes('Gün sonu görünümü') && document.body.innerText.includes('Net hareket')`),
+    'F15-04 financial report workspace route did not render',
+  );
+  const report390 = await page.evaluate(`(() => ({
+    overflow: document.documentElement.scrollWidth - innerWidth,
+    text: document.body.innerText,
+    cards: [...document.querySelectorAll('.financial-report-card')].map((node) => node.innerText),
+  }))()`);
+  assert.equal(report390.overflow <= 1, true, 'F15-04 financial report overflowed at 390px');
+  assert.match(report390.text, /Net hareket/);
+  assert.match(report390.text, /₺750,00/);
+  assert.match(report390.text, /Açık bakiye/);
+  assert.match(report390.text, /₺300,00/);
+  assert.match(report390.text, /Beklenen randevu bedeli/);
+  assert.match(report390.text, /Satış değeri/);
+  assert.match(report390.text, /Para girişine eklenmez/);
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.workspace-business select');
+    select.value='f3410000-0000-4000-8000-000000000002';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar' && document.body.innerText.includes('Salon B')`),
+    'F15-04 business switch did not enter verified B context',
+  );
+  await page.send('Page.navigate', { url: `${origin}/app/reports` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/reports' && document.body.innerText.includes('₺0,00') && !document.body.innerText.includes('₺750,00')`),
+    'F15-04 report leaked business A totals into business B',
+  );
+
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.workspace-business select');
+    select.value='f3410000-0000-4000-8000-000000000001';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar' && document.body.innerText.includes('Salon A')`),
+    'F15-04 business switch did not restore verified A context',
+  );
+  console.log('F15-04 390px report separation and tenant-switch acceptance passed.');
 
   await page.send('Page.navigate', { url: `${origin}/app/mobile/new` });
   await waitFor(
