@@ -9,6 +9,7 @@ import { FileCache } from '../core/cache.mjs';
 import { ArtifactCache } from '../core/artifact-cache.mjs';
 import { repositoryInventory, sourceFiles } from '../repository/inventory.mjs';
 import { scipTypeScriptIndexer, indexProject } from '../indexing/scip-launcher.mjs';
+import { discoverTypeScriptProjectShards } from '../indexing/typescript-projects.mjs';
 import { projectGraph } from '../impact/project-graph.mjs';
 import { analyzeChangeImpact } from '../impact/change-impact.mjs';
 import { discoverCoverageHypotheses } from '../discovery/coverage-discovery.mjs';
@@ -164,6 +165,13 @@ export async function runPerformanceBaseline({
   try {
     const filesTimed = await timed(() => sourceFiles(repoRoot));
     const statsTimed = await timed(() => sourceStats(repoRoot, filesTimed.value));
+    const tsProjectsTimed = await timed(() => discoverTypeScriptProjectShards({ cwd: repoRoot }));
+    const scipIndexedStatsTimed = await timed(() => sourceStats(
+      repoRoot,
+      tsProjectsTimed.value.indexedFiles,
+    ));
+    const scipIndexedSet = new Set(tsProjectsTimed.value.indexedFiles);
+    const scipUnindexedTsJs = statsTimed.value.tsJs.filter((file) => !scipIndexedSet.has(file));
 
     const inventoryFirst = await timed(() => repositoryInventory(repoRoot));
     const inventoryRepeat = await repeat(() => repositoryInventory(repoRoot), {
@@ -333,7 +341,7 @@ export async function runPerformanceBaseline({
     const inventoryMs = inventoryFirst.wallMs;
 
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       kind: 'h19-performance-baseline',
       generatedAt: new Date().toISOString(),
       environment: {
@@ -351,11 +359,17 @@ export async function runPerformanceBaseline({
         sourceLines: statsTimed.value.lines,
         tsJsFiles: statsTimed.value.tsJsFiles,
         tsJsLines: statsTimed.value.tsJsLines,
+        scipProjectShards: tsProjectsTimed.value.shards.length,
+        scipIndexedFiles: scipIndexedStatsTimed.value.files,
+        scipIndexedLines: scipIndexedStatsTimed.value.lines,
+        scipUnindexedTsJsFiles: scipUnindexedTsJs.length,
       },
       measurements: {
         discovery: {
           sourceWalkMs: filesTimed.wallMs,
           sourceStatsMs: statsTimed.wallMs,
+          typescriptProjectDiscoveryMs: tsProjectsTimed.wallMs,
+          scipIndexedStatsMs: scipIndexedStatsTimed.wallMs,
         },
         inventory: {
           filesScanned: inventoryFirst.value.filesScanned,
