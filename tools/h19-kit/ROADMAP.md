@@ -2,7 +2,7 @@
 
 This roadmap is deliberately independent from the frozen H19s experiment.
 
-## M0 — foundation (current)
+## M0 — foundation ✅
 
 - [x] evidence isolation contract
 - [x] versioned rule-card primitive
@@ -16,6 +16,8 @@ This roadmap is deliberately independent from the frozen H19s experiment.
 - [x] SARIF output
 - [x] local evidence scan pipeline
 - [x] license/integration catalog
+
+M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf342b72624d2`.
 
 ## M1 — repository intelligence
 
