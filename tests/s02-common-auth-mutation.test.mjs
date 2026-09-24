@@ -340,6 +340,8 @@ const cookieMutations = [
   ['POST', '/api/expenses'],
   ['POST', '/api/expenses/:id/reverse'],
   ['POST', '/api/expenses/:id/correct'],
+  ['POST', '/api/bookings/series/preview'],
+  ['POST', '/api/bookings/series'],
 ];
 const exceptions = [
   '/api/public/business/:slug/book',
