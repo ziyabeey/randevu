@@ -34,7 +34,7 @@ function baseFetch(rpc){
     return rpc(url,init);
   };
 }
-const headers=()=>({Cookie:cookie(),Origin:'http://localhost','X-CSRF-Token':'series-csrf', 'Content-Type':'application/json'});
+const headers=()=>({Cookie:cookie(),Origin:'http://localhost','X-YZT-CSRF':'series-csrf', 'Content-Type':'application/json'});
 const mutationCookie=()=>`${cookie()}; yzt_csrf=series-csrf`;
 
 await test('F16-01 preview derives tenant and forwards only bounded recurrence inputs',async()=>{
