@@ -42,3 +42,17 @@ Unowned files remain explicit. H19 must not silently map an unknown/global file 
 
 The affected-project set determines which content-addressed SCIP project fingerprints need evaluation.
 An affected project can still be a cache hit if its content/config/dependency-surface fingerprint is unchanged.
+
+## Turborepo
+
+Turborepo repositories can expose affected packages directly through:
+
+```bash
+turbo ls --affected --output=json
+```
+
+H19 consumes `packages.items[].name/path` and passes the resulting package set into project-shard
+fingerprinting. `TURBO_SCM_BASE` and `TURBO_SCM_HEAD` are set explicitly when base/head are known.
+
+The adapter does not bundle Turborepo and does not run package tasks. It only asks the repository's existing
+Turbo installation which packages are affected.
