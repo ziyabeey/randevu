@@ -43,3 +43,19 @@ test('F16-01 future mutations remain tenant-derived and series-CAS guarded',()=>
   assert.match(migration,/future_rescheduled/);
   assert.match(migration,/future_cancelled/);
 });
+
+test('F16-01 series reads are fenced across workspace and composer changes',()=>{
+  assert.match(page,/const loadGeneration = useRef\(0\)/);
+  assert.match(page,/const workspaceGeneration = useRef\(0\)/);
+  assert.match(page,/const seriesReadGeneration = useRef\(0\)/);
+  assert.match(page,/const seriesReadController = useRef<AbortController \| null>\(null\)/);
+  assert.match(page,/workspaceGeneration\.current \+= 1/);
+  assert.match(page,/seriesReadGeneration\.current \+= 1/);
+  assert.match(page,/seriesReadController\.current\?\.abort\(\)/);
+  assert.match(page,/result\.series\.businessId !== activeBusinessId/);
+  assert.match(page,/result\.preview\.seriesId !== requestedSeriesId/);
+  assert.match(page,/scopeGeneration !== workspaceGeneration\.current/);
+  assert.match(page,/invalidateSeriesRead\(\)/);
+  assert.ok((page.match(/seriesReadIsCurrent\(generation, controller\)/g) ?? []).length >= 4);
+  assert.ok((page.match(/signal: controller\.signal/g) ?? []).length >= 6);
+});
