@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 3,
+  "kind": "h19-performance-baseline",
+  "generatedAt": "2026-09-24T20:54:17.307Z",
+  "environment": {
+    "node": "v24.21.0",
+    "platform": "linux",
+    "arch": "x64",
+    "cpuCount": 4,
+    "cpuModel": "AMD EPYC 7763 64-Core Processor",
+    "totalMemoryBytes": 16766414848
+  },
+  "repository": {
+    "root": "/home/runner/work/randevu/randevu",
+    "sourceFiles": 532,
+    "sourceBytes": 5446268,
+    "sourceLines": 131394,
+    "tsJsFiles": 331,
+    "tsJsLines": 67086,
+    "scipProjectShards": 3,
+    "scipIndexedFiles": 77,
+    "scipIndexedLines": 21124,
+    "scipUnindexedTsJsFiles": 254
+  },
+  "measurements": {
+    "discovery": {
+      "sourceWalkMs": 13.124,
+      "sourceStatsMs": 101.722,
+      "typescriptProjectDiscoveryMs": 25.063,
+      "scipIndexedStatsMs": 16.88
+    },
+    "inventory": {
+      "filesScanned": 532,
+      "units": 6452,
+      "errors": 0,
+      "firstMs": 1035.298,
+      "repeatMedianMs": 659.637,
+      "repeatP95Ms": 687.009,
+      "filesPerSecond": 513.9,
+      "unitsPerSecond": 6232
+    },
+    "history": {
+      "coldMs": 259.841,
+      "warmHitMs": 7.181,
+      "coldCache": "miss",
+      "warmCache": "hit",
+      "warmSpeedup": 36.18,
+      "couplings": 888,
+      "hotspots": 771
+    },
+    "syntheticScale": {
+      "projects": 200,
+      "references": 5000,
+      "impactMedianMs": 6.999,
+      "impactP95Ms": 8.092,
+      "impactedPaths": 5000,
+      "candidateTests": 2500,
+      "discoveryMedianMs": 5.453,
+      "discoveryP95Ms": 9.181,
+      "hypotheses": 1767
+    },
+    "scipTypescript": {
+      "status": "measured",
+      "version": "0.4.0",
+      "repositoryTsJsFiles": 331,
+      "repositoryTsJsLines": 67086,
+      "sourceFiles": 77,
+      "sourceLines": 21124,
+      "unindexedTsJsFiles": 254,
+      "firstIndexMs": 8753.629,
+      "repeatH19CacheMissMs": 8284.36,
+      "exactContentWarmHitMs": 6.589,
+      "exactContentWarmSpeedup": 1328.52,
+      "indexBytes": 5181665,
+      "firstIndexLinesPerSecond": 2413.2,
+      "singleFileChange": {
+        "status": "measured",
+        "path": "src/App.tsx",
+        "reindexMs": 8323.589,
+        "vsExactWarmRatio": 1263.26,
+        "vsFirstIndexRatio": 0.951
+      },
+      "unindexedFileChange": {
+        "status": "measured",
+        "path": "scripts/browser-booking-recovery.mjs",
+        "cache": "hit",
+        "wallMs": 6.924
+      },
+      "projectShards": {
+        "count": 3,
+        "coldTotalMs": 9708.545,
+        "warmHitTotalMs": 8.355,
+        "coldVsMonolithicRatio": 1.109,
+        "rows": [
+          {
+            "id": "tsconfig.app.json",
+            "configPath": "tsconfig.app.json",
+            "sourceFiles": 41,
+            "sourceLines": 11320,
+            "coldMs": 5621.697,
+            "warmHitMs": 3.558,
+            "indexBytes": 2928670
+          },
+          {
+            "id": "tsconfig.node.json",
+            "configPath": "tsconfig.node.json",
+            "sourceFiles": 1,
+            "sourceLines": 19,
+            "coldMs": 1228.15,
+            "warmHitMs": 0.718,
+            "indexBytes": 2658
+          },
+          {
+            "id": "tsconfig.worker.json",
+            "configPath": "tsconfig.worker.json",
+            "sourceFiles": 35,
+            "sourceLines": 9785,
+            "coldMs": 2858.698,
+            "warmHitMs": 4.079,
+            "indexBytes": 2250481
+          }
+        ],
+        "singleFileChange": {
+          "status": "measured",
+          "path": "src/App.tsx",
+          "owningShard": "tsconfig.app.json",
+          "totalMs": 5561.813,
+          "misses": 1,
+          "hits": 2,
+          "perShard": [
+            {
+              "id": "tsconfig.app.json",
+              "cache": "miss",
+              "wallMs": 5557.081
+            },
+            {
+              "id": "tsconfig.node.json",
+              "cache": "hit",
+              "wallMs": 0.755
+            },
+            {
+              "id": "tsconfig.worker.json",
+              "cache": "hit",
+              "wallMs": 3.72
+            }
+          ],
+          "vsMonolithicChangedFileSpeedup": 1.5
+        }
+      }
+    }
+  },
+  "interpretation": {
+    "thresholdsFrozen": false,
+    "note": "Repeat sample for PERF-002 jitter estimation."
+  }
+}
