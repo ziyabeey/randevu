@@ -9,6 +9,10 @@
     {
       "pattern": "kepenk.ai",
       "custom_domain": true
+    },
+    {
+      "pattern": "www.kepenk.ai",
+      "custom_domain": true
     }
   ]
 }
