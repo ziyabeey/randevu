@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { appendFile, mkdtemp, readFile, rm, stat, symlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -246,23 +246,84 @@ export async function runPerformanceBaseline({
       };
 
       const cold = await timed(() => indexProject(params));
-      if (cold.value.cache !== 'miss') throw new Error('SCIP cold benchmark unexpectedly hit cache');
+      if (cold.value.cache !== 'miss') throw new Error('SCIP first benchmark unexpectedly hit cache');
       const indexStat = await stat(cold.value.indexFile);
       const warm = await timed(() => indexProject(params));
       if (warm.value.cache !== 'hit') throw new Error('SCIP warm benchmark unexpectedly missed cache');
+
+      const repeatMiss = await timed(() => indexProject({
+        ...params,
+        cache: new ArtifactCache(path.join(temp, 'scip-repeat-artifacts')),
+      }));
+      if (repeatMiss.value.cache !== 'miss') {
+        throw new Error('SCIP repeat cache-miss benchmark unexpectedly hit cache');
+      }
+
+      let singleFileChange = {
+        status: 'not-measured',
+        reason: 'no mutable TypeScript/JavaScript source file found',
+      };
+      const mutationTarget = statsTimed.value.tsJs.find((file) =>
+        /\.(?:ts|tsx|js|jsx|mjs|cjs)$/i.test(file) && !/\.d\.ts$/i.test(file));
+
+      if (mutationTarget) {
+        const mutationRoot = path.join(temp, 'mutation-repo');
+        const clone = spawnSync('git', ['clone', '--shared', '--quiet', repoRoot, mutationRoot], {
+          cwd: temp,
+          encoding: 'utf8',
+        });
+        if (clone.status !== 0) {
+          throw new Error(`local mutation clone failed: ${String(clone.stderr || clone.stdout).trim()}`);
+        }
+
+        try {
+          await stat(path.join(repoRoot, 'node_modules'));
+          await symlink(path.join(repoRoot, 'node_modules'), path.join(mutationRoot, 'node_modules'), 'dir');
+        } catch (error) {
+          if (error?.code !== 'ENOENT') throw error;
+        }
+
+        await appendFile(
+          path.join(mutationRoot, mutationTarget),
+          '\n// h19-performance-single-file-change\n',
+        );
+
+        const mutationRun = await timed(() => indexProject({
+          cwd: mutationRoot,
+          projectRoot: '.',
+          sourceFiles: statsTimed.value.tsJs,
+          configFiles: availableConfigs,
+          dependencySurfaces: {},
+          indexer,
+          cache: new ArtifactCache(path.join(temp, 'scip-mutation-artifacts')),
+        }));
+        if (mutationRun.value.cache !== 'miss') {
+          throw new Error('single-file-change benchmark unexpectedly hit cache');
+        }
+
+        singleFileChange = {
+          status: 'measured',
+          path: mutationTarget,
+          reindexMs: mutationRun.wallMs,
+          vsExactWarmRatio: warm.wallMs > 0 ? round(mutationRun.wallMs / warm.wallMs, 2) : null,
+          vsFirstIndexRatio: cold.wallMs > 0 ? round(mutationRun.wallMs / cold.wallMs, 3) : null,
+        };
+      }
 
       scip = {
         status: 'measured',
         version: scipVersion,
         sourceFiles: statsTimed.value.tsJsFiles,
         sourceLines: statsTimed.value.tsJsLines,
-        coldMs: cold.wallMs,
-        warmHitMs: warm.wallMs,
-        warmSpeedup: warm.wallMs > 0 ? round(cold.wallMs / warm.wallMs, 2) : null,
+        firstIndexMs: cold.wallMs,
+        repeatH19CacheMissMs: repeatMiss.wallMs,
+        exactContentWarmHitMs: warm.wallMs,
+        exactContentWarmSpeedup: warm.wallMs > 0 ? round(cold.wallMs / warm.wallMs, 2) : null,
         indexBytes: indexStat.size,
-        linesPerSecond: cold.wallMs > 0
+        firstIndexLinesPerSecond: cold.wallMs > 0
           ? round(statsTimed.value.tsJsLines / (cold.wallMs / 1000), 1)
           : null,
+        singleFileChange,
       };
     } else if (requireScip) {
       throw new Error('scip-typescript is required for this baseline but is not installed');
