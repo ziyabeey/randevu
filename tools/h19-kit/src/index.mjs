@@ -29,3 +29,6 @@ export * from './experiments/gates.mjs';
 export * from './mutations/history.mjs';
 export * from './rules/loader.mjs';
 export * from './adapters/semgrep-evidence.mjs';
+export * from './experiments/protocol.mjs';
+export * from './experiments/blind-packet.mjs';
+export * from './experiments/ledger.mjs';
