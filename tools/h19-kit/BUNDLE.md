@@ -61,9 +61,27 @@ Required measurements:
 - H19 project-shard warm cache-hit time;
 - deterministic M4/M5 synthetic scale probe.
 
-The first run is measurement-only. Do not invent pass/fail thresholds before the baseline is captured.
+The first runs are measurement-only. Do not invent pass/fail thresholds before the baseline is captured.
 
-## Next authorized feature gate
+### PERF-001 / PERF-002 result
+
+The first two baselines found a blocking performance issue in the current root-level SCIP invalidation strategy:
+
+- first index: ~9.3 s;
+- exact-content cache hit: ~28 ms;
+- one source-file change: ~8.95 s, or 96.2% of the first-index cost.
+
+The measured single-file change was under `scripts/`, while the explicit product TypeScript projects are rooted in
+`src/`, `worker/`, and `vite.config.ts`.
+
+### Next authorized performance gate
+
+Repair TypeScript project ownership and SCIP shard invalidation, then remeasure app-only, worker-only,
+unrelated-tooling-change, and exact-content paths.
+
+Do not start the next feature gate until this remediation is measured.
+
+## Next authorized feature gate after performance remediation
 
 **Minimal test specification from validated/high-value coverage hypotheses.**
 
