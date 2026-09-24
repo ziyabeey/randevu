@@ -1,3 +1,5 @@
+import { symbolsForSemanticUnits } from './unit-symbol-map.mjs';
+
 import { relatedSymbols, symbolNode } from '../graph/symbol-graph.mjs';
 
 function unique(values) {
@@ -85,4 +87,20 @@ export function referenceBlastRadius({
       'Coverage gaps are reported only when coverageByPath explicitly marks a path uncovered.',
     ]),
   });
+}
+
+export function referenceBlastRadiusForUnits({
+  graph,
+  units = [],
+  changedPaths = [],
+  ...rest
+} = {}) {
+  const mapping = symbolsForSemanticUnits(graph, units);
+  const report = referenceBlastRadius({
+    graph,
+    changedSymbols: mapping.symbols,
+    changedPaths,
+    ...rest,
+  });
+  return Object.freeze({ mapping, report });
 }
