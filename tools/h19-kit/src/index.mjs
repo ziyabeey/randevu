@@ -39,3 +39,4 @@ export * from './impact/change-impact.mjs';
 export * from './discovery/coverage-discovery.mjs';
 export * from './discovery/validation-packet.mjs';
 export * from './specification/test-spec.mjs';
+export * from './materialization/test-candidate.mjs';
