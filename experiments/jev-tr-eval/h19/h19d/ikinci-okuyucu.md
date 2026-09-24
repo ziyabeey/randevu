@@ -41,7 +41,7 @@ Fonksiyon: `public.f14_claim_ticket_command` (`supabase/migrations/2026092211150
    into v_hash, v_result
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `yes` · eksen(ler): `D1`
 
 ## Vaka 2
 
@@ -59,7 +59,7 @@ Fonksiyon: `public.restore_business_public_media_delete` (`supabase/migrations/2
    if coalesce(p_restore_cover, false) then
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `yes` · eksen(ler): `yok`
 
 ## Vaka 3
 
@@ -86,7 +86,7 @@ Fonksiyon: `public.release_notification_job_v2` (`supabase/migrations/2026091212
      update public.appointment_notification_jobs
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `yes` · eksen(ler): `D4`
 
 ## Vaka 4
 
@@ -113,7 +113,7 @@ Fonksiyon: `public.f11_reschedule_group_core` (`supabase/migrations/202609171710
    select * into v_claim
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `no` · eksen(ler): `D1,D4`
 
 ## Vaka 5
 
@@ -131,7 +131,7 @@ Fonksiyon: `public.f11_reschedule_group_core` (`supabase/migrations/202609171710
    end if;
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `no` · eksen(ler): `D4`
 
 ## Vaka 6
 
@@ -149,7 +149,7 @@ Fonksiyon: `public.create_business_with_owner` (`supabase/migrations/20260911090
  end $$;
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `no` · eksen(ler): `D0`
 
 ## Vaka 7
 
@@ -166,7 +166,7 @@ Fonksiyon: `public.complete_notification_job_v2` (`supabase/migrations/202609121
        delivery_certainty = 'accepted',
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `no` · eksen(ler): `D2`
 
 ## Vaka 8
 
@@ -193,7 +193,7 @@ Fonksiyon: `public.update_business_public_profile` (`supabase/migrations/2026091
  end
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `no` · eksen(ler): `D0,D2`
 
 ## Vaka 9
 
@@ -212,7 +212,7 @@ Fonksiyon: `public.set_appointment_status` (`supabase/migrations/20260911121000_
    if v_current.status = p_status then return v_current; end if;
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `yes` · eksen(ler): `yok`
 
 ## Vaka 10
 
@@ -245,7 +245,7 @@ Fonksiyon: `public.replace_staff_hours` (`supabase/migrations/20260911110000_pha
    end loop;
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `no` · eksen(ler): `D3,D4`
 
 ## Vaka 11
 
@@ -297,7 +297,7 @@ Fonksiyon: `public.update_business_customer` (`supabase/migrations/2026091411000
        phone = v_phone,
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `yes` · eksen(ler): `D0`
 
 ## Vaka 12
 
@@ -316,7 +316,7 @@ Fonksiyon: `public.create_appointment` (`supabase/migrations/20260911121000_phas
    select timezone into v_timezone
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `yes` · eksen(ler): `yok`
 
 ## Vaka 13
 
@@ -337,7 +337,7 @@ Fonksiyon: `public.create_staff_guarded` (`supabase/migrations/20260914111500_f1
    values(p_business_id, trim(p_name), v_phone)
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `yes` · eksen(ler): `D3`
 
 ## Vaka 14
 
@@ -354,7 +354,7 @@ Fonksiyon: `public.finish_business_public_media_delete` (`supabase/migrations/20
    get diagnostics v_count = row_count;
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `yes` · eksen(ler): `yok`
 
 ## Vaka 15
 
@@ -372,7 +372,7 @@ Fonksiyon: `public.enforce_public_booking_rate` (`supabase/migrations/2026091303
    end case;
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `no` · eksen(ler): `D3`
 
 ## Vaka 16
 
@@ -399,5 +399,5 @@ Fonksiyon: `public.set_staff_service_guarded` (`supabase/migrations/202609141115
      returning * into v_row;
 ```
 
-D5: `____` · eksen(ler): `________`
+D5: `no` · eksen(ler): `D0,D3`
 
