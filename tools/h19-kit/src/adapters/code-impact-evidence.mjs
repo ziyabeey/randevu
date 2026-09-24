@@ -10,12 +10,15 @@ export function scipImpactEvidence(impact, { source = 'scip' } = {}) {
   const changedDocs = impact.changedDocuments ?? [];
   const affectedDocs = impact.affectedDocuments ?? [];
   const changedSymbols = impact.changedSymbols ?? [];
+  const impactedSymbols = impact.impactedSymbols ?? changedSymbols;
   const crossFile = affectedDocs.some((doc) => !changedDocs.includes(doc));
   return [
     evidence('impact.symbols.changed', changedSymbols.length ? 'present' : 'absent', {
       source,
       count: changedSymbols.length,
       symbols: changedSymbols,
+      impactedCount: impactedSymbols.length,
+      impactedSymbols,
     }),
     evidence('impact.cross_file', crossFile ? 'present' : 'absent', {
       source,
