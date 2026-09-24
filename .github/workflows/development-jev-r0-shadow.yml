@@ -1,0 +1,54 @@
+name: Development Jev R0 Shadow
+
+# DE-JEV-R0, maturity SHADOW (advisory). Compares the production R0 receipt rule
+# with TypeSafe Jev and reports confident disagreements in the job summary.
+# Scheduled/manual only: it never runs as a PR check, never writes to GitHub and
+# never changes dispatcher input or R0 blockers.
+
+on:
+  schedule:
+    - cron: '41 5 * * *'
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: 'Days of PR activity to scan'
+        required: false
+        default: '7'
+        type: string
+
+concurrency:
+  group: development-jev-r0-shadow
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+jobs:
+  shadow:
+    name: DE-JEV-R0 advisory signal
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Compare production R0 rule with Jev (advisory)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          LOOKBACK_DAYS: ${{ inputs.lookback_days || '7' }}
+          JEV_R0_OUTPUT: ${{ runner.temp }}/jev-r0-shadow.json
+        run: node scripts/jev-r0-shadow.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jev-r0-shadow
+          path: ${{ runner.temp }}/jev-r0-shadow.json
+          if-no-files-found: ignore
+          retention-days: 90

@@ -122,6 +122,7 @@ until Issue #121 has a completion receipt.
 | [Effective state](automations/effective-state-audit.md) | PR changes / manual | Manual prompt/Skill after a head change |
 | [Stale reviews](automations/stale-review-detector.md) | Head changes after receipt | Manual prompt; advisory comment draft |
 | [Telemetry](automations/development-telemetry-review.md) | Manual / scheduled | Manual first, optional approved local schedule |
+| [Jev R0 second signal](automations/jev-r0-shadow.md) | Daily schedule / manual dispatch | Skips without `TYPESAFE_API_KEY`; job summary only |
 
 ### Native automatic R0 review — optional operator setup
 
@@ -231,6 +232,7 @@ is satisfied by this work.
 | DE-STATE | SHADOW | depends_on main/PR/#65 provenance; reinforces Context Refresh |
 | DE-STALE | SHADOW | reinforces SHA fencing; overlaps stale approval dismissal |
 | DE-TELEMETRY | SHADOW | depends_on exact receipts; overlaps CI/review measurements |
+| DE-JEV-R0 | SHADOW | overlaps DE-R0 receipt parsing; reports confident Jev disagreements, never changes blockers |
 | Static artifact checks | Ordinary code correctness | Tests authored syntax/shape, not live governance or new merge authority |
 
 Use `reinforces / depends_on / overlaps / narrows / supersedes / conflicts_with`
