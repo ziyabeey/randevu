@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { extractSqlRoutines } from '../extractors/sql-routines.mjs';
 import { extractTypeScriptUnits } from '../extractors/typescript-units.mjs';
 import { extractPythonUnits } from '../extractors/python-units.mjs';
+import { extractTreeSitterUnits } from '../extractors/tree-sitter-units.mjs';
 
 const DEFAULT_EXTENSIONS = new Set(['.sql','.ts','.tsx','.js','.jsx','.mjs','.cjs','.py']);
 const DEFAULT_IGNORES = new Set(['.git','node_modules','dist','build','.next','coverage','.h19']);
@@ -33,7 +34,7 @@ export async function sourceFiles(root = process.cwd(), options = {}) {
   return (await walk(root, root, options)).sort();
 }
 
-export async function extractFileUnits(root, relativePath) {
+export async function extractFileUnits(root, relativePath, { treeSitterFallbacks = {} } = {}) {
   const full = path.join(root, relativePath);
   const text = await readFile(full, 'utf8');
   const ext = path.extname(relativePath).toLowerCase();
@@ -47,17 +48,34 @@ export async function extractFileUnits(root, relativePath) {
     digest: sha(x.definition),
   }));
   else if (ext === '.py') units = await extractPythonUnits(text, { path: relativePath });
-  else units = extractTypeScriptUnits(text, { path: relativePath });
+  else if (['.ts','.tsx','.js','.jsx','.mjs','.cjs'].includes(ext)) {
+    units = extractTypeScriptUnits(text, { path: relativePath });
+  } else {
+    const fallback = treeSitterFallbacks[ext];
+    if (!fallback) throw new Error(`unsupported source extension: ${ext}`);
+    units = extractTreeSitterUnits(text, {
+      path: relativePath,
+      profile: fallback.profile,
+      runtime: fallback.runtime,
+      failOnParseError: fallback.failOnParseError ?? true,
+    });
+  }
   return units;
 }
 
 export async function repositoryInventory(root = process.cwd(), options = {}) {
-  const files = await sourceFiles(root, options);
+  const treeSitterFallbacks = options.treeSitterFallbacks ?? {};
+  const configuredExtensions = options.extensions
+    ? new Set(options.extensions)
+    : new Set(DEFAULT_EXTENSIONS);
+  for (const ext of Object.keys(treeSitterFallbacks)) configuredExtensions.add(ext);
+
+  const files = await sourceFiles(root, { ...options, extensions: configuredExtensions });
   const units = [];
   const errors = [];
   for (const file of files) {
     try {
-      units.push(...await extractFileUnits(root, file));
+      units.push(...await extractFileUnits(root, file, { treeSitterFallbacks }));
     } catch (error) {
       errors.push({ path: file, error: error instanceof Error ? error.message : String(error) });
     }
