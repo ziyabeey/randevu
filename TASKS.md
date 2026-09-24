@@ -150,6 +150,10 @@ Bu tablo yalnız H19 Kit geliştirme zincirinin canonical PR bağlarını tutar.
 | H19-KIT-ROADMAP | Bundle roadmap synchronization | H19-KIT-M5 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-bundle-roadmap-sync` · [PR #559](https://github.com/ziyabeey/randevu/pull/559) |
 | H19-KIT-TEST-GATE-V01 | Minimal test-spec gate v0.1 freeze | H19-KIT-ROADMAP | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-test-spec-gate-freeze` · [PR #560](https://github.com/ziyabeey/randevu/pull/560) |
 | H19-KIT-M6 | Minimal test specification | H19-KIT-TEST-GATE-V01 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m6-test-specification` · [PR #561](https://github.com/ziyabeey/randevu/pull/561) |
+| H19-KIT-TEST-CANDIDATE-GATE | Executable test-candidate gate v0.1 freeze | H19-KIT-M6 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-test-candidate-gate-freeze` · [PR #564](https://github.com/ziyabeey/randevu/pull/564) · yalnız `readyForExecution` M6 specs; renderer/provenance/hash/path contract freeze; file write/test execution yok |
+| H19-KIT-M7 | Executable test candidate materializer | H19-KIT-TEST-CANDIDATE-GATE | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m7-test-candidate` · [PR #566](https://github.com/ziyabeey/randevu/pull/566) · TC1–TC8; deterministic renderer/materializer; repo write/test execution yok |
+| H19-KIT-PERF-BASELINE | M0→M5 reproducible performance baseline gate | H19-KIT-ROADMAP | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-performance-baseline` · [PR #567](https://github.com/ziyabeey/randevu/pull/567) · gerçek repo + deterministic scale probe; ilk baseline ölçüm-only, önceden eşik uydurulmaz |
+| H19-KIT-PERF-FREEZE | PERF-002 measurement freeze ve remediation gate | H19-KIT-PERF-BASELINE | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-performance-freeze` · [PR #570](https://github.com/ziyabeey/randevu/pull/570) · measured SCIP invalidation maliyeti nedeniyle sonraki feature milestone shard/project ownership repair + remeasurement bekler |
 
 ## Kabul kapıları
 
