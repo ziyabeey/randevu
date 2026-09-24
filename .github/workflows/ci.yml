@@ -229,6 +229,9 @@ jobs:
       - name: Run H19 Kit M4 change-impact orchestrator smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m4-change-impact
+      - name: Run H19 Kit M5 coverage-discovery smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m5-coverage-discovery
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
