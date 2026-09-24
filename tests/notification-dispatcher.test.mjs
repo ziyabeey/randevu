@@ -64,6 +64,10 @@ async function claimRow(attemptCount = 1, overrides = {}) {
     recovery_id: recoveryId,
     recipient: 'notify@example.test',
     provider: 'resend',
+    channel: 'email',
+    kind: 'public_booking_confirmation',
+    event_reason: 'created',
+    provider_reference_id: null,
     provider_idempotency_key: 'public-booking-confirmation/bb000000-0000-4000-8000-000000000003',
     attempt_count: attemptCount,
     retry_until: '2026-09-18T07:05:00.000Z',
@@ -125,8 +129,8 @@ test('F09-03/S03 notification dispatcher contract', async (t) => {
     const fakeFetch = async (input, init = {}) => {
       const url = String(input);
       calls.push({ url, init });
-      if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([row]);
-      if (url.endsWith('/rpc/lock_notification_request_v2')) {
+      if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([row]);
+      if (url.endsWith('/rpc/lock_notification_request_v3')) {
         const body = JSON.parse(String(init.body));
         assert.equal(body.p_dispatch_secret, dispatchSecret);
         assert.equal(body.p_job_id, row.job_id);
@@ -184,7 +188,7 @@ test('F09-03/S03 notification dispatcher contract', async (t) => {
 
     const fakeFetch = async (input, init = {}) => {
       const url = String(input);
-      if (url.endsWith('/rpc/claim_notification_jobs_v2')) {
+      if (url.endsWith('/rpc/claim_notification_jobs_v3')) {
         dispatchRound += 1;
         if (dispatchRound === 2 && persistedLock) {
           second.sender_snapshot = persistedLock.p_sender;
@@ -193,7 +197,7 @@ test('F09-03/S03 notification dispatcher contract', async (t) => {
         }
         return json([dispatchRound === 1 ? first : second]);
       }
-      if (url.endsWith('/rpc/lock_notification_request_v2')) {
+      if (url.endsWith('/rpc/lock_notification_request_v3')) {
         const body = JSON.parse(String(init.body));
         if (!persistedLock) persistedLock = body;
         else {
@@ -240,8 +244,8 @@ test('F09-03/S03 notification dispatcher contract', async (t) => {
     let releaseBody = null;
     const fakeFetch = async (input, init = {}) => {
       const url = String(input);
-      if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([row]);
-      if (url.endsWith('/rpc/lock_notification_request_v2')) return json(sendGate());
+      if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([row]);
+      if (url.endsWith('/rpc/lock_notification_request_v3')) return json(sendGate());
       if (url === 'https://api.resend.com/emails') {
         return json({ name: 'validation_error' }, 400);
       }

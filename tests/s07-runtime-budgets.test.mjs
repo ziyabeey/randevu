@@ -98,6 +98,10 @@ async function claimRow(overrides = {}) {
     recovery_id: recoveryId,
     recipient: 'notify@example.test',
     provider: 'resend',
+    channel: 'email',
+    kind: 'public_booking_confirmation',
+    event_reason: 'created',
+    provider_reference_id: null,
     provider_idempotency_key: 'public-booking-confirmation/bb000000-0000-4000-8000-000000000007',
     attempt_count: 1,
     retry_until: '2026-09-18T07:05:00.000Z',
@@ -251,8 +255,8 @@ test('S07 notification DB deadlines prevent unsafe or unbounded provider progres
     let lockCalls = 0;
     const summary = await dispatchNotificationBatch(env, async (input, init) => {
       const url = String(input);
-      if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([row]);
-      if (url.endsWith('/rpc/lock_notification_request_v2')) {
+      if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([row]);
+      if (url.endsWith('/rpc/lock_notification_request_v3')) {
         lockCalls += 1;
         return hangingBody(init);
       }
@@ -274,8 +278,8 @@ test('S07 notification DB deadlines prevent unsafe or unbounded provider progres
       let finalSignal;
       const summary = await dispatchNotificationBatch(env, async (input, init) => {
         const url = String(input);
-        if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([row]);
-        if (url.endsWith('/rpc/lock_notification_request_v2')) return json(sendPermission());
+        if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([row]);
+        if (url.endsWith('/rpc/lock_notification_request_v3')) return json(sendPermission());
         if (url === 'https://api.resend.com/emails') {
           providerCalls += 1;
           return finalRpc.startsWith('complete')
@@ -303,8 +307,8 @@ test('S07 notification DB deadlines prevent unsafe or unbounded provider progres
     let providerCalls = 0;
     const summary = await dispatchNotificationBatch(env, async (input) => {
       const url = String(input);
-      if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([row]);
-      if (url.endsWith('/rpc/lock_notification_request_v2')) {
+      if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([row]);
+      if (url.endsWith('/rpc/lock_notification_request_v3')) {
         await new Promise((resolve) => setTimeout(resolve, 20));
         return json(sendPermission({
           server_time: new Date(Date.now() - 25).toISOString(),
@@ -351,7 +355,7 @@ test('S07 scheduled work starts maintenance, dispatch and heartbeat independentl
       maintenanceSignal = init.signal;
       return abortableHang(init);
     }
-    if (url.endsWith('/rpc/claim_notification_jobs_v2')) {
+    if (url.endsWith('/rpc/claim_notification_jobs_v3')) {
       resolveClaimStarted();
       return json([]);
     }
@@ -374,7 +378,7 @@ test('S07 scheduled work starts maintenance, dispatch and heartbeat independentl
   }
   assert.equal(maintenanceSignal.aborted, false, 'dispatch starts while maintenance is still pending');
   assert.ok(calls.some((url) => url.endsWith('/rpc/maintain_notification_jobs')));
-  assert.ok(calls.some((url) => url.endsWith('/rpc/claim_notification_jobs_v2')));
+  assert.ok(calls.some((url) => url.endsWith('/rpc/claim_notification_jobs_v3')));
   releaseMaintenanceDeadline();
   await Promise.all(pending);
   assert.ok(productionDeadlines >= 2, 'maintenance and claim each arm the production deadline');

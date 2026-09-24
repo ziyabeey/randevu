@@ -63,6 +63,10 @@ async function row(attemptCount = 1, overrides = {}) {
     recovery_id: recoveryId,
     recipient: 'notify@example.test',
     provider: 'resend',
+    channel: 'email',
+    kind: 'public_booking_confirmation',
+    event_reason: 'created',
+    provider_reference_id: null,
     provider_idempotency_key: 'public-booking-confirmation/bb000000-0000-4000-8000-000000000103',
     attempt_count: attemptCount,
     retry_until: '2026-09-18T07:05:00.000Z',
@@ -101,7 +105,7 @@ test('S03 accepted-response-loss retry keeps byte-identical provider request aft
   const providerKeys = [];
   const fakeFetch = async (input, init = {}) => {
     const url = String(input);
-    if (url.endsWith('/rpc/claim_notification_jobs_v2')) {
+    if (url.endsWith('/rpc/claim_notification_jobs_v3')) {
       round += 1;
       if (round === 2 && storedLock) {
         second.sender_snapshot = storedLock.p_sender;
@@ -110,7 +114,7 @@ test('S03 accepted-response-loss retry keeps byte-identical provider request aft
       }
       return json([round === 1 ? first : second]);
     }
-    if (url.endsWith('/rpc/lock_notification_request_v2')) {
+    if (url.endsWith('/rpc/lock_notification_request_v3')) {
       const body = JSON.parse(String(init.body));
       if (!storedLock) storedLock = body;
       else {
@@ -159,7 +163,7 @@ test('S03 mismatched stored request fingerprint is terminal before provider HTTP
   let release = null;
   const fakeFetch = async (input, init = {}) => {
     const url = String(input);
-    if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([mismatched]);
+    if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([mismatched]);
     if (url.endsWith('/rpc/release_notification_job_v2')) {
       release = JSON.parse(String(init.body));
       return json('failed_terminal');
@@ -192,8 +196,8 @@ for (const [name, gate] of [
     let calls = 0;
     const summary = await dispatchNotificationBatch(baseEnv, async (input) => {
       const url = String(input);
-      if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([claimed]);
-      if (url.endsWith('/rpc/lock_notification_request_v2')) return json(gate());
+      if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([claimed]);
+      if (url.endsWith('/rpc/lock_notification_request_v3')) return json(gate());
       if (url === 'https://api.resend.com/emails') { calls += 1; return json({ id: 'unsafe' }); }
       if (url.endsWith('/rpc/complete_notification_job_v2')) return json(sendGate());
       throw new Error(`unexpected fetch ${url}`);
@@ -209,8 +213,8 @@ test('S03 delayed send permission is rejected even if Worker wall clock is behin
   let calls = 0;
   const summary = await dispatchNotificationBatch(baseEnv, async (input) => {
     const url = String(input);
-    if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([claimed]);
-    if (url.endsWith('/rpc/lock_notification_request_v2')) {
+    if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([claimed]);
+    if (url.endsWith('/rpc/lock_notification_request_v3')) {
       const server = Date.now() + 60_000;
       const gate = { server_time: new Date(server).toISOString(), send_before: new Date(server + 5).toISOString(), receipt_token: 'cc000000-0000-4000-8000-000000000103' };
       await new Promise((resolve) => setTimeout(resolve, 25));
@@ -228,8 +232,8 @@ test('S03 a false completion acknowledgement cannot count as a recorded send', a
   let calls = 0;
   const summary = await dispatchNotificationBatch(baseEnv, async (input) => {
     const url = String(input);
-    if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([claimed]);
-    if (url.endsWith('/rpc/lock_notification_request_v2')) return json(sendGate());
+    if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([claimed]);
+    if (url.endsWith('/rpc/lock_notification_request_v3')) return json(sendGate());
     if (url === 'https://api.resend.com/emails') { calls += 1; return json({ id: 'real-receipt' }); }
     if (url.endsWith('/rpc/complete_notification_job_v2')) return json(false);
     throw new Error(`unexpected fetch ${url}`);
