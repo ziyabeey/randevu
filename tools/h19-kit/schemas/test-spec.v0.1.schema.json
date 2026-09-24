@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/test-spec.v0.1.schema.json",
+  "title": "H19 Minimal Test Specification v0.1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "packetSha256",
+    "hypothesisId",
+    "sourceRevision",
+    "target",
+    "origin",
+    "setup",
+    "action",
+    "expectedInvariant",
+    "mutationToKill",
+    "requiredObservations",
+    "unknowns",
+    "readyForExecution",
+    "specSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "packetSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "hypothesisId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceRevision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "target": {
+      "type": "object",
+      "required": [
+        "kind",
+        "path"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "path",
+            "semantic-unit"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unitId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "origin": {
+      "type": "object",
+      "required": [
+        "reason",
+        "priority",
+        "evidenceIds"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priority": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "evidenceIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "recipe": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "recipeId": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "recipeId",
+            "version",
+            "digest"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "setup": {
+      "$ref": "#/$defs/listSection"
+    },
+    "action": {
+      "$ref": "#/$defs/textSection"
+    },
+    "expectedInvariant": {
+      "$ref": "#/$defs/textSection"
+    },
+    "mutationToKill": {
+      "type": "object",
+      "required": [
+        "state",
+        "mutationId",
+        "mutatorId",
+        "provenance"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "known",
+            "unknown"
+          ]
+        },
+        "mutationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mutatorId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provenance": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "requiredObservations": {
+      "$ref": "#/$defs/listSection"
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "setup",
+          "action",
+          "expectedInvariant",
+          "mutationToKill",
+          "requiredObservations"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "readyForExecution": {
+      "type": "boolean"
+    },
+    "specSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "textSection": {
+      "type": "object",
+      "required": [
+        "state",
+        "value",
+        "provenance"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "known",
+            "unknown"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provenance": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "listSection": {
+      "type": "object",
+      "required": [
+        "state",
+        "items",
+        "provenance"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "known",
+            "unknown"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "provenance": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
