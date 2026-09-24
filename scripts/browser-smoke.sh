@@ -78,3 +78,4 @@ CHROME_BIN="$CHROME_BIN" node scripts/browser-f13-booking-production.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f16-feedback.mjs
 
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f13-workspace-shell.mjs
+CHROME_BIN="$CHROME_BIN" node scripts/browser-f16-packages.mjs

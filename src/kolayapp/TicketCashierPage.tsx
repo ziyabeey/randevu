@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { ApiRequestError, api } from '../api';
 import type { ManagedCatalog } from '../CatalogSettingsPanel';
+import type { ServicePackage } from '../ServicePackagesPanel';
 import { useWorkspace } from '../workspace-context';
 import './ticket-cashier.css';
 
@@ -9,7 +10,7 @@ type PageInfo = { limit: number; hasMore: boolean; nextCursor: string | null };
 type TicketLine = {
   lineId: string;
   ordinal: number;
-  sourceType: 'service' | 'product';
+  sourceType: 'service' | 'product' | 'package';
   sourceAppointmentLineId: string | null;
   serviceId: string | null;
   staffId: string | null;
@@ -32,6 +33,41 @@ type TicketLine = {
   finalizationReason: string | null;
   discountAt: string | null;
   discountReason: string | null;
+  packageId?: string | null;
+  packageName?: string | null;
+  soldPackage?: {
+    customerPackageId: string;
+    status: 'active' | 'cancelled' | 'refunded';
+    sessionsTotal: number;
+    sessionsUsed: number;
+    expiresAt: string;
+    refundPreviewMinor: number | null;
+    refundValueMinor: number | null;
+    refundedSessions: number | null;
+  } | null;
+  packageCoverage?: {
+    usageId: string;
+    customerPackageId: string;
+    packageName: string;
+    valueMinor: number;
+  } | null;
+};
+type CustomerPackage = {
+  customerPackageId: string;
+  customerId: string;
+  serviceId: string;
+  packageName: string;
+  serviceName: string;
+  sessionsTotal: number;
+  sessionsUsed: number;
+  sessionsRemaining: number;
+  currency: string;
+  status: 'active' | 'cancelled' | 'refunded';
+  expiresAt: string;
+  expired: boolean;
+  saleTicketId: string;
+  saleTicketStatus: 'open' | 'closed' | 'cancelled';
+  refundPreviewMinor: number | null;
 };
 type PaymentEvent = {
   eventId: string;
@@ -62,7 +98,9 @@ export type TicketContract = {
   estimateMaxMinor: number;
   subtotalMinor: number | null;
   discountMinor: number | null;
+  packageCoveredMinor?: number | null;
   returnedMinor?: number;
+  packageRefundedMinor?: number;
   totalMinor: number | null;
   paymentStatus: 'unpaid' | 'partial' | 'paid';
   paidMinor: number;
@@ -194,6 +232,34 @@ function localDate(value: string) {
   return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
 }
 
+function shortDate(value: string) {
+  return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short' }).format(new Date(value));
+}
+
+function packageStatusLabel(status: 'active' | 'cancelled' | 'refunded') {
+  if (status === 'active') return 'aktif';
+  if (status === 'refunded') return 'iade edildi';
+  return 'iptal edildi';
+}
+
+// F16-05: the proportional refund amount comes from the server; the cashier only
+// spreads it over the ticket's own payments by their remaining net amount.
+function refundSources(ticket: TicketContract, amountMinor: number) {
+  let remaining = amountMinor;
+  const sources: Array<{ paymentEventId: string; amountMinor: number; method: PaymentEvent['method'] }> = [];
+  for (const payment of ticket.paymentEvents.filter((event) => event.eventType === 'payment')) {
+    if (remaining <= 0) break;
+    const net = payment.amountMinor + ticket.paymentEvents
+      .filter((event) => event.sourcePaymentEventId === payment.eventId)
+      .reduce((sum, event) => sum + event.effectMinor, 0);
+    if (net <= 0) continue;
+    const take = Math.min(net, remaining);
+    sources.push({ paymentEventId: payment.eventId, amountMinor: take, method: payment.method });
+    remaining -= take;
+  }
+  return remaining === 0 ? sources : null;
+}
+
 function keyFor(map: Map<string, string>, action: string) {
   const current = map.get(action);
   if (current) return current;
@@ -218,6 +284,8 @@ export default function TicketCashierPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [catalog, setCatalog] = useState<ManagedCatalog | null>(null);
   const [products, setProducts] = useState<StockProduct[]>([]);
+  const [servicePackages, setServicePackages] = useState<ServicePackage[]>([]);
+  const [customerPackages, setCustomerPackages] = useState<CustomerPackage[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
@@ -255,19 +323,43 @@ export default function TicketCashierPage() {
   }, [initialCustomerId, status]);
 
   const loadLookups = useCallback(async () => {
-    const [customerResult, nextCatalog, productResult] = await Promise.all([
+    const [customerResult, nextCatalog, productResult, packageResult] = await Promise.all([
       api<CustomerList>('/api/customers?limit=100'),
       api<ManagedCatalog>('/api/catalog'),
       api<ProductList>('/api/products?limit=100&includeArchived=false'),
+      // Packages are an optional sale path; a package-list outage must not
+      // take the cashier (payments, closing) down with it.
+      api<{ packages: ServicePackage[] }>('/api/service-packages').catch(() => ({ packages: [] as ServicePackage[] })),
     ]);
     if (nextCatalog.membership.business_id !== activeBusinessId) throw new Error('Katalog seçili işletmeyle eşleşmiyor.');
     if (productResult.products.some((product) => product.businessId !== activeBusinessId)) {
       throw new Error('Ürün kataloğu seçili işletmeyle eşleşmiyor.');
     }
+    if (packageResult.packages.some((item) => item.businessId !== activeBusinessId)) {
+      throw new Error('Paket kataloğu seçili işletmeyle eşleşmiyor.');
+    }
     setCustomers(customerResult.customers);
     setCatalog(nextCatalog);
     setProducts(productResult.products.filter((product) => product.active));
+    setServicePackages(packageResult.packages.filter((item) => item.active));
   }, [activeBusinessId]);
+
+  const selectedCustomerId = selected?.customerId ?? null;
+  const selectedVersion = selected?.version ?? null;
+  const selectedStatus = selected?.status ?? null;
+  useEffect(() => {
+    if (!selectedCustomerId) {
+      setCustomerPackages([]);
+      return;
+    }
+    let current = true;
+    api<{ packages: CustomerPackage[] }>(`/api/customer-packages?customerId=${selectedCustomerId}&includeClosed=true`)
+      .then((result) => {
+        if (current) setCustomerPackages(result.packages.filter((item) => item.customerId === selectedCustomerId));
+      })
+      .catch(() => { if (current) setCustomerPackages([]); });
+    return () => { current = false; };
+  }, [selectedCustomerId, selectedVersion, selectedStatus]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -498,6 +590,78 @@ export default function TicketCashierPage() {
     }
   }
 
+  async function addPackage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    const form = event.currentTarget;
+    const packageId = String(new FormData(form).get('packageId') ?? '');
+    const item = servicePackages.find((row) => row.packageId === packageId);
+    if (!item) return setNotice('Satılacak paketi seçin.');
+    const ticket = await mutation(
+      `package-line:${selected.ticketId}:${selected.version}:${packageId}:${item.version}`,
+      `/api/tickets/${selected.ticketId}/package-lines`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ packageId, expectedVersion: selected.version, expectedPackageVersion: item.version }),
+      },
+      'Paket adisyona eklendi. Seanslar tahsilat ve kapanıştan sonra diğer ziyaretlerde de kullanılabilir.',
+      selected.ticketId,
+    );
+    if (ticket) form.reset();
+  }
+
+  async function applyPackage(event: FormEvent<HTMLFormElement>, line: TicketLine) {
+    event.preventDefault();
+    if (!selected) return;
+    const customerPackageId = String(new FormData(event.currentTarget).get('customerPackageId') ?? '');
+    if (!customerPackageId) return setNotice('Kullanılacak paketi seçin.');
+    await mutation(
+      `package-use:${selected.ticketId}:${selected.version}:${line.lineId}:${customerPackageId}`,
+      `/api/tickets/${selected.ticketId}/lines/${line.lineId}/package-usage`,
+      { method: 'POST', body: JSON.stringify({ customerPackageId, expectedVersion: selected.version }) },
+      'Seans paketten düşüldü; hizmet satırı paket hakkıyla karşılandı.',
+      selected.ticketId,
+    );
+  }
+
+  async function reversePackage(event: FormEvent<HTMLFormElement>, line: TicketLine) {
+    event.preventDefault();
+    if (!selected) return;
+    const reason = String(new FormData(event.currentTarget).get('reason') ?? '').trim();
+    if (reason.length < 2) return setNotice('Geri alma gerekçesi girin.');
+    await mutation(
+      `package-reverse:${selected.ticketId}:${selected.version}:${line.lineId}`,
+      `/api/tickets/${selected.ticketId}/lines/${line.lineId}/package-usage/reverse`,
+      { method: 'POST', body: JSON.stringify({ reason, expectedVersion: selected.version }) },
+      'Paket kullanımı geri alındı; seans pakete iade edildi.',
+      selected.ticketId,
+    );
+  }
+
+  async function refundPackage(event: FormEvent<HTMLFormElement>, line: TicketLine) {
+    event.preventDefault();
+    const sold = line.soldPackage;
+    if (!selected || !sold || sold.refundPreviewMinor === null) return;
+    const reason = String(new FormData(event.currentTarget).get('reason') ?? '').trim();
+    if (reason.length < 2) return setNotice('İade gerekçesi girin.');
+    const sources = refundSources(selected, sold.refundPreviewMinor);
+    if (!sources) return setNotice('Bu adisyonun tahsilatları iade tutarını karşılamıyor.');
+    await mutation(
+      `package-refund:${sold.customerPackageId}:${sold.refundPreviewMinor}`,
+      `/api/customer-packages/${sold.customerPackageId}/refund`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          expectedRefundMinor: sold.refundPreviewMinor,
+          sources: sources.map(({ paymentEventId, amountMinor }) => ({ paymentEventId, amountMinor })),
+          reason,
+        }),
+      },
+      'Kullanılmayan seanslar oranında paket iadesi kaydedildi.',
+      selected.ticketId,
+    );
+  }
+
   async function addService(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) return;
@@ -685,7 +849,13 @@ export default function TicketCashierPage() {
 
               <div className="ticket-totals" aria-label="Sunucu mali özeti">
                 <div><span>Ara toplam</span><strong>{money(selected.subtotalMinor, selected.currency)}</strong></div>
-                <div><span>İskonto</span><strong>{money(selected.discountMinor, selected.currency)}</strong></div>
+                <div><span>İskonto</span><strong>{money(selected.discountMinor === null ? null : selected.discountMinor - (selected.packageCoveredMinor ?? 0), selected.currency)}</strong></div>
+                {(selected.packageCoveredMinor ?? 0) > 0 && (
+                  <div><span>Paket hakkı</span><strong>{money(selected.packageCoveredMinor ?? 0, selected.currency)}</strong></div>
+                )}
+                {(selected.packageRefundedMinor ?? 0) > 0 && (
+                  <div><span>Paket iadesi</span><strong>{money(selected.packageRefundedMinor ?? 0, selected.currency)}</strong></div>
+                )}
                 {(selected.returnedMinor ?? 0) > 0 && (
                   <div><span>İade</span><strong>{money(selected.returnedMinor ?? 0, selected.currency)}</strong></div>
                 )}
@@ -698,10 +868,14 @@ export default function TicketCashierPage() {
                 {selected.lines.map((line) => (
                   <article key={line.lineId}>
                     <div>
-                      <strong>{line.sourceType === 'product' ? (line.productName ?? 'Ürün') : line.serviceName}</strong>
+                      <strong>{line.sourceType === 'product' ? (line.productName ?? 'Ürün') : line.sourceType === 'package' ? (line.packageName ?? 'Paket') : line.serviceName}</strong>
                       <span>{line.sourceType === 'product'
                         ? `${line.productCode ?? 'Kodsuz'} · ${line.quantity} adet${(line.returnedQuantity ?? 0) > 0 ? ` · ${line.returnedQuantity} iade` : ''} · ${money(line.netMinor, line.currency)}`
-                        : `${line.staffName ?? 'Personel seçilmedi'} · ${money(line.netMinor, line.currency)}`}</span>
+                        : line.sourceType === 'package'
+                          ? `Paket satışı${line.soldPackage ? ` · ${line.soldPackage.sessionsTotal} seans · ${line.soldPackage.sessionsUsed} kullanıldı · ${packageStatusLabel(line.soldPackage.status)} · son gün ${shortDate(line.soldPackage.expiresAt)}` : ''} · ${money(line.netMinor, line.currency)}`
+                          : line.packageCoverage
+                            ? `${line.staffName ?? 'Personel seçilmedi'} · Paket hakkı: ${line.packageCoverage.packageName} · ${money(line.netMinor, line.currency)}`
+                            : `${line.staffName ?? 'Personel seçilmedi'} · ${money(line.netMinor, line.currency)}`}</span>
                     </div>
                     {selected.status === 'open' && line.sourceType === 'service' && line.priceType === 'range' && line.finalUnitPriceMinor === null && (
                       <form onSubmit={(event) => void finalizePrice(event, line)}>
@@ -710,7 +884,40 @@ export default function TicketCashierPage() {
                         <button disabled={busy}>Tutarı kesinleştir</button>
                       </form>
                     )}
-                    {selected.status === 'open' && line.sourceType === 'service' && line.finalUnitPriceMinor !== null && (
+                    {selected.status === 'open' && line.sourceType === 'service' && line.finalUnitPriceMinor !== null && !line.packageCoverage && line.discountMinor === 0
+                      && customerPackages.some((item) => item.status === 'active' && !item.expired && item.sessionsRemaining > 0
+                        && item.serviceId === line.serviceId
+                        && (item.saleTicketStatus === 'closed' || item.saleTicketId === selected.ticketId)) && (
+                      <form className="ticket-package-use" onSubmit={(event) => void applyPackage(event, line)}>
+                        <select name="customerPackageId" required defaultValue="" aria-label="Kullanılacak paket">
+                          <option value="" disabled>Paket seçin</option>
+                          {customerPackages.filter((item) => item.status === 'active' && !item.expired && item.sessionsRemaining > 0
+                            && item.serviceId === line.serviceId
+                            && (item.saleTicketStatus === 'closed' || item.saleTicketId === selected.ticketId)).map((item) => (
+                            <option key={item.customerPackageId} value={item.customerPackageId}>{item.packageName} · {item.sessionsRemaining} seans kaldı</option>
+                          ))}
+                        </select>
+                        <button disabled={busy}>Paketten düş</button>
+                      </form>
+                    )}
+                    {selected.status === 'open' && line.packageCoverage && (
+                      <form className="ticket-package-reverse" onSubmit={(event) => void reversePackage(event, line)}>
+                        <input name="reason" placeholder="Geri alma gerekçesi" minLength={2} required aria-label="Paket kullanımını geri alma gerekçesi" />
+                        <button disabled={busy}>Paket kullanımını geri al</button>
+                      </form>
+                    )}
+                    {selected.status === 'closed' && line.sourceType === 'package' && line.soldPackage?.status === 'active' && line.soldPackage.refundPreviewMinor !== null && (
+                      <form className="ticket-package-refund" onSubmit={(event) => void refundPackage(event, line)}>
+                        <p>{line.soldPackage.sessionsTotal - line.soldPackage.sessionsUsed} kullanılmayan seans · iade {money(line.soldPackage.refundPreviewMinor, line.currency)}{(() => {
+                          const sources = refundSources(selected, line.soldPackage.refundPreviewMinor);
+                          if (!sources) return ' · tahsilatlar iade tutarını karşılamıyor';
+                          return sources.length ? ` · ${sources.map((source) => `${source.method === 'card' ? 'Kart' : 'Nakit'} ${money(source.amountMinor, line.currency)}`).join(' + ')}` : '';
+                        })()}</p>
+                        <input name="reason" placeholder="İade gerekçesi" minLength={2} required aria-label="Paket iade gerekçesi" />
+                        <button disabled={busy || !refundSources(selected, line.soldPackage.refundPreviewMinor)}>Kalan seansları iade et</button>
+                      </form>
+                    )}
+                    {selected.status === 'open' && line.sourceType === 'service' && line.finalUnitPriceMinor !== null && !line.packageCoverage && (
                       <form onSubmit={(event) => void discount(event, line)}>
                         <input name="amount" inputMode="decimal" placeholder="İskonto" required />
                         <input name="reason" placeholder="Gerekçe" minLength={2} required />
@@ -744,6 +951,18 @@ export default function TicketCashierPage() {
                 </form>
               )}
 
+              {selected.status === 'open' && servicePackages.length > 0 && (
+                <form className="ticket-add-package" onSubmit={addPackage}>
+                  <select name="packageId" required defaultValue="" aria-label="Satılacak paket">
+                    <option value="" disabled>Paket seçin</option>
+                    {servicePackages.filter((item) => !selected.currency || item.currency === selected.currency).map((item) => (
+                      <option key={item.packageId} value={item.packageId}>{item.name} · {item.sessionCount} seans · {money(item.priceMinor, item.currency)}</option>
+                    ))}
+                  </select>
+                  <button disabled={busy}>Paket sat</button>
+                </form>
+              )}
+
               {selected.status === 'open' && (
                 <form className="ticket-add-line" onSubmit={addService}>
                   <select name="serviceId" required defaultValue=""><option value="" disabled>Hizmet seçin</option>{activeServices.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select>
@@ -758,6 +977,18 @@ export default function TicketCashierPage() {
                   <input name="amount" inputMode="decimal" placeholder="Tahsilat" required />
                   <button disabled={busy}>Tahsilatı kaydet</button>
                 </form>
+              )}
+
+              {customerPackages.length > 0 && (
+                <div className="ticket-customer-packages" aria-label="Müşteri paketleri">
+                  <h3>Müşteri paketleri</h3>
+                  {customerPackages.map((item) => (
+                    <article key={item.customerPackageId}>
+                      <strong>{item.packageName}</strong>
+                      <span>{item.serviceName} · {item.status === 'active' ? `${item.sessionsRemaining}/${item.sessionsTotal} seans kaldı` : packageStatusLabel(item.status)}{item.status === 'active' ? (item.expired ? ' · süresi doldu' : ` · son gün ${shortDate(item.expiresAt)}`) : ''}{item.status === 'active' && item.saleTicketStatus !== 'closed' ? ' · satış adisyonu kapanmadı' : ''}</span>
+                    </article>
+                  ))}
+                </div>
               )}
 
               <div className="ticket-events">
