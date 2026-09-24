@@ -15,6 +15,7 @@ import './customer-manage.css';
 import './customers.css';
 import './products.css';
 import './expenses.css';
+import './financial-reports.css';
 import './team.css';
 import './onboarding.css';
 

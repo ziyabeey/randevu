@@ -95,8 +95,6 @@ jobs:
             > "${evidence}/pr-reviews.json"
           gh api --paginate --slurp "repos/${REPOSITORY}/issues/${PR_NUMBER}/comments?per_page=100" \
             > "${evidence}/pr-comments.json"
-          gh api --paginate --slurp "repos/${REPOSITORY}/issues/65/comments?per_page=100" \
-            > "${evidence}/coordination-comments.json"
           owner="${REPOSITORY%%/*}"
           name="${REPOSITORY#*/}"
           gh api graphql \

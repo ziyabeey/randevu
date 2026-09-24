@@ -329,6 +329,9 @@ const cookieMutations = [
   ['POST', '/api/tickets/:id/payments'],
   ['POST', '/api/tickets/:id/payments/:paymentId/corrections'],
   ['POST', '/api/tickets/:id/payments/:paymentId/refunds'],
+  ['POST', '/api/tickets/product-sales'],
+  ['POST', '/api/tickets/:id/product-lines'],
+  ['POST', '/api/tickets/:id/lines/:lineId/product-return-refund'],
   ['POST', '/api/products'],
   ['PUT', '/api/products/:id'],
   ['POST', '/api/products/:id/archive'],
@@ -337,6 +340,11 @@ const cookieMutations = [
   ['POST', '/api/expenses'],
   ['POST', '/api/expenses/:id/reverse'],
   ['POST', '/api/expenses/:id/correct'],
+  ['POST', '/api/bookings/series/preview'],
+  ['POST', '/api/bookings/series'],
+  ['POST', '/api/bookings/series/:seriesId/future/preview'],
+  ['POST', '/api/bookings/series/:seriesId/future/reschedule'],
+  ['POST', '/api/bookings/series/:seriesId/future/cancel'],
 ];
 const exceptions = [
   '/api/public/business/:slug/book',

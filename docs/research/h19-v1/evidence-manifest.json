@@ -1,0 +1,402 @@
+{
+  "record_version": "1.0.0",
+  "record_date": "2026-09-24",
+  "repository": "ziyabeey/randevu",
+  "evidence_snapshot": "3e48d2958607ef20660835cdabd884cc7d3738e2",
+  "promotion_pr": 520,
+  "promotion_ci": {
+    "run_number": 2653,
+    "run_id": 35967342639,
+    "conclusion": "success",
+    "gate": "21/21"
+  },
+  "post_main_ci": {
+    "run_number": 2654,
+    "run_id": 35967789975,
+    "attempt_1": {
+      "conclusion": "failure",
+      "classification": "infrastructure-only",
+      "stage": "disposable PostgreSQL readiness"
+    },
+    "attempt_2": {
+      "conclusion": "success",
+      "classification": "canonical post-main evidence"
+    }
+  },
+  "blind_queue_v2": {
+    "issue": 454,
+    "result": "4 HIT / 4 preregistered rounds",
+    "rounds": [
+      {
+        "round": "A",
+        "domain": "team",
+        "axes": [
+          "D0",
+          "D1"
+        ],
+        "status": "HIT",
+        "evidence": {
+          "baseline_ci": 2513,
+          "probe_ci": 2518,
+          "clean_ci": 2519
+        }
+      },
+      {
+        "round": "B",
+        "domain": "catalog",
+        "axes": [
+          "D0",
+          "D2"
+        ],
+        "status": "HIT",
+        "evidence": {
+          "baseline_ci": 2544,
+          "probe_ci": 2551,
+          "clean_ci": 2552
+        }
+      },
+      {
+        "round": "C",
+        "domain": "public-booking",
+        "axes": [
+          "D0",
+          "D4"
+        ],
+        "status": "HIT",
+        "evidence": {
+          "baseline_ci": 2557,
+          "probe_ci": 2582,
+          "clean_ci": 2583
+        }
+      },
+      {
+        "round": "D",
+        "domain": "calendar",
+        "axes": [
+          "D4",
+          "D5"
+        ],
+        "status": "HIT",
+        "evidence": {
+          "baseline_ci": 2597,
+          "probe_ci": 2609,
+          "clean_ci": 2610
+        }
+      }
+    ]
+  },
+  "benchmark_v1": {
+    "issue": 485,
+    "frozen_base": "1685db52ccbb3a33077b21d4f758b042978ab900",
+    "h19_semantic": {
+      "valid": 4,
+      "hits": 2,
+      "already_covered": 2,
+      "invalid": 0
+    },
+    "coverage_first": {
+      "allocated": 4,
+      "valid": 3,
+      "hits": 3,
+      "already_covered": 0,
+      "invalid": 1
+    },
+    "interpretation": "Coverage-first produced more incremental current-suite blind-spot discoveries in this frozen cohort; no general superiority claim."
+  },
+  "permanent_gate": [
+    {
+      "id": "booking.d0d1.tenant_idempotency",
+      "domain": "booking",
+      "axes": [
+        "D0",
+        "D1"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2131,
+        "probe_ci": 2135,
+        "clean_ci": 2136
+      }
+    },
+    {
+      "id": "booking.d1d5.idempotency_concurrency",
+      "domain": "booking",
+      "axes": [
+        "D1",
+        "D5"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2197,
+        "probe_ci": 2200,
+        "clean_ci": 2202
+      }
+    },
+    {
+      "id": "booking.d0d4.tenant_time_boundary",
+      "domain": "booking",
+      "axes": [
+        "D0",
+        "D4"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2152,
+        "probe_ci": 2174,
+        "clean_ci": 2175
+      }
+    },
+    {
+      "id": "booking.d0d5.tenant_lock_isolation",
+      "domain": "booking",
+      "axes": [
+        "D0",
+        "D5"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2177,
+        "probe_ci": 2181,
+        "clean_ci": 2249
+      }
+    },
+    {
+      "id": "booking.d4d5.cross_day_authority",
+      "domain": "booking",
+      "axes": [
+        "D4",
+        "D5"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2216,
+        "probe_ci": 2232,
+        "clean_ci": 2233
+      }
+    },
+    {
+      "id": "booking.d0d3.tenant_capacity",
+      "domain": "booking",
+      "axes": [
+        "D0",
+        "D3"
+      ],
+      "origin": "holdout",
+      "evidence": {
+        "baseline_ci": 2207,
+        "probe_ci": 2212,
+        "clean_ci": 2213
+      }
+    },
+    {
+      "id": "booking.d3d4.staff_hours_fallback",
+      "domain": "booking",
+      "axes": [
+        "D3",
+        "D4"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2162,
+        "probe_ci": 2164,
+        "clean_ci": 2285
+      }
+    },
+    {
+      "id": "inventory.d0d1.actor_idempotency",
+      "domain": "inventory",
+      "axes": [
+        "D0",
+        "D1"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2283,
+        "probe_ci": 2287,
+        "clean_ci": 2288
+      }
+    },
+    {
+      "id": "inventory.d1d5.idempotency_concurrency",
+      "domain": "inventory",
+      "axes": [
+        "D1",
+        "D5"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2355,
+        "probe_ci": 2359,
+        "clean_ci": 2360
+      }
+    },
+    {
+      "id": "booking.d2d3.snapshot_staff_coherence",
+      "domain": "booking",
+      "axes": [
+        "D2",
+        "D3"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2106,
+        "probe_ci": 2107,
+        "clean_ci": 2098
+      }
+    },
+    {
+      "id": "payments.d1d2.replay_snapshot",
+      "domain": "payments",
+      "axes": [
+        "D1",
+        "D2"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2386,
+        "probe_ci": 2389,
+        "clean_ci": 2390
+      }
+    },
+    {
+      "id": "payments.d2d5.snapshot_concurrency",
+      "domain": "payments",
+      "axes": [
+        "D2",
+        "D5"
+      ],
+      "origin": "holdout",
+      "evidence": {
+        "baseline_ci": 2436,
+        "probe_ci": 2441,
+        "clean_ci": 2444
+      }
+    },
+    {
+      "id": "team.d0d1.invite_scope",
+      "domain": "team",
+      "axes": [
+        "D0",
+        "D1"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2513,
+        "probe_ci": 2518,
+        "clean_ci": 2519
+      }
+    },
+    {
+      "id": "catalog.d0d2.history_scope",
+      "domain": "catalog",
+      "axes": [
+        "D0",
+        "D2"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2544,
+        "probe_ci": 2551,
+        "clean_ci": 2552
+      }
+    },
+    {
+      "id": "public-booking.d0d4.slot_scope",
+      "domain": "public-booking",
+      "axes": [
+        "D0",
+        "D4"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2557,
+        "probe_ci": 2582,
+        "clean_ci": 2583
+      }
+    },
+    {
+      "id": "calendar.d4d5.range_revision",
+      "domain": "calendar",
+      "axes": [
+        "D4",
+        "D5"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2597,
+        "probe_ci": 2609,
+        "clean_ci": 2610
+      }
+    },
+    {
+      "id": "customers.d1d5.version_serialization",
+      "domain": "customers",
+      "axes": [
+        "D1",
+        "D5"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2620,
+        "probe_ci": 2624,
+        "clean_ci": 2625
+      }
+    },
+    {
+      "id": "customers.d0d5.tenant_serialization",
+      "domain": "customers",
+      "axes": [
+        "D0",
+        "D5"
+      ],
+      "origin": "coverage-first",
+      "evidence": {
+        "baseline_ci": 2626,
+        "probe_ci": 2627,
+        "clean_ci": 2628
+      }
+    },
+    {
+      "id": "product-sales.d0d2.snapshot_scope",
+      "domain": "product-sales",
+      "axes": [
+        "D0",
+        "D2"
+      ],
+      "origin": "coverage-first",
+      "evidence": {
+        "baseline_ci": 2630,
+        "probe_ci": 2631,
+        "clean_ci": 2632
+      }
+    },
+    {
+      "id": "expenses.d1d2.replay_snapshot",
+      "domain": "expenses",
+      "axes": [
+        "D1",
+        "D2"
+      ],
+      "origin": "prospective",
+      "evidence": {
+        "baseline_ci": 2633,
+        "probe_ci": 2635,
+        "clean_ci": 2636
+      }
+    },
+    {
+      "id": "reporting.d2d4.local_day_snapshot",
+      "domain": "reporting",
+      "axes": [
+        "D2",
+        "D4"
+      ],
+      "origin": "coverage-first",
+      "evidence": {
+        "baseline_ci": 2642,
+        "probe_ci": 2646,
+        "clean_ci": 2647
+      }
+    }
+  ]
+}
