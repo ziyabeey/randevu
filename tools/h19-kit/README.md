@@ -67,3 +67,27 @@ The `scan` command is intentionally model-free. It combines already-produced evi
 rules. H19s decides whether the Kepenk semantic router is eligible to become a packaged adapter later.
 
 See [ROADMAP.md](ROADMAP.md) and [integrations/catalog.v0.1.json](integrations/catalog.v0.1.json).
+
+## Code intelligence adapters
+
+Optional external tools can enrich the deterministic evidence graph without becoming hard dependencies:
+
+```bash
+# Inspect optional providers
+node tools/h19-kit/bin/h19-kit.mjs doctor
+
+# SCIP compiler-backed/reference graph impact
+node tools/h19-kit/bin/h19-kit.mjs scip-impact index.scip src/changed.ts
+
+# Tree-sitter syntax-only fallback tags
+node tools/h19-kit/bin/h19-kit.mjs syntax-tags src/example.rb
+
+# Existing monorepo project/package graphs
+node tools/h19-kit/bin/h19-kit.mjs affected nx main HEAD
+node tools/h19-kit/bin/h19-kit.mjs affected turbo main HEAD test
+```
+
+SCIP/native compiler information outranks syntax-only Tree-sitter tags. Nx and Turborepo adapters report
+workspace-level impact; they do not replace symbol-level analysis.
+
+See [docs/CODE_INTELLIGENCE_GRAPH.md](docs/CODE_INTELLIGENCE_GRAPH.md).
