@@ -32,4 +32,4 @@ export * from './experiments/protocol.mjs';
 export * from './experiments/blind-packet.mjs';
 export * from './experiments/ledger.mjs';
 export * from './mutations/history.mjs';
-export * from './adapters/scip.mjs';\nexport * from './graph/symbol-graph.mjs';\nexport * from './impact/blast-radius.mjs';\nexport * from './impact/evidence.mjs';\n
+export * from './adapters/scip.mjs';\nexport * from './graph/symbol-graph.mjs';\nexport * from './impact/blast-radius.mjs';\nexport * from './impact/evidence.mjs';\nexport * from './core/artifact-cache.mjs';\nexport * from './indexing/project-fingerprint.mjs';\nexport * from './indexing/scip-launcher.mjs';\nexport * from './indexing/surface-digest.mjs';\nexport * from './indexing/head-manifest.mjs';\n
