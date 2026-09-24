@@ -208,6 +208,9 @@ jobs:
       - name: Run H19 Kit M3 experiment-engine smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m3
+      - name: Run H19 Kit M3.5 impact-graph smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
