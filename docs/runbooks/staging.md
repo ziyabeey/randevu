@@ -67,6 +67,25 @@ Acceptance key normal deploy'un zorunlu secret'ı değildir. `run_f09_acceptance
 
 Gerçek booking → notification → provider → güvenli test recipient delivery zinciri F09-05 run `34681540142` ile kanıtlanmıştır. Bu, production/pilot deliverability iddiası değildir.
 
+### NetGSM / F16-02 opt-in SMS acceptance
+
+Normal staging deploy'un dört temel dış secret sözleşmesi değişmez. NetGSM yalnız F16-02 SMS kanıtı seçildiğinde ek provider sözleşmesi olarak açılır. GitHub Environment `staging` altında runtime için birlikte sağlanması gereken secret'lar:
+
+- `NETGSM_USERCODE`
+- `NETGSM_PASSWORD`
+- `NETGSM_MSGHEADER`
+
+`NETGSM_APPNAME=kepenk` workflow metadata'sıdır. Üç runtime credential'dan yalnız bir kısmı mevcutsa deploy fail-closed durur; tam üçlü mevcutsa Worker secret bundle'a birlikte verilir.
+
+Hosted kabul için ayrıca:
+
+- `NETGSM_TEST_RECIPIENT`: yalnız acceptance process'inin güvenli test alıcısıdır; Worker secret bundle'a yazılmaz.
+- `NETGSM_SMS_SEGMENT_PRICE_TRY`: GitHub Environment **variable** olarak hesapta geçerli segment başı TRY fiyatını taşır; secret değildir.
+
+Actions ekranında `run_f16_sms_acceptance=true` seçildiğinde bu beş kabul girdisi eksiksiz değilse deploy trafik değişiminden önce durur. Acceptance, staging fixture üzerinde SMS açık gerçek bir F16 lifecycle job'ı oluşturur; mesajı ürünün kullandığı aynı NetGSM length preflight ile ölçer ve 1–6 segment sınırını kanıtlar. Sonra ayrı bir provider çağrısı yapmak yerine gerçek scheduled Worker'ın aynı job'ı göndermesini, provider `jobid` kaydını ve mevcut delivery-report reconciler'ın `delivered` durumunu yazmasını bekler. Log yalnız segment sayısı, konfigüre segment fiyatı, hesaplanan mesaj maliyeti ve provider jobid içerir; telefon, credential veya mesaj gövdesi yazılmaz.
+
+Bu gate gerçek bir test SMS'i gönderir. Müşteri numarası kullanılmaz; yalnız önceden onaylanmış güvenli test alıcısı kullanılır. `referansID` correlation anahtarıdır, provider idempotency garantisi sayılmaz; belirsiz send sonucu otomatik ikinci SMS üretmez.
+
 ## Workflow metadata ve ephemeral değerler
 
 GitHub secret olmayan sabit metadata:
@@ -78,6 +97,7 @@ GitHub secret olmayan sabit metadata:
 - `STAGING_OWNER_A_EMAIL`
 - `STAGING_OWNER_B_EMAIL`
 - `NOTIFICATION_FROM_EMAIL`
+- `NETGSM_APPNAME`
 
 Her run yalnız iki test owner parolası yeniden üretilir ve maskelenir. Gate/dispatch anahtarları rutin dağıtımda üretilmez; veritabanındaki hash'ler korunur. Cloudflare'ın desteklediği `inherit.version_id: latest` yalnız trafiğe alınmamış adayı yüklerken kullanılır. Yeni incelenmiş kodun gerçek binding'leri doğrulanmadan aday aktive edilmez. Rotasyonda yalnız yeni gate/dispatch üretilir; plaintext job sonu silinir, DB yalnız SHA-256 verifier tutar.
 
@@ -146,7 +166,7 @@ GitHub Actions → **Staging deploy** → **Run workflow**; incelenen branch/com
 | --- | --- |
 | `deploy` (varsayılan) | Mevcut gate/dispatch/management korunur. Pending rotasyon varsa durur. S04'ten S05'e ilk yükseltme bu modla yapılır. |
 | `rotate` | S05 probe'u bulunan çalışan sürümden başlar. İki yeni anahtar owner-only CAS ile pending olur; eski yetki açık kalır. F09 otomatik zorunludur. |
-| `resume` | Kesilen rotasyonun aynı commit'inde, kayıtlı tek aday sürümü yeniden doğrular/gerekirse etkinleştirir. İlk run'ın F10/S01 seçimleri düşürülemez. F09 zorunludur. |
+| `resume` | Kesilen rotasyonun aynı commit'inde, kayıtlı tek aday sürümü yeniden doğrular/gerekirse etkinleştirir. İlk run'ın F10/S01/F16-SMS seçimleri düşürülemez. F09 zorunludur. |
 | `rollback` | Pending rotasyonun kayıtlı önceki sürümüne döner. Eski HTTP/key/canary ve Cron doğrulandıktan sonra pending'i kaldırır. Yeni ürün/veri migration'ını geri almaz. |
 | `bootstrap` | Yalnız boş yeni ortam için. Mevcut staging'de seçilmez. Üç kritik anahtar bir kez üretilir. |
 
@@ -238,6 +258,29 @@ Acceptance şunları kanıtlar:
 
 Kişisel mailbox veya gerçek müşteri adresi kullanılmaz. Acceptance job sonrasında recovery authority'yi bilinçli biçimde expire eder; management bearer ve secret değerleri loglanmaz.
 
+## F16-02 opt-in gerçek SMS acceptance
+
+Actions ekranında `Staging deploy` çalıştırılırken incelenen branch/ref seçilir ve `Run real F16-02 NetGSM SMS delivery and segment/tariff gate` girişi açılır.
+
+Acceptance komutu:
+
+```bash
+npm run staging:f16-sms-acceptance
+```
+
+Acceptance şunları kanıtlar:
+
+- staging fixture için gerçek F16 lifecycle SMS job'ı üretilir,
+- test mesajı ürünün aynı `measureNetgsmSmsParts` preflight'ıyla ölçülür ve altı segment sınırı aşılmaz,
+- hesapta geçerli segment fiyatıyla o mesajın maliyet zarfı kaydedilir,
+- scheduled Worker shared F09/S03 outbox'tan işi claim eder,
+- immutable request fingerprint ve provider correlation korunur,
+- NetGSM kabulündeki gerçek `jobid` DB'ye yazılır,
+- aynı scheduled notification entry delivery-report reconciliation çalıştırır,
+- güvenli test alıcısında provider sonucu `delivered` olur.
+
+Test recipient, credential ve SMS gövdesi loglanmaz. Bu kanıt staging provider entegrasyonuna aittir; production müşterilerine gönderim veya genel deliverability garantisi değildir.
+
 ## Kesilmiş ilk kurulumun operatör adımları
 
 Bu yol yalnız hiç aktif deployment oluşmamış **boş bootstrap** içindir. Yerleşik staging veya pending rotasyon için yukarıdaki `resume`/`rollback` kullanılır.
@@ -266,6 +309,7 @@ Custom staging domain bağlandığında veya gerçek redirect tabanlı auth akı
 - Cloudflare account ID secret değildir.
 - Runtime `RESEND_API_KEY` gönderimle sınırlı tutulur.
 - `RESEND_ACCEPTANCE_API_KEY` yalnız seçilmiş/zorunlu GitHub acceptance process'ine verilir; Worker bundle'a girmez.
+- NetGSM runtime credential üçlüsü yalnız tam set olarak Worker'a verilir; `NETGSM_TEST_RECIPIENT` ve segment fiyatı Worker bundle'a girmez.
 - Provider API key değerleri Git/PR/handoff'a yazılmaz.
 - Hosted migration'lar forward-only'dir; merge edilmiş eski migration'lar değiştirilmez.
 
