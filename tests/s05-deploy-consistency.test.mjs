@@ -70,10 +70,36 @@ test('S05 supported inheritance preserves required bindings and never imports am
   assert.deepEqual(inheritBindings(config, null, newKeys(true)).unsafe.bindings, []);
   assert.throws(() => inheritBindings(config, null, {}));
   assert.throws(() => inheritBindings(config, { id: 'latest', number: 12 }, {}));
-  const supplied = secretBundle({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'public', RESEND_API_KEY: 'sending',
-    NOTIFICATION_FROM_EMAIL: 'test@example.com', STAGING_APP_ORIGIN: 'https://example.com', SUPABASE_ADMIN_KEY: 'never-deploy', ...keys });
+  const baseProviderEnv = {
+    SUPABASE_URL: 'https://example.supabase.co',
+    SUPABASE_ANON_KEY: 'public',
+    RESEND_API_KEY: 'sending',
+    NOTIFICATION_FROM_EMAIL: 'test@example.com',
+    STAGING_APP_ORIGIN: 'https://example.com',
+    SUPABASE_ADMIN_KEY: 'never-deploy',
+    NETGSM_TEST_RECIPIENT: '05550000000',
+    ...keys,
+  };
+  const supplied = secretBundle(baseProviderEnv);
   assert.equal('SUPABASE_ADMIN_KEY' in supplied, false);
+  assert.equal('NETGSM_TEST_RECIPIENT' in supplied, false, 'acceptance recipient must never become a Worker secret');
   for (const name of KEY_NAMES) assert.equal(name in supplied, false, 'routine must not source critical keys from ambient env');
+
+  const withNetgsm = secretBundle({
+    ...baseProviderEnv,
+    NETGSM_USERCODE: '8500000000',
+    NETGSM_PASSWORD: 'provider-secret',
+    NETGSM_MSGHEADER: 'KEPENK',
+    NETGSM_APPNAME: 'kepenk',
+  });
+  assert.equal(withNetgsm.NETGSM_USERCODE, '8500000000');
+  assert.equal(withNetgsm.NETGSM_PASSWORD, 'provider-secret');
+  assert.equal(withNetgsm.NETGSM_MSGHEADER, 'KEPENK');
+  assert.equal(withNetgsm.NETGSM_APPNAME, 'kepenk');
+  assert.throws(
+    () => secretBundle({ ...baseProviderEnv, NETGSM_USERCODE: '8500000000' }),
+    /complete credential tuple/,
+  );
 });
 
 test('S05 scheduled heartbeat is bounded, carries actual version and cannot block delivery on network failure', async () => {
@@ -127,10 +153,11 @@ test('S05 uncertain rollback retains overlap and does not invoke commit', async 
   assert.equal(pending, true); assert.equal(committed, false);
 });
 test('S05 resume cannot lower the original acceptance contract or change source commit', () => {
-  const pending = { commit_sha: 'a'.repeat(40), evidence: { gates: { f10: true, s01: true, mailbox: 'safe@example.com' } } };
+  const pending = { commit_sha: 'a'.repeat(40), evidence: { gates: { f10: true, f16sms: true, s01: true, mailbox: 'safe@example.com' } } };
   assert.throws(() => requireResumeContract(pending, 'b'.repeat(40), {}), /original rotation commit/);
   assert.throws(() => requireResumeContract(pending, pending.commit_sha, { f10: false }), /drop/);
-  assert.throws(() => requireResumeContract(pending, pending.commit_sha, { f10: true, s01: true, mailbox: 'other@example.com' }), /mailbox/);
+  assert.throws(() => requireResumeContract(pending, pending.commit_sha, { f10: true, f16sms: false, s01: true, mailbox: 'safe@example.com' }), /drop/);
+  assert.throws(() => requireResumeContract(pending, pending.commit_sha, { f10: true, f16sms: true, s01: true, mailbox: 'other@example.com' }), /mailbox/);
   requireResumeContract(pending, pending.commit_sha, pending.evidence.gates);
 });
 
