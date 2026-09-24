@@ -29,6 +29,7 @@ Side-hardening PRs may be developed in parallel, but they remain **HOLD** and do
 | M3.5 | Code-intelligence graph foundation: SCIP graph, shard/graph cache, affected-project adapters, Tree-sitter fallback, unit→symbol mapping | #544/#547/#548/#549/#550/#551 | green |
 | M4 | Change-impact orchestrator | #554 | CI #2831, head `88095f13918301df7188f25e5f50fbcbade4af56` |
 | M5 | Coverage discovery + frozen validation packet | #555 | CI #2833, head `32f0bda2296af99ec8720b9be43438268d16b7e2` |
+| M6 | Minimal test specification | #561 | CI #2840, head `e52e459a08c5ab56f466303e132beb93400050cb` |
 
 ## M5 contract
 
@@ -49,25 +50,19 @@ Hypotheses are frozen into a content-addressed validation packet and later recor
 
 A surviving mutant is ranked ahead of a plain coverage-gap hypothesis only when priority and target path are otherwise equal.
 
-## Active milestone — M6 Minimal Test Specification
+## M6 contract
 
-The gate was frozen before implementation in `specs/TEST_SPEC_GATE-v0.1.md` and passed exact-head CI #2837 at freeze head `82066517d86cf2d284356f5eb0f277bde83523ac`.
+M6 converts eligible M5 hypotheses into deterministic, provenance-bound test specifications.
 
-**Minimal test specification from validated/high-value coverage hypotheses.**
+It keeps setup/action/invariant/observations explicitly known or unknown and does not generate executable test source.
 
-For a surviving-mutant-driven target, the first specification contract must be able to state:
+## Next authorized gate
 
-```text
-setup
-→ action
-→ expected invariant
-→ mutation to kill
-→ required observations
-```
+**Executable test candidate materialization from a complete M6 specification.**
 
-This is Bundle **M6**. Its implementation is limited to the frozen TS1–TS8 acceptance gates.
+The next gate may render deterministic test source through an explicitly selected, versioned renderer, but it must not write or execute the candidate.
 
-M6 does not generate executable test source code.
+**No M7 number is assigned yet.** The candidate contract must be frozen and exact-head CI-green first.
 
 ## Side-hardening HOLD
 
