@@ -15,6 +15,12 @@ values
   ('c1100000-0000-4000-8000-000000000001', 'H19 Public A', 'h19-public-d0d4-a', 'Europe/Istanbul', 'c1000000-0000-4000-8000-000000000001'),
   ('c1100000-0000-4000-8000-000000000002', 'H19 Public B', 'h19-public-d0d4-b', 'Europe/Istanbul', 'c1000000-0000-4000-8000-000000000002');
 
+insert into public.business_public_profiles(business_id, public_phone)
+values (
+  'c1100000-0000-4000-8000-000000000001',
+  '+905550000001'
+);
+
 insert into public.memberships(id, business_id, user_id, role, active)
 values
   ('c1200000-0000-4000-8000-000000000001', 'c1100000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000001', 'owner', true),
