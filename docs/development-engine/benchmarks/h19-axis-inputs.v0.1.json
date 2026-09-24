@@ -1,0 +1,200 @@
+{
+  "benchmark_input_id": "DE-JEV-H19-R0-INPUTS",
+  "version": "0.1.0",
+  "sanitizer_version": "sql-diff-v0.1",
+  "model_visibility": "Only this file plus the versioned question bank may be supplied to the axis classifier. Labels, H19 filenames, branch names, PR prose and receipt metadata are excluded.",
+  "cases": [
+    {
+      "case_key": "C01",
+      "source_head_sha": "38e4b0829e6691de12c110cf428dc6bbb50716aa",
+      "source_parent_sha": "086316e06d49005d94d6316200046d1b89a40d76",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260918070000_f11_lock_order_final_repair.sql",
+          "patch": "@@ -177,8 +177,8 @@ begin\n   order by sp.id\n   for update;\n \n-  v_plan := public.f11_plan_group_at(p_business_id, p_lines, p_starts_at, null);\n-  if v_plan is null then raise exception 'GROUP_SLOT_UNAVAILABLE'; end if;\n \n   v_group_id := gen_random_uuid();\n   insert into public.appointment_groups("
+        }
+      ]
+    },
+    {
+      "case_key": "C02",
+      "source_head_sha": "e089f662ba8a4e0f505c46f128467e52e0edf281",
+      "source_parent_sha": "7746e4e0f85854bb050971874546e4193c3854d7",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260911130000_phase6_public_booking.sql",
+          "patch": "@@ -122,8 +122,7 @@ begin\n \n   select * into v_existing\n   from public.booking_commands\n-  where business_id = p_business_id\n-    and idempotency_key = p_idempotency_key;\n \n   if v_existing.command <> p_command or v_existing.request_hash <> p_request_hash then\n     raise exception 'IDEMPOTENCY_CONFLICT';"
+        }
+      ]
+    },
+    {
+      "case_key": "C03",
+      "source_head_sha": "8d1a87df6181029c219b9dcdca13f2aa3b118564",
+      "source_parent_sha": "aa8f8e68f3c3d67a03d59c1f502adf6813f0d628",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260917150000_f11_business_hours_final_repair.sql",
+          "patch": "@@ -80,8 +80,8 @@ begin\n     if not exists (\n       select 1\n       from public.business_hours bh\n-      where bh.business_id = p_business_id\n-        and bh.weekday = extract(\n+\n           dow from (v_service_start at time zone v_timezone)::date\n         )::smallint\n         and bh.active"
+        }
+      ]
+    },
+    {
+      "case_key": "C04",
+      "source_head_sha": "1a23806829fc457c464065c8a1b5c6815d49c7a4",
+      "source_parent_sha": "5f7af8430da8c10785a8dec8d80f74cba246418f",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260918070000_f11_lock_order_final_repair.sql",
+          "patch": "@@ -34,6 +34,7 @@ declare\n   v_hash text;\n   v_claim record;\n   v_plan jsonb;\n+  v_stale_plan jsonb;\n   v_line jsonb;\n   v_customer_id uuid;\n   v_group_id uuid;\n@@ -125,6 +126,7 @@ begin\n \n   v_plan := public.f11_plan_group_at(p_business_id, p_lines, p_starts_at, null);\n   if v_plan is null then raise exception 'GROUP_SLOT_UNAVAILABLE'; end if;\n+  v_stale_plan := v_plan;\n   v_timezone := v_plan->>'timezone';\n \n   -- Acquire every mutable F10-04 schedule-authority advisory family before\n@@ -180,6 +182,14 @@ begin\n   v_plan := public.f11_plan_group_at(p_business_id, p_lines, p_starts_at, null);\n   if v_plan is null then raise exception 'GROUP_SLOT_UNAVAILABLE'; end if;\n \n+  if jsonb_array_length(v_plan->'lines') > 0\n+     and jsonb_array_length(v_stale_plan->'lines') > 0 then\n+    v_plan := jsonb_set(v_plan,'{lines,0,staffId}',v_stale_plan#>'{lines,0,staffId}');\n+    v_plan := jsonb_set(v_plan,'{lines,0,staffName}',v_stale_plan#>'{lines,0,staffName}');\n+  end if;\n+\n   v_group_id := gen_random_uuid();\n   insert into public.appointment_groups(\n     id,business_id,customer_id,status,source,version,legacy_appointment_id,created_by"
+        }
+      ]
+    },
+    {
+      "case_key": "C05",
+      "source_head_sha": "d78faddfb1afd7e021f5d3ed7195c6e095d3c8cb",
+      "source_parent_sha": "2a6cebb58ae1bfc5edee5b9f91d6decf65600ac0",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260918070000_f11_lock_order_final_repair.sql",
+          "patch": "@@ -88,7 +88,7 @@ begin\n   -- existing command is validated by the canonical claim routine below and\n   -- returns frozen line data even if today's catalog is archived or repriced.\n   perform pg_advisory_xact_lock(hashtextextended(\n-    'f11:group-command:' || p_business_id::text || ':' || p_idempotency_key, 0\n   ));\n   perform 1\n   from public.booking_commands bc"
+        }
+      ]
+    },
+    {
+      "case_key": "C06",
+      "source_head_sha": "5dcd10d1069669c25dcb234985a6abb16d2196c0",
+      "source_parent_sha": "8760fb536427f47681ad87a531d1d66b5a6f0910",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260911130000_phase6_public_booking.sql",
+          "patch": "@@ -109,10 +109,15 @@ begin\n \n   insert into public.booking_commands(\n     business_id, idempotency_key, command, request_hash, appointment_id, created_by, source\n-  ) values (\n-    p_business_id, p_idempotency_key, p_command, p_request_hash, p_appointment_id, auth.uid(), v_source\n   )\n-  on conflict (business_id, idempotency_key) do nothing;\n+  select\n+    p_business_id, p_idempotency_key, p_command, p_request_hash, p_appointment_id, auth.uid(), v_source\n+  where not exists (\n+    select 1\n+    from public.booking_commands bc\n+    where bc.business_id = p_business_id\n+      and bc.idempotency_key = p_idempotency_key\n \n   get diagnostics v_inserted = row_count;\n   if v_inserted = 1 then"
+        }
+      ]
+    },
+    {
+      "case_key": "C07",
+      "source_head_sha": "5829958cfe256f734ca6d5d9d928eb35863ae4a4",
+      "source_parent_sha": "8f8816b1139dee07cdf2720fe033c4915331e395",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260917120000_f11_multi_service_group_booking.sql",
+          "patch": "@@ -159,12 +159,11 @@ as $$\n     and not exists (\n       select 1\n       from public.availability_blocks ab\n-      where ab.business_id = p_business_id\n-        and ab.active\n+      where ab.active\n         and (ab.staff_id is null or ab.staff_id = p_staff_id)\n         and ab.starts_at < p_occupied_end\n         and ab.ends_at > p_occupied_start\n-    )\n     and not exists (\n       select 1\n       from public.appointments a"
+        }
+      ]
+    },
+    {
+      "case_key": "C08",
+      "source_head_sha": "380ab52abc904ddf945cbfa76811e21813a12f3d",
+      "source_parent_sha": "ad24606f6b10993a60a323bf8c4bb35005fe6329",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260918070000_f11_lock_order_final_repair.sql",
+          "patch": "@@ -311,12 +311,12 @@ begin\n   -- schedule/catalog authority to the final durable state. Acquire every F10-04\n   -- advisory family before row locks so guarded writes that later take FK key\n   -- shares cannot form a row-lock/advisory-lock inversion with this trigger.\n   for v_weekday in\n-    select distinct extract(dow from (a.starts_at at time zone v_timezone)::date)::smallint\n-    from public.appointments a\n-    where a.business_id=new.business_id and a.group_id=new.group_id\n-      and a.status in ('scheduled','confirmed')\n-    order by 1\n+    select extract(dow from (new.starts_at at time zone v_timezone)::date)::smallint\n   loop\n     perform pg_advisory_xact_lock(hashtextextended(\n       'f10-04:business-hours:'||new.business_id::text||':'||v_weekday::text,0\n@@ -456,4 +456,4 @@ $$;\n revoke all on function public.f11_validate_native_group_schedule_authority()\n   from public,anon,authenticated;\n \n-commit;\n+commit;\n\\ No newline at end of file"
+        }
+      ]
+    },
+    {
+      "case_key": "C09",
+      "source_head_sha": "69ff7ed8d04039b0292a88aecdceaa734a3f59ad",
+      "source_parent_sha": "f8af9f85bde072f5f0f4dd635de5f667a0311c97",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+          "patch": "@@ -151,6 +151,12 @@ create table public.product_commands (\n     )\n );\n \n+  on public.product_commands(business_id, command, idempotency_key);\n+\n create or replace function public.f15_guard_product_command_update()\n returns trigger\n language plpgsql"
+        }
+      ]
+    },
+    {
+      "case_key": "C10",
+      "source_head_sha": "d5233239eacc07ca1dcceb097de80af12a88f3fd",
+      "source_parent_sha": "82c8d6e904479e7652aafa5cefe1911f3b628395",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+          "patch": "@@ -769,10 +769,6 @@ declare\n   v_result jsonb;\n begin\n   v_actor := public.f15_inventory_actor(p_business_id);\n-  v_replay := public.f15_claim_product_command(\n-    p_business_id, v_actor.id, 'record_stock', p_idempotency_key, p_request_hash\n-  );\n-  if v_replay is not null then return v_replay; end if;\n \n   if p_kind not in ('receipt'::public.stock_movement_kind, 'adjustment'::public.stock_movement_kind) then\n     raise exception 'INVALID_STOCK_KIND';\n@@ -796,6 +792,13 @@ begin\n   if not v_product.active then raise exception 'PRODUCT_ARCHIVED'; end if;\n   if p_expected_version is null or v_product.version <> p_expected_version then raise exception 'STALE_WRITE'; end if;\n \n+  v_replay := public.f15_claim_product_command(\n+    p_business_id, v_actor.id, 'record_stock', p_idempotency_key, p_request_hash\n+  );\n+  if v_replay is not null then return v_replay; end if;\n+\n   v_new_balance := v_product.stock_on_hand + p_quantity_delta;\n   if v_new_balance < 0 then raise exception 'NEGATIVE_STOCK'; end if;\n "
+        }
+      ]
+    },
+    {
+      "case_key": "C11",
+      "source_head_sha": "bd70bd16b0e5b2ada56e6bd0ee5ebdbada031b0d",
+      "source_parent_sha": "ff5590be12e66d8f0aa1eb6ad8458c1df9256e40",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260922144500_f14_payment_ledger.sql",
+          "patch": "@@ -429,7 +429,11 @@ begin\n     p_business_id, v_actor.id, 'record_payment',\n     p_idempotency_key, p_request_hash\n   );\n-  if v_replay is not null then return v_replay; end if;\n+  if v_replay is not null then\n+    return public.f14_ticket_projection(p_business_id, p_ticket_id);\n+  end if;\n \n   if p_payment_method not in ('cash','card')\n      or p_amount_minor is null"
+        }
+      ]
+    },
+    {
+      "case_key": "C12",
+      "source_head_sha": "8a6bf5db264db2794a320d3361543730f2317047",
+      "source_parent_sha": "0971ead70c1dfedfec4bc35dcea7fe69a874e400",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260922144500_f14_payment_ledger.sql",
+          "patch": "@@ -685,6 +685,11 @@ begin\n   if v_replay is not null then return v_replay; end if;\n \n   v_reason := nullif(btrim(coalesce(p_reason, '')), '');\n+\n+  v_paid := public.f14_ticket_paid_minor(p_business_id, p_ticket_id);\n+\n   if p_discount_minor is null\n      or p_discount_minor not between 0 and 100000000\n      or v_reason is null\n@@ -725,7 +730,6 @@ begin\n   where l.business_id = p_business_id\n     and l.ticket_id = p_ticket_id;\n \n-  v_paid := public.f14_ticket_paid_minor(p_business_id, p_ticket_id);\n   if v_paid > 0 and v_unfinalized > 0 then\n     raise exception 'FINANCIAL_INVARIANT_BROKEN';\n   end if;"
+        }
+      ]
+    },
+    {
+      "case_key": "C13",
+      "source_head_sha": "dd90e9c0eca952dff5bbc96f0267361f38c05b6f",
+      "source_parent_sha": "be527c311c92cfbb383c02ddde0c688a2549160c",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260914033000_f10_team_access.sql",
+          "patch": "@@ -366,8 +366,7 @@ begin\n \n   select m.id, m.active into v_membership_id, v_existing_active\n   from public.memberships m\n-  where m.business_id = v_invitation.business_id\n-    and m.user_id = v_user_id\n+  where m.user_id = v_user_id\n   for update;\n \n   if v_membership_id is not null and v_existing_active then"
+        }
+      ]
+    },
+    {
+      "case_key": "C14",
+      "source_head_sha": "fba09ee2c62731cbd5e7c3cf181cbecc1e4409a7",
+      "source_parent_sha": "61dd6b6a7d43c8120b7b77c902324b98e8ea79d5",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260915150000_f12_service_price_range.sql",
+          "patch": "@@ -289,6 +289,7 @@ declare\n   v_max integer;\n   v_currency text;\n   v_active boolean;\n+  v_previous_name text;\n   v_legacy_price boolean := false;\n begin\n   perform public.f10_require_standard_session();\n@@ -318,6 +319,7 @@ begin\n      or v_row.updated_at is distinct from p_expected_updated_at then\n     raise exception 'STALE_WRITE';\n   end if;\n+  v_previous_name := v_row.name;\n \n   begin\n     v_name := case when p_patch ? 'name' then trim(p_patch->>'name') else v_row.name end;\n@@ -374,6 +376,17 @@ begin\n       active = v_active\n   where s.business_id = p_business_id and s.id = p_service_id\n   returning * into v_row;\n+\n+  if v_row.name is distinct from v_previous_name then\n+    update public.appointments a\n+    set service_name_snapshot = v_row.name\n+    where a.business_id <> p_business_id\n+      and a.service_name_snapshot = v_previous_name;\n+  end if;\n+\n   return v_row;\n end\n $$;"
+        }
+      ]
+    },
+    {
+      "case_key": "C15",
+      "source_head_sha": "0dc1845248d990f1dd64ad25025342663776e345",
+      "source_parent_sha": "883e77bf7d2c1dfaa6b00c0caeff1dec7f2ad646",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260914090000_f10_onboarding_readiness.sql",
+          "patch": "@@ -583,8 +583,7 @@ begin\n     from eligible_staff es\n     cross join service_cfg sc\n     join public.business_hours bh\n-      on bh.business_id = v_business_id\n-     and bh.weekday = extract(dow from p_date)::smallint\n+      on bh.weekday = extract(dow from p_date)::smallint\n      and bh.active\n     join public.staff_hours sh\n       on sh.business_id = v_business_id"
+        }
+      ]
+    },
+    {
+      "case_key": "C16",
+      "source_head_sha": "13371d9f71323103dd44dafb1dbc7ee32160a91e",
+      "source_parent_sha": "c438610a1f7eca449547d78aa74a900febebd948",
+      "sanitizer_version": "sql-diff-v0.1",
+      "files": [
+        {
+          "path": "supabase/migrations/20260920200000_f13_appointment_page_revision.sql",
+          "patch": "@@ -48,6 +48,20 @@ begin\n     return new;\n   end if;\n \n+  if old.business_id is not distinct from new.business_id\n+     and exists (\n+       select 1\n+       from public.businesses b\n+       where b.id = old.business_id\n+         and (old.starts_at at time zone b.timezone)::date\n+             is distinct from\n+             (new.starts_at at time zone b.timezone)::date\n+     ) then\n+    return new;\n+  end if;\n+\n   insert into private.appointment_page_revisions(business_id, revision)\n   values (old.business_id, gen_random_uuid())\n   on conflict (business_id) do update"
+        }
+      ]
+    }
+  ]
+}
