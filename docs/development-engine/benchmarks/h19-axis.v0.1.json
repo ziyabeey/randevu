@@ -23,7 +23,7 @@
   },
   "cases": [
     {
-      "case_key": "C01",
+      "case_key": "C02",
       "id": "booking.d0d1.tenant_idempotency",
       "domain": "booking",
       "expected_pair": [
@@ -38,7 +38,7 @@
       }
     },
     {
-      "case_key": "C02",
+      "case_key": "C06",
       "id": "booking.d1d5.idempotency_concurrency",
       "domain": "booking",
       "expected_pair": [
@@ -68,7 +68,7 @@
       }
     },
     {
-      "case_key": "C04",
+      "case_key": "C05",
       "id": "booking.d0d5.tenant_lock_isolation",
       "domain": "booking",
       "expected_pair": [
@@ -83,7 +83,7 @@
       }
     },
     {
-      "case_key": "C05",
+      "case_key": "C08",
       "id": "booking.d4d5.cross_day_authority",
       "domain": "booking",
       "expected_pair": [
@@ -98,7 +98,7 @@
       }
     },
     {
-      "case_key": "C06",
+      "case_key": "C07",
       "id": "booking.d0d3.tenant_capacity",
       "domain": "booking",
       "expected_pair": [
@@ -113,7 +113,7 @@
       }
     },
     {
-      "case_key": "C07",
+      "case_key": "C04",
       "id": "booking.d3d4.staff_hours_fallback",
       "domain": "booking",
       "expected_pair": [
@@ -128,7 +128,7 @@
       }
     },
     {
-      "case_key": "C08",
+      "case_key": "C09",
       "id": "inventory.d0d1.actor_idempotency",
       "domain": "inventory",
       "expected_pair": [
@@ -143,7 +143,7 @@
       }
     },
     {
-      "case_key": "C09",
+      "case_key": "C10",
       "id": "inventory.d1d5.idempotency_concurrency",
       "domain": "inventory",
       "expected_pair": [
@@ -158,7 +158,7 @@
       }
     },
     {
-      "case_key": "C10",
+      "case_key": "C01",
       "id": "booking.d2d3.snapshot_staff_coherence",
       "domain": "booking",
       "expected_pair": [
