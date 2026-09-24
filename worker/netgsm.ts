@@ -23,6 +23,21 @@ export type NetgsmSendResult =
 
 const SEND_ENDPOINT = 'https://api.netgsm.com.tr/sms/rest/v2/send';
 const LENGTH_ENDPOINT = 'https://api.netgsm.com.tr/sms/rest/v2/length';
+const REPORT_ENDPOINT = 'https://api.netgsm.com.tr/sms/rest/v2/report';
+
+export type NetgsmDeliveryReportJob = {
+  providerMessageId: string;
+  providerReferenceId: string | null;
+  status: 'waiting' | 'delivered' | 'expired' | 'invalid_or_restricted_number'
+    | 'operator_unreachable' | 'operator_rejected' | 'sending_error' | 'duplicate'
+    | 'insufficient_credit' | 'blacklisted' | 'iys_rejected' | 'iys_error'
+    | 'international_not_allowed';
+  delivered: boolean;
+};
+
+export type NetgsmDeliveryReportResult =
+  | { status: 'ok'; jobs: NetgsmDeliveryReportJob[] }
+  | { status: 'failed'; errorClass: string };
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_SMS_PARTS = 6;
 
@@ -103,6 +118,107 @@ function retryAfter(response: Response) {
   if (Number.isFinite(seconds) && seconds > 0) return Math.min(86_400, Math.floor(seconds));
   const at = Date.parse(raw);
   return Number.isFinite(at) ? Math.max(1, Math.min(86_400, Math.ceil((at - Date.now()) / 1000))) : undefined;
+}
+
+
+function deliveryStatus(value: unknown): Pick<NetgsmDeliveryReportJob, 'status' | 'delivered'> {
+  const code = typeof value === 'number' ? value : Number(value);
+  switch (code) {
+    case 1: return { status: 'delivered', delivered: true };
+    case 2: return { status: 'expired', delivered: false };
+    case 3: return { status: 'invalid_or_restricted_number', delivered: false };
+    case 4: return { status: 'operator_unreachable', delivered: false };
+    case 11: return { status: 'operator_rejected', delivered: false };
+    case 12: return { status: 'sending_error', delivered: false };
+    case 13: return { status: 'duplicate', delivered: false };
+    case 14: return { status: 'insufficient_credit', delivered: false };
+    case 15: return { status: 'blacklisted', delivered: false };
+    case 16: return { status: 'iys_rejected', delivered: false };
+    case 17: return { status: 'iys_error', delivered: false };
+    case 22: return { status: 'international_not_allowed', delivered: false };
+    case 0:
+    default:
+      // Unknown provider states remain pollable instead of being misclassified.
+      return { status: 'waiting', delivered: false };
+  }
+}
+
+function reportRows(data: Record<string, unknown> | null) {
+  if (Array.isArray(data?.jobs)) return data.jobs;
+  const response = data?.response;
+  if (response && typeof response === 'object' && !Array.isArray(response)) {
+    const job = (response as Record<string, unknown>).job;
+    if (Array.isArray(job)) return job;
+    if (job && typeof job === 'object') return [job];
+  }
+  return [];
+}
+
+export async function queryNetgsmDeliveryReport(
+  env: NetgsmEnv,
+  providerMessageIds: string[],
+  fetchImpl: typeof fetch = fetch,
+): Promise<NetgsmDeliveryReportResult> {
+  const config = netgsmConfigured(env);
+  if (!config) return { status: 'failed', errorClass: 'netgsm_not_configured' };
+
+  const ids = [...new Set(providerMessageIds.map((value) => value.trim()))]
+    .filter((value) => value.length >= 1 && value.length <= 200);
+  if (!ids.length || ids.length > 50 || ids.length !== providerMessageIds.length) {
+    return { status: 'failed', errorClass: 'netgsm_invalid_report_batch' };
+  }
+
+  try {
+    const { response, data } = await jsonWithTimeout(
+      REPORT_ENDPOINT,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: basicAuth(config.usercode, config.password),
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          jobids: ids,
+          ...(config.appname ? { appname: config.appname } : {}),
+        }),
+      },
+      fetchImpl,
+    );
+
+    if (!response.ok || !data) {
+      return {
+        status: 'failed',
+        errorClass: `netgsm_report_${providerCode(data) || `http_${response.status}`}`.slice(0, 120),
+      };
+    }
+
+    const requested = new Set(ids);
+    const jobs: NetgsmDeliveryReportJob[] = [];
+    const seen = new Set<string>();
+    for (const raw of reportRows(data)) {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+      const row = raw as Record<string, unknown>;
+      const providerMessageId = String(row.jobid ?? '').trim();
+      if (!requested.has(providerMessageId) || seen.has(providerMessageId)) continue;
+      seen.add(providerMessageId);
+      const normalized = deliveryStatus(row.status);
+      jobs.push({
+        providerMessageId,
+        providerReferenceId: typeof row.referansID === 'string' && row.referansID.trim()
+          ? row.referansID.trim() : null,
+        ...normalized,
+      });
+    }
+    return { status: 'ok', jobs };
+  } catch (error) {
+    return {
+      status: 'failed',
+      errorClass: error instanceof DOMException && error.name === 'AbortError'
+        ? 'netgsm_report_timeout'
+        : 'netgsm_report_network_error',
+    };
+  }
 }
 
 export async function sendNetgsmSms(

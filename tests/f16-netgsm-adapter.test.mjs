@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   netgsmConfigured,
   normalizeNetgsmRecipient,
+  queryNetgsmDeliveryReport,
   sendNetgsmSms,
 } from '../worker/netgsm.ts';
 
@@ -139,4 +140,47 @@ test('F16-02 NetGSM known rate rejection is safe to retry within queue bounds', 
   assert.equal(result.definitelyRejected, true);
   assert.equal(result.errorClass, 'netgsm_80');
   assert.equal(result.retryAfterSeconds, 60);
+});
+
+
+test('F16-02 NetGSM delivery report batches jobids and maps only documented states', async () => {
+  let request = null;
+  const result = await queryNetgsmDeliveryReport(env, ['job-delivered', 'job-waiting', 'job-terminal', 'job-unknown'], async (url, init) => {
+    request = { url: String(url), init };
+    return new Response(JSON.stringify({
+      code: '00',
+      jobs: [
+        { jobid: 'job-delivered', status: 1, errorCode: 0, referansID: 'ref-1' },
+        { jobid: 'job-waiting', status: 0, errorCode: 0, referansID: 'ref-2' },
+        { jobid: 'job-terminal', status: 11, errorCode: 0, referansID: 'ref-3' },
+        { jobid: 'job-unknown', status: 999, errorCode: 0, referansID: 'ref-4' },
+        { jobid: 'not-requested', status: 1, errorCode: 0 },
+      ],
+      description: 'success',
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  });
+
+  assert.equal(request.url, 'https://api.netgsm.com.tr/sms/rest/v2/report');
+  assert.deepEqual(JSON.parse(request.init.body).jobids, ['job-delivered', 'job-waiting', 'job-terminal', 'job-unknown']);
+  assert.match(new Headers(request.init.headers).get('Authorization') ?? '', /^Basic /);
+  assert.deepEqual(result, {
+    status: 'ok',
+    jobs: [
+      { providerMessageId: 'job-delivered', providerReferenceId: 'ref-1', status: 'delivered', delivered: true },
+      { providerMessageId: 'job-waiting', providerReferenceId: 'ref-2', status: 'waiting', delivered: false },
+      { providerMessageId: 'job-terminal', providerReferenceId: 'ref-3', status: 'operator_rejected', delivered: false },
+      { providerMessageId: 'job-unknown', providerReferenceId: 'ref-4', status: 'waiting', delivered: false },
+    ],
+  });
+});
+
+test('F16-02 NetGSM delivery report rejects an oversized batch before provider IO', async () => {
+  let called = false;
+  const result = await queryNetgsmDeliveryReport(
+    env,
+    Array.from({ length: 51 }, (_, index) => `job-${index}`),
+    async () => { called = true; throw new Error('must not call provider'); },
+  );
+  assert.equal(called, false);
+  assert.deepEqual(result, { status: 'failed', errorClass: 'netgsm_invalid_report_batch' });
 });

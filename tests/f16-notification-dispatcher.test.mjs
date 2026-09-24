@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { dispatchNotificationBatch } from '../worker/notifications.ts';
+import { dispatchNotificationBatch, reconcileNotificationDeliveryBatch } from '../worker/notifications.ts';
 
 const dispatchSecret = 'sssssssssssssssssssssssssssssssssssssssssss';
 const env = {
@@ -91,7 +91,7 @@ test('F16-02 dispatcher claims operator SMS without recovery material and comple
     if (url.endsWith('/sms/rest/v2/length')) {
       const body = JSON.parse(String(init.body));
       assert.equal(body.encoding, 11);
-      assert.match(body.context, /Randevu/);
+      assert.match(body.context, /randevu/i);
       return json({ parts: 1, charsUsed: 100, charsLeft: 788, charsLeftUntilNextPart: 55 });
     }
     if (url.endsWith('/sms/rest/v2/send')) {
@@ -176,4 +176,56 @@ test('F16-02 dispatcher keeps missing NetGSM configuration retryable before prov
   assert.equal(releaseBody.p_error_class, 'netgsm_not_configured');
   assert.equal(releaseBody.p_retryable, true);
   assert.equal(releaseBody.p_definitely_rejected, true);
+});
+
+
+test('F16-02 delivery reconciliation uses the canonical claim/report/record path', async () => {
+  const recorded = [];
+  let reportBody = null;
+  const fakeFetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith('/rpc/claim_notification_delivery_checks')) {
+      const body = JSON.parse(String(init.body));
+      assert.equal(body.p_limit, 50);
+      return json([
+        { provider_message_id: 'job-delivered', provider_reference_id: 'ref-delivered' },
+        { provider_message_id: 'job-waiting', provider_reference_id: 'ref-waiting' },
+        { provider_message_id: 'job-terminal', provider_reference_id: 'ref-terminal' },
+      ]);
+    }
+    if (url.endsWith('/sms/rest/v2/report')) {
+      reportBody = JSON.parse(String(init.body));
+      return json({
+        code: '00',
+        jobs: [
+          { jobid: 'job-delivered', status: 1, referansID: 'ref-delivered', errorCode: 0 },
+          { jobid: 'job-waiting', status: 0, referansID: 'ref-waiting', errorCode: 0 },
+          { jobid: 'job-terminal', status: 12, referansID: 'ref-terminal', errorCode: 119 },
+        ],
+        description: 'success',
+      });
+    }
+    if (url.endsWith('/rpc/record_notification_delivery_status')) {
+      recorded.push(JSON.parse(String(init.body)));
+      return json(true);
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+
+  const result = await reconcileNotificationDeliveryBatch(env, fakeFetch);
+  assert.deepEqual(reportBody.jobids, ['job-delivered', 'job-waiting', 'job-terminal']);
+  assert.deepEqual(result, {
+    status: 'ok',
+    claimed: 3,
+    recorded: 3,
+    delivered: 1,
+    waiting: 1,
+    terminal: 1,
+    recordErrors: 0,
+  });
+  assert.deepEqual(recorded.map((row) => [row.p_provider_message_id, row.p_status, row.p_delivered]), [
+    ['job-delivered', 'delivered', true],
+    ['job-waiting', 'waiting', false],
+    ['job-terminal', 'sending_error', false],
+  ]);
 });

@@ -1,6 +1,6 @@
 import { base64UrlToBytes } from '../shared/base64.ts';
 import { fetchTextWithTimeout } from './outbound-request.ts';
-import { netgsmConfigured, sendNetgsmSms, type NetgsmEnv } from './netgsm.ts';
+import { netgsmConfigured, queryNetgsmDeliveryReport, sendNetgsmSms, type NetgsmEnv } from './netgsm.ts';
 
 export type NotificationEnv = NetgsmEnv & {
   SUPABASE_URL: string;
@@ -96,6 +96,21 @@ export type NotificationDispatchSummary = {
   retrying: number;
   failedTerminal: number;
   leaseErrors: number;
+};
+
+type DeliveryCheckRow = {
+  provider_message_id: string;
+  provider_reference_id: string | null;
+};
+
+export type NotificationDeliverySummary = {
+  status: 'ok' | 'disabled' | 'claim_failed' | 'provider_failed';
+  claimed: number;
+  recorded: number;
+  delivered: number;
+  waiting: number;
+  terminal: number;
+  recordErrors: number;
 };
 
 const AAD_PREFIX = 'public-booking-recovery:v1|';
@@ -719,6 +734,65 @@ export async function dispatchNotificationBatch(
     else if (released.data === 'failed_terminal') summary.failedTerminal += 1;
     else summary.retrying += 1;
   }));
+
+  return summary;
+}
+
+
+export async function reconcileNotificationDeliveryBatch(
+  env: NotificationEnv,
+  fetchImpl: typeof fetch = fetch,
+): Promise<NotificationDeliverySummary> {
+  const dispatchSecret = validSecret(env.NOTIFICATION_DISPATCH_SECRET);
+  if (!dispatchSecret || !netgsmConfigured(env)) {
+    return { status: 'disabled', claimed: 0, recorded: 0, delivered: 0, waiting: 0, terminal: 0, recordErrors: 0 };
+  }
+
+  const claimed = await rpc<DeliveryCheckRow[]>(env, 'claim_notification_delivery_checks', {
+    p_dispatch_secret: dispatchSecret,
+    p_limit: 50,
+  }, fetchImpl);
+  if (!claimed.ok || !Array.isArray(claimed.data)) {
+    return { status: 'claim_failed', claimed: 0, recorded: 0, delivered: 0, waiting: 0, terminal: 0, recordErrors: 0 };
+  }
+
+  const summary: NotificationDeliverySummary = {
+    status: 'ok',
+    claimed: claimed.data.length,
+    recorded: 0,
+    delivered: 0,
+    waiting: 0,
+    terminal: 0,
+    recordErrors: 0,
+  };
+  if (!claimed.data.length) return summary;
+
+  const allowed = new Set(claimed.data.map((row) => row.provider_message_id));
+  const report = await queryNetgsmDeliveryReport(
+    env,
+    [...allowed],
+    fetchImpl,
+  );
+  if (report.status === 'failed') return { ...summary, status: 'provider_failed' };
+
+  for (const job of report.jobs) {
+    if (!allowed.has(job.providerMessageId)) continue;
+    const recorded = await rpc<boolean>(env, 'record_notification_delivery_status', {
+      p_dispatch_secret: dispatchSecret,
+      p_provider: 'netgsm',
+      p_provider_message_id: job.providerMessageId,
+      p_status: job.status,
+      p_delivered: job.delivered,
+    }, fetchImpl);
+    if (!recorded.ok || recorded.data !== true) {
+      summary.recordErrors += 1;
+      continue;
+    }
+    summary.recorded += 1;
+    if (job.delivered) summary.delivered += 1;
+    else if (job.status === 'waiting') summary.waiting += 1;
+    else summary.terminal += 1;
+  }
 
   return summary;
 }

@@ -1116,7 +1116,6 @@ export default function BookingPage() {
             }} />
             <small>En fazla 12 randevu</small>
           </label>}
-          <span><strong>SMS</strong><small>F16-02 ile açılacak</small></span>
         </div>
         {selectedCreateSlot && recurrenceFrequency !== 'none' && <div className="booking-actions">
           <button className="secondary-button" type="button" disabled={busy || seriesPreviewBusy} onClick={() => void previewSeriesCreate()}>

@@ -8,6 +8,7 @@ const migration = await readFile(
 );
 const dispatcher = await readFile(new URL('../worker/notifications.ts', import.meta.url), 'utf8');
 const netgsm = await readFile(new URL('../worker/netgsm.ts', import.meta.url), 'utf8');
+const entry = await readFile(new URL('../worker/entry.ts', import.meta.url), 'utf8');
 
 test('F16-02 reuses the canonical notification queue instead of creating a second scheduler', () => {
   assert.match(migration, /appointment_notification_jobs/);
@@ -39,4 +40,16 @@ test('F16-02 operator jobs remain tenant-scoped and public recovery is optional'
   assert.match(migration, /references public\.appointment_groups\(business_id,id\)/);
   assert.match(migration, /not public\.is_active_member\(p_business_id\)/);
   assert.match(migration, /left join public\.public_booking_recoveries r/);
+});
+
+
+test('F16-02 reconciles NetGSM delivery from the existing scheduled notification entry', () => {
+  assert.match(migration, /claim_notification_delivery_checks/);
+  assert.match(migration, /record_notification_delivery_status/);
+  assert.match(netgsm, /sms\/rest\/v2\/report/);
+  assert.match(dispatcher, /queryNetgsmDeliveryReport/);
+  assert.match(dispatcher, /claim_notification_delivery_checks/);
+  assert.match(dispatcher, /record_notification_delivery_status/);
+  assert.match(entry, /context\.waitUntil\(reconcileNotificationDeliveryBatch\(env\)\)/);
+  assert.equal((entry.match(/scheduled\(/g) ?? []).length, 1);
 });
