@@ -162,15 +162,30 @@ export function validateMinimalTestSpec(spec) {
   const expected = sha256(stableJson(body) + '\n');
   if (expected !== spec.specSha256) throw new Error('minimal test spec hash mismatch');
 
-  const shouldBeReady = [
-    spec.setup,
-    spec.action,
-    spec.expectedInvariant,
-    spec.requiredObservations,
-  ].every((section) => section.state === 'known');
+  if (spec.readiness?.eligible !== true) {
+    throw new Error('minimal test spec must remain eligible');
+  }
 
+  const missingSections = [
+    ['setup', spec.setup],
+    ['action', spec.action],
+    ['expectedInvariant', spec.expectedInvariant],
+    ['requiredObservations', spec.requiredObservations],
+  ].filter(([, section]) => section.state !== 'known').map(([name]) => name);
+
+  const shouldBeReady = missingSections.length === 0;
   if (Boolean(spec.readiness?.readyForExecutableGeneration) !== shouldBeReady) {
     throw new Error('minimal test spec readiness mismatch');
   }
+  if (stableJson(spec.readiness?.missingSections ?? []) !== stableJson(missingSections)) {
+    throw new Error('minimal test spec missingSections mismatch');
+  }
+
+  if (spec.hypothesis?.reason === 'surviving-mutant') {
+    if (!spec.mutation?.mutationId || !spec.mutation?.mutatorId) {
+      throw new Error('surviving-mutant spec lost mutation identity');
+    }
+  }
+
   return spec;
 }
