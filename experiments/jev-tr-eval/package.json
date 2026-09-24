@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "eval": "node run-eval.mjs",
+    "eval": "NODE_USE_ENV_PROXY=1 node run-eval.mjs",
     "eval:mock": "node run-eval.mjs --mock"
   },
   "dependencies": {

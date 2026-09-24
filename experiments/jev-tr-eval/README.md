@@ -15,6 +15,12 @@ seçenek açıklamalarını randevu diline göre "hazırlamanın" doğruluğu ne
 
 Ortam ayarları yeni oturumda geçerli olur.
 
+Node'un yerleşik `fetch`'i `HTTPS_PROXY`'yi kendiliğinden okumaz; `npm run eval` bu yüzden
+`NODE_USE_ENV_PROXY=1` ile çalışır (Node ≥ 22.21). Bu bayrak olmadan istekler ortamın ajan proxy'sine
+gitmez ve `403 Host not in allowlist` alınır.
+
+İlk gerçek ölçümün raporu: [`ilk-olcum-2026-09-24.md`](ilk-olcum-2026-09-24.md).
+
 ## Çalıştırma
 
 ```sh
