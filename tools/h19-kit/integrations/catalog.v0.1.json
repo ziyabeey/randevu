@@ -96,6 +96,31 @@
       "use": [
         "SARIF/RDJSON-compatible reporting"
       ]
+    },
+    {
+      "id": "scip-protocol",
+      "project": "SCIP / scip-code",
+      "license": "Apache-2.0",
+      "mode": "external-index",
+      "use": [
+        "symbol/reference/implementation graph",
+        "code-intelligence interchange"
+      ],
+      "notes": [
+        "Consume index.scip through scip print --json initially; do not assume references are call edges."
+      ]
+    },
+    {
+      "id": "tree-sitter-fallback",
+      "project": "Tree-sitter",
+      "license": "MIT",
+      "mode": "optional-parser-adapter",
+      "use": [
+        "generic semantic-unit extraction for unsupported languages"
+      ],
+      "notes": [
+        "Fallback syntax layer only; compiler-backed adapters remain preferred when richer symbol/type information is available."
+      ]
     }
   ]
 }
