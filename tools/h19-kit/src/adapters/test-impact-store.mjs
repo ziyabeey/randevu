@@ -36,6 +36,23 @@ export class TestImpactStore {
     return this.data.units[unitDigest];
   }
 
+  addTests(unitDigest, {
+    tests = [],
+    provider = 'custom',
+    sourceDigest = null,
+    observedAt = null,
+  } = {}) {
+    if (!unitDigest) throw new TypeError('unitDigest is required');
+    const previous = this.data.units[unitDigest] ?? { tests: [] };
+    this.data.units[unitDigest] = {
+      tests: [...new Set([...(previous.tests ?? []), ...tests])].sort(),
+      provider,
+      sourceDigest: sourceDigest ?? previous.sourceDigest ?? null,
+      observedAt: observedAt ?? previous.observedAt ?? null,
+    };
+    return this.data.units[unitDigest];
+  }
+
   get(unitDigest) {
     return this.data.units[unitDigest] ?? null;
   }
