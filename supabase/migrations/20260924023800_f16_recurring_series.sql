@@ -470,12 +470,6 @@ begin
   end if;
   if v_notes is not null and char_length(v_notes)>1000 then raise exception 'NOTES_TOO_LONG'; end if;
 
-  -- Candidate generation validates frequency/count/date range and local-time
-  -- stability before any durable series evidence is inserted.
-  perform count(*) from public.f16_series_candidates(
-    p_business_id,p_starts_at,p_frequency,p_count
-  );
-
   v_hash:=md5(jsonb_build_object(
     'customerName',v_customer_name,
     'customerPhone',v_customer_phone,
@@ -493,8 +487,17 @@ begin
   );
 
   if not v_claim.is_new then
+    -- A committed command owns its replay forever. Do not re-run
+    -- time-sensitive candidate validation before returning stored identity.
     return public.f16_series_payload(p_business_id,v_claim.series_id);
   end if;
+
+  -- New commands validate frequency/count/date range and local-time stability
+  -- after the idempotency claim. Any failure rolls the claim back with the
+  -- surrounding function transaction, while later replays remain stable.
+  perform count(*) from public.f16_series_candidates(
+    p_business_id,p_starts_at,p_frequency,p_count
+  );
 
   select b.timezone into v_timezone
   from public.businesses b where b.id=p_business_id;
