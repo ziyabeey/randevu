@@ -4,9 +4,13 @@ begin;
 -- Customer photos live in a separate non-public bucket. Every read goes through
 -- an authenticated Worker request that is re-authorized against the active
 -- membership, so there is no durable public URL and membership revocation takes
--- effect on the next request. Publishing into the F12 public salon gallery is an
--- explicit owner/manager action that requires recorded customer consent and
--- creates a new, independent public media row.
+-- effect on the next request. The storage read policy only admits Supabase
+-- Storage's direct authenticated download operation: signing (object/sign),
+-- copy, move, list and image rendering see no object, so a member cannot mint a
+-- signed URL that would outlive a later revocation. Publishing into the F12
+-- public salon gallery is an explicit owner/manager action that requires the
+-- caller to confirm customer consent in that request (the publisher and time
+-- are stored) and creates a new, independent public media row.
 
 create table if not exists public.appointment_private_media (
   id uuid primary key,
@@ -615,6 +619,13 @@ as $$
 declare v_business_id uuid;
 begin
   perform public.f10_require_standard_session();
+  -- Supabase Storage sets storage.operation per request. Only the direct
+  -- authenticated download is admitted; object/sign would otherwise mint a URL
+  -- that is served later without RLS, surviving membership revocation. An unset
+  -- operation (any non-Storage caller) is refused as well.
+  if coalesce(current_setting('storage.operation', true), '') <> 'storage.object.get_authenticated' then
+    return false;
+  end if;
   select m.business_id into v_business_id
   from public.appointment_private_media m
   where m.storage_path = p_name and m.status = 'ready';

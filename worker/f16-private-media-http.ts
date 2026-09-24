@@ -13,7 +13,8 @@ import { webpDimensions } from './public-profile.ts';
 // F16-03 private appointment photos. Objects live in a non-public bucket and are
 // only ever streamed through this Worker with the caller's own JWT, so storage
 // RLS re-checks the active membership on every view. Nothing here issues a
-// signed or public URL for private content.
+// signed or public URL for private content, and the storage read policy only
+// admits Storage's direct authenticated download, so a member cannot mint one.
 
 type Env = AuthEnv;
 type BaseContext = AppContext<Env>;

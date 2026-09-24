@@ -107,6 +107,9 @@ $acl$;
 
 -- Booking groups through the canonical F11 authority.
 set local role authenticated;
+-- Predicate checks below model Storage's direct authenticated download; the
+-- operation matrix further down proves every other Storage operation is refused.
+select set_config('storage.operation','storage.object.get_authenticated',true);
 select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
 select set_config('request.jwt.claim.sub','f1630000-0000-4000-8000-000000000001',true);
 do $$
@@ -461,6 +464,38 @@ begin
   if v_count <> 0 then raise exception 'F16-03 member deleted ready objects via storage (%)', v_count; end if;
 end
 $$;
+
+-- An active member must not be able to mint a signed URL (or copy/move/render/
+-- list the object) because Storage serves a signed URL later without RLS, which
+-- would outlive a membership revocation. Only the direct download sees objects.
+do $$
+declare
+  v_count integer;
+  v_operation text;
+begin
+  foreach v_operation in array array[
+    'storage.object.sign', 'storage.object.sign_many', 'storage.object.copy', 'storage.object.move',
+    'storage.object.list', 'storage.object.list_v2', 'storage.render.image_authenticated',
+    'storage.object.info_authenticated', 'object.get_authenticated_info', 'object.head_authenticated_info',
+    'storage.s3.object.get', 'storage.s3.object.copy', 'storage.s3.object.list', 'storage.object.get_signed', ''
+  ] loop
+    perform set_config('storage.operation', v_operation, true);
+    select count(*) into v_count from storage.objects where bucket_id = 'appointment-private-media'
+      and name like 'f1631000-0000-4000-8000-000000000001/%';
+    if v_count <> 0 then
+      raise exception 'F16-03 Storage operation "%" exposed % private objects', v_operation, v_count;
+    end if;
+    if public.appointment_private_media_read_allowed(
+         'f1631000-0000-4000-8000-000000000001/' || current_setting('f1603.group_a') || '/f1636000-0000-4000-8000-000000000001.webp') then
+      raise exception 'F16-03 Storage operation "%" passed the private read predicate', v_operation;
+    end if;
+  end loop;
+  perform set_config('storage.operation', 'storage.object.get_authenticated', true);
+  select count(*) into v_count from storage.objects where bucket_id = 'appointment-private-media'
+    and name like 'f1631000-0000-4000-8000-000000000001/%';
+  if v_count <> 9 then raise exception 'F16-03 direct download policy returned % objects after the matrix', v_count; end if;
+end
+$$;
 select set_config('request.jwt.claim.sub','f1630000-0000-4000-8000-000000000005',true);
 do $$
 declare v_count integer;
@@ -501,6 +536,12 @@ begin
   end if;
   select count(*) into v_count from storage.objects where bucket_id = 'appointment-private-media';
   if v_count <> 0 then raise exception 'F16-03 revoked member sees % storage objects', v_count; end if;
+  -- Nothing the member could have prepared while active survives: signing was
+  -- never admitted (matrix above) and the direct download now sees nothing.
+  perform set_config('storage.operation', 'storage.object.sign', true);
+  select count(*) into v_count from storage.objects where bucket_id = 'appointment-private-media';
+  if v_count <> 0 then raise exception 'F16-03 revoked member can sign % storage objects', v_count; end if;
+  perform set_config('storage.operation', 'storage.object.get_authenticated', true);
 end
 $$;
 select set_config('request.jwt.claim.sub','f1630000-0000-4000-8000-000000000003',true);
