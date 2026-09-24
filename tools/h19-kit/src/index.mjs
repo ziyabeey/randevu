@@ -49,3 +49,4 @@ export * from './adapters/tree-sitter.mjs';
 export * from './extractors/tree-sitter-units.mjs';
 export * from './extractors/tree-sitter-profiles.mjs';
 export * from './impact/unit-symbol-map.mjs';
+export * from './indexing/indexer-registry.mjs';\n
