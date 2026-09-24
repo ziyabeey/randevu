@@ -20,6 +20,7 @@ import expenses from './expenses.ts';
 import reports from './reports.ts';
 import f16Series from './f16-series-http.ts';
 import onboarding from './onboarding.ts';
+import whatsappVerify from './whatsapp-verify-http.ts';
 import {
   mutationSecurityError,
   type AuthEnv,
@@ -60,7 +61,9 @@ function mutationClass(method: string, path: string): MutationClass {
       || path === '/api/public/booking/resolve'
       || /^\/api\/public\/business\/[^/]+\/book$/.test(path)
       || /^\/api\/public\/business\/[^/]+\/group-slots$/.test(path)
-      || /^\/api\/public\/business\/[^/]+\/group-book$/.test(path))) {
+      || /^\/api\/public\/business\/[^/]+\/group-book$/.test(path)
+      || path === '/api/public/verify/whatsapp/start'
+      || path === '/api/public/verify/whatsapp/check')) {
     return 'public';
   }
 
@@ -113,6 +116,7 @@ app.route('/api/customers', customers);
 app.route('/api/public', publicBookingRecovery);
 app.route('/api/public', publicProfile);
 app.route('/api/public', publicBooking);
+app.route('/api/public', whatsappVerify);
 app.route('/api/manage', customerManage);
 app.route('/api/calendar', calendar);
 app.route('/api/team', team);
