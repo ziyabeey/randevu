@@ -4,8 +4,11 @@ const headers = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
   "permissions-policy": "camera=(), microphone=(), geolocation=()",
-  "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+  "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
 };
+
+const OG_PNG_BASE64 = "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";
+const OG_PNG = Uint8Array.from(atob(OG_PNG_BASE64), (char) => char.charCodeAt(0));
 
 const shell = ({ title, description, content }) => `<!doctype html>
 <html lang="tr">
@@ -21,6 +24,17 @@ const shell = ({ title, description, content }) => `<!doctype html>
   <meta property="og:title" content="${title}" />
   <meta property="og:description" content="${description}" />
   <meta property="og:url" content="https://kepenk.ai/" />
+  <meta property="og:image" content="https://kepenk.ai/og.png" />
+  <meta property="og:image:secure_url" content="https://kepenk.ai/og.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Kepenk.ai — Kepenk açık, sistem çalışıyor." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="${description}" />
+  <meta name="twitter:image" content="https://kepenk.ai/og.png" />
+  <link rel="canonical" href="https://kepenk.ai/" />
   <meta name="theme-color" content="#0b1633" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <style>
@@ -143,6 +157,17 @@ export default {
     if (url.pathname === "/favicon.svg") {
       return new Response('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="%233366cc"/><path d="M14 20h36M14 32h36M14 44h24" stroke="%23c6e800" stroke-width="6" stroke-linecap="round"/></svg>', {
         headers: { "content-type": "image/svg+xml", "cache-control": "public, max-age=86400" }
+      });
+    }
+
+    if (url.pathname === "/og.png") {
+      return new Response(request.method === "HEAD" ? null : OG_PNG, {
+        headers: {
+          "content-type": "image/png",
+          "content-length": String(OG_PNG.byteLength),
+          "cache-control": "public, max-age=86400, immutable",
+          "x-content-type-options": "nosniff"
+        }
       });
     }
 
