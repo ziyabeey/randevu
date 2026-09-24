@@ -349,6 +349,13 @@ const cookieMutations = [
   ['POST', '/api/private-media/cleanup'],
   ['DELETE', '/api/private-media/:mediaId'],
   ['POST', '/api/private-media/:mediaId/publish'],
+  ['POST', '/api/service-packages'],
+  ['PATCH', '/api/service-packages/:id'],
+  ['POST', '/api/tickets/package-sales'],
+  ['POST', '/api/tickets/:id/package-lines'],
+  ['POST', '/api/tickets/:id/lines/:lineId/package-usage'],
+  ['POST', '/api/tickets/:id/lines/:lineId/package-usage/reverse'],
+  ['POST', '/api/customer-packages/:id/refund'],
   ['POST', '/api/feedback/:feedbackId/moderate'],
 ];
 const exceptions = [

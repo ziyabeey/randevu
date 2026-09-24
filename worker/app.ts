@@ -20,6 +20,7 @@ import expenses from './expenses.ts';
 import reports from './reports.ts';
 import f16Series from './f16-series-http.ts';
 import f16PrivateMedia from './f16-private-media-http.ts';
+import f16Packages from './f16-packages-http.ts';
 import f16Feedback from './f16-feedback-http.ts';
 import onboarding from './onboarding.ts';
 import {
@@ -125,6 +126,7 @@ app.route('/api/manage', customerManage);
 app.route('/api/calendar', calendar);
 app.route('/api/team', team);
 app.route('/api', tickets);
+app.route('/api', f16Packages);
 app.route('/api', products);
 app.route('/api', expenses);
 app.route('/api', reports);
