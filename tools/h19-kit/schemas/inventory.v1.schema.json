@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/inventory.v1.schema.json",
+  "title": "H19 Repository Inventory v1",
+  "type": "object",
+  "required": [
+    "version",
+    "filesScanned",
+    "units",
+    "errors"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "root": {
+      "type": "string"
+    },
+    "filesScanned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "units": {
+      "type": "array"
+    },
+    "errors": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}
