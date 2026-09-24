@@ -1,0 +1,45 @@
+{
+  "question_bank_id": "DE-JEV-H19-AXIS",
+  "version": "0.1.0",
+  "maturity": "SHADOW",
+  "purpose": "Classify whether a code change touches each frozen H19 semantic axis. Facts are advisory evidence, never authority or a merge decision.",
+  "output_contract": {
+    "per_axis": {
+      "answer": "boolean",
+      "confidence": "number in [0,1] representing confidence that the boolean answer is correct"
+    },
+    "notes": "The deterministic scorer converts each answer/confidence pair into P(axis=yes). Pair ranking is computed in code, not by the model."
+  },
+  "axes": [
+    {
+      "id": "D0",
+      "label": "tenant / authorization",
+      "question": "Does this change affect tenant, business, actor or authorization scope, including cross-tenant isolation or authority predicates?"
+    },
+    {
+      "id": "D1",
+      "label": "atomicity / idempotency",
+      "question": "Does this change affect atomicity, idempotency, replay, command receipts, duplicate suppression or all-or-nothing mutation semantics?"
+    },
+    {
+      "id": "D2",
+      "label": "snapshot / policy",
+      "question": "Does this change affect immutable snapshots, historical values, policy selection, captured state or whether later state can rewrite earlier meaning?"
+    },
+    {
+      "id": "D3",
+      "label": "staff / capacity",
+      "question": "Does this change affect staff assignment, capacity, availability, staffing constraints or resource allocation limits?"
+    },
+    {
+      "id": "D4",
+      "label": "time / boundary",
+      "question": "Does this change affect time, timezone, local-day conversion, scheduling windows, date/hour boundaries or temporal cutoffs?"
+    },
+    {
+      "id": "D5",
+      "label": "concurrency / version",
+      "question": "Does this change affect concurrency, locking, race ordering, stale writes, optimistic versions or interleaving-sensitive behavior?"
+    }
+  ]
+}
