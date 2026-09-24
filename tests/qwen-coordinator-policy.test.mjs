@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   automaticActionAllowed,
+  canonicalPullBaseRelation,
   canonicalTaskBinding,
   classifyPull,
   compactReviewEvidence,
@@ -107,6 +108,97 @@ test('TASKS binding requires one row owned by one open pull request', () => {
   assert.equal(canonicalTaskBinding([
     canonical,
   ], [{ number: 7 }, { number: 6 }], 7).reason, 'TASK_ROW_SHARED_BY_OPEN_PULLS');
+});
+test('canonical stacked base is dependency-bound and never treated as current main', () => {
+  const parentHead = '3'.repeat(40);
+  const parentTask = { id: 'H19-KIT-M0', prNumbers: [6], dependencies: 'TEMEL' };
+  const childTask = { id: 'H19-KIT-M1', prNumbers: [7], dependencies: 'H19-KIT-M0', status: 'İncelemede' };
+  const pulls = [
+    { number: 6, headRef: 'h19-kit-m0', headSha: parentHead },
+    { number: 7, headRef: 'h19-kit-m1', baseRef: 'h19-kit-m0', baseSha: parentHead },
+  ];
+  const relation = canonicalPullBaseRelation(pulls[1], {
+    mainSha: main,
+    mainBranch: 'main',
+    task: childTask,
+    tasks: [parentTask, childTask],
+    pulls,
+  });
+  assert.equal(relation.kind, 'stack');
+  assert.equal(relation.current, true);
+  assert.equal(relation.mergeTargetCurrent, false);
+  assert.equal(relation.gap, 'STACK_DEPENDENCY_PENDING');
+  assert.equal(relation.parentPrNumber, 6);
+
+  const stale = canonicalPullBaseRelation({ ...pulls[1], baseSha: '4'.repeat(40) }, {
+    mainSha: main,
+    mainBranch: 'main',
+    task: childTask,
+    tasks: [parentTask, childTask],
+    pulls,
+  });
+  assert.equal(stale.current, false);
+  assert.equal(stale.gap, 'STACK_PARENT_HEAD_STALE');
+
+  const undeclared = canonicalPullBaseRelation(pulls[1], {
+    mainSha: main,
+    mainBranch: 'main',
+    task: { ...childTask, dependencies: 'TEMEL' },
+    tasks: [parentTask, childTask],
+    pulls,
+  });
+  assert.equal(undeclared.gap, 'STACK_BASE_NOT_DECLARED');
+});
+
+test('stacked PR waits on its canonical parent instead of asking for a main rebase', () => {
+  const parentHead = '3'.repeat(40);
+  const relation = {
+    kind: 'stack',
+    current: true,
+    mergeTargetCurrent: false,
+    gap: 'STACK_DEPENDENCY_PENDING',
+    parentPrNumber: 6,
+    parentTaskId: 'H19-KIT-M0',
+  };
+  const result = classifyPull(pull({
+    baseRef: 'h19-kit-m0',
+    baseSha: parentHead,
+  }), {
+    config,
+    mainSha: main,
+    task: { ...task, id: 'H19-KIT-M1', dependencies: 'H19-KIT-M0' },
+    baseRelation: relation,
+  });
+  assert.equal(result.choice, 'A');
+  assert.ok(result.gaps.includes('STACK_DEPENDENCY_PENDING'));
+  assert.equal(result.gaps.includes('BASE_NOT_CURRENT_MAIN'), false);
+  assert.equal(result.readyEligible, false);
+  assert.equal(result.mergeEligible, false);
+  assert.match(result.reason, /Canonical stacked PR/);
+});
+
+test('stale stacked child invalidates exact-base Depot evidence without flattening to main', () => {
+  const relation = {
+    kind: 'stack',
+    current: false,
+    mergeTargetCurrent: false,
+    gap: 'STACK_PARENT_HEAD_STALE',
+    parentPrNumber: 6,
+    parentTaskId: 'H19-KIT-M0',
+  };
+  const result = classifyPull(pull({
+    baseRef: 'h19-kit-m0',
+    baseSha: '4'.repeat(40),
+  }), {
+    config,
+    mainSha: main,
+    task: { ...task, id: 'H19-KIT-M1', dependencies: 'H19-KIT-M0' },
+    baseRelation: relation,
+  });
+  assert.equal(result.choice, 'A');
+  assert.ok(result.gaps.includes('STACK_PARENT_HEAD_STALE'));
+  assert.equal(depotRunHardInvalidation(result), true);
+  assert.match(result.reason, /yalnız parent head ile senkronlanmalı/);
 });
 
 test('full TASKS row controls the explicit independent review budget', () => {
