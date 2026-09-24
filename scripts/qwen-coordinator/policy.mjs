@@ -136,6 +136,8 @@ export function depotRunHardInvalidation(decision) {
   return decision?.choice === 'B' || gaps.some((gap) => [
     'TASK_NOT_MAPPED',
     'BASE_NOT_CURRENT_MAIN',
+    'STACK_BASE_NOT_DECLARED',
+    'STACK_PARENT_HEAD_STALE',
     'CROSS_REPOSITORY_HEAD',
   ].includes(gap));
 }
@@ -264,6 +266,91 @@ export function canonicalTaskBinding(tasks, pulls, prNumber) {
     };
   }
   return { task: matchingTasks[0], reason: null };
+}
+function escapedPattern(value) {
+  return text(value).replace(/[.*+?^$(){}|[\]\\]/g, '\\export function canonicalTaskBinding(tasks, pulls, prNumber) {
+  const matchingTasks = (tasks ?? []).filter((task) => task.prNumbers?.includes(prNumber));
+  if (matchingTasks.length !== 1) {
+    return {
+      task: null,
+      reason: matchingTasks.length === 0 ? 'TASK_NOT_MAPPED' : 'TASK_BINDING_AMBIGUOUS',
+    };
+  }
+  const openPullNumbers = new Set((pulls ?? []).map((pull) => pull.number));
+  const competingOpenPulls = matchingTasks[0].prNumbers
+    .filter((number) => number !== prNumber && openPullNumbers.has(number));
+  if (competingOpenPulls.length > 0) {
+    return {
+      task: null,
+      reason: 'TASK_ROW_SHARED_BY_OPEN_PULLS',
+    };
+  }
+  return { task: matchingTasks[0], reason: null };
+}
+');
+}
+
+function taskDependsOn(task, dependencyId) {
+  if (!task || !dependencyId) return false;
+  const source = text(task.dependencies);
+  return new RegExp(`(?:^|[^A-Z0-9-])${escapedPattern(dependencyId)}(?:$|[^A-Z0-9-])`, 'i').test(source);
+}
+
+export function canonicalPullBaseRelation(pr, context = {}) {
+  const {
+    mainSha,
+    mainBranch = 'main',
+    task,
+    tasks = [],
+    pulls = [],
+  } = context;
+  const directMain = !pr?.baseRef || pr.baseRef === mainBranch;
+  if (directMain) {
+    const current = Boolean(mainSha) && pr?.baseSha === mainSha;
+    return {
+      kind: 'main',
+      current,
+      mergeTargetCurrent: current,
+      gap: current ? null : 'BASE_NOT_CURRENT_MAIN',
+      parentPrNumber: null,
+      parentTaskId: null,
+    };
+  }
+
+  const parent = pulls.find((candidate) => candidate?.number !== pr?.number
+    && candidate?.headRef === pr?.baseRef) ?? null;
+  if (!parent) {
+    return {
+      kind: 'unknown',
+      current: false,
+      mergeTargetCurrent: false,
+      gap: 'BASE_NOT_CURRENT_MAIN',
+      parentPrNumber: null,
+      parentTaskId: null,
+    };
+  }
+
+  const parentBinding = canonicalTaskBinding(tasks, pulls, parent.number);
+  if (!task || !parentBinding.task || !taskDependsOn(task, parentBinding.task.id)) {
+    return {
+      kind: 'stack-invalid',
+      current: false,
+      mergeTargetCurrent: false,
+      gap: 'STACK_BASE_NOT_DECLARED',
+      parentPrNumber: parent.number,
+      parentTaskId: parentBinding.task?.id ?? null,
+    };
+  }
+
+  const current = Boolean(parent.headSha) && pr?.baseSha === parent.headSha;
+  return {
+    kind: 'stack',
+    current,
+    mergeTargetCurrent: false,
+    gap: current ? 'STACK_DEPENDENCY_PENDING' : 'STACK_PARENT_HEAD_STALE',
+    parentPrNumber: parent.number,
+    parentTaskId: parentBinding.task.id,
+  };
 }
 
 export function ciForPull(pr, requiredName = 'CI gate') {
@@ -459,6 +546,7 @@ export function classifyPull(pr, context) {
     mainSha,
     task,
     remoteComplete = true,
+    baseRelation = null,
   } = context;
   const ci = ciForPull(pr, config.requiredCheckName);
   const surface = changedSurface(pr, config);
@@ -474,19 +562,29 @@ export function classifyPull(pr, context) {
   const missingReviews = Object.entries(required)
     .filter(([role, needed]) => needed && receipts[role].status !== 'accepted')
     .map(([role]) => role.toUpperCase());
+  const relation = baseRelation ?? {
+    kind: 'main',
+    current: Boolean(mainSha) && pr.baseSha === mainSha,
+    mergeTargetCurrent: Boolean(mainSha) && pr.baseSha === mainSha,
+    gap: pr.baseSha === mainSha ? null : 'BASE_NOT_CURRENT_MAIN',
+    parentPrNumber: null,
+    parentTaskId: null,
+  };
   const gaps = [];
   if (!remoteComplete) gaps.push('REMOTE_EVIDENCE_INCOMPLETE');
   if (!task) gaps.push('TASK_NOT_MAPPED');
   if (surface.incomplete) gaps.push('FILES_TRUNCATED');
   if (pr.threadsTruncated) gaps.push('THREADS_TRUNCATED');
   if (ci.status === 'missing') gaps.push('CI_GATE_MISSING');
-  if (pr.baseSha !== mainSha) gaps.push('BASE_NOT_CURRENT_MAIN');
+  if (relation.gap) gaps.push(relation.gap);
   if (pr.fromFork) gaps.push('CROSS_REPOSITORY_HEAD');
   const taskAuthority = task?.rawLine ?? `${text(task?.owner)} | ${text(task?.evidence)}`;
   if (hasUnclosedExternalGate(taskAuthority)) gaps.push('EXTERNAL_ACCEPTANCE_PENDING');
   for (const role of missingReviews) gaps.push(`${role}_RECEIPT_MISSING_OR_STALE`);
 
-  const baseCurrent = Boolean(mainSha) && pr.baseSha === mainSha;
+  const baseCurrent = relation.current === true;
+  const mergeTargetCurrent = relation.mergeTargetCurrent === true;
+  const stackPending = relation.kind === 'stack' && relation.current === true;
   const taskReviewState = task?.status === 'İncelemede';
   const cleanMergeState = pr.mergeable === 'MERGEABLE' && pr.mergeStateStatus === 'CLEAN';
   const threadsClear = Number.isInteger(pr.unresolvedThreads) && pr.unresolvedThreads === 0 && !pr.threadsTruncated;
@@ -503,15 +601,22 @@ export function classifyPull(pr, context) {
   } else if (pr.unresolvedThreads > 0 && !pr.threadsTruncated) {
     choice = 'B';
     reason = 'Açık review thread’leri kapanmadan kabul ilerleyemez.';
+  } else if (stackPending) {
+    choice = 'A';
+    reason = `Canonical stacked PR: parent #${relation.parentPrNumber} (${relation.parentTaskId}) main'e alınmadan bu PR ready/merge olmaz.`;
   } else if (!task || !evidenceComplete || !baseCurrent || ci.status !== 'pass') {
     choice = 'A';
     reason = !task
       ? 'PR canlı TASKS satırıyla eşleşmiyor; otomatik sahiplik çıkarımı yapılmadı.'
-      : !baseCurrent
-        ? 'PR tabanı güncel main değil; güncel entegrasyon kanıtı bekleniyor.'
-        : ci.status === 'pending'
-          ? 'Exact-head CI gate tamamlanmayı bekliyor.'
-          : 'Merge için gerekli kanıt eksik veya kesilmiş.';
+      : relation.gap === 'STACK_PARENT_HEAD_STALE'
+        ? `Stack parent #${relation.parentPrNumber} ilerledi; child yalnız parent head ile senkronlanmalı, main'e zorla düzleştirilmemeli.`
+        : relation.gap === 'STACK_BASE_NOT_DECLARED'
+          ? 'PR base branch’i TASKS bağımlılığıyla doğrulanamadı; stack yetkisi belirsiz.'
+          : !baseCurrent
+            ? 'PR tabanı güncel main değil; güncel entegrasyon kanıtı bekleniyor.'
+            : ci.status === 'pending'
+              ? 'Exact-head CI gate tamamlanmayı bekliyor.'
+              : 'Merge için gerekli kanıt eksik veya kesilmiş.';
   } else if (pr.draft || missingReviews.length > 0 || hasUnclosedExternalGate(taskAuthority)) {
     choice = 'C';
     reason = pr.draft
@@ -534,6 +639,7 @@ export function classifyPull(pr, context) {
     && taskReviewState
     && evidenceComplete
     && baseCurrent
+    && mergeTargetCurrent
     && ci.status === 'pass'
     && cleanMergeState
     && threadsClear
@@ -556,6 +662,7 @@ export function classifyPull(pr, context) {
     missingReviews,
     unresolvedThreads: pr.unresolvedThreads,
     gaps: unique(gaps),
+    baseRelation: relation,
     readyEligible,
     mergeEligible,
   };
