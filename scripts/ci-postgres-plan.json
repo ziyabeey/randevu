@@ -618,6 +618,10 @@
           "file": "supabase/tests/f10_onboarding_readiness.sql"
         },
         {
+          "database": "yzt_test",
+          "file": "supabase/tests/exp_h19_public_booking_d0_d4_slot_scope.sql"
+        },
+        {
           "database": "yzt_s08_upgrade",
           "file": "supabase/migrations/20260914090000_f10_onboarding_readiness.sql"
         },
