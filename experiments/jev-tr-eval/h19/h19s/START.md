@@ -1,3 +1,5 @@
+> **SUPERSEDED / UYGULANMAZ:** Bu v0.1 başlangıç kaydı OpenAI API reader koluna aittir. Geçerli başlangıç `START-v0.2.md`; geçerli yöntem H19S-PROTOKOL-v0.2 + CLARIFICATIONS-v0.2.1'dir. Tarihsel provenance için tutulur.
+
 # H19s ölçüm başlangıç kaydı
 
 - Ana protokol: `c9b6fcaca9a83d7cc8fa1ea162f6e4dd90fd6b59`
