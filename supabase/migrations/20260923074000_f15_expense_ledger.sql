@@ -498,7 +498,23 @@ begin
   v_replay:=public.f15_claim_expense_command(
     p_business_id,v_actor.id,'correct_expense',p_idempotency_key,p_request_hash
   );
-  if v_replay is not null then return v_replay; end if;
+  if v_replay is not null then
+    select * into v_replacement
+    from public.expense_events e
+    where e.business_id=p_business_id
+      and e.event_type='expense'
+      and e.correction_of_event_id=(v_replay->'replacement'->>'eventId')::uuid
+    order by e.created_at desc,e.id desc
+    limit 1;
+
+    if v_replacement.id is not null then
+      return jsonb_build_object(
+        'reversal',v_replay->'reversal',
+        'replacement',public.f15_expense_event_projection(p_business_id,v_replacement.id)
+      );
+    end if;
+    return v_replay;
+  end if;
 
   if char_length(v_reason) not between 2 and 240 then raise exception 'INVALID_EXPENSE_REASON'; end if;
   if char_length(v_category) not between 1 and 80 then raise exception 'INVALID_EXPENSE_CATEGORY'; end if;
