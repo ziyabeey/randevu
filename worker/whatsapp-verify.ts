@@ -1,34 +1,25 @@
 import { bytesToBase64Url, randomBase64Url, textToBase64Url, base64UrlToText } from '../shared/base64.ts';
 
-export type TwilioVerifyEnv = {
-  TWILLO_ID?: string;
-  TWILLO_SECRET_API?: string;
-  TWILIO_VERIFY_SERVICE_SID?: string;
+export type ZernioWhatsappEnv = {
+  ZERNIO_API_KEY?: string;
+  ZERNIO_WHATSAPP_ACCOUNT_ID?: string;
+  ZERNIO_WHATSAPP_TEMPLATE_NAME?: string;
+  ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE?: string;
   PUBLIC_BOOKING_GATE_SECRET?: string;
 };
 
-export type VerifyStartResult =
-  | { status: 'pending'; verificationSid: string }
+export type VerifySendResult =
+  | { status: 'sent'; providerMessageId: string; conversationId: string }
   | { status: 'failed'; errorClass: string; retryable: boolean; retryAfterSeconds?: number };
 
-export type VerifyCheckResult =
-  | { status: 'approved' }
-  | { status: 'pending' | 'failed'; errorClass?: string; retryable?: boolean };
-
-const VERIFY_ROOT = 'https://verify.twilio.com/v2';
+const ZERNIO_ROOT = 'https://zernio.com/api/v1';
 const REQUEST_TIMEOUT_MS = 10_000;
 const PROOF_TTL_SECONDS = 10 * 60;
+const OTP_TTL_SECONDS = 10 * 60;
 
 function clean(value: string | undefined) {
   const result = value?.trim() ?? '';
   return result || null;
-}
-
-function basicAuth(username: string, password: string) {
-  const raw = new TextEncoder().encode(`${username}:${password}`);
-  let binary = '';
-  for (const byte of raw) binary += String.fromCharCode(byte);
-  return `Basic ${btoa(binary)}`;
 }
 
 function safeEqual(a: string, b: string) {
@@ -62,6 +53,24 @@ async function jsonWithTimeout(url: string, init: RequestInit, fetchImpl: typeof
   }
 }
 
+async function hmac(secret: string, purpose: string, value: string) {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  return bytesToBase64Url(new Uint8Array(
+    await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${purpose}|${value}`)),
+  ));
+}
+
+async function phoneHash(phone: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(phone));
+  return bytesToBase64Url(new Uint8Array(digest));
+}
+
 export function normalizeWhatsappPhone(value: string) {
   const compact = value.replace(/[\s()-]/g, '');
   const digits = compact.replace(/^\+/, '');
@@ -71,134 +80,155 @@ export function normalizeWhatsappPhone(value: string) {
   return null;
 }
 
-export function twilioVerifyConfigured(env: TwilioVerifyEnv) {
-  const accountSid = clean(env.TWILLO_ID);
-  const authToken = clean(env.TWILLO_SECRET_API);
-  const serviceSid = clean(env.TWILIO_VERIFY_SERVICE_SID);
-  if (!accountSid || !/^AC[0-9a-fA-F]{32}$/.test(accountSid)) return null;
-  if (!authToken || authToken.length < 16 || authToken.length > 256) return null;
-  if (!serviceSid || !/^VA[0-9a-fA-F]{32}$/.test(serviceSid)) return null;
-  return { accountSid, authToken, serviceSid };
+export function zernioWhatsappConfigured(env: ZernioWhatsappEnv) {
+  const apiKey = clean(env.ZERNIO_API_KEY);
+  const accountId = clean(env.ZERNIO_WHATSAPP_ACCOUNT_ID);
+  const templateName = clean(env.ZERNIO_WHATSAPP_TEMPLATE_NAME);
+  const templateLanguage = clean(env.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE) ?? 'tr';
+
+  if (!apiKey || !/^sk_[0-9a-f]{64}$/i.test(apiKey)) return null;
+  if (!accountId || !/^[0-9a-f]{24}$/i.test(accountId)) return null;
+  if (!templateName || !/^[a-z0-9_]{1,128}$/.test(templateName)) return null;
+  if (!/^[a-z]{2}(?:_[A-Z]{2})?$/.test(templateLanguage)) return null;
+
+  return { apiKey, accountId, templateName, templateLanguage };
 }
 
-export async function startWhatsappVerification(
-  env: TwilioVerifyEnv,
+export function generateWhatsappOtpCode() {
+  const bucket = new Uint32Array(1);
+  crypto.getRandomValues(bucket);
+  return String((bucket[0] ?? 0) % 1_000_000).padStart(6, '0');
+}
+
+export async function sendWhatsappVerificationCode(
+  env: ZernioWhatsappEnv,
   phone: string,
+  code: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<VerifyStartResult> {
-  const config = twilioVerifyConfigured(env);
+): Promise<VerifySendResult> {
+  const config = zernioWhatsappConfigured(env);
   const normalized = normalizeWhatsappPhone(phone);
-  if (!config || !normalized) {
-    return { status: 'failed', errorClass: 'whatsapp_verify_not_configured_or_invalid_phone', retryable: false };
+  if (!config || !normalized || !/^\d{6}$/.test(code)) {
+    return { status: 'failed', errorClass: 'zernio_whatsapp_not_configured_or_invalid_phone', retryable: false };
   }
 
-  const form = new URLSearchParams({ To: normalized, Channel: 'whatsapp' });
   try {
     const { response, data } = await jsonWithTimeout(
-      `${VERIFY_ROOT}/Services/${config.serviceSid}/Verifications`,
+      `${ZERNIO_ROOT}/inbox/conversations`,
       {
         method: 'POST',
         headers: {
-          Authorization: basicAuth(config.accountSid, config.authToken),
-          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Bearer ${config.apiKey}`,
+          'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-        body: form.toString(),
+        body: JSON.stringify({
+          accountId: config.accountId,
+          participantId: normalized.slice(1),
+          templateName: config.templateName,
+          templateLanguage: config.templateLanguage,
+          templateParams: [code],
+        }),
       },
       fetchImpl,
     );
 
-    const sid = typeof data?.sid === 'string' ? data.sid.trim() : '';
-    const status = typeof data?.status === 'string' ? data.status.trim().toLowerCase() : '';
-    if (response.ok && /^VE[0-9a-fA-F]{32}$/.test(sid) && status === 'pending') {
-      return { status: 'pending', verificationSid: sid };
+    const nested = data?.data && typeof data.data === 'object'
+      ? data.data as Record<string, unknown>
+      : null;
+    const providerMessageId = typeof nested?.messageId === 'string' ? nested.messageId.trim() : '';
+    const conversationId = typeof nested?.conversationId === 'string' ? nested.conversationId.trim() : '';
+    if (response.ok && providerMessageId && conversationId) {
+      return { status: 'sent', providerMessageId, conversationId };
     }
 
-    const code = typeof data?.code === 'number' || typeof data?.code === 'string'
-      ? String(data.code) : `http_${response.status}`;
+    const rawCode = typeof data?.code === 'number' || typeof data?.code === 'string'
+      ? String(data.code)
+      : `http_${response.status}`;
     return {
       status: 'failed',
-      errorClass: `twilio_verify_${code}`.slice(0, 120),
-      retryable: response.status === 429 || response.status >= 500,
+      errorClass: `zernio_whatsapp_${rawCode}`.slice(0, 120),
+      retryable: response.status === 408 || response.status === 429 || response.status >= 500,
       retryAfterSeconds: retryAfter(response),
     };
   } catch (error) {
     return {
       status: 'failed',
       errorClass: error instanceof DOMException && error.name === 'AbortError'
-        ? 'twilio_verify_start_timeout'
-        : 'twilio_verify_start_network_error',
+        ? 'zernio_whatsapp_send_timeout'
+        : 'zernio_whatsapp_send_network_error',
       retryable: true,
     };
   }
 }
 
-export async function checkWhatsappVerification(
-  env: TwilioVerifyEnv,
+export async function issueWhatsappOtpChallenge(
+  secret: string,
+  slug: string,
   phone: string,
   code: string,
-  fetchImpl: typeof fetch = fetch,
-): Promise<VerifyCheckResult> {
-  const config = twilioVerifyConfigured(env);
+  nowSeconds = Math.floor(Date.now() / 1000),
+) {
+  if (secret.trim().length < 43 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(slug) || !/^\d{6}$/.test(code)) return null;
   const normalized = normalizeWhatsappPhone(phone);
-  if (!config || !normalized || !/^\d{4,10}$/.test(code)) {
-    return { status: 'failed', errorClass: 'whatsapp_verify_invalid_check', retryable: false };
-  }
+  if (!normalized) return null;
 
-  const form = new URLSearchParams({ To: normalized, Code: code });
-  try {
-    const { response, data } = await jsonWithTimeout(
-      `${VERIFY_ROOT}/Services/${config.serviceSid}/VerificationCheck`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: basicAuth(config.accountSid, config.authToken),
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept: 'application/json',
-        },
-        body: form.toString(),
-      },
-      fetchImpl,
-    );
-
-    const status = typeof data?.status === 'string' ? data.status.trim().toLowerCase() : '';
-    if (response.ok && status === 'approved') return { status: 'approved' };
-    if (response.ok && status === 'pending') return { status: 'pending' };
-
-    const codeValue = typeof data?.code === 'number' || typeof data?.code === 'string'
-      ? String(data.code) : `http_${response.status}`;
-    return {
-      status: 'failed',
-      errorClass: `twilio_verify_check_${codeValue}`.slice(0, 120),
-      retryable: response.status === 429 || response.status >= 500,
-    };
-  } catch (error) {
-    return {
-      status: 'failed',
-      errorClass: error instanceof DOMException && error.name === 'AbortError'
-        ? 'twilio_verify_check_timeout'
-        : 'twilio_verify_check_network_error',
-      retryable: true,
-    };
-  }
+  const nonce = randomBase64Url(16);
+  const normalizedSlug = slug.toLowerCase();
+  const payload = {
+    v: 1,
+    slug: normalizedSlug,
+    phoneHash: await phoneHash(normalized),
+    exp: nowSeconds + OTP_TTL_SECONDS,
+    nonce,
+    codeMac: await hmac(
+      secret.trim(),
+      'whatsapp-otp-code',
+      `${normalizedSlug}|${normalized}|${nonce}|${code}`,
+    ),
+  };
+  const encoded = textToBase64Url(JSON.stringify(payload));
+  return `${encoded}.${await hmac(secret.trim(), 'whatsapp-otp-challenge', encoded)}`;
 }
 
-async function phoneHash(phone: string) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(phone));
-  return bytesToBase64Url(new Uint8Array(digest));
-}
+export async function verifyWhatsappOtpChallenge(
+  secret: string,
+  token: string,
+  slug: string,
+  phone: string,
+  code: string,
+  nowSeconds = Math.floor(Date.now() / 1000),
+) {
+  if (secret.trim().length < 43 || token.length > 4096 || !/^\d{6}$/.test(code)) return false;
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+  const [encoded = '', signature = ''] = parts;
+  if (!safeEqual(signature, await hmac(secret.trim(), 'whatsapp-otp-challenge', encoded))) return false;
 
-async function signProof(secret: string, payload: string) {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
+  let payload: {
+    v?: unknown;
+    slug?: unknown;
+    phoneHash?: unknown;
+    exp?: unknown;
+    nonce?: unknown;
+    codeMac?: unknown;
+  };
+  try { payload = JSON.parse(base64UrlToText(encoded)) as typeof payload; }
+  catch { return false; }
+
+  const normalized = normalizeWhatsappPhone(phone);
+  const normalizedSlug = slug.toLowerCase();
+  if (!normalized || payload.v !== 1 || payload.slug !== normalizedSlug) return false;
+  if (typeof payload.exp !== 'number' || !Number.isInteger(payload.exp) || payload.exp < nowSeconds || payload.exp > nowSeconds + OTP_TTL_SECONDS) return false;
+  if (typeof payload.nonce !== 'string' || !/^[A-Za-z0-9_-]{22}$/.test(payload.nonce)) return false;
+  if (payload.phoneHash !== await phoneHash(normalized) || typeof payload.codeMac !== 'string') return false;
+
+  const expectedCodeMac = await hmac(
+    secret.trim(),
+    'whatsapp-otp-code',
+    `${normalizedSlug}|${normalized}|${payload.nonce}|${code}`,
   );
-  return bytesToBase64Url(new Uint8Array(
-    await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`whatsapp-phone-proof|${payload}`)),
-  ));
+  return safeEqual(payload.codeMac, expectedCodeMac);
 }
 
 export async function issueWhatsappPhoneProof(
@@ -218,7 +248,7 @@ export async function issueWhatsappPhoneProof(
     nonce: randomBase64Url(16),
   };
   const encoded = textToBase64Url(JSON.stringify(payload));
-  return `${encoded}.${await signProof(secret.trim(), encoded)}`;
+  return `${encoded}.${await hmac(secret.trim(), 'whatsapp-phone-proof', encoded)}`;
 }
 
 export async function verifyWhatsappPhoneProof(
@@ -232,8 +262,7 @@ export async function verifyWhatsappPhoneProof(
   const parts = token.split('.');
   if (parts.length !== 2) return false;
   const [encoded = '', signature = ''] = parts;
-  const expected = await signProof(secret.trim(), encoded);
-  if (!safeEqual(signature, expected)) return false;
+  if (!safeEqual(signature, await hmac(secret.trim(), 'whatsapp-phone-proof', encoded))) return false;
 
   let payload: { v?: unknown; slug?: unknown; phoneHash?: unknown; exp?: unknown; nonce?: unknown };
   try { payload = JSON.parse(base64UrlToText(encoded)) as typeof payload; }
