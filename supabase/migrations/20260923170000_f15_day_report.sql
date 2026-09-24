@@ -48,7 +48,8 @@ begin
 
   select b.timezone into v_timezone
   from public.businesses b
-  where b.id=p_business_id;
+  order by b.id
+  limit 1;
   if v_timezone is null then raise exception 'BUSINESS_NOT_FOUND'; end if;
 
   -- Same boundary rule as F13-02: local midnight is converted through the
