@@ -75,6 +75,25 @@
   top: 12px;
 }
 
+/* Keyboard focus: cobalt on the day's paper, lime once the sky or the menu is dark. */
+.ed-root {
+  --ed-focus: var(--ed-cobalt);
+}
+
+.ed-root[data-tone="dark"],
+.ed-menu {
+  --ed-focus: var(--ed-lime);
+}
+
+.ed-root :focus-visible {
+  outline: 2px solid var(--ed-focus);
+  outline-offset: 4px;
+}
+
+.ed-root [tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
 /* Print grain: a fixed paper texture over everything, never over the nav. */
 .ed-grain {
   position: fixed;
@@ -256,6 +275,15 @@
   padding-right: 0;
   padding-left: 0;
   opacity: 0;
+}
+
+/* The open menu covers the page, so its wordmark carries the one "kolay". */
+html.ed-menu-open .ed-root[data-nav-kolay="off"] .ed-wordmark em {
+  max-width: 3.4em;
+  margin-left: 0.14em;
+  padding-right: 0.18em;
+  padding-left: 0.18em;
+  opacity: 1;
 }
 
 .ed-clock {
@@ -2461,5 +2489,11 @@ html.ed-menu-open .ed-nav::before {
 
   .ed-phone {
     transform: none;
+  }
+
+  .ed-root *,
+  .ed-root *::before,
+  .ed-root *::after {
+    transition: none !important;
   }
 }

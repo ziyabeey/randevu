@@ -157,8 +157,16 @@ test('MKT-01 editorial page has no overflow and a keyboard-operable menu at 360/
 
       const menu = await page.evaluate(`(() => {
         const links = [...document.querySelectorAll('.ed-menu a')];
-        return { heights: links.map((link) => link.getBoundingClientRect().height), first: links[0]?.getAttribute('href'), last: links.at(-1)?.getAttribute('href') };
+        return {
+          heights: links.map((link) => link.getBoundingClientRect().height),
+          first: links[0]?.getAttribute('href'),
+          last: links.at(-1)?.getAttribute('href'),
+          ring: getComputedStyle(document.activeElement).outlineStyle,
+          kolay: document.querySelector('.ed-wordmark em').getBoundingClientRect().width,
+        };
       })()`);
+      assert.equal(menu.ring, 'solid', `Focused menu link has no visible ring at ${viewport.width}px`);
+      assert.ok(menu.kolay > 20, 'The open menu covers the hero, so its wordmark should carry "kolay"');
       assert.ok(menu.heights.length >= 5, 'Menu is missing links');
       assert.ok(menu.heights.every((height) => height >= 44), `A menu target is below 44px at ${viewport.width}px: ${menu.heights.join(',')}`);
       assert.equal(menu.first, '#nasil-calisiyor');
