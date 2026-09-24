@@ -23,6 +23,12 @@ import { repositoryInventory } from '../src/repository/inventory.mjs';
 import { semanticRiskWithoutTestRule, missingHistoricalCompanionRule } from '../src/rules/builtin.mjs';
 import { failedPatterns, shouldBlockProposal } from '../src/ledger/experiment-memory.mjs';
 import { toSarif } from '../src/reporters/sarif.mjs';
+import { declarativeRule } from '../src/rules/declarative.mjs';
+import { freezeCases } from '../src/experiments/freeze.mjs';
+import { blindSample } from '../src/experiments/blind-sample.mjs';
+import { auc, leakageGate } from '../src/experiments/auc.mjs';
+import { evaluateGates } from '../src/experiments/gates.mjs';
+import { MutationHistory } from '../src/mutations/history.mjs';
 
 const impact = normalizeTestImpact({ changedUnits: ['a'], impactedTests: [], unknownUnits: [] });
 assert.equal(hasBlindSpot(impact), true);
@@ -204,6 +210,18 @@ try {
   assert.equal(inventory.filesScanned, 2);
   assert.equal(inventory.errors.length, 0);
   assert.equal(inventory.units.length >= 2, true);
+
+  const mutationHistory = await new MutationHistory(path.join(temp, 'mutations.json')).load();
+  const mutationSpec = {
+    sourceDigest: 'd'.repeat(64),
+    mutatorId: 'remove-lock',
+    mutatorVersion: '0.1.0',
+  };
+  assert.equal(mutationHistory.has(mutationSpec), false);
+  mutationHistory.record(mutationSpec, { status: 'survived' });
+  await mutationHistory.save();
+  const mutationReloaded = await new MutationHistory(path.join(temp, 'mutations.json')).load();
+  assert.equal(mutationReloaded.get(mutationSpec).result.status, 'survived');
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
@@ -213,6 +231,48 @@ const companions = missingCompanions([
 ], ['a.ts']);
 assert.equal(companions.length, 1);
 assert.equal(companions[0].missing, 'b.ts');
+
+const declarative = declarativeRule({
+  id: 'demo-rule',
+  version: '0.1.0',
+  when: { all: [{ evidence: 'semantic.risk.high', state: 'present' }] },
+  emit: {
+    id: 'H19.DEMO',
+    title: 'Demo declarative rule',
+    severity: 'warning',
+    action: 'escalate',
+  },
+});
+assert.equal(runRules({
+  rules: [declarative],
+  evidences: [evidence('semantic.risk.high', 'present')],
+}).length, 1);
+
+const frozen = freezeCases([
+  { case_id: 'A01', label: true, feature: 0 },
+  { case_id: 'A02', label: false, feature: 1 },
+  { case_id: 'A03', label: true, feature: 0 },
+  { case_id: 'A04', label: false, feature: 1 },
+], { experimentId: 'DEMO', protocolVersion: '0.1' });
+assert.match(frozen.cases_sha256, /^[a-f0-9]{64}$/);
+
+const blindA = blindSample(frozen.cases, { seed: frozen.cases_sha256, count: 2 });
+const blindB = blindSample(frozen.cases, { seed: frozen.cases_sha256, count: 2 });
+assert.deepEqual(blindA.map((x) => x.case_id), blindB.map((x) => x.case_id));
+
+assert.equal(auc([true, true, false, false], [0.9, 0.8, 0.2, 0.1]), 1);
+const leak = leakageGate({
+  cases: frozen.cases,
+  label: (x) => x.label,
+  features: [{ id: 'feature', score: (x) => x.feature }],
+});
+assert.equal(leak.pass, false);
+
+const gates = evaluateGates({ recall: 0.95, fpr: 0.2 }, [
+  { id: 'recall', metric: 'recall', op: '>=', threshold: 0.9 },
+  { id: 'fpr', metric: 'fpr', op: '<=', threshold: 0.3 },
+]);
+assert.equal(gates.pass, true);
 
 const sarif = toSarif(findings);
 assert.equal(sarif.version, '2.1.0');
