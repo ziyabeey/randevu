@@ -229,3 +229,79 @@ test('F16-02 delivery reconciliation uses the canonical claim/report/record path
     ['job-terminal', 'sending_error', false],
   ]);
 });
+
+
+test('F16-02 dispatcher sends a Twilio trial job through the shared lock and completion boundary', async () => {
+  const twilioEnv = {
+    ...env,
+    TWILLO_ID: 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    TWILLO_SECRET_API: 'test-auth-token-1234567890',
+    TWILIO_TRIAL_MODE: 'true',
+  };
+  const row = smsRow({ provider: 'twilio', provider_reference_id: 'kepenk-twilio-correlation' });
+  let lockedFingerprint = '';
+  let twilioForm = null;
+  const fakeFetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([row]);
+    if (url.endsWith('/rpc/lock_notification_request_v3')) {
+      const body = JSON.parse(String(init.body));
+      assert.equal(body.p_sender, 'twilio-trial-managed');
+      lockedFingerprint = body.p_request_fingerprint;
+      return json(gate());
+    }
+    if (url.endsWith('/Messages.json')) {
+      twilioForm = new URLSearchParams(String(init.body));
+      return json({ sid: 'SMaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', status: 'queued' }, 201);
+    }
+    if (url.endsWith('/rpc/complete_notification_job_v2')) {
+      const body = JSON.parse(String(init.body));
+      assert.equal(body.p_provider_message_id, 'SMaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+      assert.equal(body.p_request_fingerprint, lockedFingerprint);
+      return json(true);
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+
+  const result = await dispatchNotificationBatch(twilioEnv, fakeFetch);
+  assert.equal(result.sent, 1);
+  assert.equal(result.failedTerminal, 0);
+  assert.equal(twilioForm.get('To'), '+905551602001');
+  assert.equal(twilioForm.get('Body'), 'sms_appointment_reminders');
+  assert.equal(twilioForm.has('From'), false);
+});
+
+test('F16-02 delivery reconciliation polls Twilio Message SID through the shared DB receipt path', async () => {
+  const twilioEnv = {
+    ...env,
+    TWILLO_ID: 'ACaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    TWILLO_SECRET_API: 'test-auth-token-1234567890',
+    TWILIO_TRIAL_MODE: 'true',
+  };
+  let recorded = null;
+  const fakeFetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith('/rpc/claim_notification_delivery_checks')) {
+      return json([{
+        provider: 'twilio',
+        provider_message_id: 'SMbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        provider_reference_id: 'kepenk-twilio-correlation',
+      }]);
+    }
+    if (url.endsWith('/Messages/SMbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.json')) {
+      return json({ sid: 'SMbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', status: 'delivered' });
+    }
+    if (url.endsWith('/rpc/record_notification_delivery_status')) {
+      recorded = JSON.parse(String(init.body));
+      return json(true);
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+
+  const result = await reconcileNotificationDeliveryBatch(twilioEnv, fakeFetch);
+  assert.equal(result.delivered, 1);
+  assert.equal(result.recorded, 1);
+  assert.equal(recorded.p_provider, 'twilio');
+  assert.equal(recorded.p_status, 'delivered');
+  assert.equal(recorded.p_delivered, true);
+});
