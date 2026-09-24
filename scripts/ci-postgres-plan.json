@@ -1537,12 +1537,19 @@
           "file": "supabase/tests/f16_recurring_series.sql"
         },
         {
+          "database": "yzt_test",
+          "file": "supabase/tests/f16_recurring_series_concurrency.sql"
+        },
+        {
           "database": "yzt_s08_upgrade",
           "file": "supabase/migrations/20260924023800_f16_recurring_series.sql"
         },
         {
           "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/f16_recurring_series.sql"
+          "file": "supabase/tests/f16_recurring_series.sql",
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f16_recurring_series_concurrency.sql"
         }
       ]
     }
