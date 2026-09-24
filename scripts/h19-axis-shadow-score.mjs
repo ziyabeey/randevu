@@ -15,28 +15,29 @@ export function normalizeH19Pair(axisA, axisB) {
   return [axisA, axisB].sort((left, right) => left.localeCompare(right, 'en')).join('x');
 }
 
-export function axisYesProbability(fact) {
-  if (!fact || typeof fact !== 'object') throw new Error('axis fact must be an object');
-  if (typeof fact.answer !== 'boolean') throw new Error('axis fact answer must be boolean');
-  if (typeof fact.confidence !== 'number' || !Number.isFinite(fact.confidence)
-    || fact.confidence < 0 || fact.confidence > 1) {
-    throw new Error('axis fact confidence must be a finite number in [0,1]');
+export function axisYesProbability(value) {
+  const probability = typeof value === 'number' ? value : value?.noul;
+  if (typeof probability !== 'number' || !Number.isFinite(probability)
+    || probability < 0 || probability > 1) {
+    throw new Error('axis probability must be a finite number in [0,1]');
   }
-  return fact.answer ? fact.confidence : 1 - fact.confidence;
+  return probability;
 }
 
-function normalizeAxisFacts(axisFacts) {
-  if (!axisFacts || typeof axisFacts !== 'object') throw new Error('axisFacts must be an object');
+function normalizeAxisProbabilities(axisProbabilities) {
+  if (!axisProbabilities || typeof axisProbabilities !== 'object') {
+    throw new Error('axisProbabilities must be an object');
+  }
   return Object.fromEntries(H19_AXES.map((axis) => {
-    if (!Object.prototype.hasOwnProperty.call(axisFacts, axis)) {
-      throw new Error('missing H19 axis fact: ' + axis);
+    if (!Object.prototype.hasOwnProperty.call(axisProbabilities, axis)) {
+      throw new Error('missing H19 axis probability: ' + axis);
     }
-    return [axis, axisYesProbability(axisFacts[axis])];
+    return [axis, axisYesProbability(axisProbabilities[axis])];
   }));
 }
 
-export function rankH19Pairs(axisFacts) {
-  const probabilities = normalizeAxisFacts(axisFacts);
+export function rankH19Pairs(axisProbabilities) {
+  const probabilities = normalizeAxisProbabilities(axisProbabilities);
   const pairs = [];
   for (let left = 0; left < H19_AXES.length; left += 1) {
     for (let right = left + 1; right < H19_AXES.length; right += 1) {
@@ -57,22 +58,23 @@ export function rankH19Pairs(axisFacts) {
 export function scoreH19AxisCase(record) {
   if (!record || typeof record !== 'object') throw new Error('benchmark record must be an object');
   if (typeof record.id !== 'string' || record.id.length === 0) throw new Error('benchmark record id is required');
-  if (!Array.isArray(record.expectedPair) || record.expectedPair.length !== 2) {
-    throw new Error('benchmark record ' + record.id + ' expectedPair must contain two axes');
+  const expectedPairInput = record.expectedPair ?? record.expected_pair;
+  if (!Array.isArray(expectedPairInput) || expectedPairInput.length !== 2) {
+    throw new Error('benchmark record ' + record.id + ' expected pair must contain two axes');
   }
   if (!['prospective', 'holdout'].includes(record.origin)) {
     throw new Error('benchmark record ' + record.id + ' origin must be prospective or holdout');
   }
 
-  const expectedPair = normalizeH19Pair(record.expectedPair[0], record.expectedPair[1]);
-  const ranking = rankH19Pairs(record.axisFacts);
+  const expectedPair = normalizeH19Pair(expectedPairInput[0], expectedPairInput[1]);
+  const ranking = rankH19Pairs(record.axisProbabilities ?? record.axis_probabilities);
   const index = ranking.findIndex((entry) => entry.pair === expectedPair);
   if (index < 0) throw new Error('benchmark record ' + record.id + ' expected pair was not ranked');
   const rank = index + 1;
   const topPair = ranking[0].pair;
-  const frozenHoldoutExpected = H19_FROZEN_HOLDOUT_PAIRS.includes(expectedPair);
 
   return {
+    caseKey: record.caseKey ?? record.case_key ?? null,
     id: record.id,
     origin: record.origin,
     expectedPair,
@@ -83,7 +85,7 @@ export function scoreH19AxisCase(record) {
     top3Hit: rank <= 3,
     topPair,
     topPairIsFrozenHoldout: H19_FROZEN_HOLDOUT_PAIRS.includes(topPair),
-    frozenHoldoutExpected,
+    frozenHoldoutExpected: H19_FROZEN_HOLDOUT_PAIRS.includes(expectedPair),
   };
 }
 
@@ -108,7 +110,7 @@ export function scoreH19AxisBenchmark(records) {
   const holdout = cases.filter((row) => row.origin === 'holdout');
   return {
     protocol: 'DE-JEV-H19-R0',
-    scorerVersion: '0.1.0',
+    scorerVersion: '0.2.0',
     metrics: {
       all: summarize(cases),
       prospective: summarize(prospective),
@@ -121,15 +123,58 @@ export function scoreH19AxisBenchmark(records) {
   };
 }
 
+function uniqueCaseMap(cases, label) {
+  if (!Array.isArray(cases)) throw new Error(label + ' cases must be an array');
+  const map = new Map();
+  for (const entry of cases) {
+    const key = entry?.case_key;
+    if (typeof key !== 'string' || key.length === 0) throw new Error(label + ' case_key is required');
+    if (map.has(key)) throw new Error(label + ' duplicate case_key: ' + key);
+    map.set(key, entry);
+  }
+  return map;
+}
+
+export function joinH19AxisFactsWithBenchmark(factsPayload, benchmarkPayload) {
+  const facts = uniqueCaseMap(factsPayload?.cases, 'facts');
+  const labels = uniqueCaseMap(benchmarkPayload?.cases, 'benchmark');
+  if (Number.isInteger(benchmarkPayload?.case_count) && labels.size !== benchmarkPayload.case_count) {
+    throw new Error('benchmark case_count mismatch');
+  }
+  if (facts.size !== labels.size) {
+    throw new Error('facts/benchmark case count mismatch: facts=' + facts.size + ' benchmark=' + labels.size);
+  }
+
+  const joined = [];
+  for (const [caseKey, label] of labels) {
+    const fact = facts.get(caseKey);
+    if (!fact) throw new Error('missing fact for benchmark case_key: ' + caseKey);
+    joined.push({
+      case_key: caseKey,
+      id: label.id,
+      origin: label.origin,
+      expected_pair: label.expected_pair,
+      axis_probabilities: fact.axis_probabilities,
+    });
+  }
+  for (const caseKey of facts.keys()) {
+    if (!labels.has(caseKey)) throw new Error('unexpected fact case_key: ' + caseKey);
+  }
+  return joined;
+}
+
 async function main() {
-  const inputPath = process.argv[2];
-  if (!inputPath) {
-    console.error('usage: node scripts/h19-axis-shadow-score.mjs <axis-facts.json>');
+  const [factsPath, benchmarkPath] = process.argv.slice(2);
+  if (!factsPath || !benchmarkPath) {
+    console.error('usage: node scripts/h19-axis-shadow-score.mjs <facts.json> <benchmark.json>');
     process.exitCode = 2;
     return;
   }
-  const payload = JSON.parse(await readFile(inputPath, 'utf8'));
-  const records = Array.isArray(payload) ? payload : payload.records;
+  const [factsPayload, benchmarkPayload] = await Promise.all([
+    readFile(factsPath, 'utf8').then(JSON.parse),
+    readFile(benchmarkPath, 'utf8').then(JSON.parse),
+  ]);
+  const records = joinH19AxisFactsWithBenchmark(factsPayload, benchmarkPayload);
   process.stdout.write(JSON.stringify(scoreH19AxisBenchmark(records), null, 2) + '\n');
 }
 
