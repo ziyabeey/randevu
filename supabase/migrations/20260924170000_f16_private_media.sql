@@ -679,12 +679,35 @@ exception when others then return false;
 end
 $$;
 
+-- Storage runs `DELETE FROM storage.objects ... RETURNING *` as the caller, so
+-- PostgreSQL also applies SELECT policies to the rows being removed. This grants
+-- that visibility only while Storage performs a single-object delete of a row
+-- the caller may remove (deleting/cleanup). Signing, copying and listing still
+-- see nothing, because the operation must be exactly storage.object.delete.
+create or replace function public.appointment_private_media_delete_visible(p_name text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if coalesce(current_setting('storage.operation', true), '') <> 'storage.object.delete' then
+    return false;
+  end if;
+  return public.appointment_private_media_delete_allowed(p_name);
+exception when others then return false;
+end
+$$;
+
 revoke all on function public.appointment_private_media_read_allowed(text) from public, anon, authenticated;
 revoke all on function public.appointment_private_media_upload_allowed(text) from public, anon, authenticated;
 revoke all on function public.appointment_private_media_delete_allowed(text) from public, anon, authenticated;
+revoke all on function public.appointment_private_media_delete_visible(text) from public, anon, authenticated;
 grant execute on function public.appointment_private_media_read_allowed(text) to authenticated;
 grant execute on function public.appointment_private_media_upload_allowed(text) to authenticated;
 grant execute on function public.appointment_private_media_delete_allowed(text) to authenticated;
+grant execute on function public.appointment_private_media_delete_visible(text) to authenticated;
 
 do $$
 begin
@@ -692,6 +715,7 @@ begin
     execute 'drop policy if exists f16_private_media_member_read on storage.objects';
     execute 'drop policy if exists f16_private_media_upload on storage.objects';
     execute 'drop policy if exists f16_private_media_delete on storage.objects';
+    execute 'drop policy if exists f16_private_media_delete_visibility on storage.objects';
     execute $policy$
       create policy f16_private_media_member_read on storage.objects
       for select to authenticated
@@ -706,6 +730,11 @@ begin
       create policy f16_private_media_delete on storage.objects
       for delete to authenticated
       using (bucket_id = 'appointment-private-media' and public.appointment_private_media_delete_allowed(name))
+    $policy$;
+    execute $policy$
+      create policy f16_private_media_delete_visibility on storage.objects
+      for select to authenticated
+      using (bucket_id = 'appointment-private-media' and public.appointment_private_media_delete_visible(name))
     $policy$;
   end if;
 end

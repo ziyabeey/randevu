@@ -99,7 +99,8 @@ begin
     raise exception 'F16-03 private storage policy reaches anon';
   end if;
   if (select count(*) from pg_policies where schemaname='storage' and tablename='objects'
-      and policyname in ('f16_private_media_member_read','f16_private_media_upload','f16_private_media_delete')) <> 3 then
+      and policyname in ('f16_private_media_member_read','f16_private_media_upload','f16_private_media_delete',
+        'f16_private_media_delete_visibility')) <> 4 then
     raise exception 'F16-03 storage policies missing';
   end if;
 end
@@ -496,6 +497,48 @@ begin
   if v_count <> 9 then raise exception 'F16-03 direct download policy returned % objects after the matrix', v_count; end if;
 end
 $$;
+-- Storage deletes with `DELETE ... RETURNING` as the caller, which also needs
+-- SELECT visibility. A removable deleting-state object is visible to exactly
+-- that operation, so the bytes are really removed; nothing else can see it.
+reset role;
+select set_config('f1603.delete_media', (
+  select m.id::text from public.appointment_private_media m
+  join storage.objects o on o.bucket_id = 'appointment-private-media' and o.name = m.storage_path
+  where m.business_id = 'f1631000-0000-4000-8000-000000000001' and m.status = 'ready'
+  order by m.id limit 1), false);
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1630000-0000-4000-8000-000000000001',true);
+select set_config('storage.operation','storage.object.get_authenticated',true);
+do $$
+declare
+  v_path text;
+  v_count integer;
+  v_operation text;
+begin
+  select storage_path into v_path
+  from public.begin_appointment_private_media_delete('f1631000-0000-4000-8000-000000000001', current_setting('f1603.delete_media')::uuid);
+  foreach v_operation in array array['storage.object.get_authenticated','storage.object.sign','storage.object.list','storage.object.delete_many',''] loop
+    perform set_config('storage.operation', v_operation, true);
+    select count(*) into v_count from storage.objects where bucket_id = 'appointment-private-media' and name = v_path;
+    if v_count <> 0 then raise exception 'F16-03 deleting object visible to "%"', v_operation; end if;
+  end loop;
+
+  -- A colleague who may not remove it cannot delete it even during a delete.
+  perform set_config('request.jwt.claim.sub','f1630000-0000-4000-8000-000000000004',true);
+  perform set_config('storage.operation','storage.object.delete',true);
+  delete from storage.objects where bucket_id = 'appointment-private-media' and name = v_path;
+  get diagnostics v_count = row_count;
+  if v_count <> 0 then raise exception 'F16-03 colleague removed a private object'; end if;
+
+  perform set_config('request.jwt.claim.sub','f1630000-0000-4000-8000-000000000001',true);
+  with removed as (
+    delete from storage.objects where bucket_id = 'appointment-private-media' and name = v_path returning name
+  ) select count(*) into v_count from removed;
+  if v_count <> 1 then raise exception 'F16-03 authorized Storage delete removed % objects', v_count; end if;
+  perform 1 from public.finish_appointment_private_media_delete('f1631000-0000-4000-8000-000000000001', current_setting('f1603.delete_media')::uuid);
+  perform set_config('storage.operation','storage.object.get_authenticated',true);
+end
+$$;
 select set_config('request.jwt.claim.sub','f1630000-0000-4000-8000-000000000005',true);
 do $$
 declare v_count integer;
@@ -558,7 +601,8 @@ $$;
 reset role;
 do $$
 begin
-  if (select count(*) from public.appointment_private_media where business_id = 'f1631000-0000-4000-8000-000000000001' and status = 'ready') <> 9 then
+  -- 9 ready photos minus the one removed through the Storage delete path.
+  if (select count(*) from public.appointment_private_media where business_id = 'f1631000-0000-4000-8000-000000000001' and status = 'ready') <> 8 then
     raise exception 'F16-03 final ready count drifted';
   end if;
 end
