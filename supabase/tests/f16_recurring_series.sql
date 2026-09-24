@@ -608,6 +608,45 @@ begin
 end
 $f16_cross_tenant$;
 
+-- The same foreign tenant must not mutate tenant A's series through either
+-- future-scope mutation RPC, even with a known series id.
+do $f16_cross_tenant_mutation$
+declare
+  v_error text;
+begin
+  begin
+    perform public.reschedule_appointment_series_future(
+      'f1610000-0000-4000-8000-000000000001',
+      current_setting('f1601.series_id')::uuid,
+      'f1601-foreign-reschedule',
+      1,
+      1,
+      '2027-04-01 12:00 Europe/Berlin'::timestamptz
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('NOT_ALLOWED' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 foreign tenant could reschedule series: %',v_error;
+  end if;
+
+  v_error:=null;
+  begin
+    perform public.cancel_appointment_series_future(
+      'f1610000-0000-4000-8000-000000000001',
+      current_setting('f1601.series_id')::uuid,
+      'f1601-foreign-cancel',
+      1,
+      1,
+      'foreign tenant must be denied'
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('NOT_ALLOWED' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 foreign tenant could cancel series: %',v_error;
+  end if;
+end
+$f16_cross_tenant_mutation$;
+
 -- K03 performance evidence: 12 timezone-aware candidates remain trivially bounded.
 reset role;
 do $f16_measure$
