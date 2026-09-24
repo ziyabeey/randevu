@@ -39,6 +39,12 @@ No promotion threshold is frozen yet. R0 remains SHADOW until enough leakage-fre
 
 The newer coverage-first benchmark branches provide useful outcome labels but must not be conflated with axis labels. Examples observed on 24 September 2026 include clean three-arm HITs for customers D0×D5, products D0×D2, customers D1×D5, expenses D1×D2 and reporting D2×D4. The reporting D2×D4 clean-control completed successfully as CI run number 2647. Separate Phase-1 variations such as product-sales D1×D5 and reporting D0×D4 were already caught by the existing suite; those are candidates for a later novelty/coverage fact, not negatives for axis classification.
 
+## Coverage outcome memory
+
+The permanent H19 integrity gate intentionally retains promoted scenarios, not every coverage-first experiment result. Development Engine therefore keeps a separate shadow evidence set in `benchmarks/h19-coverage-outcomes.v0.1.json`. Its current frozen cohort contains five `geometry_hit` cells and two `already_covered` cells. No valid `miss` is asserted yet.
+
+This outcome file answers a different future question: whether an H19-selected interaction is likely to add coverage beyond the current suite. It never changes an axis label, never replaces the H19 gate and never becomes TASKS authority.
+
 ## Local scorer
 
 The scorer has no provider dependency and makes no network calls:
