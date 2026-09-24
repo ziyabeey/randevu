@@ -40,3 +40,4 @@ export * from './discovery/coverage-discovery.mjs';
 export * from './discovery/validation-packet.mjs';
 export * from './perf/baseline.mjs';
 export * from './indexing/typescript-project-shards.mjs';\nexport * from './perf/typescript-shards.mjs';\nexport * from './perf/persistent-shard-cache.mjs';
+export * from './indexing/typescript-shard-plan.mjs';
