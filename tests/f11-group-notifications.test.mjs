@@ -58,6 +58,10 @@ async function claimRow(overrides = {}) {
     recovery_id: recoveryId,
     recipient: 'group-notify@example.test',
     provider: 'resend',
+    channel: 'email',
+    kind: 'public_booking_confirmation',
+    event_reason: 'created',
+    provider_reference_id: null,
     provider_idempotency_key: 'public-booking-confirmation/bd000000-0000-4000-8000-000000000011',
     attempt_count: 1,
     retry_until: '2026-09-20T08:00:00.000Z',
@@ -124,9 +128,9 @@ async function dispatchWithSnapshot(snapshot) {
   const fakeFetch = async (input, init = {}) => {
     const url = String(input);
     calls.push(url);
-    if (url.endsWith('/rpc/claim_notification_jobs_v2')) return json([row]);
+    if (url.endsWith('/rpc/claim_notification_jobs_v3')) return json([row]);
     if (url.endsWith('/rpc/get_notification_group_snapshot')) return json(snapshot);
-    if (url.endsWith('/rpc/lock_notification_request_v2')) return json(sendGate());
+    if (url.endsWith('/rpc/lock_notification_request_v3')) return json(sendGate());
     if (url === providerEndpoint) {
       assert.equal(new Headers(init.headers).get('Idempotency-Key'), row.provider_idempotency_key);
       providerBodies.push(JSON.parse(String(init.body)));
@@ -201,7 +205,7 @@ test('F11 group notification dispatcher', async (t) => {
     ]) {
       const result = await dispatchWithSnapshot(snapshot);
       assert.equal(result.calls.filter((url) => url === providerEndpoint).length, 0);
-      assert.equal(result.calls.some((url) => url.endsWith('/rpc/lock_notification_request_v2')), false);
+      assert.equal(result.calls.some((url) => url.endsWith('/rpc/lock_notification_request_v3')), false);
       assert.equal(result.summary.sent, 0);
       assert.equal(result.summary.retrying, 1);
       assert.equal(result.releases.length, 1);
