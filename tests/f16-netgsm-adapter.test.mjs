@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  measureNetgsmSmsParts,
   netgsmConfigured,
   normalizeNetgsmRecipient,
   queryNetgsmDeliveryReport,
@@ -22,6 +23,22 @@ test('F16-02 NetGSM config and Turkish recipient normalization fail closed', () 
   assert.equal(normalizeNetgsmRecipient('5551602001'), '5551602001');
   assert.equal(normalizeNetgsmRecipient('+44 7700 900123'), null);
   assert.equal(netgsmConfigured({ ...env, NETGSM_MSGHEADER: 'X' }), null);
+});
+
+test('F16-02 hosted acceptance can reuse the exact provider segment preflight without sending', async () => {
+  let calls = 0;
+  const result = await measureNetgsmSmsParts(env, 'Randevunuz yarın 10:00.', async (url, init) => {
+    calls += 1;
+    assert.ok(String(url).endsWith('/sms/rest/v2/length'));
+    assert.equal(init.method, 'POST');
+    assert.equal(JSON.parse(init.body).encoding, 11);
+    return new Response(JSON.stringify({ parts: 2 }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+  assert.equal(calls, 1);
+  assert.deepEqual(result, { status: 'ok', parts: 2 });
 });
 
 test('F16-02 NetGSM accepted send is preflighted and returns provider jobid', async () => {
