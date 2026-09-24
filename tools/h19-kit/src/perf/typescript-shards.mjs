@@ -140,6 +140,26 @@ export async function runTypeScriptShardBenchmark({
       const affectedIds = shardForChangedFile(changedShards, mutation.file);
       const affected = changedShards.filter((shard) => affectedIds.includes(shard.id));
 
+      const fullRootSources = [...new Set(changedShards.flatMap((shard) => shard.sourceFiles))].sort();
+      const fullRootConfigs = [...new Set(changedShards.flatMap((shard) => shard.configFiles))].sort();
+      const fullRootControl = await timed(() => indexProject({
+        cwd: mutationRoot,
+        projectRoot: '.',
+        sourceFiles: fullRootSources,
+        configFiles: fullRootConfigs,
+        dependencySurfaces: {},
+        indexer: scipTypeScriptIndexer({
+          version,
+          command: 'scip-typescript',
+          flags: [],
+        }),
+        cache: new ArtifactCache(path.join(temp, 'full-root-mutation-artifacts')),
+        ...(execute ? { execute } : {}),
+      }));
+      if (fullRootControl.value.cache !== 'miss') {
+        throw new Error('full-root same-file control unexpectedly hit cache');
+      }
+
       const mutationRows = [];
       const mutationTotal = await timed(async () => {
         for (const shard of affected) {
@@ -186,7 +206,14 @@ export async function runTypeScriptShardBenchmark({
         ownerShard: mutation.shard.id,
         affectedShards: affectedIds,
         affectedShardCount: affectedIds.length,
-        reindexMs: mutationTotal.wallMs,
+        fullRootReindexMs: fullRootControl.wallMs,
+        shardReindexMs: mutationTotal.wallMs,
+        speedup: mutationTotal.wallMs > 0
+          ? round(fullRootControl.wallMs / mutationTotal.wallMs, 2)
+          : null,
+        reductionPct: fullRootControl.wallMs > 0
+          ? round((1 - (mutationTotal.wallMs / fullRootControl.wallMs)) * 100, 1)
+          : null,
         shards: mutationRows,
         unaffected: unaffectedChecks,
       };
@@ -198,7 +225,7 @@ export async function runTypeScriptShardBenchmark({
     const irrelevantDecisionMs = round(performance.now() - irrelevantStarted);
 
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: 'h19-typescript-shard-performance',
       generatedAt: new Date().toISOString(),
       repository: repoRoot,
