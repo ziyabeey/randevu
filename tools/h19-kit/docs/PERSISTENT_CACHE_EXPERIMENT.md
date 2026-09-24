@@ -43,7 +43,7 @@ Actions cache restoration never overrides H19 fingerprint correctness.
 
 Run A seeds the cache.
 
-Run B must be a commit that changes no TypeScript project inputs. On Run B:
+Run B must be a new commit that changes no declared TypeScript project inputs. It may update performance evidence or CI plumbing, but must leave every shard source/config fingerprint input unchanged. On Run B:
 
 - all three shards must report `cache: hit`;
 - H19 must invoke no SCIP indexer for those shards;
@@ -54,7 +54,7 @@ Only after this succeeds should cross-run caching be considered real rather than
 
 ## Pass/fail rule
 
-The experiment is successful only if the second workflow run, triggered by a docs-only commit that leaves every
+The experiment is successful only if the second workflow run, triggered by a commit that leaves every declared
 TypeScript project input unchanged, reports:
 
 - shard count = 3;
