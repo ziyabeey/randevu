@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { temporalCoupling } from '../src/adapters/git-history.mjs';
+import { gitHotspots } from '../src/adapters/git-hotspots.mjs';
+import { extractSqlRoutines } from '../src/extractors/sql-routines.mjs';
+import { extractTypeScriptUnits } from '../src/extractors/typescript-units.mjs';
+import { extractPythonUnits } from '../src/extractors/python-units.mjs';
 import { scan } from '../src/pipeline/scan.mjs';
 
 const [command, ...args] = process.argv.slice(2);
@@ -29,6 +34,29 @@ if (command === 'history') {
   process.exit(0);
 }
 
+if (command === 'hotspots') {
+  const cwd = args[0] ?? process.cwd();
+  const rows = await gitHotspots({ cwd });
+  console.log(JSON.stringify(rows.slice(0, 100), null, 2));
+  process.exit(0);
+}
+
+if (command === 'units') {
+  const file = args[0];
+  if (!file) throw new Error('units requires a source file');
+  const text = readFileSync(file, 'utf8');
+  const ext = path.extname(file).toLowerCase();
+  const units = ext === '.sql'
+    ? extractSqlRoutines(text, { path: file })
+    : ext === '.py'
+      ? await extractPythonUnits(text, { path: file })
+      : ['.ts','.tsx','.js','.jsx','.mjs','.cjs'].includes(ext)
+        ? extractTypeScriptUnits(text, { path: file })
+        : (() => { throw new Error(`unsupported source extension: ${ext}`); })();
+  console.log(JSON.stringify(units, null, 2));
+  process.exit(0);
+}
+
 if (command === 'scan') {
   const file = args[0];
   if (!file) throw new Error('scan requires an input JSON file');
@@ -38,5 +66,5 @@ if (command === 'scan') {
   process.exit(0);
 }
 
-console.error('usage: h19-kit <doctor|history [repo]|scan <input.json> [--sarif]>');
+console.error('usage: h19-kit <doctor|history [repo]|hotspots [repo]|units <file>|scan <input.json> [--sarif]>');
 process.exit(2);
