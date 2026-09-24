@@ -86,3 +86,4 @@ D5 eğilimi üzerine bağlam ablation deneyi (H19a): [`H19A-RAPOR.md`](H19A-RAPO
 Sonraki adımın ön kaydı (olgu-koşullu D5, yeni vakalar): [`H19B-PROTOKOL.md`](H19B-PROTOKOL.md).
 H19b′ sonucu (P1 kaldı; eski V en iyi dedektör; facts öncül gibi davranıyor): [`h19b-prime/SONUC.md`](h19b-prime/SONUC.md).
 H19d sonucu (göreli eksen router'ı D1/D2/D3'te kaldı; ham P(D5) en güçlü sinyal olarak kalıyor): [`h19d/SONUC.md`](h19d/SONUC.md).
+H19t sonucu (ham P(D5) ≥ 0.64 çalışma noktası: yakalama tuttu, T2 D1 yanlış alarmları ve yük azalmasında kaldı; terfi yok): [`h19t/SONUC.md`](h19t/SONUC.md).
