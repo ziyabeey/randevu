@@ -19,32 +19,53 @@ This roadmap is deliberately independent from the frozen H19s experiment.
 
 M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf342b72624d2`.
 
-## M1 — repository intelligence
+## M1 — repository intelligence ✅
 
-- [ ] semantic-unit extractors: JS/TS, Python, SQL
-- [ ] persistent git-history cache
-- [ ] hotspot/churn evidence
-- [ ] companion-missing evidence
-- [ ] generic test-impact persistence format
-- [ ] adapters for coverage.py/testmon-compatible data and JS coverage maps
+- [x] semantic-unit extractors: JS/TS, Python, SQL
+- [x] persistent git-history cache
+- [x] hotspot/churn evidence
+- [x] companion-missing evidence
+- [x] generic test-impact persistence format
+- [x] adapters for coverage.py-compatible data and JS coverage maps
 
-## M2 — static evidence
+M1 dedicated CI retry passed after an unrelated PostgreSQL readiness flake; M1 smoke also passed transitively in later stacked CI.
 
-- [ ] H19-owned Semgrep rules, kept separate from upstream community rules
-- [ ] normalize AST/static facts into typed evidence
-- [ ] evidence provenance + source hashes
-- [ ] unknown/stale evidence handling
-- [ ] rule-card JSON schema
+## M2 — static evidence ✅
 
-## M3 — experiment engine
+- [x] H19-owned Semgrep rules, kept separate from upstream community rules
+- [x] normalize AST/static facts into typed evidence
+- [x] evidence provenance + source hashes
+- [x] unknown/stale evidence handling
+- [x] rule-card JSON schema
 
-- [ ] case freezer + SHA manifest
-- [ ] mutation-history cache
-- [ ] naive-feature leakage checks
-- [ ] blind-reader packet generator
-- [ ] prospective gate runner
-- [ ] experiment ledger updater
-- [ ] anti-pattern proposal guard
+M2 CI: GitHub Actions run #2757 passed.
+
+## M3 — experiment engine ✅
+
+- [x] case freezer + SHA manifest
+- [x] mutation-history cache
+- [x] naive-feature leakage checks
+- [x] blind-reader packet generator
+- [x] prospective gate runner
+- [x] experiment ledger updater
+- [x] anti-pattern proposal guard
+
+M3 CI: GitHub Actions run #2762 passed.
+
+## M3.5 — code intelligence graph
+
+- [x] normalized code graph contract
+- [x] SCIP index ingestion
+- [x] typed SCIP range support
+- [x] bounded transitive symbol-impact closure
+- [x] optional scip-typescript index generation
+- [x] Tree-sitter tags syntax-only fallback
+- [x] Nx affected-project adapter
+- [x] Turborepo affected package/task adapter
+- [x] graph/workspace impact → typed evidence
+- [x] CLI surface for SCIP / Tree-sitter / affected providers
+- [ ] CI green on exact M3.5 head
+- [ ] real external-tool fixtures before public release
 
 ## M4 — semantic probes
 
