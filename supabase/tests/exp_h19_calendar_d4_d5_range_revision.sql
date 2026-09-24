@@ -124,7 +124,8 @@ declare
   v_count integer;
   v_id uuid;
 begin
-  select count(*), min(id) into v_count,v_id from pg_temp.h19_calendar_d4d5_cursor;
+  select count(*) into v_count from pg_temp.h19_calendar_d4d5_cursor;
+  select id into v_id from pg_temp.h19_calendar_d4d5_cursor limit 1;
   if v_count<>1 or v_id is distinct from 'f2970000-0000-4000-8000-000000000001'::uuid then
     raise exception 'H19 calendar D4xD5 invalid first page: count %, id %',v_count,v_id;
   end if;
