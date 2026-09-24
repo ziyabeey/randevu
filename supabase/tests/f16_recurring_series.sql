@@ -428,6 +428,92 @@ end
 $f16_cross_tenant_future$;
 select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
 
+-- Tenant-wide closure must reject the exact blocked occurrence date.
+reset role;
+insert into public.availability_blocks(
+  id,business_id,staff_id,starts_at,ends_at,reason,active
+) values (
+  'f16a0000-0000-4000-8000-000000000001',
+  'f1610000-0000-4000-8000-000000000001',
+  null,
+  '2027-05-09 11:30 Europe/Berlin'::timestamptz,
+  '2027-05-09 12:30 Europe/Berlin'::timestamptz,
+  'F16-01 closure',
+  true
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $f16_closure_conflict$
+declare v_error text;
+begin
+  begin
+    perform public.create_appointment_series(
+      'f1610000-0000-4000-8000-000000000001',
+      'f1601-series-closure-fail',
+      'Closure Seri',
+      '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+      '2027-05-02 12:00 Europe/Berlin'::timestamptz,
+      'weekly',3,'05551601003'
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('SERIES_OCCURRENCE_UNAVAILABLE:2:2027-05-09' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 closure conflict did not identify occurrence date: %',v_error;
+  end if;
+end
+$f16_closure_conflict$;
+
+reset role;
+delete from public.availability_blocks
+where id='f16a0000-0000-4000-8000-000000000001';
+
+-- Staff-specific leave uses the same canonical availability authority and must
+-- also report the exact occurrence date.
+insert into public.availability_blocks(
+  id,business_id,staff_id,starts_at,ends_at,reason,active
+) values (
+  'f16a0000-0000-4000-8000-000000000002',
+  'f1610000-0000-4000-8000-000000000001',
+  'f1640000-0000-4000-8000-000000000001',
+  '2027-06-13 11:30 Europe/Berlin'::timestamptz,
+  '2027-06-13 12:30 Europe/Berlin'::timestamptz,
+  'F16-01 staff leave',
+  true
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $f16_leave_conflict$
+declare v_error text;
+begin
+  begin
+    perform public.create_appointment_series(
+      'f1610000-0000-4000-8000-000000000001',
+      'f1601-series-leave-fail',
+      'Leave Seri',
+      '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+      '2027-06-06 12:00 Europe/Berlin'::timestamptz,
+      'weekly',3,'05551601004'
+    );
+  exception when others then v_error:=sqlerrm;
+  end;
+  if position('SERIES_OCCURRENCE_UNAVAILABLE:2:2027-06-13' in coalesce(v_error,''))=0 then
+    raise exception 'F16-01 staff leave conflict did not identify occurrence date: %',v_error;
+  end if;
+end
+$f16_leave_conflict$;
+
+reset role;
+delete from public.availability_blocks
+where id='f16a0000-0000-4000-8000-000000000002';
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1600000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+
 -- Put one canonical group on the second occurrence of a different series intent.
 -- The candidate's first occurrence would be placeable; the second conflicts.
 do $f16_blocker$
