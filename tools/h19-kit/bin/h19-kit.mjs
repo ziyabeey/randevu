@@ -10,6 +10,8 @@ import { extractTypeScriptUnits } from '../src/extractors/typescript-units.mjs';
 import { extractPythonUnits } from '../src/extractors/python-units.mjs';
 import { repositoryInventory } from '../src/repository/inventory.mjs';
 import { scan } from '../src/pipeline/scan.mjs';
+import { freezeCases } from '../src/experiments/freeze.mjs';
+import { blindSample } from '../src/experiments/blind-sample.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -67,6 +69,32 @@ if (command === 'inventory') {
   process.exit(result.errors.length ? 1 : 0);
 }
 
+if (command === 'experiment-freeze') {
+  const [file, experimentId, protocolVersion] = args;
+  if (!file || !experimentId || !protocolVersion) {
+    throw new Error('experiment-freeze requires <cases.json> <experiment-id> <protocol-version>');
+  }
+  const input = JSON.parse(readFileSync(file, 'utf8'));
+  const cases = Array.isArray(input) ? input : input.cases;
+  console.log(JSON.stringify(freezeCases(cases, { experimentId, protocolVersion }), null, 2));
+  process.exit(0);
+}
+
+if (command === 'experiment-blind') {
+  const [file, countRaw = '16'] = args;
+  if (!file) throw new Error('experiment-blind requires <frozen.json> [count]');
+  const frozen = JSON.parse(readFileSync(file, 'utf8'));
+  const count = Number(countRaw);
+  if (!Number.isInteger(count) || count < 1) throw new Error('blind sample count must be a positive integer');
+  const sample = blindSample(frozen.cases, { seed: frozen.cases_sha256, count });
+  console.log(JSON.stringify({
+    seed: frozen.cases_sha256,
+    count: sample.length,
+    case_ids: sample.map((x) => x.case_id ?? x.id),
+  }, null, 2));
+  process.exit(0);
+}
+
 if (command === 'scan') {
   const file = args[0];
   if (!file) throw new Error('scan requires an input JSON file');
@@ -84,5 +112,7 @@ console.error([
   '  history [repo]',
   '  hotspots [repo]',
   '  scan <input.json> [--sarif]',
+  '  experiment-freeze <cases.json> <experiment-id> <protocol-version>',
+  '  experiment-blind <frozen.json> [count]',
 ].join('\n'));
 process.exit(2);

@@ -11,7 +11,8 @@
     "test": "node test/smoke.mjs",
     "doctor": "node bin/h19-kit.mjs doctor",
     "test:m1": "node test/m1.mjs",
-    "test:m2": "node test/m2.mjs"
+    "test:m2": "node test/m2.mjs",
+    "test:m3": "node test/m3.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
