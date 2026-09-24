@@ -71,7 +71,16 @@ Jev bir **seçici**tir, karar verici değildir. Kod durumu, hesabı ve eylemi sa
   veri işleme sözleşmesi gerekli.
 - **Kapsam:** AI MVP dışı; ürün kullanımı koordinatör kararı ve `TASKS.md` kaydı ister.
 
-## 6. Önerilen karar
+## 6. H19 deney hafızası
+
+H19'un R0 → a → b → b′ → d → t → u hattındaki sonuçları, başarısız yolları ve yeni araca aktarılacak kuralları tek yerde tutan kalıcı kayıt:
+
+- [H19-DENEY-DEFTERI.md](h19/H19-DENEY-DEFTERI.md) — insan-okur araştırma günlüğü
+- [h19-deney-defteri.v0.1.json](h19/h19-deney-defteri.v0.1.json) — yeni aracın okuyabileceği makine-okunur ledger
+
+Yeni H19 aracı deney tasarlarken bu ledger'ı geçmiş deney belleği olarak kullanmalı; başarısız bir yöntemi yeniden önermeden önce ilgili kayıtla çakışmayı kontrol etmelidir.
+
+## 7. Önerilen karar
 
 1. Jev'i **ürüne değil, önce geliştirme motoruna ve pazarlamaya** alın: müşteri verisi yok, kapsam dışı değil,
    ölçüm hazır.
