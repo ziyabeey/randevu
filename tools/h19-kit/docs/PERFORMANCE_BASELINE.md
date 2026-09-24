@@ -19,8 +19,10 @@ before the next bundle feature is promoted.
 When `scip-typescript` is installed:
 
 - exact runtime version;
-- cold project-index wall time;
-- H19 warm project-shard cache-hit wall time;
+- first project-index wall time;
+- fresh H19 cache-miss repeat wall time;
+- single-source-file-change reindex wall time;
+- exact-content H19 project-shard cache-hit wall time;
 - index artifact bytes;
 - TypeScript/JavaScript source lines;
 - observed source lines indexed per second.
@@ -57,13 +59,19 @@ Only then should performance become a gating check.
 
 ## Important interpretation
 
-Cold SCIP time and warm H19 cache-hit time answer different questions.
+First-index, repeat cache-miss, single-file-change, and exact-content warm-hit times answer different questions.
 
 ```text
-cold index
-  = type analysis + SCIP generation + H19 fingerprint/cache write
+first index
+  = initial type analysis + SCIP generation + H19 fingerprint/cache write
 
-warm hit
+repeat H19 cache miss
+  = indexer runs again with a fresh H19 artifact cache; indexer-internal caches may still exist
+
+single-file change
+  = real source-content invalidation followed by reindex
+
+exact-content warm hit
   = H19 fingerprint validation + artifact lookup
 ```
 
