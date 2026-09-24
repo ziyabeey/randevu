@@ -87,3 +87,4 @@ Sonraki adımın ön kaydı (olgu-koşullu D5, yeni vakalar): [`H19B-PROTOKOL.md
 H19b′ sonucu (P1 kaldı; eski V en iyi dedektör; facts öncül gibi davranıyor): [`h19b-prime/SONUC.md`](h19b-prime/SONUC.md).
 H19d sonucu (göreli eksen router'ı D1/D2/D3'te kaldı; ham P(D5) en güçlü sinyal olarak kalıyor): [`h19d/SONUC.md`](h19d/SONUC.md).
 H19t sonucu (ham P(D5) ≥ 0.64 çalışma noktası: yakalama tuttu, T2 D1 yanlış alarmları ve yük azalmasında kaldı; terfi yok): [`h19t/SONUC.md`](h19t/SONUC.md).
+H19u sonucu (V1 + D1/D5 ayrıştırıcı Choice bileşik router: U1–U5 geçti; D5 recall korundu, D1 yanlış alarmları 9/19 → 0/19, yük 11.5 puan düştü; H19s ön kayda açık): [`h19u/SONUC.md`](h19u/SONUC.md).
