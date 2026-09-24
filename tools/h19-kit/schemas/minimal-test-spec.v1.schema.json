@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/minimal-test-spec.v1.schema.json",
+  "title": "H19 Minimal Test Specification v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "packetSha256",
+    "hypothesisId",
+    "target",
+    "hypothesis",
+    "validationStatus",
+    "setup",
+    "action",
+    "expectedInvariant",
+    "requiredObservations",
+    "readiness",
+    "specSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "packetSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "hypothesisId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {},
+    "hypothesis": {
+      "type": "object"
+    },
+    "validationStatus": {
+      "enum": [
+        "unvalidated",
+        "confirmed",
+        "inconclusive"
+      ]
+    },
+    "mutation": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "setup": {
+      "$ref": "#/$defs/section"
+    },
+    "action": {
+      "$ref": "#/$defs/section"
+    },
+    "expectedInvariant": {
+      "$ref": "#/$defs/section"
+    },
+    "requiredObservations": {
+      "$ref": "#/$defs/section"
+    },
+    "readiness": {
+      "type": "object",
+      "required": [
+        "eligible",
+        "readyForExecutableGeneration",
+        "missingSections"
+      ],
+      "properties": {
+        "eligible": {
+          "type": "boolean"
+        },
+        "readyForExecutableGeneration": {
+          "type": "boolean"
+        },
+        "missingSections": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "specSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "required": [
+        "state",
+        "items",
+        "reason"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "known",
+            "unknown"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
