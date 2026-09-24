@@ -1,0 +1,32 @@
+{
+  "ad": "Kolay Randevu",
+  "toplandi": "2026-09-24T05:53:45.493Z",
+  "sayfalar": [
+    {
+      "url": "https://www.kolayrandevu.com/",
+      "status": 403,
+      "baslik": "Access Denied / Erişim Engellendi",
+      "meta": "",
+      "h1": [
+        "Access denied - Erişim engellendi"
+      ],
+      "hero_alt": "Ray ID: a3ff87cb8d32e670 Kolay Randevu sistemine erişiminiz engellenmiştir. Lütfen VPN kullanıyorsanız bunu kapattığınızdan emin olarak tekrar deneyiniz. Sorununuz hala devam ediyorsa bizimle destek[at]kolayrandevu.com e-posta adresimiz üzerinden iletişime geçebilirsiniz.",
+      "basliklar": [],
+      "ctalar": [],
+      "fiyat": []
+    },
+    {
+      "url": "https://www.kolayrandevu.com/randevu-programi/",
+      "status": 403,
+      "baslik": "Access Denied / Erişim Engellendi",
+      "meta": "",
+      "h1": [
+        "Access denied - Erişim engellendi"
+      ],
+      "hero_alt": "Ray ID: a3ff87d03952e670 Kolay Randevu sistemine erişiminiz engellenmiştir. Lütfen VPN kullanıyorsanız bunu kapattığınızdan emin olarak tekrar deneyiniz. Sorununuz hala devam ediyorsa bizimle destek[at]kolayrandevu.com e-posta adresimiz üzerinden iletişime geçebilirsiniz.",
+      "basliklar": [],
+      "ctalar": [],
+      "fiyat": []
+    }
+  ]
+}

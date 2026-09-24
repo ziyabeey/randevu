@@ -25,20 +25,22 @@ const score = (instructions, criteria) => ({ type: 'score', instructions, criter
 const noul = (instructions, yes, no) => ({ type: 'noul', instructions, criteria: { true: yes, false: no } });
 
 const HERO = '`ana_sayfa.h1` ve hemen altındaki `ana_sayfa.hero_alt`';
-const SITE = '`sayfalar` içindeki başlıklar, CTA metinleri ve fiyat satırları birlikte okunduğunda';
+const SITE = '`ana_sayfa` ve `sayfalar` içindeki başlıklar, alt metinler, CTA metinleri ve fiyat satırları birlikte okunduğunda';
 // Evet/hayır sorularında "tüm başlıklar" demek Jev'e "hepsi mi" diye sorulmuş gibi okunur; kapsam "en az biri".
-const ANY = '`sayfalar` içindeki başlık, CTA ya da fiyat satırlarından en az biri';
+const ANY = '`ana_sayfa` ya da `sayfalar` içindeki metinlerden (başlık, alt metin, CTA, fiyat satırı) en az biri';
 // Pazarlama sloganları kısa ve imalıdır; Jev kelimesi kelimesine okuduğu için (jaggedness #1) nouller anlamı sorar.
 const MEANING = ' Sloganlar kısa ve imalı olabilir; belirli kelimelerin geçip geçmediğine değil, söylenen anlama bak.';
 
 export const QUESTIONS = {
-  acilis_tipi: choice(`${HERO} ziyaretçiye ilk olarak ne söylüyor?`, {
+  // Açılış cümlesi = yalnız H1; alt metin çoğu zaman fayda anlattığı için ayrı tutulur.
+  acilis_tipi: choice('`ana_sayfa.h1` başlığı tek başına okunduğunda ne tür bir cümle?', {
     fayda_vaadi: 'İşletmenin elde edeceği sonucu vaat ediyor (zaman, gelir, düzen, kolaylık).',
     aci_noktasi: 'İşletmenin yaşadığı bir sorunu ya da sıkıntıyı dile getiriyor.',
     sosyal_kanit: 'Kaç işletmenin kullandığını, puanları ya da müşteri sözlerini öne koyuyor.',
     fiyat_teklif: 'Fiyatı, ücretsiz kullanımı ya da bir kampanyayı öne koyuyor.',
     ozellik_listesi: 'Ürünün özelliklerini sıralıyor.',
-    kategori_tanimi: 'Ürünün ne olduğunu tanımlıyor ("… randevu programı / yazılımı").',
+    kategori_tanimi: 'Ürünün ne olduğunu tanımlıyor ("… için randevu programı / yönetim çözümü / tek platform").',
+    ustunluk_iddiasi: 'Rakiplerden üstün olduğunu iddia ediyor ("en iyi", "1 numaralı", "Türkiye\'nin en …").',
   }),
   hedef_kitle: choice(`${SITE} hangi işletmelere sesleniyor?`, {
     kuafor_berber: 'Ağırlıkla kuaför ve berberler.',
@@ -92,7 +94,7 @@ export const QUESTIONS = {
     'Belirgin ayrışıyor; açık bir konum ya da yaklaşım var.',
     'Çok ayrışıyor; yalnız bu markaya ait, akılda kalan bir iddia var.',
   ]),
-  kanit_sayi: noul(`${ANY} somut bir sayı ya da kanıt veriyor mu?${MEANING}`, 'İşletme sayısı, randevu sayısı, puan, müşteri yorumu gibi somut bir kanıt var.', 'Somut sayı ya da kanıt yok.'),
+  kanit_sayi: noul(`${ANY} sosyal kanıt veriyor mu?${MEANING}`, 'Kaç işletmenin ya da kullanıcının kullandığı, puan, müşteri yorumu ya da referans logoları gibi sosyal kanıt var.', 'Sosyal kanıt yok. Fiyatlar, paket limitleri, deneme süreleri ve örnek ekran rakamları kanıt sayılmaz.'),
   whatsapp: noul(`${ANY} WhatsApp'ı bir özellik ya da kanal olarak öne çıkarıyor mu?${MEANING}`, 'WhatsApp bildirimi, WhatsApp entegrasyonu ya da WhatsApp desteği anılıyor.', 'WhatsApp anılmıyor.'),
   yapay_zeka: noul(`${ANY} yapay zekâyı bir özellik olarak öne çıkarıyor mu?${MEANING}`, 'Yapay zekâ, AI asistan, akıllı öneri gibi bir özellik anılıyor.', 'Yapay zekâ anılmıyor.'),
   kurulum_destegi: noul(`${ANY} sistemi işletmenin yerine firmanın kuracağını ya da birlikte kuracaklarını söylüyor mu?${MEANING}`, 'Kurulum, ayarlar ya da veri aktarımı firma tarafından veya işletmeyle birlikte yapılıyor ("biz kuralım", "sen uğraşma" gibi).', 'Kurulumu işletme kendisi yapıyor ya da kurulumdan hiç söz edilmiyor.'),
@@ -108,14 +110,18 @@ const WEIGHTS = { netlik: 0.4, farklilasma: 0.4, kanit_sayi: 0.2 };
 
 // ---------------------------------------------------------------- veri
 
+// Material ikon adları ("play_arrow", "content_cut") metne karışabiliyor.
+const clean = (value) => (Array.isArray(value) ? value.map(clean).filter(Boolean) : String(value ?? '').replace(/\b[a-z]+(?:_[a-z]+)+\b/g, '').replace(/\s+/g, ' ').trim());
+
 function compact(site) {
-  const pages = site.sayfalar.filter((p) => !p.error);
+  // Hata ve bot koruması sayfaları (403 "Access Denied") analiz edilmez.
+  const pages = site.sayfalar.filter((p) => !p.error && !(p.status >= 400));
   if (!pages.length) return null;
   const [home] = pages;
   return {
     sirket: site.ad,
-    ana_sayfa: { baslik: home.baslik, meta: home.meta, h1: home.h1?.join(' / ') ?? '', hero_alt: home.hero_alt ?? '' },
-    sayfalar: pages.map((p) => ({ url: p.url, basliklar: p.basliklar ?? [], ctalar: p.ctalar ?? [], fiyat: p.fiyat ?? [], diger: p.diger ?? [] })),
+    ana_sayfa: { baslik: clean(home.baslik), meta: clean(home.meta), h1: clean(home.h1?.join(' / ')), hero_alt: clean(home.hero_alt) },
+    sayfalar: pages.map((p) => ({ url: p.url, h1: clean(p.h1?.join(' / ')), alt_metin: clean(p.hero_alt), basliklar: clean(p.basliklar ?? []), ctalar: clean(p.ctalar ?? []), fiyat: clean(p.fiyat ?? []), diger: clean(p.diger ?? []) })),
   };
 }
 

@@ -1,0 +1,54 @@
+{
+  "ad": "Bosgun",
+  "toplandi": "2026-09-24T05:54:04.995Z",
+  "sayfalar": [
+    {
+      "url": "https://bosgun.com/",
+      "status": 200,
+      "baslik": "Kuaför, güzellik salonu ve klinikler için randevu yazılımı | Bosgun",
+      "meta": "Türkiye'deki kuaför, güzellik salonu ve klinikler için online randevu, otomatik hatırlatma ve Iyzico tahsilat. Boş saatleri doldurun, gelmeyenleri azaltın. KVKK uyumlu, 14 gün ücretsiz deneyin.",
+      "h1": [
+        "Boş saatleri doldurun , gelmeyenleri azaltın."
+      ],
+      "hero_alt": "Online randevu sayfanız 7/24 açık, otomatik hatırlatmalar gönderilir. Takvim, müşteri kartı ve tahsilat tek panelde — 5 dakikada kurun. rocket_launch Başlayın arrow_forward play_arrow Nasıl çalışır? 3 dk verified_user Kredi kartı gerekmez · 5 dakikada kurulum · KVKK uyumlu event_available Online randevu notifications_active Otomatik hatırlatma payments Kapora & tahsilat storefront Örnek işletmeler",
+      "basliklar": [
+        "Her işletme tipi için hazır akış",
+        "Telefon, takvim ve tahsilat bir arada",
+        "Akıllı takvim",
+        "Otomatik hatırlatma",
+        "Oda ve ekipman",
+        "Günlük programınız net kalsın",
+        "Müşteri CRM",
+        "Analitik",
+        "Personel, oda ve cihaz tek takvimde",
+        "Kuaför, güzellik salonu ve klinikler için",
+        "Hizmetler",
+        "Kullandığınız araçlarla uyumlu",
+        "Widget yerleştir",
+        "Takvim senkronizasyonu",
+        "Otomatik bildirim",
+        "Webhook ve API",
+        "Merak edilenler",
+        "Bu hafta boş koltuk bırakmayın",
+        "ÜRÜN",
+        "ŞİRKET",
+        "BAĞLAN"
+      ],
+      "ctalar": [
+        "play_arrow Nasıl çalışır? 3 dk",
+        "content_cut Berber ve kuaför",
+        "stethoscope Klinik ve muayenehane",
+        "self_improvement Pilates ve fitness",
+        "meeting_room Güzellik stüdyosu",
+        "school Özel ders ve koçluk"
+      ],
+      "fiyat": [
+        "₺8.4k",
+        "Ücretsiz",
+        "₺24.580",
+        "14 gün ücretsiz deneyin — kredi kartı gerekmez, Iyzico ile tahsilata hemen hazırsınız.",
+        "Ücretsiz hesap açın"
+      ]
+    }
+  ]
+}

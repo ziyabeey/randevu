@@ -1,5 +1,7 @@
 # Rakip mesaj analizi (Jev)
 
+Sonuçlar: [`ANALIZ.md`](ANALIZ.md) · ham matris: [`rapor-2026-09-24.md`](rapor-2026-09-24.md) · doğrulama: `node rakip/verify.mjs`.
+
 Rakiplerin kamuya açık pazarlama sayfalarını Chromium ile açar, metni çıkarır ve her rakip için tek
 istekte 17 atomik soru sorar (cookbook: *Parallel questions* + *Composite scoring*; kullanım haritası:
 *Advertising*). Ağırlıklar kodda (`WEIGHTS`), sürüm `jev-1.13.0`'a sabit.
@@ -40,6 +42,7 @@ cd experiments/jev-tr-eval
 node rakip/collect.mjs                          # sayfalar/<rakip>.json
 NODE_USE_ENV_PROXY=1 node rakip/analyze.mjs     # results/<zaman>/report.md
 NODE_USE_ENV_PROXY=1 node rakip/analyze.mjs --yalniz-bizim
+node rakip/verify.mjs                           # elle etiketlerle uyum
 ```
 
 Reklam–açılış sayfası uyumu için reklam metinleri gerekir; Meta Reklam Kütüphanesi API'si AB dışındaki

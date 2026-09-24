@@ -1,0 +1,23 @@
+{
+  "_aciklama": "Elle doğrulama etiketleri (Claude, sayfa metnindeki kanıta bakarak). Liste = kabul edilebilir cevaplar; true/false = noul; null = metinden karar verilemiyor. Yoruma dayalı sorular (ana_vaat, farkindalik, netlik, farklilasma) etiketlenmedi. Not: etiketler Jev'in ilk çalıştırmasını gördükten sonra yazıldı.",
+  "Randevu (Kepenk.ai)": { "acilis_tipi": ["fayda_vaadi"], "hedef_kitle": ["kuafor_berber", "guzellik_merkezi"], "birincil_cta": ["kurulum_destegi"], "teklif": ["yok"],
+    "kanit_sayi": false, "whatsapp": false, "yapay_zeka": false, "kurulum_destegi": true, "fiyat_acik": false, "mobil_uygulama": false, "hatirlatma": true, "odeme_kapora": false, "yerel_destek": false },
+  "AppRandevu": { "acilis_tipi": ["kategori_tanimi"], "hedef_kitle": ["genel_randevulu_isletme"], "birincil_cta": ["ucretsiz_basla"], "teklif": ["ucretsiz_deneme"],
+    "kanit_sayi": false, "whatsapp": false, "yapay_zeka": false, "kurulum_destegi": false, "fiyat_acik": true, "mobil_uygulama": null, "hatirlatma": true, "odeme_kapora": false, "yerel_destek": false },
+  "Asistan Panel": { "acilis_tipi": null, "hedef_kitle": ["kuafor_berber"], "birincil_cta": null, "teklif": ["tek_fiyat"],
+    "kanit_sayi": false, "whatsapp": false, "yapay_zeka": false, "kurulum_destegi": false, "fiyat_acik": true, "mobil_uygulama": true, "hatirlatma": true, "odeme_kapora": false, "yerel_destek": false },
+  "Bosgun": { "acilis_tipi": ["fayda_vaadi"], "hedef_kitle": ["genel_randevulu_isletme"], "birincil_cta": ["ucretsiz_basla"], "teklif": ["ucretsiz_deneme"],
+    "kanit_sayi": false, "whatsapp": false, "yapay_zeka": false, "kurulum_destegi": false, "fiyat_acik": true, "mobil_uygulama": false, "hatirlatma": true, "odeme_kapora": true, "yerel_destek": true },
+  "Fresha": { "acilis_tipi": ["ustunluk_iddiasi"], "hedef_kitle": ["guzellik_merkezi", "kuafor_berber"], "birincil_cta": ["ucretsiz_basla"], "teklif": null,
+    "kanit_sayi": true, "whatsapp": false, "yapay_zeka": false, "kurulum_destegi": null, "fiyat_acik": true, "mobil_uygulama": true, "hatirlatma": true, "odeme_kapora": true, "yerel_destek": false },
+  "RandevApp": { "acilis_tipi": ["ustunluk_iddiasi"], "hedef_kitle": ["genel_randevulu_isletme"], "birincil_cta": ["ucretsiz_basla"], "teklif": ["ucretsiz_plan", "ucretsiz_deneme"],
+    "kanit_sayi": false, "whatsapp": true, "yapay_zeka": true, "kurulum_destegi": false, "fiyat_acik": true, "mobil_uygulama": null, "hatirlatma": null, "odeme_kapora": true, "yerel_destek": true },
+  "Randu": { "acilis_tipi": ["fayda_vaadi"], "hedef_kitle": ["genel_randevulu_isletme"], "birincil_cta": ["ucretsiz_basla"], "teklif": ["ucretsiz_deneme"],
+    "kanit_sayi": null, "whatsapp": true, "yapay_zeka": false, "kurulum_destegi": false, "fiyat_acik": true, "mobil_uygulama": false, "hatirlatma": true, "odeme_kapora": false, "yerel_destek": false },
+  "SalonJet": { "acilis_tipi": ["kategori_tanimi"], "hedef_kitle": ["kuafor_berber"], "birincil_cta": ["ucretsiz_basla"], "teklif": ["ucretsiz_deneme", "ucretsiz_plan"],
+    "kanit_sayi": true, "whatsapp": true, "yapay_zeka": false, "kurulum_destegi": false, "fiyat_acik": true, "mobil_uygulama": false, "hatirlatma": true, "odeme_kapora": false, "yerel_destek": false },
+  "SalonRandevu": { "acilis_tipi": ["ustunluk_iddiasi"], "hedef_kitle": ["kuafor_berber", "guzellik_merkezi"], "birincil_cta": ["ucretsiz_basla"], "teklif": ["indirim_kampanya", "ucretsiz_deneme"],
+    "kanit_sayi": true, "whatsapp": true, "yapay_zeka": false, "kurulum_destegi": false, "fiyat_acik": true, "mobil_uygulama": true, "hatirlatma": false, "odeme_kapora": false, "yerel_destek": true },
+  "Salun": { "acilis_tipi": null, "hedef_kitle": ["genel_randevulu_isletme", "kuafor_berber"], "birincil_cta": ["ucretsiz_basla"], "teklif": ["ucretsiz_deneme", "ucretsiz_plan"],
+    "kanit_sayi": false, "whatsapp": true, "yapay_zeka": false, "kurulum_destegi": false, "fiyat_acik": true, "mobil_uygulama": true, "hatirlatma": null, "odeme_kapora": true, "yerel_destek": true }
+}

@@ -1,0 +1,28 @@
+{
+  "ad": "Reservio",
+  "toplandi": "2026-09-24T05:54:50.852Z",
+  "sayfalar": [
+    {
+      "url": "https://www.reservio.com/tr",
+      "status": 403,
+      "baslik": "",
+      "meta": "",
+      "h1": [],
+      "hero_alt": "",
+      "basliklar": [],
+      "ctalar": [],
+      "fiyat": []
+    },
+    {
+      "url": "https://www.reservio.com/tr/fiyatlandirma",
+      "status": 403,
+      "baslik": "",
+      "meta": "",
+      "h1": [],
+      "hero_alt": "",
+      "basliklar": [],
+      "ctalar": [],
+      "fiyat": []
+    }
+  ]
+}

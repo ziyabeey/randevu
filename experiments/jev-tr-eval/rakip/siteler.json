@@ -1,16 +1,82 @@
 {
   "_aciklama": "Rakiplerin kamuya açık pazarlama sayfaları. Kaynak: docs/research/*-competitive-analysis-2026-09-14.md. Her rakip için ana sayfa + fiyat sayfası.",
   "rakipler": [
-    { "ad": "Kolay Randevu", "urls": ["https://www.kolayrandevu.com/", "https://www.kolayrandevu.com/randevu-programi/"] },
-    { "ad": "SalonJet", "urls": ["https://salonjet.com.tr/", "https://salonjet.com.tr/fiyatlandirma"] },
-    { "ad": "Salun", "urls": ["https://salun.com.tr/", "https://salun.com.tr/paketlerimiz"] },
-    { "ad": "Asistan Panel", "urls": ["https://www.kuaforasistan.com/", "https://www.kuaforasistan.com/fiyatlandirma"] },
-    { "ad": "Bosgun", "urls": ["https://bosgun.com/"] },
-    { "ad": "Randu", "urls": ["https://randuapp.com/", "https://randu.app/"] },
-    { "ad": "RandevApp", "urls": ["https://randevapp.com.tr/"] },
-    { "ad": "SalonRandevu", "urls": ["https://www.salonrandevu.app/", "https://www.salonrandevu.app/uygulama-paketleri"] },
-    { "ad": "AppRandevu", "urls": ["https://apprandevu.com/", "https://apprandevu.com/salon-kayit"] },
-    { "ad": "Reservio", "urls": ["https://www.reservio.com/tr", "https://www.reservio.com/tr/fiyatlandirma"] },
-    { "ad": "Fresha", "urls": ["https://www.fresha.com/for-business", "https://www.fresha.com/tr/pricing"] }
+    {
+      "ad": "Kolay Randevu",
+      "urls": [
+        "https://www.kolayrandevu.com/",
+        "https://www.kolayrandevu.com/randevu-programi/"
+      ],
+      "not": "Bot koruması (403 Access Denied); aşılmaya çalışılmaz, analiz dışı"
+    },
+    {
+      "ad": "SalonJet",
+      "urls": [
+        "https://salonjet.com.tr/",
+        "https://salonjet.com.tr/fiyatlandirma"
+      ]
+    },
+    {
+      "ad": "Salun",
+      "urls": [
+        "https://salun.com.tr/",
+        "https://salun.com.tr/paketlerimiz"
+      ]
+    },
+    {
+      "ad": "Asistan Panel",
+      "urls": [
+        "https://www.kuaforasistan.com/",
+        "https://www.kuaforasistan.com/fiyatlandirma"
+      ]
+    },
+    {
+      "ad": "Bosgun",
+      "urls": [
+        "https://bosgun.com/"
+      ]
+    },
+    {
+      "ad": "Randu",
+      "urls": [
+        "https://randuapp.com/"
+      ],
+      "not": "randu.app tüketici platformu; işletme konumu için yalnız randuapp.com"
+    },
+    {
+      "ad": "RandevApp",
+      "urls": [
+        "https://randevapp.com.tr/"
+      ]
+    },
+    {
+      "ad": "SalonRandevu",
+      "urls": [
+        "https://www.salonrandevu.app/",
+        "https://www.salonrandevu.app/uygulama-paketleri"
+      ]
+    },
+    {
+      "ad": "AppRandevu",
+      "urls": [
+        "https://apprandevu.com/",
+        "https://apprandevu.com/salon-kayit"
+      ]
+    },
+    {
+      "ad": "Reservio",
+      "urls": [
+        "https://www.reservio.com/tr",
+        "https://www.reservio.com/tr/fiyatlandirma"
+      ],
+      "not": "Bot koruması (403 Access Denied); aşılmaya çalışılmaz, analiz dışı"
+    },
+    {
+      "ad": "Fresha",
+      "urls": [
+        "https://www.fresha.com/for-business",
+        "https://www.fresha.com/tr/pricing"
+      ]
+    }
   ]
 }

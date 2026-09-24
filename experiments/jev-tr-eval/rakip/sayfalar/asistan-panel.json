@@ -1,0 +1,92 @@
+{
+  "ad": "Asistan Panel",
+  "toplandi": "2026-09-24T05:54:00.668Z",
+  "sayfalar": [
+    {
+      "url": "https://www.kuaforasistan.com/",
+      "status": 200,
+      "baslik": "Kuaför Randevu Al | Bayan Kuaför, Erkek Kuaför ve Berber Bul",
+      "meta": "En yakın bayan kuaför, erkek kuaför ve berber salonlarından online randevu al. Boş saatleri gör, fiyatları karşılaştır, anında rezervasyon yap. Salon sahibiyseniz Asistan Panel ile salonunuzu yönetin.",
+      "h1": [
+        "Kuaför randevu al bayan kuaför, erkek kuaför ve berber bul"
+      ],
+      "hero_alt": "Salon sahipleri Asistan Panel ile randevu, müşteri ve personel yönetimini tek panelde toplar. Müşterileriniz de sizi keşfedip anında online randevu alır. 419 TL/ay · Tek fiyat iOS + Android 10 dk kurulum Fiyatları Gör Kuaför Bul & Randevu Al",
+      "basliklar": [
+        "Yakınındaki kuaför, berber ve güzellik salonlarından randevu al",
+        "Salonunuzu mu yönetiyorsunuz?",
+        "Tüm Randevularınız Kontrolünüz Altında",
+        "Randevu Takibi",
+        "Randevu Düzenleme",
+        "Hatırlatma Bildirimleri",
+        "Tüm çalışanlarınız tek uygulamada",
+        "Tüm Ekibi Tek Ekranda Görün",
+        "Rol ve Yetki Kontrolü",
+        "Performansı Daha Net Okuyun"
+      ],
+      "ctalar": [
+        "Hizmetler",
+        "Açık",
+        "Koyu",
+        "HİZMET",
+        "SALON TÜRÜ",
+        "SALON ADI",
+        "ARA",
+        "Kuaförler",
+        "Berberler",
+        "Güzellik ve Estetik Merkezleri",
+        "Spalar",
+        "Solaryum Merkezleri",
+        "Düzenle",
+        "İptal Et"
+      ],
+      "fiyat": [
+        "419 TL/ay · Tek fiyat",
+        "Ücretsiz kuaför programı var mı?"
+      ]
+    },
+    {
+      "url": "https://www.kuaforasistan.com/fiyatlandirma",
+      "status": 200,
+      "baslik": "Kuaför Randevu Programı Fiyatları | Salon Yönetim Yazılımı Abonelik",
+      "meta": "Kuaför randevu programı ve salon yönetim yazılımı abonelik fiyatlarını inceleyin. Kuaför Asistan aylık ve yıllık paketleri ile Asistan Panel özelliklerini karşılaştırın.",
+      "h1": [
+        "Asistan Panel fiyatları"
+      ],
+      "hero_alt": "Tek fiyat, tüm özellikler Tek fiyat, tüm özellikler. Kuaför, berber ve güzellik salonları için aylık veya yıllık plan seçin. Salon uygulamasını indir",
+      "basliklar": [
+        "Paketler",
+        "Aylık Plan",
+        "Yıllık Plan",
+        "Asistan Panel uygulamasını indirin",
+        "Asistan Panel ile salonunuzu büyütün",
+        "Keşfet",
+        "Hizmetler",
+        "İş İlanları",
+        "Kurumsal",
+        "Yasal",
+        "İşletme Çözümleri",
+        "Popüler Şehirler"
+      ],
+      "ctalar": [
+        "Açık",
+        "Koyu"
+      ],
+      "fiyat": [
+        "Tek fiyat, tüm özellikler. Kuaför, berber ve güzellik salonları için aylık veya yıllık plan seçin.",
+        "Aylık Plan",
+        "Asistan Panel'i aylık kullanmak, randevu ve operasyon akışını düşük taahhütle başlatmak isteyen salonlar için.",
+        "₺419",
+        "/ ay",
+        "Aylık planı incele",
+        "Yıllık Plan",
+        "Yıllık",
+        "₺4.999",
+        "Yıllık fiyat varsayılan web bilgisidir; mağaza ödeme ekranındaki güncel tutar esas alınır.",
+        "Yıllık planı incele",
+        "419 TL/ay · Tek fiyat",
+        "Randevu, müşteri ve personel yönetimini aylık 419 TL'lik tek paketle aynı uygulamadan yönetin.",
+        "Ücretsiz Kuaför Programı"
+      ]
+    }
+  ]
+}

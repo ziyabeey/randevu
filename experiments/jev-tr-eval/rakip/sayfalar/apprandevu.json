@@ -1,0 +1,59 @@
+{
+  "ad": "AppRandevu",
+  "toplandi": "2026-09-24T05:54:48.942Z",
+  "sayfalar": [
+    {
+      "url": "https://apprandevu.com/",
+      "status": 200,
+      "baslik": "AppRandevu | Güzellik Salonu, Kuaför ve Güzellik Merkezi Yönetim Programı",
+      "meta": "AppRandevu, güzellik merkezleri, güzellik salonları ve kuaförler için tasarlanmış profesyonel bir randevu ve işletme yönetim programıdır. Kolay kullanım, müşteri takibi, randevu planlama ve gelir gider analizi ile işletmenizi modernize edin.",
+      "h1": [
+        "Randevu ile Çalışan İşletmeler İçin, A’dan Z’ye Yönetim Çözümü!"
+      ],
+      "hero_alt": "Güzellik Merkezleri, Estetik Merkezleri, Kuaförler, Tırnak Stüdyoları, Makyaj Stüdyoları, Berberler, SPA'lar, Diyetisyenler ve Randevu ile Çalışan İşletmeleri düşünerek tasarlanmıştır. Salonunuzu ister bilgisayarınızdan, ister cep telefonu ve tabletinizden kolayca yönetin. 14 Gün Ücretsiz Deneyin!",
+      "basliklar": [
+        "Özelliklerimizi Keşfedin",
+        "İşinizi zaman kazanarak büyütün",
+        "Hemen 14 Gün Ücretsiz Deneyin",
+        "Fiyatlandırma",
+        "₺500",
+        "Sıkça Sorulan Sorular",
+        "Blog Yazıları"
+      ],
+      "ctalar": [
+        "Oturum Aç",
+        "İşletmenizi Listeleyin",
+        "Menü",
+        "14 Gün Ücretsiz Deneyin!",
+        "14 Gün Ücretsiz Deneyin",
+        "Bize Ulaşın"
+      ],
+      "fiyat": [
+        "14 Gün Ücretsiz Deneyin!",
+        "Finansal düzeni sağlama adımlarınızı atın ve stoklarınızı kontrol edin! Satış sonrasında stok takibini kolaylıkla yapın.",
+        "Hemen 14 Gün Ücretsiz Deneyin",
+        "14 Gün Ücretsiz Deneyin",
+        "₺500",
+        "Ücretsiz Randevu Hatırlatma",
+        "14 Gün Ücretsiz Dene"
+      ]
+    },
+    {
+      "url": "https://apprandevu.com/salon-kayit",
+      "status": 200,
+      "baslik": "AppRandevu | Salon Kayıt",
+      "meta": "AppRandevu, güzellik merkezleri, güzellik salonları ve kuaförler için tasarlanmış profesyonel bir randevu ve işletme yönetim programıdır. Kolay kullanım, müşteri takibi, randevu planlama ve gelir gider analizi ile işletmenizi modernize edin.",
+      "h1": [
+        "Uzmanlar için AppRandevu"
+      ],
+      "hero_alt": "14 gün ücretsiz denemenizi başlatmak için e-posta adresinizi girin. E-posta Adresi Devam Et Devam Et Kod gelmedi mi? Yeniden gönder Salon Sahibi (Ad Soyad) Telefon Numarası E-posta Adresi Parola 👁 ○ 8+ Karakter ○ 1 Rakam ○ 1 Küçük Harf ○ 1 Büyük Harf Parola Tekrar 👁 Gizlilik ve Kullanım Şartlarını kabul ediyorum. Kabul Et ve Kaydı Tamamla",
+      "basliklar": [],
+      "ctalar": [
+        "Devam Et"
+      ],
+      "fiyat": [
+        "14 gün ücretsiz denemenizi başlatmak için e-posta adresinizi girin."
+      ]
+    }
+  ]
+}
