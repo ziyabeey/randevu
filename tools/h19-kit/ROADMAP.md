@@ -55,7 +55,9 @@ M0 CI: GitHub Actions run #2743 passed on commit `e0f35a423319a16a478babd7e3abf3
 - [x] test-code reference distinction
 - [x] explicit coverage-gap/unknown separation
 - [x] temporal-coupling companion evidence
-- [ ] compiler/indexer launcher adapters (scip-typescript, scip-python, rust-analyzer, etc.)
+- [x] provider-neutral SCIP indexer registry + runtime version probing
+- [x] scip-typescript launcher
+- [ ] verified scip-python / rust-analyzer / scip-clang launchers
 - [ ] call-edge classifier where language/indexer evidence supports it
 - [x] Tree-sitter fallback adapter contract + initial Go/Rust/C++ profiles
 - [x] generic changed-file → reverse-dependency affected resolver
