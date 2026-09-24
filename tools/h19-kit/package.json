@@ -20,7 +20,8 @@
     "test:m35-tree-sitter": "node test/m35-tree-sitter.mjs",
     "test:m35-unit-symbol": "node test/m35-unit-symbol-map.mjs",
     "test:m4-change-impact": "node test/m4-change-impact.mjs",
-    "test:m5-coverage-discovery": "node test/m5-coverage-discovery.mjs"
+    "test:m5-coverage-discovery": "node test/m5-coverage-discovery.mjs",
+    "test:m5-validation-packet": "node test/m5-validation-packet.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
