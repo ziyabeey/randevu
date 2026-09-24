@@ -19,7 +19,14 @@ export const GO_TREE_SITTER_PROFILE = Object.freeze({
 export const RUST_TREE_SITTER_PROFILE = Object.freeze({
   id: 'tree-sitter-rust-v1',
   language: 'rust',
-  containers: {},
+  containers: {
+    impl_item: {
+      nameFields: ['type'],
+    },
+    trait_item: {
+      nameFields: ['name'],
+    },
+  },
   units: {
     function_item: {
       kind: 'function',
@@ -46,7 +53,7 @@ export const CPP_TREE_SITTER_PROFILE = Object.freeze({
   units: {
     function_definition: {
       kind: 'function',
-      nameFields: ['declarator', 'name'],
+      nameFields: [],
       bodyFields: ['body'],
       name(node, text) {
         const declarator = node.childForFieldName?.('declarator');
