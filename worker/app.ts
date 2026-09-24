@@ -21,6 +21,7 @@ import reports from './reports.ts';
 import f16Series from './f16-series-http.ts';
 import onboarding from './onboarding.ts';
 import whatsappVerify from './whatsapp-verify-http.ts';
+import type { TwilioVerifyEnv } from './whatsapp-verify.ts';
 import {
   mutationSecurityError,
   type AuthEnv,
@@ -28,7 +29,7 @@ import {
 import type { PublicAbuseEnv } from './public-abuse.ts';
 import { deploymentHealth, type DeploymentEnv } from './deployment-health.ts';
 
-type Env = AuthEnv & PublicAbuseEnv & DeploymentEnv & {
+type Env = AuthEnv & PublicAbuseEnv & DeploymentEnv & TwilioVerifyEnv & {
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
 };
 
