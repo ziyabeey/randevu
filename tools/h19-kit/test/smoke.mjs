@@ -31,6 +31,9 @@ import { blindSample } from '../src/experiments/blind-sample.mjs';
 import { auc, leakageGate } from '../src/experiments/auc.mjs';
 import { evaluateGates } from '../src/experiments/gates.mjs';
 import { MutationHistory } from '../src/mutations/history.mjs';
+import { freezeProtocol } from '../src/experiments/protocol.mjs';
+import { createBlindPacket, createBlindKey } from '../src/experiments/blind-packet.mjs';
+import { createLedger, upsertExperiment, transitionExperiment, validateLedger } from '../src/experiments/ledger.mjs';
 
 const impact = normalizeTestImpact({ changedUnits: ['a'], impactedTests: [], unknownUnits: [] });
 assert.equal(hasBlindSpot(impact), true);
@@ -269,17 +272,44 @@ const staticEvidence = semgrepEvidence({
 assert.equal(staticEvidence[0].state, 'present');
 assert.equal(staticEvidence[1].state, 'absent');
 
+const protocol = freezeProtocol({
+  experiment_id: 'DEMO',
+  version: '0.1',
+  hypothesis: 'demo',
+  gates: [{ id: 'recall', op: '>=', threshold: 0.9 }],
+});
+assert.match(protocol.protocol_sha256, /^[a-f0-9]{64}$/);
+
 const frozen = freezeCases([
-  { case_id: 'A01', label: true, feature: 0 },
-  { case_id: 'A02', label: false, feature: 1 },
-  { case_id: 'A03', label: true, feature: 0 },
-  { case_id: 'A04', label: false, feature: 1 },
+  { case_id: 'A01', label: true, feature: 0, rationale: 'hidden' },
+  { case_id: 'A02', label: false, feature: 1, rationale: 'hidden' },
+  { case_id: 'A03', label: true, feature: 0, rationale: 'hidden' },
+  { case_id: 'A04', label: false, feature: 1, rationale: 'hidden' },
 ], { experimentId: 'DEMO', protocolVersion: '0.1' });
 assert.match(frozen.cases_sha256, /^[a-f0-9]{64}$/);
 
 const blindA = blindSample(frozen.cases, { seed: frozen.cases_sha256, count: 2 });
 const blindB = blindSample(frozen.cases, { seed: frozen.cases_sha256, count: 2 });
 assert.deepEqual(blindA.map((x) => x.case_id), blindB.map((x) => x.case_id));
+
+const blindPacket = createBlindPacket(blindA, { packetId: 'demo-blind' });
+const blindKey = createBlindKey(blindA, { packetId: 'demo-blind' });
+assert.match(blindPacket.packet_sha256, /^[a-f0-9]{64}$/);
+assert.match(blindKey.key_sha256, /^[a-f0-9]{64}$/);
+assert.equal(JSON.stringify(blindPacket).includes('rationale'), false);
+assert.equal(blindKey.answers.length, 2);
+
+let ledgerState = createLedger();
+ledgerState = upsertExperiment(ledgerState, {
+  id: 'DEMO',
+  status: 'preregistered',
+  protocol_sha256: protocol.protocol_sha256,
+});
+ledgerState = transitionExperiment(ledgerState, 'DEMO', {
+  status: 'measurement-ready',
+  patch: { cases_sha256: frozen.cases_sha256 },
+});
+assert.equal(validateLedger(ledgerState).experiments[0].status, 'measurement-ready');
 
 assert.equal(auc([true, true, false, false], [0.9, 0.8, 0.2, 0.1]), 1);
 const leak = leakageGate({
