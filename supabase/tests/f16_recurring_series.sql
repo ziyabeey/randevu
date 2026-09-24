@@ -81,6 +81,31 @@ begin
 end
 $f16_preview$;
 
+-- Fall-back also preserves the requested business-local wall clock instead of
+-- drifting with the UTC offset change.
+do $f16_fall_preview$
+declare
+  v jsonb;
+  v_bad integer;
+begin
+  v:=public.preview_appointment_series(
+    'f1610000-0000-4000-8000-000000000001',
+    '[{"serviceId":"f1630000-0000-4000-8000-000000000001","staffId":"f1640000-0000-4000-8000-000000000001"}]'::jsonb,
+    '2026-10-18 10:00 Europe/Berlin'::timestamptz,
+    'weekly',3
+  );
+  if (v->>'allAvailable')::boolean is not true
+     or jsonb_array_length(v->'occurrences')<>3 then
+    raise exception 'F16-01 fall DST preview did not produce three available occurrences: %',v;
+  end if;
+
+  select count(*)::integer into v_bad
+  from jsonb_array_elements(v->'occurrences') x
+  where (x->>'localTime')::time<>time '10:00';
+  if v_bad<>0 then raise exception 'F16-01 fall DST preview drifted local wall clock: %',v; end if;
+end
+$f16_fall_preview$;
+
 -- A nonexistent local wall time must fail explicitly instead of silently moving.
 do $f16_gap$
 declare v_error text;
