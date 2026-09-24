@@ -15,12 +15,7 @@
     "node": ">=22.12.0"
   },
   "license": "UNLICENSED",
-  "peerDependencies": {
-    "typescript": ">=5.0.0"
-  },
-  "peerDependenciesMeta": {
-    "typescript": {
-      "optional": true
-    }
+  "dependencies": {
+    "@typescript/typescript6": "6.0.2"
   }
 }
