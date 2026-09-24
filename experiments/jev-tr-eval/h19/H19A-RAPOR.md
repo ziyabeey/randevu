@@ -84,6 +84,29 @@ C6/C7 girdisinde ise tek satır var:
 - D0 kazanıyor (0.70 → 0.83–0.88). Ama kazanç 2 vakadan geliyor (C08 0.58 → 0.23, C15 0.46 → 0.69) ve
   bağlamda kiracı kelimesi kalıbı yok. Açıklanamadı, genellenmemeli.
 
+## Ek: kilit satırı D1 ile D5'i birlikte itiyor (yeni çağrı yok, aynı veri)
+
+Hipotez: Kilit satırı D5'e tek başına değil, genel bir "backend riski" moduna mı sokuyor?
+[`analiz.md`](sonuc/h19a-2026-09-24T07-11-42-782Z/analiz.md) cevabı veriyor. Satır eklenince (C6 − C2)
+eksenlerin ortalama Δ değerleri:
+
+| D0 | D1 | D2 | D3 | D4 | D5 |
+|---|---|---|---|---|---|
+| +0.04 | **+0.11** | +0.05 | +0.02 | −0.01 | **+0.20** |
+
+- **Genel bir risk modu değil.** D3 (personel/kapasite) ve D4 (zaman) hiç kıpırdamıyor. Hareket
+  "transaction" kümesinde: D1 ile D5 güçlü, D2 zayıf.
+- **D1 ile D5 aynı vakada birlikte artıyor.**
+  - r(ΔD1, ΔD5) = 0.74, permütasyon p = 0.0009.
+  - Logit ölçeğinde r = 0.76.
+  - Tavan etkisi ayıklanınca kısmi r = 0.52. Düşük başlayan vakanın artacak yeri daha çok; bu, ortak
+    hareketin bir kısmını açıklıyor, tamamını değil.
+- **v0.2 talimatıyla aynı:** 0.75 / 0.78 / 0.53.
+
+Yani `for update` işareti Jev'de bir **anlam komşuluğunu** açıyor: kilit → transaction → atomiklik +
+eşzamanlılık. Bu, D1×D5'in her koşulda en üst çift kalmasıyla tutarlı. Ama bu 16 vakadan çıkan bir gözlem;
+H19b'de kontrol kolunda ileriye dönük tekrar edilmeli.
+
 ## Yorum
 
 Bu biçimiyle Jev'in D5 cevabı pratikte "metinde bir kilit/eşzamanlılık işareti var mı" sorusunun cevabı.

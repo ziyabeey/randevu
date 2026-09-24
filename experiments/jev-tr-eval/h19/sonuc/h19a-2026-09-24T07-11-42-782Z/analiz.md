@@ -62,3 +62,17 @@ Değişen satırların hiçbirinde kilit kelimesi yok; C2/C4 girdisinde kilit ke
 | C7 − C4 | D1 | 12 / 1 / 3 | 0.0034 |
 | C1 − C5 (7 vaka) | D5 | 4 / 0 / 3 | 0.13 |
 | C1 − C5 (7 vaka) | D1 | 3 / 0 / 4 | 0.25 |
+
+## Kilit satırı eklenince eksenlerin ortak hareketi
+
+Ortalama Δ P(evet) (artan/azalan, |Δ| ≥ 0.05):
+
+| Karşılaştırma | D0 | D1 | D2 | D3 | D4 | D5 |
+|---|---|---|---|---|---|---|
+| C6 − C2 | +0.041 (4/1) | +0.111 (12/1) | +0.055 (9/1) | +0.019 (3/1) | -0.013 (0/2) | +0.195 (13/1) |
+| C7 − C4 | +0.043 (5/1) | +0.132 (12/1) | +0.054 (8/0) | +0.011 (3/1) | -0.011 (0/2) | +0.195 (13/1) |
+
+| Karşılaştırma | r(ΔD1, ΔD5) | permütasyon p | logit r | tavan etkisi ayıklanmış kısmi r |
+|---|---|---|---|---|
+| C6 − C2 | 0.74 | 0.0009 | 0.76 | 0.52 |
+| C7 − C4 | 0.75 | 0.0004 | 0.78 | 0.53 |

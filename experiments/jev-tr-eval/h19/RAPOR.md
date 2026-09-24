@@ -83,3 +83,4 @@ Facts and scores: `experiments/jev-tr-eval/h19/sonuc/` on `claude/upbeat-maxwell
 ## Devamı
 
 D5 eğilimi üzerine bağlam ablation deneyi (H19a): [`H19A-RAPOR.md`](H19A-RAPOR.md).
+Sonraki adımın ön kaydı (olgu-koşullu D5, yeni vakalar): [`H19B-PROTOKOL.md`](H19B-PROTOKOL.md).

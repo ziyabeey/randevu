@@ -93,5 +93,55 @@ for (const [a, b, ks] of [['C2', 'C1', keys], ['C4', 'C3', keys], ['C3', 'C1', k
   }
 }
 
+// Kilit satırı eklenince eksenler birlikte mi hareket ediyor? (D1–D5 ortak hareketi)
+const corr = (x, y) => {
+  const mx = mean(x); const my = mean(y);
+  let sxy = 0; let sx = 0; let sy = 0;
+  for (let i = 0; i < x.length; i += 1) { sxy += (x[i] - mx) * (y[i] - my); sx += (x[i] - mx) ** 2; sy += (y[i] - my) ** 2; }
+  return sxy / Math.sqrt(sx * sy);
+};
+const logit = (q) => { const c = Math.min(0.999, Math.max(0.001, q)); return Math.log(c / (1 - c)); };
+// y'nin [1, ...xs] üzerine en küçük kareler artığı (tavan etkisini ayıklamak için)
+function residual(y, xs) {
+  const rows = y.map((_, i) => [1, ...xs.map((x) => x[i])]);
+  const m = rows[0].length;
+  const a = Array.from({ length: m }, (_, i) => [
+    ...Array.from({ length: m }, (_, j) => rows.reduce((s, r) => s + r[i] * r[j], 0)),
+    rows.reduce((s, r, k) => s + r[i] * y[k], 0),
+  ]);
+  for (let i = 0; i < m; i += 1) {
+    for (let j = 0; j < m; j += 1) if (j !== i) { const f = a[j][i] / a[i][i]; for (let k = i; k <= m; k += 1) a[j][k] -= f * a[i][k]; }
+  }
+  const beta = a.map((r, i) => r[m] / r[i]);
+  return y.map((v, i) => v - rows[i].reduce((s, x, j) => s + x * beta[j], 0));
+}
+// sabit tohumlu permütasyon testi (tekrar üretilebilir)
+function permP(x, y, n = 20000) {
+  let seed = 19; const rand = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const obs = Math.abs(corr(x, y)); let hit = 0;
+  for (let t = 0; t < n; t += 1) {
+    const z = [...y];
+    for (let i = z.length - 1; i > 0; i -= 1) { const j = Math.floor(rand() * (i + 1)); [z[i], z[j]] = [z[j], z[i]]; }
+    if (Math.abs(corr(x, z)) >= obs) hit += 1;
+  }
+  return hit / n;
+}
+L.push('', '## Kilit satırı eklenince eksenlerin ortak hareketi', '',
+  'Ortalama Δ P(evet) (artan/azalan, |Δ| ≥ 0.05):', '',
+  `| Karşılaştırma | ${AXES.join(' | ')} |`, `|---|${AXES.map(() => '---').join('|')}|`);
+for (const [a, b] of [['C6', 'C2'], ['C7', 'C4']]) {
+  L.push(`| ${a} − ${b} | ${AXES.map((x) => {
+    const d = keys.map((k) => P[a][k][x] - P[b][k][x]);
+    return `${mean(d) >= 0 ? '+' : ''}${mean(d).toFixed(3)} (${d.filter((v) => v >= 0.05).length}/${d.filter((v) => v <= -0.05).length})`;
+  }).join(' | ')} |`);
+}
+L.push('', '| Karşılaştırma | r(ΔD1, ΔD5) | permütasyon p | logit r | tavan etkisi ayıklanmış kısmi r |', '|---|---|---|---|---|');
+for (const [a, b] of [['C6', 'C2'], ['C7', 'C4']]) {
+  const d1 = keys.map((k) => P[a][k].D1 - P[b][k].D1); const d5 = keys.map((k) => P[a][k].D5 - P[b][k].D5);
+  const l1 = keys.map((k) => logit(P[a][k].D1) - logit(P[b][k].D1)); const l5 = keys.map((k) => logit(P[a][k].D5) - logit(P[b][k].D5));
+  const room = [keys.map((k) => 1 - P[b][k].D1), keys.map((k) => 1 - P[b][k].D5)];
+  L.push(`| ${a} − ${b} | ${corr(d1, d5).toFixed(2)} | ${permP(d1, d5).toFixed(4)} | ${corr(l1, l5).toFixed(2)} | ${corr(residual(d1, room), residual(d5, room)).toFixed(2)} |`);
+}
+
 writeFileSync(path.join(dir, 'analiz.md'), L.join('\n') + '\n');
 console.log(L.join('\n'));
