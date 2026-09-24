@@ -24,25 +24,24 @@ test('staging workflow keeps the baseline external provisioning surface at four 
   }
 });
 
-test('F16 SMS staging credentials are conditional and the test recipient never becomes a Worker binding', () => {
+test('F16 SMS staging credentials are conditional and the Twilio test recipient never becomes a Worker binding', () => {
   assert.match(workflow, /run_f16_sms_acceptance:/);
   assert.match(workflow, /RUN_F16_SMS_ACCEPTANCE: \$\{\{ inputs\.run_f16_sms_acceptance \}\}/);
-  for (const name of ['NETGSM_USERCODE', 'NETGSM_PASSWORD', 'NETGSM_MSGHEADER', 'NETGSM_TEST_RECIPIENT']) {
+  for (const name of ['TWILLO_ID', 'TWILLO_SECRET_API', 'TWILIO_TEST_RECIPIENT']) {
     assert.match(workflow, new RegExp(`${name}: \\\$\\{\\{ secrets\\.${name} \\}\\}`));
   }
-  assert.match(workflow, /NETGSM_APPNAME: kepenk/);
-  assert.match(workflow, /NETGSM_SMS_SEGMENT_PRICE_TRY: \$\{\{ vars\.NETGSM_SMS_SEGMENT_PRICE_TRY \}\}/);
-  assert.match(workflow, /configuredNetgsm !== 0 && configuredNetgsm !== netgsmRuntime\.length/);
+  assert.match(workflow, /TWILIO_TRIAL_MODE: 'true'/);
+  assert.match(workflow, /configuredTwilio !== 0 && configuredTwilio !== twilioRuntime\.length/);
   assert.match(workflow, /process\.env\.RUN_F16_SMS_ACCEPTANCE === 'true'/);
   assert.match(workflow, /F16 SMS acceptance missing staging settings/);
 
-  assert.doesNotMatch(deployment, /NETGSM_TEST_RECIPIENT/);
-  assert.match(deployment, /complete credential tuple/);
-  assert.match(f16SmsAcceptance, /NETGSM_TEST_RECIPIENT/);
-  assert.match(f16SmsAcceptance, /measureNetgsmSmsParts/);
+  assert.doesNotMatch(deployment, /TWILIO_TEST_RECIPIENT/);
+  assert.match(deployment, /Twilio Worker configuration must be supplied as a complete credential tuple/);
+  assert.match(f16SmsAcceptance, /TWILIO_TEST_RECIPIENT/);
   assert.match(f16SmsAcceptance, /provider_message_id/);
   assert.match(f16SmsAcceptance, /provider_delivery_status/);
   assert.match(f16SmsAcceptance, /delivered_at/);
+  assert.match(f16SmsAcceptance, /sms_appointment_reminders/);
 });
 
 test('public staging metadata and generated job values are not treated as GitHub secrets', () => {
