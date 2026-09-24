@@ -23,7 +23,7 @@ Olgular: `{"lock_context":true,"version_guard":false,"changed_inside_locked_regi
    if v_actor.role = 'manager' and (v_target.role = 'owner' or p_role = 'owner') then
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `no_effect`
 
 ## Vaka 2
 
@@ -43,7 +43,7 @@ Olgular: `{"lock_context":true,"version_guard":false,"changed_inside_locked_regi
    end if;
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `no_effect`
 
 ## Vaka 3
 
@@ -65,7 +65,7 @@ Olgular: `{"lock_context":false,"version_guard":false,"changed_inside_locked_reg
    values(trim(p_name), lower(p_slug), coalesce(nullif(trim(p_timezone), ''), 'Europe/Istanbul'), v_user)
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `no_effect`
 
 ## Vaka 4
 
@@ -87,7 +87,7 @@ Olgular: `{"lock_context":false,"version_guard":false,"changed_inside_locked_reg
      raise exception 'TICKET_COMMAND_RESULT_CONFLICT';
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `weakens`
 
 ## Vaka 5
 
@@ -107,7 +107,7 @@ Olgular: `{"lock_context":true,"version_guard":false,"changed_inside_locked_regi
      return;
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `no_effect`
 
 ## Vaka 6
 
@@ -143,7 +143,7 @@ Olgular: `{"lock_context":false,"version_guard":false,"changed_inside_locked_reg
    if p_initial_quantity is null or p_initial_quantity < 0 or p_initial_quantity > 1000000000 then
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `no_effect`
 
 ## Vaka 7
 
@@ -162,7 +162,7 @@ Olgular: `{"lock_context":true,"version_guard":false,"changed_inside_locked_regi
    if v_job.id is null then raise exception 'NOTIFICATION_LEASE_LOST'; end if;
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `weakens`
 
 ## Vaka 8
 
@@ -183,7 +183,7 @@ Olgular: `{"lock_context":false,"version_guard":false,"changed_inside_locked_reg
      raise exception 'PRODUCT_COMMAND_RESULT_CONFLICT';
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `weakens`
 
 ## Vaka 9
 
@@ -211,7 +211,7 @@ Olgular: `{"lock_context":true,"version_guard":false,"changed_inside_locked_regi
    from public.staff_services ss
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `weakens`
 
 ## Vaka 10
 
@@ -231,7 +231,7 @@ Olgular: `{"lock_context":true,"version_guard":false,"changed_inside_locked_regi
    from public.services s
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `weakens`
 
 ## Vaka 11
 
@@ -253,7 +253,7 @@ Olgular: `{"lock_context":false,"version_guard":false,"changed_inside_locked_reg
  end
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `weakens`
 
 ## Vaka 12
 
@@ -276,5 +276,5 @@ Olgular: `{"lock_context":false,"version_guard":false,"changed_inside_locked_reg
  
 ```
 
-Senin etiketin: `________`
+Senin etiketin: `no_effect`
 
