@@ -12,12 +12,14 @@ import { PluginRegistry } from '../src/core/plugin-registry.mjs';
 import { loadConfig } from '../src/core/config.mjs';
 import { normalizeTestImpact, hasBlindSpot } from '../src/adapters/test-impact.mjs';
 import { TestImpactStore } from '../src/adapters/test-impact-store.mjs';
+import { istanbulLines, coveragePyLines, applyTestCoverage } from '../src/adapters/coverage-impact.mjs';
 import { missingCompanions } from '../src/adapters/git-hotspots.mjs';
 import { packUnits, semanticUnit } from '../src/context/packer.mjs';
 import { extractSqlRoutines, routineMap } from '../src/extractors/sql-routines.mjs';
 import { extractTypeScriptUnits } from '../src/extractors/typescript-units.mjs';
 import { extractPythonUnits } from '../src/extractors/python-units.mjs';
 import { diffRoutineMaps } from '../src/extractors/diff-units.mjs';
+import { repositoryInventory } from '../src/repository/inventory.mjs';
 import { semanticRiskWithoutTestRule, missingHistoricalCompanionRule } from '../src/rules/builtin.mjs';
 import { failedPatterns, shouldBlockProposal } from '../src/ledger/experiment-memory.mjs';
 import { toSarif } from '../src/reporters/sarif.mjs';
@@ -164,11 +166,44 @@ try {
   const impactStore = await new TestImpactStore(path.join(temp, 'impact.json')).load();
   impactStore.record('unit-a', { tests: ['test-a', 'test-b'], provider: 'smoke' });
   impactStore.record('unit-b', { tests: ['test-b', 'test-c'], provider: 'smoke' });
+
+  const coverageUnit = {
+    id: 'demo.ts::run@1',
+    path: 'demo.ts',
+    startLine: 1,
+    endLine: 3,
+    digest: 'c'.repeat(64),
+  };
+  const istanbul = istanbulLines({
+    'demo.ts': {
+      statementMap: { '0': { start: { line: 2 }, end: { line: 2 } } },
+      s: { '0': 1 },
+    },
+  });
+  assert.deepEqual(applyTestCoverage(impactStore, {
+    testId: 'unit-test',
+    units: [coverageUnit],
+    coverageByFile: istanbul,
+    provider: 'istanbul',
+  }), ['demo.ts::run@1']);
+  const pyCoverage = coveragePyLines({ files: { 'demo.py': { executed_lines: [2, 3] } } });
+  assert.equal(pyCoverage.get('demo.py').has(2), true);
   await impactStore.save();
   const reloaded = await new TestImpactStore(path.join(temp, 'impact.json')).load();
   const impacted = reloaded.impacted(['unit-a', 'unit-b']);
   assert.deepEqual(impacted.impactedTests, ['test-a', 'test-b', 'test-c']);
   assert.equal(impacted.known, true);
+
+  const repoRoot = path.join(temp, 'repo');
+  await import('node:fs/promises').then(async ({ mkdir, writeFile }) => {
+    await mkdir(repoRoot, { recursive: true });
+    await writeFile(path.join(repoRoot, 'demo.ts'), 'export function run(){ return 1 }\n');
+    await writeFile(path.join(repoRoot, 'demo.py'), 'def run():\n    return 1\n');
+  });
+  const inventory = await repositoryInventory(repoRoot);
+  assert.equal(inventory.filesScanned, 2);
+  assert.equal(inventory.errors.length, 0);
+  assert.equal(inventory.units.length >= 2, true);
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
