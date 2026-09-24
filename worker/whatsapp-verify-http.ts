@@ -37,7 +37,7 @@ async function validatePublicBusiness(context: any, slug: string) {
 
   const result = await publicOperation<PublicBusiness[]>(
     context.env,
-    'business',
+    'phone_verify',
     { p_slug: slug },
     abuse,
   );
