@@ -1,0 +1,95 @@
+{
+  "baselineId": "PERF-002",
+  "source": {
+    "workflowRun": 36053006669,
+    "workflowRunNumber": 2874,
+    "headSha": "fc9ad68bdef0ce9615d64dd1e713b7d800432671",
+    "artifactId": 10831159610,
+    "artifactDigest": "sha256:8254c90c63a4708fcaa16ccd76fcf0fd2851385ca26636dec8c328bf6331c698"
+  },
+  "report": {
+    "schemaVersion": 2,
+    "kind": "h19-performance-baseline",
+    "generatedAt": "2026-09-24T20:15:04.890Z",
+    "environment": {
+      "node": "v24.21.0",
+      "platform": "linux",
+      "arch": "x64",
+      "cpuCount": 4,
+      "cpuModel": "AMD EPYC 7763 64-Core Processor",
+      "totalMemoryBytes": 16766414848
+    },
+    "repository": {
+      "sourceFiles": 530,
+      "sourceBytes": 5432580,
+      "sourceLines": 131019,
+      "tsJsFiles": 329,
+      "tsJsLines": 66711
+    },
+    "measurements": {
+      "discovery": {
+        "sourceWalkMs": 15.005,
+        "sourceStatsMs": 116.803
+      },
+      "inventory": {
+        "filesScanned": 530,
+        "units": 6415,
+        "errors": 0,
+        "firstMs": 1067.219,
+        "repeatMedianMs": 698.022,
+        "repeatP95Ms": 708.23,
+        "filesPerSecond": 496.6,
+        "unitsPerSecond": 6010.9
+      },
+      "history": {
+        "coldMs": 306.696,
+        "warmHitMs": 8.96,
+        "coldCache": "miss",
+        "warmCache": "hit",
+        "warmSpeedup": 34.23,
+        "couplings": 888,
+        "hotspots": 768
+      },
+      "syntheticScale": {
+        "projects": 200,
+        "references": 5000,
+        "impactMedianMs": 8.826,
+        "impactP95Ms": 13.292,
+        "impactedPaths": 5000,
+        "candidateTests": 2500,
+        "discoveryMedianMs": 4.821,
+        "discoveryP95Ms": 6.803,
+        "hypotheses": 1767
+      },
+      "scipTypescript": {
+        "status": "measured",
+        "version": "0.4.0",
+        "sourceFiles": 329,
+        "sourceLines": 66711,
+        "firstIndexMs": 9302.535,
+        "repeatH19CacheMissMs": 8990.486,
+        "exactContentWarmHitMs": 28.084,
+        "exactContentWarmSpeedup": 331.24,
+        "indexBytes": 5181665,
+        "firstIndexLinesPerSecond": 7171.3,
+        "singleFileChange": {
+          "status": "measured",
+          "path": "scripts/browser-booking-recovery.mjs",
+          "reindexMs": 8950.368,
+          "vsExactWarmRatio": 318.7,
+          "vsFirstIndexRatio": 0.962
+        }
+      }
+    }
+  },
+  "interpretation": {
+    "thresholdsFrozen": false,
+    "primaryObservedBottleneck": "whole-repository scip-typescript invalidation",
+    "findings": [
+      "Exact-content H19 cache hits are cheap (~28 ms) once the fingerprint is unchanged.",
+      "A one-file content change caused ~8.95 s reindex, ~96.2% of first-index cost.",
+      "The mutated scripts/ file is not declared by the repository's referenced TypeScript projects, so the current H19 fingerprint is broader than the indexer's declared project input set.",
+      "M4/M5 in-process latency is small relative to external SCIP indexing at the measured scale."
+    ]
+  }
+}
