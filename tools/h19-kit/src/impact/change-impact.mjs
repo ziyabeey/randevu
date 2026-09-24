@@ -16,7 +16,7 @@ const TEST_PATH_PATTERNS = Object.freeze([
 ]);
 
 export function isLikelyTestPath(value) {
-  const path = String(value ?? '').replaceAll('\\\\', '/');
+  const path = String(value ?? '').replaceAll('\\', '/');
   return TEST_PATH_PATTERNS.some((pattern) => pattern.test(path));
 }
 
