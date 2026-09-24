@@ -27,12 +27,9 @@ test('F16-02 booking composer exposes bounded transactional notification prefere
 });
 
 test('F16-02 preference changes rotate booking idempotency identity', () => {
-  for (const setter of ['setNotificationEmail', 'setNotificationSms', 'setReminderMinutes']) {
-    const expression = new RegExp(
-      setter + String.raw`\\([^)]*\\);\\s*setCreateKey\\(commandKey\\(\\)\\)`,
-    );
-    assert.match(booking, expression, setter + ' must rotate the create key');
-  }
+  assert.match(booking, /setNotificationEmail\(event\.target\.checked\);\s*setCreateKey\(commandKey\(\)\)/);
+  assert.match(booking, /setNotificationSms\(event\.target\.checked\);\s*setCreateKey\(commandKey\(\)\)/);
+  assert.match(booking, /setReminderMinutes\(event\.target\.value\);\s*setCreateKey\(commandKey\(\)\)/);
 });
 
 test('F16-02 notification controls collapse to one column on mobile', () => {
