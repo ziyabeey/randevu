@@ -508,7 +508,8 @@ async function prepareProviderRequest(
       ? validSender(config?.senderLabel)
       : validSender(row.sender_snapshot);
     if (!sender || !config) return null;
-    smsMessage = renderTemplateV3Sms(row);
+    const canonicalMessage = renderTemplateV3Sms(row);
+    smsMessage = config.trialMode ? 'sms_appointment_reminders' : canonicalMessage;
     body = JSON.stringify({
       recipient: row.recipient,
       message: smsMessage,
