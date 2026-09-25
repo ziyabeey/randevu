@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-cross-suite-coverage-adjudication-plan",
+  "parentHead": "fd948ea4912ee87b2728e44b9d2b0d8ba62809a0",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "caseSha256": "2b924bfe4d9dc5e15d40199189b6b8070bee47d2cca3dc68eb24357f660e33f2",
+  "packetSha256": "be406e7e8826694b77414b88095d01251be3e7b56e1cfd66b546e7272521a757",
+  "hypothesisId": "coverage:explicit-runtime-coverage-gap:worker_notifications.ts",
+  "originalObservationSha256": "214d580bf795bef2f6b3b21923d76ce5208032c22434eff549fd0414bc27e848",
+  "originalSuite": "tests/s07-runtime-budgets.test.mjs",
+  "gapEntries": [
+    "validGroupSummary",
+    "renderTemplateV2"
+  ],
+  "adjudicationSuite": {
+    "path": "tests/f11-group-notifications.test.mjs",
+    "gitBlobSha": "19b8d3dcca7cc23c916682c0ae5b3f26ddf59d68",
+    "expectedTopLevel": "F11 group notification dispatcher",
+    "expectedNestedControls": [
+      "template 2 sends one RANGE line once with its bounded estimate",
+      "template 2 retains the multi-line summary",
+      "invalid or unbounded summaries never reach the provider"
+    ]
+  },
+  "sourceBindings": {
+    "worker/notifications.ts": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+    "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+    "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+    "tests/f11-group-notifications.test.mjs": "19b8d3dcca7cc23c916682c0ae5b3f26ddf59d68",
+    "package.json": "85d69437b8d9a307f7d78a13bec6795a65de7ccb"
+  },
+  "retainedExecutions": 1,
+  "networkPolicy": "mocked-only",
+  "acceptance": {
+    "allDeclaredControlsPass": true,
+    "requiredCalledNamedFunctions": [
+      "validGroupSummary",
+      "renderTemplateV2"
+    ],
+    "unboundSourceAllowed": false,
+    "evaluationInputAllowed": false
+  },
+  "passClassification": {
+    "m8OutcomeKind": "m5-validation",
+    "m8OutcomeValue": "confirmed",
+    "crossSuiteCoverage": "covered-by-existing-suite",
+    "newPermanentTestRecommendation": "none"
+  },
+  "failureClassification": "inconclusive",
+  "authority": "advisory"
+}
