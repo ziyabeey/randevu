@@ -241,9 +241,33 @@ jobs:
       - name: Run H19 Kit TypeScript shard resolver smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:ts-shards
+      - name: Run H19 Kit graph-equivalence smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:graph-equivalence
       - name: Install pinned SCIP TypeScript for performance baseline
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
         run: npm install --global @sourcegraph/scip-typescript@0.4.0
+      - name: Set up Go for pinned SCIP decoder
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache: false
+      - name: Build pinned SCIP decoder
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' }}
+        run: |
+          set -euo pipefail
+          repo_dir="${RUNNER_TEMP}/scip-code"
+          mkdir -p "${repo_dir}"
+          git -C "${repo_dir}" init
+          git -C "${repo_dir}" remote add origin https://github.com/scip-code/scip.git
+          git -C "${repo_dir}" fetch --depth=1 origin db62094c7f9d464d0a6d9fd7815fcf3c9214b4c2
+          git -C "${repo_dir}" checkout --detach FETCH_HEAD
+          (
+            cd "${repo_dir}"
+            go build -o "${RUNNER_TEMP}/scip-h19" ./cmd/scip
+          )
+          "${RUNNER_TEMP}/scip-h19" --version
       - name: Measure H19 Kit performance baseline
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
         run: npm --prefix tools/h19-kit run perf:baseline -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-perf-baseline.json" --require-scip
@@ -253,6 +277,16 @@ jobs:
         with:
           name: h19-performance-baseline
           path: ${{ runner.temp }}/h19-perf-baseline.json
+          if-no-files-found: error
+      - name: Measure H19 Kit SCIP graph equivalence
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' }}
+        run: npm --prefix tools/h19-kit run perf:graph-equivalence -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-graph-equivalence.json" --scip "${RUNNER_TEMP}/scip-h19" --scip-typescript-version 0.4.0
+      - name: Upload H19 Kit SCIP graph equivalence
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-graph-equivalence
+          path: ${{ runner.temp }}/h19-graph-equivalence.json
           if-no-files-found: error
       - name: Measure H19 Kit TypeScript shard performance
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-tsconfig-shards' }}
