@@ -187,8 +187,11 @@ stay identical, so this gate cannot claim a Jev-driven test-selection gain.
 The [offline development-split materializer](specs/M11_OFFLINE_INPUTS-v0.1.md)
 now verifies sources/receipts and delegates case selection to M9. Its initial
 source-only run records 12 missing-observation skips, not fabricated cases.
-The next slice is development observation collection; paid collection still
-requires its concrete budget and independently sourced evidence.
+The [first development collection](experiments/m11/COLLECTION-001.md) now records
+actual suite-scoped V8 observations and five cross-split dependency witnesses.
+The v0.1 split is blocked; complete closure and a versioned inventory re-freeze
+are next. Paid collection still requires its concrete budget and independently
+sourced evidence.
 M12 selection remains a later contract, not an activated milestone.
 
 ## Side-hardening HOLD

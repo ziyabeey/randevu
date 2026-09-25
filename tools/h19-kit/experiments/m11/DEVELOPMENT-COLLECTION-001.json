@@ -1,0 +1,777 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-development-collection",
+  "inventorySha256": "68a7608ab16442112263d477b25dec5cb3fd48e5d2caa345c2828c81f965b541",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "recipeSha256": "ec0eba3b99580d3b12ef122799312b358ea67f90d742cf95bbc625b7f8309822",
+  "dependencyAudit": {
+    "schemaVersion": 1,
+    "kind": "m11-dependency-witness-audit",
+    "inventorySha256": "68a7608ab16442112263d477b25dec5cb3fd48e5d2caa345c2828c81f965b541",
+    "recipeSha256": "ec0eba3b99580d3b12ef122799312b358ea67f90d742cf95bbc625b7f8309822",
+    "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+    "parser": {
+      "name": "@typescript/typescript6",
+      "packageVersion": "6.0.2",
+      "compilerVersion": "6.0.3"
+    },
+    "sourceBindings": {
+      "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+      "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+      "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+      "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+      "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+      "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+      "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+      "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+      "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+      "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+      "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+    },
+    "scope": "bounded-static-import-witnesses",
+    "complete": false,
+    "status": "blocked-cross-split-dependency",
+    "edges": [
+      {
+        "fromPath": "src/BookingPage.tsx",
+        "toPath": "src/api.ts",
+        "specifier": "./api",
+        "line": 2,
+        "statement": "import { api } from './api';"
+      },
+      {
+        "fromPath": "src/PublicMultiServiceSelection.tsx",
+        "toPath": "src/api.ts",
+        "specifier": "./api",
+        "line": 2,
+        "statement": "import { ApiRequestError, api } from './api';"
+      },
+      {
+        "fromPath": "src/PublicSalonPage.tsx",
+        "toPath": "src/api.ts",
+        "specifier": "./api",
+        "line": 2,
+        "statement": "import { ApiRequestError, api } from './api';"
+      },
+      {
+        "fromPath": "src/PublicSalonPage.tsx",
+        "toPath": "src/public-multi-service.css",
+        "specifier": "./public-multi-service.css",
+        "line": 6,
+        "statement": "import './public-multi-service.css';"
+      },
+      {
+        "fromPath": "src/PublicSalonPage.tsx",
+        "toPath": "src/PublicMultiServiceSelection.tsx",
+        "specifier": "./PublicMultiServiceSelection",
+        "line": 4,
+        "statement": "import PublicMultiServiceSelection from './PublicMultiServiceSelection';"
+      },
+      {
+        "fromPath": "src/PublicSalonPage.tsx",
+        "toPath": "src/PublicMultiServiceSelection.tsx",
+        "specifier": "./PublicMultiServiceSelection",
+        "line": 5,
+        "statement": "import type { PublicMultiServiceSelectionState } from './PublicMultiServiceSelection';"
+      },
+      {
+        "fromPath": "tests/s07-pagination.test.mjs",
+        "toPath": "worker/pagination.ts",
+        "specifier": "../worker/pagination.ts",
+        "line": 3,
+        "statement": "import {\n  decodePageCursor,\n  encodePageCursor,\n  pageResult,\n  parsePageLimit,\n} from '../worker/pagination.ts';"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "toPath": "worker/bookings.ts",
+        "specifier": "./bookings.ts",
+        "line": 4,
+        "statement": "import bookings from './bookings.ts';"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "toPath": "worker/f11-group-http.ts",
+        "specifier": "./f11-group-http.ts",
+        "line": 5,
+        "statement": "import f11Groups from './f11-group-http.ts';"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "toPath": "worker/f11-group-management-http.ts",
+        "specifier": "./f11-group-management-http.ts",
+        "line": 6,
+        "statement": "import f11GroupManagement from './f11-group-management-http.ts';"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "toPath": "worker/public-booking-recovery.ts",
+        "specifier": "./public-booking-recovery.ts",
+        "line": 9,
+        "statement": "import publicBookingRecovery from './public-booking-recovery.ts';"
+      },
+      {
+        "fromPath": "worker/bookings.ts",
+        "toPath": "worker/pagination.ts",
+        "specifier": "./pagination.ts",
+        "line": 10,
+        "statement": "import {\n  BOOKING_CURSOR_RESTART_REQUIRED,\n  bookingPageResult,\n  decodeBookingPageCursor,\n  decodePageCursor,\n  pageResult,\n  parsePageLimit,\n} from './pagination.ts';"
+      },
+      {
+        "fromPath": "worker/pagination.ts",
+        "toPath": "shared/base64.ts",
+        "specifier": "../shared/base64.ts",
+        "line": 1,
+        "statement": "import { base64UrlToText, textToBase64Url } from '../shared/base64.ts';"
+      }
+    ],
+    "unresolvedImports": [
+      {
+        "fromPath": "src/BookingPage.tsx",
+        "specifier": "./workspace-route"
+      },
+      {
+        "fromPath": "src/BookingPage.tsx",
+        "specifier": "./workspace-context"
+      },
+      {
+        "fromPath": "src/BookingPage.tsx",
+        "specifier": "./AppointmentPhotos"
+      },
+      {
+        "fromPath": "src/PublicSalonPage.tsx",
+        "specifier": "./PublicBookingPage"
+      },
+      {
+        "fromPath": "src/PublicSalonPage.tsx",
+        "specifier": "./PublicReviews"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./index.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./availability.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./f11-group-line-management-http.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./f11-group-consumer-reads.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./public-booking.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./public-profile.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./customer-manage.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./customers.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./calendar.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./snapshot-reads.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./team.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./tickets.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./products.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./expenses.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./reports.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./f16-series-http.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./f16-private-media-http.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./f16-packages-http.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./f16-feedback-http.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./onboarding.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./auth.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./public-abuse.ts"
+      },
+      {
+        "fromPath": "worker/app.ts",
+        "specifier": "./deployment-health.ts"
+      },
+      {
+        "fromPath": "worker/bookings.ts",
+        "specifier": "./auth.ts"
+      }
+    ],
+    "conflicts": [
+      {
+        "developmentCluster": "pagination",
+        "evaluationCluster": "catalog-price-projection",
+        "sharedPath": "shared/base64.ts",
+        "gitBlobSha": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "developmentRoute": [
+          "worker/pagination.ts",
+          "shared/base64.ts"
+        ],
+        "evaluationRoute": [
+          "worker/bookings.ts",
+          "worker/pagination.ts",
+          "shared/base64.ts"
+        ]
+      },
+      {
+        "developmentCluster": "pagination",
+        "evaluationCluster": "catalog-price-projection",
+        "sharedPath": "worker/pagination.ts",
+        "gitBlobSha": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+        "developmentRoute": [
+          "worker/pagination.ts"
+        ],
+        "evaluationRoute": [
+          "worker/bookings.ts",
+          "worker/pagination.ts"
+        ]
+      },
+      {
+        "developmentCluster": "pagination",
+        "evaluationCluster": "runtime-notification",
+        "sharedPath": "shared/base64.ts",
+        "gitBlobSha": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "developmentRoute": [
+          "worker/pagination.ts",
+          "shared/base64.ts"
+        ],
+        "evaluationRoute": [
+          "worker/app.ts",
+          "worker/bookings.ts",
+          "worker/pagination.ts",
+          "shared/base64.ts"
+        ]
+      },
+      {
+        "developmentCluster": "pagination",
+        "evaluationCluster": "runtime-notification",
+        "sharedPath": "worker/pagination.ts",
+        "gitBlobSha": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+        "developmentRoute": [
+          "worker/pagination.ts"
+        ],
+        "evaluationRoute": [
+          "worker/app.ts",
+          "worker/bookings.ts",
+          "worker/pagination.ts"
+        ]
+      },
+      {
+        "developmentCluster": "public-selection",
+        "evaluationCluster": "catalog-price-projection",
+        "sharedPath": "src/api.ts",
+        "gitBlobSha": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+        "developmentRoute": [
+          "src/PublicMultiServiceSelection.tsx",
+          "src/api.ts"
+        ],
+        "evaluationRoute": [
+          "src/BookingPage.tsx",
+          "src/api.ts"
+        ]
+      }
+    ],
+    "auditSha256": "217919514180516470f6c2c121ce8b31c3f80ec46d15168aa7a0d002e3a5dc3e"
+  },
+  "runs": [
+    {
+      "schemaVersion": 1,
+      "kind": "m11-development-suite-observation",
+      "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+      "inventorySha256": "68a7608ab16442112263d477b25dec5cb3fd48e5d2caa345c2828c81f965b541",
+      "recipeSha256": "ec0eba3b99580d3b12ef122799312b358ea67f90d742cf95bbc625b7f8309822",
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+        "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+        "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+        "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+        "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+        "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+        "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+        "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+        "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+        "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+      },
+      "runtime": "v24.19.0",
+      "command": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "tests/f12-public-multi-selection.test.mjs"
+      ],
+      "environment": {
+        "NODE_OPTIONS": "",
+        "NODE_V8_COVERAGE": "isolated-temporary-directory"
+      },
+      "exitCode": 0,
+      "stdout": "TAP version 13\n# Subtest: F12-04 consumes the additive range-aware catalog and real group-slot endpoint without advancing into group create\nok 1 - F12-04 consumes the additive range-aware catalog and real group-slot endpoint without advancing into group create\n  ---\n  duration_ms: 2.672914\n  type: 'test'\n  ...\n# Subtest: F12-04 keeps stale catalog, staff and slot responses from overwriting newer selection\nok 2 - F12-04 keeps stale catalog, staff and slot responses from overwriting newer selection\n  ---\n  duration_ms: 0.605117\n  type: 'test'\n  ...\n# Subtest: F12-04 gives recoverable catalog, staff and slot failures an explicit retry action\nok 3 - F12-04 gives recoverable catalog, staff and slot failures an explicit retry action\n  ---\n  duration_ms: 0.327543\n  type: 'test'\n  ...\n# Subtest: F12-04 exposes an explicit handoff state and server-authoritative estimate copy\nok 4 - F12-04 exposes an explicit handoff state and server-authoritative estimate copy\n  ---\n  duration_ms: 0.784087\n  type: 'test'\n  ...\n# Subtest: F12-04 is mounted only on the public salon surface and hands its state to the single booking owner\nok 5 - F12-04 is mounted only on the public salon surface and hands its state to the single booking owner\n  ---\n  duration_ms: 0.311743\n  type: 'test'\n  ...\n# Subtest: F12-04 mobile controls retain 44px touch targets and narrow layouts\nok 6 - F12-04 mobile controls retain 44px touch targets and narrow layouts\n  ---\n  duration_ms: 0.384905\n  type: 'test'\n  ...\n# Subtest: F12-04 keeps favorite device-local and shares only the safe public salon URL\nok 7 - F12-04 keeps favorite device-local and shares only the safe public salon URL\n  ---\n  duration_ms: 0.398088\n  type: 'test'\n  ...\n1..7\n# tests 7\n# suites 0\n# pass 7\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 443.104946\n",
+      "stderr": "",
+      "testSummary": {
+        "tests": 7,
+        "pass": 7,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "targets": [
+        {
+          "path": "src/PublicMultiServiceSelection.tsx",
+          "gitBlobSha": "6760c2d480341e075db63c64b83aa4647b6fa043",
+          "evidenceKinds": [
+            "source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        },
+        {
+          "path": "src/PublicSalonPage.tsx",
+          "gitBlobSha": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+          "evidenceKinds": [
+            "source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        },
+        {
+          "path": "src/public-multi-service.css",
+          "gitBlobSha": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+          "evidenceKinds": [
+            "source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        }
+      ],
+      "observationSha256": "cea8f397001457173f535f238f6bde079eec6fb8beb615047939b688c6f0e837"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "m11-development-suite-observation",
+      "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+      "inventorySha256": "68a7608ab16442112263d477b25dec5cb3fd48e5d2caa345c2828c81f965b541",
+      "recipeSha256": "ec0eba3b99580d3b12ef122799312b358ea67f90d742cf95bbc625b7f8309822",
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+        "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+        "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+        "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+        "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+        "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+        "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+        "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+        "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+        "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+      },
+      "runtime": "v24.19.0",
+      "command": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "tests/s07-pagination.test.mjs"
+      ],
+      "environment": {
+        "NODE_OPTIONS": "",
+        "NODE_V8_COVERAGE": "isolated-temporary-directory"
+      },
+      "exitCode": 0,
+      "stdout": "TAP version 13\n# Subtest: S07 pagination enforces K03 default 25 and max 100\nok 1 - S07 pagination enforces K03 default 25 and max 100\n  ---\n  duration_ms: 2.654117\n  type: 'test'\n  ...\n# Subtest: S07 opaque cursors are versioned, scoped by endpoint and round-trip stable keys\nok 2 - S07 opaque cursors are versioned, scoped by endpoint and round-trip stable keys\n  ---\n  duration_ms: 3.640152\n  type: 'test'\n  ...\n# Subtest: S07 malformed or semantically invalid cursors fail closed\nok 3 - S07 malformed or semantically invalid cursors fail closed\n  ---\n  duration_ms: 1.040437\n  type: 'test'\n  ...\n# Subtest: S07 limit+1 response exposes continuation without silently returning the probe row\nok 4 - S07 limit+1 response exposes continuation without silently returning the probe row\n  ---\n  duration_ms: 1.343694\n  type: 'test'\n  ...\n# Subtest: S07 final page has no continuation cursor\nok 5 - S07 final page has no continuation cursor\n  ---\n  duration_ms: 0.32135\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 651.682135\n",
+      "stderr": "",
+      "testSummary": {
+        "tests": 5,
+        "pass": 5,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "targets": [
+        {
+          "path": "worker/pagination.ts",
+          "gitBlobSha": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+          "evidenceKinds": [
+            "unit-runtime"
+          ],
+          "v8Entries": [
+            {
+              "functions": [
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 0,
+                      "endOffset": 5214,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "validTimestamp",
+                  "ranges": [
+                    {
+                      "startOffset": 829,
+                      "endOffset": 1019,
+                      "count": 4
+                    },
+                    {
+                      "startOffset": 953,
+                      "endOffset": 974,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 979,
+                      "endOffset": 1016,
+                      "count": 3
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "validDate",
+                  "ranges": [
+                    {
+                      "startOffset": 1021,
+                      "endOffset": 1301,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": false
+                },
+                {
+                  "functionName": "parsePageLimit",
+                  "ranges": [
+                    {
+                      "startOffset": 1310,
+                      "endOffset": 1588,
+                      "count": 12
+                    },
+                    {
+                      "startOffset": 1404,
+                      "endOffset": 1419,
+                      "count": 11
+                    },
+                    {
+                      "startOffset": 1421,
+                      "endOffset": 1431,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 1431,
+                      "endOffset": 1464,
+                      "count": 10
+                    },
+                    {
+                      "startOffset": 1464,
+                      "endOffset": 1554,
+                      "count": 5
+                    },
+                    {
+                      "startOffset": 1555,
+                      "endOffset": 1570,
+                      "count": 4
+                    },
+                    {
+                      "startOffset": 1571,
+                      "endOffset": 1578,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 1579,
+                      "endOffset": 1585,
+                      "count": 2
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "encodePageCursor",
+                  "ranges": [
+                    {
+                      "startOffset": 1597,
+                      "endOffset": 1798,
+                      "count": 2
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "decodePageCursor",
+                  "ranges": [
+                    {
+                      "startOffset": 1807,
+                      "endOffset": 2538,
+                      "count": 11
+                    },
+                    {
+                      "startOffset": 1935,
+                      "endOffset": 1950,
+                      "count": 10
+                    },
+                    {
+                      "startOffset": 1952,
+                      "endOffset": 1964,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 1964,
+                      "endOffset": 1991,
+                      "count": 9
+                    },
+                    {
+                      "startOffset": 1991,
+                      "endOffset": 2008,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 2008,
+                      "endOffset": 2058,
+                      "count": 8
+                    },
+                    {
+                      "startOffset": 2058,
+                      "endOffset": 2075,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 2075,
+                      "endOffset": 2193,
+                      "count": 7
+                    },
+                    {
+                      "startOffset": 2194,
+                      "endOffset": 2218,
+                      "count": 7
+                    },
+                    {
+                      "startOffset": 2220,
+                      "endOffset": 2237,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 2237,
+                      "endOffset": 2315,
+                      "count": 7
+                    },
+                    {
+                      "startOffset": 2315,
+                      "endOffset": 2335,
+                      "count": 5
+                    },
+                    {
+                      "startOffset": 2336,
+                      "endOffset": 2365,
+                      "count": 4
+                    },
+                    {
+                      "startOffset": 2366,
+                      "endOffset": 2412,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 2405,
+                      "endOffset": 2410,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 2414,
+                      "endOffset": 2445,
+                      "count": 5
+                    },
+                    {
+                      "startOffset": 2445,
+                      "endOffset": 2503,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 2503,
+                      "endOffset": 2536,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "encodeBookingPageCursor",
+                  "ranges": [
+                    {
+                      "startOffset": 2547,
+                      "endOffset": 2852,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": false
+                },
+                {
+                  "functionName": "decodeBookingPageCursor",
+                  "ranges": [
+                    {
+                      "startOffset": 2861,
+                      "endOffset": 4315,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": false
+                },
+                {
+                  "functionName": "pageResult",
+                  "ranges": [
+                    {
+                      "startOffset": 4324,
+                      "endOffset": 4719,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 4500,
+                      "endOffset": 4522,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 4523,
+                      "endOffset": 4529,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 4648,
+                      "endOffset": 4655,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 4656,
+                      "endOffset": 4697,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 4698,
+                      "endOffset": 4704,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "bookingPageResult",
+                  "ranges": [
+                    {
+                      "startOffset": 4728,
+                      "endOffset": 5120,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": false
+                }
+              ]
+            }
+          ],
+          "coverage": {
+            "state": "observed",
+            "observedNamedFunctions": 9,
+            "calledNamedFunctions": 5,
+            "uncalledNamedFunctions": [
+              {
+                "name": "validDate",
+                "startOffset": 1021,
+                "endOffset": 1301
+              },
+              {
+                "name": "encodeBookingPageCursor",
+                "startOffset": 2547,
+                "endOffset": 2852
+              },
+              {
+                "name": "decodeBookingPageCursor",
+                "startOffset": 2861,
+                "endOffset": 4315
+              },
+              {
+                "name": "bookingPageResult",
+                "startOffset": 4728,
+                "endOffset": 5120
+              }
+            ]
+          }
+        }
+      ],
+      "observationSha256": "d9eb3eadd88976b959ab42a877d31240c60e5913ff8b8eda8ce357986b99a5c1"
+    }
+  ],
+  "materialization": {
+    "status": "blocked",
+    "reason": "blocked-cross-split-dependency",
+    "invoked": false,
+    "packets": 0,
+    "batches": 0,
+    "cases": 0
+  },
+  "limits": [
+    "Static import witnesses are sufficient to reject a split; they do not certify complete closure.",
+    "V8 named-function entries are scoped to one suite, not whole-product coverage or defect labels.",
+    "No evaluation test, independent outcome, relation label or provider call is collected."
+  ],
+  "collectionSha256": "e089ce3645fcfd78488ecba02a0bcce4f515517a15fa2ac67c84cab7d2231890"
+}

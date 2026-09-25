@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-collection-recipe",
+  "inventorySha256": "68a7608ab16442112263d477b25dec5cb3fd48e5d2caa345c2828c81f965b541",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "sourceBindings": {
+    "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+    "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+    "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+    "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+    "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+    "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+    "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+    "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+    "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+    "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+    "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+  },
+  "referenceSuites": [
+    "tests/f12-public-multi-selection.test.mjs",
+    "tests/s07-pagination.test.mjs"
+  ],
+  "scope": "Development suite sources plus bounded evaluation import witnesses. Not complete closure.",
+  "sourceVerification": "Every listed blob matched the pinned GitHub commit tree before collection.",
+  "recipeSha256": "ec0eba3b99580d3b12ef122799312b358ea67f90d742cf95bbc625b7f8309822"
+}

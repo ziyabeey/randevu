@@ -36,7 +36,8 @@
     "perf:graph-equivalence": "node perf/run-graph-equivalence.mjs",
     "test:ts-evidence-graph": "node test/typescript-evidence-graph.mjs",
     "test:public-entrypoint": "node test/public-entrypoint.mjs",
-    "perf:project-shard-adoption": "node perf/run-project-shard-adoption.mjs"
+    "perf:project-shard-adoption": "node perf/run-project-shard-adoption.mjs",
+    "test:m11-collection": "node test/m11-collection.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

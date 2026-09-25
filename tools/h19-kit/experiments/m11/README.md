@@ -132,3 +132,11 @@ separate. Probability calibration is only meaningful against the same four-class
 relation task. A frozen launch receipt is required for any later paid provider
 run; this directory contains no credentials, live runner or executable command
 that invokes a provider.
+
+## Development collection 001
+
+[The collected observations and split audit](COLLECTION-001.md) record 12/12
+passing development controls, actual suite-scoped V8 coverage, and five
+cross-split dependency witnesses. The v0.1 inventory is retained as historical
+input, but its split is blocked for materialization. Complete lineage closure
+and a new versioned inventory are required before cases or labels.
