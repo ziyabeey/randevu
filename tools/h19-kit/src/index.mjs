@@ -61,3 +61,5 @@ export * from './indexing/typescript-evidence-graph.mjs';
 export * from './perf/project-shard-adoption.mjs';
 export * from './indexing/cache-prune.mjs';
 export * from './indexing/typescript-shard-plan.mjs';
+export * from './indexing/typescript-graph-key.mjs';
+export * from './indexing/typescript-evidence-plan.mjs';
