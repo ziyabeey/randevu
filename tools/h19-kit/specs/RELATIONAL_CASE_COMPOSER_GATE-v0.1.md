@@ -128,9 +128,9 @@ Choose the unique subset maximizing this lexicographic objective:
 
 1. highest M8 `independent-family-count`;
 2. highest number of distinct evidence families;
-3. smallest case size;
-4. highest scope-strength sum;
-5. lowest lineage-overlap count;
+3. lowest lineage-overlap count;
+4. smallest case size;
+5. highest scope-strength sum;
 6. lexicographically smallest ordered `factId` list.
 
 Scope strength is frozen:
@@ -142,7 +142,7 @@ exact-path       = 2
 related-path     = 1
 ```
 
-This order deliberately places minimality before scope-strength sum. Otherwise every redundant eligible fact would add positive scope points and make the "smallest case" rule unreachable for supersets.
+This order deliberately places lineage independence and minimality before scope-strength sum. Otherwise shared-source evidence or redundant eligible facts could gain score merely by adding positive scope points.
 
 No learned or Jev-derived weight participates in selection.
 
@@ -252,15 +252,15 @@ The same fact pool in any input order produces the same selected facts and case 
 
 ### RC6 — lineage preference
 
-When two subsets are otherwise equal, lower lineage overlap wins.
+After independence/family objectives tie, lower lineage overlap wins before case size or scope strength.
 
 ### RC7 — minimality
 
-When independence/family objectives tie, the smaller valid case wins before redundant context can gain score merely by adding more scoped facts.
+When independence/family/lineage objectives tie, the smaller valid case wins before redundant context can gain score merely by adding more scoped facts.
 
 ### RC8 — scope preference
 
-Among equally small subsets with equal independence/family objectives, stronger exact scope beats weaker related-path scope.
+Among equally small subsets with equal independence/family/lineage objectives, stronger exact scope beats weaker related-path scope.
 
 ### RC9 — stable tie-break
 
