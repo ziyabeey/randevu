@@ -59,7 +59,7 @@ The set is fixed in the harness. Its batch digest is recorded in the report.
 
 Two complete runs of the plan: `baselines/FANOUT-001.ccr-cloud.run1.json` and `…run2.json`.
 - Run 1's report omitted the per-case single-shape probabilities. The harness was fixed to write them before run 2 (commit message records this); arms and rules did not change.
-- All 108 runs × 2 were valid: no provider errors outside the failure lane.
+- In each run, all 54 provider requests returned valid answers except the planned timeout lane.
 
 ### Arm A — size lane (median of 3; run 2, run 1 in brackets)
 
