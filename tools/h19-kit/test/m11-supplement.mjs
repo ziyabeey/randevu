@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { m11Digest } from '../src/experiments/m11-materializer.mjs';
 import { summarizeM11SupplementTap } from '../src/experiments/m11-supplement-collection.mjs';
 import { deriveM11SupplementReceipts, materializeM11Supplement } from '../src/experiments/m11-supplement-bridge.mjs';
 
+const execute = promisify(execFile);
 const dir = new URL('../experiments/m11/', import.meta.url), kit = new URL('../', import.meta.url);
 const inputs = {};
 for (const [k, n] of Object.entries({ originalInventory: 'COHORT-v0.1.json', inventory: 'COHORT-v0.2.json',
@@ -17,10 +20,21 @@ for (const [k, n] of Object.entries({ originalInventory: 'COHORT-v0.1.json', inv
 inputs.expectedPlanSha256 = 'a9a5450b1b0965d7e60caff6fe38f7f297b01a0ec4580047d1ed1438aab49cb2';
 inputs.expectedSupplementalCollectionSha256 = 'f611762898cee59b00888ca5bda484f5c901b2fa95652ca35fe75b403de88ddf';
 const saved = JSON.parse(await readFile(new URL('supplement-001/BRIDGE.json', dir), 'utf8'));
-const sourceRoot = process.env.H19_M11_SOURCE_ROOT ?? fileURLToPath(new URL('../../../', import.meta.url));
+const repoRoot = fileURLToPath(new URL('../../../', import.meta.url));
+const sourceRoot = process.env.H19_M11_SOURCE_ROOT ?? null;
 const evaluation = new Set(inputs.closure.components.filter((c) => c.split === 'evaluation').flatMap((c) => Object.keys(c.sourceBindings)));
+async function readPinnedSource(p) {
+  assert(!evaluation.has(p), 'evaluation source must never be read');
+  if (sourceRoot) return readFile(path.join(sourceRoot, p));
+  const { stdout } = await execute('git', ['show', `${inputs.plan.sourceRevision}:${p}`], {
+    cwd: repoRoot,
+    encoding: null,
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  return stdout;
+}
 const readers = {
-  readSource: async (p) => { assert(!evaluation.has(p), 'evaluation source must never be read'); return readFile(path.join(sourceRoot, p)); },
+  readSource: readPinnedSource,
   readProducer: async (p) => readFile(new URL(p, kit)),
 };
 assert.deepEqual(await materializeM11Supplement({ ...inputs, ...readers }), saved);
