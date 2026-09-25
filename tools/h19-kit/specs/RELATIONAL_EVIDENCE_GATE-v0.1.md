@@ -119,6 +119,8 @@ validated hypotheses / attempted validations
 
 Cross-family comparison should normally be expressed through each metric's own baseline-relative feature, not by dividing unrelated scores.
 
+In v0.1, a fact's `value` is the canonical value emitted by that metric's deterministic producer. An optional `denominator` records sample/context information; the generic relational core MUST NOT assume that `value / denominator` is the intended rate. A `rate` feature is accepted only from the deterministic metric definition/producer that owns that metric. Generic cross-fact ratio helpers may operate only on identical `metricId` values in v0.1.
+
 For example:
 
 ```text
