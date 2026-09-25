@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { extractSqlRoutines } from '../extractors/sql-routines.mjs';
 import { extractTypeScriptUnits } from '../extractors/typescript-units.mjs';
-import { extractPythonUnits } from '../extractors/python-units.mjs';
+import { extractPythonUnits, extractPythonUnitsBatch } from '../extractors/python-units.mjs';
 import { extractTreeSitterUnits } from '../extractors/tree-sitter-units.mjs';
 
 const DEFAULT_EXTENSIONS = new Set(['.sql','.ts','.tsx','.js','.jsx','.mjs','.cjs','.py']);
@@ -73,7 +73,39 @@ export async function repositoryInventory(root = process.cwd(), options = {}) {
   const files = await sourceFiles(root, { ...options, extensions: configuredExtensions });
   const units = [];
   const errors = [];
+
+  const pythonFiles = files.filter((file) => path.extname(file).toLowerCase() === '.py');
+  const pythonEntries = [];
+  for (const file of pythonFiles) {
+    try {
+      pythonEntries.push({
+        path: file,
+        text: await readFile(path.join(root, file), 'utf8'),
+      });
+    } catch (error) {
+      errors.push({ path: file, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+
+  if (pythonEntries.length) {
+    try {
+      const parsed = await extractPythonUnitsBatch(pythonEntries, {
+        executables: options.pythonExecutables ?? ['python3', 'python'],
+        includeModuleUnits: options.pythonModuleUnits !== false,
+      });
+      units.push(...parsed.units);
+      errors.push(...parsed.errors);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push(...pythonEntries.map(({ path: pythonPath }) => ({
+        path: pythonPath,
+        error: message,
+      })));
+    }
+  }
+
   for (const file of files) {
+    if (path.extname(file).toLowerCase() === '.py') continue;
     try {
       units.push(...await extractFileUnits(root, file, { treeSitterFallbacks }));
     } catch (error) {
