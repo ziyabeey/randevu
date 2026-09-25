@@ -199,6 +199,12 @@ pending. A [separate targeted validation](experiments/m11/validation-001/REPORT.
 now confirms one suite-scoped coverage gap: seven new scenarios pass, all four
 previously uncalled entries execute, and the two-run named-entry union is 9/9
 for the pagination helper. No functional defect or relation label is established.
+The [development supplement](experiments/m11/supplement-001/REPORT.md) closes the
+ten missing observation bindings: 10 main controls plus five nested checks pass.
+The combined ledger contains three unique M9 cases, nine materialized anchors,
+13 no-hypothesis anchors and no missing observations. One additional hypothesis
+is retained as insufficient evidence. These remain development feasibility
+results; a named-entry gap is not automatically a useful behavioral test target.
 Paid collection still requires its concrete budget and independently sourced evidence.
 M12 selection remains a later contract, not an activated milestone.
 

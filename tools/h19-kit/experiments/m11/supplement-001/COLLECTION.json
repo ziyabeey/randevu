@@ -1,0 +1,1543 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-development-supplement-collection",
+  "planSha256": "a9a5450b1b0965d7e60caff6fe38f7f297b01a0ec4580047d1ed1438aab49cb2",
+  "inventorySha256": "79b802f95f6612a628ea23d8d7cb2cf6719465124a35743fa956eff4784ff662",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "staticAuditSha256": "1144245a19655183dbbd002ba7e3552369cbb9e6bb769542060e41ac48d6a14a",
+  "startedAt": "2026-09-25T13:03:57.449Z",
+  "finishedAt": "2026-09-25T13:04:01.063Z",
+  "runs": [
+    {
+      "schemaVersion": 1,
+      "kind": "m11-supplement-suite-observation",
+      "planSha256": "a9a5450b1b0965d7e60caff6fe38f7f297b01a0ec4580047d1ed1438aab49cb2",
+      "inventorySha256": "79b802f95f6612a628ea23d8d7cb2cf6719465124a35743fa956eff4784ff662",
+      "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "shared/customer-notification-status.ts": "bd963a809a2a09825ba74dbf577b7ec884c72315",
+        "shared/public-booking-intent.ts": "aadb31a3817c7faeb55afb523c28e1622f45f218",
+        "src/AppointmentPhotos.tsx": "88f471588e659772d18e9cf4c7e3969c17b2c814",
+        "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+        "src/CatalogSettingsPanel.tsx": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc",
+        "src/PublicBookingInformation.tsx": "b654e5b73acbc05ca609c451ba7ba525f57c98d6",
+        "src/PublicBookingPage.tsx": "d0831db2b55ab8cc7d2d1cee66945ca5dc37c8bf",
+        "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+        "src/PublicNotificationStatus.tsx": "2c873447c0440fe60f4d67290535866c146cc6e3",
+        "src/PublicReviews.tsx": "b03c02af8c998931acb67da3512d58003e1ba0aa",
+        "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+        "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+        "src/catalog-settings.css": "5106d1b22497671f5e09cc750d8d000780c9c5b9",
+        "src/private-media.css": "3351d46503dda7ed43f156fcda131f776005ce7a",
+        "src/public-booking-pending.ts": "41f2dd89794a2e592d0f86832a07c5adc4eb64cd",
+        "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+        "src/publicMedia.ts": "82b3cfbe008427d9b67017a86834c9d76dc31378",
+        "src/workspace-context.tsx": "5a435f84d8f295e2475b034e90d42dc106aeaa3a",
+        "src/workspace-route.ts": "23fb5ada0d3afb3121911d13c909a0e313020d73",
+        "supabase/migrations/20260915150000_f12_service_price_range.sql": "39a018189ae682395e9dce3de4665b125863d9cd",
+        "tests/f12-notification-status.test.mjs": "6b5574bc1661d8e1ba647c9d7a491406e1ec9ad8",
+        "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+        "tests/f12-service-price-range-client.test.mjs": "99723fb4a92419a68e7f78651b5180b6589f206f",
+        "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+        "tests/s07-runtime-budgets.test.mjs": "a942457f1854c676ad6e63bfbc7246ada49d9156",
+        "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+        "worker/auth-routes.ts": "a568f7fd994ac07273bdc896e6644e63db193fbb",
+        "worker/auth.ts": "004678bd3ede27ce5e741c5a7ed9d689e6cda4f5",
+        "worker/availability.ts": "28cc297d5b68c365b4b698f12d860c1e83830aa9",
+        "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+        "worker/calendar.ts": "5a02a07186bd830bcde13ac888b5dbf824a81ff6",
+        "worker/catalog-management.ts": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8",
+        "worker/customer-manage.ts": "484e884ccfe65ffea455ce1a98de3481f71ef5c5",
+        "worker/customers.ts": "1fd9eaadee3aa1fc22d9ee0edf43ddf33fc1c499",
+        "worker/deployment-health.ts": "cbc098ff51102e6dd722bf85910205d2557d4ac6",
+        "worker/entry.ts": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38",
+        "worker/expenses.ts": "4ec4c864809ee289032c662480c3309932fe1620",
+        "worker/f11-group-consumer-reads.ts": "ac36db9e2e02f8b23a8b609167f2fe75172a2127",
+        "worker/f11-group-http.ts": "485f452b06b557e5f92274701e52e42d197be7c5",
+        "worker/f11-group-line-management-http.ts": "1144c94232563fd11f8f11649211a80f68bb928b",
+        "worker/f11-group-management-http.ts": "282c61c7309e6cbb51929835f3c2b3e10c9db711",
+        "worker/f16-feedback-http.ts": "bc4620bbef3b914355ac82d75730d257b36a35fc",
+        "worker/f16-packages-http.ts": "dfb7294f9d1fa029dcfa3b502a0692a3aebe72f9",
+        "worker/f16-private-media-http.ts": "e109bbc2e6e5dfc5b89199e6eb62fba611629d83",
+        "worker/f16-series-http.ts": "d560d0f48c936e4afacc3d2483de8f266baf6671",
+        "worker/index.ts": "420f40bdfa1a6e37bec30de6302343891def97bf",
+        "worker/notification-maintenance.ts": "1149288fb2fc690aed0602009aac66252fc1a141",
+        "worker/notifications.ts": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+        "worker/onboarding.ts": "8500ca412757dc83854208ee6a55d6569a6dadd4",
+        "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+        "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+        "worker/products.ts": "b048ec595a6e225e1c9b4a5c9377fd08fd915c4f",
+        "worker/public-abuse.ts": "792d83c6b0e0d64c4d3eb6a8a1aafd1df8bd6718",
+        "worker/public-booking-information.ts": "98c9b34e6e90d856e9150fcdb65d522b7c844e9d",
+        "worker/public-booking-recovery.ts": "25844aecdc2fe10b230bfe02a83d6a6924973e96",
+        "worker/public-booking.ts": "42cd726413d00eaae42546687f5134839881fc58",
+        "worker/public-profile.ts": "71984a061c12ccff63a61059cf1a824979fe0ee6",
+        "worker/public-rpc.ts": "c9b1d5eb8f6c9a7987dee498ebb77a0832e9c99f",
+        "worker/reports.ts": "ee04b8ec1982b7842355d88e9f7242311fe2cfa9",
+        "worker/snapshot-bounds.ts": "fcf13934bde7fc4a691a508904fa0c1c300f72f7",
+        "worker/snapshot-reads.ts": "e41e01b209a7f44046a819b8d6cb46cf87a04492",
+        "worker/team.ts": "7ab33ab5631f832e58e809147a47bcc56c795b27",
+        "worker/tickets.ts": "66a57cdb9af8a795f993742db1d77837f6cfc273"
+      },
+      "runtimeDependency": {
+        "name": "hono",
+        "version": "4.13.8",
+        "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ==",
+        "resolved": "https://registry.npmjs.org/hono/-/hono-4.13.8.tgz"
+      },
+      "runtime": "v24.19.0",
+      "command": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "tests/f12-notification-status.test.mjs"
+      ],
+      "environment": {
+        "NODE_OPTIONS": "",
+        "NODE_V8_COVERAGE": "isolated-temporary-directory",
+        "TZ": "UTC",
+        "LANG": "C.UTF-8"
+      },
+      "startedAt": "2026-09-25T13:03:57.588Z",
+      "finishedAt": "2026-09-25T13:03:58.597Z",
+      "exitCode": 0,
+      "transportError": null,
+      "stdout": "TAP version 13\n# Subtest: F12 notification status vocabulary is bounded and strips untrusted extras\nok 1 - F12 notification status vocabulary is bounded and strips untrusted extras\n  ---\n  duration_ms: 6.668277\n  type: 'test'\n  ...\n# Subtest: F12 C04/C05 workers expose normalized notification status\nok 2 - F12 C04/C05 workers expose normalized notification status\n  ---\n  duration_ms: 2.661286\n  type: 'test'\n  ...\n1..2\n# tests 2\n# suites 0\n# pass 2\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 621.638169\n",
+      "stderr": "",
+      "controls": {
+        "state": "completed-passing",
+        "summary": {
+          "tests": 2,
+          "pass": 2,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "topLevelControls": 2,
+        "nestedChecks": 0,
+        "controlsComplete": true
+      },
+      "loadedSourcePaths": [
+        "shared/customer-notification-status.ts",
+        "tests/f12-notification-status.test.mjs"
+      ],
+      "loadedDependencyPaths": [],
+      "targets": [
+        {
+          "path": "shared/customer-notification-status.ts",
+          "gitBlobSha": "bd963a809a2a09825ba74dbf577b7ec884c72315",
+          "evidenceKinds": [
+            "mixed-unit-and-source-contract"
+          ],
+          "v8Entries": [
+            {
+              "functions": [
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 0,
+                      "endOffset": 1033,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "validStatus",
+                  "ranges": [
+                    {
+                      "startOffset": 245,
+                      "endOffset": 496,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 445,
+                      "endOffset": 466,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 471,
+                      "endOffset": 493,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "customerNotificationStatus",
+                  "ranges": [
+                    {
+                      "startOffset": 505,
+                      "endOffset": 933,
+                      "count": 4
+                    },
+                    {
+                      "startOffset": 637,
+                      "endOffset": 661,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 663,
+                      "endOffset": 881,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 775,
+                      "endOffset": 807,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 809,
+                      "endOffset": 877,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 881,
+                      "endOffset": 932,
+                      "count": 3
+                    }
+                  ],
+                  "isBlockCoverage": true
+                }
+              ]
+            }
+          ],
+          "coverage": {
+            "state": "observed",
+            "observedNamedFunctions": 2,
+            "calledNamedFunctions": 2,
+            "uncalledNamedFunctions": []
+          }
+        },
+        {
+          "path": "worker/app.ts",
+          "gitBlobSha": "e75204978ce1abf02fccc30298c2281377cec2c3",
+          "evidenceKinds": [
+            "mixed-unit-and-source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        },
+        {
+          "path": "worker/f11-group-http.ts",
+          "gitBlobSha": "485f452b06b557e5f92274701e52e42d197be7c5",
+          "evidenceKinds": [
+            "mixed-unit-and-source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        },
+        {
+          "path": "worker/f11-group-management-http.ts",
+          "gitBlobSha": "282c61c7309e6cbb51929835f3c2b3e10c9db711",
+          "evidenceKinds": [
+            "mixed-unit-and-source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        },
+        {
+          "path": "worker/public-booking-recovery.ts",
+          "gitBlobSha": "25844aecdc2fe10b230bfe02a83d6a6924973e96",
+          "evidenceKinds": [
+            "mixed-unit-and-source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        }
+      ],
+      "observationSha256": "b87eed90ca68118c5910a83aa25d64804a0fdc2cb154b449addb713002715c7b"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "m11-supplement-suite-observation",
+      "planSha256": "a9a5450b1b0965d7e60caff6fe38f7f297b01a0ec4580047d1ed1438aab49cb2",
+      "inventorySha256": "79b802f95f6612a628ea23d8d7cb2cf6719465124a35743fa956eff4784ff662",
+      "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "shared/customer-notification-status.ts": "bd963a809a2a09825ba74dbf577b7ec884c72315",
+        "shared/public-booking-intent.ts": "aadb31a3817c7faeb55afb523c28e1622f45f218",
+        "src/AppointmentPhotos.tsx": "88f471588e659772d18e9cf4c7e3969c17b2c814",
+        "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+        "src/CatalogSettingsPanel.tsx": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc",
+        "src/PublicBookingInformation.tsx": "b654e5b73acbc05ca609c451ba7ba525f57c98d6",
+        "src/PublicBookingPage.tsx": "d0831db2b55ab8cc7d2d1cee66945ca5dc37c8bf",
+        "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+        "src/PublicNotificationStatus.tsx": "2c873447c0440fe60f4d67290535866c146cc6e3",
+        "src/PublicReviews.tsx": "b03c02af8c998931acb67da3512d58003e1ba0aa",
+        "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+        "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+        "src/catalog-settings.css": "5106d1b22497671f5e09cc750d8d000780c9c5b9",
+        "src/private-media.css": "3351d46503dda7ed43f156fcda131f776005ce7a",
+        "src/public-booking-pending.ts": "41f2dd89794a2e592d0f86832a07c5adc4eb64cd",
+        "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+        "src/publicMedia.ts": "82b3cfbe008427d9b67017a86834c9d76dc31378",
+        "src/workspace-context.tsx": "5a435f84d8f295e2475b034e90d42dc106aeaa3a",
+        "src/workspace-route.ts": "23fb5ada0d3afb3121911d13c909a0e313020d73",
+        "supabase/migrations/20260915150000_f12_service_price_range.sql": "39a018189ae682395e9dce3de4665b125863d9cd",
+        "tests/f12-notification-status.test.mjs": "6b5574bc1661d8e1ba647c9d7a491406e1ec9ad8",
+        "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+        "tests/f12-service-price-range-client.test.mjs": "99723fb4a92419a68e7f78651b5180b6589f206f",
+        "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+        "tests/s07-runtime-budgets.test.mjs": "a942457f1854c676ad6e63bfbc7246ada49d9156",
+        "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+        "worker/auth-routes.ts": "a568f7fd994ac07273bdc896e6644e63db193fbb",
+        "worker/auth.ts": "004678bd3ede27ce5e741c5a7ed9d689e6cda4f5",
+        "worker/availability.ts": "28cc297d5b68c365b4b698f12d860c1e83830aa9",
+        "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+        "worker/calendar.ts": "5a02a07186bd830bcde13ac888b5dbf824a81ff6",
+        "worker/catalog-management.ts": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8",
+        "worker/customer-manage.ts": "484e884ccfe65ffea455ce1a98de3481f71ef5c5",
+        "worker/customers.ts": "1fd9eaadee3aa1fc22d9ee0edf43ddf33fc1c499",
+        "worker/deployment-health.ts": "cbc098ff51102e6dd722bf85910205d2557d4ac6",
+        "worker/entry.ts": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38",
+        "worker/expenses.ts": "4ec4c864809ee289032c662480c3309932fe1620",
+        "worker/f11-group-consumer-reads.ts": "ac36db9e2e02f8b23a8b609167f2fe75172a2127",
+        "worker/f11-group-http.ts": "485f452b06b557e5f92274701e52e42d197be7c5",
+        "worker/f11-group-line-management-http.ts": "1144c94232563fd11f8f11649211a80f68bb928b",
+        "worker/f11-group-management-http.ts": "282c61c7309e6cbb51929835f3c2b3e10c9db711",
+        "worker/f16-feedback-http.ts": "bc4620bbef3b914355ac82d75730d257b36a35fc",
+        "worker/f16-packages-http.ts": "dfb7294f9d1fa029dcfa3b502a0692a3aebe72f9",
+        "worker/f16-private-media-http.ts": "e109bbc2e6e5dfc5b89199e6eb62fba611629d83",
+        "worker/f16-series-http.ts": "d560d0f48c936e4afacc3d2483de8f266baf6671",
+        "worker/index.ts": "420f40bdfa1a6e37bec30de6302343891def97bf",
+        "worker/notification-maintenance.ts": "1149288fb2fc690aed0602009aac66252fc1a141",
+        "worker/notifications.ts": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+        "worker/onboarding.ts": "8500ca412757dc83854208ee6a55d6569a6dadd4",
+        "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+        "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+        "worker/products.ts": "b048ec595a6e225e1c9b4a5c9377fd08fd915c4f",
+        "worker/public-abuse.ts": "792d83c6b0e0d64c4d3eb6a8a1aafd1df8bd6718",
+        "worker/public-booking-information.ts": "98c9b34e6e90d856e9150fcdb65d522b7c844e9d",
+        "worker/public-booking-recovery.ts": "25844aecdc2fe10b230bfe02a83d6a6924973e96",
+        "worker/public-booking.ts": "42cd726413d00eaae42546687f5134839881fc58",
+        "worker/public-profile.ts": "71984a061c12ccff63a61059cf1a824979fe0ee6",
+        "worker/public-rpc.ts": "c9b1d5eb8f6c9a7987dee498ebb77a0832e9c99f",
+        "worker/reports.ts": "ee04b8ec1982b7842355d88e9f7242311fe2cfa9",
+        "worker/snapshot-bounds.ts": "fcf13934bde7fc4a691a508904fa0c1c300f72f7",
+        "worker/snapshot-reads.ts": "e41e01b209a7f44046a819b8d6cb46cf87a04492",
+        "worker/team.ts": "7ab33ab5631f832e58e809147a47bcc56c795b27",
+        "worker/tickets.ts": "66a57cdb9af8a795f993742db1d77837f6cfc273"
+      },
+      "runtimeDependency": {
+        "name": "hono",
+        "version": "4.13.8",
+        "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ==",
+        "resolved": "https://registry.npmjs.org/hono/-/hono-4.13.8.tgz"
+      },
+      "runtime": "v24.19.0",
+      "command": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "tests/f12-service-price-range-client.test.mjs"
+      ],
+      "environment": {
+        "NODE_OPTIONS": "",
+        "NODE_V8_COVERAGE": "isolated-temporary-directory",
+        "TZ": "UTC",
+        "LANG": "C.UTF-8"
+      },
+      "startedAt": "2026-09-25T13:03:58.601Z",
+      "finishedAt": "2026-09-25T13:03:59.340Z",
+      "exitCode": 0,
+      "transportError": null,
+      "stdout": "TAP version 13\n# Subtest: F12-03 catalog editor carries canonical category/order/range fields\nok 1 - F12-03 catalog editor carries canonical category/order/range fields\n  ---\n  duration_ms: 4.54495\n  type: 'test'\n  ...\n# Subtest: F12-03 operator booking never presents a range lower-bound as a fixed price\nok 2 - F12-03 operator booking never presents a range lower-bound as a fixed price\n  ---\n  duration_ms: 0.621513\n  type: 'test'\n  ...\n# Subtest: F12-03 money authority remains integer minor-unit on the Worker/DB boundary\nok 3 - F12-03 money authority remains integer minor-unit on the Worker/DB boundary\n  ---\n  duration_ms: 0.678529\n  type: 'test'\n  ...\n# Subtest: F12-03 public legacy projection and appointment snapshot fail closed for range services\nok 4 - F12-03 public legacy projection and appointment snapshot fail closed for range services\n  ---\n  duration_ms: 0.293223\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 428.129184\n",
+      "stderr": "",
+      "controls": {
+        "state": "completed-passing",
+        "summary": {
+          "tests": 4,
+          "pass": 4,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "topLevelControls": 4,
+        "nestedChecks": 0,
+        "controlsComplete": true
+      },
+      "loadedSourcePaths": [
+        "tests/f12-service-price-range-client.test.mjs"
+      ],
+      "loadedDependencyPaths": [],
+      "targets": [
+        {
+          "path": "src/BookingPage.tsx",
+          "gitBlobSha": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+          "evidenceKinds": [
+            "source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        },
+        {
+          "path": "src/CatalogSettingsPanel.tsx",
+          "gitBlobSha": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc",
+          "evidenceKinds": [
+            "source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        },
+        {
+          "path": "worker/bookings.ts",
+          "gitBlobSha": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+          "evidenceKinds": [
+            "source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        },
+        {
+          "path": "worker/catalog-management.ts",
+          "gitBlobSha": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8",
+          "evidenceKinds": [
+            "source-contract"
+          ],
+          "v8Entries": [],
+          "coverage": {
+            "state": "unknown",
+            "reason": "target-not-observed-by-v8",
+            "observedNamedFunctions": null,
+            "calledNamedFunctions": null,
+            "uncalledNamedFunctions": null
+          }
+        }
+      ],
+      "observationSha256": "45194567c29acc9d2f4d3c2611b4b5d57cdb25436c52b1df70c69d523b993104"
+    },
+    {
+      "schemaVersion": 1,
+      "kind": "m11-supplement-suite-observation",
+      "planSha256": "a9a5450b1b0965d7e60caff6fe38f7f297b01a0ec4580047d1ed1438aab49cb2",
+      "inventorySha256": "79b802f95f6612a628ea23d8d7cb2cf6719465124a35743fa956eff4784ff662",
+      "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "shared/customer-notification-status.ts": "bd963a809a2a09825ba74dbf577b7ec884c72315",
+        "shared/public-booking-intent.ts": "aadb31a3817c7faeb55afb523c28e1622f45f218",
+        "src/AppointmentPhotos.tsx": "88f471588e659772d18e9cf4c7e3969c17b2c814",
+        "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+        "src/CatalogSettingsPanel.tsx": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc",
+        "src/PublicBookingInformation.tsx": "b654e5b73acbc05ca609c451ba7ba525f57c98d6",
+        "src/PublicBookingPage.tsx": "d0831db2b55ab8cc7d2d1cee66945ca5dc37c8bf",
+        "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+        "src/PublicNotificationStatus.tsx": "2c873447c0440fe60f4d67290535866c146cc6e3",
+        "src/PublicReviews.tsx": "b03c02af8c998931acb67da3512d58003e1ba0aa",
+        "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+        "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+        "src/catalog-settings.css": "5106d1b22497671f5e09cc750d8d000780c9c5b9",
+        "src/private-media.css": "3351d46503dda7ed43f156fcda131f776005ce7a",
+        "src/public-booking-pending.ts": "41f2dd89794a2e592d0f86832a07c5adc4eb64cd",
+        "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+        "src/publicMedia.ts": "82b3cfbe008427d9b67017a86834c9d76dc31378",
+        "src/workspace-context.tsx": "5a435f84d8f295e2475b034e90d42dc106aeaa3a",
+        "src/workspace-route.ts": "23fb5ada0d3afb3121911d13c909a0e313020d73",
+        "supabase/migrations/20260915150000_f12_service_price_range.sql": "39a018189ae682395e9dce3de4665b125863d9cd",
+        "tests/f12-notification-status.test.mjs": "6b5574bc1661d8e1ba647c9d7a491406e1ec9ad8",
+        "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+        "tests/f12-service-price-range-client.test.mjs": "99723fb4a92419a68e7f78651b5180b6589f206f",
+        "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+        "tests/s07-runtime-budgets.test.mjs": "a942457f1854c676ad6e63bfbc7246ada49d9156",
+        "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+        "worker/auth-routes.ts": "a568f7fd994ac07273bdc896e6644e63db193fbb",
+        "worker/auth.ts": "004678bd3ede27ce5e741c5a7ed9d689e6cda4f5",
+        "worker/availability.ts": "28cc297d5b68c365b4b698f12d860c1e83830aa9",
+        "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+        "worker/calendar.ts": "5a02a07186bd830bcde13ac888b5dbf824a81ff6",
+        "worker/catalog-management.ts": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8",
+        "worker/customer-manage.ts": "484e884ccfe65ffea455ce1a98de3481f71ef5c5",
+        "worker/customers.ts": "1fd9eaadee3aa1fc22d9ee0edf43ddf33fc1c499",
+        "worker/deployment-health.ts": "cbc098ff51102e6dd722bf85910205d2557d4ac6",
+        "worker/entry.ts": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38",
+        "worker/expenses.ts": "4ec4c864809ee289032c662480c3309932fe1620",
+        "worker/f11-group-consumer-reads.ts": "ac36db9e2e02f8b23a8b609167f2fe75172a2127",
+        "worker/f11-group-http.ts": "485f452b06b557e5f92274701e52e42d197be7c5",
+        "worker/f11-group-line-management-http.ts": "1144c94232563fd11f8f11649211a80f68bb928b",
+        "worker/f11-group-management-http.ts": "282c61c7309e6cbb51929835f3c2b3e10c9db711",
+        "worker/f16-feedback-http.ts": "bc4620bbef3b914355ac82d75730d257b36a35fc",
+        "worker/f16-packages-http.ts": "dfb7294f9d1fa029dcfa3b502a0692a3aebe72f9",
+        "worker/f16-private-media-http.ts": "e109bbc2e6e5dfc5b89199e6eb62fba611629d83",
+        "worker/f16-series-http.ts": "d560d0f48c936e4afacc3d2483de8f266baf6671",
+        "worker/index.ts": "420f40bdfa1a6e37bec30de6302343891def97bf",
+        "worker/notification-maintenance.ts": "1149288fb2fc690aed0602009aac66252fc1a141",
+        "worker/notifications.ts": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+        "worker/onboarding.ts": "8500ca412757dc83854208ee6a55d6569a6dadd4",
+        "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+        "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+        "worker/products.ts": "b048ec595a6e225e1c9b4a5c9377fd08fd915c4f",
+        "worker/public-abuse.ts": "792d83c6b0e0d64c4d3eb6a8a1aafd1df8bd6718",
+        "worker/public-booking-information.ts": "98c9b34e6e90d856e9150fcdb65d522b7c844e9d",
+        "worker/public-booking-recovery.ts": "25844aecdc2fe10b230bfe02a83d6a6924973e96",
+        "worker/public-booking.ts": "42cd726413d00eaae42546687f5134839881fc58",
+        "worker/public-profile.ts": "71984a061c12ccff63a61059cf1a824979fe0ee6",
+        "worker/public-rpc.ts": "c9b1d5eb8f6c9a7987dee498ebb77a0832e9c99f",
+        "worker/reports.ts": "ee04b8ec1982b7842355d88e9f7242311fe2cfa9",
+        "worker/snapshot-bounds.ts": "fcf13934bde7fc4a691a508904fa0c1c300f72f7",
+        "worker/snapshot-reads.ts": "e41e01b209a7f44046a819b8d6cb46cf87a04492",
+        "worker/team.ts": "7ab33ab5631f832e58e809147a47bcc56c795b27",
+        "worker/tickets.ts": "66a57cdb9af8a795f993742db1d77837f6cfc273"
+      },
+      "runtimeDependency": {
+        "name": "hono",
+        "version": "4.13.8",
+        "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ==",
+        "resolved": "https://registry.npmjs.org/hono/-/hono-4.13.8.tgz"
+      },
+      "runtime": "v24.19.0",
+      "command": [
+        "node",
+        "--test",
+        "--test-reporter=tap",
+        "tests/s07-runtime-budgets.test.mjs"
+      ],
+      "environment": {
+        "NODE_OPTIONS": "",
+        "NODE_V8_COVERAGE": "isolated-temporary-directory",
+        "TZ": "UTC",
+        "LANG": "C.UTF-8"
+      },
+      "startedAt": "2026-09-25T13:03:59.340Z",
+      "finishedAt": "2026-09-25T13:04:01.020Z",
+      "exitCode": 0,
+      "transportError": null,
+      "stdout": "TAP version 13\n# Subtest: S07 outbound request timeout covers native fetch headers and body consumption\nok 1 - S07 outbound request timeout covers native fetch headers and body consumption\n  ---\n  duration_ms: 136.505409\n  type: 'test'\n  ...\n# Subtest: S07 outbound request preserves caller abort and cleans its caller listener\nok 2 - S07 outbound request preserves caller abort and cleans its caller listener\n  ---\n  duration_ms: 52.300486\n  type: 'test'\n  ...\n# Subtest: S07 notification DB deadlines prevent unsafe or unbounded provider progress\n    # Subtest: claim timeout prevents provider calls\n    ok 1 - claim timeout prevents provider calls\n      ---\n      duration_ms: 39.900911\n      type: 'test'\n      ...\n    # Subtest: lock body timeout prevents provider calls\n    ok 2 - lock body timeout prevents provider calls\n      ---\n      duration_ms: 115.870514\n      type: 'test'\n      ...\n    # Subtest: complete_notification_job_v2 timeout bounds the batch\n    ok 3 - complete_notification_job_v2 timeout bounds the batch\n      ---\n      duration_ms: 36.279445\n      type: 'test'\n      ...\n    # Subtest: release_notification_job_v2 timeout bounds the batch\n    ok 4 - release_notification_job_v2 timeout bounds the batch\n      ---\n      duration_ms: 38.568226\n      type: 'test'\n      ...\n    # Subtest: a delayed send permission cannot start provider delivery\n    ok 5 - a delayed send permission cannot start provider delivery\n      ---\n      duration_ms: 25.736695\n      type: 'test'\n      ...\n    1..5\nok 3 - S07 notification DB deadlines prevent unsafe or unbounded provider progress\n  ---\n  duration_ms: 259.040719\n  type: 'test'\n  ...\n# Subtest: S07 scheduled work starts maintenance, dispatch and heartbeat independently\nok 4 - S07 scheduled work starts maintenance, dispatch and heartbeat independently\n  ---\n  duration_ms: 2.361301\n  type: 'test'\n  ...\n1..4\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1304.451786\n",
+      "stderr": "",
+      "controls": {
+        "state": "completed-passing",
+        "summary": {
+          "tests": 9,
+          "pass": 9,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "topLevelControls": 4,
+        "nestedChecks": 5,
+        "controlsComplete": true
+      },
+      "loadedSourcePaths": [
+        "shared/base64.ts",
+        "shared/customer-notification-status.ts",
+        "shared/public-booking-intent.ts",
+        "tests/s07-runtime-budgets.test.mjs",
+        "worker/app.ts",
+        "worker/auth-routes.ts",
+        "worker/auth.ts",
+        "worker/availability.ts",
+        "worker/bookings.ts",
+        "worker/calendar.ts",
+        "worker/catalog-management.ts",
+        "worker/customer-manage.ts",
+        "worker/customers.ts",
+        "worker/deployment-health.ts",
+        "worker/entry.ts",
+        "worker/expenses.ts",
+        "worker/f11-group-consumer-reads.ts",
+        "worker/f11-group-http.ts",
+        "worker/f11-group-line-management-http.ts",
+        "worker/f11-group-management-http.ts",
+        "worker/f16-feedback-http.ts",
+        "worker/f16-packages-http.ts",
+        "worker/f16-private-media-http.ts",
+        "worker/f16-series-http.ts",
+        "worker/index.ts",
+        "worker/notification-maintenance.ts",
+        "worker/notifications.ts",
+        "worker/onboarding.ts",
+        "worker/outbound-request.ts",
+        "worker/pagination.ts",
+        "worker/products.ts",
+        "worker/public-abuse.ts",
+        "worker/public-booking-information.ts",
+        "worker/public-booking-recovery.ts",
+        "worker/public-booking.ts",
+        "worker/public-profile.ts",
+        "worker/public-rpc.ts",
+        "worker/reports.ts",
+        "worker/snapshot-bounds.ts",
+        "worker/snapshot-reads.ts",
+        "worker/team.ts",
+        "worker/tickets.ts"
+      ],
+      "loadedDependencyPaths": [
+        "node_modules/hono/dist/compose.js",
+        "node_modules/hono/dist/context.js",
+        "node_modules/hono/dist/helper/cookie/index.js",
+        "node_modules/hono/dist/hono-base.js",
+        "node_modules/hono/dist/hono.js",
+        "node_modules/hono/dist/http-exception.js",
+        "node_modules/hono/dist/index.js",
+        "node_modules/hono/dist/request.js",
+        "node_modules/hono/dist/request/constants.js",
+        "node_modules/hono/dist/router.js",
+        "node_modules/hono/dist/router/reg-exp-router/index.js",
+        "node_modules/hono/dist/router/reg-exp-router/matcher.js",
+        "node_modules/hono/dist/router/reg-exp-router/node.js",
+        "node_modules/hono/dist/router/reg-exp-router/prepared-router.js",
+        "node_modules/hono/dist/router/reg-exp-router/router.js",
+        "node_modules/hono/dist/router/reg-exp-router/trie.js",
+        "node_modules/hono/dist/router/smart-router/index.js",
+        "node_modules/hono/dist/router/smart-router/router.js",
+        "node_modules/hono/dist/router/trie-router/index.js",
+        "node_modules/hono/dist/router/trie-router/node.js",
+        "node_modules/hono/dist/router/trie-router/router.js",
+        "node_modules/hono/dist/router/utils.js",
+        "node_modules/hono/dist/utils/body.js",
+        "node_modules/hono/dist/utils/buffer.js",
+        "node_modules/hono/dist/utils/constants.js",
+        "node_modules/hono/dist/utils/cookie.js",
+        "node_modules/hono/dist/utils/crypto.js",
+        "node_modules/hono/dist/utils/html.js",
+        "node_modules/hono/dist/utils/url.js"
+      ],
+      "targets": [
+        {
+          "path": "worker/entry.ts",
+          "gitBlobSha": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38",
+          "evidenceKinds": [
+            "mocked-runtime"
+          ],
+          "v8Entries": [
+            {
+              "functions": [
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 0,
+                      "endOffset": 879,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "fetch",
+                  "ranges": [
+                    {
+                      "startOffset": 407,
+                      "endOffset": 530,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": false
+                },
+                {
+                  "functionName": "scheduled",
+                  "ranges": [
+                    {
+                      "startOffset": 534,
+                      "endOffset": 798,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                }
+              ]
+            }
+          ],
+          "coverage": {
+            "state": "observed",
+            "observedNamedFunctions": 2,
+            "calledNamedFunctions": 1,
+            "uncalledNamedFunctions": [
+              {
+                "name": "fetch",
+                "startOffset": 407,
+                "endOffset": 530
+              }
+            ]
+          }
+        },
+        {
+          "path": "worker/notifications.ts",
+          "gitBlobSha": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+          "evidenceKinds": [
+            "mocked-runtime"
+          ],
+          "v8Entries": [
+            {
+              "functions": [
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 0,
+                      "endOffset": 22923,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "bytesToText",
+                  "ranges": [
+                    {
+                      "startOffset": 2687,
+                      "endOffset": 2772,
+                      "count": 4
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "bytesToHex",
+                  "ranges": [
+                    {
+                      "startOffset": 2773,
+                      "endOffset": 2897,
+                      "count": 4
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 2838,
+                      "endOffset": 2884,
+                      "count": 128
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "validSecret",
+                  "ranges": [
+                    {
+                      "startOffset": 2898,
+                      "endOffset": 3057,
+                      "count": 6
+                    },
+                    {
+                      "startOffset": 2979,
+                      "endOffset": 2984,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 3048,
+                      "endOffset": 3054,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "validSender",
+                  "ranges": [
+                    {
+                      "startOffset": 3058,
+                      "endOffset": 3223,
+                      "count": 10
+                    },
+                    {
+                      "startOffset": 3146,
+                      "endOffset": 3151,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 3214,
+                      "endOffset": 3220,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "validOrigin",
+                  "ranges": [
+                    {
+                      "startOffset": 3224,
+                      "endOffset": 3772,
+                      "count": 10
+                    },
+                    {
+                      "startOffset": 3322,
+                      "endOffset": 3334,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 3519,
+                      "endOffset": 3562,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 3564,
+                      "endOffset": 3576,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 3615,
+                      "endOffset": 3627,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 3742,
+                      "endOffset": 3770,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "encryptionKey",
+                  "ranges": [
+                    {
+                      "startOffset": 3774,
+                      "endOffset": 4135,
+                      "count": 10
+                    },
+                    {
+                      "startOffset": 3900,
+                      "endOffset": 3912,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 3991,
+                      "endOffset": 4003,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 4105,
+                      "endOffset": 4133,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "decryptManagementToken",
+                  "ranges": [
+                    {
+                      "startOffset": 4137,
+                      "endOffset": 4858,
+                      "count": 4
+                    },
+                    {
+                      "startOffset": 4307,
+                      "endOffset": 4319,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 4372,
+                      "endOffset": 4384,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 4816,
+                      "endOffset": 4822,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 4828,
+                      "endOffset": 4856,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "rpc",
+                  "ranges": [
+                    {
+                      "startOffset": 4860,
+                      "endOffset": 5686,
+                      "count": 12
+                    },
+                    {
+                      "startOffset": 5436,
+                      "endOffset": 5556,
+                      "count": 8
+                    },
+                    {
+                      "startOffset": 5528,
+                      "endOffset": 5550,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 5556,
+                      "endOffset": 5624,
+                      "count": 8
+                    },
+                    {
+                      "startOffset": 5624,
+                      "endOffset": 5684,
+                      "count": 4
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "escapeHtml",
+                  "ranges": [
+                    {
+                      "startOffset": 5688,
+                      "endOffset": 5882,
+                      "count": 28
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "formatDateTime",
+                  "ranges": [
+                    {
+                      "startOffset": 5883,
+                      "endOffset": 6088,
+                      "count": 4
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "formatMoney",
+                  "ranges": [
+                    {
+                      "startOffset": 6089,
+                      "endOffset": 6240,
+                      "count": 4
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "retryDelay",
+                  "ranges": [
+                    {
+                      "startOffset": 6241,
+                      "endOffset": 6586,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 6434,
+                      "endOffset": 6439,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 6462,
+                      "endOffset": 6496,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 6512,
+                      "endOffset": 6585,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "retryAfterSeconds",
+                  "ranges": [
+                    {
+                      "startOffset": 6587,
+                      "endOffset": 6959,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 6716,
+                      "endOffset": 6793,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 6795,
+                      "endOffset": 6958,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "renderTemplateV1",
+                  "ranges": [
+                    {
+                      "startOffset": 6961,
+                      "endOffset": 9692,
+                      "count": 4
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "validGroupSummary",
+                  "ranges": [
+                    {
+                      "startOffset": 9694,
+                      "endOffset": 10933,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": false
+                },
+                {
+                  "functionName": "renderTemplateV2",
+                  "ranges": [
+                    {
+                      "startOffset": 10935,
+                      "endOffset": 14322,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": false
+                },
+                {
+                  "functionName": "fingerprintProviderRequest",
+                  "ranges": [
+                    {
+                      "startOffset": 14324,
+                      "endOffset": 14632,
+                      "count": 4
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "prepareProviderRequest",
+                  "ranges": [
+                    {
+                      "startOffset": 14634,
+                      "endOffset": 15748,
+                      "count": 4
+                    },
+                    {
+                      "startOffset": 15011,
+                      "endOffset": 15045,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 15109,
+                      "endOffset": 15143,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 15171,
+                      "endOffset": 15183,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 15371,
+                      "endOffset": 15544,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 15642,
+                      "endOffset": 15684,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 15686,
+                      "endOffset": 15698,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "sendResend",
+                  "ranges": [
+                    {
+                      "startOffset": 15750,
+                      "endOffset": 17657,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 16587,
+                      "endOffset": 16609,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 16637,
+                      "endOffset": 16649,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 16651,
+                      "endOffset": 16761,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 16761,
+                      "endOffset": 16789,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 16843,
+                      "endOffset": 16869,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 16876,
+                      "endOffset": 16901,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 16908,
+                      "endOffset": 16957,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 17019,
+                      "endOffset": 17043,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 17050,
+                      "endOffset": 17076,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 17083,
+                      "endOffset": 17109,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 17116,
+                      "endOffset": 17142,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 17344,
+                      "endOffset": 17617,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 16026,
+                      "endOffset": 16050,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": false
+                },
+                {
+                  "functionName": "release",
+                  "ranges": [
+                    {
+                      "startOffset": 17659,
+                      "endOffset": 18175,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "dispatchNotificationBatch",
+                  "ranges": [
+                    {
+                      "startOffset": 18184,
+                      "endOffset": 22838,
+                      "count": 6
+                    },
+                    {
+                      "startOffset": 18649,
+                      "endOffset": 18758,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 18953,
+                      "endOffset": 18984,
+                      "count": 5
+                    },
+                    {
+                      "startOffset": 18986,
+                      "endOffset": 19099,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 19099,
+                      "endOffset": 22837,
+                      "count": 5
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 19318,
+                      "endOffset": 22814,
+                      "count": 4
+                    },
+                    {
+                      "startOffset": 19429,
+                      "endOffset": 19788,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 19876,
+                      "endOffset": 20555,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 20668,
+                      "endOffset": 20929,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 21344,
+                      "endOffset": 21357,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 21358,
+                      "endOffset": 21363,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 21411,
+                      "endOffset": 21424,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 21425,
+                      "endOffset": 21430,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 21469,
+                      "endOffset": 21484,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 21505,
+                      "endOffset": 21534,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 21535,
+                      "endOffset": 21566,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 21575,
+                      "endOffset": 21600,
+                      "count": 3
+                    },
+                    {
+                      "startOffset": 21601,
+                      "endOffset": 21660,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 21669,
+                      "endOffset": 21704,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 21713,
+                      "endOffset": 21801,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 21803,
+                      "endOffset": 21968,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 21968,
+                      "endOffset": 22423,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 22320,
+                      "endOffset": 22346,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 22348,
+                      "endOffset": 22366,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 22423,
+                      "endOffset": 22699,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 22699,
+                      "endOffset": 22810,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                }
+              ]
+            }
+          ],
+          "coverage": {
+            "state": "observed",
+            "observedNamedFunctions": 21,
+            "calledNamedFunctions": 19,
+            "uncalledNamedFunctions": [
+              {
+                "name": "validGroupSummary",
+                "startOffset": 9694,
+                "endOffset": 10933
+              },
+              {
+                "name": "renderTemplateV2",
+                "startOffset": 10935,
+                "endOffset": 14322
+              }
+            ]
+          }
+        },
+        {
+          "path": "worker/outbound-request.ts",
+          "gitBlobSha": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+          "evidenceKinds": [
+            "mocked-runtime"
+          ],
+          "v8Entries": [
+            {
+              "functions": [
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 0,
+                      "endOffset": 2135,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "OutboundRequestTimeoutError",
+                  "ranges": [
+                    {
+                      "startOffset": 111,
+                      "endOffset": 249,
+                      "count": 7
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "requestSignal",
+                  "ranges": [
+                    {
+                      "startOffset": 253,
+                      "endOffset": 454,
+                      "count": 19
+                    },
+                    {
+                      "startOffset": 342,
+                      "endOffset": 361,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 361,
+                      "endOffset": 429,
+                      "count": 17
+                    },
+                    {
+                      "startOffset": 430,
+                      "endOffset": 444,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 445,
+                      "endOffset": 451,
+                      "count": 17
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "abortReason",
+                  "ranges": [
+                    {
+                      "startOffset": 456,
+                      "endOffset": 588,
+                      "count": 1
+                    },
+                    {
+                      "startOffset": 523,
+                      "endOffset": 585,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "fetchTextWithTimeout",
+                  "ranges": [
+                    {
+                      "startOffset": 597,
+                      "endOffset": 2047,
+                      "count": 19
+                    },
+                    {
+                      "startOffset": 874,
+                      "endOffset": 951,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 1022,
+                      "endOffset": 1031,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 1033,
+                      "endOffset": 1065,
+                      "count": 0
+                    },
+                    {
+                      "startOffset": 1434,
+                      "endOffset": 1452,
+                      "count": 2
+                    },
+                    {
+                      "startOffset": 1993,
+                      "endOffset": 2014,
+                      "count": 2
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "rejectBoundary",
+                  "ranges": [
+                    {
+                      "startOffset": 1162,
+                      "endOffset": 1177,
+                      "count": 0
+                    }
+                  ],
+                  "isBlockCoverage": false
+                },
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 1217,
+                      "endOffset": 1273,
+                      "count": 19
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "abortFromCaller",
+                  "ranges": [
+                    {
+                      "startOffset": 1302,
+                      "endOffset": 1418,
+                      "count": 1
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 1524,
+                      "endOffset": 1653,
+                      "count": 7
+                    }
+                  ],
+                  "isBlockCoverage": true
+                },
+                {
+                  "functionName": "",
+                  "ranges": [
+                    {
+                      "startOffset": 1689,
+                      "endOffset": 1870,
+                      "count": 19
+                    },
+                    {
+                      "startOffset": 1787,
+                      "endOffset": 1831,
+                      "count": 13
+                    },
+                    {
+                      "startOffset": 1831,
+                      "endOffset": 1869,
+                      "count": 11
+                    }
+                  ],
+                  "isBlockCoverage": true
+                }
+              ]
+            }
+          ],
+          "coverage": {
+            "state": "observed",
+            "observedNamedFunctions": 6,
+            "calledNamedFunctions": 5,
+            "uncalledNamedFunctions": [
+              {
+                "name": "rejectBoundary",
+                "startOffset": 1162,
+                "endOffset": 1177
+              }
+            ]
+          }
+        }
+      ],
+      "observationSha256": "214d580bf795bef2f6b3b21923d76ce5208032c22434eff549fd0414bc27e848"
+    }
+  ],
+  "scope": "suite-scoped seed observations; no independent outcome or relation label",
+  "collectionSha256": "f611762898cee59b00888ca5bda484f5c901b2fa95652ca35fe75b403de88ddf"
+}

@@ -25,7 +25,7 @@ assertions do not establish a new defect, a coverage gap or a relation label.
 | Total | 24 | 12 development / 12 evaluation | Not 24 independent samples |
 
 These are all top-level named controls in the six declared test suites. The
-three nested notification budget subtests are included through their parent
+five nested notification budget subtests are included through their parent
 control, not counted again. Selection preceded any M11 model response or label.
 This is a purposive feasibility sample; no representative sampling claim.
 
@@ -149,3 +149,13 @@ retains all 24 anchors and assigns whole components: 22 development / 2 evaluati
 one component each, with no shared repository files. The original inventory and
 collection remain historical records. Source-only readiness passes with 22
 missing-observation skips; future fact lineage and independent labels are pending.
+
+## Completed development observation collection
+
+[Supplement 001](supplement-001/REPORT.md) records the ten remaining development
+controls and five nested checks, all passing. All 22 development anchors now
+have source-bound observations. Combined eligibility is three unique M9 cases
+bound to nine controls; 13 anchors have no hypothesis. A fourth path hypothesis
+lacks independent eligible facts. Raw V8 entry coverage is not a behavioral defect
+or test value assessment; the outbound placeholder is explicitly discussed.
+The two evaluation anchors remain untouched and form one component.

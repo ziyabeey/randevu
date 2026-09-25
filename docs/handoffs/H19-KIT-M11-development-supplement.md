@@ -54,3 +54,27 @@ are not rerun as new empirical observations.
 
 Next executable step: freeze the supplemental collection plan and producer,
 then execute the three selected suites once each.
+
+## Handoff
+
+Pre-execution freeze: `2af9b7b5f4cf825814b0aa749dae081192a3f636`,
+13:03:54 UTC. Three actual runs at 13:03:57.449–13:04:01.063 UTC passed
+10 main controls plus five nested checks. All ten missing anchors now have
+receipts. Combined result: three unique cases, nine materialized anchors,
+13 no-hypothesis anchors and one insufficient-evidence path hypothesis.
+Old receipts and case identities remain unchanged. Zero independent relation
+labels, product defects established or real provider calls.
+
+The receipt smoke passed locally, including exact-source replay and rehashed
+inconsistent inputs. Node syntax and diff checks passed. No failed empirical
+control or unrecorded product repair. Required CI remains unchanged plus one
+additive receipt smoke; current exact head/run/job/attempt is in the draft PR.
+Parent review/main acceptance remains pending. Skill equivalent unchanged.
+
+[Report and reproduction](../../tools/h19-kit/experiments/m11/supplement-001/REPORT.md).
+The V8 `rejectBoundary` gap is an immediately replaced no-op initializer and is
+not a useful standalone behavioral coverage target. Do not manufacture a test
+or production change just to call it. Next: freeze targeted behavioral validation
+for `validGroupSummary` and `renderTemplateV2`, using pre-existing contracts.
+Independent assessment, comparison budget and one-component evaluation limits
+remain open under H19-KIT-M11-GATE.
