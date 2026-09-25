@@ -244,6 +244,9 @@ jobs:
       - name: Run H19 Kit cross-run cache smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:cache-persistence
+      - name: Run H19 Kit cache-prune smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:cache-prune
       - name: Restore H19 Kit cross-run cache
         id: h19-cache
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-cache-persistence' }}
@@ -281,6 +284,9 @@ jobs:
           name: h19-ts-shard-performance
           path: ${{ runner.temp }}/h19-ts-shard-performance.json
           if-no-files-found: error
+      - name: Prune H19 Kit cross-run cache
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-cache-persistence' }}
+        run: npm --prefix tools/h19-kit run perf:prune-cache -- --root "${GITHUB_WORKSPACE}/.h19/artifacts" --keep-per-shard 3 --max-bytes 268435456
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:
