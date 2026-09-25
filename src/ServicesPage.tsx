@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from './api';
 import { useWorkspace } from './workspace-context';
+import PrivatePhotoArchive from './PrivatePhotoArchive';
 import ServicePackagesPanel from './ServicePackagesPanel';
 
 type Service = {
@@ -180,6 +181,7 @@ export default function ServicesPage() {
           )}
         </section>
 
+        <PrivatePhotoArchive businessId={catalog.membership.business_id} services={catalog.services.map((service) => ({ id: service.id, name: service.name }))} />
         <ServicePackagesPanel businessId={catalog.membership.business_id} services={catalog.services} canManage={canManage} />
       </div>
     </main>
