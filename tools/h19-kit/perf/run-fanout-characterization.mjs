@@ -284,6 +284,8 @@ async function main() {
       medianRequestBytes: median(singleRequests.map((r) => r.requestBytes)),
       medianInputTokens: median(singleRequests.map((r) => r.usage?.input_tokens).filter((x) => typeof x === 'number')),
     },
+    // Per-case probabilities of each single-shape repeat (hypothesisId → four-option map).
+    singleShapeProbabilities: singles,
     equivalence: {
       note: 'Mean |Δp| is the mean absolute difference over the four options; argmax agreement is the share of cases with the same top option.',
       singleVsSingle: pairs(singles),

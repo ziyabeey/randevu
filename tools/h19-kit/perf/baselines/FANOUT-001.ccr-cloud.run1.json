@@ -1,0 +1,1363 @@
+{
+  "id": "FANOUT-001",
+  "mode": "live",
+  "environment": "ccr-cloud-egress-proxy",
+  "model": "jev-1.13.0",
+  "plan": {
+    "id": "FANOUT-001",
+    "sizes": [
+      1,
+      5,
+      10,
+      20
+    ],
+    "repeats": 3,
+    "singleRepeats": 2,
+    "failureTimeoutMs": 1,
+    "failureSize": 5,
+    "timeoutMs": 60000
+  },
+  "caseSetSha256": "33a13e3a6ec36f9044180db72c5de4bcf0700744b825c750a7fba81a83d6408c",
+  "providerRequests": 54,
+  "questionsAsked": 173,
+  "sizes": [
+    {
+      "questions": 1,
+      "runs": 3,
+      "successfulRuns": 3,
+      "medianLatencyMs": 229.2,
+      "latencyMsPerQuestion": 229.2,
+      "requestBytes": 3188,
+      "responseBytes": 236,
+      "inputTokens": 1710,
+      "errorCodes": []
+    },
+    {
+      "questions": 5,
+      "runs": 3,
+      "successfulRuns": 3,
+      "medianLatencyMs": 265.5,
+      "latencyMsPerQuestion": 53.1,
+      "requestBytes": 18262,
+      "responseBytes": 844,
+      "inputTokens": 8928,
+      "errorCodes": []
+    },
+    {
+      "questions": 10,
+      "runs": 3,
+      "successfulRuns": 3,
+      "medianLatencyMs": 300.2,
+      "latencyMsPerQuestion": 30.02,
+      "requestBytes": 34830,
+      "responseBytes": 1602,
+      "inputTokens": 16629,
+      "errorCodes": []
+    },
+    {
+      "questions": 20,
+      "runs": 3,
+      "successfulRuns": 3,
+      "medianLatencyMs": 432.1,
+      "latencyMsPerQuestion": 21.605,
+      "requestBytes": 69662,
+      "responseBytes": 3140,
+      "inputTokens": 32927,
+      "errorCodes": []
+    }
+  ],
+  "singleShape": {
+    "requests": 40,
+    "medianLatencyMs": 198.7,
+    "medianRequestBytes": 3104.5,
+    "medianInputTokens": 1657.5
+  },
+  "equivalence": {
+    "note": "Mean |Δp| is the mean absolute difference over the four options; argmax agreement is the share of cases with the same top option.",
+    "singleVsSingle": [
+      {
+        "n": 20,
+        "meanAbsDelta": 0.03500000000000001,
+        "maxAbsDelta": 0.09999999999999999,
+        "argmaxAgreement": 0.95
+      }
+    ],
+    "fanout20VsFanout20": [
+      {
+        "n": 20,
+        "meanAbsDelta": 0.01900000000000001,
+        "maxAbsDelta": 0.05,
+        "argmaxAgreement": 1
+      },
+      {
+        "n": 20,
+        "meanAbsDelta": 0.021000000000000008,
+        "maxAbsDelta": 0.045,
+        "argmaxAgreement": 0.95
+      },
+      {
+        "n": 20,
+        "meanAbsDelta": 0.023750000000000007,
+        "maxAbsDelta": 0.08000000000000002,
+        "argmaxAgreement": 0.95
+      }
+    ],
+    "singleVsFanout20": [
+      {
+        "n": 20,
+        "meanAbsDelta": 0.12974999999999998,
+        "maxAbsDelta": 0.235,
+        "argmaxAgreement": 0.45
+      },
+      {
+        "n": 20,
+        "meanAbsDelta": 0.12800000000000003,
+        "maxAbsDelta": 0.22999999999999998,
+        "argmaxAgreement": 0.45
+      },
+      {
+        "n": 20,
+        "meanAbsDelta": 0.131,
+        "maxAbsDelta": 0.245,
+        "argmaxAgreement": 0.5
+      },
+      {
+        "n": 20,
+        "meanAbsDelta": 0.13225000000000003,
+        "maxAbsDelta": 0.22999999999999998,
+        "argmaxAgreement": 0.4
+      },
+      {
+        "n": 20,
+        "meanAbsDelta": 0.13075,
+        "maxAbsDelta": 0.22499999999999998,
+        "argmaxAgreement": 0.4
+      },
+      {
+        "n": 20,
+        "meanAbsDelta": 0.13324999999999998,
+        "maxAbsDelta": 0.24,
+        "argmaxAgreement": 0.45
+      }
+    ]
+  },
+  "cache": {
+    "warmRequests": 1,
+    "replayRequests": 0,
+    "replayCached": 20,
+    "replayWallMs": 78.1
+  },
+  "failure": {
+    "providerRequestCount": 1,
+    "errorCodes": [
+      "timeout"
+    ],
+    "errors": 5,
+    "cacheWrites": 0
+  },
+  "runs": [
+    {
+      "label": "size-1-r1",
+      "maxLiveQuestions": 1,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 1,
+        "answered": 1,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 19
+      },
+      "errorCodes": [],
+      "wallMs": 474.2,
+      "request": {
+        "questions": 1,
+        "shape": "fanout",
+        "requestBytes": 3188,
+        "responseBytes": 237,
+        "status": 200,
+        "latencyMs": 405.3,
+        "usage": {
+          "input_tokens": 1710,
+          "output_tokens": 60
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.51,
+          "weakens": 0.02,
+          "unrelated": 0.35,
+          "insufficient": 0.12
+        }
+      }
+    },
+    {
+      "label": "size-5-r1",
+      "maxLiveQuestions": 5,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 5,
+        "answered": 5,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 15
+      },
+      "errorCodes": [],
+      "wallMs": 367.9,
+      "request": {
+        "questions": 5,
+        "shape": "fanout",
+        "requestBytes": 18262,
+        "responseBytes": 841,
+        "status": 200,
+        "latencyMs": 265.5,
+        "usage": {
+          "input_tokens": 8928,
+          "output_tokens": 285
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.63,
+          "weakens": 0.03,
+          "unrelated": 0.3,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.75,
+          "weakens": 0.01,
+          "unrelated": 0.2,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.18,
+          "weakens": 0.55,
+          "unrelated": 0.2,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.29,
+          "weakens": 0.08,
+          "unrelated": 0.58,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.29,
+          "weakens": 0.05,
+          "unrelated": 0.54,
+          "insufficient": 0.12
+        }
+      }
+    },
+    {
+      "label": "size-10-r1",
+      "maxLiveQuestions": 10,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 10,
+        "answered": 10,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 10
+      },
+      "errorCodes": [],
+      "wallMs": 434.5,
+      "request": {
+        "questions": 10,
+        "shape": "fanout",
+        "requestBytes": 34830,
+        "responseBytes": 1597,
+        "status": 200,
+        "latencyMs": 321.5,
+        "usage": {
+          "input_tokens": 16629,
+          "output_tokens": 565
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.7,
+          "weakens": 0.02,
+          "unrelated": 0.2,
+          "insufficient": 0.08
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.69,
+          "weakens": 0.02,
+          "unrelated": 0.25,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.2,
+          "weakens": 0.48,
+          "unrelated": 0.25,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.29,
+          "weakens": 0.09,
+          "unrelated": 0.57,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.38,
+          "weakens": 0.06,
+          "unrelated": 0.44,
+          "insufficient": 0.12
+        },
+        "coverage:surviving-mutant:m6:src/module-06.ts": {
+          "strengthens": 0.27,
+          "weakens": 0.03,
+          "unrelated": 0.64,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m9:src/module-09.ts": {
+          "strengthens": 0.11,
+          "weakens": 0.54,
+          "unrelated": 0.32,
+          "insufficient": 0.03
+        },
+        "coverage:surviving-mutant:m1:src/module-01.ts": {
+          "strengthens": 0.14,
+          "weakens": 0.42,
+          "unrelated": 0.41,
+          "insufficient": 0.03
+        },
+        "coverage:surviving-mutant:m10:src/module-10.ts": {
+          "strengthens": 0.27,
+          "weakens": 0.18,
+          "unrelated": 0.51,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m11:src/module-11.ts": {
+          "strengthens": 0.39,
+          "weakens": 0.09,
+          "unrelated": 0.42,
+          "insufficient": 0.1
+        }
+      }
+    },
+    {
+      "label": "size-20-r1",
+      "maxLiveQuestions": 20,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 20,
+        "answered": 20,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 0
+      },
+      "errorCodes": [],
+      "wallMs": 580.4,
+      "request": {
+        "questions": 20,
+        "shape": "fanout",
+        "requestBytes": 69662,
+        "responseBytes": 3140,
+        "status": 200,
+        "latencyMs": 503.4,
+        "usage": {
+          "input_tokens": 32927,
+          "output_tokens": 1135
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.72,
+          "weakens": 0.02,
+          "unrelated": 0.2,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.68,
+          "weakens": 0.02,
+          "unrelated": 0.26,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.19,
+          "weakens": 0.52,
+          "unrelated": 0.22,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.32,
+          "weakens": 0.09,
+          "unrelated": 0.55,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.4,
+          "weakens": 0.07,
+          "unrelated": 0.44,
+          "insufficient": 0.09
+        },
+        "coverage:surviving-mutant:m6:src/module-06.ts": {
+          "strengthens": 0.34,
+          "weakens": 0.03,
+          "unrelated": 0.58,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m9:src/module-09.ts": {
+          "strengthens": 0.12,
+          "weakens": 0.55,
+          "unrelated": 0.29,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m1:src/module-01.ts": {
+          "strengthens": 0.19,
+          "weakens": 0.32,
+          "unrelated": 0.45,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m10:src/module-10.ts": {
+          "strengthens": 0.32,
+          "weakens": 0.09,
+          "unrelated": 0.54,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m11:src/module-11.ts": {
+          "strengthens": 0.52,
+          "weakens": 0.09,
+          "unrelated": 0.34,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m13:src/module-13.ts": {
+          "strengthens": 0.33,
+          "weakens": 0.23,
+          "unrelated": 0.39,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m14:src/module-14.ts": {
+          "strengthens": 0.44,
+          "weakens": 0.16,
+          "unrelated": 0.35,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m16:src/module-16.ts": {
+          "strengthens": 0.47,
+          "weakens": 0.14,
+          "unrelated": 0.34,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m17:src/module-17.ts": {
+          "strengthens": 0.5,
+          "weakens": 0.25,
+          "unrelated": 0.2,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m19:src/module-19.ts": {
+          "strengthens": 0.51,
+          "weakens": 0.16,
+          "unrelated": 0.28,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m2:src/module-02.ts": {
+          "strengthens": 0.5,
+          "weakens": 0.16,
+          "unrelated": 0.29,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m4:src/module-04.ts": {
+          "strengthens": 0.51,
+          "weakens": 0.18,
+          "unrelated": 0.26,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m5:src/module-05.ts": {
+          "strengthens": 0.52,
+          "weakens": 0.14,
+          "unrelated": 0.28,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m7:src/module-07.ts": {
+          "strengthens": 0.54,
+          "weakens": 0.13,
+          "unrelated": 0.27,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m8:src/module-08.ts": {
+          "strengthens": 0.53,
+          "weakens": 0.14,
+          "unrelated": 0.27,
+          "insufficient": 0.05
+        }
+      }
+    },
+    {
+      "label": "size-1-r2",
+      "maxLiveQuestions": 1,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 1,
+        "answered": 1,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 19
+      },
+      "errorCodes": [],
+      "wallMs": 288.4,
+      "request": {
+        "questions": 1,
+        "shape": "fanout",
+        "requestBytes": 3188,
+        "responseBytes": 236,
+        "status": 200,
+        "latencyMs": 229.2,
+        "usage": {
+          "input_tokens": 1710,
+          "output_tokens": 60
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.55,
+          "weakens": 0.03,
+          "unrelated": 0.31,
+          "insufficient": 0.11
+        }
+      }
+    },
+    {
+      "label": "size-5-r2",
+      "maxLiveQuestions": 5,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 5,
+        "answered": 5,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 15
+      },
+      "errorCodes": [],
+      "wallMs": 360.6,
+      "request": {
+        "questions": 5,
+        "shape": "fanout",
+        "requestBytes": 18262,
+        "responseBytes": 844,
+        "status": 200,
+        "latencyMs": 274.5,
+        "usage": {
+          "input_tokens": 8928,
+          "output_tokens": 285
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.7,
+          "weakens": 0.02,
+          "unrelated": 0.22,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.68,
+          "weakens": 0.02,
+          "unrelated": 0.25,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.18,
+          "weakens": 0.53,
+          "unrelated": 0.22,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.28,
+          "weakens": 0.07,
+          "unrelated": 0.61,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.28,
+          "weakens": 0.06,
+          "unrelated": 0.55,
+          "insufficient": 0.11
+        }
+      }
+    },
+    {
+      "label": "size-10-r2",
+      "maxLiveQuestions": 10,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 10,
+        "answered": 10,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 10
+      },
+      "errorCodes": [],
+      "wallMs": 370.4,
+      "request": {
+        "questions": 10,
+        "shape": "fanout",
+        "requestBytes": 34830,
+        "responseBytes": 1602,
+        "status": 200,
+        "latencyMs": 300.2,
+        "usage": {
+          "input_tokens": 16629,
+          "output_tokens": 565
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.68,
+          "weakens": 0.02,
+          "unrelated": 0.22,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.7,
+          "weakens": 0.02,
+          "unrelated": 0.24,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.18,
+          "weakens": 0.53,
+          "unrelated": 0.23,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.3,
+          "weakens": 0.12,
+          "unrelated": 0.53,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.36,
+          "weakens": 0.07,
+          "unrelated": 0.45,
+          "insufficient": 0.12
+        },
+        "coverage:surviving-mutant:m6:src/module-06.ts": {
+          "strengthens": 0.31,
+          "weakens": 0.04,
+          "unrelated": 0.59,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m9:src/module-09.ts": {
+          "strengthens": 0.11,
+          "weakens": 0.59,
+          "unrelated": 0.26,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m1:src/module-01.ts": {
+          "strengthens": 0.11,
+          "weakens": 0.35,
+          "unrelated": 0.49,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m10:src/module-10.ts": {
+          "strengthens": 0.23,
+          "weakens": 0.15,
+          "unrelated": 0.58,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m11:src/module-11.ts": {
+          "strengthens": 0.37,
+          "weakens": 0.04,
+          "unrelated": 0.5,
+          "insufficient": 0.09
+        }
+      }
+    },
+    {
+      "label": "size-20-r2",
+      "maxLiveQuestions": 20,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 20,
+        "answered": 20,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 0
+      },
+      "errorCodes": [],
+      "wallMs": 501.1,
+      "request": {
+        "questions": 20,
+        "shape": "fanout",
+        "requestBytes": 69662,
+        "responseBytes": 3150,
+        "status": 200,
+        "latencyMs": 432.1,
+        "usage": {
+          "input_tokens": 32927,
+          "output_tokens": 1135
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.76,
+          "weakens": 0.02,
+          "unrelated": 0.15,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.6799999999999999,
+          "weakens": 0.02,
+          "unrelated": 0.25,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.2,
+          "weakens": 0.51,
+          "unrelated": 0.22,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.38,
+          "weakens": 0.07,
+          "unrelated": 0.49,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.31,
+          "weakens": 0.13,
+          "unrelated": 0.48,
+          "insufficient": 0.08
+        },
+        "coverage:surviving-mutant:m6:src/module-06.ts": {
+          "strengthens": 0.34,
+          "weakens": 0.03,
+          "unrelated": 0.58,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m9:src/module-09.ts": {
+          "strengthens": 0.12,
+          "weakens": 0.53,
+          "unrelated": 0.32,
+          "insufficient": 0.03
+        },
+        "coverage:surviving-mutant:m1:src/module-01.ts": {
+          "strengthens": 0.16,
+          "weakens": 0.33,
+          "unrelated": 0.47,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m10:src/module-10.ts": {
+          "strengthens": 0.3,
+          "weakens": 0.07,
+          "unrelated": 0.58,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m11:src/module-11.ts": {
+          "strengthens": 0.55,
+          "weakens": 0.08,
+          "unrelated": 0.3,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m13:src/module-13.ts": {
+          "strengthens": 0.32,
+          "weakens": 0.24,
+          "unrelated": 0.4,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m14:src/module-14.ts": {
+          "strengthens": 0.45,
+          "weakens": 0.12,
+          "unrelated": 0.38,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m16:src/module-16.ts": {
+          "strengthens": 0.5,
+          "weakens": 0.09,
+          "unrelated": 0.36,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m17:src/module-17.ts": {
+          "strengthens": 0.48,
+          "weakens": 0.24,
+          "unrelated": 0.24,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m19:src/module-19.ts": {
+          "strengthens": 0.52,
+          "weakens": 0.16,
+          "unrelated": 0.25,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m2:src/module-02.ts": {
+          "strengthens": 0.53,
+          "weakens": 0.16,
+          "unrelated": 0.26,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m4:src/module-04.ts": {
+          "strengthens": 0.49,
+          "weakens": 0.22,
+          "unrelated": 0.24,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m5:src/module-05.ts": {
+          "strengthens": 0.53,
+          "weakens": 0.16,
+          "unrelated": 0.25,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m7:src/module-07.ts": {
+          "strengthens": 0.49,
+          "weakens": 0.14,
+          "unrelated": 0.31,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m8:src/module-08.ts": {
+          "strengthens": 0.55,
+          "weakens": 0.12,
+          "unrelated": 0.27,
+          "insufficient": 0.06
+        }
+      }
+    },
+    {
+      "label": "size-1-r3",
+      "maxLiveQuestions": 1,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 1,
+        "answered": 1,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 19
+      },
+      "errorCodes": [],
+      "wallMs": 284.2,
+      "request": {
+        "questions": 1,
+        "shape": "fanout",
+        "requestBytes": 3188,
+        "responseBytes": 236,
+        "status": 200,
+        "latencyMs": 223.2,
+        "usage": {
+          "input_tokens": 1710,
+          "output_tokens": 60
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.59,
+          "weakens": 0.02,
+          "unrelated": 0.29,
+          "insufficient": 0.1
+        }
+      }
+    },
+    {
+      "label": "size-5-r3",
+      "maxLiveQuestions": 5,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 5,
+        "answered": 5,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 15
+      },
+      "errorCodes": [],
+      "wallMs": 291.7,
+      "request": {
+        "questions": 5,
+        "shape": "fanout",
+        "requestBytes": 18262,
+        "responseBytes": 844,
+        "status": 200,
+        "latencyMs": 239.1,
+        "usage": {
+          "input_tokens": 8928,
+          "output_tokens": 285
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.61,
+          "weakens": 0.02,
+          "unrelated": 0.32,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.65,
+          "weakens": 0.01,
+          "unrelated": 0.29,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.17,
+          "weakens": 0.53,
+          "unrelated": 0.24,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.31,
+          "weakens": 0.06,
+          "unrelated": 0.58,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.3,
+          "weakens": 0.05,
+          "unrelated": 0.55,
+          "insufficient": 0.1
+        }
+      }
+    },
+    {
+      "label": "size-10-r3",
+      "maxLiveQuestions": 10,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 10,
+        "answered": 10,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 10
+      },
+      "errorCodes": [],
+      "wallMs": 342.4,
+      "request": {
+        "questions": 10,
+        "shape": "fanout",
+        "requestBytes": 34830,
+        "responseBytes": 1602,
+        "status": 200,
+        "latencyMs": 282.2,
+        "usage": {
+          "input_tokens": 16629,
+          "output_tokens": 566
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.73,
+          "weakens": 0.02,
+          "unrelated": 0.19,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.71,
+          "weakens": 0.02,
+          "unrelated": 0.23,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.18,
+          "weakens": 0.49,
+          "unrelated": 0.26,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.27,
+          "weakens": 0.1,
+          "unrelated": 0.59,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.36,
+          "weakens": 0.05,
+          "unrelated": 0.48,
+          "insufficient": 0.11
+        },
+        "coverage:surviving-mutant:m6:src/module-06.ts": {
+          "strengthens": 0.28,
+          "weakens": 0.04,
+          "unrelated": 0.63,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m9:src/module-09.ts": {
+          "strengthens": 0.13,
+          "weakens": 0.54,
+          "unrelated": 0.29,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m1:src/module-01.ts": {
+          "strengthens": 0.15,
+          "weakens": 0.41,
+          "unrelated": 0.4,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m10:src/module-10.ts": {
+          "strengthens": 0.26,
+          "weakens": 0.16,
+          "unrelated": 0.54,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m11:src/module-11.ts": {
+          "strengthens": 0.43,
+          "weakens": 0.07,
+          "unrelated": 0.39,
+          "insufficient": 0.11
+        }
+      }
+    },
+    {
+      "label": "size-20-r3",
+      "maxLiveQuestions": 20,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 20,
+        "answered": 20,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 0
+      },
+      "errorCodes": [],
+      "wallMs": 480.9,
+      "request": {
+        "questions": 20,
+        "shape": "fanout",
+        "requestBytes": 69662,
+        "responseBytes": 3133,
+        "status": 200,
+        "latencyMs": 409.8,
+        "usage": {
+          "input_tokens": 32927,
+          "output_tokens": 1134
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.73,
+          "weakens": 0.02,
+          "unrelated": 0.19,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.71,
+          "weakens": 0.02,
+          "unrelated": 0.23,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.15,
+          "weakens": 0.54,
+          "unrelated": 0.24,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.24,
+          "weakens": 0.08,
+          "unrelated": 0.64,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.32,
+          "weakens": 0.11,
+          "unrelated": 0.45,
+          "insufficient": 0.12
+        },
+        "coverage:surviving-mutant:m6:src/module-06.ts": {
+          "strengthens": 0.3,
+          "weakens": 0.03,
+          "unrelated": 0.6,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m9:src/module-09.ts": {
+          "strengthens": 0.11,
+          "weakens": 0.55,
+          "unrelated": 0.3,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m1:src/module-01.ts": {
+          "strengthens": 0.18,
+          "weakens": 0.3,
+          "unrelated": 0.48,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m10:src/module-10.ts": {
+          "strengthens": 0.32,
+          "weakens": 0.12,
+          "unrelated": 0.52,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m11:src/module-11.ts": {
+          "strengthens": 0.53,
+          "weakens": 0.1,
+          "unrelated": 0.29,
+          "insufficient": 0.08
+        },
+        "coverage:surviving-mutant:m13:src/module-13.ts": {
+          "strengthens": 0.33,
+          "weakens": 0.23,
+          "unrelated": 0.4,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m14:src/module-14.ts": {
+          "strengthens": 0.39,
+          "weakens": 0.13,
+          "unrelated": 0.43,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m16:src/module-16.ts": {
+          "strengthens": 0.49,
+          "weakens": 0.1,
+          "unrelated": 0.37,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m17:src/module-17.ts": {
+          "strengthens": 0.48,
+          "weakens": 0.27,
+          "unrelated": 0.21,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m19:src/module-19.ts": {
+          "strengthens": 0.48,
+          "weakens": 0.18,
+          "unrelated": 0.29,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m2:src/module-02.ts": {
+          "strengthens": 0.55,
+          "weakens": 0.12,
+          "unrelated": 0.28,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m4:src/module-04.ts": {
+          "strengthens": 0.58,
+          "weakens": 0.14,
+          "unrelated": 0.24,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m5:src/module-05.ts": {
+          "strengthens": 0.54,
+          "weakens": 0.11,
+          "unrelated": 0.29,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m7:src/module-07.ts": {
+          "strengthens": 0.52,
+          "weakens": 0.13,
+          "unrelated": 0.29,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m8:src/module-08.ts": {
+          "strengthens": 0.55,
+          "weakens": 0.09,
+          "unrelated": 0.3,
+          "insufficient": 0.06
+        }
+      }
+    },
+    {
+      "label": "cache-warm",
+      "maxLiveQuestions": 20,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 20,
+        "answered": 20,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 0
+      },
+      "errorCodes": [],
+      "wallMs": 563.8,
+      "request": {
+        "questions": 20,
+        "shape": "fanout",
+        "requestBytes": 69662,
+        "responseBytes": 3155,
+        "status": 200,
+        "latencyMs": 481.3,
+        "usage": {
+          "input_tokens": 32927,
+          "output_tokens": 1135
+        },
+        "error": null
+      },
+      "probabilities": {
+        "coverage:surviving-mutant:m0:src/module-00.ts": {
+          "strengthens": 0.76,
+          "weakens": 0.01,
+          "unrelated": 0.16,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m12:src/module-12.ts": {
+          "strengthens": 0.69,
+          "weakens": 0.02,
+          "unrelated": 0.25,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m15:src/module-15.ts": {
+          "strengthens": 0.19,
+          "weakens": 0.51,
+          "unrelated": 0.23,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m18:src/module-18.ts": {
+          "strengthens": 0.31,
+          "weakens": 0.08,
+          "unrelated": 0.56,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m3:src/module-03.ts": {
+          "strengthens": 0.34,
+          "weakens": 0.08,
+          "unrelated": 0.44,
+          "insufficient": 0.14
+        },
+        "coverage:surviving-mutant:m6:src/module-06.ts": {
+          "strengthens": 0.36,
+          "weakens": 0.03,
+          "unrelated": 0.55,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m9:src/module-09.ts": {
+          "strengthens": 0.11,
+          "weakens": 0.55,
+          "unrelated": 0.31,
+          "insufficient": 0.03
+        },
+        "coverage:surviving-mutant:m1:src/module-01.ts": {
+          "strengthens": 0.15,
+          "weakens": 0.39,
+          "unrelated": 0.43,
+          "insufficient": 0.03
+        },
+        "coverage:surviving-mutant:m10:src/module-10.ts": {
+          "strengthens": 0.37,
+          "weakens": 0.12,
+          "unrelated": 0.45,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m11:src/module-11.ts": {
+          "strengthens": 0.49,
+          "weakens": 0.11,
+          "unrelated": 0.32,
+          "insufficient": 0.08
+        },
+        "coverage:surviving-mutant:m13:src/module-13.ts": {
+          "strengthens": 0.34,
+          "weakens": 0.19,
+          "unrelated": 0.43,
+          "insufficient": 0.04
+        },
+        "coverage:surviving-mutant:m14:src/module-14.ts": {
+          "strengthens": 0.44,
+          "weakens": 0.11,
+          "unrelated": 0.39,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m16:src/module-16.ts": {
+          "strengthens": 0.48,
+          "weakens": 0.1,
+          "unrelated": 0.37,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m17:src/module-17.ts": {
+          "strengthens": 0.48,
+          "weakens": 0.24,
+          "unrelated": 0.23,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m19:src/module-19.ts": {
+          "strengthens": 0.51,
+          "weakens": 0.2,
+          "unrelated": 0.23,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m2:src/module-02.ts": {
+          "strengthens": 0.54,
+          "weakens": 0.13,
+          "unrelated": 0.27,
+          "insufficient": 0.06
+        },
+        "coverage:surviving-mutant:m4:src/module-04.ts": {
+          "strengthens": 0.53,
+          "weakens": 0.15,
+          "unrelated": 0.27,
+          "insufficient": 0.05
+        },
+        "coverage:surviving-mutant:m5:src/module-05.ts": {
+          "strengthens": 0.55,
+          "weakens": 0.14,
+          "unrelated": 0.24,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m7:src/module-07.ts": {
+          "strengthens": 0.5599999999999999,
+          "weakens": 0.14,
+          "unrelated": 0.23,
+          "insufficient": 0.07
+        },
+        "coverage:surviving-mutant:m8:src/module-08.ts": {
+          "strengthens": 0.55,
+          "weakens": 0.11,
+          "unrelated": 0.26,
+          "insufficient": 0.08
+        }
+      }
+    },
+    {
+      "label": "cache-replay",
+      "maxLiveQuestions": 20,
+      "providerRequestCount": 0,
+      "counts": {
+        "cached": 20,
+        "live": 0,
+        "answered": 20,
+        "insufficient": 0,
+        "error": 0,
+        "skipped": 0
+      },
+      "errorCodes": [],
+      "wallMs": 78.1,
+      "request": null,
+      "probabilities": {}
+    },
+    {
+      "label": "failure-timeout",
+      "maxLiveQuestions": 5,
+      "providerRequestCount": 1,
+      "counts": {
+        "cached": 0,
+        "live": 5,
+        "answered": 0,
+        "insufficient": 0,
+        "error": 5,
+        "skipped": 15
+      },
+      "errorCodes": [
+        "timeout"
+      ],
+      "wallMs": 62.4,
+      "request": {
+        "questions": 5,
+        "shape": "fanout",
+        "requestBytes": 18262,
+        "responseBytes": 0,
+        "status": 0,
+        "latencyMs": 2,
+        "usage": null,
+        "error": "TimeoutError"
+      },
+      "probabilities": {}
+    }
+  ]
+}
