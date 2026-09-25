@@ -71,13 +71,40 @@ PERF-003 then measured TypeScript-project-scoped invalidation: a real app-source
 
 GRAPH-EQ-001 then passed semantic graph-composition equivalence on the real repository: 77 whole-index documents matched 77 merged-shard documents exactly, the 9,686-node H19 graph digest was identical, and 20 representative blast-radius units had zero mismatches.
 
-The next authorized performance action is **production adoption of project-scoped SCIP fingerprints/index shards with the equivalence invariant retained as a regression gate**.
+PROD-ADOPT-001 / #581 then adopted project-scoped SCIP indexes as the default TypeScript evidence-graph path. Exact head `13fbc34baf5808ba9aef5c5b2d5314f2a8e8f6bf` passed CI run `36090897239`.
 
-## Next authorized feature gate
+The accepted real-repository adoption artifact reports:
 
-**Minimal test specification from validated/high-value coverage hypotheses.**
+- cold project-shard graph build: 12.514 s, 3/3 index misses, merged-graph miss;
+- exact-content warm graph build: 112.209 ms, 3/3 index hits, merged-graph hit;
+- `src/App.tsx` change: 8.569 s, exactly 1 shard miss + 2 shard hits, merged-graph miss;
+- out-of-project `scripts/browser-booking-recovery.mjs` change: 113.383 ms, 3/3 shard hits, merged-graph hit, identical graph key;
+- acceptance result: `pass: true`.
 
-For a surviving-mutant-driven target, the first specification contract must be able to state:
+The same CI run measured the whole-repository baseline at 8.460 s first index and 26.827 ms exact-content warm hit. These absolute wall times are evidence from one GitHub runner, not frozen latency thresholds. The accepted invariant is targeted invalidation + exact semantic equivalence, not “shards must always win cold start”.
+
+Production adoption is therefore complete. GRAPH-EQ remains a regression gate for future evidence-graph changes.
+
+## Next authorized feature/integration gate
+
+The minimal test-specification and executable-candidate work already exists as a prepared feature line:
+
+- #560 — frozen minimal test-spec gate;
+- #561 — M6 minimal test specification, CI-green on its pre-adoption stack;
+- #564 — frozen executable test-candidate gate;
+- #566 — M7 executable test candidate, CI-green on its pre-adoption stack.
+
+Under the sequencing invariant, those prepared PRs are **not yet promoted onto the active bundle line**, because they were built from the pre-#581 base.
+
+The next authorized action is therefore **integration revalidation, not new feature work**:
+
+1. restack/revalidate the #560/#561 test-spec line on top of the accepted #581 production-adoption head;
+2. require exact-head CI green with no H19s changes;
+3. then restack/revalidate #564/#566 on top of that accepted M6 integration;
+4. require exact-head CI green again;
+5. only then authorize a post-M7 gate.
+
+For a surviving-mutant-driven target, the M6 specification contract remains:
 
 ```text
 setup
@@ -87,9 +114,7 @@ setup
 → required observations
 ```
 
-This is the next planned bundle gate.
-
-**No M6 number is assigned here yet.** Freeze the scope and acceptance contract before naming/promoting the next milestone.
+Do not create or promote M8 while the prepared M6/M7 line is still on the old base.
 
 ## Side-hardening HOLD
 
