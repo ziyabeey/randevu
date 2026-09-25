@@ -18,7 +18,7 @@ const [plan, bridge, supplementalCollection, closure, snapshot, inventory] = awa
 
 const inputs = {
   plan,
-  expectedPlanSha256: '77ae3c50eeffe8220cd8736727e7e3efc34a1f6fa2fb3e6be7928959e31aa064',
+  expectedPlanSha256: '9478ae5199235075f1b142fab20de20222aa150a29a68c856239da1008855e3c',
   bridge,
   supplementalCollection,
   closure,
