@@ -40,3 +40,18 @@ The next two exact-head CI runs should distinguish:
 
 The report must show restore status explicitly. Warm performance is not considered operationally proven until a
 separate runner restores and reuses a cache created by an earlier run.
+
+
+## Exact-head cross-run result
+
+The seed run saved three TypeScript project-shard artifacts. A later rerun on a separate GitHub-hosted runner
+restored the exact H19 cache key and reported:
+
+- `restoredArtifactsBefore = 3`;
+- `shardHits = 3`;
+- `shardMisses = 0`.
+
+This proves runner-to-runner persistence for an unchanged candidate head.
+
+The next proof changes only this documentation, producing a new head SHA while leaving TypeScript project inputs
+unchanged. The new run must restore via the compatible prefix and still report three shard hits.
