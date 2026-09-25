@@ -44,3 +44,30 @@ sharding.
 
 Both whole and shard indexes are decoded using the same pinned SCIP CLI build. The decoder version/commit is
 part of the CI experiment provenance.
+
+## GRAPH-EQ-001 result
+
+Reference run: GitHub Actions #2915 on head `96f983073b42c42f18822fa426fb722d879dc39c`.
+
+Observed:
+
+- H19 whole-root fingerprint inputs: **337 files**;
+- actual whole SCIP documents: **77**;
+- declared project-shard source files: **77**;
+- merged shard documents: **77**;
+- missing / extra / mismatched documents: **0 / 0 / 0**;
+- duplicate conflicts: **0**;
+- whole symbol graph nodes: **9,686**;
+- merged symbol graph nodes: **9,686**;
+- graph digest: **identical**;
+- representative blast-radius units: **20**;
+- blast-radius mismatches: **0**.
+
+Result: **PASS for the current H19 document/symbol/reference evidence contract.**
+
+The measurement also confirms that the previous whole-repository H19 fingerprint was materially broader than the
+actual scip-typescript project input set. Project-scoped fingerprints can therefore remove false invalidations
+without changing the evidence currently consumed by H19.
+
+Production adoption may proceed only with the same fail-closed project-boundary rules and an integration test that
+keeps this equivalence invariant alive.
