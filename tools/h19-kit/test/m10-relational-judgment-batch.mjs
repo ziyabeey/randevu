@@ -137,7 +137,7 @@ class MemoryCache {
   }
 }
 
-const [case0, case1, case2] = composed.relationalCases;
+const [case0] = composed.relationalCases;
 const cache = new MemoryCache();
 const cachedJudgment = freezeJevRelationalJudgment({
   relationalCase: case0,
