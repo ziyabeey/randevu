@@ -125,20 +125,28 @@ Bundle **M9** implements RC1–RC16:
 
 M9 remains advisory and deterministic. Jev receives a case only after H19 has selected and frozen its evidence.
 
-## Active milestone — M10 Relational Judgment Fan-out (v0.2)
+## Active milestone — M10 Relational Judgment Batch (v0.3)
 
-The first judgment-batch freeze, `specs/RELATIONAL_JUDGMENT_BATCH_GATE-v0.1.md`, is exact-head CI-green on #593 and remains historical evidence. `specs/RELATIONAL_JUDGMENT_BATCH_GATE-v0.2.md` (#595) supersedes its execution shape while retaining its authority/provenance boundaries. M10 is restacked onto that freeze and implements JF1–JF22:
+The v0.3 judgment-batch freeze in `specs/RELATIONAL_JUDGMENT_BATCH_GATE-v0.3.md` is exact-head CI-green on #597 at `e8171ec210ca5f942ac846f6e3fafce041c3c3ea`.
 
-- exact M9 batch → exact M8 case binding before cache or provider work;
+FANOUT-001/002 measured that the withdrawn v0.2 shared multi-case state was not case-bound. FANOUT-003 showed that one exact M8-shaped request per case, issued concurrently, preserved case binding while retaining low wall-clock latency.
+
+Bundle **M10** therefore implements JS1–JS22:
+
+- exact M9 batch → exact M8 case binding before cache/provider work;
 - deterministic content-addressed request planning;
-- cache-first replay of probability-complete v0.2 entries only; valid legacy judgment-only entries become `cache-upgrade-required`, tampered or identity-invalid entries become `invalid_cache` with no live fallback;
-- `maxLiveQuestions` bounded to 0..20; cached rows consume zero live-question budget;
-- all selected uncached cases become one structured shared state + one parallel Choice question each, every question naming only its own `cases[i].state` path;
-- exactly zero or one provider request per run, with no hidden retry;
-- explicit `live-question-budget` skips for overflow, in request-plan order;
-- atomic live acceptance: a missing/extra answer, wrong model or malformed answer fails the whole live response and nothing from it is cached;
-- each live answer preserves the exact four-option probability distribution plus provider confidence;
+- cache-first replay of v0.3 `single-case` entries only;
+- valid v0.1 judgment-only and v0.2 fan-out entries become `cache-upgrade-required`;
+- tampered/identity-invalid exact-key content becomes `invalid_cache` with no live fallback;
+- `maxLiveQuestions` bounded to 0..20; cache hits consume zero budget;
+- exactly one M8 single-case provider request per selected uncached row;
+- selected requests are issued concurrently, with no retry;
+- per-request atomic validation; sibling requests are independent;
+- explicit `live-question-budget` skips for overflow;
+- every live row that reaches the provider binds its own `requestSha256`;
+- every answered row preserves the exact four-option probability distribution plus provider confidence;
 - `insufficient` remains a valid answered abstention;
+- run artifact schema is v3;
 - no aggregate risk/winner score, no dispatcher authority, no self-calibration;
 - fake-provider CI only and no H19s crossover.
 
