@@ -1,0 +1,51 @@
+{
+  "equivalenceId": "GRAPH-EQ-001",
+  "source": {
+    "workflowRun": 36087581194,
+    "workflowRunNumber": 2915,
+    "headSha": "96f983073b42c42f18822fa426fb722d879dc39c",
+    "artifactId": 10844797313,
+    "artifactDigest": "sha256:3972c853cd8c1f9f1aa047e49d65cfeac35e0d70a2246158a2bc660387393329"
+  },
+  "decoder": {
+    "scipTypescript": "0.4.0",
+    "scipCliCommit": "db62094c7f9d464d0a6d9fd7815fcf3c9214b4c2"
+  },
+  "inputs": {
+    "h19WholeFingerprintSourceFiles": 337,
+    "wholeIndexDocuments": 77,
+    "projectShardCount": 3,
+    "projectShardDeclaredSourceFiles": 77
+  },
+  "documentEvidence": {
+    "whole": 77,
+    "merged": 77,
+    "missing": 0,
+    "extra": 0,
+    "mismatched": 0,
+    "duplicateConflicts": 0
+  },
+  "symbolGraph": {
+    "wholeNodeCount": 9686,
+    "mergedNodeCount": 9686,
+    "wholeDigest": "223d16df8f299095fbb84d780b28def5d0fc0e469d44315bef10f18b6b2246f7",
+    "mergedDigest": "223d16df8f299095fbb84d780b28def5d0fc0e469d44315bef10f18b6b2246f7",
+    "exact": true
+  },
+  "blastRadiusSample": {
+    "unitCount": 20,
+    "mismatchCount": 0
+  },
+  "pass": true,
+  "interpretation": {
+    "currentH19EvidenceEquivalent": true,
+    "observedFingerprintOverbreadth": true,
+    "notes": [
+      "The whole-repository H19 fingerprint tracked 337 TS/JS-like files while scip-typescript emitted 77 repository documents.",
+      "The union of the three declared TypeScript project indexes emitted exactly the same 77 documents.",
+      "The normalized H19 symbol graph digest was identical.",
+      "Representative semantic-unit blast-radius outputs matched for all 20 sampled units.",
+      "SCIP external_symbols remain outside the current H19 graph contract and outside this equivalence claim."
+    ]
+  }
+}
