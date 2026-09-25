@@ -51,7 +51,7 @@ test('F12-05 validates ordered group results, range estimates and the exact mana
   assert.match(booking, /RANDEVU İPTAL EDİLDİ/);
   assert.match(booking, /RANDEVU PLANI KISMEN DEĞİŞTİ/);
   assert.match(booking, /Randevu ayrıntılarını aç/);
-  assert.match(booking, /Durum: \{appointmentStatusLabel\(line\.status\)\}/);
+  assert.match(booking, /t\('Durum: \{status\}', \{ status: appointmentStatusLabel\(line\.status\) \}\)/);
   assert.match(booking, /case 'completed': return \{ active: false, tone: 'neutral'/);
   assert.match(booking, /case 'cancelled': return \{ active: false, tone: 'attention'/);
   assert.match(booking, /className=\{`public-result-mark is-\$\{outcome\.tone\}`\}/);

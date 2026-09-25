@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
 import { useWorkspace } from './workspace-context';
@@ -93,7 +94,7 @@ function clearPendingProductWrite(expected: PendingProductWrite) {
 }
 
 function money(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
+  return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100);
 }
 
 function parseMoneyMinor(value: FormDataEntryValue | null) {
@@ -145,13 +146,13 @@ export default function ProductsPage() {
       const result = await api<ProductList>(`/api/products?${params}`);
       if (current !== generation.current) return;
       if (result.products.some((product) => product.businessId !== activeBusinessId)) {
-        throw new Error('Ürün listesi güncel işletme bağlamıyla eşleşmiyor.');
+        throw new Error(t('Ürün listesi güncel işletme bağlamıyla eşleşmiyor.'));
       }
       setProducts((existing) => append ? [...existing, ...result.products] : result.products);
       setPage(result.page);
     } catch (error) {
       if (current !== generation.current) return;
-      setNotice(error instanceof Error ? error.message : 'Ürünler yüklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Ürünler yüklenemedi.'));
       if (!append) {
         setProducts([]);
         setPage(null);
@@ -163,7 +164,7 @@ export default function ProductsPage() {
 
   const loadProduct = useCallback(async (productId: string) => {
     const result = await api<{ product: Product }>(`/api/products/${productId}`);
-    if (result.product.businessId !== activeBusinessId) throw new Error('Ürün güncel işletme bağlamıyla eşleşmiyor.');
+    if (result.product.businessId !== activeBusinessId) throw new Error(t('Ürün güncel işletme bağlamıyla eşleşmiyor.'));
     setProducts((items) => items.map((item) => item.productId === productId ? result.product : item));
     return result.product;
   }, [activeBusinessId]);
@@ -190,7 +191,7 @@ export default function ProductsPage() {
       setMovements([]);
       return;
     }
-    void loadMovements(selectedId).catch((error) => setNotice(error instanceof Error ? error.message : 'Stok hareketleri yüklenemedi.'));
+    void loadMovements(selectedId).catch((error) => setNotice(error instanceof Error ? error.message : t('Stok hareketleri yüklenemedi.')));
   }, [loadMovements, selectedId]);
 
   async function mutate(action: string, path: string, init: RequestInit) {
@@ -204,8 +205,8 @@ export default function ProductsPage() {
       && pendingWrite.body === body);
     if (pendingWrite && !matchesPending) {
       setNotice(pendingWrite.businessId === activeBusinessId
-        ? 'Önce sonucu belirsiz ürün/stok işlemini doğrulayın. Yeni işlem başlatılmadı.'
-        : 'Başka işletmede sonucu belirsiz ürün/stok işlemi var. Önce o işletmede doğrulayın.');
+        ? t('Önce sonucu belirsiz ürün/stok işlemini doğrulayın. Yeni işlem başlatılmadı.')
+        : t('Başka işletmede sonucu belirsiz ürün/stok işlemi var. Önce o işletmede doğrulayın.'));
       return null;
     }
 
@@ -222,7 +223,7 @@ export default function ProductsPage() {
       keys.current.delete(action);
       clearPendingProductWrite(identity);
       setPendingWrite((current) => samePending(current, identity) ? null : current);
-      if (result.product.businessId !== activeBusinessId) throw new Error('Sunucu farklı işletme ürünü döndürdü.');
+      if (result.product.businessId !== activeBusinessId) throw new Error(t('Sunucu farklı işletme ürünü döndürdü.'));
       setProducts((items) => {
         const exists = items.some((item) => item.productId === result.product.productId);
         return exists
@@ -236,12 +237,12 @@ export default function ProductsPage() {
       if (ambiguous(error)) {
         writePendingProductWrite(identity);
         setPendingWrite(identity);
-        setNotice('İşlemin sonucu belirsiz. Kayıtlı istek aynı anahtarla doğrulanana kadar başka ürün/stok işlemi başlatılmayacak.');
+        setNotice(t('İşlemin sonucu belirsiz. Kayıtlı istek aynı anahtarla doğrulanana kadar başka ürün/stok işlemi başlatılmayacak.'));
       } else {
         keys.current.delete(action);
         clearPendingProductWrite(identity);
         setPendingWrite((current) => samePending(current, identity) ? null : current);
-        setNotice(error instanceof Error ? error.message : 'İşlem tamamlanamadı.');
+        setNotice(error instanceof Error ? error.message : t('İşlem tamamlanamadı.'));
         if (selectedId) {
           try { await loadProduct(selectedId); } catch { /* preserve mutation error */ }
         }
@@ -255,7 +256,7 @@ export default function ProductsPage() {
   async function retryPendingWrite() {
     if (!pendingWrite) return;
     if (pendingWrite.businessId !== activeBusinessId) {
-      setNotice('Belirsiz işlemi doğrulamak için önce işlemin başladığı işletmeye dönün.');
+      setNotice(t('Belirsiz işlemi doğrulamak için önce işlemin başladığı işletmeye dönün.'));
       return;
     }
     const result = await mutate(
@@ -263,7 +264,7 @@ export default function ProductsPage() {
       pendingWrite.path,
       { method: pendingWrite.method, body: pendingWrite.body ?? undefined },
     );
-    if (result) setNotice('Belirsiz ürün/stok işlemi sunucuda doğrulandı.');
+    if (result) setNotice(t('Belirsiz ürün/stok işlemi sunucuda doğrulandı.'));
   }
 
   async function createProduct(event: FormEvent<HTMLFormElement>) {
@@ -273,7 +274,7 @@ export default function ProductsPage() {
     const salePriceMinor = parseMoneyMinor(data.get('price'));
     const initialQuantity = parseQuantity(data.get('initialQuantity'));
     if (salePriceMinor === null || initialQuantity === null) {
-      setNotice('Satış fiyatı ve başlangıç stoğu geçerli olmalı.');
+      setNotice(t('Satış fiyatı ve başlangıç stoğu geçerli olmalı.'));
       return;
     }
     const payload = {
@@ -291,7 +292,7 @@ export default function ProductsPage() {
     );
     if (product) {
       form.reset();
-      setNotice('Ürün oluşturuldu.');
+      setNotice(t('Ürün oluşturuldu.'));
     }
   }
 
@@ -300,7 +301,7 @@ export default function ProductsPage() {
     if (!selected) return;
     const data = new FormData(event.currentTarget);
     const salePriceMinor = parseMoneyMinor(data.get('price'));
-    if (salePriceMinor === null) return setNotice('Satış fiyatı geçerli olmalı.');
+    if (salePriceMinor === null) return setNotice(t('Satış fiyatı geçerli olmalı.'));
     const payload = {
       name: String(data.get('name') ?? '').trim(),
       code: String(data.get('code') ?? '').trim() || null,
@@ -314,7 +315,7 @@ export default function ProductsPage() {
       `/api/products/${selected.productId}`,
       { method: 'PUT', body: JSON.stringify(payload) },
     );
-    if (product) setNotice('Ürün bilgileri güncellendi.');
+    if (product) setNotice(t('Ürün bilgileri güncellendi.'));
   }
 
   async function stockMovement(event: FormEvent<HTMLFormElement>) {
@@ -326,7 +327,7 @@ export default function ProductsPage() {
     const quantityDelta = parseQuantity(data.get('quantity'), kind === 'adjustment');
     const reason = String(data.get('reason') ?? '').trim() || null;
     if (quantityDelta === null || quantityDelta === 0 || (kind === 'adjustment' && !reason)) {
-      return setNotice('Stok miktarı ve gerekçe geçerli olmalı.');
+      return setNotice(t('Stok miktarı ve gerekçe geçerli olmalı.'));
     }
     const payload = { kind, quantityDelta, reason, expectedVersion: selected.version };
     const product = await mutate(
@@ -336,7 +337,7 @@ export default function ProductsPage() {
     );
     if (product) {
       form.reset();
-      setNotice('Stok hareketi kaydedildi.');
+      setNotice(t('Stok hareketi kaydedildi.'));
     }
   }
 
@@ -347,79 +348,79 @@ export default function ProductsPage() {
       `/api/products/${selected.productId}/archive`,
       { method: 'POST', body: JSON.stringify({ expectedVersion: selected.version }) },
     );
-    if (product) setNotice('Ürün arşivlendi; geçmiş stok hareketleri korundu.');
+    if (product) setNotice(t('Ürün arşivlendi; geçmiş stok hareketleri korundu.'));
   }
 
   return (
     <main className="products-shell">
       <header className="products-hero">
-        <div><p className="products-eyebrow">ÜRÜN VE STOK</p><h1>Ürün kataloğu</h1><p>Satış fiyatı ve stok hareketleri sunucu kayıtlarından yönetilir.</p></div>
-        <label className="products-archive-toggle"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Arşivlenenleri göster</label>
+        <div><p className="products-eyebrow">{t('ÜRÜN VE STOK')}</p><h1>{t('Ürün kataloğu')}</h1><p>{t('Satış fiyatı ve stok hareketleri sunucu kayıtlarından yönetilir.')}</p></div>
+        <label className="products-archive-toggle"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> {t('Arşivlenenleri göster')}</label>
       </header>
 
       {notice && <div className="products-notice" role="status">{notice}</div>}
       {pendingWrite && <div className="products-notice" role="alert">
-        <strong>Sonucu belirsiz işlem korunuyor.</strong>{' '}
+        <strong>{t('Sonucu belirsiz işlem korunuyor.')}</strong>{' '}
         {pendingWrite.businessId === activeBusinessId
-          ? <button disabled={busy} onClick={() => void retryPendingWrite()}>Kayıtlı isteği doğrula</button>
-          : <span>İşlemin başladığı işletmeye dönün.</span>}
+          ? <button disabled={busy} onClick={() => void retryPendingWrite()}>{t('Kayıtlı isteği doğrula')}</button>
+          : <span>{t('İşlemin başladığı işletmeye dönün.')}</span>}
       </div>}
 
       <section className="products-grid">
         <article className="products-card products-create">
-          <h2>Yeni ürün</h2>
+          <h2>{t('Yeni ürün')}</h2>
           <form className="products-form" onSubmit={createProduct}>
-            <label>Ürün adı<input name="name" required minLength={1} maxLength={120} /></label>
-            <label>Ürün kodu<input name="code" maxLength={64} placeholder="Örn. SAMP-001" /></label>
-            <label>Satış fiyatı<input name="price" inputMode="decimal" required placeholder="250,00" /></label>
-            <label>Başlangıç stoğu<input name="initialQuantity" inputMode="numeric" required defaultValue="0" /></label>
-            <button disabled={busy}>Ürünü oluştur</button>
+            <label>{t('Ürün adı')}<input name="name" required minLength={1} maxLength={120} /></label>
+            <label>{t('Ürün kodu')}<input name="code" maxLength={64} placeholder={t('Örn. SAMP-001')} /></label>
+            <label>{t('Satış fiyatı')}<input name="price" inputMode="decimal" required placeholder="250,00" /></label>
+            <label>{t('Başlangıç stoğu')}<input name="initialQuantity" inputMode="numeric" required defaultValue="0" /></label>
+            <button disabled={busy}>{t('Ürünü oluştur')}</button>
           </form>
         </article>
 
         <article className="products-card">
-          <h2>Ürünler</h2>
-          {loading ? <p>Ürünler yükleniyor…</p> : products.length === 0 ? <p>Henüz ürün yok.</p> : (
+          <h2>{t('Ürünler')}</h2>
+          {loading ? <p>{t('Ürünler yükleniyor…')}</p> : products.length === 0 ? <p>{t('Henüz ürün yok.')}</p> : (
             <ul className="products-list">{products.map((product) => (
               <li key={product.productId}>
                 <button type="button" className={selectedId === product.productId ? 'selected' : ''} onClick={() => setSelectedId(product.productId)}>
                   <strong>{product.name}</strong>
-                  <span>{product.code ?? 'Kodsuz'} · {money(product.salePriceMinor, product.currency)}</span>
-                  <span>Stok: {product.stockOnHand} adet {product.active ? '' : '· Arşivde'}</span>
+                  <span>{product.code ?? t('Kodsuz')} · {money(product.salePriceMinor, product.currency)}</span>
+                  <span>{product.active ? t('Stok: {count} adet', { count: product.stockOnHand }) : t('Stok: {count} adet · Arşivde', { count: product.stockOnHand })}</span>
                 </button>
               </li>
             ))}</ul>
           )}
-          {page?.hasMore && <button className="products-more" disabled={busy} onClick={() => void loadProducts(page.nextCursor, true)}>Daha fazla</button>}
+          {page?.hasMore && <button className="products-more" disabled={busy} onClick={() => void loadProducts(page.nextCursor, true)}>{t('Daha fazla')}</button>}
         </article>
 
         <article className="products-card products-detail">
-          {!selected ? <div className="products-empty"><h2>Ürün seçin</h2><p>Ürün bilgileri ve stok hareketleri burada görünür.</p></div> : <>
-            <div className="products-detail-head"><div><p className="products-eyebrow">{selected.code ?? 'KODSUZ'}</p><h2>{selected.name}</h2></div><strong>{selected.stockOnHand} adet</strong></div>
+          {!selected ? <div className="products-empty"><h2>{t('Ürün seçin')}</h2><p>{t('Ürün bilgileri ve stok hareketleri burada görünür.')}</p></div> : <>
+            <div className="products-detail-head"><div><p className="products-eyebrow">{selected.code ?? 'KODSUZ'}</p><h2>{selected.name}</h2></div><strong>{t('{stockOnHand} adet', { stockOnHand: selected.stockOnHand })}</strong></div>
 
             {selected.active && <>
               <form key={`edit-${selected.productId}-${selected.version}`} className="products-form products-edit" onSubmit={updateProduct}>
-                <label>Ürün adı<input name="name" defaultValue={selected.name} required maxLength={120} /></label>
-                <label>Ürün kodu<input name="code" defaultValue={selected.code ?? ''} maxLength={64} /></label>
-                <label>Satış fiyatı<input name="price" inputMode="decimal" defaultValue={(selected.salePriceMinor / 100).toFixed(2)} required /></label>
-                <button disabled={busy}>Bilgileri kaydet</button>
+                <label>{t('Ürün adı')}<input name="name" defaultValue={selected.name} required maxLength={120} /></label>
+                <label>{t('Ürün kodu')}<input name="code" defaultValue={selected.code ?? ''} maxLength={64} /></label>
+                <label>{t('Satış fiyatı')}<input name="price" inputMode="decimal" defaultValue={(selected.salePriceMinor / 100).toFixed(2)} required /></label>
+                <button disabled={busy}>{t('Bilgileri kaydet')}</button>
               </form>
 
               <form className="products-form products-stock-form" onSubmit={stockMovement}>
-                <label>Hareket<select name="kind" defaultValue="receipt"><option value="receipt">Stok girişi</option><option value="adjustment">Sayım düzeltmesi</option></select></label>
-                <label>Miktar<input name="quantity" inputMode="numeric" required placeholder="5 veya -2" /></label>
-                <label>Gerekçe<input name="reason" maxLength={240} placeholder="Düzeltmede zorunlu" /></label>
-                <button disabled={busy}>Stok hareketini kaydet</button>
+                <label>{t('Hareket')}<select name="kind" defaultValue="receipt"><option value="receipt">{t('Stok girişi')}</option><option value="adjustment">{t('Sayım düzeltmesi')}</option></select></label>
+                <label>{t('Miktar')}<input name="quantity" inputMode="numeric" required placeholder={t('5 veya -2')} /></label>
+                <label>{t('Gerekçe')}<input name="reason" maxLength={240} placeholder={t('Düzeltmede zorunlu')} /></label>
+                <button disabled={busy}>{t('Stok hareketini kaydet')}</button>
               </form>
 
-              <button className="products-danger" disabled={busy} onClick={() => void archive()}>Ürünü arşivle</button>
+              <button className="products-danger" disabled={busy} onClick={() => void archive()}>{t('Ürünü arşivle')}</button>
             </>}
 
             <section className="products-movements">
-              <h3>Stok hareketleri</h3>
-              {movements.length === 0 ? <p>Henüz stok hareketi yok.</p> : <ol>{movements.map((movement) => (
+              <h3>{t('Stok hareketleri')}</h3>
+              {movements.length === 0 ? <p>{t('Henüz stok hareketi yok.')}</p> : <ol>{movements.map((movement) => (
                 <li key={movement.movementId}>
-                  <span><strong>{movement.kind === 'initial' ? 'Başlangıç' : movement.kind === 'receipt' ? 'Giriş' : movement.kind === 'adjustment' ? 'Düzeltme' : 'Reversal'}</strong><small>{new Date(movement.createdAt).toLocaleString('tr-TR')}</small></span>
+                  <span><strong>{movement.kind === 'initial' ? t('Başlangıç') : movement.kind === 'receipt' ? t('Giriş') : movement.kind === 'adjustment' ? t('Düzeltme') : t('Reversal')}</strong><small>{new Date(movement.createdAt).toLocaleString(intlLocale())}</small></span>
                   <span className={movement.quantityDelta > 0 ? 'positive' : 'negative'}>{movement.quantityDelta > 0 ? '+' : ''}{movement.quantityDelta} → {movement.balanceAfter}</span>
                   {movement.reason && <small>{movement.reason}</small>}
                 </li>

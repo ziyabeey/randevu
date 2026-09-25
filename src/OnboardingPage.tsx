@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
 import { formatLocalDate, formatTry, onboardingCopy as copy } from './onboardingLocale';
@@ -106,7 +107,7 @@ export default function OnboardingPage() {
     } catch (error) {
       if (controller.signal.aborted || generation !== requestGeneration.current) return;
       setSnapshot(null);
-      setNotice(errorMessage(error, copy.reloadFailed));
+      setNotice(errorMessage(error, t(copy.reloadFailed)));
     }
   }, [replaceReadRequest]);
 
@@ -117,13 +118,13 @@ export default function OnboardingPage() {
       const next = await api<Snapshot>('/api/onboarding', { signal: controller.signal });
       if (generation !== requestGeneration.current) return;
       if (next.membership.business_id !== activeBusinessId) {
-        throw new Error('Kurulum bilgileri güncel işletme bağlamıyla eşleşmiyor.');
+        throw new Error(t('Kurulum bilgileri güncel işletme bağlamıyla eşleşmiyor.'));
       }
       setSnapshot(next);
     } catch (error) {
       if (!controller.signal.aborted && generation === requestGeneration.current) {
         setSnapshot(null);
-        setNotice(errorMessage(error, copy.reloadFailed));
+        setNotice(errorMessage(error, t(copy.reloadFailed)));
       }
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
@@ -143,12 +144,12 @@ export default function OnboardingPage() {
     if (!snapshot) return [];
     const r = snapshot.readiness;
     return [
-      { label: copy.business, done: true },
-      { label: copy.service, done: r.has_active_service },
-      { label: copy.staff, done: r.has_active_staff && r.has_active_assignment },
-      { label: copy.hours, done: r.has_business_hours && r.has_staff_hours && r.has_overlapping_hours },
-      { label: copy.preview, done: r.publishable },
-      { label: copy.publish, done: snapshot.settings.enabled && r.publishable },
+      { label: t(copy.business), done: true },
+      { label: t(copy.service), done: r.has_active_service },
+      { label: t(copy.staff), done: r.has_active_staff && r.has_active_assignment },
+      { label: t(copy.hours), done: r.has_business_hours && r.has_staff_hours && r.has_overlapping_hours },
+      { label: t(copy.preview), done: r.publishable },
+      { label: t(copy.publish), done: snapshot.settings.enabled && r.publishable },
     ];
   }, [snapshot]);
 
@@ -165,10 +166,10 @@ export default function OnboardingPage() {
         body: JSON.stringify({ name: data.get('name'), timezone: 'Europe/Istanbul' }),
       });
       await refreshSession();
-      setNotice('İşletme oluşturuldu. Üst menüden seçerek kurulumuna devam edebilirsiniz.');
+      setNotice(t('İşletme oluşturuldu. Üst menüden seçerek kurulumuna devam edebilirsiniz.'));
       setBusy(false);
     } catch (error) {
-      setNotice(errorMessage(error, 'İşletme oluşturulamadı.'));
+      setNotice(errorMessage(error, t('İşletme oluşturulamadı.')));
       setBusy(false);
     }
   }
@@ -200,10 +201,10 @@ export default function OnboardingPage() {
         }),
       });
       form.reset();
-      setNotice(copy.serviceCreated);
+      setNotice(t(copy.serviceCreated));
       await loadSnapshot(snapshot.business.id);
     } catch (error) {
-      setNotice(errorMessage(error, 'Hizmet eklenemedi.'));
+      setNotice(errorMessage(error, t('Hizmet eklenemedi.')));
     } finally {
       setBusy(false);
     }
@@ -224,7 +225,7 @@ export default function OnboardingPage() {
         method: 'POST',
         body: JSON.stringify({ name: data.get('name'), phone: data.get('phone') }),
       });
-      if (!result.staff?.id) throw new Error('Personel kaydı doğrulanamadı.');
+      if (!result.staff?.id) throw new Error(t('Personel kaydı doğrulanamadı.'));
 
       if (serviceId) {
         await api(`/api/staff/${result.staff.id}/services/${serviceId}`, {
@@ -240,15 +241,15 @@ export default function OnboardingPage() {
             body: JSON.stringify({ membershipId: snapshot.membership.id }),
           });
         } catch {
-          partialNotice = 'Personel eklendi; hesap bağlantısı tamamlanamadı. Kurulumdan devam edebilir veya aşağıdan yeniden bağlayabilirsiniz.';
+          partialNotice = t('Personel eklendi; hesap bağlantısı tamamlanamadı. Kurulumdan devam edebilir veya aşağıdan yeniden bağlayabilirsiniz.');
         }
       }
 
       form.reset();
-      setNotice(partialNotice || copy.staffCreated);
+      setNotice(partialNotice || t(copy.staffCreated));
       await loadSnapshot(snapshot.business.id);
     } catch (error) {
-      setNotice(errorMessage(error, 'Personel eklenemedi.'));
+      setNotice(errorMessage(error, t('Personel eklenemedi.')));
       await loadSnapshot(snapshot.business.id);
     } finally {
       setBusy(false);
@@ -264,10 +265,10 @@ export default function OnboardingPage() {
         method: 'PUT',
         body: JSON.stringify({ membershipId: snapshot.membership.id }),
       });
-      setNotice('Personel kaydı hesabınıza bağlandı.');
+      setNotice(t('Personel kaydı hesabınıza bağlandı.'));
       await loadSnapshot(snapshot.business.id);
     } catch (error) {
-      setNotice(errorMessage(error, 'Personel-hesap bağlantısı tamamlanamadı.'));
+      setNotice(errorMessage(error, t('Personel-hesap bağlantısı tamamlanamadı.')));
     } finally {
       setBusy(false);
     }
@@ -294,10 +295,10 @@ export default function OnboardingPage() {
         method: 'PUT',
         body: JSON.stringify({ intervals: [{ start: staffStart, end: staffEnd }] }),
       });
-      setNotice(copy.hoursSaved);
+      setNotice(t(copy.hoursSaved));
       await loadSnapshot(snapshot.business.id);
     } catch (error) {
-      setNotice(errorMessage(error, 'Çalışma saatleri tamamen kaydedilemedi. Kaydedilen adımlar korunur; değerleri kontrol edip yeniden deneyin.'));
+      setNotice(errorMessage(error, t('Çalışma saatleri tamamen kaydedilemedi. Kaydedilen adımlar korunur; değerleri kontrol edip yeniden deneyin.')));
       await loadSnapshot(snapshot.business.id);
     } finally {
       setBusy(false);
@@ -320,7 +321,7 @@ export default function OnboardingPage() {
     } catch (error) {
       setSlots([]);
       setPreviewedDate(date);
-      setNotice(errorMessage(error, 'Saat önizlemesi alınamadı.'));
+      setNotice(errorMessage(error, t('Saat önizlemesi alınamadı.')));
     } finally {
       setBusy(false);
     }
@@ -340,13 +341,13 @@ export default function OnboardingPage() {
           horizonDays: snapshot.settings.horizon_days,
         }),
       });
-      setNotice(enabled ? copy.published : 'Rezervasyon sayfası yayından kaldırıldı.');
+      setNotice(enabled ? t(copy.published) : t('Rezervasyon sayfası yayından kaldırıldı.'));
       await loadSnapshot(snapshot.business.id);
     } catch (error) {
       if (error instanceof ApiRequestError && !snapshot.readiness.publishable) {
-        setNotice(copy.publicNotReady);
+        setNotice(t(copy.publicNotReady));
       } else {
-        setNotice(errorMessage(error, 'Yayın durumu güncellenemedi.'));
+        setNotice(errorMessage(error, t('Yayın durumu güncellenemedi.')));
       }
     } finally {
       setBusy(false);
@@ -354,7 +355,7 @@ export default function OnboardingPage() {
   }
 
   if (loading) {
-    return <main className="setup-shell"><section className="setup-card"><p>Kurulum bilgileri hazırlanıyor…</p></section></main>;
+    return <main className="setup-shell"><section className="setup-card"><p>{t('Kurulum bilgileri hazırlanıyor…')}</p></section></main>;
   }
 
   const selectedMembership = activeMembership;
@@ -363,19 +364,19 @@ export default function OnboardingPage() {
     <main className="setup-shell">
       <header className="setup-hero">
         <div>
-          <p className="setup-eyebrow">{copy.eyebrow}</p>
-          <h1>{copy.title}</h1>
-          <p>{copy.subtitle}</p>
+          <p className="setup-eyebrow">{t(copy.eyebrow)}</p>
+          <h1>{t(copy.title)}</h1>
+          <p>{t(copy.subtitle)}</p>
         </div>
-        <a className="setup-secondary-link" href="/app">Çalışma alanına dön</a>
+        <a className="setup-secondary-link" href="/app">{t('Çalışma alanına dön')}</a>
       </header>
 
       {notice && <div className="setup-notice" role="status">{notice}</div>}
 
       <section className="setup-card setup-business-switcher">
         <div className="setup-section-head">
-          <div><p className="setup-eyebrow">{copy.business}</p><h2>{selectedMembership?.businesses?.name ?? 'İşletmenizi seçin'}</h2></div>
-          {selectedMembership && <span className="setup-role">{selectedMembership.role === 'owner' ? 'İşletme sahibi' : selectedMembership.role === 'manager' ? 'Yönetici' : 'Çalışan'}</span>}
+          <div><p className="setup-eyebrow">{t(copy.business)}</p><h2>{selectedMembership?.businesses?.name ?? t('İşletmenizi seçin')}</h2></div>
+          {selectedMembership && <span className="setup-role">{selectedMembership.role === 'owner' ? t('İşletme sahibi') : selectedMembership.role === 'manager' ? t('Yönetici') : t('Çalışan')}</span>}
         </div>
         <div className="setup-business-grid">
           {session.memberships.map((membership) => (
@@ -386,28 +387,28 @@ export default function OnboardingPage() {
               key={membership.id}
               onClick={() => void switchBusiness(membership.business_id)}
             >
-              <strong>{membership.businesses?.name ?? 'İşletme'}</strong>
-              <span>{membership.business_id === activeBusinessId ? 'Şu an seçili' : copy.selectBusiness}</span>
+              <strong>{membership.businesses?.name ?? t('İşletme')}</strong>
+              <span>{membership.business_id === activeBusinessId ? t('Şu an seçili') : t(copy.selectBusiness)}</span>
             </button>
           ))}
         </div>
         <details className="setup-create-business" open={session.memberships.length === 0}>
-          <summary>{copy.createBusiness}</summary>
+          <summary>{t(copy.createBusiness)}</summary>
           <form className="setup-inline-form" onSubmit={createBusiness}>
-            <label>İşletme adı<input name="name" minLength={2} maxLength={120} required placeholder="Örn. Lotus Studio" /></label>
-            <button disabled={busy}>Oluştur</button>
+            <label>{t('İşletme adı')}<input name="name" minLength={2} maxLength={120} required placeholder={t('Örn. Lotus Studio')} /></label>
+            <button disabled={busy}>{t('Oluştur')}</button>
           </form>
         </details>
       </section>
 
       {!snapshot ? (
         <section className="setup-card">
-          <h2>{copy.switchBusiness}</h2>
-          <p>{session.memberships.length ? 'Kuruluma devam etmek için yukarıdan yetkili olduğunuz bir işletmeyi seçin.' : copy.noBusiness}</p>
+          <h2>{t(copy.switchBusiness)}</h2>
+          <p>{session.memberships.length ? t('Kuruluma devam etmek için yukarıdan yetkili olduğunuz bir işletmeyi seçin.') : t(copy.noBusiness)}</p>
         </section>
       ) : (
         <>
-          <ol className="setup-progress" aria-label="Kurulum adımları">
+          <ol className="setup-progress" aria-label={t('Kurulum adımları')}>
             {steps.map((step, index) => (
               <li className={step.done ? 'done' : ''} key={step.label}>
                 <span>{step.done ? '✓' : index + 1}</span><strong>{step.label}</strong>
@@ -416,81 +417,81 @@ export default function OnboardingPage() {
           </ol>
 
           {!canManage && (
-            <section className="setup-card"><h2>Kurulumu görüntülüyorsunuz</h2><p>Hizmet, personel, çalışma saatleri ve yayın ayarlarını owner veya yönetici değiştirebilir.</p></section>
+            <section className="setup-card"><h2>{t('Kurulumu görüntülüyorsunuz')}</h2><p>{t('Hizmet, personel, çalışma saatleri ve yayın ayarlarını owner veya yönetici değiştirebilir.')}</p></section>
           )}
 
           <section className="setup-card" id="service-step">
-            <div className="setup-section-head"><div><p className="setup-eyebrow">2 · {copy.service}</p><h2>Müşterinin seçebileceği ilk hizmet</h2></div><span>{activeServices.length} aktif</span></div>
-            {activeServices.length > 0 && <ul className="setup-list">{activeServices.map((service) => <li key={service.id}><strong>{service.name}</strong><span>{service.duration_minutes} dk · {formatTry(service.price_minor)}</span></li>)}</ul>}
+            <div className="setup-section-head"><div><p className="setup-eyebrow">2 · {t(copy.service)}</p><h2>{t('Müşterinin seçebileceği ilk hizmet')}</h2></div><span>{t('{length} aktif', { length: activeServices.length })}</span></div>
+            {activeServices.length > 0 && <ul className="setup-list">{activeServices.map((service) => <li key={service.id}><strong>{service.name}</strong><span>{t('{duration_minutes} dk · {price_minor}', { duration_minutes: service.duration_minutes, price_minor: formatTry(service.price_minor) })}</span></li>)}</ul>}
             {canManage && (
               <form className="setup-grid-form" onSubmit={createService}>
-                <label>Hizmet adı<input name="name" required minLength={2} placeholder="Örn. Saç kesimi" /></label>
-                <label>Süre (dk)<input name="duration" type="number" min={5} max={720} defaultValue={30} required /></label>
-                <label>Fiyat (TL)<input name="price" inputMode="decimal" defaultValue="0" required /></label>
-                <button disabled={busy}>{copy.createService}</button>
+                <label>{t('Hizmet adı')}<input name="name" required minLength={2} placeholder={t('Örn. Saç kesimi')} /></label>
+                <label>{t('Süre (dk)')}<input name="duration" type="number" min={5} max={720} defaultValue={30} required /></label>
+                <label>{t('Fiyat (TL)')}<input name="price" inputMode="decimal" defaultValue="0" required /></label>
+                <button disabled={busy}>{t(copy.createService)}</button>
               </form>
             )}
           </section>
 
           <section className="setup-card" id="staff-step">
-            <div className="setup-section-head"><div><p className="setup-eyebrow">3 · {copy.staff}</p><h2>Hizmeti verecek kişi</h2></div><span>{activeStaff.length} aktif</span></div>
+            <div className="setup-section-head"><div><p className="setup-eyebrow">3 · {t(copy.staff)}</p><h2>{t('Hizmeti verecek kişi')}</h2></div><span>{t('{length} aktif', { length: activeStaff.length })}</span></div>
             {activeStaff.length > 0 && <ul className="setup-list">{activeStaff.map((person) => {
               const assignedNames = activeServices.filter((service) => snapshot.assignments.some((item) => item.active && item.staff_id === person.id && item.service_id === service.id)).map((service) => service.name);
-              return <li key={person.id}><div><strong>{person.name}</strong><span>{assignedNames.length ? assignedNames.join(', ') : 'Henüz hizmet eşleşmesi yok'}</span></div>{snapshot.membership.role === 'owner' && !person.membership_id && <button className="setup-small-button" type="button" disabled={busy} onClick={() => void linkOwner(person.id)}>{copy.linkOwner}</button>}</li>;
+              return <li key={person.id}><div><strong>{person.name}</strong><span>{assignedNames.length ? assignedNames.join(', ') : t('Henüz hizmet eşleşmesi yok')}</span></div>{snapshot.membership.role === 'owner' && !person.membership_id && <button className="setup-small-button" type="button" disabled={busy} onClick={() => void linkOwner(person.id)}>{t(copy.linkOwner)}</button>}</li>;
             })}</ul>}
             {canManage && activeServices.length > 0 && (
               <form className="setup-grid-form" onSubmit={createStaff}>
-                <label>Personel adı<input name="name" required minLength={2} defaultValue={snapshot.membership.role === 'owner' ? session.user?.fullName ?? '' : ''} /></label>
-                <label>Telefon<input name="phone" placeholder="İsteğe bağlı" /></label>
-                <label>Hizmet<select name="serviceId" required defaultValue={activeServices[0]?.id}>{activeServices.map((service) => <option value={service.id} key={service.id}>{service.name}</option>)}</select></label>
-                {snapshot.membership.role === 'owner' && <label className="setup-check"><input type="checkbox" name="ownerAsStaff" />{copy.ownerAsStaff}</label>}
-                <button disabled={busy}>{copy.createStaff}</button>
+                <label>{t('Personel adı')}<input name="name" required minLength={2} defaultValue={snapshot.membership.role === 'owner' ? session.user?.fullName ?? '' : ''} /></label>
+                <label>{t('Telefon')}<input name="phone" placeholder={t('İsteğe bağlı')} /></label>
+                <label>{t('Hizmet')}<select name="serviceId" required defaultValue={activeServices[0]?.id}>{activeServices.map((service) => <option value={service.id} key={service.id}>{service.name}</option>)}</select></label>
+                {snapshot.membership.role === 'owner' && <label className="setup-check"><input type="checkbox" name="ownerAsStaff" />{t(copy.ownerAsStaff)}</label>}
+                <button disabled={busy}>{t(copy.createStaff)}</button>
               </form>
             )}
-            {canManage && activeServices.length === 0 && <p className="setup-muted">Personel eklemeden önce en az bir hizmet oluşturun.</p>}
+            {canManage && activeServices.length === 0 && <p className="setup-muted">{t('Personel eklemeden önce en az bir hizmet oluşturun.')}</p>}
           </section>
 
           <section className="setup-card" id="hours-step">
-            <div className="setup-section-head"><div><p className="setup-eyebrow">4 · {copy.hours}</p><h2>İlk ortak çalışma aralığını oluşturun</h2></div><span>{snapshot.readiness.has_overlapping_hours ? 'Ortak saat var' : 'Ortak saat gerekli'}</span></div>
-            {snapshot.businessHours.length > 0 && <p className="setup-muted">İşletme: {snapshot.businessHours.map((row) => `${weekdayLabels[row.weekday]} ${row.starts_local.slice(0, 5)}–${row.ends_local.slice(0, 5)}`).join(' · ')}</p>}
+            <div className="setup-section-head"><div><p className="setup-eyebrow">4 · {t(copy.hours)}</p><h2>{t('İlk ortak çalışma aralığını oluşturun')}</h2></div><span>{snapshot.readiness.has_overlapping_hours ? t('Ortak saat var') : t('Ortak saat gerekli')}</span></div>
+            {snapshot.businessHours.length > 0 && <p className="setup-muted">{t('İşletme: {hours}', { hours: snapshot.businessHours.map((row) => `${t(weekdayLabels[row.weekday] ?? '')} ${row.starts_local.slice(0, 5)}–${row.ends_local.slice(0, 5)}`).join(' · ') })}</p>}
             {canManage && activeStaff.length > 0 && (
               <form className="setup-grid-form" onSubmit={saveHours}>
-                <label>Gün<select name="weekday" defaultValue="1">{weekdayLabels.map((label, value) => <option value={value} key={label}>{label}</option>)}</select></label>
-                <label>Personel<select name="staffId" required defaultValue={activeStaff[0]?.id}>{activeStaff.map((person) => <option value={person.id} key={person.id}>{person.name}</option>)}</select></label>
-                <label>İşletme açılış<input type="time" name="businessStart" defaultValue="09:00" required /></label>
-                <label>İşletme kapanış<input type="time" name="businessEnd" defaultValue="18:00" required /></label>
-                <label>Personel başlangıç<input type="time" name="staffStart" defaultValue="09:00" required /></label>
-                <label>Personel bitiş<input type="time" name="staffEnd" defaultValue="18:00" required /></label>
-                <button disabled={busy}>{copy.saveHours}</button>
+                <label>{t('Gün')}<select name="weekday" defaultValue="1">{weekdayLabels.map((label, value) => <option value={value} key={label}>{t(label)}</option>)}</select></label>
+                <label>{t('Personel')}<select name="staffId" required defaultValue={activeStaff[0]?.id}>{activeStaff.map((person) => <option value={person.id} key={person.id}>{person.name}</option>)}</select></label>
+                <label>{t('İşletme açılış')}<input type="time" name="businessStart" defaultValue="09:00" required /></label>
+                <label>{t('İşletme kapanış')}<input type="time" name="businessEnd" defaultValue="18:00" required /></label>
+                <label>{t('Personel başlangıç')}<input type="time" name="staffStart" defaultValue="09:00" required /></label>
+                <label>{t('Personel bitiş')}<input type="time" name="staffEnd" defaultValue="18:00" required /></label>
+                <button disabled={busy}>{t(copy.saveHours)}</button>
               </form>
             )}
           </section>
 
           <section className="setup-card" id="preview-step">
-            <div className="setup-section-head"><div><p className="setup-eyebrow">5 · {copy.preview}</p><h2>Müşteri akışını kontrol edin</h2></div><span>{snapshot.readiness.publishable ? copy.publicReady : copy.publicNotReady}</span></div>
+            <div className="setup-section-head"><div><p className="setup-eyebrow">5 · {t(copy.preview)}</p><h2>{t('Müşteri akışını kontrol edin')}</h2></div><span>{snapshot.readiness.publishable ? t(copy.publicReady) : t(copy.publicNotReady)}</span></div>
             <div className="setup-preview-card">
               <strong>{snapshot.business.name}</strong>
               <span>/r/{snapshot.business.slug}</span>
-              <p>{activeServices.length ? `${activeServices.length} hizmet · ${activeStaff.length} personel` : 'Hizmet bilgisi bekleniyor'}</p>
-              {!snapshot.readiness.publishable && <ul>{snapshot.readiness.missing_reasons.map((reason) => <li key={reason}>{copy.missing[reason] ?? 'Bir kurulum adımını tamamlayın.'}</li>)}</ul>}
+              <p>{activeServices.length ? t('{services} hizmet · {staff} personel', { services: activeServices.length, staff: activeStaff.length }) : t('Hizmet bilgisi bekleniyor')}</p>
+              {!snapshot.readiness.publishable && <ul>{snapshot.readiness.missing_reasons.map((reason) => <li key={reason}>{t(copy.missing[reason] ?? 'Bir kurulum adımını tamamlayın.')}</li>)}</ul>}
             </div>
             {snapshot.readiness.publishable && activeServices.length > 0 && (
               <form className="setup-grid-form" onSubmit={previewSlots}>
-                <label>Hizmet<select name="serviceId" required defaultValue={activeServices[0]?.id}>{activeServices.map((service) => <option value={service.id} key={service.id}>{service.name}</option>)}</select></label>
-                <label>Personel<select name="staffId" defaultValue="any"><option value="any">Uygun herhangi biri</option>{activeStaff.map((person) => <option value={person.id} key={person.id}>{person.name}</option>)}</select></label>
-                <label>Tarih<input type="date" name="date" defaultValue={todayInputValue()} required /></label>
-                <button disabled={busy}>Saatleri önizle</button>
+                <label>{t('Hizmet')}<select name="serviceId" required defaultValue={activeServices[0]?.id}>{activeServices.map((service) => <option value={service.id} key={service.id}>{service.name}</option>)}</select></label>
+                <label>{t('Personel')}<select name="staffId" defaultValue="any"><option value="any">{t('Uygun herhangi biri')}</option>{activeStaff.map((person) => <option value={person.id} key={person.id}>{person.name}</option>)}</select></label>
+                <label>{t('Tarih')}<input type="date" name="date" defaultValue={todayInputValue()} required /></label>
+                <button disabled={busy}>{t('Saatleri önizle')}</button>
               </form>
             )}
-            {previewedDate && <div className="setup-slots"><h3>{formatLocalDate(previewedDate)}</h3>{slots.length ? slots.slice(0, 8).map((slot) => <span key={`${slot.staff_id}-${slot.starts_at}`}>{new Intl.DateTimeFormat('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: slot.timezone }).format(new Date(slot.starts_at))} · {slot.staff_name}</span>) : <p>{copy.previewEmpty}</p>}</div>}
+            {previewedDate && <div className="setup-slots"><h3>{formatLocalDate(previewedDate)}</h3>{slots.length ? slots.slice(0, 8).map((slot) => <span key={`${slot.staff_id}-${slot.starts_at}`}>{new Intl.DateTimeFormat(intlLocale(), { hour: '2-digit', minute: '2-digit', timeZone: slot.timezone }).format(new Date(slot.starts_at))} · {slot.staff_name}</span>) : <p>{t(copy.previewEmpty)}</p>}</div>}
           </section>
 
           <section className="setup-card" id="publish-step">
-            <div className="setup-section-head"><div><p className="setup-eyebrow">6 · {copy.publish}</p><h2>Rezervasyon sayfasını açın</h2></div><span className={snapshot.settings.enabled && snapshot.readiness.publishable ? 'setup-live' : 'setup-offline'}>{snapshot.settings.enabled && snapshot.readiness.publishable ? 'Yayında' : 'Kapalı'}</span></div>
-            <p>{snapshot.settings.enabled ? copy.published : copy.unpublished}</p>
-            {canManage && !snapshot.settings.enabled && <button className="setup-primary" type="button" disabled={busy || !snapshot.readiness.publishable} onClick={() => void setPublished(true)}>{copy.publishNow}</button>}
-            {canManage && snapshot.settings.enabled && <button className="setup-danger" type="button" disabled={busy} onClick={() => void setPublished(false)}>{copy.unpublish}</button>}
-            {snapshot.settings.enabled && snapshot.readiness.publishable && <a className="setup-secondary-link" href={`/r/${encodeURIComponent(snapshot.business.slug)}`}>Yayınlanan sayfayı aç</a>}
+            <div className="setup-section-head"><div><p className="setup-eyebrow">6 · {t(copy.publish)}</p><h2>{t('Rezervasyon sayfasını açın')}</h2></div><span className={snapshot.settings.enabled && snapshot.readiness.publishable ? 'setup-live' : 'setup-offline'}>{snapshot.settings.enabled && snapshot.readiness.publishable ? t('Yayında') : t('Kapalı')}</span></div>
+            <p>{snapshot.settings.enabled ? t(copy.published) : t(copy.unpublished)}</p>
+            {canManage && !snapshot.settings.enabled && <button className="setup-primary" type="button" disabled={busy || !snapshot.readiness.publishable} onClick={() => void setPublished(true)}>{t(copy.publishNow)}</button>}
+            {canManage && snapshot.settings.enabled && <button className="setup-danger" type="button" disabled={busy} onClick={() => void setPublished(false)}>{t(copy.unpublish)}</button>}
+            {snapshot.settings.enabled && snapshot.readiness.publishable && <a className="setup-secondary-link" href={`/r/${encodeURIComponent(snapshot.business.slug)}`}>{t('Yayınlanan sayfayı aç')}</a>}
           </section>
         </>
       )}

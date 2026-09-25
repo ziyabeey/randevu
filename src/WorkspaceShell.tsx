@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent, MouseEvent, ReactNode } from 'react';
 import { api, ApiRequestError } from './api';
+import AccountMenu from './AccountMenu';
+import { t } from './i18n';
 import { kolayAppTabFromWorkspacePage, navigateApp, workspaceHref, type WorkspacePage } from './workspace-route';
 import {
   WorkspaceProvider,
@@ -69,10 +71,10 @@ function WorkspaceOutlet({ page }: { page: WorkspacePage }) {
   return (
     <main className="workspace-page">
       <section className="panel workspace-not-found">
-        <p className="eyebrow">SAYFA BULUNAMADI</p>
-        <h1>Bu çalışma alanı yolu bulunamadı</h1>
-        <p className="muted">Takvime dönüp işletme çalışmalarınıza devam edebilirsiniz.</p>
-        <WorkspaceLink href="/app/calendar">Takvime dön</WorkspaceLink>
+        <p className="eyebrow">{t('SAYFA BULUNAMADI')}</p>
+        <h1>{t('Bu çalışma alanı yolu bulunamadı')}</h1>
+        <p className="muted">{t('Takvime dönüp işletme çalışmalarınıza devam edebilirsiniz.')}</p>
+        <WorkspaceLink href="/app/calendar">{t('Takvime dön')}</WorkspaceLink>
       </section>
     </main>
   );
@@ -107,7 +109,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
         setSession(null);
         setSessionUnavailable(false);
       }
-      setNotice(error instanceof Error ? error.message : 'Bağlantı kurulamadı.');
+      setNotice(error instanceof Error ? error.message : t('Bağlantı kurulamadı.'));
     } finally {
       setLoading(false);
     }
@@ -118,14 +120,14 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
     const authResult = params.get('auth');
     if (!authResult) return;
     if (authResult === 'confirmed') {
-      setNotice('E-posta adresiniz doğrulandı. Hesabınız hazır.');
+      setNotice(t('E-posta adresiniz doğrulandı. Hesabınız hazır.'));
     } else if (authResult === 'recovery') {
-      setNotice('Kurtarma bağlantısı doğrulandı. Şimdi yeni parolanızı belirleyin.');
+      setNotice(t('Kurtarma bağlantısı doğrulandı. Şimdi yeni parolanızı belirleyin.'));
       setShowPasswordChange(true);
     } else if (authResult === 'unavailable') {
-      setNotice('Hesap servisine şu anda ulaşılamıyor. Bağlantıyı kısa süre sonra yeniden açın.');
+      setNotice(t('Hesap servisine şu anda ulaşılamıyor. Bağlantıyı kısa süre sonra yeniden açın.'));
     } else {
-      setNotice('Doğrulama bağlantısı geçersiz veya süresi dolmuş. Yeni bir bağlantı isteyin.');
+      setNotice(t('Doğrulama bağlantısı geçersiz veya süresi dolmuş. Yeni bir bağlantı isteyin.'));
     }
     params.delete('auth');
     const query = params.toString();
@@ -160,7 +162,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
           }),
         });
         if (result.requiresEmailConfirmation) {
-          setNotice('Hesap oluşturuldu. E-postanızdaki doğrulama bağlantısını açtıktan sonra çalışma alanına girebilirsiniz.');
+          setNotice(t('Hesap oluşturuldu. E-postanızdaki doğrulama bağlantısını açtıktan sonra çalışma alanına girebilirsiniz.'));
           setAuthMode('login');
           return;
         }
@@ -172,7 +174,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
       }
       await refreshSession();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Hesap işlemi tamamlanamadı.');
+      setNotice(error instanceof Error ? error.message : t('Hesap işlemi tamamlanamadı.'));
     } finally { setBusy(false); }
   }
 
@@ -182,7 +184,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
     const password = String(data.get('password') ?? '');
     const confirmation = String(data.get('passwordConfirmation') ?? '');
     if (password !== confirmation) {
-      setNotice('Parola tekrarı eşleşmiyor.');
+      setNotice(t('Parola tekrarı eşleşmiyor.'));
       return;
     }
     setBusy(true);
@@ -193,10 +195,10 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
         body: JSON.stringify({ password }),
       });
       setShowPasswordChange(false);
-      setNotice('Parolanız güncellendi. Güvenliğiniz için yeniden giriş yapın.');
+      setNotice(t('Parolanız güncellendi. Güvenliğiniz için yeniden giriş yapın.'));
       await refreshSession();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Parola güncellenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Parola güncellenemedi.'));
     } finally { setBusy(false); }
   }
 
@@ -210,11 +212,11 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
         method: 'POST',
         body: JSON.stringify({ name: data.get('name'), timezone: 'Europe/Istanbul' }),
       });
-      setNotice('İşletme oluşturuldu. Devam etmek için işletmenizi seçin.');
+      setNotice(t('İşletme oluşturuldu. Devam etmek için işletmenizi seçin.'));
       setScopeEpoch((value) => value + 1);
       await refreshSession();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'İşletme oluşturulamadı.');
+      setNotice(error instanceof Error ? error.message : t('İşletme oluşturulamadı.'));
     } finally { setBusy(false); }
   }
 
@@ -231,13 +233,13 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
       });
       const verified = await refreshSession();
       if (verified.activeBusinessId !== businessId) {
-        throw new ApiRequestError('İşletme seçimi sunucuda doğrulanamadı.', 409, 'WORKSPACE_CONTEXT_CHANGED');
+        throw new ApiRequestError(t('İşletme seçimi sunucuda doğrulanamadı.'), 409, 'WORKSPACE_CONTEXT_CHANGED');
       }
       setScopeEpoch((value) => value + 1);
       navigateApp(options.to ?? '/app/calendar', { replace: true });
     } catch (error) {
       try { await refreshSession(); } catch { /* preserve the actionable selection error */ }
-      setNotice(error instanceof Error ? error.message : 'İşletme seçilemedi.');
+      setNotice(error instanceof Error ? error.message : t('İşletme seçilemedi.'));
       throw error;
     } finally {
       setScopeChanging(false);
@@ -257,7 +259,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
       await refreshSession();
       navigateApp('/app', { replace: true });
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Çıkış işlemi sunucuda doğrulanamadı. Yeniden giriş yapmadan önce tekrar deneyin.');
+      setNotice(error instanceof Error ? error.message : t('Çıkış işlemi sunucuda doğrulanamadı. Yeniden giriş yapmadan önce tekrar deneyin.'));
     } finally { setBusy(false); }
   }
 
@@ -276,15 +278,21 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
       scopeEpoch,
       refreshSession,
       selectBusiness,
+      account: {
+        openPasswordChange: () => setShowPasswordChange(true),
+        logout,
+      },
     };
+  // logout reads only setters and api; it is stable enough for the context.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMembership, ready, refreshSession, scopeEpoch, selectBusiness, session]);
 
-  if (loading && !session) return <main className="center-card"><p>Çalışma alanı hazırlanıyor…</p></main>;
+  if (loading && !session) return <main className="center-card"><p>{t('Çalışma alanı hazırlanıyor…')}</p></main>;
 
-  if (ready && contextValue && kolayTab) {
+  if (ready && contextValue && kolayTab && !showPasswordChange) {
     return (
       <WorkspaceProvider value={contextValue}>
-        <Suspense fallback={<main className="route-loading" aria-busy="true">KolayApp hazırlanıyor…</main>}>
+        <Suspense fallback={<main className="route-loading" aria-busy="true">{t('KolayApp hazırlanıyor…')}</main>}>
           <KolayAppSurface
             key={`${session?.activeBusinessId ?? 'none'}:${scopeEpoch}:${kolayTab}`}
             activeTab={kolayTab}
@@ -299,48 +307,56 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
   return (
     <div className="app-shell workspace-app-shell">
       <header className="app-header workspace-header">
-        <a className="brand" href="/app" aria-label="Randevu çalışma alanı">
+        <a className="brand" href="/app" aria-label={t('Randevu çalışma alanı')}>
           <span className="wordmark">yzt<span>.</span></span><span className="product-name">randevu</span>
         </a>
         {ready && session && activeMembership && (
           <div className="workspace-business">
             <label>
-              <span>İşletme</span>
+              <span>{t('İşletme')}</span>
               <select
-                aria-label="Aktif işletme"
+                aria-label={t('Aktif işletme')}
                 value={session.activeBusinessId ?? ''}
                 disabled={busy || scopeChanging}
                 onChange={(event) => void selectBusiness(event.target.value).catch(() => undefined)}
               >
                 {session.memberships.map((membership) => (
                   <option value={membership.business_id} key={membership.id}>
-                    {membership.businesses?.name ?? 'İşletme'}
+                    {membership.businesses?.name ?? t('İşletme')}
                   </option>
                 ))}
               </select>
             </label>
           </div>
         )}
-        {session?.user && (
+        {session?.user && (ready && session.activeBusinessId ? (
+          <AccountMenu
+            businessId={session.activeBusinessId}
+            email={session.user.email}
+            onChangePassword={() => setShowPasswordChange(true)}
+            onLogout={() => void logout()}
+            busy={busy}
+          />
+        ) : (
           <div className="header-actions">
-            {!passwordRequired && <button className="ghost-button" type="button" onClick={() => setShowPasswordChange(true)} disabled={busy}>Parolayı değiştir</button>}
-            <button className="ghost-button" type="button" onClick={() => void logout()} disabled={busy}>Çıkış yap</button>
+            {!passwordRequired && <button className="ghost-button" type="button" onClick={() => setShowPasswordChange(true)} disabled={busy}>{t('Parolayı değiştir')}</button>}
+            <button className="ghost-button" type="button" onClick={() => void logout()} disabled={busy}>{t('Çıkış yap')}</button>
           </div>
-        )}
+        ))}
       </header>
 
       {ready && (
         <>
-          <nav className="workspace-panel-nav" aria-label="İşletme menüsü">
+          <nav className="workspace-panel-nav" aria-label={t('İşletme menüsü')}>
             {NAV_ITEMS.map((item) => (
-              <WorkspaceLink href={workspaceHref(item.page)} active={page === item.page} key={item.page}>{item.label}</WorkspaceLink>
+              <WorkspaceLink href={workspaceHref(item.page)} active={page === item.page} key={item.page}>{t(item.label)}</WorkspaceLink>
             ))}
           </nav>
           <details className="workspace-mobile-nav">
-            <summary>İşletme menüsü</summary>
-            <nav aria-label="Mobil işletme menüsü">
+            <summary>{t('İşletme menüsü')}</summary>
+            <nav aria-label={t('Mobil işletme menüsü')}>
               {NAV_ITEMS.map((item) => (
-                <WorkspaceLink href={workspaceHref(item.page)} active={page === item.page} key={item.page}>{item.label}</WorkspaceLink>
+                <WorkspaceLink href={workspaceHref(item.page)} active={page === item.page} key={item.page}>{t(item.label)}</WorkspaceLink>
               ))}
             </nav>
           </details>
@@ -352,66 +368,66 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
 
         {sessionUnavailable && !session?.user ? (
           <section className="panel setup-panel workspace-gate">
-            <p className="eyebrow">OTURUM DOĞRULANIYOR</p>
-            <h1>Oturum durumu şu anda doğrulanamıyor</h1>
-            <p className="muted">Geçici bağlantı hatası girişinizi sonlandırmaz. Oturum servisine yeniden ulaştığımızda çalışma alanınız kaldığı yerden devam eder.</p>
-            <button className="primary-button" type="button" onClick={() => void load()} disabled={busy}>Tekrar dene</button>
+            <p className="eyebrow">{t('OTURUM DOĞRULANIYOR')}</p>
+            <h1>{t('Oturum durumu şu anda doğrulanamıyor')}</h1>
+            <p className="muted">{t('Geçici bağlantı hatası girişinizi sonlandırmaz. Oturum servisine yeniden ulaştığımızda çalışma alanınız kaldığı yerden devam eder.')}</p>
+            <button className="primary-button" type="button" onClick={() => void load()} disabled={busy}>{t('Tekrar dene')}</button>
           </section>
         ) : !session?.user ? (
           <section className="panel auth-panel workspace-gate">
-            <p className="eyebrow">GÜVENLİ HESAP ERİŞİMİ</p>
-            <h1>{authMode === 'login' ? 'Çalışma alanına girin' : authMode === 'signup' ? 'İşletme hesabınızı oluşturun' : 'Parolanızı yenileyin'}</h1>
+            <p className="eyebrow">{t('GÜVENLİ HESAP ERİŞİMİ')}</p>
+            <h1>{authMode === 'login' ? t('Çalışma alanına girin') : authMode === 'signup' ? t('İşletme hesabınızı oluşturun') : t('Parolanızı yenileyin')}</h1>
             <form className="form-stack" onSubmit={submitAuth}>
-              {authMode === 'signup' && <label>Ad soyad<input name="fullName" autoComplete="name" maxLength={120} /></label>}
-              <label>E-posta<input name="email" type="email" autoComplete="email" required /></label>
-              {authMode !== 'recovery' && <label>Parola<input name="password" type="password" minLength={10} maxLength={128} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} required /></label>}
-              <button className="primary-button" disabled={busy}>{authMode === 'login' ? 'Giriş yap' : authMode === 'signup' ? 'Hesap oluştur' : 'Kurtarma bağlantısı gönder'}</button>
+              {authMode === 'signup' && <label>{t('Ad soyad')}<input name="fullName" autoComplete="name" maxLength={120} /></label>}
+              <label>{t('E-posta')}<input name="email" type="email" autoComplete="email" required /></label>
+              {authMode !== 'recovery' && <label>{t('Parola')}<input name="password" type="password" minLength={10} maxLength={128} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} required /></label>}
+              <button className="primary-button" disabled={busy}>{authMode === 'login' ? t('Giriş yap') : authMode === 'signup' ? t('Hesap oluştur') : t('Kurtarma bağlantısı gönder')}</button>
             </form>
             <div className="auth-actions">
               {authMode === 'login' ? <>
-                <button className="text-button" type="button" onClick={() => setAuthMode('recovery')}>Parolamı unuttum</button>
-                <button className="text-button" type="button" onClick={() => setAuthMode('signup')}>Yeni işletme hesabı oluştur</button>
-              </> : <button className="text-button" type="button" onClick={() => setAuthMode('login')}>Giriş ekranına dön</button>}
+                <button className="text-button" type="button" onClick={() => setAuthMode('recovery')}>{t('Parolamı unuttum')}</button>
+                <button className="text-button" type="button" onClick={() => setAuthMode('signup')}>{t('Yeni işletme hesabı oluştur')}</button>
+              </> : <button className="text-button" type="button" onClick={() => setAuthMode('login')}>{t('Giriş ekranına dön')}</button>}
             </div>
           </section>
         ) : showPasswordPanel ? (
           <section className="panel auth-panel workspace-gate">
-            <p className="eyebrow">{passwordRequired ? 'PAROLA KURTARMA' : 'HESAP GÜVENLİĞİ'}</p>
-            <h1>Yeni parolanızı belirleyin</h1>
-            <p className="muted">En az 10 karakter kullanın. Değişiklikten sonra bütün açık oturumlar kapatılır.</p>
+            <p className="eyebrow">{passwordRequired ? t('PAROLA KURTARMA') : t('HESAP GÜVENLİĞİ')}</p>
+            <h1>{t('Yeni parolanızı belirleyin')}</h1>
+            <p className="muted">{t('En az 10 karakter kullanın. Değişiklikten sonra bütün açık oturumlar kapatılır.')}</p>
             <form className="form-stack" onSubmit={changePassword}>
-              <label>Yeni parola<input name="password" type="password" minLength={10} maxLength={128} autoComplete="new-password" required /></label>
-              <label>Yeni parola tekrar<input name="passwordConfirmation" type="password" minLength={10} maxLength={128} autoComplete="new-password" required /></label>
-              <button className="primary-button" disabled={busy}>Parolayı güncelle</button>
+              <label>{t('Yeni parola')}<input name="password" type="password" minLength={10} maxLength={128} autoComplete="new-password" required /></label>
+              <label>{t('Yeni parola tekrar')}<input name="passwordConfirmation" type="password" minLength={10} maxLength={128} autoComplete="new-password" required /></label>
+              <button className="primary-button" disabled={busy}>{t('Parolayı güncelle')}</button>
             </form>
-            {!passwordRequired && <button className="text-button" type="button" onClick={() => setShowPasswordChange(false)}>Vazgeç</button>}
+            {!passwordRequired && <button className="text-button" type="button" onClick={() => setShowPasswordChange(false)}>{t('Vazgeç')}</button>}
           </section>
         ) : session.memberships.length === 0 ? (
           <section className="panel setup-panel workspace-gate">
-            <p className="eyebrow">İLK KURULUM</p><h1>İşletmenizi oluşturun</h1>
-            <p className="muted">Hizmetleriniz, ekibiniz ve randevularınız bu işletme altında güvenle ayrılır.</p>
+            <p className="eyebrow">{t('İLK KURULUM')}</p><h1>{t('İşletmenizi oluşturun')}</h1>
+            <p className="muted">{t('Hizmetleriniz, ekibiniz ve randevularınız bu işletme altında güvenle ayrılır.')}</p>
             <form className="form-stack" onSubmit={createBusiness}>
-              <label>İşletme adı<input name="name" minLength={2} maxLength={120} required placeholder="Örn. YZT Studio" /></label>
-              <button className="primary-button" disabled={busy}>İşletmeyi oluştur</button>
+              <label>{t('İşletme adı')}<input name="name" minLength={2} maxLength={120} required placeholder={t('Örn. YZT Studio')} /></label>
+              <button className="primary-button" disabled={busy}>{t('İşletmeyi oluştur')}</button>
             </form>
           </section>
         ) : !activeMembership ? (
           <section className="panel setup-panel workspace-gate">
-            <p className="eyebrow">İŞLETME SEÇİMİ</p><h1>Hangi işletmede çalışacağız?</h1>
+            <p className="eyebrow">{t('İŞLETME SEÇİMİ')}</p><h1>Hangi işletmede çalışacağız?</h1>
             <div className="choice-list">
               {session.memberships.map((membership) => (
                 <button key={membership.id} className="choice-button" disabled={busy} onClick={() => void selectBusiness(membership.business_id).catch(() => undefined)}>
-                  <strong>{membership.businesses?.name ?? 'İşletme'}</strong><span>{membership.role === 'owner' ? 'İşletme sahibi' : membership.role === 'manager' ? 'Yönetici' : 'Çalışan'}</span>
+                  <strong>{membership.businesses?.name ?? t('İşletme')}</strong><span>{membership.role === 'owner' ? t('İşletme sahibi') : membership.role === 'manager' ? t('Yönetici') : t('Çalışan')}</span>
                 </button>
               ))}
             </div>
           </section>
         ) : scopeChanging || !contextValue ? (
-          <section className="panel workspace-gate"><p>İşletme bağlamı güncelleniyor…</p></section>
+          <section className="panel workspace-gate"><p>{t('İşletme bağlamı güncelleniyor…')}</p></section>
         ) : (
           <WorkspaceProvider value={contextValue}>
             <div className="workspace-outlet" key={`${session.activeBusinessId}:${scopeEpoch}`}>
-              <Suspense fallback={<main className="route-loading" aria-busy="true">Sayfa hazırlanıyor…</main>}>
+              <Suspense fallback={<main className="route-loading" aria-busy="true">{t('Sayfa hazırlanıyor…')}</main>}>
                 <WorkspaceOutlet page={page} />
               </Suspense>
             </div>
@@ -419,7 +435,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
         )}
       </div>
 
-      <footer className="app-footer">YZT Digital · Randevu çalışma alanı</footer>
+      <footer className="app-footer">{t('YZT Digital · Randevu çalışma alanı')}</footer>
     </div>
   );
 }

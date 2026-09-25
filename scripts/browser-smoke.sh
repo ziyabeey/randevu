@@ -82,3 +82,4 @@ CHROME_BIN="$CHROME_BIN" node scripts/browser-f13-workspace-shell.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f16-packages.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f16-promo.mjs
 CHROME_BIN="$CHROME_BIN" node scripts/browser-f16-commission.mjs
+CHROME_BIN="$CHROME_BIN" node scripts/browser-f16-account-language.mjs

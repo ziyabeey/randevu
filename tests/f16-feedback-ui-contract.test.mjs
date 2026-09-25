@@ -26,7 +26,7 @@ test('F16-04 customers review only through their management capability', () => {
 
 test('F16-04 public reviews are masked published rows with a real empty state', () => {
   assert.match(salon, /<PublicReviews slug=\{slug\} \/>/);
-  assert.match(salon, /href="#salon-yorumlar">Yorumlar</);
+  assert.match(salon, /href="#salon-yorumlar">\{t\('Yorumlar'\)\}</);
   assert.match(reviews, /Henüz yayınlanmış yorum yok\./);
   assert.match(reviews, /review\.displayName/);
   assert.doesNotMatch(reviews, /customerName|phone|email/i);

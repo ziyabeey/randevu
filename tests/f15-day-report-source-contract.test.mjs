@@ -53,5 +53,5 @@ test('F15-04 UI keeps cash movement, sales and outstanding as separate concepts'
   assert.match(page,/generation !== requestGeneration\.current/);
   assert.match(page,/requestGeneration\.current \+= 1/);
   assert.match(routes,/'\/app\/reports': 'reports'/);
-  assert.match(kolay,/AppLink href="\/app\/reports"><strong>Kasa<\/strong>/);
+  assert.match(kolay,/ActionLink href="\/app\/reports" title="Kasa"/);
 });

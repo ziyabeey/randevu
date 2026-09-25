@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import { api } from './api';
 import './public-promo.css';
 
@@ -33,16 +34,16 @@ const CODE = /^[A-Za-z0-9][A-Za-z0-9-]{2,31}$/;
 export function promoValueText(terms: Pick<PromoTerms, 'kind' | 'percentBps' | 'amountMinor' | 'currency'>) {
   if (terms.kind === 'percent' && terms.percentBps !== null) {
     const percent = terms.percentBps / 100;
-    return `%${Number.isInteger(percent) ? percent : percent.toFixed(2).replace('.', ',')} indirim`;
+    return t('%{percent} indirim', { percent: Number.isInteger(percent) ? percent : percent.toFixed(2).replace('.', ',') });
   }
   if (terms.kind === 'fixed' && terms.amountMinor !== null) {
     try {
-      return `${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: terms.currency ?? 'TRY' }).format(terms.amountMinor / 100)} indirim`;
+      return t('{amount} indirim', { amount: new Intl.NumberFormat(intlLocale(), { style: 'currency', currency: terms.currency ?? 'TRY' }).format(terms.amountMinor / 100) });
     } catch {
-      return `${(terms.amountMinor / 100).toFixed(2)} ${terms.currency ?? ''} indirim`;
+      return t('{amount} indirim', { amount: `${(terms.amountMinor / 100).toFixed(2)} ${terms.currency ?? ''}`.trim() });
     }
   }
-  return 'İndirim';
+  return t('İndirim');
 }
 
 function tokenFromManageUrl(value: string) {
@@ -75,7 +76,7 @@ export function PublicPromoField({ slug, serviceIds, onChange }: {
     if (!CODE.test(code)) {
       setTerms(null);
       onChange(null);
-      setMessage('Kampanya kodu 3–32 harf, rakam veya tire olmalı.');
+      setMessage(t('Kampanya kodu 3–32 harf, rakam veya tire olmalı.'));
       return;
     }
     setBusy(true);
@@ -87,7 +88,7 @@ export function PublicPromoField({ slug, serviceIds, onChange }: {
       if (!result.promo.applicable) {
         setTerms(null);
         onChange(null);
-        setMessage('Bu kampanya seçtiğiniz hizmetleri kapsamıyor.');
+        setMessage(t('Bu kampanya seçtiğiniz hizmetleri kapsamıyor.'));
         return;
       }
       setTerms(result.promo);
@@ -95,14 +96,14 @@ export function PublicPromoField({ slug, serviceIds, onChange }: {
     } catch (error) {
       setTerms(null);
       onChange(null);
-      setMessage(error instanceof Error ? error.message : 'Kampanya kodu doğrulanamadı.');
+      setMessage(error instanceof Error ? error.message : t('Kampanya kodu doğrulanamadı.'));
     } finally {
       setBusy(false);
     }
   }
 
   return <div className="public-promo-field">
-    <label><span>Kampanya kodu <small>(isteğe bağlı)</small></span>
+    <label><span>{t('Kampanya kodu')} <small>{t('(isteğe bağlı)')}</small></span>
       <span className="public-promo-row">
         <input
           name="promoCode"
@@ -114,14 +115,14 @@ export function PublicPromoField({ slug, serviceIds, onChange }: {
           onChange={(event) => { setValue(event.target.value); setTerms(null); setMessage(''); onChange(null); }}
         />
         <button className="public-secondary" type="button" disabled={busy || !value.trim()} onClick={() => void check()}>
-          {busy ? 'Kontrol ediliyor…' : 'Kodu kontrol et'}
+          {busy ? t('Kontrol ediliyor…') : t('Kodu kontrol et')}
         </button>
       </span>
     </label>
     <p id="public-promo-status" className={terms ? 'public-promo-ok' : 'public-field-hint'} role="status">
       {terms
-        ? `${terms.code}: ${promoValueText(terms)}${terms.scoped ? ' (seçili hizmetlerde)' : ''}. Kesin indirim, randevu sonrası adisyonda uygulanır.`
-        : message || 'Kodu kontrol ederseniz randevu oluşturulunca sizin için ayrılır.'}
+        ? `${terms.code}: ${promoValueText(terms)}${terms.scoped ? ` ${t('(seçili hizmetlerde)')}` : ''}. ${t('Kesin indirim, randevu sonrası adisyonda uygulanır.')}`
+        : message || t('Kodu kontrol ederseniz randevu oluşturulunca sizin için ayrılır.')}
     </p>
   </div>;
 }
@@ -143,18 +144,18 @@ export function PromoAttachResult({ manageUrl, code }: { manageUrl: string; code
       setState({
         ok: true,
         text: promo.code && promo.kind
-          ? `Kampanya kodunuz ayrıldı: ${promo.code} · ${promoValueText({ kind: promo.kind, percentBps: promo.percentBps, amountMinor: promo.amountMinor, currency: promo.currency })}. İndirim salondaki adisyonda uygulanır.`
-          : 'Kampanya kodu ayrıldı.',
+          ? `${t('Kampanya kodunuz ayrıldı: {code}', { code: promo.code })} · ${promoValueText({ kind: promo.kind, percentBps: promo.percentBps, amountMinor: promo.amountMinor, currency: promo.currency })}. ${t('İndirim salondaki adisyonda uygulanır.')}`
+          : t('Kampanya kodu ayrıldı.'),
       });
     }).catch((error: unknown) => {
       setState({
         ok: false,
-        text: `${error instanceof Error ? error.message : 'Kampanya kodu ayrılamadı.'} Randevunuz oluşturuldu; kodu randevu yönetim sayfasından yeniden deneyebilirsiniz.`,
+        text: `${error instanceof Error ? error.message : t('Kampanya kodu ayrılamadı.')} ${t('Randevunuz oluşturuldu; kodu randevu yönetim sayfasından yeniden deneyebilirsiniz.')}`,
       });
     });
   }, [manageUrl, code]);
 
-  if (!state) return <p className="public-promo-attach" role="status">Kampanya kodu randevunuz için ayrılıyor…</p>;
+  if (!state) return <p className="public-promo-attach" role="status">{t('Kampanya kodu randevunuz için ayrılıyor…')}</p>;
   return <p className={`public-promo-attach ${state.ok ? 'is-ok' : 'is-error'}`} role={state.ok ? 'status' : 'alert'}>{state.text}</p>;
 }
 
@@ -176,7 +177,7 @@ export function ManagePromo({ token }: { token: string }) {
   async function attach() {
     const code = value.trim();
     if (!CODE.test(code)) {
-      setNotice('Kampanya kodu 3–32 harf, rakam veya tire olmalı.');
+      setNotice(t('Kampanya kodu 3–32 harf, rakam veya tire olmalı.'));
       return;
     }
     setBusy(true);
@@ -186,9 +187,9 @@ export function ManagePromo({ token }: { token: string }) {
         method: 'POST', csrf: 'skip', body: JSON.stringify({ token, code }),
       });
       setState(result.promo);
-      setNotice('Kampanya kodunuz randevunuz için ayrıldı.');
+      setNotice(t('Kampanya kodunuz randevunuz için ayrıldı.'));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Kampanya kodu eklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Kampanya kodu eklenemedi.'));
     } finally {
       setBusy(false);
     }
@@ -197,19 +198,19 @@ export function ManagePromo({ token }: { token: string }) {
   if (!state) return null;
   if (state.code && state.kind) {
     return <section className="manage-promo" aria-labelledby="manage-promo-title">
-      <h2 id="manage-promo-title">Kampanya kodu</h2>
+      <h2 id="manage-promo-title">{t('Kampanya kodu')}</h2>
       <p><strong>{state.code}</strong> · {promoValueText({ kind: state.kind, percentBps: state.percentBps, amountMinor: state.amountMinor, currency: state.currency })}</p>
-      <p className="manage-promo-note">{state.status === 'consumed' ? 'İndirim adisyonunuzda uygulandı.' : 'Kod randevunuz için ayrıldı; kesin indirim salondaki adisyonda uygulanır. Randevu iptal edilirse kod serbest kalır.'}</p>
+      <p className="manage-promo-note">{state.status === 'consumed' ? t('İndirim adisyonunuzda uygulandı.') : t('Kod randevunuz için ayrıldı; kesin indirim salondaki adisyonda uygulanır. Randevu iptal edilirse kod serbest kalır.')}</p>
       {notice && <p role="status">{notice}</p>}
     </section>;
   }
   if (!state.attachable) return null;
   return <section className="manage-promo" aria-labelledby="manage-promo-title">
-    <h2 id="manage-promo-title">Kampanya kodu</h2>
-    <p className="manage-promo-note">Bu randevu için bir kampanya kodunuz varsa ekleyin. Kod, randevu saatinden önce eklenebilir.</p>
+    <h2 id="manage-promo-title">{t('Kampanya kodu')}</h2>
+    <p className="manage-promo-note">{t('Bu randevu için bir kampanya kodunuz varsa ekleyin. Kod, randevu saatinden önce eklenebilir.')}</p>
     <div className="public-promo-row">
-      <input aria-label="Kampanya kodu" value={value} maxLength={32} autoComplete="off" onChange={(event) => setValue(event.target.value)} />
-      <button type="button" disabled={busy || !value.trim()} onClick={() => void attach()}>{busy ? 'Ekleniyor…' : 'Kodu ekle'}</button>
+      <input aria-label={t('Kampanya kodu')} value={value} maxLength={32} autoComplete="off" onChange={(event) => setValue(event.target.value)} />
+      <button type="button" disabled={busy || !value.trim()} onClick={() => void attach()}>{busy ? t('Ekleniyor…') : t('Kodu ekle')}</button>
     </div>
     {notice && <p role="status">{notice}</p>}
   </section>;

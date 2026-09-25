@@ -1,3 +1,5 @@
+import { intlLocale } from './i18n';
+
 export const onboardingCopy = {
   eyebrow: 'İŞLETME KURULUMU',
   title: 'Randevu sayfanızı adım adım hazırlayın',
@@ -38,21 +40,22 @@ export const onboardingCopy = {
     STAFF_HOURS_REQUIRED: 'Hizmet veren personelin çalışma saatlerini ekleyin.',
     OVERLAPPING_HOURS_REQUIRED: 'İşletme ve personel saatlerinde en az bir ortak aralık oluşturun.',
     PUBLIC_CONTACT_REQUIRED: 'Public profilinizde telefon, e-posta veya WhatsApp destek kanalından en az birini yayınlayın.',
+    PLAN_INACTIVE: 'İşletme planı aktif değil; yeni online randevu alınmaz. Planı yeniden etkinleştirmek için bizimle iletişime geçin.',
   } as Record<string, string>,
 } as const;
 
 /**
- * Formats a minor-unit Turkish Lira amount using the app's local currency convention.
+ * Formats a minor-unit Turkish Lira amount in the active display language.
  */
 export function formatTry(minor: number) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(minor / 100);
+  return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency: 'TRY' }).format(minor / 100);
 }
 
 /**
- * Converts a YYYY-MM-DD date string into a localized Turkish display date.
+ * Converts a YYYY-MM-DD date string into a display date in the active language.
  */
 export function formatLocalDate(value: string) {
   const [year, month, day] = value.split('-').map(Number);
   if (!year || !month || !day) return value;
-  return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'long' }).format(new Date(year, month - 1, day));
+  return new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'long' }).format(new Date(year, month - 1, day));
 }

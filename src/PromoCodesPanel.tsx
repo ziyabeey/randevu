@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import type { FormEvent } from 'react';
 import { api } from './api';
 import { promoValueText } from './PublicPromo';
@@ -26,7 +27,7 @@ type PromoCode = {
 type PromoService = { id: string; name: string; active: boolean };
 
 function dateLabel(value: string) {
-  return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'short' }).format(new Date(value));
+  return new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'short' }).format(new Date(value));
 }
 
 function parseAmount(value: string) {
@@ -74,11 +75,11 @@ export default function PromoCodesPanel({ businessId, services, canManage }: {
     setLoading(true);
     try {
       const result = await api<{ promoCodes: PromoCode[] }>('/api/promo-codes');
-      if (result.promoCodes.some((item) => item.businessId !== businessId)) throw new Error('Kampanyalar seçili işletmeyle eşleşmiyor.');
+      if (result.promoCodes.some((item) => item.businessId !== businessId)) throw new Error(t('Kampanyalar seçili işletmeyle eşleşmiyor.'));
       setCodes(result.promoCodes);
     } catch (error) {
       setCodes([]);
-      setNotice(error instanceof Error ? error.message : 'Kampanyalar yüklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Kampanyalar yüklenemedi.'));
     } finally {
       setLoading(false);
     }
@@ -104,7 +105,7 @@ export default function PromoCodesPanel({ businessId, services, canManage }: {
         || (kind === 'percent' ? percentBps === null : amountMinor === null)
         || (endsOn && (!endsAt || Date.parse(endsAt) <= Date.parse(startsAt)))
         || (usageLimit !== null && (!Number.isInteger(usageLimit) || usageLimit < 1 || usageLimit > 100000))) {
-      setNotice('Kod (3–32 harf/rakam/tire), indirim değeri, başlangıç tarihi, bitişten önce gelen başlangıç ve 1–100000 kullanım sınırı girin.');
+      setNotice(t('Kod (3–32 harf/rakam/tire), indirim değeri, başlangıç tarihi, bitişten önce gelen başlangıç ve 1–100000 kullanım sınırı girin.'));
       return;
     }
     setBusy(true);
@@ -116,10 +117,10 @@ export default function PromoCodesPanel({ businessId, services, canManage }: {
       });
       form.reset();
       setKind('percent');
-      setNotice('Kampanya kodu eklendi.');
+      setNotice(t('Kampanya kodu eklendi.'));
       await load();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Kampanya eklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Kampanya eklenemedi.'));
     } finally { setBusy(false); }
   }
 
@@ -135,10 +136,10 @@ export default function PromoCodesPanel({ businessId, services, canManage }: {
           serviceIds: item.serviceIds, active: !item.active, expectedVersion: item.version,
         }),
       });
-      setNotice(item.active ? 'Kampanya kapatıldı. Ayrılmış kodlar adisyonda geçerli kalır.' : 'Kampanya yeniden açıldı.');
+      setNotice(item.active ? t('Kampanya kapatıldı. Ayrılmış kodlar adisyonda geçerli kalır.') : t('Kampanya yeniden açıldı.'));
       await load();
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Kampanya güncellenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Kampanya güncellenemedi.'));
       await load();
     } finally { setBusy(false); }
   }
@@ -150,24 +151,24 @@ export default function PromoCodesPanel({ businessId, services, canManage }: {
   return (
     <section className="panel span-two service-packages promo-codes" aria-labelledby="promo-codes-title">
       <div className="section-head">
-        <div><p className="eyebrow">KAMPANYALAR</p><h2 id="promo-codes-title">Kampanya kodları</h2></div>
-        <span>{codes.filter((item) => item.active).length} aktif</span>
+        <div><p className="eyebrow">{t('KAMPANYALAR')}</p><h2 id="promo-codes-title">{t('Kampanya kodları')}</h2></div>
+        <span>{t('{item} aktif', { item: codes.filter((item) => item.active).length })}</span>
       </div>
-      <p className="muted">Müşteri kodu online randevuda girer; kod o randevu için ayrılır ve adisyon kapanınca kullanılmış sayılır. İptal edilen randevunun kodu serbest kalır. Bir adisyonda tek kod geçerlidir; paketten karşılanan hizmete indirim uygulanmaz ve yüzde indirim kuruşa aşağı yuvarlanır.</p>
+      <p className="muted">{t('Müşteri kodu online randevuda girer; kod o randevu için ayrılır ve adisyon kapanınca kullanılmış sayılır. İptal edilen randevunun kodu serbest kalır. Bir adisyonda tek kod geçerlidir; paketten karşılanan hizmete indirim uygulanmaz ve yüzde indirim kuruşa aşağı yuvarlanır.')}</p>
       {notice && <p className="service-packages-notice" role="status">{notice}</p>}
-      {loading ? <p className="muted">Kampanyalar yükleniyor…</p> : codes.length === 0 ? <p className="empty">Henüz kampanya kodu yok.</p> : (
+      {loading ? <p className="muted">{t('Kampanyalar yükleniyor…')}</p> : codes.length === 0 ? <p className="empty">{t('Henüz kampanya kodu yok.')}</p> : (
         <ul className="service-package-list">
           {codes.map((item) => (
             <li key={item.promoId} className={item.active ? '' : 'inactive'}>
               <div className="service-package-summary">
                 <strong>{item.code}</strong>
-                <span>{promoValueText(item)} · {item.serviceNames.length ? item.serviceNames.join(', ') : 'Tüm hizmetler'}</span>
-                <span>{dateLabel(item.startsAt)}{item.endsAt ? ` – ${dateLabel(new Date(Date.parse(item.endsAt) - 1).toISOString())}` : ' · bitiş yok'} · {item.consumedCount} kullanıldı · {item.reservedCount} ayrıldı{item.usageLimit ? ` / ${item.usageLimit}` : ''}</span>
+                <span>{promoValueText(item)} · {item.serviceNames.length ? item.serviceNames.join(', ') : t('Tüm hizmetler')}</span>
+                <span>{item.endsAt ? `${dateLabel(item.startsAt)} – ${dateLabel(new Date(Date.parse(item.endsAt) - 1).toISOString())}` : `${dateLabel(item.startsAt)}${t(' · bitiş yok')}`}{' · '}{item.usageLimit ? t('{consumed} kullanıldı · {reserved} ayrıldı / {limit}', { consumed: item.consumedCount, reserved: item.reservedCount, limit: item.usageLimit }) : t('{consumed} kullanıldı · {reserved} ayrıldı', { consumed: item.consumedCount, reserved: item.reservedCount })}</span>
               </div>
-              <span className="status-pill">{item.active ? 'Aktif' : 'Kapalı'}</span>
+              <span className="status-pill">{item.active ? t('Aktif') : t('Kapalı')}</span>
               {canManage && (
                 <div className="service-package-actions">
-                  <button type="button" disabled={busy} onClick={() => void toggle(item)}>{item.active ? 'Kampanyayı kapat' : 'Kampanyayı aç'}</button>
+                  <button type="button" disabled={busy} onClick={() => void toggle(item)}>{item.active ? t('Kampanyayı kapat') : t('Kampanyayı aç')}</button>
                 </div>
               )}
             </li>
@@ -176,25 +177,25 @@ export default function PromoCodesPanel({ businessId, services, canManage }: {
       )}
       {canManage && (
         <form className="service-package-form create promo-code-form" onSubmit={create}>
-          <h3>Yeni kampanya kodu</h3>
-          <label>Kod<input name="code" placeholder="YAZ20" required minLength={3} maxLength={32} autoCapitalize="characters" /></label>
-          <label>İndirim türü
+          <h3>{t('Yeni kampanya kodu')}</h3>
+          <label>{t('Kod')}<input name="code" placeholder={t('YAZ20')} required minLength={3} maxLength={32} autoCapitalize="characters" /></label>
+          <label>{t('İndirim türü')}
             <select value={kind} onChange={(event) => setKind(event.target.value as 'percent' | 'fixed')}>
-              <option value="percent">Yüzde</option>
-              <option value="fixed">Sabit tutar (TL)</option>
+              <option value="percent">{t('Yüzde')}</option>
+              <option value="fixed">{t('Sabit tutar (TL)')}</option>
             </select>
           </label>
-          <label>{kind === 'percent' ? 'Yüzde (%)' : 'Tutar (TL)'}<input name="value" inputMode="decimal" required placeholder={kind === 'percent' ? '20' : '100'} /></label>
-          <label>Başlangıç<input name="startsOn" type="date" required defaultValue={todayValue} /></label>
-          <label>Bitiş (dahil)<input name="endsOn" type="date" /></label>
-          <label>Kullanım sınırı<input name="usageLimit" type="number" inputMode="numeric" min={1} max={100000} placeholder="Sınırsız" /></label>
+          <label>{kind === 'percent' ? t('Yüzde (%)') : t('Tutar (TL)')}<input name="value" inputMode="decimal" required placeholder={kind === 'percent' ? '20' : '100'} /></label>
+          <label>{t('Başlangıç')}<input name="startsOn" type="date" required defaultValue={todayValue} /></label>
+          <label>{t('Bitiş (dahil)')}<input name="endsOn" type="date" /></label>
+          <label>{t('Kullanım sınırı')}<input name="usageLimit" type="number" inputMode="numeric" min={1} max={100000} placeholder={t('Sınırsız')} /></label>
           <fieldset className="promo-code-services">
-            <legend>Hizmet kapsamı (boş = tüm hizmetler)</legend>
+            <legend>{t('Hizmet kapsamı (boş = tüm hizmetler)')}</legend>
             {activeServices.map((service) => (
               <label key={service.id} className="chip"><input type="checkbox" name="serviceIds" value={service.id} /> {service.name}</label>
             ))}
           </fieldset>
-          <button className="primary-button" disabled={busy}>Kampanyayı ekle</button>
+          <button className="primary-button" disabled={busy}>{t('Kampanyayı ekle')}</button>
         </form>
       )}
     </section>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
 import { navigateApp } from './workspace-route';
@@ -67,7 +68,7 @@ function message(error: unknown, fallback: string) {
 function localDateTime(value: string, timezone?: string) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat('tr-TR', {
+  return new Intl.DateTimeFormat(intlLocale(), {
     ...(timezone ? { timeZone: timezone } : {}),
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -75,7 +76,7 @@ function localDateTime(value: string, timezone?: string) {
 }
 
 function tryAmount(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
+  return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100);
 }
 
 function bookingEstimate(booking: CustomerBookingGroup) {
@@ -141,7 +142,7 @@ export default function CustomersPage() {
       const result = await api<CustomerListResponse>(`/api/customers?${params}`, { signal: controller.signal });
       if (controller.signal.aborted || generation !== listGeneration.current || tenant !== tenantGeneration.current) return;
       if (result.membership.business_id !== activeBusinessId) {
-        throw new Error('Müşteri kayıtları güncel işletme bağlamıyla eşleşmiyor.');
+        throw new Error(t('Müşteri kayıtları güncel işletme bağlamıyla eşleşmiyor.'));
       }
       setCustomers((current) => append ? [...current, ...result.customers] : result.customers);
       setCustomerPage(result.page);
@@ -158,7 +159,7 @@ export default function CustomersPage() {
       }
     } catch (error) {
       if (controller.signal.aborted || generation !== listGeneration.current || tenant !== tenantGeneration.current) return;
-      const text = message(error, 'Müşteriler yüklenemedi.');
+      const text = message(error, t('Müşteriler yüklenemedi.'));
       if (append) {
         setNotice(text);
       } else {
@@ -190,7 +191,7 @@ export default function CustomersPage() {
       if (!append) setHistoryState('success');
     } catch (error) {
       if (controller.signal.aborted || generation !== historyGeneration.current || tenant !== tenantGeneration.current) return;
-      const text = message(error, 'Randevu geçmişi yüklenemedi.');
+      const text = message(error, t('Randevu geçmişi yüklenemedi.'));
       if (append) {
         setNotice(text);
       } else {
@@ -208,7 +209,7 @@ export default function CustomersPage() {
     try {
       await loadCustomers('', null, false);
     } catch (error) {
-      setNotice(message(error, 'Müşteri çalışma alanı yüklenemedi.'));
+      setNotice(message(error, t('Müşteri çalışma alanı yüklenemedi.')));
     } finally {
       setLoading(false);
     }
@@ -269,9 +270,9 @@ export default function CustomersPage() {
       await loadCustomers('', null, false);
       setSelectedCustomerId(result.customer.customer_id);
       await loadHistory(result.customer.customer_id);
-      setNotice('Müşteri kaydı oluşturuldu.');
+      setNotice(t('Müşteri kaydı oluşturuldu.'));
     } catch (error) {
-      setNotice(message(error, 'Müşteri oluşturulamadı.'));
+      setNotice(message(error, t('Müşteri oluşturulamadı.')));
     } finally {
       setBusy(false);
     }
@@ -295,12 +296,12 @@ export default function CustomersPage() {
         }),
       });
       setCustomers((current) => current.map((row) => row.customer_id === selected.customer_id ? result.customer : row));
-      setNotice('Müşteri iletişim bilgileri güncellendi. Geçmiş randevu snapshotları değiştirilmedi.');
+      setNotice(t('Müşteri iletişim bilgileri güncellendi. Geçmiş randevu snapshotları değiştirilmedi.'));
     } catch (error) {
       if (error instanceof ApiRequestError && error.code === 'CUSTOMER_VERSION_CONFLICT') {
         await loadCustomers(search, null, false);
       }
-      setNotice(message(error, 'Müşteri güncellenemedi.'));
+      setNotice(message(error, t('Müşteri güncellenemedi.')));
     } finally {
       setBusy(false);
     }
@@ -317,28 +318,28 @@ export default function CustomersPage() {
   }
 
   if (loading) {
-    return <main className="customers-shell"><section className="customers-card"><p>Müşteri kayıtları hazırlanıyor…</p></section></main>;
+    return <main className="customers-shell"><section className="customers-card"><p>{t('Müşteri kayıtları hazırlanıyor…')}</p></section></main>;
   }
 
   if (!session?.user) {
-    return <main className="customers-shell"><section className="customers-card"><h1>Önce giriş yapın</h1><p>Müşteri kayıtları işletme hesabına özeldir.</p><a href="/app">Giriş ekranına dön</a></section></main>;
+    return <main className="customers-shell"><section className="customers-card"><h1>{t('Önce giriş yapın')}</h1><p>{t('Müşteri kayıtları işletme hesabına özeldir.')}</p><a href="/app">{t('Giriş ekranına dön')}</a></section></main>;
   }
 
   if (session.passwordRecovery) {
-    return <main className="customers-shell"><section className="customers-card"><h1>Önce yeni parolanızı belirleyin</h1><p>Müşteri verileri parola kurtarma oturumunda kapalıdır.</p><a href="/app">Parolayı güncelle</a></section></main>;
+    return <main className="customers-shell"><section className="customers-card"><h1>{t('Önce yeni parolanızı belirleyin')}</h1><p>{t('Müşteri verileri parola kurtarma oturumunda kapalıdır.')}</p><a href="/app">{t('Parolayı güncelle')}</a></section></main>;
   }
 
   return (
     <main className="customers-shell">
       <header className="customers-hero">
-        <div><p className="customers-eyebrow">MÜŞTERİLER</p><h1>İşletme müşteri kayıtları</h1><p>İletişim bilgilerini yönetin, geçmiş rezervasyonları grup snapshotlarıyla inceleyin.</p></div>
-        <a href="/app">Çalışma alanına dön</a>
+        <div><p className="customers-eyebrow">{t('MÜŞTERİLER')}</p><h1>{t('İşletme müşteri kayıtları')}</h1><p>{t('İletişim bilgilerini yönetin, geçmiş rezervasyonları grup snapshotlarıyla inceleyin.')}</p></div>
+        <a href="/app">{t('Çalışma alanına dön')}</a>
       </header>
 
       {notice && <div className="customers-notice" role="status">{notice}</div>}
 
       <section className="customers-card customers-businesses">
-        <div><strong>{activeMembership?.businesses?.name ?? 'İşletme seçin'}</strong><span>Yalnız aktif üyeliğiniz olan işletmeler gösterilir.</span></div>
+        <div><strong>{activeMembership?.businesses?.name ?? t('İşletme seçin')}</strong><span>{t('Yalnız aktif üyeliğiniz olan işletmeler gösterilir.')}</span></div>
         <div className="customers-business-buttons">
           {session.memberships.map((membership) => (
             <button
@@ -347,24 +348,24 @@ export default function CustomersPage() {
               disabled={busy || membership.business_id === activeBusinessId}
               onClick={() => void switchBusiness(membership.business_id)}
             >
-              {membership.businesses?.name ?? 'İşletme'}{membership.business_id === activeBusinessId ? ' · seçili' : ''}
+              {membership.businesses?.name ?? t('İşletme')}{membership.business_id === activeBusinessId ? t(' · seçili') : ''}
             </button>
           ))}
         </div>
       </section>
 
       {!activeBusinessId ? (
-        <section className="customers-card"><h2>İşletme seçimi gerekli</h2><p>Müşteri kayıtlarını açmak için önce yetkili olduğunuz bir işletmeyi seçin.</p></section>
+        <section className="customers-card"><h2>{t('İşletme seçimi gerekli')}</h2><p>{t('Müşteri kayıtlarını açmak için önce yetkili olduğunuz bir işletmeyi seçin.')}</p></section>
       ) : (
         <div className="customers-layout">
           <section className="customers-card customers-list-panel" aria-busy={listState === 'loading'}>
-            <div className="customers-section-head"><div><p className="customers-eyebrow">KAYITLAR</p><h2>Müşteriler</h2></div><span>{customers.length} gösteriliyor</span></div>
+            <div className="customers-section-head"><div><p className="customers-eyebrow">{t('KAYITLAR')}</p><h2>{t('Müşteriler')}</h2></div><span>{t('{length} gösteriliyor', { length: customers.length })}</span></div>
             <form className="customers-search" onSubmit={submitSearch}>
-              <input aria-label="Müşteri ara" value={search} maxLength={120} onChange={(event) => setSearch(event.target.value)} placeholder="Ad, telefon veya e-posta ara" />
-              <button disabled={busy || listState === 'loading'}>Ara</button>
+              <input aria-label={t('Müşteri ara')} value={search} maxLength={120} onChange={(event) => setSearch(event.target.value)} placeholder={t('Ad, telefon veya e-posta ara')} />
+              <button disabled={busy || listState === 'loading'}>{t('Ara')}</button>
             </form>
             {listState === 'loading' ? (
-              <p className="customers-muted" role="status">Müşteriler yükleniyor…</p>
+              <p className="customers-muted" role="status">{t('Müşteriler yükleniyor…')}</p>
             ) : listState === 'error' ? (
               <p className="customers-error" role="alert">{listError}</p>
             ) : customers.length ? (
@@ -373,37 +374,37 @@ export default function CustomersPage() {
                   <li key={customer.customer_id}>
                     <button type="button" className={selectedId === customer.customer_id ? 'selected' : ''} onClick={() => chooseCustomer(customer.customer_id)}>
                       <strong>{customer.name}</strong>
-                      <span>{customer.phone || customer.email || 'İletişim bilgisi yok'}</span>
+                      <span>{customer.phone || customer.email || t('İletişim bilgisi yok')}</span>
                     </button>
                   </li>
                 ))}
               </ul>
             ) : listState === 'success' ? (
-              <p className="customers-muted">Bu aramada müşteri bulunamadı.</p>
+              <p className="customers-muted">{t('Bu aramada müşteri bulunamadı.')}</p>
             ) : null}
             {listState === 'success' && customerPage?.hasMore && customerPage.nextCursor && (
-              <button className="customers-more" type="button" disabled={busy} onClick={() => void loadCustomers(search, customerPage.nextCursor, true)}>Daha fazla göster</button>
+              <button className="customers-more" type="button" disabled={busy} onClick={() => void loadCustomers(search, customerPage.nextCursor, true)}>{t('Daha fazla göster')}</button>
             )}
           </section>
 
           <section className="customers-card customers-detail-panel">
             {selected ? (
               <>
-                <div className="customers-section-head"><div><p className="customers-eyebrow">MÜŞTERİ KARTI</p><h2>{selected.name}</h2></div><span>{activeMembership?.role}</span></div>
+                <div className="customers-section-head"><div><p className="customers-eyebrow">{t('MÜŞTERİ KARTI')}</p><h2>{selected.name}</h2></div><span>{activeMembership?.role}</span></div>
                 <form className="customers-form" key={selected.updated_at} onSubmit={updateCustomer}>
-                  <label>Ad soyad<input name="name" minLength={2} maxLength={120} defaultValue={selected.name} required /></label>
-                  <label>Telefon<input name="phone" maxLength={40} defaultValue={selected.phone ?? ''} /></label>
-                  <label>E-posta<input name="email" type="email" maxLength={254} defaultValue={selected.email ?? ''} /></label>
-                  <label>Not<textarea name="notes" maxLength={1000} defaultValue={selected.notes ?? ''} /></label>
-                  <button disabled={busy}>Bilgileri güncelle</button>
+                  <label>{t('Ad soyad')}<input name="name" minLength={2} maxLength={120} defaultValue={selected.name} required /></label>
+                  <label>{t('Telefon')}<input name="phone" maxLength={40} defaultValue={selected.phone ?? ''} /></label>
+                  <label>{t('E-posta')}<input name="email" type="email" maxLength={254} defaultValue={selected.email ?? ''} /></label>
+                  <label>{t('Not')}<textarea name="notes" maxLength={1000} defaultValue={selected.notes ?? ''} /></label>
+                  <button disabled={busy}>{t('Bilgileri güncelle')}</button>
                 </form>
                 <div className="customers-history-head">
-                  <div><h3>Rezervasyon geçmişi</h3><span>Bir rezervasyon tek kayıt, hizmetleri sıralı satırlardır.</span></div>
-                  <button type="button" disabled={busy} onClick={() => navigateApp(`/app/mobile/tickets?customerId=${encodeURIComponent(selected.customer_id)}`)}>Adisyon geçmişi</button>
+                  <div><h3>{t('Rezervasyon geçmişi')}</h3><span>{t('Bir rezervasyon tek kayıt, hizmetleri sıralı satırlardır.')}</span></div>
+                  <button type="button" disabled={busy} onClick={() => navigateApp(`/app/mobile/tickets?customerId=${encodeURIComponent(selected.customer_id)}`)}>{t('Adisyon geçmişi')}</button>
                 </div>
                 <div aria-busy={historyState === 'loading'}>
                   {historyState === 'loading' ? (
-                    <p className="customers-muted" role="status">Randevu geçmişi yükleniyor…</p>
+                    <p className="customers-muted" role="status">{t('Randevu geçmişi yükleniyor…')}</p>
                   ) : historyState === 'error' ? (
                     <p className="customers-error" role="alert">{historyError}</p>
                   ) : history.length ? (
@@ -412,7 +413,7 @@ export default function CustomersPage() {
                         <li key={booking.groupId}>
                           <div>
                             <strong>{booking.lines.map((line) => line.serviceName).join(' + ')}</strong>
-                            <span>{localDateTime(booking.startsAt, booking.timezone)} · {booking.lineCount} hizmet</span>
+                            <span>{t('{startsAt} · {lineCount} hizmet', { startsAt: localDateTime(booking.startsAt, booking.timezone), lineCount: booking.lineCount })}</span>
                             {booking.lines.map((line) => <small key={line.appointmentId}>{line.lineOrdinal}. {line.serviceName} · {line.staffName} · {line.status}</small>)}
                           </div>
                           <div className="customers-history-meta"><span>{booking.customerName}</span><span>{bookingEstimate(booking)}</span><span>{booking.status}</span></div>
@@ -420,27 +421,27 @@ export default function CustomersPage() {
                       ))}
                     </ol>
                   ) : historyState === 'success' ? (
-                    <p className="customers-muted">Bu müşterinin randevu geçmişi yok.</p>
+                    <p className="customers-muted">{t('Bu müşterinin randevu geçmişi yok.')}</p>
                   ) : null}
                 </div>
                 {historyState === 'success' && historyPage?.hasMore && historyPage.nextCursor && (
-                  <button className="customers-more" type="button" disabled={busy} onClick={() => void loadHistory(selected.customer_id, historyPage.nextCursor, true)}>Daha eski rezervasyonları göster</button>
+                  <button className="customers-more" type="button" disabled={busy} onClick={() => void loadHistory(selected.customer_id, historyPage.nextCursor, true)}>{t('Daha eski rezervasyonları göster')}</button>
                 )}
               </>
             ) : (
-              <div className="customers-empty-detail"><h2>Bir müşteri seçin</h2><p>İletişim bilgileri ve randevu geçmişi burada açılır.</p></div>
+              <div className="customers-empty-detail"><h2>{t('Bir müşteri seçin')}</h2><p>{t('İletişim bilgileri ve randevu geçmişi burada açılır.')}</p></div>
             )}
           </section>
 
           <section className="customers-card customers-create-panel">
-            <p className="customers-eyebrow">YENİ KAYIT</p><h2>Müşteri ekle</h2>
-            <p className="customers-muted">Aynı telefon veya e-posta sessizce başka kayda bağlanmaz. Çakışma varsa sistem açıkça bildirir.</p>
+            <p className="customers-eyebrow">{t('YENİ KAYIT')}</p><h2>{t('Müşteri ekle')}</h2>
+            <p className="customers-muted">{t('Aynı telefon veya e-posta sessizce başka kayda bağlanmaz. Çakışma varsa sistem açıkça bildirir.')}</p>
             <form className="customers-form" onSubmit={createCustomer}>
-              <label>Ad soyad<input name="name" minLength={2} maxLength={120} required /></label>
-              <label>Telefon<input name="phone" maxLength={40} /></label>
-              <label>E-posta<input name="email" type="email" maxLength={254} /></label>
-              <label>Not<textarea name="notes" maxLength={1000} /></label>
-              <button disabled={busy}>Müşteri oluştur</button>
+              <label>{t('Ad soyad')}<input name="name" minLength={2} maxLength={120} required /></label>
+              <label>{t('Telefon')}<input name="phone" maxLength={40} /></label>
+              <label>{t('E-posta')}<input name="email" type="email" maxLength={254} /></label>
+              <label>{t('Not')}<textarea name="notes" maxLength={1000} /></label>
+              <button disabled={busy}>{t('Müşteri oluştur')}</button>
             </form>
           </section>
         </div>

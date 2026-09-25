@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { t } from './i18n';
 import { api } from './api';
 import { PrivatePhotoTile, deletePrivatePhoto, publishPrivatePhoto, type PrivatePhoto } from './AppointmentPhotos';
 import './private-media.css';
@@ -33,7 +34,7 @@ export default function PrivatePhotoArchive({ services, businessId }: {
     } catch (error) {
       if (token !== generation.current) return;
       setPhotos((existing) => existing ?? []);
-      setNotice(error instanceof Error ? error.message : 'Fotoğraf arşivi yüklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Fotoğraf arşivi yüklenemedi.'));
     }
   }, [serviceId]);
 
@@ -51,31 +52,31 @@ export default function PrivatePhotoArchive({ services, businessId }: {
       await fetchPage(null, false);
       setNotice(success);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Fotoğraf işlemi tamamlanamadı.');
+      setNotice(error instanceof Error ? error.message : t('Fotoğraf işlemi tamamlanamadı.'));
     } finally {
       setBusy(false);
     }
   }
 
-  return <section className="panel span-two private-photo-archive" aria-label="Hizmet fotoğraf arşivi">
-    <div className="section-head"><h2>Hizmet fotoğraf arşivi</h2><span>{photos?.length ?? 0}{next ? '+' : ''}</span></div>
-    <p className="muted">Randevulara eklenen özel fotoğraflar. Müşteri sayfasında görünmezler; yalnız müşteri onayıyla salon galerisine ayrıca yayınlanabilirler.</p>
+  return <section className="panel span-two private-photo-archive" aria-label={t('Hizmet fotoğraf arşivi')}>
+    <div className="section-head"><h2>{t('Hizmet fotoğraf arşivi')}</h2><span>{photos?.length ?? 0}{next ? '+' : ''}</span></div>
+    <p className="muted">{t('Randevulara eklenen özel fotoğraflar. Müşteri sayfasında görünmezler; yalnız müşteri onayıyla salon galerisine ayrıca yayınlanabilirler.')}</p>
     <div className="private-photo-archive-filter">
-      <label><span>Hizmet</span><select value={serviceId} onChange={(event) => setServiceId(event.target.value)}>
-        <option value="">Tüm hizmetler</option>
+      <label><span>{t('Hizmet')}</span><select value={serviceId} onChange={(event) => setServiceId(event.target.value)}>
+        <option value="">{t('Tüm hizmetler')}</option>
         {services.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}
       </select></label>
     </div>
-    {photos === null ? <p className="muted">Arşiv yükleniyor…</p>
+    {photos === null ? <p className="muted">{t('Arşiv yükleniyor…')}</p>
       : photos.length ? <div className="private-photo-grid">{photos.map((photo) => <PrivatePhotoTile
         key={photo.id}
         photo={photo}
         busy={busy}
-        onDelete={(item) => { if (window.confirm('Bu özel fotoğraf kalıcı olarak silinsin mi?')) void run(() => deletePrivatePhoto(item), 'Fotoğraf silindi.'); }}
-        onPublish={(item, alt) => void run(() => publishPrivatePhoto(item, alt), 'Fotoğraf salon galerisine eklendi.')}
+        onDelete={(item) => { if (window.confirm(t('Bu özel fotoğraf kalıcı olarak silinsin mi?'))) void run(() => deletePrivatePhoto(item), t('Fotoğraf silindi.')); }}
+        onPublish={(item, alt) => void run(() => publishPrivatePhoto(item, alt), t('Fotoğraf salon galerisine eklendi.'))}
       />)}</div>
-        : <p className="empty">{serviceId ? 'Bu hizmet için henüz fotoğraf yok.' : 'Henüz özel fotoğraf eklenmedi. Randevu detayındaki Fotoğraf sekmesinden ekleyebilirsiniz.'}</p>}
-    {next && <button type="button" className="secondary-button load-more" disabled={busy} onClick={() => void fetchPage(next, true)}>Daha fazla fotoğraf</button>}
+        : <p className="empty">{serviceId ? t('Bu hizmet için henüz fotoğraf yok.') : t('Henüz özel fotoğraf eklenmedi. Randevu detayındaki Fotoğraf sekmesinden ekleyebilirsiniz.')}</p>}
+    {next && <button type="button" className="secondary-button load-more" disabled={busy} onClick={() => void fetchPage(next, true)}>{t('Daha fazla fotoğraf')}</button>}
     {notice && <p className="muted" role="status">{notice}</p>}
   </section>;
 }

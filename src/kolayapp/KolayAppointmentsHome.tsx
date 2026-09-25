@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 export type KolayAppointmentItem = Readonly<{
   id: string;
   timeLabel: string;
@@ -26,7 +28,7 @@ export default function KolayAppointmentsHome({
     <section className="kolay-appointments" aria-labelledby="kolay-appointments-heading">
       <div className="kolay-section-heading">
         <div>
-          <p className="kolay-kicker">RANDEVULAR</p>
+          <p className="kolay-kicker">{t('RANDEVULAR')}</p>
           <h2 id="kolay-appointments-heading">{dateLabel}</h2>
         </div>
         <span className="kolay-count-badge" aria-label={`${items.length} randevu`}>{items.length}</span>
@@ -35,8 +37,8 @@ export default function KolayAppointmentsHome({
       {items.length === 0 ? (
         <div className="kolay-empty-state" role="status">
           <span className="kolay-empty-state__mark" aria-hidden="true">○</span>
-          <h3>{emptyTitle}</h3>
-          <p>{emptyDescription}</p>
+          <h3>{t(emptyTitle)}</h3>
+          <p>{t(emptyDescription)}</p>
         </div>
       ) : (
         <div className="kolay-appointment-list">

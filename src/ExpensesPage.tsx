@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
 import { useWorkspace } from './workspace-context';
@@ -37,11 +38,11 @@ function readPendingExpense():PendingExpenseWrite|null{
 function writePendingExpense(v:PendingExpenseWrite){try{window.sessionStorage.setItem(PENDING_EXPENSE_KEY,JSON.stringify(v));}catch{}}
 function clearPendingExpense(v:PendingExpenseWrite){try{const c=readPendingExpense();if(!c||samePending(c,v))window.sessionStorage.removeItem(PENDING_EXPENSE_KEY);}catch{}}
 
-function money(minor:number,currency:string){return new Intl.NumberFormat('tr-TR',{style:'currency',currency}).format(minor/100);}
+function money(minor:number,currency:string){return new Intl.NumberFormat(intlLocale(),{style:'currency',currency}).format(minor/100);}
 function expenseDateTime(instant:string,timeZone:string){
   const date=new Date(instant);
   if(!Number.isFinite(date.getTime()))return instant;
-  return new Intl.DateTimeFormat('tr-TR',{
+  return new Intl.DateTimeFormat(intlLocale(),{
     timeZone,
     dateStyle:'short',
     timeStyle:'short',
@@ -87,11 +88,11 @@ export default function ExpensesPage(){
       const params=new URLSearchParams({limit:'25'}); if(cursor)params.set('cursor',cursor);
       const result=await api<ExpenseList>(`/api/expenses?${params}`);
       if(g!==generation.current)return;
-      if(result.events.some(e=>e.businessId!==activeBusinessId)) throw new Error('Masraf kayıtları güncel işletmeyle eşleşmiyor.');
+      if(result.events.some(e=>e.businessId!==activeBusinessId)) throw new Error(t('Masraf kayıtları güncel işletmeyle eşleşmiyor.'));
       setEvents(current=>append?[...current,...result.events]:result.events); setPage(result.page);
     }catch(error){
       if(g!==generation.current)return;
-      setNotice(error instanceof Error?error.message:'Masraflar yüklenemedi.');
+      setNotice(error instanceof Error?error.message:t('Masraflar yüklenemedi.'));
       if(!append){setEvents([]);setPage(null);}
     }finally{if(g===generation.current)setLoading(false);}
   },[activeBusinessId]);
@@ -105,8 +106,8 @@ export default function ExpensesPage(){
       &&pendingWrite.path===path&&pendingWrite.method===method&&pendingWrite.body===body);
     if(pendingWrite&&!matches){
       setNotice(pendingWrite.businessId===activeBusinessId
-        ?'Önce sonucu belirsiz masraf işlemini doğrulayın. Yeni mali işlem başlatılmadı.'
-        :'Başka işletmede sonucu belirsiz masraf işlemi var. Önce o işletmede doğrulayın.');
+        ?t('Önce sonucu belirsiz masraf işlemini doğrulayın. Yeni mali işlem başlatılmadı.')
+        :t('Başka işletmede sonucu belirsiz masraf işlemi var. Önce o işletmede doğrulayın.'));
       return false;
     }
 
@@ -123,11 +124,11 @@ export default function ExpensesPage(){
     }catch(error){
       if(ambiguous(error)){
         writePendingExpense(identity);setPendingWrite(identity);
-        setNotice('Masraf işleminin sonucu belirsiz. Kayıtlı istek doğrulanana kadar başka mali işlem başlatılmayacak.');
+        setNotice(t('Masraf işleminin sonucu belirsiz. Kayıtlı istek doğrulanana kadar başka mali işlem başlatılmayacak.'));
       }else{
         keys.current.delete(action);clearPendingExpense(identity);
         setPendingWrite(current=>samePending(current,identity)?null:current);
-        setNotice(error instanceof Error?error.message:'Masraf işlemi tamamlanamadı.');
+        setNotice(error instanceof Error?error.message:t('Masraf işlemi tamamlanamadı.'));
       }
       return false;
     }finally{setBusy(false);}
@@ -135,32 +136,32 @@ export default function ExpensesPage(){
 
   async function retryPending(){
     if(!pendingWrite)return;
-    if(pendingWrite.businessId!==activeBusinessId){setNotice('Belirsiz işlemi doğrulamak için önce işlemin başladığı işletmeye dönün.');return;}
+    if(pendingWrite.businessId!==activeBusinessId){setNotice(t('Belirsiz işlemi doğrulamak için önce işlemin başladığı işletmeye dönün.'));return;}
     let payload:Record<string,unknown>;
-    try{payload=pendingWrite.body?JSON.parse(pendingWrite.body):{};}catch{setNotice('Kayıtlı masraf isteği bozuk; yeni işlem başlatılmadı.');return;}
-    if(await mutate(pendingWrite.action,pendingWrite.path,payload))setNotice('Belirsiz masraf işlemi sunucuda doğrulandı.');
+    try{payload=pendingWrite.body?JSON.parse(pendingWrite.body):{};}catch{setNotice(t('Kayıtlı masraf isteği bozuk; yeni işlem başlatılmadı.'));return;}
+    if(await mutate(pendingWrite.action,pendingWrite.path,payload))setNotice(t('Belirsiz masraf işlemi sunucuda doğrulandı.'));
   }
 
   async function createExpense(event:FormEvent<HTMLFormElement>){
     event.preventDefault(); const form=event.currentTarget; const data=new FormData(form);
     const amountMinor=parseMoneyMinor(data.get('amount')); const occurredAt=localWallClock(data.get('occurredAt'));
-    if(amountMinor===null||!occurredAt)return setNotice('Tutar ve tarih/saat geçerli olmalı.');
+    if(amountMinor===null||!occurredAt)return setNotice(t('Tutar ve tarih/saat geçerli olmalı.'));
     const body={category:String(data.get('category')??'').trim(),description:String(data.get('description')??'').trim()||null,amountMinor,currency:'TRY',paymentMethod:data.get('paymentMethod'),occurredAt};
-    if(await mutate(`create:${JSON.stringify(body)}`,'/api/expenses',body)){form.reset();setNotice('Masraf kaydedildi.');}
+    if(await mutate(`create:${JSON.stringify(body)}`,'/api/expenses',body)){form.reset();setNotice(t('Masraf kaydedildi.'));}
   }
 
   async function reverse(eventId:string){
-    const reason=window.prompt('İptal gerekçesi'); if(!reason?.trim())return;
+    const reason=window.prompt(t('İptal gerekçesi')); if(!reason?.trim())return;
     const timeZone=activeBusiness?.timezone??'Europe/Istanbul';
-    if(await mutate(`reverse:${eventId}:${reason.trim()}`,`/api/expenses/${eventId}/reverse`,{reason:reason.trim(),occurredAt:nowLocalInZone(timeZone)})) setNotice('Masraf reversal hareketi kaydedildi.');
+    if(await mutate(`reverse:${eventId}:${reason.trim()}`,`/api/expenses/${eventId}/reverse`,{reason:reason.trim(),occurredAt:nowLocalInZone(timeZone)})) setNotice(t('Masraf reversal hareketi kaydedildi.'));
   }
 
   async function correct(expense:ExpenseEvent){
-    const amount=window.prompt('Yeni tutar (TL)',String(expense.amountMinor/100).replace('.',','));
+    const amount=window.prompt(t('Yeni tutar (TL)'),String(expense.amountMinor/100).replace('.',','));
     if(amount===null)return;
     const amountMinor=parseMoneyMinor(amount);
-    const reason=window.prompt('Düzeltme gerekçesi');
-    if(amountMinor===null||!reason?.trim())return setNotice('Yeni tutar ve düzeltme gerekçesi gerekli.');
+    const reason=window.prompt(t('Düzeltme gerekçesi'));
+    if(amountMinor===null||!reason?.trim())return setNotice(t('Yeni tutar ve düzeltme gerekçesi gerekli.'));
     const timeZone=expense.timezone||activeBusiness?.timezone||'Europe/Istanbul';
     const body={
       reason:reason.trim(),
@@ -172,38 +173,38 @@ export default function ExpensesPage(){
       occurredAt:localWallFromInstant(expense.occurredAt,timeZone),
       correctionOccurredAt:nowLocalInZone(timeZone),
     };
-    if(await mutate(`correct:${expense.eventId}:${JSON.stringify(body)}`,`/api/expenses/${expense.eventId}/correct`,body)) setNotice('Masraf düzeltmesi reversal + yeni kayıt olarak kaydedildi.');
+    if(await mutate(`correct:${expense.eventId}:${JSON.stringify(body)}`,`/api/expenses/${expense.eventId}/correct`,body)) setNotice(t('Masraf düzeltmesi reversal + yeni kayıt olarak kaydedildi.'));
   }
 
   const reversedSourceIds=new Set(events.filter((event)=>event.eventType==='reversal'&&event.sourceExpenseEventId).map((event)=>event.sourceExpenseEventId as string));
 
   return <main className="expenses-shell">
-    <header className="expenses-hero"><div><p className="expenses-eyebrow">MASRAFLAR</p><h1>Gider kayıtları</h1><p>Geçmiş mali kayıtlar silinmez; düzeltmeler yeni hareket olarak eklenir.</p></div></header>
+    <header className="expenses-hero"><div><p className="expenses-eyebrow">{t('MASRAFLAR')}</p><h1>{t('Gider kayıtları')}</h1><p>{t('Geçmiş mali kayıtlar silinmez; düzeltmeler yeni hareket olarak eklenir.')}</p></div></header>
     {notice&&<div className="expenses-notice" role="status">{notice}</div>}
-    {pendingWrite&&<div className="expenses-notice" role="alert"><strong>Sonucu belirsiz masraf işlemi korunuyor.</strong>{' '}
+    {pendingWrite&&<div className="expenses-notice" role="alert"><strong>{t('Sonucu belirsiz masraf işlemi korunuyor.')}</strong>{' '}
       {pendingWrite.businessId===activeBusinessId
-        ?<button disabled={busy} onClick={()=>void retryPending()}>Kayıtlı isteği doğrula</button>
-        :<span>İşlemin başladığı işletmeye dönün.</span>}
+        ?<button disabled={busy} onClick={()=>void retryPending()}>{t('Kayıtlı isteği doğrula')}</button>
+        :<span>{t('İşlemin başladığı işletmeye dönün.')}</span>}
     </div>}
     <section className="expenses-grid">
       <article className="expenses-card">
-        <h2>Yeni masraf</h2>
+        <h2>{t('Yeni masraf')}</h2>
         <form className="expenses-form" onSubmit={createExpense}>
-          <label>Kategori<input name="category" required maxLength={80} placeholder="Örn. Malzeme" /></label>
-          <label>Açıklama<input name="description" maxLength={240} /></label>
-          <label>Tutar<input name="amount" required inputMode="decimal" placeholder="150,00" /></label>
-          <label>Ödeme yöntemi<select name="paymentMethod" defaultValue="cash"><option value="cash">Nakit</option><option value="card">Kart</option></select></label>
-          <label>Tarih ve saat<input name="occurredAt" type="datetime-local" required /></label>
-          <button disabled={busy}>Masrafı kaydet</button>
+          <label>{t('Kategori')}<input name="category" required maxLength={80} placeholder={t('Örn. Malzeme')} /></label>
+          <label>{t('Açıklama')}<input name="description" maxLength={240} /></label>
+          <label>{t('Tutar')}<input name="amount" required inputMode="decimal" placeholder="150,00" /></label>
+          <label>{t('Ödeme yöntemi')}<select name="paymentMethod" defaultValue="cash"><option value="cash">{t('Nakit')}</option><option value="card">{t('Kart')}</option></select></label>
+          <label>{t('Tarih ve saat')}<input name="occurredAt" type="datetime-local" required /></label>
+          <button disabled={busy}>{t('Masrafı kaydet')}</button>
         </form>
       </article>
       <article className="expenses-card">
-        <h2>Hareketler</h2>
-        {loading?<p>Masraflar yükleniyor…</p>:events.length===0?<p>Henüz masraf hareketi yok.</p>:<ol className="expenses-list">{events.map(e=><li key={e.eventId}>
-          <div><strong>{e.eventType==='expense'?e.category:'Reversal'}</strong><span>{expenseDateTime(e.occurredAt,e.timezone)} · {e.paymentMethod==='cash'?'Nakit':'Kart'}</span>{e.description&&<small>{e.description}</small>}{e.correctionOfEventId&&<small>Düzeltme kaydı</small>}{e.reason&&<small>{e.reason}</small>}</div>
-          <div><strong className={e.effectMinor<0?'negative':'positive'}>{e.effectMinor<0?'-':''}{money(Math.abs(e.effectMinor),e.currency)}</strong>{e.eventType==='expense'&&!reversedSourceIds.has(e.eventId)&&<><button disabled={busy} onClick={()=>void correct(e)}>Düzelt</button><button disabled={busy} onClick={()=>void reverse(e.eventId)}>İptal / reversal</button></>}{e.eventType==='expense'&&reversedSourceIds.has(e.eventId)&&<small>Düzeltildi / iptal edildi</small>}</div>
+        <h2>{t('Hareketler')}</h2>
+        {loading?<p>{t('Masraflar yükleniyor…')}</p>:events.length===0?<p>{t('Henüz masraf hareketi yok.')}</p>:<ol className="expenses-list">{events.map(e=><li key={e.eventId}>
+          <div><strong>{e.eventType==='expense'?e.category:t('Reversal')}</strong><span>{expenseDateTime(e.occurredAt,e.timezone)} · {e.paymentMethod==='cash'?t('Nakit'):t('Kart')}</span>{e.description&&<small>{e.description}</small>}{e.correctionOfEventId&&<small>{t('Düzeltme kaydı')}</small>}{e.reason&&<small>{e.reason}</small>}</div>
+          <div><strong className={e.effectMinor<0?'negative':'positive'}>{e.effectMinor<0?'-':''}{money(Math.abs(e.effectMinor),e.currency)}</strong>{e.eventType==='expense'&&!reversedSourceIds.has(e.eventId)&&<><button disabled={busy} onClick={()=>void correct(e)}>{t('Düzelt')}</button><button disabled={busy} onClick={()=>void reverse(e.eventId)}>{t('İptal / reversal')}</button></>}{e.eventType==='expense'&&reversedSourceIds.has(e.eventId)&&<small>{t('Düzeltildi / iptal edildi')}</small>}</div>
         </li>)}</ol>}
-        {page?.hasMore&&<button className="expenses-more" disabled={busy} onClick={()=>void load(page.nextCursor,true)}>Daha fazla</button>}
+        {page?.hasMore&&<button className="expenses-more" disabled={busy} onClick={()=>void load(page.nextCursor,true)}>{t('Daha fazla')}</button>}
       </article>
     </section>
   </main>;

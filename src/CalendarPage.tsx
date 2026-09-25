@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import { api, ApiRequestError } from './api';
 import { navigateApp } from './workspace-route';
 import {
@@ -92,7 +93,7 @@ function mondayOf(date: string) {
 }
 
 function formatDate(date: string, options: Intl.DateTimeFormatOptions) {
-  return new Intl.DateTimeFormat('tr-TR', { timeZone: 'UTC', ...options }).format(new Date(`${date}T12:00:00Z`));
+  return new Intl.DateTimeFormat(intlLocale(), { timeZone: 'UTC', ...options }).format(new Date(`${date}T12:00:00Z`));
 }
 
 function instantParts(value: string, timezone: string) {
@@ -118,17 +119,17 @@ function staffAccent(staffId: string) {
 }
 
 function money(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
+  return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100);
 }
 
 function statusLabel(status: GroupStatus) {
   return {
-    scheduled: 'Planlandı',
-    confirmed: 'Onaylandı',
-    completed: 'Tamamlandı',
-    no_show: 'Gelmedi',
-    cancelled: 'İptal',
-    partial: 'Kısmi',
+    scheduled: t('Planlandı'),
+    confirmed: t('Onaylandı'),
+    completed: t('Tamamlandı'),
+    no_show: t('Gelmedi'),
+    cancelled: t('İptal'),
+    partial: t('Kısmi'),
   }[status];
 }
 
@@ -204,7 +205,7 @@ export default function CalendarPage() {
 
       const authorityContext = `${result.membership.id}:${result.business.id}:${result.membership.role}`;
       if (authorityContextRef.current && authorityContextRef.current !== authorityContext) {
-        invalidateCalendarContext('İşletme veya oturum bağlamı değişti. Takvim güncel bağlamla yeniden açılıyor.');
+        invalidateCalendarContext(t('İşletme veya oturum bağlamı değişti. Takvim güncel bağlamla yeniden açılıyor.'));
         window.location.reload();
         return false;
       }
@@ -221,12 +222,12 @@ export default function CalendarPage() {
       return true;
     } catch (error) {
       if (!requestGate.current.isCurrent(ticket) || abortError(error)) return false;
-      const message = error instanceof Error ? error.message : 'Takvim yüklenemedi.';
+      const message = error instanceof Error ? error.message : t('Takvim yüklenemedi.');
       if (authorityError(error)) {
         invalidateCalendarContext(message);
       } else {
         setLoadError(hasVerifiedPayload
-          ? `${message} Son doğrulanmış takvim gösteriliyor.`
+          ? t('{message} Son doğrulanmış takvim gösteriliyor.', { message })
           : message);
       }
       return false;
@@ -379,7 +380,7 @@ export default function CalendarPage() {
           invalidateCalendarContext(error.message);
           return;
         }
-        setNotice(error instanceof Error ? error.message : 'Rezervasyon grubunun tam detayı yüklenemedi.');
+        setNotice(error instanceof Error ? error.message : t('Rezervasyon grubunun tam detayı yüklenemedi.'));
       })
       .finally(() => {
         if (!controller.signal.aborted && generation === selectionGeneration.current) {
@@ -472,10 +473,10 @@ export default function CalendarPage() {
       mutationKeys.current.delete(fingerprint);
       clearSelection();
       await load();
-      setNotice(`Randevu durumu “${statusLabel(status)}” olarak güncellendi.`);
+      setNotice(t('Randevu durumu “{status}” olarak güncellendi.', { status: statusLabel(status) }));
     } catch (error) {
       if (authorityError(error)) invalidateCalendarContext(error.message);
-      else setNotice(error instanceof Error ? error.message : 'Randevu güncellenemedi.');
+      else setNotice(error instanceof Error ? error.message : t('Randevu güncellenemedi.'));
     } finally {
       setBusy(false);
     }
@@ -496,21 +497,21 @@ export default function CalendarPage() {
       mutationKeys.current.delete(fingerprint);
       clearSelection();
       await load();
-      setNotice('Rezervasyon grubu iptal edildi.');
+      setNotice(t('Rezervasyon grubu iptal edildi.'));
     } catch (error) {
       if (authorityError(error)) invalidateCalendarContext(error.message);
-      else setNotice(error instanceof Error ? error.message : 'Rezervasyon grubu iptal edilemedi.');
+      else setNotice(error instanceof Error ? error.message : t('Rezervasyon grubu iptal edilemedi.'));
     } finally {
       setBusy(false);
     }
   }
 
   if (loading && !payload) {
-    return <main className="calendar-shell"><section className="calendar-empty">Takvim hazırlanıyor…</section></main>;
+    return <main className="calendar-shell"><section className="calendar-empty">{t('Takvim hazırlanıyor…')}</section></main>;
   }
 
   if (!payload) {
-    return <main className="calendar-shell"><section className="calendar-empty"><h1>Takvim açılamadı</h1><p>{loadError || notice}</p><button className="calendar-retry" type="button" onClick={() => void load()}>Tekrar dene</button><a href="/app">İşletmeye dön</a></section></main>;
+    return <main className="calendar-shell"><section className="calendar-empty"><h1>{t('Takvim açılamadı')}</h1><p>{loadError || notice}</p><button className="calendar-retry" type="button" onClick={() => void load()}>{t('Tekrar dene')}</button><a href="/app">{t('İşletmeye dön')}</a></section></main>;
   }
 
   const weekDates = Array.from({ length: 7 }, (_, index) => addDays(payload.date, index));
@@ -525,55 +526,55 @@ export default function CalendarPage() {
     <main className="calendar-shell" aria-busy={refreshing}>
       <header className="calendar-header">
         <div>
-          <p className="calendar-kicker">OPERASYON TAKVİMİ</p>
+          <p className="calendar-kicker">{t('OPERASYON TAKVİMİ')}</p>
           <h1>{payload.business.name}</h1>
           <p>{title} · {payload.business.timezone}</p>
         </div>
-        <button className="calendar-new" type="button" onClick={() => navigateApp("/app/bookings")}>+ Yeni randevu</button>
+        <button className="calendar-new" type="button" onClick={() => navigateApp("/app/bookings")}>{t('+ Yeni randevu')}</button>
       </header>
 
-      <section className="calendar-toolbar" aria-label="Takvim kontrolleri">
+      <section className="calendar-toolbar" aria-label={t('Takvim kontrolleri')}>
         <div className="calendar-nav-buttons">
-          <button type="button" onClick={() => navigate(-1)} aria-label="Önceki dönem">‹</button>
-          <button type="button" onClick={today}>Bugün</button>
-          <button type="button" onClick={() => navigate(1)} aria-label="Sonraki dönem">›</button>
+          <button type="button" onClick={() => navigate(-1)} aria-label={t('Önceki dönem')}>‹</button>
+          <button type="button" onClick={today}>{t('Bugün')}</button>
+          <button type="button" onClick={() => navigate(1)} aria-label={t('Sonraki dönem')}>›</button>
         </div>
         <label className="calendar-date-filter">
-          <span>Tarih</span>
+          <span>{t('Tarih')}</span>
           <input type="date" value={date} onChange={(event) => changeDate(event.target.value)} />
         </label>
-        <div className="calendar-view-toggle" role="group" aria-label="Takvim görünümü">
-          <button className={view === 'day' ? 'is-active' : ''} type="button" onClick={() => changeView('day')}>Gün</button>
-          <button className={view === 'week' ? 'is-active' : ''} type="button" onClick={() => changeView('week')}>Hafta</button>
-          <button className={view === 'list' ? 'is-active' : ''} type="button" onClick={() => changeView('list')}>Liste</button>
+        <div className="calendar-view-toggle" role="group" aria-label={t('Takvim görünümü')}>
+          <button className={view === 'day' ? 'is-active' : ''} type="button" onClick={() => changeView('day')}>{t('Gün')}</button>
+          <button className={view === 'week' ? 'is-active' : ''} type="button" onClick={() => changeView('week')}>{t('Hafta')}</button>
+          <button className={view === 'list' ? 'is-active' : ''} type="button" onClick={() => changeView('list')}>{t('Liste')}</button>
         </div>
         {view === 'list' && (
-          <div className="calendar-range-toggle" role="group" aria-label="Liste tarih aralığı">
-            <button className={days === 1 ? 'is-active' : ''} type="button" onClick={() => changeListRange(1)}>1 gün</button>
-            <button className={days === 7 ? 'is-active' : ''} type="button" onClick={() => changeListRange(7)}>7 gün</button>
+          <div className="calendar-range-toggle" role="group" aria-label={t('Liste tarih aralığı')}>
+            <button className={days === 1 ? 'is-active' : ''} type="button" onClick={() => changeListRange(1)}>{t('1 gün')}</button>
+            <button className={days === 7 ? 'is-active' : ''} type="button" onClick={() => changeListRange(7)}>{t('7 gün')}</button>
           </div>
         )}
         <label className="calendar-filter">
-          <span>Personel</span>
+          <span>{t('Personel')}</span>
           <select value={staffId} onChange={(event) => changeStaff(event.target.value)}>
-            <option value="all">Tüm ekip</option>
+            <option value="all">{t('Tüm ekip')}</option>
             {payload.staff.filter((person) => person.active).map((person) => <option value={person.id} key={person.id}>{person.name}</option>)}
           </select>
         </label>
-        <label className="calendar-check"><input type="checkbox" checked={showCancelled} onChange={(event) => setShowCancelled(event.target.checked)} /> İptalleri göster</label>
+        <label className="calendar-check"><input type="checkbox" checked={showCancelled} onChange={(event) => setShowCancelled(event.target.checked)} /> {t('İptalleri göster')}</label>
       </section>
 
-      <section className="calendar-stats" aria-label="Takvim özeti">
-        <div><strong>{stats.total}</strong><span>Rezervasyon</span></div>
-        <div><strong>{stats.pending}</strong><span>Planlanan</span></div>
-        <div><strong>{stats.confirmed}</strong><span>Onaylı</span></div>
-        <div><strong>{stats.done}</strong><span>Tamamlanan</span></div>
+      <section className="calendar-stats" aria-label={t('Takvim özeti')}>
+        <div><strong>{stats.total}</strong><span>{t('Rezervasyon')}</span></div>
+        <div><strong>{stats.pending}</strong><span>{t('Planlanan')}</span></div>
+        <div><strong>{stats.confirmed}</strong><span>{t('Onaylı')}</span></div>
+        <div><strong>{stats.done}</strong><span>{t('Tamamlanan')}</span></div>
       </section>
 
       {loadError && (
         <div className="calendar-notice calendar-stale" role="alert">
           <span>{loadError}</span>
-          <button type="button" disabled={refreshing} onClick={() => void load()}>{refreshing ? 'Yenileniyor…' : 'Yeniden dene'}</button>
+          <button type="button" disabled={refreshing} onClick={() => void load()}>{refreshing ? t('Yenileniyor…') : t('Yeniden dene')}</button>
         </div>
       )}
       {notice && <div className="calendar-notice" role="status">{notice}</div>}
@@ -583,7 +584,7 @@ export default function CalendarPage() {
           {dayStaff.length ? (
             <div className="calendar-day-grid" style={{ gridTemplateColumns: `72px repeat(${dayStaff.length}, minmax(190px, 1fr))` }}>
               <div className="calendar-corner" />
-              {dayStaff.map((person) => <div className="calendar-staff-head" style={{ borderTopColor: staffAccent(person.id) }} key={person.id}><strong>{person.name}</strong>{!person.active && <small>Pasif</small>}</div>)}
+              {dayStaff.map((person) => <div className="calendar-staff-head" style={{ borderTopColor: staffAccent(person.id) }} key={person.id}><strong>{person.name}</strong>{!person.active && <small>{t('Pasif')}</small>}</div>)}
               <div className="calendar-time-axis" style={{ height: gridHeight }}>
                 {hours.map((hour) => <span key={hour} style={{ top: (hour - startHour) * hourHeight }}>{String(hour).padStart(2, '0')}:00</span>)}
               </div>
@@ -613,7 +614,7 @@ export default function CalendarPage() {
                 </div>
               ))}
             </div>
-          ) : <div className="calendar-empty">Takvimde gösterecek personel bulunmuyor.</div>}
+          ) : <div className="calendar-empty">{t('Takvimde gösterecek personel bulunmuyor.')}</div>}
         </section>
       ) : view === 'week' ? (
         <section className="calendar-week-grid">
@@ -630,16 +631,16 @@ export default function CalendarPage() {
                       <span>{appointment.customer_name}</span>
                       <small>{appointment.staff_name} · {appointment.service_name}{appointment.group_line_count > 1 ? ` · ${appointment.line_ordinal}/${appointment.group_line_count}` : ''} · {statusLabel(appointment.group_status)}</small>
                     </button>
-                  )) : <p>Boş</p>}
+                  )) : <p>{t('Boş')}</p>}
                 </div>
               </div>
             );
           })}
         </section>
       ) : (
-        <section className="calendar-list-view" aria-label="Randevu listesi">
+        <section className="calendar-list-view" aria-label={t('Randevu listesi')}>
           <header className="calendar-list-head">
-            <span>Saat</span><span>Müşteri</span><span>Hizmetler</span><span>Personel</span><span>Durum</span>
+            <span>{t('Saat')}</span><span>{t('Müşteri')}</span><span>{t('Hizmetler')}</span><span>{t('Personel')}</span><span>{t('Durum')}</span>
           </header>
           {listGroups.length ? listGroups.map(({ groupId, root, lines }) => {
             const services = [...new Set(lines.map((line) => line.service_name))];
@@ -651,39 +652,39 @@ export default function CalendarPage() {
                   {days === 7 && <small>{formatDate(dateParts.date, { weekday: 'short', day: 'numeric', month: 'short' })}</small>}
                   <strong>{dateParts.time}</strong>
                 </span>
-                <span className="calendar-list-customer"><strong>{root.customer_name}</strong><small>{root.source === 'public' ? 'Online' : 'Operatör'}</small></span>
-                <span className="calendar-list-services">{services.join(' + ')}{root.group_line_count > 1 && <small>{root.group_line_count} hizmet</small>}</span>
+                <span className="calendar-list-customer"><strong>{root.customer_name}</strong><small>{root.source === 'public' ? t('Online') : t('Operatör')}</small></span>
+                <span className="calendar-list-services">{services.join(' + ')}{root.group_line_count > 1 && <small>{t('{group_line_count} hizmet', { group_line_count: root.group_line_count })}</small>}</span>
                 <span className="calendar-list-staff">{staff.map((line) => <span key={line.staff_id}><i style={{ backgroundColor: staffAccent(line.staff_id) }} />{line.staff_name}</span>)}</span>
                 <span><b className={`calendar-status status-${root.group_status}`}>{statusLabel(root.group_status)}</b></span>
               </button>
             );
-          }) : <div className="calendar-list-empty">Bu aralıkta randevu yok.</div>}
+          }) : <div className="calendar-list-empty">{t('Bu aralıkta randevu yok.')}</div>}
         </section>
       )}
 
       {selected && (
         <div className="calendar-drawer-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) clearSelection(); }}>
-          <aside className="calendar-drawer" aria-label="Rezervasyon detayı">
-            <button className="calendar-drawer-close" type="button" onClick={clearSelection} aria-label="Kapat">×</button>
-            <p className="calendar-kicker">REZERVASYON DETAYI</p>
+          <aside className="calendar-drawer" aria-label={t('Rezervasyon detayı')}>
+            <button className="calendar-drawer-close" type="button" onClick={clearSelection} aria-label={t('Kapat')}>×</button>
+            <p className="calendar-kicker">{t('REZERVASYON DETAYI')}</p>
             <h2>{selected.customer_name}</h2>
             <span className={`calendar-status status-${drawerStatus}`}>{statusLabel(drawerStatus)}</span>
             <dl>
-              <div><dt>Tarih</dt><dd>{new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, dateStyle: 'long', timeStyle: 'short' }).format(new Date(drawerStartsAt))} – {new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, timeStyle: 'short' }).format(new Date(drawerEndsAt))}</dd></div>
-              <div><dt>Hizmetler</dt><dd>
+              <div><dt>{t('Tarih')}</dt><dd>{new Intl.DateTimeFormat(intlLocale(), { timeZone: timezone, dateStyle: 'long', timeStyle: 'short' }).format(new Date(drawerStartsAt))} – {new Intl.DateTimeFormat(intlLocale(), { timeZone: timezone, timeStyle: 'short' }).format(new Date(drawerEndsAt))}</dd></div>
+              <div><dt>{t('Hizmetler')}</dt><dd>
                 {selected.group_legacy_appointment_id
                   ? selectedLines.map((line) => <div key={line.appointment_id}>{line.line_ordinal}. {line.service_name} · {line.staff_name} · {statusLabel(line.status)}</div>)
                   : selectedGroupLoading
-                    ? <span>Rezervasyonun tüm hizmetleri yükleniyor…</span>
+                    ? <span>{t('Rezervasyonun tüm hizmetleri yükleniyor…')}</span>
                     : selectedGroup
                       ? selectedGroup.lines.map((line) => <div key={line.appointmentId}>{line.lineOrdinal}. {line.serviceName} · {line.staffName} · {statusLabel(line.status)}</div>)
-                      : <span>Rezervasyonun tam hizmet listesi doğrulanamadı.</span>}
+                      : <span>{t('Rezervasyonun tam hizmet listesi doğrulanamadı.')}</span>}
               </dd></div>
-              {selected.group_legacy_appointment_id && selected.price_minor !== null && <div><dt>Ücret</dt><dd>{money(selected.price_minor, selected.currency)}</dd></div>}
-              <div><dt>Kaynak</dt><dd>{selected.source === 'public' ? 'Online rezervasyon' : 'Operatör'}</dd></div>
-              {selected.customer_phone && <div><dt>Telefon</dt><dd>{selected.customer_phone}</dd></div>}
-              {selected.customer_email && <div><dt>E-posta</dt><dd>{selected.customer_email}</dd></div>}
-              {selected.notes && <div><dt>Not</dt><dd>{selected.notes}</dd></div>}
+              {selected.group_legacy_appointment_id && selected.price_minor !== null && <div><dt>{t('Ücret')}</dt><dd>{money(selected.price_minor, selected.currency)}</dd></div>}
+              <div><dt>{t('Kaynak')}</dt><dd>{selected.source === 'public' ? t('Online rezervasyon') : t('Operatör')}</dd></div>
+              {selected.customer_phone && <div><dt>{t('Telefon')}</dt><dd>{selected.customer_phone}</dd></div>}
+              {selected.customer_email && <div><dt>{t('E-posta')}</dt><dd>{selected.customer_email}</dd></div>}
+              {selected.notes && <div><dt>{t('Not')}</dt><dd>{selected.notes}</dd></div>}
             </dl>
 
             {selected.group_legacy_appointment_id ? (
@@ -691,30 +692,30 @@ export default function CalendarPage() {
                 <div className="calendar-actions">
                   {selected.status === 'confirmed' && (
                     <>
-                      <button type="button" disabled={busy} onClick={() => void changeLegacyStatus(selected, 'completed')}>Tamamlandı</button>
-                      <button type="button" disabled={busy} onClick={() => void changeLegacyStatus(selected, 'no_show')}>Gelmedi</button>
+                      <button type="button" disabled={busy} onClick={() => void changeLegacyStatus(selected, 'completed')}>{t('Tamamlandı')}</button>
+                      <button type="button" disabled={busy} onClick={() => void changeLegacyStatus(selected, 'no_show')}>{t('Gelmedi')}</button>
                     </>
                   )}
-                  {selected.status === 'scheduled' && <button type="button" disabled={busy} onClick={() => void changeLegacyStatus(selected, 'confirmed')}>Onayla</button>}
+                  {selected.status === 'scheduled' && <button type="button" disabled={busy} onClick={() => void changeLegacyStatus(selected, 'confirmed')}>{t('Onayla')}</button>}
                   {(selected.status === 'scheduled' || selected.status === 'confirmed') && (
                     <div className="calendar-cancel-box">
-                      <textarea value={cancelReason} maxLength={240} rows={2} placeholder="İptal nedeni (isteğe bağlı)" onChange={(event) => setCancelReason(event.target.value)} />
-                      <button className="is-danger" type="button" disabled={busy} onClick={() => void changeLegacyStatus(selected, 'cancelled')}>İptal et</button>
+                      <textarea value={cancelReason} maxLength={240} rows={2} placeholder={t('İptal nedeni (isteğe bağlı)')} onChange={(event) => setCancelReason(event.target.value)} />
+                      <button className="is-danger" type="button" disabled={busy} onClick={() => void changeLegacyStatus(selected, 'cancelled')}>{t('İptal et')}</button>
                     </div>
                   )}
                 </div>
               )
             ) : selectedGroup && selectedGroup.canCancelGroup && selectedGroup.lines.some((line) => line.status === 'scheduled' || line.status === 'confirmed') ? (
               <div className="calendar-actions">
-                <p>Çok hizmetli rezervasyon tek birim olarak yönetilir. Satır düzenleme ve taşıma Randevular ekranındadır.</p>
+                <p>{t('Çok hizmetli rezervasyon tek birim olarak yönetilir. Satır düzenleme ve taşıma Randevular ekranındadır.')}</p>
                 <div className="calendar-cancel-box">
-                  <textarea value={cancelReason} maxLength={500} rows={2} placeholder="Grup iptal nedeni (isteğe bağlı)" onChange={(event) => setCancelReason(event.target.value)} />
-                  <button className="is-danger" type="button" disabled={busy || selectedGroupLoading} onClick={() => void cancelNativeGroup(selectedGroup)}>Tüm rezervasyonu iptal et</button>
+                  <textarea value={cancelReason} maxLength={500} rows={2} placeholder={t('Grup iptal nedeni (isteğe bağlı)')} onChange={(event) => setCancelReason(event.target.value)} />
+                  <button className="is-danger" type="button" disabled={busy || selectedGroupLoading} onClick={() => void cancelNativeGroup(selectedGroup)}>{t('Tüm rezervasyonu iptal et')}</button>
                 </div>
               </div>
             ) : null}
 
-            <button className="calendar-secondary-link" type="button" onClick={() => navigateApp("/app/bookings")}>Gelişmiş randevu işlemlerine git</button>
+            <button className="calendar-secondary-link" type="button" onClick={() => navigateApp("/app/bookings")}>{t('Gelişmiş randevu işlemlerine git')}</button>
           </aside>
         </div>
       )}

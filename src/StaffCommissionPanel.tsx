@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import { api } from './api';
 import './staff-commission.css';
 
@@ -67,11 +68,11 @@ type CatalogService = { id: string; name: string; active: boolean };
 
 export function money(minor: number, currency: string | null) {
   const value = minor / 100;
-  if (!currency) return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  if (!currency) return new Intl.NumberFormat(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   try {
-    return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(value);
+    return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(value);
   } catch {
-    return `${new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)} ${currency}`;
+    return `${new Intl.NumberFormat(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)} ${currency}`;
   }
 }
 
@@ -108,7 +109,7 @@ const LINE_LABEL: Record<CommissionMovement['lineKind'], string> = {
 function timeLabel(instant: string, timeZone: string) {
   const date = new Date(instant);
   if (!Number.isFinite(date.getTime())) return instant;
-  return new Intl.DateTimeFormat('tr-TR', { timeZone, dateStyle: 'short', timeStyle: 'short' }).format(date);
+  return new Intl.DateTimeFormat(intlLocale(), { timeZone, dateStyle: 'short', timeStyle: 'short' }).format(date);
 }
 
 export default function StaffCommissionPanel({ businessId, startDate, endDate, requestKey, canManage }: {
@@ -135,12 +136,12 @@ export default function StaffCommissionPanel({ businessId, startDate, endDate, r
       const params = new URLSearchParams({ startDate, endDate });
       const result = await api<{ report: CommissionReport }>(`/api/reports/commission?${params}`, { signal: controller.signal });
       if (controller.signal.aborted || generation !== generationRef.current) return;
-      if (result.report.businessId !== businessId) throw new Error('Prim raporu güncel işletmeyle eşleşmiyor.');
+      if (result.report.businessId !== businessId) throw new Error(t('Prim raporu güncel işletmeyle eşleşmiyor.'));
       setReport(result.report);
     } catch (error) {
       if (controller.signal.aborted || generation !== generationRef.current) return;
       setReport(null);
-      setNotice(error instanceof Error ? error.message : 'Prim raporu hazırlanamadı.');
+      setNotice(error instanceof Error ? error.message : t('Prim raporu hazırlanamadı.'));
     } finally {
       if (generation === generationRef.current) setLoading(false);
       if (controllerRef.current === controller) controllerRef.current = null;
@@ -164,46 +165,46 @@ export default function StaffCommissionPanel({ businessId, startDate, endDate, r
     <section className="commission-panel" aria-labelledby="commission-title">
       <div className="commission-head">
         <div>
-          <p className="financial-report-eyebrow">PRİM VE ÇALIŞAN RAPORU</p>
-          <h2 id="commission-title">Prim raporu</h2>
+          <p className="financial-report-eyebrow">{t('PRİM VE ÇALIŞAN RAPORU')}</p>
+          <h2 id="commission-title">{t('Prim raporu')}</h2>
           <p className="commission-scope">
             {report?.scope === 'own'
-              ? 'Yalnız sizin prim hareketleriniz gösterilir.'
-              : 'Seçili tarihlerde yazılan tüm çalışan prim hareketleri.'}
+              ? t('Yalnız sizin prim hareketleriniz gösterilir.')
+              : t('Seçili tarihlerde yazılan tüm çalışan prim hareketleri.')}
           </p>
         </div>
         {report && (
           <div className="commission-total">
-            <span>Toplam prim</span>
+            <span>{t('Toplam prim')}</span>
             <strong>{money(report.totals.commissionMinor, currency)}</strong>
-            <small>{report.totals.lineCount} satır · matrah {money(report.totals.baseMinor, currency)}</small>
+            <small>{t('{lineCount} satır · matrah {base}', { lineCount: report.totals.lineCount, base: money(report.totals.baseMinor, currency) })}</small>
           </div>
         )}
       </div>
 
       {notice && <div className="financial-report-notice" role="status">{notice}</div>}
-      {loading ? <p className="financial-report-loading" aria-busy="true">Prim raporu hazırlanıyor…</p> : report && (
+      {loading ? <p className="financial-report-loading" aria-busy="true">{t('Prim raporu hazırlanıyor…')}</p> : report && (
         <>
           <details className="commission-definition">
-            <summary>Hesap tanımı</summary>
+            <summary>{t('Hesap tanımı')}</summary>
             <ul>{report.definition.map((item) => <li key={item}>{item}</li>)}</ul>
           </details>
 
           {report.staff.length === 0 ? (
-            <p className="commission-empty">Bu tarihlerde prim hareketi yok. Prim, adisyon kapanınca yazılır.</p>
+            <p className="commission-empty">{t('Bu tarihlerde prim hareketi yok. Prim, adisyon kapanınca yazılır.')}</p>
           ) : (
-            <div className="commission-table" role="table" aria-label="Çalışan prim özeti">
+            <div className="commission-table" role="table" aria-label={t('Çalışan prim özeti')}>
               <div className="commission-row commission-row--head" role="row">
-                <span role="columnheader">Çalışan</span>
-                <span role="columnheader">Hizmet</span>
-                <span role="columnheader">Paket seansı</span>
-                <span role="columnheader">Ürün</span>
-                <span role="columnheader">İade/düzeltme</span>
-                <span role="columnheader">Prim</span>
+                <span role="columnheader">{t('Çalışan')}</span>
+                <span role="columnheader">{t('Hizmet')}</span>
+                <span role="columnheader">{t('Paket seansı')}</span>
+                <span role="columnheader">{t('Ürün')}</span>
+                <span role="columnheader">{t('İade/düzeltme')}</span>
+                <span role="columnheader">{t('Prim')}</span>
               </div>
               {report.staff.map((row) => (
                 <div className="commission-row" role="row" key={row.staffId}>
-                  <span role="cell" className="commission-staff"><strong>{row.staffName}</strong><small>{row.lineCount} satır{row.adjustmentCount ? ` · ${row.adjustmentCount} düzeltme` : ''}</small></span>
+                  <span role="cell" className="commission-staff"><strong>{row.staffName}</strong><small>{row.adjustmentCount ? t('{lines} satır · {adjustments} düzeltme', { lines: row.lineCount, adjustments: row.adjustmentCount }) : t('{lines} satır', { lines: row.lineCount })}</small></span>
                   <span role="cell" data-label="Hizmet">{money(row.serviceBaseMinor, currency)}</span>
                   <span role="cell" data-label="Paket seansı">{money(row.packageUnitBaseMinor, currency)}</span>
                   <span role="cell" data-label="Ürün">{money(row.productBaseMinor, currency)}</span>
@@ -216,19 +217,19 @@ export default function StaffCommissionPanel({ businessId, startDate, endDate, r
 
           {report.movements.length > 0 && (
             <details className="commission-movements">
-              <summary>Prim hareketleri ({report.movementCount})</summary>
-              {report.movementsTruncated && <p className="commission-note">Son 500 hareket gösteriliyor; toplamlar tüm hareketleri kapsar.</p>}
+              <summary>{t('Prim hareketleri ({movementCount})', { movementCount: report.movementCount })}</summary>
+              {report.movementsTruncated && <p className="commission-note">{t('Son 500 hareket gösteriliyor; toplamlar tüm hareketleri kapsar.')}</p>}
               <ul>
                 {report.movements.map((item) => (
                   <li key={item.entryId}>
                     <div>
                       <strong>{item.staffName}</strong>
-                      <span>{item.itemName} · {LINE_LABEL[item.lineKind]} · {item.customerName}</span>
-                      <small>{timeLabel(item.occurredAt, report.timezone)} · {KIND_LABEL[item.kind]} · {percentText(item.rateBps)}</small>
+                      <span>{item.itemName} · {t(LINE_LABEL[item.lineKind])} · {item.customerName}</span>
+                      <small>{timeLabel(item.occurredAt, report.timezone)} · {t(KIND_LABEL[item.kind])} · {percentText(item.rateBps)}</small>
                     </div>
                     <div className="commission-movement-amount">
                       <strong>{money(item.amountMinor, currency)}</strong>
-                      <small>matrah {money(item.baseMinor, currency)}</small>
+                      <small>{t('matrah {base}', { base: money(item.baseMinor, currency) })}</small>
                     </div>
                   </li>
                 ))}
@@ -257,12 +258,12 @@ function CommissionRatesEditor({ businessId }: { businessId: string }) {
         api<{ staff: StaffRates[] }>('/api/commission-rates'),
         api<{ services: CatalogService[]; membership: { business_id: string } }>('/api/catalog'),
       ]);
-      if (catalog.membership.business_id !== businessId) throw new Error('Oranlar seçili işletmeyle eşleşmiyor.');
+      if (catalog.membership.business_id !== businessId) throw new Error(t('Oranlar seçili işletmeyle eşleşmiyor.'));
       setStaff(rates.staff);
       setServices(catalog.services.filter((service) => service.active));
     } catch (error) {
       setStaff([]);
-      setNotice(error instanceof Error ? error.message : 'Prim oranları yüklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Prim oranları yüklenemedi.'));
     } finally {
       setLoading(false);
     }
@@ -279,7 +280,7 @@ function CommissionRatesEditor({ businessId }: { businessId: string }) {
     const serviceRateBps = parsePercentBps(String(data.get('serviceRate') ?? ''));
     const productRateBps = parsePercentBps(String(data.get('productRate') ?? ''));
     if (serviceRateBps === null || productRateBps === null) {
-      setNotice('Oranlar %0 ile %100 arasında, en fazla iki ondalıkla girilmeli.');
+      setNotice(t('Oranlar %0 ile %100 arasında, en fazla iki ondalıkla girilmeli.'));
       return;
     }
     setBusy(true);
@@ -290,9 +291,9 @@ function CommissionRatesEditor({ businessId }: { businessId: string }) {
         body: JSON.stringify({ serviceRateBps, productRateBps, expectedVersion: item.version }),
       });
       replace(result.staff);
-      setNotice(`${item.staffName} için yeni oranlar kaydedildi. Yalnız bundan sonra kapanan adisyonlara uygulanır.`);
+      setNotice(t('{staff} için yeni oranlar kaydedildi. Yalnız bundan sonra kapanan adisyonlara uygulanır.', { staff: item.staffName }));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Oranlar kaydedilemedi.');
+      setNotice(error instanceof Error ? error.message : t('Oranlar kaydedilemedi.'));
       await load();
     } finally { setBusy(false); }
   }
@@ -307,20 +308,20 @@ function CommissionRatesEditor({ businessId }: { businessId: string }) {
         body: JSON.stringify({ rateBps, expectedVersion: current?.version ?? 0 }),
       });
       replace(result.staff);
-      setNotice(rateBps === null ? 'Hizmet istisnası kaldırıldı; varsayılan hizmet oranı geçerli.' : 'Hizmet istisnası kaydedildi.');
+      setNotice(rateBps === null ? t('Hizmet istisnası kaldırıldı; varsayılan hizmet oranı geçerli.') : t('Hizmet istisnası kaydedildi.'));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Hizmet istisnası kaydedilemedi.');
+      setNotice(error instanceof Error ? error.message : t('Hizmet istisnası kaydedilemedi.'));
       await load();
     } finally { setBusy(false); }
   }
 
   return (
     <section className="commission-rates" aria-labelledby="commission-rates-title">
-      <h3 id="commission-rates-title">Prim oranları</h3>
-      <p className="commission-note">Her değişiklik yeni bir tarihli sürüm olarak kaydedilir ve yalnız sonraki kapanışlara uygulanır; yazılmış prim kayıtları değişmez.</p>
+      <h3 id="commission-rates-title">{t('Prim oranları')}</h3>
+      <p className="commission-note">{t('Her değişiklik yeni bir tarihli sürüm olarak kaydedilir ve yalnız sonraki kapanışlara uygulanır; yazılmış prim kayıtları değişmez.')}</p>
       {notice && <p className="commission-rates-notice" role="status">{notice}</p>}
-      {loading ? <p className="financial-report-loading">Oranlar yükleniyor…</p> : staff.length === 0 ? (
-        <p className="commission-empty">Önce Hizmetler sayfasından çalışan ekleyin.</p>
+      {loading ? <p className="financial-report-loading">{t('Oranlar yükleniyor…')}</p> : staff.length === 0 ? (
+        <p className="commission-empty">{t('Önce Hizmetler sayfasından çalışan ekleyin.')}</p>
       ) : (
         <ul className="commission-rate-list">
           {staff.map((item) => {
@@ -333,18 +334,18 @@ function CommissionRatesEditor({ businessId }: { businessId: string }) {
                   aria-label={`${item.staffName} prim oranları`}
                   onSubmit={(event) => { event.preventDefault(); void saveDefaults(item, event.currentTarget); }}
                 >
-                  <strong>{item.staffName}{item.active ? '' : ' (pasif)'}</strong>
-                  <label>Hizmet (%)<input name="serviceRate" inputMode="decimal" defaultValue={bpsInput(item.serviceRateBps)} placeholder="0" key={`s${item.version}`} /></label>
-                  <label>Ürün (%)<input name="productRate" inputMode="decimal" defaultValue={bpsInput(item.productRateBps)} placeholder="0" key={`p${item.version}`} /></label>
-                  <button disabled={busy}>Kaydet</button>
-                  <small>{item.version ? `Sürüm ${item.version}` : 'Oran tanımlı değil (prim yazılmaz)'}</small>
+                  <strong>{item.staffName}{item.active ? '' : t(' (pasif)')}</strong>
+                  <label>{t('Hizmet (%)')}<input name="serviceRate" inputMode="decimal" defaultValue={bpsInput(item.serviceRateBps)} placeholder="0" key={`s${item.version}`} /></label>
+                  <label>{t('Ürün (%)')}<input name="productRate" inputMode="decimal" defaultValue={bpsInput(item.productRateBps)} placeholder="0" key={`p${item.version}`} /></label>
+                  <button disabled={busy}>{t('Kaydet')}</button>
+                  <small>{item.version ? t('Sürüm {version}', { version: item.version }) : t('Oran tanımlı değil (prim yazılmaz)')}</small>
                 </form>
                 {active.length > 0 && (
                   <ul className="commission-overrides">
                     {active.map((override) => (
                       <li key={override.serviceId}>
                         <span>{override.serviceName}: {percentText(override.rateBps)}</span>
-                        <button type="button" disabled={busy} onClick={() => void saveOverride(item, override.serviceId, null)}>İstisnayı kaldır</button>
+                        <button type="button" disabled={busy} onClick={() => void saveOverride(item, override.serviceId, null)}>{t('İstisnayı kaldır')}</button>
                       </li>
                     ))}
                   </ul>
@@ -359,20 +360,20 @@ function CommissionRatesEditor({ businessId }: { businessId: string }) {
                       const rateBps = parsePercentBps(String(data.get('rate') ?? ''));
                       const serviceId = String(data.get('serviceId') ?? '');
                       if (rateBps === null || !serviceId) {
-                        setNotice('Hizmet ve %0–100 arası istisna oranı seçin.');
+                        setNotice(t('Hizmet ve %0–100 arası istisna oranı seçin.'));
                         return;
                       }
                       void saveOverride(item, serviceId, rateBps);
                     }}
                   >
-                    <label>Hizmet istisnası
+                    <label>{t('Hizmet istisnası')}
                       <select name="serviceId" defaultValue="">
-                        <option value="" disabled>Hizmet seçin</option>
+                        <option value="" disabled>{t('Hizmet seçin')}</option>
                         {available.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}
                       </select>
                     </label>
-                    <label>Oran (%)<input name="rate" inputMode="decimal" placeholder="15" /></label>
-                    <button disabled={busy}>İstisna ekle</button>
+                    <label>{t('Oran (%)')}<input name="rate" inputMode="decimal" placeholder="15" /></label>
+                    <button disabled={busy}>{t('İstisna ekle')}</button>
                   </form>
                 )}
               </li>

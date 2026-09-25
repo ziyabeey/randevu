@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import type { FormEvent } from 'react';
 import { api, ApiRequestError } from './api';
 
@@ -53,16 +54,16 @@ const PERMISSIONS: Array<{ key: PermissionKey; label: string }> = [
 ];
 
 function roleLabel(role: Role) {
-  if (role === 'owner') return 'İşletme sahibi';
-  if (role === 'manager') return 'Yönetici';
+  if (role === 'owner') return t('İşletme sahibi');
+  if (role === 'manager') return t('Yönetici');
   return 'Çalışan';
 }
 
 function dateLabel(value: string) {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
-    ? 'Bilinmiyor'
-    : new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
+    ? t('Bilinmiyor')
+    : new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(parsed);
 }
 
 function isRetryableApiError(error: unknown) {
@@ -86,7 +87,7 @@ export default function TeamPage() {
       setAuthorityStale(false);
     } catch (error) {
       if (!isRetryableApiError(error)) setTeam(null);
-      setNotice(error instanceof Error ? error.message : 'Ekip bilgileri alınamadı.');
+      setNotice(error instanceof Error ? error.message : t('Ekip bilgileri alınamadı.'));
     } finally {
       setLoading(false);
     }
@@ -109,7 +110,7 @@ export default function TeamPage() {
       await load();
     } catch (error) {
       await refreshAuthorityAfterForbidden(error);
-      setNotice(error instanceof Error ? error.message : 'İşlem tamamlanamadı.');
+      setNotice(error instanceof Error ? error.message : t('İşlem tamamlanamadı.'));
     } finally {
       setBusy(false);
     }
@@ -129,11 +130,11 @@ export default function TeamPage() {
       });
       form.reset();
       setInviteUrl(result.inviteUrl);
-      setNotice('Davet oluşturuldu. Bağlantı yalnız bu yanıtta gösterilir; şimdi güvenli biçimde paylaşın.');
+      setNotice(t('Davet oluşturuldu. Bağlantı yalnız bu yanıtta gösterilir; şimdi güvenli biçimde paylaşın.'));
       await load();
     } catch (error) {
       await refreshAuthorityAfterForbidden(error);
-      setNotice(error instanceof Error ? error.message : 'Davet oluşturulamadı.');
+      setNotice(error instanceof Error ? error.message : t('Davet oluşturulamadı.'));
     } finally {
       setBusy(false);
     }
@@ -143,21 +144,21 @@ export default function TeamPage() {
     if (!inviteUrl) return;
     try {
       await navigator.clipboard.writeText(inviteUrl);
-      setNotice('Davet bağlantısı panoya kopyalandı.');
+      setNotice(t('Davet bağlantısı panoya kopyalandı.'));
     } catch {
-      setNotice('Otomatik kopyalama kullanılamadı. Bağlantıyı seçip elle kopyalayın.');
+      setNotice(t('Otomatik kopyalama kullanılamadı. Bağlantıyı seçip elle kopyalayın.'));
     }
   }
 
-  if (loading) return <main className="center-card"><p>Ekip erişimi doğrulanıyor…</p></main>;
+  if (loading) return <main className="center-card"><p>{t('Ekip erişimi doğrulanıyor…')}</p></main>;
 
   if (!team) {
     return (
       <main className="center-card">
-        <h1>Ekip alanı açılamadı</h1>
+        <h1>{t('Ekip alanı açılamadı')}</h1>
         {notice && <div className="notice" role="status">{notice}</div>}
-        <p className="muted">Giriş yapın ve erişiminiz olan bir işletme seçin.</p>
-        <a className="primary-link" href="/">Çalışma alanına dön</a>
+        <p className="muted">{t('Giriş yapın ve erişiminiz olan bir işletme seçin.')}</p>
+        <a className="primary-link" href="/">{t('Çalışma alanına dön')}</a>
       </main>
     );
   }
@@ -171,18 +172,18 @@ export default function TeamPage() {
       <section className="panel span-two">
         <div className="section-head">
           <div>
-            <p className="eyebrow">EKİP VE ERİŞİM</p>
-            <h1>Hesap erişimi ile operasyon ekibini ayırın</h1>
+            <p className="eyebrow">{t('EKİP VE ERİŞİM')}</p>
+            <h1>{t('Hesap erişimi ile operasyon ekibini ayırın')}</h1>
           </div>
           <span className="role-badge">{roleLabel(team.actor.role)}</span>
         </div>
-        <p className="muted">Hesap üyeliği uygulamaya giriş yetkisidir. Operasyon personeli ise randevu takviminde çalışan kişidir. İkisini yalnız gerektiğinde birbirine bağlayın.</p>
+        <p className="muted">{t('Hesap üyeliği uygulamaya giriş yetkisidir. Operasyon personeli ise randevu takviminde çalışan kişidir. İkisini yalnız gerektiğinde birbirine bağlayın.')}</p>
         {notice && <div className="notice" role="status">{notice}</div>}
       </section>
 
       <div className="dashboard-grid team-grid">
         <section className="panel">
-          <div className="section-head"><h2>Hesap üyeleri</h2><span>{team.members.length}</span></div>
+          <div className="section-head"><h2>{t('Hesap üyeleri')}</h2><span>{team.members.length}</span></div>
           <div className="team-stack">
             {team.members.map((member) => {
               const managerLocked = team.actor.role === 'manager' && member.role === 'owner';
@@ -191,10 +192,10 @@ export default function TeamPage() {
                 <article className="team-card" key={member.id}>
                   <div className="team-card-head">
                     <div>
-                      <strong>{member.displayName || member.email || 'Ekip üyesi'}</strong>
+                      <strong>{member.displayName || member.email || t('Ekip üyesi')}</strong>
                       {member.email && <span>{member.email}</span>}
                     </div>
-                    <span className={member.active ? 'status-pill active' : 'status-pill'}>{member.active ? 'Aktif' : 'Pasif'}</span>
+                    <span className={member.active ? 'status-pill active' : 'status-pill'}>{member.active ? t('Aktif') : t('Pasif')}</span>
                   </div>
                   <div className="team-controls">
                     <label>
@@ -207,12 +208,12 @@ export default function TeamPage() {
                             method: 'PATCH',
                             body: JSON.stringify({ role: event.target.value, active: member.active }),
                           }),
-                          'Üyelik rolü güncellendi.',
+                          t('Üyelik rolü güncellendi.'),
                         )}
                       >
-                        <option value="owner" disabled={!isOwner}>İşletme sahibi</option>
-                        <option value="manager">Yönetici</option>
-                        <option value="staff">Çalışan</option>
+                        <option value="owner" disabled={!isOwner}>{t('İşletme sahibi')}</option>
+                        <option value="manager">{t('Yönetici')}</option>
+                        <option value="staff">{t('Çalışan')}</option>
                       </select>
                     </label>
                     <label className="toggle-row">
@@ -225,10 +226,10 @@ export default function TeamPage() {
                             method: 'PATCH',
                             body: JSON.stringify({ role: member.role, active: event.target.checked }),
                           }),
-                          event.target.checked ? 'Üyelik etkinleştirildi.' : 'Üyelik pasifleştirildi.',
+                          event.target.checked ? t('Üyelik etkinleştirildi.') : t('Üyelik pasifleştirildi.'),
                         )}
                       />
-                      Uygulamaya erişebilir
+                      {t('Uygulamaya erişebilir')}
                     </label>
                   </div>
                 </article>
@@ -238,16 +239,16 @@ export default function TeamPage() {
         </section>
 
         <section className="panel">
-          <div className="section-head"><h2>Operasyon personeli</h2><span>{team.staff.length}</span></div>
-          {team.staff.length === 0 ? <p className="empty">Henüz operasyon personeli yok.</p> : (
+          <div className="section-head"><h2>{t('Operasyon personeli')}</h2><span>{team.staff.length}</span></div>
+          {team.staff.length === 0 ? <p className="empty">{t('Henüz operasyon personeli yok.')}</p> : (
             <div className="team-stack">
               {team.staff.map((person) => (
                 <article className="team-card" key={person.id}>
                   <div className="team-card-head">
-                    <div><strong>{person.name}</strong><span>{person.active ? 'Randevu operasyonunda aktif' : 'Operasyonda pasif'}</span></div>
+                    <div><strong>{person.name}</strong><span>{person.active ? t('Randevu operasyonunda aktif') : t('Operasyonda pasif')}</span></div>
                   </div>
                   <label>
-                    Giriş hesabı bağlantısı
+                    {t('Giriş hesabı bağlantısı')}
                     <select
                       value={person.membershipId ?? ''}
                       disabled={busy || !canManage}
@@ -256,10 +257,10 @@ export default function TeamPage() {
                           method: 'PUT',
                           body: JSON.stringify({ membershipId: event.target.value || null }),
                         }),
-                        'Personel-hesap bağlantısı güncellendi.',
+                        t('Personel-hesap bağlantısı güncellendi.'),
                       )}
                     >
-                      <option value="">Bağlantı yok</option>
+                      <option value="">{t('Bağlantı yok')}</option>
                       {activeMembers.map((member) => (
                         <option key={member.id} value={member.id}>{member.displayName || member.email || roleLabel(member.role)}</option>
                       ))}
@@ -273,36 +274,36 @@ export default function TeamPage() {
 
         {canManage && (
           <section className="panel span-two">
-            <div className="section-head"><h2>Davetler</h2><span>{team.invitations.length} bekliyor</span></div>
+            <div className="section-head"><h2>{t('Davetler')}</h2><span>{t('{length} bekliyor', { length: team.invitations.length })}</span></div>
             <form className="team-invite-form" onSubmit={createInvitation}>
-              <input name="email" type="email" required placeholder="calisan@isletme.com" aria-label="Davet e-postası" />
-              <select name="role" defaultValue="staff" aria-label="Davet rolü">
-                <option value="staff">Çalışan</option>
-                <option value="manager">Yönetici</option>
-                {isOwner && <option value="owner">İşletme sahibi</option>}
+              <input name="email" type="email" required placeholder={t('calisan@isletme.com')} aria-label={t('Davet e-postası')} />
+              <select name="role" defaultValue="staff" aria-label={t('Davet rolü')}>
+                <option value="staff">{t('Çalışan')}</option>
+                <option value="manager">{t('Yönetici')}</option>
+                {isOwner && <option value="owner">{t('İşletme sahibi')}</option>}
               </select>
-              <button className="primary-button" disabled={busy}>Davet oluştur</button>
+              <button className="primary-button" disabled={busy}>{t('Davet oluştur')}</button>
             </form>
             {inviteUrl && (
               <div className="invite-receipt">
-                <label>Tek seferlik paylaşım bağlantısı<input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} /></label>
-                <button className="ghost-button" type="button" onClick={() => void copyInvite()}>Kopyala</button>
+                <label>{t('Tek seferlik paylaşım bağlantısı')}<input readOnly value={inviteUrl} onFocus={(event) => event.currentTarget.select()} /></label>
+                <button className="ghost-button" type="button" onClick={() => void copyInvite()}>{t('Kopyala')}</button>
               </div>
             )}
-            {team.invitations.length === 0 ? <p className="empty">Bekleyen davet yok.</p> : (
+            {team.invitations.length === 0 ? <p className="empty">{t('Bekleyen davet yok.')}</p> : (
               <ul className="data-list team-invitations">
                 {team.invitations.map((invitation) => (
                   <li key={invitation.id}>
-                    <div><strong>{invitation.email}</strong><span>{roleLabel(invitation.role)} · {dateLabel(invitation.expiresAt)} tarihine kadar</span></div>
+                    <div><strong>{invitation.email}</strong><span>{t('{role} · {expiresAt} tarihine kadar', { role: roleLabel(invitation.role), expiresAt: dateLabel(invitation.expiresAt) })}</span></div>
                     <button
                       className="ghost-button"
                       type="button"
                       disabled={busy}
                       onClick={() => void run(
                         () => api(`/api/team/invitations/${invitation.id}/revoke`, { method: 'POST', body: '{}' }),
-                        'Davet geri alındı.',
+                        t('Davet geri alındı.'),
                       )}
-                    >Geri al</button>
+                    >{t('Geri al')}</button>
                   </li>
                 ))}
               </ul>
@@ -311,12 +312,12 @@ export default function TeamPage() {
         )}
 
         <section className="panel span-two">
-          <div className="section-head"><h2>Mali izinler</h2><span>{isOwner ? 'Owner yönetir' : 'Etkin izinler'}</span></div>
+          <div className="section-head"><h2>{t('Mali izinler')}</h2><span>{isOwner ? t('Owner yönetir') : t('Etkin izinler')}</span></div>
           {isOwner ? (
             <div className="permission-table">
               {team.members.filter((member) => member.role === 'staff').map((member) => (
                 <article className="permission-row" key={member.id}>
-                  <strong>{member.displayName || member.email || 'Çalışan'}</strong>
+                  <strong>{member.displayName || member.email || t('Çalışan')}</strong>
                   <div className="permission-chips">
                     {PERMISSIONS.map((permission) => {
                       const enabled = team.financialPermissions.some((grant) => grant.membershipId === member.id && grant.permission === permission.key);
@@ -331,28 +332,28 @@ export default function TeamPage() {
                                 method: 'PUT',
                                 body: JSON.stringify({ enabled: event.target.checked }),
                               }),
-                              'Mali izin güncellendi.',
+                              t('Mali izin güncellendi.'),
                             )}
                           />
-                          {permission.label}
+                          {t(permission.label)}
                         </label>
                       );
                     })}
                   </div>
                 </article>
               ))}
-              {team.members.every((member) => member.role !== 'staff') && <p className="empty">Mali izin verilebilecek aktif staff hesabı yok.</p>}
+              {team.members.every((member) => member.role !== 'staff') && <p className="empty">{t('Mali izin verilebilecek aktif staff hesabı yok.')}</p>}
             </div>
           ) : team.effectiveFinancialPermissions.length > 0 ? (
             <div className="permission-chips">
               {PERMISSIONS.filter((permission) => team.effectiveFinancialPermissions.includes(permission.key)).map((permission) => (
-                <span className="chip selected" key={permission.key}>{permission.label}</span>
+                <span className="chip selected" key={permission.key}>{t(permission.label)}</span>
               ))}
             </div>
           ) : (
-            <p className="empty">Bu hesap için açık mali izin yok.</p>
+            <p className="empty">{t('Bu hesap için açık mali izin yok.')}</p>
           )}
-          {!isOwner && team.actor.role === 'manager' && <p className="muted team-note">Yöneticiler operasyonu yönetebilir ancak owner adına mali izin dağıtamaz.</p>}
+          {!isOwner && team.actor.role === 'manager' && <p className="muted team-note">{t('Yöneticiler operasyonu yönetebilir ancak owner adına mali izin dağıtamaz.')}</p>}
         </section>
       </div>
     </main>

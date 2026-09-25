@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import type { FormEvent } from 'react';
 import { ApiRequestError, api } from './api';
 import CatalogSettingsPanel, { type ManagedCatalog, type ManagedStaff } from './CatalogSettingsPanel';
@@ -38,7 +39,7 @@ function shortTime(value: string) {
 }
 
 function formatSlot(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
+  return new Intl.DateTimeFormat(intlLocale(), {
     timeZone: timezone,
     hour: '2-digit',
     minute: '2-digit',
@@ -47,7 +48,7 @@ function formatSlot(value: string, timezone: string) {
 }
 
 function formatDateTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
+  return new Intl.DateTimeFormat(intlLocale(), {
     timeZone: timezone,
     dateStyle: 'short',
     timeStyle: 'short',
@@ -55,8 +56,8 @@ function formatDateTime(value: string, timezone: string) {
 }
 
 function roleLabel(role: Role) {
-  if (role === 'owner') return 'İşletme sahibi';
-  if (role === 'manager') return 'Yönetici';
+  if (role === 'owner') return t('İşletme sahibi');
+  if (role === 'manager') return t('Yönetici');
   return 'Çalışan';
 }
 
@@ -96,7 +97,7 @@ export default function AvailabilityPage() {
       if (controller.signal.aborted || generation !== requestGeneration.current) return false;
       if (nextCatalog.membership.business_id !== activeBusinessId
           || nextSetup.membership.business_id !== activeBusinessId) {
-        throw new Error('Seçili işletmenin güncel ayarları doğrulanamadı. Tekrar yükleyin.');
+        throw new Error(t('Seçili işletmenin güncel ayarları doğrulanamadı. Tekrar yükleyin.'));
       }
       setCatalog(nextCatalog);
       setSetup(nextSetup);
@@ -108,7 +109,7 @@ export default function AvailabilityPage() {
       setCatalog(null);
       setSetup(null);
       setSlots([]);
-      setLoadError(errorMessage(error, 'İşletme ayarları yüklenemedi.'));
+      setLoadError(errorMessage(error, t('İşletme ayarları yüklenemedi.')));
       setLoadState('error');
       return false;
     }
@@ -145,7 +146,7 @@ export default function AvailabilityPage() {
     if (error instanceof ApiRequestError && error.status === 409 && error.code === 'STALE_WRITE') {
       const refreshed = await load();
       if (refreshed) {
-        setNotice('Bu kayıt başka bir oturumda değişti. Güncel bilgiler yeniden yüklendi; yaptığınız değişiklik uygulanmadı.');
+        setNotice(t('Bu kayıt başka bir oturumda değişti. Güncel bilgiler yeniden yüklendi; yaptığınız değişiklik uygulanmadı.'));
       }
       return;
     }
@@ -165,8 +166,8 @@ export default function AvailabilityPage() {
     const existing = businessIntervals(weekday);
     try {
       await replaceBusinessDay(weekday, [...existing, { start, end }], existing);
-      if (await refreshAfterMutation('İşletme çalışma aralığı kaydedildi. Değişiklik mevcut randevuları taşımaz; yeni uygunlukları etkiler.')) form.reset();
-    } catch (error) { await handleMutationFailure(error, 'Saatler kaydedilemedi.'); }
+      if (await refreshAfterMutation(t('İşletme çalışma aralığı kaydedildi. Değişiklik mevcut randevuları taşımaz; yeni uygunlukları etkiler.'))) form.reset();
+    } catch (error) { await handleMutationFailure(error, t('Saatler kaydedilemedi.')); }
     finally { setBusy(false); }
   }
 
@@ -178,8 +179,8 @@ export default function AvailabilityPage() {
       .map((item) => ({ start: shortTime(item.starts_local), end: shortTime(item.ends_local) }));
     try {
       await replaceBusinessDay(row.weekday, intervals, expected);
-      await refreshAfterMutation('Çalışma aralığı kaldırıldı. Mevcut randevular değişmedi.');
-    } catch (error) { await handleMutationFailure(error, 'Aralık kaldırılamadı.'); }
+      await refreshAfterMutation(t('Çalışma aralığı kaldırıldı. Mevcut randevular değişmedi.'));
+    } catch (error) { await handleMutationFailure(error, t('Aralık kaldırılamadı.')); }
     finally { setBusy(false); }
   }
 
@@ -197,8 +198,8 @@ export default function AvailabilityPage() {
     const existing = staffIntervals(staffId, weekday);
     try {
       await replaceStaffDay(staffId, weekday, [...existing, { start, end }], existing);
-      if (await refreshAfterMutation('Personel çalışma aralığı kaydedildi. Mevcut randevular değişmedi.')) form.reset();
-    } catch (error) { await handleMutationFailure(error, 'Personel saatleri kaydedilemedi.'); }
+      if (await refreshAfterMutation(t('Personel çalışma aralığı kaydedildi. Mevcut randevular değişmedi.'))) form.reset();
+    } catch (error) { await handleMutationFailure(error, t('Personel saatleri kaydedilemedi.')); }
     finally { setBusy(false); }
   }
 
@@ -210,8 +211,8 @@ export default function AvailabilityPage() {
       .map((item) => ({ start: shortTime(item.starts_local), end: shortTime(item.ends_local) }));
     try {
       await replaceStaffDay(row.staff_id, row.weekday, intervals, expected);
-      await refreshAfterMutation('Personel çalışma aralığı kaldırıldı. Mevcut randevular değişmedi.');
-    } catch (error) { await handleMutationFailure(error, 'Aralık kaldırılamadı.'); }
+      await refreshAfterMutation(t('Personel çalışma aralığı kaldırıldı. Mevcut randevular değişmedi.'));
+    } catch (error) { await handleMutationFailure(error, t('Aralık kaldırılamadı.')); }
     finally { setBusy(false); }
   }
 
@@ -226,8 +227,8 @@ export default function AvailabilityPage() {
           staffId: data.get('staffId') || null, reason: data.get('reason'),
         }),
       });
-      if (await refreshAfterMutation('İzin/kapanış eklendi. Mevcut randevular otomatik iptal edilmez veya taşınmaz.')) form.reset();
-    } catch (error) { await handleMutationFailure(error, 'Kapanış kaydedilemedi.'); }
+      if (await refreshAfterMutation(t('İzin/kapanış eklendi. Mevcut randevular otomatik iptal edilmez veya taşınmaz.'))) form.reset();
+    } catch (error) { await handleMutationFailure(error, t('Kapanış kaydedilemedi.')); }
     finally { setBusy(false); }
   }
 
@@ -235,8 +236,8 @@ export default function AvailabilityPage() {
     setBusy(true); setNotice('');
     try {
       await api(`/api/availability/blocks/${id}`, { method: 'DELETE' });
-      await refreshAfterMutation('İzin/kapanış kaldırıldı.');
-    } catch (error) { await handleMutationFailure(error, 'Kayıt silinemedi.'); }
+      await refreshAfterMutation(t('İzin/kapanış kaldırıldı.'));
+    } catch (error) { await handleMutationFailure(error, t('Kayıt silinemedi.')); }
     finally { setBusy(false); }
   }
 
@@ -252,40 +253,40 @@ export default function AvailabilityPage() {
     try {
       const result = await api<{ slots: Slot[] }>(`/api/availability/slots?${params}`);
       setSlots(result.slots);
-      setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : 'Bu seçim için uygun saat yok.');
-    } catch (error) { setNotice(errorMessage(error, 'Uygun saatler hesaplanamadı.')); }
+      setNotice(result.slots.length ? t('{count} uygun saat bulundu.', { count: result.slots.length }) : t('Bu seçim için uygun saat yok.'));
+    } catch (error) { setNotice(errorMessage(error, t('Uygun saatler hesaplanamadı.'))); }
     finally { setBusy(false); }
   }
 
   if (loadState === 'loading') {
-    return <main className="availability-page"><section className="availability-card" aria-live="polite"><p>İşletme ayarları hazırlanıyor…</p></section></main>;
+    return <main className="availability-page"><section className="availability-card" aria-live="polite"><p>{t('İşletme ayarları hazırlanıyor…')}</p></section></main>;
   }
 
   if (loadState === 'error') {
     return (
       <main className="availability-page">
         <section className="availability-card availability-error" role="alert">
-          <p className="eyebrow">İŞLETME AYARLARI</p>
-          <h1>Ayarlar yüklenemedi.</h1>
-          <p className="muted">{loadError || 'Güncel işletme bilgileri doğrulanamadı.'}</p>
-          <button className="primary-button" type="button" onClick={() => void load()}>Tekrar yükle</button>
-          <a className="primary-link secondary-link" href="/app">Çalışma alanına dön</a>
+          <p className="eyebrow">{t('İŞLETME AYARLARI')}</p>
+          <h1>{t('Ayarlar yüklenemedi.')}</h1>
+          <p className="muted">{loadError || t('Güncel işletme bilgileri doğrulanamadı.')}</p>
+          <button className="primary-button" type="button" onClick={() => void load()}>{t('Tekrar yükle')}</button>
+          <a className="primary-link secondary-link" href="/app">{t('Çalışma alanına dön')}</a>
         </section>
       </main>
     );
   }
 
   if (!catalog || !setup) {
-    return <main className="availability-page"><section className="availability-card availability-error" role="alert"><h1>Ayarlar doğrulanamadı.</h1><button className="primary-button" type="button" onClick={() => void load()}>Tekrar yükle</button></section></main>;
+    return <main className="availability-page"><section className="availability-card availability-error" role="alert"><h1>{t('Ayarlar doğrulanamadı.')}</h1><button className="primary-button" type="button" onClick={() => void load()}>{t('Tekrar yükle')}</button></section></main>;
   }
 
   return (
     <div className="availability-page">
       <header className="availability-hero">
         <div>
-          <p className="eyebrow">İŞLETME AYARLARI</p>
-          <h1>Hizmet, ekip ve çalışma düzeni</h1>
-          <p className="muted">Saat dilimi: <strong>{setup.timezone}</strong>. Arşivleme geçmiş randevuları değiştirmez; mesai ve kapanış değişiklikleri yeni uygunlukları etkiler.</p>
+          <p className="eyebrow">{t('İŞLETME AYARLARI')}</p>
+          <h1>{t('Hizmet, ekip ve çalışma düzeni')}</h1>
+          <p className="muted">{t('Saat dilimi:')} <strong>{setup.timezone}</strong>{t('. Arşivleme geçmiş randevuları değiştirmez; mesai ve kapanış değişiklikleri yeni uygunlukları etkiler.')}</p>
         </div>
         <span className="role-badge">{roleLabel(setup.membership.role)}</span>
       </header>
@@ -296,59 +297,59 @@ export default function AvailabilityPage() {
         <CatalogSettingsPanel catalog={catalog} busy={busy} setBusy={setBusy} setNotice={setNotice} reload={load} />
 
         <section className="availability-card">
-          <div className="section-head"><h2>İşletme saatleri</h2><span>{setup.businessHours.length} aralık</span></div>
-          <p className="muted">Molalar için aynı günü birden fazla aralığa bölebilirsiniz.</p>
+          <div className="section-head"><h2>{t('İşletme saatleri')}</h2><span>{t('{length} aralık', { length: setup.businessHours.length })}</span></div>
+          <p className="muted">{t('Molalar için aynı günü birden fazla aralığa bölebilirsiniz.')}</p>
           <div className="schedule-list">
-            {setup.businessHours.map((row) => <div className="schedule-row" key={row.id}><span>{weekdays[row.weekday]}</span><strong>{shortTime(row.starts_local)}–{shortTime(row.ends_local)}</strong>{canManage && <button disabled={busy} onClick={() => void removeBusinessHours(row)}>Sil</button>}</div>)}
-            {!setup.businessHours.length && <p className="empty">Henüz işletme çalışma saati yok.</p>}
+            {setup.businessHours.map((row) => <div className="schedule-row" key={row.id}><span>{t(weekdays[row.weekday] ?? '')}</span><strong>{shortTime(row.starts_local)}–{shortTime(row.ends_local)}</strong>{canManage && <button disabled={busy} onClick={() => void removeBusinessHours(row)}>{t('Sil')}</button>}</div>)}
+            {!setup.businessHours.length && <p className="empty">{t('Henüz işletme çalışma saati yok.')}</p>}
           </div>
           {canManage && <form className="availability-form" onSubmit={addBusinessHours}>
-            <select name="weekday" defaultValue="1" aria-label="Gün">{weekdays.map((day, index) => <option key={day} value={index}>{day}</option>)}</select>
-            <input name="start" type="time" defaultValue="09:00" required aria-label="Başlangıç" />
-            <input name="end" type="time" defaultValue="18:00" required aria-label="Bitiş" />
-            <button className="primary-button" disabled={busy}>Aralık ekle</button>
+            <select name="weekday" defaultValue="1" aria-label={t('Gün')}>{weekdays.map((day, index) => <option key={day} value={index}>{t(day)}</option>)}</select>
+            <input name="start" type="time" defaultValue="09:00" required aria-label={t('Başlangıç')} />
+            <input name="end" type="time" defaultValue="18:00" required aria-label={t('Bitiş')} />
+            <button className="primary-button" disabled={busy}>{t('Aralık ekle')}</button>
           </form>}
         </section>
 
         <section className="availability-card">
-          <div className="section-head"><h2>Personel saatleri</h2><span>{setup.staffHours.length} aralık</span></div>
+          <div className="section-head"><h2>{t('Personel saatleri')}</h2><span>{t('{length} aralık', { length: setup.staffHours.length })}</span></div>
           <div className="schedule-list">
-            {setup.staffHours.map((row) => <div className="schedule-row" key={row.id}><span>{activeStaff.find((item) => item.id === row.staff_id)?.name ?? 'Personel'} · {weekdays[row.weekday]}</span><strong>{shortTime(row.starts_local)}–{shortTime(row.ends_local)}</strong>{canManage && <button disabled={busy} onClick={() => void removeStaffHours(row)}>Sil</button>}</div>)}
-            {!setup.staffHours.length && <p className="empty">Henüz personel çalışma saati yok.</p>}
+            {setup.staffHours.map((row) => <div className="schedule-row" key={row.id}><span>{activeStaff.find((item) => item.id === row.staff_id)?.name ?? t('Personel')} · {t(weekdays[row.weekday] ?? '')}</span><strong>{shortTime(row.starts_local)}–{shortTime(row.ends_local)}</strong>{canManage && <button disabled={busy} onClick={() => void removeStaffHours(row)}>{t('Sil')}</button>}</div>)}
+            {!setup.staffHours.length && <p className="empty">{t('Henüz personel çalışma saati yok.')}</p>}
           </div>
           {canManage && activeStaff.length > 0 && <form className="availability-form" onSubmit={addStaffHours}>
-            <select name="staffId" required aria-label="Personel">{activeStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>
-            <select name="weekday" defaultValue="1" aria-label="Gün">{weekdays.map((day, index) => <option key={day} value={index}>{day}</option>)}</select>
-            <input name="start" type="time" defaultValue="09:00" required aria-label="Başlangıç" />
-            <input name="end" type="time" defaultValue="18:00" required aria-label="Bitiş" />
-            <button className="primary-button" disabled={busy}>Aralık ekle</button>
+            <select name="staffId" required aria-label={t('Personel')}>{activeStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>
+            <select name="weekday" defaultValue="1" aria-label={t('Gün')}>{weekdays.map((day, index) => <option key={day} value={index}>{t(day)}</option>)}</select>
+            <input name="start" type="time" defaultValue="09:00" required aria-label={t('Başlangıç')} />
+            <input name="end" type="time" defaultValue="18:00" required aria-label={t('Bitiş')} />
+            <button className="primary-button" disabled={busy}>{t('Aralık ekle')}</button>
           </form>}
         </section>
 
         <section className="availability-card">
-          <div className="section-head"><h2>İzin / kapanış</h2><span>{setup.blocks.length}</span></div>
+          <div className="section-head"><h2>{t('İzin / kapanış')}</h2><span>{setup.blocks.length}</span></div>
           <div className="schedule-list">
-            {setup.blocks.map((block) => <div className="block-row" key={block.id}><div><strong>{block.staff_id ? activeStaff.find((item) => item.id === block.staff_id)?.name ?? 'Personel' : 'Tüm işletme'}</strong><span>{formatDateTime(block.starts_at, setup.timezone)} → {formatDateTime(block.ends_at, setup.timezone)}</span><small>{block.reason || 'Neden belirtilmedi'}</small></div>{canManage && <button disabled={busy} onClick={() => void deleteBlock(block.id)}>Sil</button>}</div>)}
-            {!setup.blocks.length && <p className="empty">Planlanmış izin veya kapanış yok.</p>}
+            {setup.blocks.map((block) => <div className="block-row" key={block.id}><div><strong>{block.staff_id ? activeStaff.find((item) => item.id === block.staff_id)?.name ?? t('Personel') : t('Tüm işletme')}</strong><span>{formatDateTime(block.starts_at, setup.timezone)} → {formatDateTime(block.ends_at, setup.timezone)}</span><small>{block.reason || t('Neden belirtilmedi')}</small></div>{canManage && <button disabled={busy} onClick={() => void deleteBlock(block.id)}>{t('Sil')}</button>}</div>)}
+            {!setup.blocks.length && <p className="empty">{t('Planlanmış izin veya kapanış yok.')}</p>}
           </div>
           {canManage && <form className="availability-form block-form" onSubmit={addBlock}>
-            <input name="date" type="date" defaultValue={dateToday()} required aria-label="Tarih" />
-            <input name="start" type="time" defaultValue="12:00" required aria-label="Başlangıç" />
-            <input name="end" type="time" defaultValue="13:00" required aria-label="Bitiş" />
-            <select name="staffId" aria-label="Kapsam"><option value="">Tüm işletme</option>{activeStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>
-            <input name="reason" maxLength={240} placeholder="Neden (isteğe bağlı)" />
-            <button className="primary-button" disabled={busy}>Kapanış ekle</button>
+            <input name="date" type="date" defaultValue={dateToday()} required aria-label={t('Tarih')} />
+            <input name="start" type="time" defaultValue="12:00" required aria-label={t('Başlangıç')} />
+            <input name="end" type="time" defaultValue="13:00" required aria-label={t('Bitiş')} />
+            <select name="staffId" aria-label={t('Kapsam')}><option value="">{t('Tüm işletme')}</option>{activeStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>
+            <input name="reason" maxLength={240} placeholder={t('Neden (isteğe bağlı)')} />
+            <button className="primary-button" disabled={busy}>{t('Kapanış ekle')}</button>
           </form>}
         </section>
 
         <section className="availability-card slot-card">
-          <div className="section-head"><h2>Uygunluk önizlemesi</h2><span>Randevu oluşturmaz</span></div>
+          <div className="section-head"><h2>{t('Uygunluk önizlemesi')}</h2><span>{t('Randevu oluşturmaz')}</span></div>
           <form className="availability-form slot-form" onSubmit={previewSlots}>
-            <input name="date" type="date" defaultValue={dateToday()} required aria-label="Tarih" />
-            <select name="serviceId" required aria-label="Hizmet"><option value="">Hizmet seçin</option>{activeServices.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select>
-            <select name="staffId" aria-label="Personel"><option value="any">Uygun herhangi biri</option>{activeStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>
-            <select name="step" defaultValue="15" aria-label="Slot adımı"><option value="10">10 dk</option><option value="15">15 dk</option><option value="30">30 dk</option></select>
-            <button className="primary-button" disabled={busy || !activeServices.length}>Hesapla</button>
+            <input name="date" type="date" defaultValue={dateToday()} required aria-label={t('Tarih')} />
+            <select name="serviceId" required aria-label={t('Hizmet')}><option value="">{t('Hizmet seçin')}</option>{activeServices.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select>
+            <select name="staffId" aria-label={t('Personel')}><option value="any">{t('Uygun herhangi biri')}</option>{activeStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>
+            <select name="step" defaultValue="15" aria-label={t('Slot adımı')}><option value="10">{t('10 dk')}</option><option value="15">{t('15 dk')}</option><option value="30">{t('30 dk')}</option></select>
+            <button className="primary-button" disabled={busy || !activeServices.length}>{t('Hesapla')}</button>
           </form>
           <div className="slot-results">
             {slots.map((slot) => <div className="slot-item" key={`${slot.staff_id}-${slot.starts_at}`}><strong>{formatSlot(slot.starts_at, slot.timezone)}</strong><span>{slot.staff_name}</span></div>)}

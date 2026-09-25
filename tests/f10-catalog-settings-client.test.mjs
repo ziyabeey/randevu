@@ -41,7 +41,7 @@ await test('F10-04 fixed-price compatibility preserves minor units, duration and
   assert.ok(catalogWorker.includes('const hasLegacyPrice = body.priceMinor !== undefined'));
   assert.ok(catalogWorker.includes("rest/v1/rpc/create_service_guarded"));
   assert.ok(panel.includes('expectedUpdatedAt: service.updated_at'));
-  assert.match(panel, /Intl\.NumberFormat\('tr-TR'/);
+  assert.match(panel, /Intl\.NumberFormat\(intlLocale\(\)/);
 });
 
 await test('F10-04 mutation success is distinct from authoritative refresh success', () => {

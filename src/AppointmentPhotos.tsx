@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { t } from './i18n';
 import type { FormEvent } from 'react';
 import { api } from './api';
 import { preparePublicMedia } from './publicMedia';
@@ -40,29 +41,29 @@ export function PrivatePhotoTile({ photo, busy, onDelete, onPublish }: {
     setPublishing(false);
     setConsent(false);
   }, [photo.published]);
-  const label = photo.caption || photo.serviceName || 'Randevu fotoğrafı';
+  const label = photo.caption || photo.serviceName || t('Randevu fotoğrafı');
   return <figure className="private-photo-tile">
     {broken
-      ? <div className="private-photo-fallback" role="img" aria-label="Fotoğraf yüklenemedi"><span>Fotoğraf yüklenemedi</span></div>
+      ? <div className="private-photo-fallback" role="img" aria-label={t('Fotoğraf yüklenemedi')}><span>{t('Fotoğraf yüklenemedi')}</span></div>
       : <img src={photo.contentUrl} alt={label} loading="lazy" width={photo.width} height={photo.height} onError={() => setBroken(true)} />}
     <figcaption>
       <strong>{label}</strong>
-      <span>{[photo.serviceName, photo.customerName].filter(Boolean).join(' · ') || 'Özel fotoğraf'}</span>
-      {photo.published && <span className="private-photo-badge">Salon galerisinde yayında</span>}
+      <span>{[photo.serviceName, photo.customerName].filter(Boolean).join(' · ') || t('Özel fotoğraf')}</span>
+      {photo.published && <span className="private-photo-badge">{t('Salon galerisinde yayında')}</span>}
     </figcaption>
     <div className="private-photo-actions">
-      {photo.canPublish && !photo.published && !publishing && <button type="button" disabled={busy} onClick={() => setPublishing(true)}>Galeride yayınla</button>}
-      {photo.canDelete && <button type="button" className="danger-button" disabled={busy} onClick={() => onDelete(photo)}>Sil</button>}
+      {photo.canPublish && !photo.published && !publishing && <button type="button" disabled={busy} onClick={() => setPublishing(true)}>{t('Galeride yayınla')}</button>}
+      {photo.canDelete && <button type="button" className="danger-button" disabled={busy} onClick={() => onDelete(photo)}>{t('Sil')}</button>}
     </div>
     {publishing && !photo.published && <div className="private-photo-publish">
       <label className="private-photo-consent">
         <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
-        <span>Müşteriden bu fotoğrafın salon galerisinde yayınlanması için açık onay aldım.</span>
+        <span>{t('Müşteriden bu fotoğrafın salon galerisinde yayınlanması için açık onay aldım.')}</span>
       </label>
-      <label><span>Galeri açıklaması</span><input value={altText} maxLength={160} onChange={(event) => setAltText(event.target.value)} /></label>
+      <label><span>{t('Galeri açıklaması')}</span><input value={altText} maxLength={160} onChange={(event) => setAltText(event.target.value)} /></label>
       <div className="private-photo-actions">
-        <button type="button" disabled={busy || !consent} onClick={() => onPublish(photo, altText)}>Onaylı yayınla</button>
-        <button type="button" className="secondary-button" disabled={busy} onClick={() => { setPublishing(false); setConsent(false); }}>Vazgeç</button>
+        <button type="button" disabled={busy || !consent} onClick={() => onPublish(photo, altText)}>{t('Onaylı yayınla')}</button>
+        <button type="button" className="secondary-button" disabled={busy} onClick={() => { setPublishing(false); setConsent(false); }}>{t('Vazgeç')}</button>
       </div>
     </div>}
   </figure>;
@@ -100,7 +101,7 @@ export default function AppointmentPhotos({ groupId, services }: { groupId: stri
     } catch (error) {
       if (token !== generation.current || current.signal.aborted) return false;
       setPhotos((existing) => existing ?? []);
-      setNotice(error instanceof Error ? error.message : 'Fotoğraflar yüklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Fotoğraflar yüklenemedi.'));
       return false;
     }
   }, [groupId]);
@@ -119,11 +120,11 @@ export default function AppointmentPhotos({ groupId, services }: { groupId: stri
     const form = event.currentTarget;
     const file = new FormData(form).get('photo');
     if (!(file instanceof File) || !file.size) {
-      setNotice('Önce bir fotoğraf seçin.');
+      setNotice(t('Önce bir fotoğraf seçin.'));
       return;
     }
     setBusy(true);
-    setNotice('Fotoğraf hazırlanıyor…');
+    setNotice(t('Fotoğraf hazırlanıyor…'));
     try {
       const prepared = await preparePublicMedia(file);
       const params = new URLSearchParams();
@@ -135,22 +136,22 @@ export default function AppointmentPhotos({ groupId, services }: { groupId: stri
       });
       form.reset();
       setCaption('');
-      setNotice((await load()) ? 'Fotoğraf eklendi.' : 'Fotoğraf eklendi, ancak liste yenilenemedi.');
+      setNotice((await load()) ? t('Fotoğraf eklendi.') : t('Fotoğraf eklendi, ancak liste yenilenemedi.'));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Fotoğraf yüklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Fotoğraf yüklenemedi.'));
     } finally {
       setBusy(false);
     }
   }
 
   async function remove(photo: PrivatePhoto) {
-    if (!window.confirm('Bu özel fotoğraf kalıcı olarak silinsin mi?')) return;
+    if (!window.confirm(t('Bu özel fotoğraf kalıcı olarak silinsin mi?'))) return;
     setBusy(true);
     try {
       await deletePrivatePhoto(photo);
-      setNotice((await load()) ? 'Fotoğraf silindi.' : 'Fotoğraf silindi, ancak liste yenilenemedi.');
+      setNotice((await load()) ? t('Fotoğraf silindi.') : t('Fotoğraf silindi, ancak liste yenilenemedi.'));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Fotoğraf silinemedi.');
+      setNotice(error instanceof Error ? error.message : t('Fotoğraf silinemedi.'));
     } finally {
       setBusy(false);
     }
@@ -160,31 +161,31 @@ export default function AppointmentPhotos({ groupId, services }: { groupId: stri
     setBusy(true);
     try {
       await publishPrivatePhoto(photo, altText);
-      setNotice((await load()) ? 'Fotoğraf salon galerisine eklendi.' : 'Fotoğraf yayınlandı, ancak liste yenilenemedi.');
+      setNotice((await load()) ? t('Fotoğraf salon galerisine eklendi.') : t('Fotoğraf yayınlandı, ancak liste yenilenemedi.'));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Fotoğraf yayınlanamadı.');
+      setNotice(error instanceof Error ? error.message : t('Fotoğraf yayınlanamadı.'));
     } finally {
       setBusy(false);
     }
   }
 
   const count = photos?.length ?? 0;
-  return <section className="appointment-photos" aria-label="Randevu fotoğrafları">
-    <div className="section-head"><h3>Özel fotoğraflar</h3><span>{count}/{PHOTO_LIMIT}</span></div>
-    <p className="muted">Bu fotoğraflar yalnız işletme ekibine görünür; müşteri sayfasında yer almaz. Salon galerisine yalnız müşteri onayıyla ayrıca yayınlanabilir.</p>
-    {photos === null ? <p className="muted">Fotoğraflar yükleniyor…</p>
+  return <section className="appointment-photos" aria-label={t('Randevu fotoğrafları')}>
+    <div className="section-head"><h3>{t('Özel fotoğraflar')}</h3><span>{count}/{PHOTO_LIMIT}</span></div>
+    <p className="muted">{t('Bu fotoğraflar yalnız işletme ekibine görünür; müşteri sayfasında yer almaz. Salon galerisine yalnız müşteri onayıyla ayrıca yayınlanabilir.')}</p>
+    {photos === null ? <p className="muted">{t('Fotoğraflar yükleniyor…')}</p>
       : photos.length ? <div className="private-photo-grid">{photos.map((photo) => <PrivatePhotoTile key={photo.id} photo={photo} busy={busy} onDelete={(item) => void remove(item)} onPublish={(item, alt) => void publish(item, alt)} />)}</div>
-        : <p className="empty">Bu randevuya henüz fotoğraf eklenmedi.</p>}
+        : <p className="empty">{t('Bu randevuya henüz fotoğraf eklenmedi.')}</p>}
     {photos !== null && count < PHOTO_LIMIT && <form className="private-photo-upload" onSubmit={(event) => void upload(event)}>
-      <label><span>Fotoğraf</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} /></label>
-      {services.length > 0 && <label><span>Hizmet <small>(isteğe bağlı)</small></span><select value={serviceId} disabled={busy} onChange={(event) => setServiceId(event.target.value)}>
-        <option value="">Hizmet seçilmedi</option>
+      <label><span>{t('Fotoğraf')}</span><input name="photo" type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} /></label>
+      {services.length > 0 && <label><span>{t('Hizmet')} <small>{t('(isteğe bağlı)')}</small></span><select value={serviceId} disabled={busy} onChange={(event) => setServiceId(event.target.value)}>
+        <option value="">{t('Hizmet seçilmedi')}</option>
         {services.map((service) => <option key={service.serviceId} value={service.serviceId}>{service.serviceName}</option>)}
       </select></label>}
-      <label><span>Açıklama <small>(isteğe bağlı)</small></span><input value={caption} maxLength={240} disabled={busy} onChange={(event) => setCaption(event.target.value)} placeholder="Örn. işlem sonrası" /></label>
-      <button disabled={busy}>{busy ? 'İşleniyor…' : 'Fotoğraf ekle'}</button>
+      <label><span>{t('Açıklama')} <small>{t('(isteğe bağlı)')}</small></span><input value={caption} maxLength={240} disabled={busy} onChange={(event) => setCaption(event.target.value)} placeholder={t('Örn. işlem sonrası')} /></label>
+      <button disabled={busy}>{busy ? t('İşleniyor…') : t('Fotoğraf ekle')}</button>
     </form>}
-    {photos !== null && count >= PHOTO_LIMIT && <p className="muted">Bir randevuya en fazla {PHOTO_LIMIT} fotoğraf eklenebilir. Yeni fotoğraf için önce birini silin.</p>}
+    {photos !== null && count >= PHOTO_LIMIT && <p className="muted">{t('Bir randevuya en fazla {PHOTO_LIMIT} fotoğraf eklenebilir. Yeni fotoğraf için önce birini silin.', { PHOTO_LIMIT: PHOTO_LIMIT })}</p>}
     {notice && <p className="muted" role="status">{notice}</p>}
   </section>;
 }

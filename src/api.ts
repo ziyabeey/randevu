@@ -1,3 +1,5 @@
+import { t } from './i18n.ts';
+
 type ApiErrorBody = { error?: { code?: string; message?: string } };
 
 type ApiInit = RequestInit & {
@@ -11,8 +13,10 @@ export class ApiRequestError extends Error {
   readonly status: number;
   readonly retryAfter?: number;
 
+  // Server and client messages are Turkish source text; a catalogued message
+  // is shown in the active language, anything else stays Turkish.
   constructor(message: string, status: number, code?: string, retryAfter?: number) {
-    super(message);
+    super(t(message));
     this.name = 'ApiRequestError';
     this.status = status;
     this.code = code;
