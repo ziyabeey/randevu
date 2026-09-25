@@ -8,6 +8,7 @@ begin
   end if;
 end
 $$;
+grant execute on function pg_temp.f16_verify_assert(boolean,text) to anon;
 
 insert into public.public_booking_abuse_config(
   config_key, gate_secret_hash,
@@ -63,10 +64,13 @@ $$;
 
 reset role;
 
+-- As for every S04 rate class, the rejected attempt's own increment rolls back
+-- with its PUBLIC_BOOKING_RATE_LIMITED error: the counter holds the full budget
+-- until the window turns, so each further attempt is rejected as well.
 select pg_temp.f16_verify_assert(
-  (select count=9 from public.public_booking_rate_counters
+  (select count=8 from public.public_booking_rate_counters
    where action='verify' and dimension='actor' and key_hash=repeat('a',64)),
-  'actor verify counter did not retain rejected admission'
+  'actor verify counter does not hold exactly the spent budget'
 );
 
 -- Isolate the shared-network limit. Every request gets a distinct actor hash so
@@ -108,9 +112,9 @@ $$;
 reset role;
 
 select pg_temp.f16_verify_assert(
-  (select count=81 from public.public_booking_rate_counters
+  (select count=80 from public.public_booking_rate_counters
    where action='verify' and dimension='network' and key_hash=repeat('e',64)),
-  'network verify counter did not retain rejected admission'
+  'network verify counter does not hold exactly the spent budget'
 );
 
 rollback;

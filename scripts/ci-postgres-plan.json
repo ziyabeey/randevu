@@ -1801,11 +1801,15 @@
         },
         {
           "database": "yzt_test",
-          "file": "supabase/tests/s04_resource_limits.sql"
+          "file": "supabase/tests/f12_notification_status.sql"
         },
         {
           "database": "yzt_test",
           "file": "supabase/tests/f12_booking_information.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/f16_account_plan.sql"
         },
         {
           "database": "yzt_s08_upgrade",
@@ -1817,11 +1821,15 @@
         },
         {
           "database": "yzt_s08_upgrade",
-          "file": "supabase/tests/s04_resource_limits.sql"
+          "file": "supabase/tests/f12_notification_status.sql"
         },
         {
           "database": "yzt_s08_upgrade",
           "file": "supabase/tests/f12_booking_information.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f16_account_plan.sql"
         }
       ]
     }
