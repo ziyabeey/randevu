@@ -3,7 +3,7 @@ import path from 'node:path';
 
 export class ArtifactCache {
   constructor(root = '.h19/artifacts') {
-    this.root = root;
+    this.root = path.resolve(root);
   }
 
   dirFor(namespace, key) {
