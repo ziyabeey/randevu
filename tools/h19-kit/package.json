@@ -25,7 +25,9 @@
     "test:perf-baseline": "node test/perf-baseline.mjs",
     "perf:baseline": "node perf/run-baseline.mjs",
     "test:ts-shards": "node test/typescript-project-shards.mjs",
-    "perf:ts-shards": "node perf/run-shard-baseline.mjs"
+    "perf:ts-shards": "node perf/run-shard-baseline.mjs",
+    "test:graph-equivalence": "node test/graph-equivalence.mjs",
+    "perf:graph-equivalence": "node perf/run-graph-equivalence.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
