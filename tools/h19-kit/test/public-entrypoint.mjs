@@ -4,6 +4,9 @@ const api = await import('../src/index.mjs');
 
 for (const name of [
   'buildTypeScriptEvidenceGraph',
+  'planTypeScriptEvidenceGraph',
+  'planTypeScriptShardIndexes',
+  'pruneScipArtifactCache',
   'runProjectShardAdoptionBenchmark',
   'runGraphEquivalence',
   'resolveTypeScriptProjectShards',
