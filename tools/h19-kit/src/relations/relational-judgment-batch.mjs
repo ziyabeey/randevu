@@ -5,7 +5,6 @@ import {
   RELATION_DIRECTION_QUESTION,
   freezeJevRelationalJudgment,
   relationalInputDigest,
-  relationalJevState,
   validateJevRelationalJudgment,
   validateRelationalEvidenceCase,
 } from './relational-evidence.mjs';
@@ -15,9 +14,12 @@ import {
   JEV_RELATIONAL_MODEL,
   RELATION_CHOICE_DOMAIN,
   TYPESAFE_SYSTEMONE_URL,
+  acceptJevRelationalSingleCaseResponse,
+  buildJevRelationalSingleCaseRequest,
   classifyJevRelationalCacheValue,
   freezeJevRelationalCacheEntry,
   jevRelationalCacheKey,
+  jevRelationalRequestSha256,
   normalizeRelationProbabilities,
   relationalTransportErrorCode,
   validateJevRelationalCacheEntry,
@@ -26,8 +28,7 @@ import {
 const sha256 = (value) => createHash('sha256').update(String(value)).digest('hex');
 const hashBody = (value) => sha256(`${stableJson(value)}\n`);
 
-// RELATIONAL_JUDGMENT_BATCH_GATE-v0.2: all selected uncached cases share one state and one provider request.
-export const RELATIONAL_JUDGMENT_GATE = 'RELATIONAL_JUDGMENT_BATCH_GATE-v0.2';
+export const RELATIONAL_JUDGMENT_GATE = 'RELATIONAL_JUDGMENT_BATCH_GATE-v0.3';
 export const RELATIONAL_JUDGMENT_MAX_LIVE_QUESTIONS = 20;
 const CACHE_STATUSES = ['hit', 'miss', 'upgrade-required', 'invalid'];
 
@@ -77,22 +78,16 @@ function exactCaseIndex(batch, relationalCases) {
 
   for (const summary of batch.cases) {
     const relationalCase = bySha.get(summary.caseSha256);
-    if (!relationalCase) {
-      throw new Error(`missing relational case artifact: ${summary.caseSha256}`);
-    }
+    if (!relationalCase) throw new Error(`missing relational case artifact: ${summary.caseSha256}`);
     if (relationalCase.hypothesis.hypothesisId !== summary.hypothesisId) {
       throw new Error('relational case hypothesis binding mismatch');
     }
   }
-
   return bySha;
 }
 
 function freezeRequestPlan(body) {
-  return deepFreeze({
-    ...body,
-    requestPlanSha256: hashBody(body),
-  });
+  return deepFreeze({ ...body, requestPlanSha256: hashBody(body) });
 }
 
 export function buildRelationalJudgmentRequestPlan({
@@ -101,12 +96,8 @@ export function buildRelationalJudgmentRequestPlan({
   provider = 'typesafe',
   model = JEV_RELATIONAL_MODEL,
 } = {}) {
-  if (!nonEmpty(provider) || !nonEmpty(model)) {
-    throw new TypeError('provider and model required');
-  }
-  if (provider !== 'typesafe') {
-    throw new Error(`unsupported relational judgment provider: ${provider}`);
-  }
+  if (!nonEmpty(provider) || !nonEmpty(model)) throw new TypeError('provider and model required');
+  if (provider !== 'typesafe') throw new Error(`unsupported relational judgment provider: ${provider}`);
 
   const bySha = exactCaseIndex(batch, relationalCases);
   const rows = batch.cases.map((summary) => {
@@ -188,15 +179,11 @@ export function validateRelationalJudgmentRequestPlan(plan, {
       throw new Error('relational judgment request plan replay mismatch');
     }
   }
-
   return plan;
 }
 
 function freezeRun(body) {
-  return deepFreeze({
-    ...body,
-    judgmentRunSha256: hashBody(body),
-  });
+  return deepFreeze({ ...body, judgmentRunSha256: hashBody(body) });
 }
 
 function runCounts(rows) {
@@ -222,7 +209,14 @@ function assertJudgmentMatchesPlan(judgment, planRow) {
   }
 }
 
-function answeredRow({ planRow, judgment, probabilities, source, cacheStatus }) {
+function answeredRow({
+  planRow,
+  judgment,
+  probabilities,
+  source,
+  cacheStatus,
+  requestSha256 = null,
+}) {
   assertJudgmentMatchesPlan(judgment, planRow);
   return deepFreeze({
     kind: 'answered',
@@ -231,6 +225,7 @@ function answeredRow({ planRow, judgment, probabilities, source, cacheStatus }) 
     cacheStatus,
     judgmentSha256: judgment.judgmentSha256,
     source,
+    requestSha256,
     choice: judgment.choice,
     probabilities: structuredClone(probabilities),
     providerConfidence: judgment.providerConfidence,
@@ -239,7 +234,13 @@ function answeredRow({ planRow, judgment, probabilities, source, cacheStatus }) 
   });
 }
 
-function errorRow({ planRow, judgment, source, cacheStatus }) {
+function errorRow({
+  planRow,
+  judgment,
+  source,
+  cacheStatus,
+  requestSha256 = null,
+}) {
   assertJudgmentMatchesPlan(judgment, planRow);
   return deepFreeze({
     kind: 'error',
@@ -248,6 +249,7 @@ function errorRow({ planRow, judgment, source, cacheStatus }) {
     cacheStatus,
     judgmentSha256: judgment.judgmentSha256,
     source,
+    requestSha256,
     choice: null,
     probabilities: null,
     providerConfidence: null,
@@ -264,6 +266,7 @@ function budgetSkipRow(planRow, cacheStatus) {
     cacheStatus,
     judgmentSha256: null,
     source: null,
+    requestSha256: null,
     choice: null,
     probabilities: null,
     providerConfidence: null,
@@ -290,7 +293,6 @@ async function probeCache({ cache, relationalCase, planRow }) {
   } catch {
     return { status: 'invalid' };
   }
-  // Cloned so replay never freezes or aliases the caller's cache storage.
   return classifyJevRelationalCacheValue(value == null ? value : structuredClone(value), {
     relationalCase,
     provider: planRow.provider,
@@ -298,62 +300,86 @@ async function probeCache({ cache, relationalCase, planRow }) {
   });
 }
 
-// Opaque transport IDs; the model-visible binding is the explicit state path in the instructions (§7).
-const fanoutQuestionId = (index) => `q${String(index).padStart(2, '0')}`;
+async function executeSingleCase({
+  item,
+  apiKey,
+  fetchImpl,
+  timeoutMs,
+}) {
+  const { relationalCase, planRow } = item;
 
-function fanoutQuestion(index) {
-  return {
-    type: RELATION_DIRECTION_QUESTION.type,
-    instructions: `Evaluate only cases[${index}].state for this relation judgment. ${RELATION_DIRECTION_QUESTION.instructions}`,
-    criteria: structuredClone(RELATION_DIRECTION_QUESTION.criteria),
-  };
-}
-
-export function buildRelationalFanoutRequest({ model, selected }) {
-  if (!Array.isArray(selected) || selected.length < 1 || selected.length > RELATIONAL_JUDGMENT_MAX_LIVE_QUESTIONS) {
-    throw new Error('fan-out request needs 1..20 selected cases');
+  if (!nonEmpty(apiKey)) {
+    return {
+      attempted: false,
+      requestSha256: null,
+      errorCode: 'missing_api_key',
+    };
   }
-  return deepFreeze({
-    model,
-    state: {
-      schemaVersion: 1,
-      cases: selected.map(({ relationalCase }) => ({
-        caseSha256: relationalCase.caseSha256,
-        state: structuredClone(relationalJevState(relationalCase)),
-      })),
-    },
-    questions: Object.fromEntries(selected.map((_, index) => [fanoutQuestionId(index), fanoutQuestion(index)])),
+
+  const request = buildJevRelationalSingleCaseRequest({
+    relationalCase,
+    model: planRow.model,
   });
-}
+  const requestSha256 = jevRelationalRequestSha256(request);
+  const options = {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${apiKey.trim()}`,
+    },
+    body: JSON.stringify(request),
+  };
+  if (Number.isFinite(timeoutMs) && timeoutMs > 0 && typeof AbortSignal?.timeout === 'function') {
+    options.signal = AbortSignal.timeout(timeoutMs);
+  }
 
-// §9 atomic acceptance: every submitted question has exactly one valid typed Choice answer, or nothing is accepted.
-function acceptFanoutResponse(json, { model, questionIds }) {
-  if (!json || typeof json !== 'object') return { errorCode: 'invalid_response' };
-  if (json.model !== model) return { errorCode: 'model_mismatch' };
-  const answers = json.answers;
-  if (!answers || typeof answers !== 'object' || Array.isArray(answers)) return { errorCode: 'invalid_response' };
-  const returned = Object.keys(answers);
-  if (returned.length !== questionIds.length || !questionIds.every((id) => returned.includes(id))) {
-    return { errorCode: 'answer_set_mismatch' };
-  }
-  const accepted = {};
-  for (const id of questionIds) {
-    const answer = answers[id];
-    const probabilities = normalizeRelationProbabilities(answer?.probabilities);
-    if (!answer
-      || typeof answer !== 'object'
-      || answer.type !== 'choice'
-      || !RELATION_CHOICE_DOMAIN.includes(answer.choice)
-      || typeof answer.confidence !== 'number'
-      || !Number.isFinite(answer.confidence)
-      || answer.confidence < 0
-      || answer.confidence > 1
-      || !probabilities) {
-      return { errorCode: 'invalid_answer' };
+  try {
+    const response = await fetchImpl(TYPESAFE_SYSTEMONE_URL, options);
+    if (!response?.ok) {
+      return {
+        attempted: true,
+        requestSha256,
+        errorCode: `http_${Number.isInteger(response?.status) ? response.status : 0}`,
+      };
     }
-    accepted[id] = { choice: answer.choice, confidence: answer.confidence, probabilities };
+
+    const accepted = acceptJevRelationalSingleCaseResponse(
+      await response.json(),
+      { model: planRow.model },
+    );
+    if (accepted.errorCode) {
+      return { attempted: true, requestSha256, errorCode: accepted.errorCode };
+    }
+
+    const judgment = freezeJevRelationalJudgment({
+      relationalCase,
+      provider: planRow.provider,
+      model: planRow.model,
+      answer: {
+        choice: accepted.answer.choice,
+        confidence: accepted.answer.confidence,
+      },
+      inputSha256: planRow.inputSha256,
+    });
+    const entry = freezeJevRelationalCacheEntry({
+      judgment,
+      probabilities: accepted.answer.probabilities,
+      requestSha256,
+    });
+
+    return {
+      attempted: true,
+      requestSha256,
+      judgment,
+      entry,
+    };
+  } catch (error) {
+    return {
+      attempted: true,
+      requestSha256,
+      errorCode: relationalTransportErrorCode(error),
+    };
   }
-  return { answers: accepted };
 }
 
 export async function runRelationalJudgmentBatch({
@@ -368,7 +394,7 @@ export async function runRelationalJudgmentBatch({
   timeoutMs = 8_000,
   ...rest
 } = {}) {
-  if ('maxLiveCalls' in rest) throw new TypeError('maxLiveCalls was replaced by maxLiveQuestions (gate v0.2)');
+  if ('maxLiveCalls' in rest) throw new TypeError('maxLiveCalls was replaced by maxLiveQuestions');
   const boundedQuestions = normalizeMaxLiveQuestions(maxLiveQuestions);
   const requestPlan = buildRelationalJudgmentRequestPlan({
     batch,
@@ -386,7 +412,6 @@ export async function runRelationalJudgmentBatch({
   const cacheEntries = [];
   const pending = [];
 
-  // §5 cache-first: hits are replayed and never enter the fan-out state or budget.
   for (const [index, planRow] of requestPlan.rows.entries()) {
     const relationalCase = bySha.get(planRow.caseSha256);
     const probe = await probeCache({ cache, relationalCase, planRow });
@@ -403,93 +428,64 @@ export async function runRelationalJudgmentBatch({
     } else if (probe.status === 'invalid') {
       const judgment = errorJudgment(relationalCase, planRow, 'invalid_cache');
       judgments.push(judgment);
-      rows[index] = errorRow({ planRow, judgment, source: 'cache', cacheStatus: 'invalid' });
+      rows[index] = errorRow({
+        planRow,
+        judgment,
+        source: 'cache',
+        cacheStatus: 'invalid',
+      });
     } else {
       pending.push({ index, planRow, relationalCase, cacheStatus: probe.status });
     }
   }
 
-  // §6 deterministic selection in request-plan order; overflow is an explicit skip.
   const selected = pending.slice(0, boundedQuestions);
   for (const item of pending.slice(boundedQuestions)) {
     rows[item.index] = budgetSkipRow(item.planRow, item.cacheStatus);
   }
 
+  // v0.3: every selected case gets its own exact M8 request, all launched concurrently.
+  const outcomes = await Promise.all(selected.map((item) => executeSingleCase({
+    item,
+    apiKey,
+    fetchImpl,
+    timeoutMs,
+  })));
+
   let providerRequestCount = 0;
-  let fanoutRequestSha256 = null;
-  const failSelected = (errorCode) => {
-    for (const item of selected) {
-      const judgment = errorJudgment(item.relationalCase, item.planRow, errorCode);
-      judgments.push(judgment);
-      rows[item.index] = errorRow({ planRow: item.planRow, judgment, source: 'live', cacheStatus: item.cacheStatus });
-    }
-  };
+  for (let position = 0; position < selected.length; position += 1) {
+    const item = selected[position];
+    const outcome = outcomes[position];
+    if (outcome.attempted) providerRequestCount += 1;
 
-  if (selected.length && !nonEmpty(apiKey)) {
-    failSelected('missing_api_key');
-  } else if (selected.length) {
-    const request = buildRelationalFanoutRequest({ model, selected });
-    fanoutRequestSha256 = hashBody(request);
-    const questionIds = Object.keys(request.questions);
-    const options = {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${apiKey.trim()}`,
-      },
-      body: JSON.stringify(request),
-    };
-    if (Number.isFinite(timeoutMs) && timeoutMs > 0 && typeof AbortSignal?.timeout === 'function') {
-      options.signal = AbortSignal.timeout(timeoutMs);
-    }
-
-    // §12 exactly one provider request, no retry.
-    providerRequestCount = 1;
-    let outcome;
-    try {
-      const response = await fetchImpl(TYPESAFE_SYSTEMONE_URL, options);
-      if (!response?.ok) {
-        outcome = { errorCode: `http_${Number.isInteger(response?.status) ? response.status : 0}` };
-      } else {
-        outcome = acceptFanoutResponse(await response.json(), { model, questionIds });
+    if (outcome.judgment && outcome.entry) {
+      if (cache?.set) {
+        await cache.set(JEV_RELATIONAL_CACHE_NAMESPACE, item.planRow.cacheKey, outcome.entry);
       }
-    } catch (error) {
-      outcome = { errorCode: relationalTransportErrorCode(error) };
-    }
-
-    if (outcome.errorCode) {
-      failSelected(outcome.errorCode);
+      judgments.push(outcome.judgment);
+      cacheEntries.push(outcome.entry);
+      rows[item.index] = answeredRow({
+        planRow: item.planRow,
+        judgment: outcome.judgment,
+        probabilities: outcome.entry.probabilities,
+        source: 'live',
+        cacheStatus: item.cacheStatus,
+        requestSha256: outcome.requestSha256,
+      });
     } else {
-      const accepted = [];
-      for (const [position, item] of selected.entries()) {
-        const answer = outcome.answers[questionIds[position]];
-        const judgment = freezeJevRelationalJudgment({
-          relationalCase: item.relationalCase,
-          provider: item.planRow.provider,
-          model: item.planRow.model,
-          answer: { choice: answer.choice, confidence: answer.confidence },
-          inputSha256: item.planRow.inputSha256,
-        });
-        const entry = freezeJevRelationalCacheEntry({
-          judgment,
-          probabilities: answer.probabilities,
-          requestSha256: fanoutRequestSha256,
-        });
-        accepted.push({ item, judgment, entry });
-      }
-      // §14 canonical cache writes only after the whole live response was accepted.
-      for (const { item, judgment, entry } of accepted) {
-        if (cache?.set) await cache.set(JEV_RELATIONAL_CACHE_NAMESPACE, item.planRow.cacheKey, entry);
-        judgments.push(judgment);
-        cacheEntries.push(entry);
-        rows[item.index] = answeredRow({
-          planRow: item.planRow,
-          judgment,
-          probabilities: entry.probabilities,
-          source: 'live',
-          cacheStatus: item.cacheStatus,
-        });
-      }
+      const judgment = errorJudgment(
+        item.relationalCase,
+        item.planRow,
+        outcome.errorCode ?? 'invalid_response',
+      );
+      judgments.push(judgment);
+      rows[item.index] = errorRow({
+        planRow: item.planRow,
+        judgment,
+        source: 'live',
+        cacheStatus: item.cacheStatus,
+        requestSha256: outcome.requestSha256,
+      });
     }
   }
 
@@ -499,7 +495,7 @@ export async function runRelationalJudgmentBatch({
 
   const counts = runCounts(rows);
   const run = freezeRun({
-    schemaVersion: 2,
+    schemaVersion: 3,
     gate: RELATIONAL_JUDGMENT_GATE,
     authority: 'advisory',
     batchSha256: batch.batchSha256,
@@ -511,7 +507,6 @@ export async function runRelationalJudgmentBatch({
     questionVersion: RELATION_DIRECTION_QUESTION.version,
     maxLiveQuestions: boundedQuestions,
     providerRequestCount,
-    fanoutRequestSha256,
     rows,
     counts,
   });
@@ -525,9 +520,12 @@ export async function runRelationalJudgmentBatch({
 }
 
 function validateRunRow(row) {
-  if (!nonEmpty(row.hypothesisId) || !shaLike(row.caseSha256)) throw new Error('invalid judgment run row binding');
+  if (!nonEmpty(row.hypothesisId) || !shaLike(row.caseSha256)) {
+    throw new Error('invalid judgment run row binding');
+  }
   if (!CACHE_STATUSES.includes(row.cacheStatus)) throw new Error('invalid judgment run cache status');
   const liveEligible = row.cacheStatus === 'miss' || row.cacheStatus === 'upgrade-required';
+
   if (row.kind === 'answered') {
     const probabilities = normalizeRelationProbabilities(row.probabilities);
     if (!shaLike(row.judgmentSha256)
@@ -540,23 +538,32 @@ function validateRunRow(row) {
       || row.providerConfidence > 1
       || row.errorCode !== null
       || row.reason !== null
-      || !((row.source === 'cache' && row.cacheStatus === 'hit') || (row.source === 'live' && liveEligible))) {
+      || !((row.source === 'cache' && row.cacheStatus === 'hit' && row.requestSha256 === null)
+        || (row.source === 'live' && liveEligible && shaLike(row.requestSha256)))) {
       throw new Error('invalid answered judgment run row');
     }
   } else if (row.kind === 'error') {
+    const missingKey = row.errorCode === 'missing_api_key';
     if (!shaLike(row.judgmentSha256)
       || row.choice !== null
       || row.probabilities !== null
       || row.providerConfidence !== null
       || !nonEmpty(row.errorCode)
       || row.reason !== null
-      || !((row.source === 'cache' && row.cacheStatus === 'invalid' && row.errorCode === 'invalid_cache')
-        || (row.source === 'live' && liveEligible))) {
+      || !((row.source === 'cache'
+        && row.cacheStatus === 'invalid'
+        && row.errorCode === 'invalid_cache'
+        && row.requestSha256 === null)
+        || (row.source === 'live'
+          && liveEligible
+          && ((missingKey && row.requestSha256 === null)
+            || (!missingKey && shaLike(row.requestSha256)))))) {
       throw new Error('invalid error judgment run row');
     }
   } else if (row.kind === 'skipped') {
     if (row.judgmentSha256 !== null
       || row.source !== null
+      || row.requestSha256 !== null
       || row.choice !== null
       || row.probabilities !== null
       || row.providerConfidence !== null
@@ -580,7 +587,7 @@ export function validateRelationalJudgmentRun(run, {
   if (!run?.judgmentRunSha256) throw new TypeError('relational judgment run required');
   const { judgmentRunSha256, ...body } = clone(run);
   if (hashBody(body) !== judgmentRunSha256) throw new Error('relational judgment run hash mismatch');
-  if (run.schemaVersion !== 2 || run.gate !== RELATIONAL_JUDGMENT_GATE || run.authority !== 'advisory') {
+  if (run.schemaVersion !== 3 || run.gate !== RELATIONAL_JUDGMENT_GATE || run.authority !== 'advisory') {
     throw new Error('unsupported relational judgment run version/authority');
   }
   if (!shaLike(run.batchSha256)
@@ -602,29 +609,29 @@ export function validateRelationalJudgmentRun(run, {
   if (stableJson(expectedCounts) !== stableJson(run.counts)) {
     throw new Error('relational judgment run count mismatch');
   }
-  if (run.counts.live > run.maxLiveQuestions) throw new Error('relational judgment live-question budget exceeded');
-  // §6 overflow only once the budget is exhausted, and never ahead of a selected row.
-  if (run.counts.skipped > 0 && run.counts.live !== run.maxLiveQuestions) {
-    throw new Error('budget skip while live-question budget remained');
+  if (run.counts.live > run.maxLiveQuestions) {
+    throw new Error('relational judgment live-question budget exceeded');
+  }
+
+  if (run.counts.skipped > 0) {
+    const eligibleLiveOrSkipped = run.rows.filter((row) =>
+      row.source === 'live' || row.kind === 'skipped').length;
+    if (eligibleLiveOrSkipped <= run.maxLiveQuestions) {
+      throw new Error('budget skip while live-question budget remained');
+    }
   }
   let skippedSeen = false;
   for (const row of run.rows) {
     if (row.kind === 'skipped') skippedSeen = true;
-    else if (row.source === 'live' && skippedSeen) throw new Error('live question selected after a budget skip');
-  }
-  // §2 zero-or-one provider request.
-  const liveRows = run.rows.filter((row) => row.source === 'live');
-  const requestExpected = liveRows.length > 0 && !liveRows.every((row) => row.errorCode === 'missing_api_key');
-  if (requestExpected) {
-    if (run.providerRequestCount !== 1 || !shaLike(run.fanoutRequestSha256)) {
-      throw new Error('live questions require exactly one provider request');
+    else if (row.source === 'live' && skippedSeen) {
+      throw new Error('live question selected after a budget skip');
     }
-  } else if (run.providerRequestCount !== 0 || run.fanoutRequestSha256 !== null) {
-    throw new Error('provider request recorded without live questions');
   }
-  // §9 one live response is accepted or failed as a whole.
-  if (liveRows.some((row) => row.kind === 'answered') && liveRows.some((row) => row.kind === 'error')) {
-    throw new Error('partial live acceptance');
+
+  const attemptedRows = run.rows.filter((row) => row.source === 'live' && shaLike(row.requestSha256));
+  if (run.providerRequestCount !== attemptedRows.length
+    || run.providerRequestCount > run.maxLiveQuestions) {
+    throw new Error('provider request count mismatch');
   }
 
   if (requestPlan) {
@@ -639,7 +646,9 @@ export function validateRelationalJudgmentRun(run, {
       || requestPlan.model !== run.model) {
       throw new Error('judgment run request-plan mismatch');
     }
-    if (requestPlan.rows.length !== run.rows.length) throw new Error('judgment run row count does not match plan');
+    if (requestPlan.rows.length !== run.rows.length) {
+      throw new Error('judgment run row count does not match plan');
+    }
     for (let index = 0; index < requestPlan.rows.length; index += 1) {
       if (requestPlan.rows[index].caseSha256 !== run.rows[index].caseSha256
         || requestPlan.rows[index].hypothesisId !== run.rows[index].hypothesisId) {
@@ -664,20 +673,15 @@ export function validateRelationalJudgmentRun(run, {
       if (bySha.has(judgment.judgmentSha256)) throw new Error('duplicate judgment artifact');
       bySha.set(judgment.judgmentSha256, judgment);
     }
-
     const expectedJudgmentRows = run.rows.filter((row) => row.judgmentSha256 != null);
     if (bySha.size !== expectedJudgmentRows.length) {
       throw new Error('judgment artifact set does not exactly match run');
     }
-
     for (const row of expectedJudgmentRows) {
       const judgment = bySha.get(row.judgmentSha256);
       if (!judgment) throw new Error(`missing judgment artifact: ${row.judgmentSha256}`);
       const relationalCase = caseIndex?.get(row.caseSha256) ?? null;
-      validateJevRelationalJudgment(
-        judgment,
-        relationalCase ? { relationalCase } : {},
-      );
+      validateJevRelationalJudgment(judgment, relationalCase ? { relationalCase } : {});
       if (judgment.caseSha256 !== row.caseSha256
         || judgment.provider !== run.provider
         || judgment.model !== run.model
@@ -703,14 +707,16 @@ export function validateRelationalJudgmentRun(run, {
       byJudgment.set(entry.judgment.judgmentSha256, entry);
     }
     const answeredRows = run.rows.filter((row) => row.kind === 'answered');
-    if (byJudgment.size !== answeredRows.length) throw new Error('cache entry set does not exactly match answered rows');
+    if (byJudgment.size !== answeredRows.length) {
+      throw new Error('cache entry set does not exactly match answered rows');
+    }
     for (const row of answeredRows) {
       const entry = byJudgment.get(row.judgmentSha256);
       if (!entry || stableJson(entry.probabilities) !== stableJson(row.probabilities)) {
         throw new Error('answered row probability mismatch');
       }
-      if (row.source === 'live' && entry.requestSha256 !== run.fanoutRequestSha256) {
-        throw new Error('live cache entry is not bound to this fan-out request');
+      if (row.source === 'live' && entry.requestSha256 !== row.requestSha256) {
+        throw new Error('live cache entry is not bound to row request');
       }
     }
   }
