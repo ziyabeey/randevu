@@ -2,7 +2,7 @@
 
 **Status:** frozen before implementation  
 **Parent:** joined H19 M7 + project-scoped evidence-graph base, PR #588 exact-head CI-green at `1e485164350cfa6b43d2a36aac8bafff30fc9c5e`  
-**Purpose:** turn multiple H19 evidence signals into a deterministic relational case that Jev may classify as an **advisory** second signal without receiving execution authority.
+**Purpose:** turn multiple H19 evidence signals into deterministic relational evidence that Jev may classify as an **advisory** second signal without receiving execution authority.
 
 This gate does not ask Jev for an overall risk score and does not let Jev invent measurements.
 
@@ -22,23 +22,27 @@ A list of facts is weaker than a measured relationship between facts.
 
 For example, "4 surviving mutants" is one observation. "Mutation escape is 3.2× its own historical baseline while test density is below its baseline and the signals come from independent lineages" is a stronger, auditable statement.
 
-The relational layer therefore separates:
+The relational layer separates:
 
 ```text
-facts
+frozen facts
   ↓
 deterministic normalization + baseline math
   ↓
-relational case
+RelationalEvidenceCase
   ↓
 bounded Jev choice
   ↓
-advisory judgment
+JevRelationalJudgment
   ↓
-later external outcome
+later independent observation
+  ↓
+RelationalOutcome
   ↓
 calibration evidence
 ```
+
+These are three immutable artifacts. A later Jev answer or outcome never mutates the original case identity.
 
 ## 2. Core split: math belongs to H19, semantic comparison belongs to Jev
 
@@ -122,7 +126,7 @@ mutation escape lift = current mutation escape rate / historical mutation escape
 test density lift     = current test density / historical test density
 ```
 
-Those two lifts may then participate in a relational case.
+Those two lifts may then participate in one relational case.
 
 ## 6. Deterministic feature set v0.1
 
@@ -143,11 +147,11 @@ Division by zero, missing denominators or missing baselines produce `unknown`, n
 
 Every feature records its source fact IDs and observed sample size when applicable.
 
-## 7. Relational case scope
+## 7. Artifact A — RelationalEvidenceCase
 
-A v0.1 relational case binds exactly one frozen M5 hypothesis and between **2 and 4** normalized facts.
+A v0.1 case binds exactly one frozen M5 hypothesis and between **2 and 4** normalized facts.
 
-The case binds:
+It binds:
 
 - M5 `packetSha256`;
 - `hypothesisId`;
@@ -155,16 +159,15 @@ The case binds:
 - source revision;
 - normalized facts;
 - deterministic features;
-- optional Jev judgment;
-- external outcome state;
-- `authority: advisory`;
-- content-addressed `caseSha256`.
+- `authority: advisory`.
 
-The case hash is:
+Its immutable identity is:
 
 ```text
 caseSha256 = sha256(stableJson(case without caseSha256) + "\n")
 ```
+
+No Jev answer, provider error or later outcome is included in this hash.
 
 No wall-clock timestamp participates in the hash.
 
@@ -191,22 +194,36 @@ No free-form verdict is authoritative.
 
 The model/provider may return its native confidence field. H19 records this as `providerConfidence`, not as a probability that the hypothesis is true.
 
-## 9. Jev answer binding
+## 9. Artifact B — JevRelationalJudgment
 
-An answered Jev judgment MUST bind:
+A Jev judgment references the immutable `caseSha256`.
+
+An answered judgment MUST bind:
 
 - provider;
 - exact model;
-- question ID;
-- question version;
+- question ID `RELATION_DIRECTION`;
+- question version `0.1`;
 - canonical input SHA-256;
-- choice;
-- provider confidence;
-- canonical answer SHA-256.
+- bounded choice;
+- provider confidence.
+
+A provider/API error is also a frozen judgment artifact, with:
+
+- exact case/model/question/input binding;
+- no choice;
+- no confidence;
+- bounded error code.
+
+The immutable identity is:
+
+```text
+judgmentSha256 = sha256(stableJson(judgment without judgmentSha256) + "\n")
+```
 
 Malformed choices, missing model identity or input mismatch fail closed.
 
-A provider/API error may be recorded as an error judgment, but it contributes no relation direction and never fails the deterministic H19 pipeline.
+A provider error contributes no relation direction and never changes deterministic H19 output.
 
 ## 10. Content-addressed replay
 
@@ -218,17 +235,26 @@ model
 + canonical relational input digest
 ```
 
-If a stored answer exists for that exact key, replay reads the stored answer.
+If a stored judgment exists for that exact key, replay reads the stored judgment.
 
 This is how a nondeterministic external model becomes deterministic from H19's point of view for an already observed input.
 
 A new model version or question version creates a new key and is never silently substituted.
 
-## 11. Outcome binding and calibration
+## 11. Artifact C — RelationalOutcome
 
 A Jev judgment is not allowed to validate itself.
 
-A later outcome must come from an external evidence source, for example:
+A later outcome references:
+
+- immutable `caseSha256`;
+- optional exact `judgmentSha256`;
+- observed source revision;
+- external outcome kind;
+- external outcome value;
+- content digest of the independent source.
+
+Allowed external kinds:
 
 - frozen M5 validation;
 - mutation execution;
@@ -247,9 +273,17 @@ The frozen outcome vocabulary is:
 - `regression-found`;
 - `no-regression`.
 
-An unobserved case remains `unobserved`.
+The immutable identity is:
 
-Once an external outcome exists, H19 may derive calibration records containing at minimum:
+```text
+outcomeSha256 = sha256(stableJson(outcome without outcomeSha256) + "\n")
+```
+
+No outcome exists until an independent observation exists. Absence of an outcome is not a negative label.
+
+## 12. Calibration
+
+Once an independent outcome exists, H19 may derive calibration records containing at minimum:
 
 - model;
 - question version;
@@ -263,7 +297,9 @@ The first implementation MUST NOT invent a confidence threshold from another dom
 
 In particular, DE-JEV-R0's measured `0.9` flag threshold is evidence about R0 receipt parsing only and is not inherited by H19 relational evidence.
 
-## 12. Authority boundary
+Provider confidence is an observed model field. It is not treated as calibrated probability until H19 has measured that mapping on this task.
+
+## 13. Authority boundary
 
 All v0.1 Jev output is advisory.
 
@@ -280,17 +316,17 @@ It MUST NOT directly:
 
 Deterministic policy remains the only action authority.
 
-## 13. Acceptance gates
+## 14. Acceptance gates
 
 Implementation may receive a Bundle number only after this frozen gate is CI-green.
 
-### RE1 — provenance binding
+### RE1 — case provenance binding
 
-Changing a fact value, lineage, producer/version, source revision, M5 packet or hypothesis changes the case hash.
+Changing a fact value, lineage, producer/version, source revision, M5 packet or hypothesis changes `caseSha256`.
 
 ### RE2 — deterministic replay
 
-Identical frozen inputs produce byte-identical facts/features and `caseSha256`.
+Identical frozen case inputs produce byte-identical facts/features and `caseSha256`.
 
 ### RE3 — unknown preservation
 
@@ -308,13 +344,13 @@ Facts with shared lineage do not increase independent-family count merely becaus
 
 Only `strengthens | weakens | unrelated | insufficient` is accepted for `RELATION_DIRECTION-v0.1`.
 
-### RE7 — Jev provenance
+### RE7 — judgment provenance
 
-Model, provider, question version and exact input digest are mandatory for an answered judgment. Input mismatch is rejected.
+Model, provider, question version, exact case hash and input digest are mandatory. Input/case mismatch is rejected.
 
 ### RE8 — model failure isolation
 
-Missing API key, timeout or provider error produces no authoritative relation and does not change deterministic H19 output.
+Missing API key, timeout or provider error produces no authoritative relation and does not change the immutable case or deterministic H19 output.
 
 ### RE9 — no naive averaging
 
@@ -322,17 +358,21 @@ Contradictory facts remain represented as contradictions. The core does not hide
 
 ### RE10 — external outcome only
 
-A Jev answer cannot be used as its own outcome/label. Calibration requires independently bound evidence.
+A Jev judgment cannot be used as its own outcome/label. `RelationalOutcome` requires independently bound source evidence.
 
 ### RE11 — authority isolation
 
-Adding/removing/changing a Jev judgment does not change deterministic dispatcher authority in v0.1.
+Adding/removing/changing a Jev judgment or outcome does not change deterministic dispatcher authority in v0.1.
 
-### RE12 — no H19s crossover
+### RE12 — immutable artifact chain
+
+Creating a judgment does not alter `caseSha256`; creating an outcome does not alter either `caseSha256` or `judgmentSha256`.
+
+### RE13 — no H19s crossover
 
 The gate reads no H19s cohort/routing state and changes no H19s protocol files.
 
-## 14. Non-goals
+## 15. Non-goals
 
 v0.1 does not:
 
@@ -348,8 +388,8 @@ v0.1 does not:
 
 Pairwise hypothesis tournaments, calibrated ranking and information-gain experiment selection require later gates after relational outcomes accumulate.
 
-## 15. Promotion rule
+## 16. Promotion rule
 
-Only after this contract and schema are committed and exact-head CI-green may the implementation milestone be named Bundle M8.
+Only after this contract and its three schemas are committed and exact-head CI-green may the implementation milestone be named Bundle M8.
 
-The implementation inherits RE1–RE12 unchanged.
+The implementation inherits RE1–RE13 unchanged.
