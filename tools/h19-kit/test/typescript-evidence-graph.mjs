@@ -42,8 +42,9 @@ try {
   const executeIndexer = async (_command, args) => {
     executions += 1;
     const outIndex = args.indexOf('--output') + 1;
-    const projectIndex = args.indexOf('-p') + 1;
-    const project = projectIndex > 0 ? args[projectIndex] : 'whole';
+    const projectIndex = args.indexOf('-p');
+    const bareConfig = args.find((arg) => /^tsconfig(?:\.[\w-]+)?\.json$/i.test(arg));
+    const project = projectIndex >= 0 ? args[projectIndex + 1] : (bareConfig ?? 'whole');
     await writeFile(args[outIndex], `${project}:${executions}`);
     return { code: 0, stdout: '', stderr: '' };
   };
