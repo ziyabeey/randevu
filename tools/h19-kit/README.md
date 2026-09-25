@@ -77,4 +77,9 @@ The [saved-observation bridge](specs/M11_OBSERVATION_BRIDGE-v0.1.md) binds the
 original TAP/V8 and static closure observations to the repaired inventory.
 [Result 001](experiments/m11/BRIDGE-001.md) contains one eligible M9 case shared
 by five reference controls, plus 17 retained skips. This is a draft preparation
-result; labels, independent functional outcomes and paid comparisons are pending.
+result; relation labels, broader functional evaluation and paid comparisons are pending.
+
+The [first targeted validation](experiments/m11/validation-001/REPORT.md) confirms
+one suite-scoped coverage gap with seven passing scenarios and four newly called
+entries. Its frozen M8 outcome is a coverage validation, not a defect or relation
+label. Replay its saved receipt with `npm --prefix tools/h19-kit run test:m11-validation`.

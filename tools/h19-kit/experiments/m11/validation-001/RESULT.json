@@ -1,0 +1,544 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-targeted-validation-result",
+  "planSha256": "77d82b1ee762f86bf679236eaf0b3b6331e80598ea0232289e76b42972a38f4a",
+  "bridgeSha256": "72b155638701612f1667c7aabd7cc79a5d38f2879f3f5e3d6388979be19806ae",
+  "caseSha256": "bf214c9fa35b06b906c149fb8415549040131aa33b91a1c1c9b582ad915c39ad",
+  "run": {
+    "schemaVersion": 1,
+    "kind": "m11-targeted-suite-observation",
+    "planSha256": "77d82b1ee762f86bf679236eaf0b3b6331e80598ea0232289e76b42972a38f4a",
+    "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+    "sourceBindings": {
+      "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+      "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+    },
+    "oracleBindings": {
+      "docs/handoffs/F13-02.md": "8d53a553c780bd2b9e9d5d81565adda3537dfb37",
+      "docs/plan/s07-c2-pagination-budgets.md": "2c47655de380a1a9577a0a551d3289f8385c6c75"
+    },
+    "candidateGitBlobSha": "8c018d2ddcc072889958ebbd62f5d3d5de14ac82",
+    "producerBindings": {
+      "bin/h19-m11-validate.mjs": "c36639f9aadb0dd0d51f6f88f0db568d52d1e60d",
+      "src/experiments/m11-targeted-validation.mjs": "66d593fa06b79b918801734d529d737e46824d4a"
+    },
+    "runtime": "v24.19.0",
+    "command": [
+      "node",
+      "--test",
+      "--test-reporter=tap",
+      "validation/booking-pagination.test.mjs"
+    ],
+    "environment": {
+      "NODE_OPTIONS": "",
+      "NODE_V8_COVERAGE": "isolated-temporary-directory",
+      "TZ": "UTC"
+    },
+    "startedAt": "2026-09-25T12:16:39.012Z",
+    "finishedAt": "2026-09-25T12:16:40.151Z",
+    "timings": {
+      "setupMs": 204.40639999999985,
+      "executionMs": 900.6784889999999,
+      "totalMs": 1139.0752499999999
+    },
+    "completed": true,
+    "exitCode": 0,
+    "stdout": "TAP version 13\n# Subtest: V01 bounded cursor preserves the leap-day range and revision\nok 1 - V01 bounded cursor preserves the leap-day range and revision\n  ---\n  duration_ms: 12.55326\n  type: 'test'\n  ...\n# Subtest: V02 unbounded compatibility preserves both null range endpoints\nok 2 - V02 unbounded compatibility preserves both null range endpoints\n  ---\n  duration_ms: 1.618065\n  type: 'test'\n  ...\n# Subtest: V03 legacy booking cursor versions request restart\nok 3 - V03 legacy booking cursor versions request restart\n  ---\n  duration_ms: 6.387583\n  type: 'test'\n  ...\n# Subtest: V04 date ranges require two valid ordered calendar dates\nok 4 - V04 date ranges require two valid ordered calendar dates\n  ---\n  duration_ms: 0.554747\n  type: 'test'\n  ...\n# Subtest: V05 continuation uses the last visible row and excludes the probe row\nok 5 - V05 continuation uses the last visible row and excludes the probe row\n  ---\n  duration_ms: 1.025768\n  type: 'test'\n  ...\n# Subtest: V06 empty short and exact-limit final pages have no continuation\nok 6 - V06 empty short and exact-limit final pages have no continuation\n  ---\n  duration_ms: 0.325913\n  type: 'test'\n  ...\n# Subtest: V07 multi-page traversal preserves the fixed record sequence and range\nok 7 - V07 multi-page traversal preserves the fixed record sequence and range\n  ---\n  duration_ms: 1.762918\n  type: 'test'\n  ...\n1..7\n# tests 7\n# suites 0\n# pass 7\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 641.517269\n",
+    "stderr": "",
+    "testSummary": {
+      "tests": 7,
+      "pass": 7,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "target": {
+      "path": "worker/pagination.ts",
+      "gitBlobSha": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+      "v8Entries": [
+        {
+          "functions": [
+            {
+              "functionName": "",
+              "ranges": [
+                {
+                  "startOffset": 0,
+                  "endOffset": 5195,
+                  "count": 1
+                }
+              ],
+              "isBlockCoverage": true
+            },
+            {
+              "functionName": "validTimestamp",
+              "ranges": [
+                {
+                  "startOffset": 829,
+                  "endOffset": 1019,
+                  "count": 11
+                }
+              ],
+              "isBlockCoverage": true
+            },
+            {
+              "functionName": "validDate",
+              "ranges": [
+                {
+                  "startOffset": 1021,
+                  "endOffset": 1301,
+                  "count": 14
+                },
+                {
+                  "startOffset": 1107,
+                  "endOffset": 1144,
+                  "count": 12
+                },
+                {
+                  "startOffset": 1146,
+                  "endOffset": 1159,
+                  "count": 2
+                },
+                {
+                  "startOffset": 1159,
+                  "endOffset": 1298,
+                  "count": 12
+                }
+              ],
+              "isBlockCoverage": true
+            },
+            {
+              "functionName": "parsePageLimit",
+              "ranges": [
+                {
+                  "startOffset": 1310,
+                  "endOffset": 1588,
+                  "count": 0
+                }
+              ],
+              "isBlockCoverage": false
+            },
+            {
+              "functionName": "encodePageCursor",
+              "ranges": [
+                {
+                  "startOffset": 1597,
+                  "endOffset": 1798,
+                  "count": 0
+                }
+              ],
+              "isBlockCoverage": false
+            },
+            {
+              "functionName": "decodePageCursor",
+              "ranges": [
+                {
+                  "startOffset": 1807,
+                  "endOffset": 2538,
+                  "count": 0
+                }
+              ],
+              "isBlockCoverage": false
+            },
+            {
+              "functionName": "encodeBookingPageCursor",
+              "ranges": [
+                {
+                  "startOffset": 2547,
+                  "endOffset": 2852,
+                  "count": 4
+                }
+              ],
+              "isBlockCoverage": true
+            },
+            {
+              "functionName": "decodeBookingPageCursor",
+              "ranges": [
+                {
+                  "startOffset": 2861,
+                  "endOffset": 4315,
+                  "count": 13
+                },
+                {
+                  "startOffset": 3033,
+                  "endOffset": 3048,
+                  "count": 12
+                },
+                {
+                  "startOffset": 3050,
+                  "endOffset": 3062,
+                  "count": 2
+                },
+                {
+                  "startOffset": 3062,
+                  "endOffset": 3089,
+                  "count": 11
+                },
+                {
+                  "startOffset": 3089,
+                  "endOffset": 3106,
+                  "count": 0
+                },
+                {
+                  "startOffset": 3106,
+                  "endOffset": 3156,
+                  "count": 11
+                },
+                {
+                  "startOffset": 3156,
+                  "endOffset": 3173,
+                  "count": 0
+                },
+                {
+                  "startOffset": 3173,
+                  "endOffset": 3291,
+                  "count": 11
+                },
+                {
+                  "startOffset": 3292,
+                  "endOffset": 3316,
+                  "count": 11
+                },
+                {
+                  "startOffset": 3318,
+                  "endOffset": 3335,
+                  "count": 0
+                },
+                {
+                  "startOffset": 3335,
+                  "endOffset": 3565,
+                  "count": 11
+                },
+                {
+                  "startOffset": 3558,
+                  "endOffset": 3563,
+                  "count": 0
+                },
+                {
+                  "startOffset": 3599,
+                  "endOffset": 3610,
+                  "count": 11
+                },
+                {
+                  "startOffset": 3611,
+                  "endOffset": 3713,
+                  "count": 11
+                },
+                {
+                  "startOffset": 3643,
+                  "endOffset": 3707,
+                  "count": 10
+                },
+                {
+                  "startOffset": 3662,
+                  "endOffset": 3706,
+                  "count": 1
+                },
+                {
+                  "startOffset": 3699,
+                  "endOffset": 3704,
+                  "count": 0
+                },
+                {
+                  "startOffset": 3715,
+                  "endOffset": 3768,
+                  "count": 2
+                },
+                {
+                  "startOffset": 3768,
+                  "endOffset": 3811,
+                  "count": 9
+                },
+                {
+                  "startOffset": 3811,
+                  "endOffset": 3831,
+                  "count": 2
+                },
+                {
+                  "startOffset": 3839,
+                  "endOffset": 3909,
+                  "count": 8
+                },
+                {
+                  "startOffset": 3863,
+                  "endOffset": 3885,
+                  "count": 6
+                },
+                {
+                  "startOffset": 3886,
+                  "endOffset": 3908,
+                  "count": 5
+                },
+                {
+                  "startOffset": 3934,
+                  "endOffset": 3960,
+                  "count": 9
+                },
+                {
+                  "startOffset": 3961,
+                  "endOffset": 3973,
+                  "count": 9
+                },
+                {
+                  "startOffset": 3982,
+                  "endOffset": 4027,
+                  "count": 9
+                },
+                {
+                  "startOffset": 4020,
+                  "endOffset": 4025,
+                  "count": 0
+                },
+                {
+                  "startOffset": 4028,
+                  "endOffset": 4042,
+                  "count": 9
+                },
+                {
+                  "startOffset": 4044,
+                  "endOffset": 4075,
+                  "count": 5
+                },
+                {
+                  "startOffset": 4075,
+                  "endOffset": 4280,
+                  "count": 4
+                },
+                {
+                  "startOffset": 4280,
+                  "endOffset": 4313,
+                  "count": 0
+                }
+              ],
+              "isBlockCoverage": true
+            },
+            {
+              "functionName": "pageResult",
+              "ranges": [
+                {
+                  "startOffset": 4324,
+                  "endOffset": 4719,
+                  "count": 0
+                }
+              ],
+              "isBlockCoverage": false
+            },
+            {
+              "functionName": "bookingPageResult",
+              "ranges": [
+                {
+                  "startOffset": 4728,
+                  "endOffset": 5120,
+                  "count": 6
+                },
+                {
+                  "startOffset": 4900,
+                  "endOffset": 4922,
+                  "count": 2
+                },
+                {
+                  "startOffset": 4923,
+                  "endOffset": 4929,
+                  "count": 4
+                },
+                {
+                  "startOffset": 5048,
+                  "endOffset": 5055,
+                  "count": 2
+                },
+                {
+                  "startOffset": 5056,
+                  "endOffset": 5098,
+                  "count": 2
+                },
+                {
+                  "startOffset": 5099,
+                  "endOffset": 5105,
+                  "count": 4
+                }
+              ],
+              "isBlockCoverage": true
+            }
+          ]
+        }
+      ],
+      "coverage": {
+        "state": "observed",
+        "observedNamedFunctions": 9,
+        "calledNamedFunctions": 5,
+        "uncalledNamedFunctions": [
+          {
+            "name": "parsePageLimit",
+            "startOffset": 1310,
+            "endOffset": 1588
+          },
+          {
+            "name": "encodePageCursor",
+            "startOffset": 1597,
+            "endOffset": 1798
+          },
+          {
+            "name": "decodePageCursor",
+            "startOffset": 1807,
+            "endOffset": 2538
+          },
+          {
+            "name": "pageResult",
+            "startOffset": 4324,
+            "endOffset": 4719
+          }
+        ]
+      }
+    },
+    "observationSha256": "d152cc446803b590087d632b6a8ad77ea16e5ea5c7c906a945956d14d69eaca5"
+  },
+  "validation": {
+    "packetSha256": "0097982773a46898385aa055450172087e33fc5312f967f2eff3b9da8988d168",
+    "hypothesisId": "coverage:explicit-runtime-coverage-gap:worker_pagination.ts",
+    "status": "confirmed",
+    "observed": {
+      "endpoint": "suite-scoped-named-function-coverage-gap",
+      "planSha256": "77d82b1ee762f86bf679236eaf0b3b6331e80598ea0232289e76b42972a38f4a",
+      "baselineObservationSha256": "d9eb3eadd88976b959ab42a877d31240c60e5913ff8b8eda8ce357986b99a5c1",
+      "newObservationSha256": "d152cc446803b590087d632b6a8ad77ea16e5ea5c7c906a945956d14d69eaca5",
+      "testSummary": {
+        "tests": 7,
+        "pass": 7,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "gapChecks": [
+        {
+          "name": "validDate",
+          "startOffset": 1021,
+          "endOffset": 1301,
+          "observed": true,
+          "called": true
+        },
+        {
+          "name": "encodeBookingPageCursor",
+          "startOffset": 2547,
+          "endOffset": 2852,
+          "observed": true,
+          "called": true
+        },
+        {
+          "name": "decodeBookingPageCursor",
+          "startOffset": 2861,
+          "endOffset": 4315,
+          "observed": true,
+          "called": true
+        },
+        {
+          "name": "bookingPageResult",
+          "startOffset": 4728,
+          "endOffset": 5120,
+          "observed": true,
+          "called": true
+        }
+      ],
+      "existingSuiteCalledEntries": 5,
+      "existingSuiteObservedEntries": 9,
+      "functionalDefectEstablished": false,
+      "independentRelationAssessment": false
+    }
+  },
+  "outcomeSource": {
+    "schemaVersion": 1,
+    "kind": "m11-targeted-validation-source",
+    "planSha256": "77d82b1ee762f86bf679236eaf0b3b6331e80598ea0232289e76b42972a38f4a",
+    "caseSha256": "bf214c9fa35b06b906c149fb8415549040131aa33b91a1c1c9b582ad915c39ad",
+    "observationSha256": "d152cc446803b590087d632b6a8ad77ea16e5ea5c7c906a945956d14d69eaca5",
+    "validation": {
+      "packetSha256": "0097982773a46898385aa055450172087e33fc5312f967f2eff3b9da8988d168",
+      "hypothesisId": "coverage:explicit-runtime-coverage-gap:worker_pagination.ts",
+      "status": "confirmed",
+      "observed": {
+        "endpoint": "suite-scoped-named-function-coverage-gap",
+        "planSha256": "77d82b1ee762f86bf679236eaf0b3b6331e80598ea0232289e76b42972a38f4a",
+        "baselineObservationSha256": "d9eb3eadd88976b959ab42a877d31240c60e5913ff8b8eda8ce357986b99a5c1",
+        "newObservationSha256": "d152cc446803b590087d632b6a8ad77ea16e5ea5c7c906a945956d14d69eaca5",
+        "testSummary": {
+          "tests": 7,
+          "pass": 7,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "gapChecks": [
+          {
+            "name": "validDate",
+            "startOffset": 1021,
+            "endOffset": 1301,
+            "observed": true,
+            "called": true
+          },
+          {
+            "name": "encodeBookingPageCursor",
+            "startOffset": 2547,
+            "endOffset": 2852,
+            "observed": true,
+            "called": true
+          },
+          {
+            "name": "decodeBookingPageCursor",
+            "startOffset": 2861,
+            "endOffset": 4315,
+            "observed": true,
+            "called": true
+          },
+          {
+            "name": "bookingPageResult",
+            "startOffset": 4728,
+            "endOffset": 5120,
+            "observed": true,
+            "called": true
+          }
+        ],
+        "existingSuiteCalledEntries": 5,
+        "existingSuiteObservedEntries": 9,
+        "functionalDefectEstablished": false,
+        "independentRelationAssessment": false
+      }
+    },
+    "lineage": {
+      "component": "M11-COMP-a8c7b4f25226",
+      "executionPaths": [
+        "shared/base64.ts",
+        "worker/pagination.ts"
+      ],
+      "additionalDevelopmentPaths": [
+        "docs/handoffs/F13-02.md",
+        "docs/plan/s07-c2-pagination-budgets.md"
+      ],
+      "evaluationOverlap": [],
+      "futureObservationLineageComplete": false
+    },
+    "scope": "agent-authored separate development unit execution; no DB/HTTP or independent assessor claim",
+    "sourceDigest": "6c5ace8e3697aa6c34233a43957e81a8f7053af84286197de3733dba43d33066"
+  },
+  "outcome": {
+    "schemaVersion": 1,
+    "caseSha256": "bf214c9fa35b06b906c149fb8415549040131aa33b91a1c1c9b582ad915c39ad",
+    "judgmentSha256": null,
+    "observedRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+    "kind": "m5-validation",
+    "value": "confirmed",
+    "sourceDigest": "6c5ace8e3697aa6c34233a43957e81a8f7053af84286197de3733dba43d33066",
+    "outcomeSha256": "42b0ae3dfbb1e7bfc2bd4e25d74579006c40fffd8d9ddefbc9627f3e6bc2770c"
+  },
+  "counts": {
+    "attemptedHypotheses": 1,
+    "confirmedCoverageGaps": 1,
+    "inconclusive": 0,
+    "newCallsToOriginalUncalledEntries": 4,
+    "functionalDefectsEstablished": 0,
+    "relationAssessments": 0,
+    "providerCalls": 0
+  },
+  "futureObservationLineageComplete": false,
+  "resultSha256": "07f6bb0527a8c835dbb775785b29456ef99224c88ff9bb67e217cb01e05f7e93"
+}

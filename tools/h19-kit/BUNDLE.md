@@ -194,9 +194,12 @@ now binds 66 source files and separates whole components: 22 development /
 2 evaluation anchors, one component per split. The [saved-observation bridge](experiments/m11/BRIDGE-001.md)
 now produces one eligible M9 case bound to five controls, with 17 retained skips.
 The separate run/static observation roots remain intact; this is not five
-independent trials or a defect finding. Independent validation/labels remain
-pending. Paid collection still requires its concrete budget and independently
-sourced evidence.
+independent trials or a defect finding. Independent relation labels remain
+pending. A [separate targeted validation](experiments/m11/validation-001/REPORT.md)
+now confirms one suite-scoped coverage gap: seven new scenarios pass, all four
+previously uncalled entries execute, and the two-run named-entry union is 9/9
+for the pagination helper. No functional defect or relation label is established.
+Paid collection still requires its concrete budget and independently sourced evidence.
 M12 selection remains a later contract, not an activated milestone.
 
 ## Side-hardening HOLD

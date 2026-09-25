@@ -39,7 +39,8 @@
     "perf:project-shard-adoption": "node perf/run-project-shard-adoption.mjs",
     "test:m11-collection": "node test/m11-collection.mjs",
     "test:m11-closure": "node test/m11-closure.mjs",
-    "test:m11-bridge": "node test/m11-observation-bridge.mjs"
+    "test:m11-bridge": "node test/m11-observation-bridge.mjs",
+    "test:m11-validation": "node test/m11-targeted-validation.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
