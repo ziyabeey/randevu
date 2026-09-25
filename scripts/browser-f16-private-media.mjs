@@ -286,6 +286,9 @@ try {
   const publish = state.requests.find((item) => item.method === 'POST' && item.path.endsWith('/publish'));
   assert.equal(publish.body.consentConfirmed, true);
   assert.equal(publish.body.altText, 'İşlem sonrası');
+  // The confirmation closes once the photo is published; no second publish is offered.
+  await waitFor(async () => (await call(page, 'buttonDisabled', 'group', 'Onaylı yayınla')) === null, 'publish confirmation stayed open after publish');
+  assert.equal(state.requests.filter((item) => item.method === 'POST' && item.path.endsWith('/publish')).length, 1);
 
   // Delete the broken record; the tab stays usable.
   const before = state.requests.length;

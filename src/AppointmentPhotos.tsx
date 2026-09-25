@@ -34,6 +34,12 @@ export function PrivatePhotoTile({ photo, busy, onDelete, onPublish }: {
   const [publishing, setPublishing] = useState(false);
   const [consent, setConsent] = useState(false);
   const [altText, setAltText] = useState(photo.caption ?? '');
+  // A published photo never offers the publish confirmation again.
+  useEffect(() => {
+    if (!photo.published) return;
+    setPublishing(false);
+    setConsent(false);
+  }, [photo.published]);
   const label = photo.caption || photo.serviceName || 'Randevu fotoğrafı';
   return <figure className="private-photo-tile">
     {broken
@@ -48,7 +54,7 @@ export function PrivatePhotoTile({ photo, busy, onDelete, onPublish }: {
       {photo.canPublish && !photo.published && !publishing && <button type="button" disabled={busy} onClick={() => setPublishing(true)}>Galeride yayınla</button>}
       {photo.canDelete && <button type="button" className="danger-button" disabled={busy} onClick={() => onDelete(photo)}>Sil</button>}
     </div>
-    {publishing && <div className="private-photo-publish">
+    {publishing && !photo.published && <div className="private-photo-publish">
       <label className="private-photo-consent">
         <input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
         <span>Müşteriden bu fotoğrafın salon galerisinde yayınlanması için açık onay aldım.</span>
