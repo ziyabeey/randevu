@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-targeted-validation-plan",
+  "version": "0.1",
+  "frozenAt": "2026-09-25T12:15:34.721Z",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "inventorySha256": "79b802f95f6612a628ea23d8d7cb2cf6719465124a35743fa956eff4784ff662",
+  "bridgeSha256": "72b155638701612f1667c7aabd7cc79a5d38f2879f3f5e3d6388979be19806ae",
+  "caseSha256": "bf214c9fa35b06b906c149fb8415549040131aa33b91a1c1c9b582ad915c39ad",
+  "packetSha256": "0097982773a46898385aa055450172087e33fc5312f967f2eff3b9da8988d168",
+  "hypothesisId": "coverage:explicit-runtime-coverage-gap:worker_pagination.ts",
+  "baselineObservationSha256": "d9eb3eadd88976b959ab42a877d31240c60e5913ff8b8eda8ce357986b99a5c1",
+  "targetPath": "worker/pagination.ts",
+  "sourceBindings": {
+    "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+    "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+  },
+  "oracleBindings": {
+    "docs/handoffs/F13-02.md": "8d53a553c780bd2b9e9d5d81565adda3537dfb37",
+    "docs/plan/s07-c2-pagination-budgets.md": "2c47655de380a1a9577a0a551d3289f8385c6c75"
+  },
+  "producerBindings": {
+    "bin/h19-m11-validate.mjs": "c36639f9aadb0dd0d51f6f88f0db568d52d1e60d",
+    "src/experiments/m11-targeted-validation.mjs": "66d593fa06b79b918801734d529d737e46824d4a"
+  },
+  "runtime": "v24.19.0",
+  "candidate": {
+    "path": "validation-001/booking-pagination.test.mjs",
+    "gitBlobSha": "8c018d2ddcc072889958ebbd62f5d3d5de14ac82",
+    "authorship": "Codex; separate agent-authored development validation; not an automatic M7 candidate"
+  },
+  "scenarios": [
+    {
+      "id": "V01",
+      "name": "V01 bounded cursor preserves the leap-day range and revision",
+      "oraclePath": "docs/handoffs/F13-02.md",
+      "oracleSection": "Date-range authority; DST acceptance",
+      "scope": "Pure pagination helper; no DB/HTTP guarantee"
+    },
+    {
+      "id": "V02",
+      "name": "V02 unbounded compatibility preserves both null range endpoints",
+      "oraclePath": "docs/handoffs/F13-02.md",
+      "oracleSection": "Date-range authority; DST acceptance",
+      "scope": "Pure pagination helper; no DB/HTTP guarantee"
+    },
+    {
+      "id": "V03",
+      "name": "V03 legacy booking cursor versions request restart",
+      "oraclePath": "docs/handoffs/F13-02.md",
+      "oracleSection": "Date-range authority; DST acceptance",
+      "scope": "Pure pagination helper; no DB/HTTP guarantee"
+    },
+    {
+      "id": "V04",
+      "name": "V04 date ranges require two valid ordered calendar dates",
+      "oraclePath": "docs/handoffs/F13-02.md",
+      "oracleSection": "Date-range authority; DST acceptance",
+      "scope": "Ordered paired real calendar dates; no HTTP or access-control claim"
+    },
+    {
+      "id": "V05",
+      "name": "V05 continuation uses the last visible row and excludes the probe row",
+      "oraclePath": "docs/plan/s07-c2-pagination-budgets.md",
+      "oracleSection": "Real list surfaces; limit+1 response contract",
+      "scope": "Pure pagination helper; no DB/HTTP guarantee"
+    },
+    {
+      "id": "V06",
+      "name": "V06 empty short and exact-limit final pages have no continuation",
+      "oraclePath": "docs/plan/s07-c2-pagination-budgets.md",
+      "oracleSection": "Real list surfaces; limit+1 response contract",
+      "scope": "Pure pagination helper; no DB/HTTP guarantee"
+    },
+    {
+      "id": "V07",
+      "name": "V07 multi-page traversal preserves the fixed record sequence and range",
+      "oraclePath": "docs/plan/s07-c2-pagination-budgets.md",
+      "oracleSection": "Real list surfaces; limit+1 response contract",
+      "scope": "Pure pagination helper; no DB/HTTP guarantee"
+    }
+  ],
+  "requiredEntries": [
+    {
+      "name": "validDate",
+      "startOffset": 1021,
+      "endOffset": 1301
+    },
+    {
+      "name": "encodeBookingPageCursor",
+      "startOffset": 2547,
+      "endOffset": 2852
+    },
+    {
+      "name": "decodeBookingPageCursor",
+      "startOffset": 2861,
+      "endOffset": 4315
+    },
+    {
+      "name": "bookingPageResult",
+      "startOffset": 4728,
+      "endOffset": 5120
+    }
+  ],
+  "decisionRule": "seven-passing-controls-and-four-original-gaps-called-v1",
+  "limits": [
+    "Coverage confirmation is scoped to the original five-control suite.",
+    "Wire-field abbreviations are schema characterization; behavioral expectations come from prior product documents.",
+    "A passing targeted suite does not prove defect absence; failures are inconclusive until independently diagnosed.",
+    "The same implementer authored this development test; it is not an independent relation assessor or a full A/B/C trial."
+  ],
+  "planSha256": "77d82b1ee762f86bf679236eaf0b3b6331e80598ea0232289e76b42972a38f4a"
+}
