@@ -82,6 +82,17 @@ const PACKAGE_ERRORS: Array<[string, string, 404 | 409]> = [
   ['PACKAGE_REFUND_CHANGED', 'İade tutarı değişti. Güncel tutarı yükleyip tekrar deneyin.', 409],
   ['PACKAGE_REFUND_SOURCES_MISMATCH', 'İade kaynaklarının toplamı iade tutarına eşit olmalı.', 409],
   ['PACKAGE_IN_USE', 'Seansı kullanılmış paket satışı iptal edilemez.', 409],
+  // F16-06 promo codes.
+  ['PROMO_NOT_FOUND', 'Kampanya kodu bulunamadı veya aktif değil.', 404],
+  ['PROMO_NOT_STARTED', 'Bu kampanya henüz başlamadı.', 409],
+  ['PROMO_EXPIRED', 'Bu kampanyanın süresi doldu.', 409],
+  ['PROMO_EXHAUSTED', 'Bu kampanya kodunun kullanım hakkı doldu.', 409],
+  ['PROMO_NOT_APPLICABLE', 'Kampanya bu adisyondaki hizmetleri kapsamıyor.', 409],
+  ['PROMO_ALREADY_APPLIED', 'Bu adisyonda zaten bir kampanya kodu var; önce onu kaldırın.', 409],
+  ['PROMO_NOT_APPLIED', 'Bu adisyonda kaldırılacak kampanya kodu yok.', 409],
+  ['PROMO_CODE_TAKEN', 'Bu kod bu işletmede zaten kullanılıyor.', 409],
+  ['PROMO_ID_CONFLICT', 'Bu kampanya kimliği başka bir tanım için kullanılmış.', 409],
+  ['STALE_PROMO_WRITE', 'Kampanya başka bir işlemde değişti. Güncel listeyi yükleyip tekrar deneyin.', 409],
 ];
 
 function packageTicketError(message: string) {

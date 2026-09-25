@@ -33,6 +33,7 @@ type FinancialReport = {
   serviceSaleMinor: number;
   productSaleMinor: number;
   packageSaleMinor?: number;
+  promoDiscountMinor?: number;
   packageCoveredSessionCount?: number;
   packageCoveredValueMinor?: number;
   saleValueMinor: number;
@@ -206,6 +207,11 @@ export default function FinancialReportsPage() {
               <span>Satış değeri</span>
               <strong>{money(report.saleValueMinor, currency)}</strong>
               <small>Hizmet {money(report.serviceSaleMinor, currency)} · Ürün {money(report.productSaleMinor, currency)} · Paket {money(report.packageSaleMinor ?? 0, currency)}</small>
+            </article>
+            <article className="financial-report-card">
+              <span>Kampanya indirimi</span>
+              <strong>{money(report.promoDiscountMinor ?? 0, currency)}</strong>
+              <small>Hizmet satışından düşülmüş tutar; tahsilattan ayrıdır</small>
             </article>
             <article className="financial-report-card">
               <span>Paketten karşılanan seans</span>

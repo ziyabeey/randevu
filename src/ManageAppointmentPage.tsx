@@ -3,6 +3,7 @@ import { api } from './api';
 import PublicBookingInformation from './PublicBookingInformation';
 import PublicNotificationStatus from './PublicNotificationStatus';
 import ManageFeedback from './ManageFeedback';
+import { ManagePromo } from './PublicPromo';
 import { customerNotificationStatus, type CustomerNotificationStatus } from '../shared/customer-notification-status';
 
 type ManagedAppointment = {
@@ -422,6 +423,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         </section>
       </div>
 
+      <ManagePromo token={token} />
       <ManageFeedback token={token} />
 
       <PublicBookingInformation
