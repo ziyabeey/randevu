@@ -128,7 +128,12 @@ export function validateM11NotificationInputs(input) {
 
   assert(plan.scenarios.length === 6
     && new Set(plan.scenarios.map((item) => item.id)).size === 6
-    && new Set(plan.scenarios.map((item) => item.name)).size === 6,
+    && new Set(plan.scenarios.map((item) => item.name)).size === 6
+    && plan.scenarios.every((item) =>
+      Array.isArray(item.oraclePaths)
+      && item.oraclePaths.length > 0
+      && item.oraclePaths.every((path) =>
+        Object.hasOwn(plan.oracleBindings, path) || Object.hasOwn(plan.sourceBindings, path))),
   'notification scenario inventory mismatch');
   assert(plan.candidate.path === 'notification-validation-001/notification-template.test.mjs'
     && /^[a-f0-9]{40}$/.test(plan.candidate.gitBlobSha),
