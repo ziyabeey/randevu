@@ -134,13 +134,25 @@ Every question is evaluated independently against the shared state.
 
 No answer from one question becomes context for another.
 
-## 9. Provider response binding
+## 9. Provider response binding and atomic live acceptance
 
-Every selected question must have exactly one answer.
+The documented System One response contract returns one answer per submitted question. v0.2 therefore does not invent an undocumented per-question provider-error envelope.
 
-Missing or extra answer IDs fail closed for the affected request.
+A live fan-out response is accepted only when all of these are true:
 
-Each answer must contain a valid typed Choice payload.
+- HTTP request succeeded;
+- returned model identity is the expected model;
+- the answer-ID set is exactly the submitted question-ID set;
+- every answer is a valid typed Choice payload;
+- every answer carries the exact frozen four-option probability domain.
+
+If any selected answer is missing, any extra answer appears, or any answer is malformed, the **entire live response fails closed**.
+
+No judgment from that live response is written to canonical cache.
+
+Already replayed cache-hit siblings remain valid and unchanged.
+
+This gives the live network operation transaction-like acceptance while keeping successful canonical storage per case.
 
 For every answer H19 freezes:
 
@@ -183,7 +195,9 @@ A run may issue at most one provider request.
 
 There is no hidden retry loop in v0.2.
 
-If that request fails at transport/HTTP/timeout level, every selected live question receives an immutable advisory error judgment bound to its exact case.
+If that request fails at transport/HTTP/timeout level, or fails the atomic response-completeness/type checks in section 9, every selected live question receives an immutable advisory error judgment bound to its exact case.
+
+No selected live answer from the failed request is cached.
 
 Cached siblings remain valid and unchanged.
 
@@ -278,8 +292,8 @@ A run performs exactly 0 or 1 provider request.
 ### JF8 — shared-state path binding
 Every live question explicitly names only its own case state path.
 
-### JF9 — answer completeness
-Every selected question has exactly one typed answer; missing/extra IDs fail closed.
+### JF9 — atomic answer completeness
+Every selected question has exactly one typed answer. Missing/extra IDs, wrong model identity or any malformed answer fail the whole live response; zero answers from that response enter canonical cache.
 
 ### JF10 — exact option domain
 No choice outside the frozen four options is accepted.
@@ -294,7 +308,7 @@ Provider confidence is preserved but cannot change ordering, budget or dispatche
 `insufficient` remains a normal answered option with probabilities/confidence.
 
 ### JF14 — one failed request, bounded errors
-A provider-level failure creates one advisory error per selected live row without mutating cache hits/skips.
+A provider-level or atomic-response-validation failure creates one advisory error per selected live row, caches none of those live rows, and does not mutate cache hits/skips.
 
 ### JF15 — partial replay
 Cached and uncached rows may coexist; only uncached selected rows enter the one live request.
