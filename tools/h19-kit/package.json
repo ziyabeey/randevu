@@ -41,7 +41,8 @@
     "test:m11-closure": "node test/m11-closure.mjs",
     "test:m11-bridge": "node test/m11-observation-bridge.mjs",
     "test:m11-validation": "node test/m11-targeted-validation.mjs",
-    "test:m11-supplement": "node test/m11-supplement.mjs"
+    "test:m11-supplement": "node test/m11-supplement.mjs",
+    "test:m11-notification-freeze": "node test/m11-notification-validation-freeze.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
