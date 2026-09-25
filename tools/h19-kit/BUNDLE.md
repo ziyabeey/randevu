@@ -65,7 +65,11 @@ Required measurements:
 
 The first run is measurement-only. Do not invent pass/fail thresholds before the baseline is captured.
 
-PERF-002 established a concrete bottleneck: a single changed file caused ~8.95 s reindex, ~96% of whole-repository first-index cost, while exact-content cache hit was ~28 ms. The next performance experiment therefore targets TypeScript-project-scoped invalidation before any new feature milestone.
+PERF-002 established a concrete bottleneck: a single changed file caused ~8.95 s reindex, ~96% of whole-repository first-index cost, while exact-content cache hit was ~28 ms.
+
+PERF-003 then measured TypeScript-project-scoped invalidation: a real app-source edit dropped from 5.66 s whole-root reindex to 3.87 s single-shard reindex (31.5% reduction), while two unchanged shards remained cache hits and an out-of-project script change invalidated zero declared TypeScript shards.
+
+Before production adoption, the next mandatory correctness gate is **semantic graph-composition equivalence** between the whole-repository SCIP index and the union of project-sharded indexes.
 
 ## Next authorized feature gate
 
