@@ -3,12 +3,13 @@ import path from 'node:path';
 
 import { readScipJson } from '../adapters/scip.mjs';
 import { ArtifactCache } from '../core/artifact-cache.mjs';
-import { FileCache, cacheKey } from '../core/cache.mjs';
+import { FileCache } from '../core/cache.mjs';
 import { buildSymbolGraph } from '../graph/symbol-graph.mjs';
 import { mergeScipIndexes } from '../graph/merge-scip-indexes.mjs';
 import { fileSha256, normalizedScipGraph } from './graph-cache.mjs';
 import { indexProject, scipTypeScriptIndexer } from './scip-launcher.mjs';
 import { resolveTypeScriptProjectShards } from './typescript-project-shards.mjs';
+import { typeScriptProjectGraphKey } from './typescript-graph-key.mjs';
 import { sourceFiles } from '../repository/inventory.mjs';
 
 async function exists(file) {
@@ -201,19 +202,15 @@ export async function buildTypeScriptEvidenceGraph({
     });
   }
 
-  const graphKeyInput = {
-    schemaVersion: 1,
+  const graphKey = typeScriptProjectGraphKey({
     decoderIdentity,
     graphSchemaVersion,
-    shards: indexedShards
-      .map(({ shard, indexed, indexSha256 }) => ({
-        id: shard.id,
-        fingerprint: indexed.fingerprint.fingerprint,
-        indexSha256,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id)),
-  };
-  const graphKey = cacheKey('ts-project-graph-v1', graphKeyInput);
+    shards: indexedShards.map(({ shard, indexed, indexSha256 }) => ({
+      id: shard.id,
+      fingerprint: indexed.fingerprint.fingerprint,
+      indexSha256,
+    })),
+  }).key;
   const graphHit = await graphCache.get('ts-project-graph-v1', graphKey);
 
   let graph;
