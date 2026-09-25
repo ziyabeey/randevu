@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/relational-case-batch.v0.1.schema.json",
+  "title": "H19 Relational Case Batch v0.1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "packetSha256",
+    "sourceRevision",
+    "maxCases",
+    "cases",
+    "skipped",
+    "truncated",
+    "batchSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "packetSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sourceRevision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "maxCases": {
+      "const": 20
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": [
+          "hypothesisId",
+          "caseSha256",
+          "selectedFactIds",
+          "independentFamilyCount",
+          "selectionReason"
+        ],
+        "properties": {
+          "hypothesisId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "caseSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "selectedFactIds": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "independentFamilyCount": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 4
+          },
+          "selectionReason": {
+            "const": "max-independent-evidence"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "hypothesisId",
+          "reason",
+          "eligibleFactIds"
+        ],
+        "properties": {
+          "hypothesisId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "enum": [
+              "insufficient-eligible-facts",
+              "insufficient-independent-families",
+              "missing-required-anchor",
+              "batch-cap"
+            ]
+          },
+          "eligibleFactIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "batchSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "additionalProperties": false
+}
