@@ -29,6 +29,8 @@ Side-hardening PRs may be developed in parallel, but they remain **HOLD** and do
 | M3.5 | Code-intelligence graph foundation: SCIP graph, shard/graph cache, affected-project adapters, Tree-sitter fallback, unit→symbol mapping | #544/#547/#548/#549/#550/#551 | green |
 | M4 | Change-impact orchestrator | #554 | CI #2831, head `88095f13918301df7188f25e5f50fbcbade4af56` |
 | M5 | Coverage discovery + frozen validation packet | #555 | CI #2833, head `32f0bda2296af99ec8720b9be43438268d16b7e2` |
+| M6 | Minimal test specification | #561 | CI #2840, head `e52e459a08c5ab56f466303e132beb93400050cb` |
+| M7 | Executable test candidate materialization | #566 | CI green, head `7239197bf8cbe010c8c9a1e519992a8931a9f970` |
 
 ## M5 contract
 
@@ -71,25 +73,27 @@ PERF-003 then measured TypeScript-project-scoped invalidation: a real app-source
 
 GRAPH-EQ-001 then passed semantic graph-composition equivalence on the real repository: 77 whole-index documents matched 77 merged-shard documents exactly, the 9,686-node H19 graph digest was identical, and 20 representative blast-radius units had zero mismatches.
 
-The next authorized performance action is **production adoption of project-scoped SCIP fingerprints/index shards with the equivalence invariant retained as a regression gate**.
+Production adoption is implemented in #581 and exact-head CI-green at `13fbc34baf5808ba9aef5c5b2d5314f2a8e8f6bf`.
+
+The project-scoped evidence graph is therefore available to the joined feature line, with whole-index fallback remaining explicit and fail-closed.
 
 ## Next authorized feature gate
 
-**Minimal test specification from validated/high-value coverage hypotheses.**
+**Relational evidence contract over M5–M7 outcomes and repository evidence.**
 
-For a surviving-mutant-driven target, the first specification contract must be able to state:
+The gate must define a deterministic representation for:
 
-```text
-setup
-→ action
-→ expected invariant
-→ mutation to kill
-→ required observations
-```
+- normalized evidence facts with provenance;
+- pairwise and higher-order relations such as support, contradiction, agreement and divergence;
+- baseline-relative statistics such as ratio, lift and observed sample size;
+- Jev advisory judgments as bounded structured outputs, never free-form authority;
+- deterministic verification and outcome binding;
+- calibration records that compare Jev confidence with later observed outcomes;
+- explicit separation between hypothesis strength and permission to execute an action.
 
-This is the next planned bundle gate.
+The first Jev-enabled gate must remain advisory. Jev may propose or compare relations; deterministic H19 policy retains execution authority.
 
-**No M6 number is assigned here yet.** Freeze the scope and acceptance contract before naming/promoting the next milestone.
+**No M8 number is assigned yet.** Freeze this relational-evidence scope and acceptance contract on the joined M7 + project-shard base before implementation.
 
 ## Side-hardening HOLD
 
