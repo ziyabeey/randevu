@@ -100,7 +100,7 @@ export function normalizeScipIndex(raw = {}) {
   return {
     metadata: raw.metadata ?? {},
     documents: documents.map((doc) => ({
-      path: doc.relativePath ?? doc.relative_path ?? '',
+      path: doc.path ?? doc.relativePath ?? doc.relative_path ?? '',
       language: doc.language ?? '',
       occurrences: (doc.occurrences ?? []).map((occ) => ({
         symbol: occ.symbol ?? '',
