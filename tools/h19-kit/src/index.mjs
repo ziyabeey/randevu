@@ -56,6 +56,7 @@ export * from './specification/test-spec.mjs';
 export * from './materialization/test-candidate.mjs';
 export * from './relations/relational-evidence.mjs';
 export * from './relations/relational-case-composer.mjs';
+export * from './relations/relational-judgment-batch.mjs';
 export * from './adapters/jev-relational.mjs';
 export * from './perf/baseline.mjs';
 export * from './indexing/typescript-project-shards.mjs';
