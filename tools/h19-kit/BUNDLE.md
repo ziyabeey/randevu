@@ -184,8 +184,11 @@ cost/cache measurements and a bounded collection plan.
 This preparation does not mark M10 accepted or M11 implemented. The inventory
 contains no materialized cases or labels. M10 remains advisory: B/C test plans
 stay identical, so this gate cannot claim a Jev-driven test-selection gain.
-The next implementation slice is an offline development-split materializer;
-paid collection requires its concrete budget and independently sourced evidence.
+The [offline development-split materializer](specs/M11_OFFLINE_INPUTS-v0.1.md)
+now verifies sources/receipts and delegates case selection to M9. Its initial
+source-only run records 12 missing-observation skips, not fabricated cases.
+The next slice is development observation collection; paid collection still
+requires its concrete budget and independently sourced evidence.
 M12 selection remains a later contract, not an activated milestone.
 
 ## Side-hardening HOLD

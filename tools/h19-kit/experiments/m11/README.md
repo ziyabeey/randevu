@@ -81,8 +81,45 @@ objects; M3 SHA-256 identifies the canonical scenario inventory.
 
 ## What must exist before measurement
 
-The next offline slice must produce actual packets/facts, validate M8/M9 bindings,
-and write a separate manifest linked to this inventory. Expand lineage/dependency
+### Offline development adapter
+
+The experimental [offline input contract](../../specs/M11_OFFLINE_INPUTS-v0.1.md)
+now has a materializer and CLI. From repository root, reproduce source-only
+readiness using a local source snapshot that contains the exact six development
+reference-suite/primary-target files pinned in this inventory:
+
+```bash
+node tools/h19-kit/bin/h19-m11-materialize.mjs \
+  tools/h19-kit/experiments/m11/COHORT-v0.1.json \
+  68a7608ab16442112263d477b25dec5cb3fd48e5d2caa345c2828c81f965b541 \
+  /path/to/pinned-source
+```
+
+Optionally append an observation-bundle JSON path after the source root. The
+CLI only reads files and emits JSON; it never runs tests or calls a provider.
+An observation bundle additionally requires complete declared split closures
+and all development dependency source bytes. Corrupt input fails, rather than
+turning into a successful or missing observation.
+
+[DEVELOPMENT-READINESS-001.json](DEVELOPMENT-READINESS-001.json) is the captured
+source-only result: 12 verified anchors, 12 `missing-observations` rows, zero
+materialized M5 packets/M8 cases. All evaluation labels remain untouched.
+
+Separately, the two existing development suites were run manually against their
+pinned sources on Node v24.19.0: 12/12 checks passed (five runtime pagination
+checks, seven source-text selection checks). This is a baseline sanity check,
+not a M11 outcome or proof of runtime UI behavior. Its additional local dependency
+was `shared/base64.ts`, Git blob `6b2cc95af3216c101c7a8d04f673377b0041e17f`.
+
+```bash
+node --test --test-reporter=tap \
+  tests/s07-pagination.test.mjs tests/f12-public-multi-selection.test.mjs
+```
+
+### Remaining observation collection
+
+The next collection slice must produce actual M5 packets, measured fact sources
+and complete source/lineage closure receipts for this adapter. Expand lineage/dependency
 clusters before labels; never let a sibling or shared lineage cross the splits.
 If a new split is necessary, version and re-freeze it before any model output.
 
