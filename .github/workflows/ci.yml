@@ -277,6 +277,9 @@ jobs:
       - name: Run H19 Kit M11 independent-assessment freeze smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m11-independent-assessment-freeze
+      - name: Run H19 Kit M11 independent-assessment receipt smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-independent-assessment-receipts
       - name: Run H19 Kit M11 notification empirical validation once
         id: h19_m11_notification_validation
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-m11-notification-behavioral-validation' && hashFiles('tools/h19-kit/experiments/m11/notification-validation-001/RESULT.json') == '' }}
