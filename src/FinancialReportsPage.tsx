@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { api } from './api';
 import { useWorkspace } from './workspace-context';
+import StaffCommissionPanel from './StaffCommissionPanel';
 
 type FinancialReport = {
   businessId: string;
@@ -78,7 +79,7 @@ function timeLabel(instant: string, timeZone: string) {
 }
 
 export default function FinancialReportsPage() {
-  const { activeBusinessId, activeBusiness, scopeEpoch } = useWorkspace();
+  const { activeBusinessId, activeBusiness, activeMembership, scopeEpoch } = useWorkspace();
   const timeZone = activeBusiness?.timezone ?? 'Europe/Istanbul';
   const today = useMemo(() => localDateInZone(timeZone), [timeZone]);
   const [startDate, setStartDate] = useState(today);
@@ -88,6 +89,7 @@ export default function FinancialReportsPage() {
   const [notice, setNotice] = useState('');
   const requestController = useRef<AbortController | null>(null);
   const requestGeneration = useRef(0);
+  const [commissionKey, setCommissionKey] = useState(0);
 
   const load = useCallback(async (from = startDate, to = endDate) => {
     requestController.current?.abort();
@@ -120,6 +122,7 @@ export default function FinancialReportsPage() {
     setEndDate(next);
     setReport(null);
     setNotice('');
+    setCommissionKey((key) => key + 1);
     void load(next, next);
     return () => {
       requestGeneration.current += 1;
@@ -136,6 +139,7 @@ export default function FinancialReportsPage() {
       setNotice('Başlangıç tarihi bitiş tarihinden sonra olamaz.');
       return;
     }
+    setCommissionKey((key) => key + 1);
     void load();
   }
 
@@ -241,6 +245,14 @@ export default function FinancialReportsPage() {
           </section>
         </>
       )}
+
+      <StaffCommissionPanel
+        businessId={activeBusinessId}
+        startDate={startDate}
+        endDate={endDate}
+        requestKey={commissionKey}
+        canManage={activeMembership.role !== 'staff'}
+      />
     </main>
   );
 }
