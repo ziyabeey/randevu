@@ -4,6 +4,7 @@ import { api } from './api';
 import PublicBookingInformation from './PublicBookingInformation';
 import PublicNotificationStatus from './PublicNotificationStatus';
 import ManageFeedback from './ManageFeedback';
+import LanguageSwitch from './LanguageSwitch';
 import { ManagePromo } from './PublicPromo';
 import { customerNotificationStatus, type CustomerNotificationStatus } from '../shared/customer-notification-status';
 
@@ -112,7 +113,7 @@ function statusLabel(status: string) {
     scheduled: t('Planlandı'),
     confirmed: t('Onaylandı'),
     completed: t('Tamamlandı'),
-    no_show: 'Gelmedi',
+    no_show: t('Gelmedi'),
     cancelled: t('İptal edildi'),
     partial: t('Kısmen değişti'),
   };
@@ -318,6 +319,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
           <p className="public-kicker">{t('RANDEVU YÖNETİMİ')}</p>
           <h1>{t('Bu bağlantı geçerli değil.')}</h1>
           <p>{notice || t('Bağlantı hatalı, iptal edilmiş veya artık kullanılamıyor olabilir.')}</p>
+          <LanguageSwitch className="public-language-switch" />
         </section>
       </main>
     );
@@ -333,6 +335,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         <p className="public-kicker">{t('RANDEVUMU YÖNET')}</p>
         <h1>{appointment.business_name}</h1>
         <span className={`manage-status status-${displayStatus}`}>{statusLabel(displayStatus)}</span>
+        <LanguageSwitch className="public-language-switch" />
       </header>
 
       {notice && <div className="public-booking-notice" role="status">{notice}</div>}

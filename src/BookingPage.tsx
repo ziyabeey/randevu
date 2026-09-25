@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import { api } from './api';
 import { navigateApp } from './workspace-route';
 import { useWorkspace } from './workspace-context';
@@ -152,7 +153,7 @@ function timeInZone(value: string, timezone: string) {
 function zonedLocalToIso(date: string, time: string, timezone: string) {
   const [year = Number.NaN, month = Number.NaN, day = Number.NaN] = date.split('-').map(Number);
   const [hour = Number.NaN, minute = Number.NaN] = time.split(':').map(Number);
-  if (![year, month, day, hour, minute].every(Number.isFinite)) throw new Error('Tarih veya saat geçerli değil.');
+  if (![year, month, day, hour, minute].every(Number.isFinite)) throw new Error(t('Tarih veya saat geçerli değil.'));
   const desiredUtc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
   const guess = new Date(desiredUtc);
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -174,25 +175,25 @@ function zonedLocalToIso(date: string, time: string, timezone: string) {
   }).formatToParts(result);
   const verified = Object.fromEntries(verify.map((part) => [part.type, part.value]));
   if (`${verified.year}-${verified.month}-${verified.day}` !== date || `${verified.hour}:${verified.minute}` !== time) {
-    throw new Error('Bu yerel saat seçilen zaman diliminde geçerli değil.');
+    throw new Error(t('Bu yerel saat seçilen zaman diliminde geçerli değil.'));
   }
   return result.toISOString();
 }
 
 function formatDateTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
+  return new Intl.DateTimeFormat(intlLocale(), {
     timeZone: timezone, dateStyle: 'medium', timeStyle: 'short',
   }).format(new Date(value));
 }
 
 function formatTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
+  return new Intl.DateTimeFormat(intlLocale(), {
     timeZone: timezone, hour: '2-digit', minute: '2-digit',
   }).format(new Date(value));
 }
 
 function money(value: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(value / 100);
+  return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(value / 100);
 }
 
 function priceText(line: BookingLine) {
@@ -293,7 +294,7 @@ export default function BookingPage() {
       ]);
       if (controller.signal.aborted || generation !== loadGeneration.current) return;
       if (nextCatalog.membership.business_id !== activeBusinessId) {
-        throw new Error('Randevu verileri güncel işletme bağlamıyla eşleşmiyor.');
+        throw new Error(t('Randevu verileri güncel işletme bağlamıyla eşleşmiyor.'));
       }
       setCatalog(nextCatalog);
       setTimezone(nextSetup.timezone);
@@ -312,7 +313,7 @@ export default function BookingPage() {
       });
     } catch (error) {
       if (controller.signal.aborted || generation !== loadGeneration.current) return;
-      setNotice(error instanceof Error ? error.message : 'Randevu ekranı yüklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Randevu ekranı yüklenemedi.'));
     } finally {
       if (generation === loadGeneration.current) {
         loadController.current = null;
@@ -444,10 +445,10 @@ export default function BookingPage() {
         && ((error as { code?: string }).code === 'NETWORK_UNAVAILABLE'
           || (error as { code?: string }).code === 'REQUEST_TIMEOUT');
       if (ambiguous) {
-        setNotice('Adisyon açma sonucu henüz doğrulanamadı. Tekrar deneyin; aynı işlem anahtarı kullanılacak.');
+        setNotice(t('Adisyon açma sonucu henüz doğrulanamadı. Tekrar deneyin; aynı işlem anahtarı kullanılacak.'));
       } else {
         mutationKeys.current.delete(fingerprint);
-        setNotice(error instanceof Error ? error.message : 'Adisyon açılamadı.');
+        setNotice(error instanceof Error ? error.message : t('Adisyon açılamadı.'));
       }
     } finally {
       setBusy(false);
@@ -465,7 +466,7 @@ export default function BookingPage() {
         return [...current, ...result.bookings.filter((item) => !existing.has(item.groupId))];
       });
       setBookingsNextCursor(result.page.nextCursor);
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Diğer randevular yüklenemedi.'); }
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Diğer randevular yüklenemedi.')); }
     finally { setBusy(false); }
   }
 
@@ -527,10 +528,10 @@ export default function BookingPage() {
       });
       if (controller.signal.aborted || generation !== createSlotGeneration.current) return;
       setCreateSlots(result.slots);
-      setNotice(result.slots.length ? `${result.slots.length} uygun grup saati bulundu.` : 'Bu hizmet planı için boş saat yok.');
+      setNotice(result.slots.length ? t('{count} uygun grup saati bulundu.', { count: result.slots.length }) : t('Bu hizmet planı için boş saat yok.'));
     } catch (error) {
       if (controller.signal.aborted || generation !== createSlotGeneration.current) return;
-      setNotice(error instanceof Error ? error.message : 'Saatler hesaplanamadı.');
+      setNotice(error instanceof Error ? error.message : t('Saatler hesaplanamadı.'));
     } finally {
       if (generation === createSlotGeneration.current) {
         createSlotController.current = null;
@@ -560,11 +561,11 @@ export default function BookingPage() {
       if (!seriesReadIsCurrent(generation, controller)) return;
       setSeriesPreview(result.preview);
       setNotice(result.preview.allAvailable
-        ? `${result.preview.occurrenceCount} tekrarın tamamı uygun.`
-        : 'Serideki en az bir tekrar uygun değil. Tarih veya saati değiştirin.');
+        ? t('{count} tekrarın tamamı uygun.', { count: result.preview.occurrenceCount })
+        : t('Serideki en az bir tekrar uygun değil. Tarih veya saati değiştirin.'));
     } catch (error) {
       if (!seriesReadIsCurrent(generation, controller)) return;
-      setNotice(error instanceof Error ? error.message : 'Seri önizlemesi hazırlanamadı.');
+      setNotice(error instanceof Error ? error.message : t('Seri önizlemesi hazırlanamadı.'));
     } finally {
       if (generation === seriesReadGeneration.current) {
         seriesReadController.current = null;
@@ -577,7 +578,7 @@ export default function BookingPage() {
     if (!selectedCreateSlot || !createLines.length) return;
     const scopeGeneration = workspaceGeneration.current;
     if (recurrenceFrequency !== 'none' && (!seriesPreview || !seriesPreview.allAvailable)) {
-      setNotice('Seriyi oluşturmadan önce tüm tekrarları önizleyin.');
+      setNotice(t('Seriyi oluşturmadan önce tüm tekrarları önizleyin.'));
       return;
     }
     setBusy(true); setNotice('');
@@ -591,8 +592,8 @@ export default function BookingPage() {
         startsAt: selectedCreateSlot.starts_at,
       };
       const successMessage = recurrenceFrequency === 'none'
-        ? 'Rezervasyon atomik olarak oluşturuldu.'
-        : `${recurrenceCount} randevuluk seri atomik olarak oluşturuldu.`;
+        ? t('Rezervasyon atomik olarak oluşturuldu.')
+        : t('{count} randevuluk seri atomik olarak oluşturuldu.', { count: recurrenceCount });
       if (recurrenceFrequency === 'none') {
         await api('/api/bookings/groups', {
           method: 'POST',
@@ -620,7 +621,7 @@ export default function BookingPage() {
       await load();
     } catch (error) {
       if (scopeGeneration !== workspaceGeneration.current) return;
-      setNotice(error instanceof Error ? error.message : 'Randevu oluşturulamadı.');
+      setNotice(error instanceof Error ? error.message : t('Randevu oluşturulamadı.'));
     } finally {
       if (scopeGeneration === workspaceGeneration.current) setBusy(false);
     }
@@ -642,8 +643,8 @@ export default function BookingPage() {
       setCloseOpen(false);
       setCloseReason('');
       resetCreateAvailability();
-      setNotice('Saat kapatıldı. Yeni müsaitlik araması bu kapanışı dikkate alacak.');
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Saat kapatılamadı.'); }
+      setNotice(t('Saat kapatıldı. Yeni müsaitlik araması bu kapanışı dikkate alacak.'));
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Saat kapatılamadı.')); }
     finally { setBusy(false); }
   }
 
@@ -656,14 +657,14 @@ export default function BookingPage() {
         headers: { 'Idempotency-Key': stableMutationKey(fingerprint) },
         body: JSON.stringify({ expectedVersion: booking.version, status }),
       });
-      await reloadAfterMutation(`Rezervasyon: ${statusText[status]}.`, fingerprint);
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Rezervasyon durumu güncellenemedi.'); }
+      await reloadAfterMutation(t('Rezervasyon: {status}.', { status: t(statusText[status]) }), fingerprint);
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Rezervasyon durumu güncellenemedi.')); }
     finally { setBusy(false); }
   }
 
   async function changeLegacyStatus(booking: BookingGroup, status: 'confirmed' | 'completed' | 'no_show' | 'cancelled') {
     if (!booking.legacyAppointmentId) return;
-    const reason = status === 'cancelled' ? (window.prompt('İptal nedeni (isteğe bağlı):') ?? '') : '';
+    const reason = status === 'cancelled' ? (window.prompt(t('İptal nedeni (isteğe bağlı):')) ?? '') : '';
     const fingerprint = `legacy-status:${booking.legacyAppointmentId}:${status}:${reason}`;
     setBusy(true); setNotice('');
     try {
@@ -671,13 +672,13 @@ export default function BookingPage() {
         method: 'POST', headers: { 'Idempotency-Key': stableMutationKey(fingerprint) },
         body: JSON.stringify({ status, reason }),
       });
-      await reloadAfterMutation(`Randevu: ${statusText[status]}.`, fingerprint);
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Durum güncellenemedi.'); }
+      await reloadAfterMutation(t('Randevu: {status}.', { status: t(statusText[status]) }), fingerprint);
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Durum güncellenemedi.')); }
     finally { setBusy(false); }
   }
 
   async function cancelGroup(booking: BookingGroup) {
-    const reason = window.prompt('Tüm rezervasyon için iptal nedeni (isteğe bağlı):') ?? '';
+    const reason = window.prompt(t('Tüm rezervasyon için iptal nedeni (isteğe bağlı):')) ?? '';
     const fingerprint = `group-cancel:${booking.groupId}:${booking.version}:${reason}`;
     setBusy(true); setNotice('');
     try {
@@ -685,13 +686,13 @@ export default function BookingPage() {
         method: 'POST', headers: { 'Idempotency-Key': stableMutationKey(fingerprint) },
         body: JSON.stringify({ expectedVersion: booking.version, reason }),
       });
-      await reloadAfterMutation('Rezervasyon grubu iptal edildi.', fingerprint);
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Rezervasyon grubu iptal edilemedi.'); }
+      await reloadAfterMutation(t('Rezervasyon grubu iptal edildi.'), fingerprint);
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Rezervasyon grubu iptal edilemedi.')); }
     finally { setBusy(false); }
   }
 
   async function cancelLine(booking: BookingGroup, line: BookingLine) {
-    const reason = window.prompt(`${line.serviceName} için iptal nedeni (isteğe bağlı):`) ?? '';
+    const reason = window.prompt(t('{service} için iptal nedeni (isteğe bağlı):', { service: line.serviceName })) ?? '';
     const fingerprint = `line-cancel:${booking.groupId}:${line.appointmentId}:${booking.version}:${reason}`;
     setBusy(true); setNotice('');
     try {
@@ -699,8 +700,8 @@ export default function BookingPage() {
         method: 'POST', headers: { 'Idempotency-Key': stableMutationKey(fingerprint) },
         body: JSON.stringify({ expectedVersion: booking.version, reason }),
       });
-      await reloadAfterMutation(`${line.serviceName} hizmeti iptal edildi.`, fingerprint);
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Hizmet iptal edilemedi.'); }
+      await reloadAfterMutation(t('{service} hizmeti iptal edildi.', { service: line.serviceName }), fingerprint);
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Hizmet iptal edilemedi.')); }
     finally { setBusy(false); }
   }
 
@@ -721,14 +722,14 @@ export default function BookingPage() {
         const params = new URLSearchParams({ date: rescheduleDate, step: '15' });
         const result = await api<{ slots: GroupSlot[] }>(`/api/bookings/groups/${booking.groupId}/reschedule-slots?${params}`);
         setRescheduleSlots(result.slots);
-        setNotice(result.slots.length ? `${result.slots.length} grup taşıma seçeneği bulundu.` : 'Grubu taşımak için boş saat yok.');
+        setNotice(result.slots.length ? t('{count} grup taşıma seçeneği bulundu.', { count: result.slots.length }) : t('Grubu taşımak için boş saat yok.'));
       } else if (booking.legacyAppointmentId) {
         const params = new URLSearchParams({ date: rescheduleDate, staffId: rescheduleStaff, step: '15' });
         const result = await api<{ slots: Slot[] }>(`/api/bookings/${booking.legacyAppointmentId}/reschedule-slots?${params}`);
         setRescheduleSlots(result.slots);
-        setNotice(result.slots.length ? `${result.slots.length} taşıma seçeneği bulundu.` : 'Taşıma için boş saat yok.');
+        setNotice(result.slots.length ? t('{count} taşıma seçeneği bulundu.', { count: result.slots.length }) : t('Taşıma için boş saat yok.'));
       }
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Taşıma saatleri hesaplanamadı.'); }
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Taşıma saatleri hesaplanamadı.')); }
     finally { setBusy(false); }
   }
 
@@ -749,8 +750,8 @@ export default function BookingPage() {
         });
       }
       setRescheduleTarget(null); setRescheduleSlots([]); setSelectedRescheduleSlot(null);
-      await load(); setNotice('Rezervasyon yeni saate taşındı.');
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Randevu taşınamadı.'); }
+      await load(); setNotice(t('Rezervasyon yeni saate taşındı.'));
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Randevu taşınamadı.')); }
     finally { setBusy(false); }
   }
 
@@ -770,8 +771,8 @@ export default function BookingPage() {
         body: JSON.stringify({ expectedVersion: booking.version, serviceId: replacementServiceId }),
       });
       setServiceTarget(null);
-      await load(); setNotice('Hizmet satırı güncellendi.');
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Hizmet değiştirilemedi.'); }
+      await load(); setNotice(t('Hizmet satırı güncellendi.'));
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Hizmet değiştirilemedi.')); }
     finally { setBusy(false); }
   }
 
@@ -794,8 +795,8 @@ export default function BookingPage() {
         body: JSON.stringify({ expectedVersion: booking.version, staffId: lineStaff, startsAt }),
       });
       setLineScheduleTarget(null);
-      await load(); setNotice('Hizmet satırı yeni saate taşındı.');
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Hizmet satırı taşınamadı.'); }
+      await load(); setNotice(t('Hizmet satırı yeni saate taşındı.'));
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Hizmet satırı taşınamadı.')); }
     finally { setBusy(false); }
   }
 
@@ -818,14 +819,14 @@ export default function BookingPage() {
       });
       if (!seriesReadIsCurrent(generation, controller)) return;
       if (result.series.businessId !== activeBusinessId) {
-        throw new Error('Seri verileri güncel işletme bağlamıyla eşleşmiyor.');
+        throw new Error(t('Seri verileri güncel işletme bağlamıyla eşleşmiyor.'));
       }
       setSeriesDetail(result.series);
       setSeriesFromOrdinal(Math.max(1, booking.seriesOrdinal));
     } catch (error) {
       if (!seriesReadIsCurrent(generation, controller)) return;
       setSeriesFor(null);
-      setNotice(error instanceof Error ? error.message : 'Seri bilgisi okunamadı.');
+      setNotice(error instanceof Error ? error.message : t('Seri bilgisi okunamadı.'));
     } finally {
       if (generation === seriesReadGeneration.current) {
         seriesReadController.current = null;
@@ -860,17 +861,17 @@ export default function BookingPage() {
       );
       if (!seriesReadIsCurrent(generation, controller)) return;
       if (result.preview.seriesId !== requestedSeriesId) {
-        throw new Error('Seri kapsamı güncel randevu serisiyle eşleşmiyor.');
+        throw new Error(t('Seri kapsamı güncel randevu serisiyle eşleşmiyor.'));
       }
       setSeriesFuturePreview(result.preview);
       const mutable = result.preview.targets.length;
       const skipped = result.preview.skipped.length;
       setNotice(result.preview.allAvailable
-        ? `${mutable} gelecek randevu kapsamda${skipped ? `, ${skipped} geçmiş/kapalı kayıt korunacak` : ''}.`
-        : `Kapsamda ${result.preview.conflicts.length} çakışma var; işlem uygulanmayacak.`);
+        ? (skipped ? t('{count} gelecek randevu kapsamda, {skipped} geçmiş/kapalı kayıt korunacak.', { count: mutable, skipped }) : t('{count} gelecek randevu kapsamda.', { count: mutable }))
+        : t('Kapsamda {count} çakışma var; işlem uygulanmayacak.', { count: result.preview.conflicts.length }));
     } catch (error) {
       if (!seriesReadIsCurrent(generation, controller)) return;
-      setNotice(error instanceof Error ? error.message : 'Seri kapsamı önizlenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Seri kapsamı önizlenemedi.'));
     } finally {
       if (generation === seriesReadGeneration.current) {
         seriesReadController.current = null;
@@ -919,12 +920,12 @@ export default function BookingPage() {
       await load();
       if (scopeGeneration !== workspaceGeneration.current) return;
       setNotice(seriesAction === 'reschedule'
-        ? 'Seçilen tekrar ve sonraki uygun randevular atomik olarak taşındı.'
-        : 'Seçilen tekrar ve sonraki uygun randevular atomik olarak iptal edildi.');
+        ? t('Seçilen tekrar ve sonraki uygun randevular atomik olarak taşındı.')
+        : t('Seçilen tekrar ve sonraki uygun randevular atomik olarak iptal edildi.'));
     } catch (error) {
       if (scopeGeneration !== workspaceGeneration.current) return;
       const coded = error as Error & { code?: string };
-      setNotice(coded.message || 'Seri değişikliği uygulanamadı.');
+      setNotice(coded.message || t('Seri değişikliği uygulanamadı.'));
       if (coded.code === 'APPOINTMENT_SERIES_VERSION_CONFLICT'
           || coded.code === 'BOOKING_GROUP_VERSION_CONFLICT'
           || coded.code === 'SERIES_FUTURE_OCCURRENCE_UNAVAILABLE') {
@@ -957,7 +958,7 @@ export default function BookingPage() {
     try {
       const result = await api<{ events: AppointmentEvent[]; page: PageInfo }>(`/api/bookings/${booking.legacyAppointmentId}/events?limit=25`);
       setEventsFor(booking); setEvents(result.events); setEventsNextCursor(result.page.nextCursor);
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Randevu geçmişi okunamadı.'); }
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Randevu geçmişi okunamadı.')); }
     finally { setBusy(false); }
   }
 
@@ -972,18 +973,18 @@ export default function BookingPage() {
         return [...current, ...result.events.filter((item) => !existing.has(item.id))];
       });
       setEventsNextCursor(result.page.nextCursor);
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'Diğer geçmiş kayıtları yüklenemedi.'); }
+    } catch (error) { setNotice(error instanceof Error ? error.message : t('Diğer geçmiş kayıtları yüklenemedi.')); }
     finally { setBusy(false); }
   }
 
-  if (loading) return <main className="booking-page"><section className="booking-card"><p>Booking motoru hazırlanıyor…</p></section></main>;
+  if (loading) return <main className="booking-page"><section className="booking-card"><p>{t('Booking motoru hazırlanıyor…')}</p></section></main>;
   if (!catalog) {
-    return <main className="booking-page"><section className="booking-card"><p className="eyebrow">RANDEVU</p><h1>Randevular doğrulanamadı.</h1><p className="muted">Güncel işletme verilerini yeniden yükleyin.</p><button className="primary-button" type="button" onClick={() => void load()}>Tekrar yükle</button></section></main>;
+    return <main className="booking-page"><section className="booking-card"><p className="eyebrow">{t('RANDEVU')}</p><h1>{t('Randevular doğrulanamadı.')}</h1><p className="muted">{t('Güncel işletme verilerini yeniden yükleyin.')}</p><button className="primary-button" type="button" onClick={() => void load()}>{t('Tekrar yükle')}</button></section></main>;
   }
 
   return <div className="booking-page">
     <header className="booking-hero">
-      <div><p className="eyebrow">RANDEVU YÖNETİMİ</p><h1>Rezervasyonu tek birim olarak yönet</h1><p className="muted">{timezone} · çok hizmetli rezervasyonlarda grup CAS ve satır otoritesi aktif.</p></div>
+      <div><p className="eyebrow">{t('RANDEVU YÖNETİMİ')}</p><h1>{t('Rezervasyonu tek birim olarak yönet')}</h1><p className="muted">{t('{timezone} · çok hizmetli rezervasyonlarda grup CAS ve satır otoritesi aktif.', { timezone: timezone })}</p></div>
       <span className="role-badge">{catalog.membership.role}</span>
     </header>
 
@@ -991,42 +992,42 @@ export default function BookingPage() {
 
     <div className="booking-grid">
       <section className="booking-card booking-composer">
-        <div className="section-head"><div><p className="eyebrow">YENİ RANDEVU</p><h2>Zaman → müşteri → hizmetler → not</h2></div><span>{createSlots.length ? `${createSlots.length} saat` : `${createLines.length} hizmet`}</span></div>
+        <div className="section-head"><div><p className="eyebrow">{t('YENİ RANDEVU')}</p><h2>{t('Zaman → müşteri → hizmetler → not')}</h2></div><span>{createSlots.length ? t('{count} saat', { count: createSlots.length }) : t('{count} hizmet', { count: createLines.length })}</span></div>
 
         <div className="booking-step">
           <span className="booking-step-index">1</span>
-          <div><strong>Zaman</strong><small>Önce günü ve hizmet planını kur, sonra uygun başlangıç saatini seç.</small></div>
+          <div><strong>{t('Zaman')}</strong><small>{t('Önce günü ve hizmet planını kur, sonra uygun başlangıç saatini seç.')}</small></div>
         </div>
         <div className="booking-fields">
-          <label>Tarih<input type="date" value={date} onChange={(event) => { setDate(event.target.value); resetCreateAvailability(); }} /></label>
+          <label>{t('Tarih')}<input type="date" value={date} onChange={(event) => { setDate(event.target.value); resetCreateAvailability(); }} /></label>
           <div className="booking-inline-action">
-            <span>Saat kapatma</span>
-            <button className="secondary-button" type="button" disabled={busy} onClick={() => { setCloseDate(date); setCloseOpen((current) => !current); }}>{closeOpen ? 'Kapat' : 'Saat kapat'}</button>
+            <span>{t('Saat kapatma')}</span>
+            <button className="secondary-button" type="button" disabled={busy} onClick={() => { setCloseDate(date); setCloseOpen((current) => !current); }}>{closeOpen ? t('Kapat') : t('Saat kapat')}</button>
           </div>
         </div>
 
         {closeOpen && <div className="booking-close-panel">
-          <label>Gün<input type="date" value={closeDate} onChange={(event) => setCloseDate(event.target.value)} /></label>
-          <label>Başlangıç<input type="time" value={closeStart} onChange={(event) => setCloseStart(event.target.value)} /></label>
-          <label>Bitiş<input type="time" value={closeEnd} onChange={(event) => setCloseEnd(event.target.value)} /></label>
-          <label>Kapsam<select value={closeStaff} onChange={(event) => setCloseStaff(event.target.value)}><option value="all">Tüm salon</option>{activeStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
-          <label className="wide-field">Neden<input value={closeReason} maxLength={240} onChange={(event) => setCloseReason(event.target.value)} placeholder="Toplantı, mola, izin…" /></label>
-          <button className="secondary-button wide-field" type="button" disabled={busy || !['owner','manager'].includes(catalog.membership.role)} onClick={() => void createCloseBlock()}>{['owner','manager'].includes(catalog.membership.role) ? 'Kapanışı kaydet' : 'Yönetici yetkisi gerekli'}</button>
+          <label>{t('Gün')}<input type="date" value={closeDate} onChange={(event) => setCloseDate(event.target.value)} /></label>
+          <label>{t('Başlangıç')}<input type="time" value={closeStart} onChange={(event) => setCloseStart(event.target.value)} /></label>
+          <label>{t('Bitiş')}<input type="time" value={closeEnd} onChange={(event) => setCloseEnd(event.target.value)} /></label>
+          <label>{t('Kapsam')}<select value={closeStaff} onChange={(event) => setCloseStaff(event.target.value)}><option value="all">{t('Tüm salon')}</option>{activeStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
+          <label className="wide-field">{t('Neden')}<input value={closeReason} maxLength={240} onChange={(event) => setCloseReason(event.target.value)} placeholder={t('Toplantı, mola, izin…')} /></label>
+          <button className="secondary-button wide-field" type="button" disabled={busy || !['owner','manager'].includes(catalog.membership.role)} onClick={() => void createCloseBlock()}>{['owner','manager'].includes(catalog.membership.role) ? t('Kapanışı kaydet') : t('Yönetici yetkisi gerekli')}</button>
         </div>}
 
         <div className="booking-step">
           <span className="booking-step-index">2</span>
-          <div><strong>Müşteri</strong><small>İletişim bilgileri yeni rezervasyon snapshot'ına yazılır; geçmiş kayıtlar değişmez.</small></div>
+          <div><strong>{t('Müşteri')}</strong><small>{t('İletişim bilgileri yeni rezervasyon snapshot\'ına yazılır; geçmiş kayıtlar değişmez.')}</small></div>
         </div>
         <div className="booking-fields">
-          <label>Müşteri<input value={customerName} onChange={(event) => { setCustomerName(event.target.value); setCreateKey(commandKey()); }} placeholder="Ad soyad" maxLength={120} /></label>
-          <label>Telefon<input value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setCreateKey(commandKey()); }} placeholder="+90…" maxLength={40} /></label>
-          <label>E-posta<input value={customerEmail} onChange={(event) => { setCustomerEmail(event.target.value); setCreateKey(commandKey()); }} type="email" placeholder="mail@…" maxLength={254} /></label>
+          <label>{t('Müşteri')}<input value={customerName} onChange={(event) => { setCustomerName(event.target.value); setCreateKey(commandKey()); }} placeholder={t('Ad soyad')} maxLength={120} /></label>
+          <label>{t('Telefon')}<input value={customerPhone} onChange={(event) => { setCustomerPhone(event.target.value); setCreateKey(commandKey()); }} placeholder="+90…" maxLength={40} /></label>
+          <label>{t('E-posta')}<input value={customerEmail} onChange={(event) => { setCustomerEmail(event.target.value); setCreateKey(commandKey()); }} type="email" placeholder={t('mail@…')} maxLength={254} /></label>
         </div>
 
         <div className="booking-step">
           <span className="booking-step-index">3</span>
-          <div><strong>Hizmet / personel satırları</strong><small>1–10 hizmet tek rezervasyon olarak planlanır; sunucu hepsini birlikte kilitler.</small></div>
+          <div><strong>{t('Hizmet / personel satırları')}</strong><small>{t('1–10 hizmet tek rezervasyon olarak planlanır; sunucu hepsini birlikte kilitler.')}</small></div>
         </div>
         <div className="booking-line-editor">
           {createLines.map((line, index) => {
@@ -1034,46 +1035,46 @@ export default function BookingPage() {
             const service = activeServices.find((item) => item.id === line.serviceId);
             return <div className="booking-line-draft" key={line.key}>
               <span className="booking-line-number">{index + 1}</span>
-              <label>Hizmet<select value={line.serviceId} onChange={(event) => updateCreateLine(line.key, { serviceId: event.target.value })}>
-                {activeServices.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.duration_minutes} dk{item.price_type === 'range' ? ' · fiyat aralığı' : ` · ${money(item.price_minor, item.currency)}`}</option>)}
+              <label>{t('Hizmet')}<select value={line.serviceId} onChange={(event) => updateCreateLine(line.key, { serviceId: event.target.value })}>
+                {activeServices.map((item) => <option key={item.id} value={item.id}>{item.price_type === 'range' ? t('{name} · {minutes} dk · fiyat aralığı', { name: item.name, minutes: item.duration_minutes }) : t('{name} · {minutes} dk · {price}', { name: item.name, minutes: item.duration_minutes, price: money(item.price_minor, item.currency) })}</option>)}
               </select></label>
-              <label>Personel<select value={line.staffId} onChange={(event) => updateCreateLine(line.key, { staffId: event.target.value })}><option value="any">Fark etmez</option>{staff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
-              <span className="booking-line-meta">{service?.price_type === 'range' ? 'Kesin tutar adisyonda belirlenir' : 'Sabit fiyat'}</span>
-              <button className="booking-line-remove" type="button" disabled={busy || createLines.length === 1} onClick={() => removeCreateLine(line.key)}>Kaldır</button>
+              <label>{t('Personel')}<select value={line.staffId} onChange={(event) => updateCreateLine(line.key, { staffId: event.target.value })}><option value="any">{t('Fark etmez')}</option>{staff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label>
+              <span className="booking-line-meta">{service?.price_type === 'range' ? t('Kesin tutar adisyonda belirlenir') : t('Sabit fiyat')}</span>
+              <button className="booking-line-remove" type="button" disabled={busy || createLines.length === 1} onClick={() => removeCreateLine(line.key)}>{t('Kaldır')}</button>
             </div>;
           })}
-          <button className="secondary-button" type="button" disabled={busy || createLines.length >= 10 || !activeServices.length} onClick={addCreateLine}>+ Hizmet ekle</button>
+          <button className="secondary-button" type="button" disabled={busy || createLines.length >= 10 || !activeServices.length} onClick={addCreateLine}>{t('+ Hizmet ekle')}</button>
         </div>
-        {hasRangeServices && <p className="muted">Fiyat aralıklı hizmetler tahmin olarak gösterilir; kesin tahsilat bu ekranda üretilmez.</p>}
-        <div className="booking-actions"><button className="secondary-button" type="button" disabled={busy || createSlotsBusy || createLines.some((line) => !line.serviceId)} onClick={() => void previewCreateSlots()}>{createSlotsBusy ? 'Saatler aranıyor…' : 'Uygun saatleri getir'}</button></div>
+        {hasRangeServices && <p className="muted">{t('Fiyat aralıklı hizmetler tahmin olarak gösterilir; kesin tahsilat bu ekranda üretilmez.')}</p>}
+        <div className="booking-actions"><button className="secondary-button" type="button" disabled={busy || createSlotsBusy || createLines.some((line) => !line.serviceId)} onClick={() => void previewCreateSlots()}>{createSlotsBusy ? t('Saatler aranıyor…') : t('Uygun saatleri getir')}</button></div>
 
         <div className="slot-cloud">
           {createSlots.map((slot) => <button type="button" className={selectedCreateSlot?.starts_at === slot.starts_at ? 'slot-button selected' : 'slot-button'} key={slot.starts_at} onClick={() => { invalidateSeriesRead(); setSelectedCreateSlot(slot); setSeriesPreview(null); setCreateKey(commandKey()); }}>
-            <strong>{formatTime(slot.starts_at, slot.timezone)}</strong><span>{createLines.length} hizmet · {slot.total_duration_minutes} dk</span>
+            <strong>{formatTime(slot.starts_at, slot.timezone)}</strong><span>{t('{length} hizmet · {total_duration_minutes} dk', { length: createLines.length, total_duration_minutes: slot.total_duration_minutes })}</span>
           </button>)}
         </div>
 
         <div className="booking-step">
           <span className="booking-step-index">4</span>
-          <div><strong>Not ve oluştur</strong><small>Tek tıklama, tek idempotency anahtarı; grup ya bütünüyle oluşur ya hiç oluşmaz.</small></div>
+          <div><strong>{t('Not ve oluştur')}</strong><small>{t('Tek tıklama, tek idempotency anahtarı; grup ya bütünüyle oluşur ya hiç oluşmaz.')}</small></div>
         </div>
-        <div className="booking-fields"><label className="wide-field">Not<textarea value={notes} onChange={(event) => { setNotes(event.target.value); setCreateKey(commandKey()); }} maxLength={1000} placeholder="İsteğe bağlı not" /></label></div>
-        <div className="booking-future-hints" aria-label="Tekrarlayan randevu">
+        <div className="booking-fields"><label className="wide-field">{t('Not')}<textarea value={notes} onChange={(event) => { setNotes(event.target.value); setCreateKey(commandKey()); }} maxLength={1000} placeholder={t('İsteğe bağlı not')} /></label></div>
+        <div className="booking-future-hints" aria-label={t('Tekrarlayan randevu')}>
           <label>
-            <strong>Tekrar</strong>
+            <strong>{t('Tekrar')}</strong>
             <select value={recurrenceFrequency} onChange={(event) => {
               invalidateSeriesRead();
               setRecurrenceFrequency(event.target.value as 'none' | 'daily' | 'weekly');
               setSeriesPreview(null);
               setCreateKey(commandKey());
             }}>
-              <option value="none">Tek sefer</option>
-              <option value="daily">Her gün</option>
-              <option value="weekly">Her hafta</option>
+              <option value="none">{t('Tek sefer')}</option>
+              <option value="daily">{t('Her gün')}</option>
+              <option value="weekly">{t('Her hafta')}</option>
             </select>
           </label>
           {recurrenceFrequency !== 'none' && <label>
-            <strong>Adet</strong>
+            <strong>{t('Adet')}</strong>
             <input type="number" min={2} max={12} value={recurrenceCount} onChange={(event) => {
               const next = Math.max(2, Math.min(12, Number(event.target.value) || 2));
               invalidateSeriesRead();
@@ -1081,113 +1082,113 @@ export default function BookingPage() {
               setSeriesPreview(null);
               setCreateKey(commandKey());
             }} />
-            <small>En fazla 12 randevu</small>
+            <small>{t('En fazla 12 randevu')}</small>
           </label>}
-          <span><strong>SMS</strong><small>F16-02 ile açılacak</small></span>
+          <span><strong>{t('SMS')}</strong><small>{t('F16-02 ile açılacak')}</small></span>
         </div>
         {selectedCreateSlot && recurrenceFrequency !== 'none' && <div className="booking-actions">
           <button className="secondary-button" type="button" disabled={busy || seriesPreviewBusy} onClick={() => void previewSeriesCreate()}>
-            {seriesPreviewBusy ? 'Seri kontrol ediliyor…' : 'Tüm tekrarları önizle'}
+            {seriesPreviewBusy ? t('Seri kontrol ediliyor…') : t('Tüm tekrarları önizle')}
           </button>
         </div>}
-        {seriesPreview && <div className="appointment-list" aria-label="Seri önizlemesi">
+        {seriesPreview && <div className="appointment-list" aria-label={t('Seri önizlemesi')}>
           {seriesPreview.occurrences.map((occurrence) => <div className="appointment-row" key={occurrence.ordinal}>
             <div className="appointment-time">
-              <strong>{occurrence.ordinal}. tekrar</strong>
+              <strong>{t('{ordinal}. tekrar', { ordinal: occurrence.ordinal })}</strong>
               <span>{occurrence.localDate} · {occurrence.localTime.slice(0,5)}</span>
             </div>
-            <span className="status-pill">{occurrence.available ? 'Uygun' : 'Dolu'}</span>
+            <span className="status-pill">{occurrence.available ? t('Uygun') : t('Dolu')}</span>
           </div>)}
         </div>}
-        {selectedCreateSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedCreateSlot.starts_at, selectedCreateSlot.timezone)}</strong><span>{recurrenceFrequency === 'none' ? `${createLines.length} hizmet tek rezervasyon olarak oluşturulacak.` : `${recurrenceCount} randevu, ${recurrenceFrequency === 'daily' ? 'günlük' : 'haftalık'} seri olarak atomik oluşturulacak.`}</span></div><button className="primary-button" type="button" disabled={busy || createSlotsBusy || seriesPreviewBusy || customerName.trim().length < 2 || (recurrenceFrequency !== 'none' && !seriesPreview?.allAvailable)} onClick={() => void createBooking()}>{busy ? 'Oluşturuluyor…' : recurrenceFrequency === 'none' ? 'Randevuyu oluştur' : 'Seriyi oluştur'}</button></div>}
+        {selectedCreateSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedCreateSlot.starts_at, selectedCreateSlot.timezone)}</strong><span>{recurrenceFrequency === 'none' ? t('{count} hizmet tek rezervasyon olarak oluşturulacak.', { count: createLines.length }) : recurrenceFrequency === 'daily' ? t('{count} randevu, günlük seri olarak atomik oluşturulacak.', { count: recurrenceCount }) : t('{count} randevu, haftalık seri olarak atomik oluşturulacak.', { count: recurrenceCount })}</span></div><button className="primary-button" type="button" disabled={busy || createSlotsBusy || seriesPreviewBusy || customerName.trim().length < 2 || (recurrenceFrequency !== 'none' && !seriesPreview?.allAvailable)} onClick={() => void createBooking()}>{busy ? t('Oluşturuluyor…') : recurrenceFrequency === 'none' ? t('Randevuyu oluştur') : t('Seriyi oluştur')}</button></div>}
       </section>
 
       <section className="booking-card booking-list-card">
-        <div className="section-head"><h2>Rezervasyonlar</h2><span>{bookings.length}{bookingsNextCursor ? '+' : ''}</span></div>
+        <div className="section-head"><h2>{t('Rezervasyonlar')}</h2><span>{bookings.length}{bookingsNextCursor ? '+' : ''}</span></div>
         <div className="appointment-list">
           {bookings.map((booking) => <article className={`appointment-row status-${booking.status}`} key={booking.groupId}>
-            <div className="appointment-time"><strong>{formatDateTime(booking.startsAt, booking.timezone)}</strong><span>{booking.lineCount} hizmet · {formatTime(booking.endsAt, booking.timezone)} bitiş</span></div>
+            <div className="appointment-time"><strong>{formatDateTime(booking.startsAt, booking.timezone)}</strong><span>{t('{lineCount} hizmet · {endsAt} bitiş', { lineCount: booking.lineCount, endsAt: formatTime(booking.endsAt, booking.timezone) })}</span></div>
             <div className="appointment-main">
-              <div><strong>{booking.customerName}</strong><span>{booking.lines.map((line) => line.serviceName).join(' + ')} · tahmini {estimateText(booking)}</span></div>
-              <span className="status-pill">{statusText[booking.status]}</span>
+              <div><strong>{booking.customerName}</strong><span>{t('{line} · tahmini {booking}', { line: booking.lines.map((line) => line.serviceName).join(' + '), booking: estimateText(booking) })}</span></div>
+              <span className="status-pill">{t(statusText[booking.status])}</span>
             </div>
             <div className="appointment-list">
               {booking.lines.map((line) => <div className={`appointment-row status-${line.status}`} key={line.appointmentId}>
-                <div className="appointment-time"><strong>{line.lineOrdinal}. {formatTime(line.startsAt, booking.timezone)} · {line.staffName}</strong><span>{formatTime(line.endsAt, booking.timezone)} bitiş</span></div>
-                <div className="appointment-main"><div><strong>{line.serviceName}</strong><span>{priceText(line)}</span></div><span className="status-pill">{statusText[line.status]}</span></div>
+                <div className="appointment-time"><strong>{line.lineOrdinal}. {formatTime(line.startsAt, booking.timezone)} · {line.staffName}</strong><span>{t('{endsAt} bitiş', { endsAt: formatTime(line.endsAt, booking.timezone) })}</span></div>
+                <div className="appointment-main"><div><strong>{line.serviceName}</strong><span>{priceText(line)}</span></div><span className="status-pill">{t(statusText[line.status])}</span></div>
                 {booking.managementMode === 'group' && (line.status === 'scheduled' || line.status === 'confirmed') && <div className="appointment-actions">
-                  <button disabled={busy} onClick={() => openServiceChange(booking, line)}>Hizmeti değiştir</button>
-                  <button disabled={busy} onClick={() => openLineSchedule(booking, line)}>Satırı taşı</button>
-                  <button disabled={busy} onClick={() => void cancelLine(booking, line)}>Satırı iptal et</button>
+                  <button disabled={busy} onClick={() => openServiceChange(booking, line)}>{t('Hizmeti değiştir')}</button>
+                  <button disabled={busy} onClick={() => openLineSchedule(booking, line)}>{t('Satırı taşı')}</button>
+                  <button disabled={busy} onClick={() => void cancelLine(booking, line)}>{t('Satırı iptal et')}</button>
                 </div>}
               </div>)}
             </div>
             <div className="appointment-actions">
-              <button disabled={busy} onClick={() => { setDetailFor(booking); setNotice(''); }}>Detay</button>
-              {booking.seriesId && booking.seriesOrdinal && <button disabled={busy} onClick={() => void openSeriesScope(booking)}>Seri</button>}
+              <button disabled={busy} onClick={() => { setDetailFor(booking); setNotice(''); }}>{t('Detay')}</button>
+              {booking.seriesId && booking.seriesOrdinal && <button disabled={busy} onClick={() => void openSeriesScope(booking)}>{t('Seri')}</button>}
               {booking.managementMode === 'legacy_single' ? <>
-                {booking.status === 'scheduled' && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'confirmed')}>Onayla</button>}
-                {(booking.status === 'scheduled' || booking.status === 'confirmed') && <button disabled={busy} onClick={() => openReschedule(booking)}>Taşı</button>}
-                {(booking.status === 'scheduled' || booking.status === 'confirmed') && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'cancelled')}>İptal</button>}
-                {booking.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'completed')}>Tamamlandı</button>}
-                {booking.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'no_show')}>Gelmedi</button>}
-                <button disabled={busy} onClick={() => void showHistory(booking)}>Geçmiş</button>
+                {booking.status === 'scheduled' && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'confirmed')}>{t('Onayla')}</button>}
+                {(booking.status === 'scheduled' || booking.status === 'confirmed') && <button disabled={busy} onClick={() => openReschedule(booking)}>{t('Taşı')}</button>}
+                {(booking.status === 'scheduled' || booking.status === 'confirmed') && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'cancelled')}>{t('İptal')}</button>}
+                {booking.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'completed')}>{t('Tamamlandı')}</button>}
+                {booking.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(booking, 'no_show')}>{t('Gelmedi')}</button>}
+                <button disabled={busy} onClick={() => void showHistory(booking)}>{t('Geçmiş')}</button>
               </> : <>
-                {booking.canRescheduleGroup && <button disabled={busy} onClick={() => openReschedule(booking)}>Tümünü taşı</button>}
-                {booking.canCancelGroup && <button disabled={busy} onClick={() => void cancelGroup(booking)}>Tümünü iptal et</button>}
+                {booking.canRescheduleGroup && <button disabled={busy} onClick={() => openReschedule(booking)}>{t('Tümünü taşı')}</button>}
+                {booking.canCancelGroup && <button disabled={busy} onClick={() => void cancelGroup(booking)}>{t('Tümünü iptal et')}</button>}
               </>}
             </div>
           </article>)}
-          {!bookings.length && <p className="empty">Henüz randevu yok. İlk slotu soldan kilitle.</p>}
+          {!bookings.length && <p className="empty">{t('Henüz randevu yok. İlk slotu soldan kilitle.')}</p>}
         </div>
-        {bookingsNextCursor && <div className="booking-actions"><button className="secondary-button" disabled={busy} onClick={() => void loadMoreBookings()}>Daha fazla randevu yükle</button></div>}
+        {bookingsNextCursor && <div className="booking-actions"><button className="secondary-button" disabled={busy} onClick={() => void loadMoreBookings()}>{t('Daha fazla randevu yükle')}</button></div>}
       </section>
     </div>
 
     {detailFor && <section className="booking-card booking-modal-card booking-detail-card">
-      <div className="section-head"><div><p className="eyebrow">RANDEVU DETAYI</p><h2>{detailFor.customerName}</h2></div><button type="button" onClick={() => setDetailFor(null)}>Kapat</button></div>
-      <div className="booking-detail-tabs" aria-label="Randevu bölümleri">
-        <span className="is-active">Detay</span>
-        <span aria-disabled="true">Fotoğraf</span>
-        <button type="button" disabled={busy} onClick={() => void openTicketForBooking(detailFor)}>Adisyon</button>
+      <div className="section-head"><div><p className="eyebrow">{t('RANDEVU DETAYI')}</p><h2>{detailFor.customerName}</h2></div><button type="button" onClick={() => setDetailFor(null)}>{t('Kapat')}</button></div>
+      <div className="booking-detail-tabs" aria-label={t('Randevu bölümleri')}>
+        <span className="is-active">{t('Detay')}</span>
+        <span aria-disabled="true">{t('Fotoğraf')}</span>
+        <button type="button" disabled={busy} onClick={() => void openTicketForBooking(detailFor)}>{t('Adisyon')}</button>
       </div>
       <dl className="booking-detail-grid">
-        <div><dt>Zaman</dt><dd>{formatDateTime(detailFor.startsAt, detailFor.timezone)} – {formatTime(detailFor.endsAt, detailFor.timezone)}</dd></div>
-        <div><dt>Durum</dt><dd><span className="status-pill">{statusText[detailFor.status]}</span></dd></div>
-        <div><dt>İletişim</dt><dd>{detailFor.customerPhone || 'Telefon yok'}{detailFor.customerEmail ? ` · ${detailFor.customerEmail}` : ''}</dd></div>
-        <div><dt>Not</dt><dd>{detailFor.notes || 'Not yok'}</dd></div>
-        <div className="wide-field"><dt>Hizmetler</dt><dd>{detailFor.lines.map((line) => <div key={line.appointmentId}>{line.lineOrdinal}. {line.serviceName} · {line.staffName} · {formatTime(line.startsAt, detailFor.timezone)} · {statusText[line.status]}</div>)}</dd></div>
+        <div><dt>{t('Zaman')}</dt><dd>{formatDateTime(detailFor.startsAt, detailFor.timezone)} – {formatTime(detailFor.endsAt, detailFor.timezone)}</dd></div>
+        <div><dt>{t('Durum')}</dt><dd><span className="status-pill">{t(statusText[detailFor.status])}</span></dd></div>
+        <div><dt>{t('İletişim')}</dt><dd>{detailFor.customerPhone || t('Telefon yok')}{detailFor.customerEmail ? ` · ${detailFor.customerEmail}` : ''}</dd></div>
+        <div><dt>{t('Not')}</dt><dd>{detailFor.notes || t('Not yok')}</dd></div>
+        <div className="wide-field"><dt>{t('Hizmetler')}</dt><dd>{detailFor.lines.map((line) => <div key={line.appointmentId}>{line.lineOrdinal}. {line.serviceName} · {line.staffName} · {formatTime(line.startsAt, detailFor.timezone)} · {t(statusText[line.status])}</div>)}</dd></div>
       </dl>
       <div className="appointment-actions booking-detail-actions">
-        {detailFor.seriesId && detailFor.seriesOrdinal && <button disabled={busy} onClick={() => void openSeriesScope(detailFor)}>Seriyi yönet</button>}
+        {detailFor.seriesId && detailFor.seriesOrdinal && <button disabled={busy} onClick={() => void openSeriesScope(detailFor)}>{t('Seriyi yönet')}</button>}
         {detailFor.managementMode === 'legacy_single' ? <>
-          {detailFor.status === 'scheduled' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'confirmed')}>Onayla</button>}
-          {(detailFor.status === 'scheduled' || detailFor.status === 'confirmed') && <button disabled={busy} onClick={() => openReschedule(detailFor)}>Taşı</button>}
-          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'completed')}>Tamamlandı</button>}
-          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'no_show')}>Gelmedi</button>}
-          {(detailFor.status === 'scheduled' || detailFor.status === 'confirmed') && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'cancelled')}>İptal</button>}
+          {detailFor.status === 'scheduled' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'confirmed')}>{t('Onayla')}</button>}
+          {(detailFor.status === 'scheduled' || detailFor.status === 'confirmed') && <button disabled={busy} onClick={() => openReschedule(detailFor)}>{t('Taşı')}</button>}
+          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'completed')}>{t('Tamamlandı')}</button>}
+          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'no_show')}>{t('Gelmedi')}</button>}
+          {(detailFor.status === 'scheduled' || detailFor.status === 'confirmed') && <button disabled={busy} onClick={() => void changeLegacyStatus(detailFor, 'cancelled')}>{t('İptal')}</button>}
         </> : <>
-          {detailFor.status === 'scheduled' && <button disabled={busy} onClick={() => void changeGroupStatus(detailFor, 'confirmed')}>Onayla</button>}
-          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeGroupStatus(detailFor, 'completed')}>Tamamlandı</button>}
-          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeGroupStatus(detailFor, 'no_show')}>Gelmedi</button>}
-          {detailFor.canRescheduleGroup && <button disabled={busy} onClick={() => openReschedule(detailFor)}>Tümünü taşı</button>}
-          {detailFor.canCancelGroup && <button disabled={busy} onClick={() => void cancelGroup(detailFor)}>Tümünü iptal et</button>}
+          {detailFor.status === 'scheduled' && <button disabled={busy} onClick={() => void changeGroupStatus(detailFor, 'confirmed')}>{t('Onayla')}</button>}
+          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeGroupStatus(detailFor, 'completed')}>{t('Tamamlandı')}</button>}
+          {detailFor.status === 'confirmed' && <button disabled={busy} onClick={() => void changeGroupStatus(detailFor, 'no_show')}>{t('Gelmedi')}</button>}
+          {detailFor.canRescheduleGroup && <button disabled={busy} onClick={() => openReschedule(detailFor)}>{t('Tümünü taşı')}</button>}
+          {detailFor.canCancelGroup && <button disabled={busy} onClick={() => void cancelGroup(detailFor)}>{t('Tümünü iptal et')}</button>}
         </>}
       </div>
-      <p className="muted booking-detail-future">Fotoğraf bölümü henüz kullanıma açık değil. Adisyon aynı randevu kaynağından güvenli biçimde açılır veya yeniden kullanılır.</p>
+      <p className="muted booking-detail-future">{t('Fotoğraf bölümü henüz kullanıma açık değil. Adisyon aynı randevu kaynağından güvenli biçimde açılır veya yeniden kullanılır.')}</p>
     </section>}
 
     {seriesFor && <section className="booking-card booking-modal-card booking-detail-card">
       <div className="section-head">
-        <div><p className="eyebrow">TEKRARLAYAN SERİ</p><h2>{seriesFor.customerName}</h2></div>
-        <button type="button" onClick={() => { setSeriesFor(null); setSeriesDetail(null); setSeriesFuturePreview(null); }}>Kapat</button>
+        <div><p className="eyebrow">{t('TEKRARLAYAN SERİ')}</p><h2>{seriesFor.customerName}</h2></div>
+        <button type="button" onClick={() => { setSeriesFor(null); setSeriesDetail(null); setSeriesFuturePreview(null); }}>{t('Kapat')}</button>
       </div>
-      {!seriesDetail ? <p className="muted">Seri hazırlanıyor…</p> : <>
+      {!seriesDetail ? <p className="muted">{t('Seri hazırlanıyor…')}</p> : <>
         <dl className="booking-detail-grid">
-          <div><dt>Sıklık</dt><dd>{seriesDetail.frequency === 'daily' ? 'Her gün' : 'Her hafta'}</dd></div>
-          <div><dt>Toplam tekrar</dt><dd>{seriesDetail.occurrenceCount}</dd></div>
-          <div><dt>Seri sürümü</dt><dd>{seriesDetail.version}</dd></div>
-          <div><dt>Saat dilimi</dt><dd>{seriesDetail.timezone}</dd></div>
+          <div><dt>{t('Sıklık')}</dt><dd>{seriesDetail.frequency === 'daily' ? t('Her gün') : t('Her hafta')}</dd></div>
+          <div><dt>{t('Toplam tekrar')}</dt><dd>{seriesDetail.occurrenceCount}</dd></div>
+          <div><dt>{t('Seri sürümü')}</dt><dd>{seriesDetail.version}</dd></div>
+          <div><dt>{t('Saat dilimi')}</dt><dd>{seriesDetail.timezone}</dd></div>
         </dl>
         <div className="booking-fields">
           <label>
@@ -1196,8 +1197,8 @@ export default function BookingPage() {
               setSeriesAction(event.target.value as 'reschedule' | 'cancel');
               setSeriesFuturePreview(null);
             }}>
-              <option value="reschedule">Bu ve sonrakileri taşı</option>
-              <option value="cancel">Bu ve sonrakileri iptal et</option>
+              <option value="reschedule">{t('Bu ve sonrakileri taşı')}</option>
+              <option value="cancel">{t('Bu ve sonrakileri iptal et')}</option>
             </select>
           </label>
           <label>
@@ -1213,38 +1214,38 @@ export default function BookingPage() {
               setSeriesFuturePreview(null);
             }}>
               {Array.from({ length: seriesDetail.occurrenceCount }, (_, index) => index + 1).map((ordinal) =>
-                <option value={ordinal} key={ordinal}>{ordinal}. tekrar</option>)}
+                <option value={ordinal} key={ordinal}>{t('{ordinal}. tekrar', { ordinal: ordinal })}</option>)}
             </select>
           </label>
           {seriesAction === 'reschedule' ? <>
-            <label>Yeni tarih<input type="date" value={seriesDate} onChange={(event) => { setSeriesDate(event.target.value); setSeriesFuturePreview(null); }} /></label>
-            <label>Yeni saat<input type="time" value={seriesTime} onChange={(event) => { setSeriesTime(event.target.value); setSeriesFuturePreview(null); }} /></label>
-          </> : <label className="wide-field">İptal nedeni<textarea rows={2} maxLength={500} value={seriesReason} onChange={(event) => { setSeriesReason(event.target.value); setSeriesFuturePreview(null); }} /></label>}
+            <label>{t('Yeni tarih')}<input type="date" value={seriesDate} onChange={(event) => { setSeriesDate(event.target.value); setSeriesFuturePreview(null); }} /></label>
+            <label>{t('Yeni saat')}<input type="time" value={seriesTime} onChange={(event) => { setSeriesTime(event.target.value); setSeriesFuturePreview(null); }} /></label>
+          </> : <label className="wide-field">{t('İptal nedeni')}<textarea rows={2} maxLength={500} value={seriesReason} onChange={(event) => { setSeriesReason(event.target.value); setSeriesFuturePreview(null); }} /></label>}
         </div>
         <div className="booking-actions">
           <button className="secondary-button" disabled={busy} onClick={() => void previewSeriesFutureScope()}>
-            {busy ? 'Kapsam hesaplanıyor…' : 'Kapsamı önizle'}
+            {busy ? t('Kapsam hesaplanıyor…') : t('Kapsamı önizle')}
           </button>
         </div>
-        {seriesFuturePreview && <div className="appointment-list" aria-label="Seri değişiklik kapsamı">
+        {seriesFuturePreview && <div className="appointment-list" aria-label={t('Seri değişiklik kapsamı')}>
           {seriesFuturePreview.targets.map((target) => <div className="appointment-row" key={target.groupId}>
             <div className="appointment-time">
-              <strong>{target.ordinal}. tekrar</strong>
+              <strong>{t('{ordinal}. tekrar', { ordinal: target.ordinal })}</strong>
               <span>{target.localDate}{target.targetStartsAt ? ` · ${formatTime(target.targetStartsAt, seriesDetail.timezone)}` : ''}</span>
             </div>
-            <div className="appointment-main"><small>{target.groupId}</small><span className="status-pill">{target.available ? 'Kapsamda' : 'Çakışıyor'}</span></div>
+            <div className="appointment-main"><small>{target.groupId}</small><span className="status-pill">{target.available ? t('Kapsamda') : t('Çakışıyor')}</span></div>
           </div>)}
           {seriesFuturePreview.skipped.map((target) => <div className="appointment-row" key={`skip-${target.groupId}`}>
-            <div className="appointment-time"><strong>{target.ordinal}. tekrar</strong><span>{formatDateTime(target.startsAt, seriesDetail.timezone)}</span></div>
-            <div className="appointment-main"><small>{target.groupId}</small><span className="status-pill">Korunacak</span></div>
+            <div className="appointment-time"><strong>{t('{ordinal}. tekrar', { ordinal: target.ordinal })}</strong><span>{formatDateTime(target.startsAt, seriesDetail.timezone)}</span></div>
+            <div className="appointment-main"><small>{target.groupId}</small><span className="status-pill">{t('Korunacak')}</span></div>
           </div>)}
           {seriesFuturePreview.conflicts.map((target) => <div className="appointment-row" key={`conflict-${target.groupId}`}>
-            <div className="appointment-time"><strong>{target.ordinal}. tekrar</strong><span>{target.localDate}</span></div>
-            <div className="appointment-main"><small>{target.groupId}</small><span className="status-pill">Çakışma</span></div>
+            <div className="appointment-time"><strong>{t('{ordinal}. tekrar', { ordinal: target.ordinal })}</strong><span>{target.localDate}</span></div>
+            <div className="appointment-main"><small>{target.groupId}</small><span className="status-pill">{t('Çakışma')}</span></div>
           </div>)}
           <div className="booking-actions">
             <button className="primary-button" disabled={busy || !seriesFuturePreview.allAvailable || !seriesFuturePreview.targets.length} onClick={() => void commitSeriesFutureScope()}>
-              {seriesAction === 'reschedule' ? 'Kapsamdaki randevuları taşı' : 'Kapsamdaki randevuları iptal et'}
+              {seriesAction === 'reschedule' ? t('Kapsamdaki randevuları taşı') : t('Kapsamdaki randevuları iptal et')}
             </button>
           </div>
         </div>}
@@ -1252,44 +1253,44 @@ export default function BookingPage() {
     </section>}
 
     {rescheduleTarget && <section className="booking-card booking-modal-card">
-      <div className="section-head"><div><p className="eyebrow">TAŞI</p><h2>{rescheduleTarget.booking.customerName} · {rescheduleTarget.booking.lineCount} hizmet</h2></div><button onClick={() => setRescheduleTarget(null)}>Kapat</button></div>
+      <div className="section-head"><div><p className="eyebrow">{t('TAŞI')}</p><h2>{t('{customerName} · {lineCount} hizmet', { customerName: rescheduleTarget.booking.customerName, lineCount: rescheduleTarget.booking.lineCount })}</h2></div><button onClick={() => setRescheduleTarget(null)}>{t('Kapat')}</button></div>
       <div className="reschedule-controls">
         <input type="date" value={rescheduleDate} onChange={(event) => setRescheduleDate(event.target.value)} />
-        {rescheduleTarget.booking.managementMode === 'legacy_single' && <select value={rescheduleStaff} onChange={(event) => setRescheduleStaff(event.target.value)}><option value="any">Fark etmez</option>{legacyRescheduleStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>}
-        <button className="secondary-button" disabled={busy} onClick={() => void previewReschedule()}>Saatleri getir</button>
+        {rescheduleTarget.booking.managementMode === 'legacy_single' && <select value={rescheduleStaff} onChange={(event) => setRescheduleStaff(event.target.value)}><option value="any">{t('Fark etmez')}</option>{legacyRescheduleStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>}
+        <button className="secondary-button" disabled={busy} onClick={() => void previewReschedule()}>{t('Saatleri getir')}</button>
       </div>
       <div className="slot-cloud">{rescheduleSlots.map((slot) => {
-        const staff = 'staff_name' in slot ? slot.staff_name : `${rescheduleTarget.booking.lineCount} hizmet birlikte`;
+        const staff = 'staff_name' in slot ? slot.staff_name : t('{count} hizmet birlikte', { count: rescheduleTarget.booking.lineCount });
         const selected = selectedRescheduleSlot?.starts_at === slot.starts_at && (!('staff_id' in slot) || !selectedRescheduleSlot || !('staff_id' in selectedRescheduleSlot) || selectedRescheduleSlot.staff_id === slot.staff_id);
         return <button type="button" className={selected ? 'slot-button selected' : 'slot-button'} key={`${'staff_id' in slot ? slot.staff_id : 'group'}-${slot.starts_at}`} onClick={() => setSelectedRescheduleSlot(slot)}><strong>{formatTime(slot.starts_at, slot.timezone)}</strong><span>{staff}</span></button>;
       })}</div>
-      {selectedRescheduleSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedRescheduleSlot.starts_at, selectedRescheduleSlot.timezone)}</strong><span>{rescheduleTarget.booking.managementMode === 'group' ? 'Tüm hizmetler birlikte taşınır' : 'Tek hizmetli randevu'}</span></div><button className="primary-button" disabled={busy} onClick={() => void commitReschedule()}>Yeni saate taşı</button></div>}
+      {selectedRescheduleSlot && <div className="booking-confirm"><div><strong>{formatDateTime(selectedRescheduleSlot.starts_at, selectedRescheduleSlot.timezone)}</strong><span>{rescheduleTarget.booking.managementMode === 'group' ? t('Tüm hizmetler birlikte taşınır') : t('Tek hizmetli randevu')}</span></div><button className="primary-button" disabled={busy} onClick={() => void commitReschedule()}>{t('Yeni saate taşı')}</button></div>}
     </section>}
 
     {serviceTarget && <section className="booking-card booking-modal-card">
-      <div className="section-head"><div><p className="eyebrow">HİZMETİ DEĞİŞTİR</p><h2>{serviceTarget.line.serviceName}</h2></div><button onClick={() => setServiceTarget(null)}>Kapat</button></div>
-      <p className="muted">Satırın personel ve saati korunur. Süre/buffer/processing footprint'i farklı bir hizmet seçilirse sunucu grup replani ister.</p>
+      <div className="section-head"><div><p className="eyebrow">{t('HİZMETİ DEĞİŞTİR')}</p><h2>{serviceTarget.line.serviceName}</h2></div><button onClick={() => setServiceTarget(null)}>{t('Kapat')}</button></div>
+      <p className="muted">{t('Satırın personel ve saati korunur. Süre/buffer/processing footprint\'i farklı bir hizmet seçilirse sunucu grup replani ister.')}</p>
       <div className="reschedule-controls">
-        <select value={replacementServiceId} onChange={(event) => setReplacementServiceId(event.target.value)}>{editableServices.map((service) => <option key={service.id} value={service.id}>{service.name} · {service.duration_minutes} dk</option>)}</select>
-        <button className="primary-button" disabled={busy || !replacementServiceId || replacementServiceId === serviceTarget.line.serviceId} onClick={() => void commitServiceChange()}>Hizmeti değiştir</button>
+        <select value={replacementServiceId} onChange={(event) => setReplacementServiceId(event.target.value)}>{editableServices.map((service) => <option key={service.id} value={service.id}>{t('{name} · {duration_minutes} dk', { name: service.name, duration_minutes: service.duration_minutes })}</option>)}</select>
+        <button className="primary-button" disabled={busy || !replacementServiceId || replacementServiceId === serviceTarget.line.serviceId} onClick={() => void commitServiceChange()}>{t('Hizmeti değiştir')}</button>
       </div>
     </section>}
 
     {lineScheduleTarget && <section className="booking-card booking-modal-card">
-      <div className="section-head"><div><p className="eyebrow">SATIRI TAŞI</p><h2>{lineScheduleTarget.line.serviceName}</h2></div><button onClick={() => setLineScheduleTarget(null)}>Kapat</button></div>
-      <p className="muted">Yalnız bu hizmet satırı taşınır. Sunucu personel yetkisini, çalışma saatini, blokları, sibling çakışmasını ve group version'ı doğrular.</p>
+      <div className="section-head"><div><p className="eyebrow">{t('SATIRI TAŞI')}</p><h2>{lineScheduleTarget.line.serviceName}</h2></div><button onClick={() => setLineScheduleTarget(null)}>{t('Kapat')}</button></div>
+      <p className="muted">{t('Yalnız bu hizmet satırı taşınır. Sunucu personel yetkisini, çalışma saatini, blokları, sibling çakışmasını ve group version\'ı doğrular.')}</p>
       <div className="reschedule-controls">
         <input type="date" value={lineDate} onChange={(event) => setLineDate(event.target.value)} />
         <input type="time" value={lineTime} onChange={(event) => setLineTime(event.target.value)} />
         <select value={lineStaff} onChange={(event) => setLineStaff(event.target.value)}>{lineEligibleStaff.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}</select>
-        <button className="primary-button" disabled={busy || !lineStaff} onClick={() => void commitLineSchedule()}>Satırı taşı</button>
+        <button className="primary-button" disabled={busy || !lineStaff} onClick={() => void commitLineSchedule()}>{t('Satırı taşı')}</button>
       </div>
     </section>}
 
     {eventsFor && <section className="booking-card booking-modal-card">
-      <div className="section-head"><div><p className="eyebrow">AUDIT</p><h2>{eventsFor.customerName} · geçmiş</h2></div><button onClick={() => { setEventsFor(null); setEvents([]); setEventsNextCursor(null); }}>Kapat</button></div>
+      <div className="section-head"><div><p className="eyebrow">{t('AUDIT')}</p><h2>{t('{customerName} · geçmiş', { customerName: eventsFor.customerName })}</h2></div><button onClick={() => { setEventsFor(null); setEvents([]); setEventsNextCursor(null); }}>{t('Kapat')}</button></div>
       <div className="event-list">{events.map((event) => <div className="event-row" key={event.id}><strong>{event.event_type}</strong><span>{formatDateTime(event.created_at, timezone)}</span><small>{event.from_status ?? '∅'} → {event.to_status ?? '∅'}</small></div>)}</div>
-      {eventsNextCursor && <div className="booking-actions"><button className="secondary-button" disabled={busy} onClick={() => void loadMoreEvents()}>Daha fazla geçmiş yükle</button></div>}
+      {eventsNextCursor && <div className="booking-actions"><button className="secondary-button" disabled={busy} onClick={() => void loadMoreEvents()}>{t('Daha fazla geçmiş yükle')}</button></div>}
     </section>}
   </div>;
 }

@@ -362,7 +362,7 @@ export default function PublicMultiServiceSelection({ slug, availabilityRefreshT
   const categoryGroups = useMemo(() => {
     const groups = new Map<string, PublicService[]>();
     for (const service of services) {
-      const key = service.category?.trim() || 'Hizmetler';
+      const key = service.category?.trim() || t('Hizmetler');
       groups.set(key, [...(groups.get(key) ?? []), service]);
     }
     return [...groups.entries()];
@@ -382,7 +382,7 @@ export default function PublicMultiServiceSelection({ slug, availabilityRefreshT
         <div className="public-service-choice-grid">{categoryServices.map((service) => {
           const selected = selectedIds.includes(service.service_id);
           return <button key={service.service_id} type="button" className={`public-service-choice ${selected ? 'is-selected' : ''}`} aria-pressed={selected} onClick={() => toggleService(service.service_id)}>
-            <span><strong>{service.name}</strong><small>{service.duration_minutes} dk</small></span><span className="public-service-price">{servicePriceLabel(service)}</span>
+            <span><strong>{service.name}</strong><small>{t('{duration_minutes} dk', { duration_minutes: service.duration_minutes })}</small></span><span className="public-service-price">{servicePriceLabel(service)}</span>
           </button>;
         })}</div>
       </fieldset>)}

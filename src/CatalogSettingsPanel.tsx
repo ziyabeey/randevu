@@ -1,4 +1,5 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react';
+import { intlLocale, t } from './i18n';
 import { ApiRequestError, api } from './api';
 import './catalog-settings.css';
 
@@ -51,7 +52,7 @@ type Props = {
 };
 
 function categoryOf(service: ManagedService) {
-  return service.category?.trim() || 'Genel';
+  return service.category?.trim() || t('Genel');
 }
 
 function sortOrderOf(service: ManagedService) {
@@ -97,7 +98,7 @@ function readPriceForm(data: FormData) {
 
 function formatMoney(minor: number, currency: string) {
   try {
-    return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
+    return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100);
   } catch {
     return `${(minor / 100).toFixed(2)} ${currency}`;
   }
@@ -128,10 +129,10 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
       if (error instanceof ApiRequestError && error.status === 409 && error.code === 'STALE_WRITE') {
         const refreshed = await reload();
         if (refreshed) {
-          setNotice('Bu kayıt başka bir oturumda değişti. Güncel bilgiler yeniden yüklendi; yaptığınız değişiklik uygulanmadı.');
+          setNotice(t('Bu kayıt başka bir oturumda değişti. Güncel bilgiler yeniden yüklendi; yaptığınız değişiklik uygulanmadı.'));
         }
       } else {
-        setNotice(error instanceof Error ? error.message : 'Değişiklik kaydedilemedi.');
+        setNotice(error instanceof Error ? error.message : t('Değişiklik kaydedilemedi.'));
       }
       setBusy(false);
       return false;
@@ -149,7 +150,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
     const data = new FormData(form);
     const price = readPriceForm(data);
     if (!price) {
-      setNotice('Fiyat aralığı, para birimi veya tutar geçerli değil. Alt tutar üst tutardan büyük olamaz.');
+      setNotice(t('Fiyat aralığı, para birimi veya tutar geçerli değil. Alt tutar üst tutardan büyük olamaz.'));
       return;
     }
     const saved = await mutate(() => api('/api/services', {
@@ -163,7 +164,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
         sortOrder: Number(data.get('sortOrder')),
         ...price,
       }),
-    }), 'Hizmet eklendi.');
+    }), t('Hizmet eklendi.'));
     if (saved) form.reset();
   }
 
@@ -172,7 +173,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
     const data = new FormData(event.currentTarget);
     const price = readPriceForm(data);
     if (!price) {
-      setNotice('Fiyat aralığı, para birimi veya tutar geçerli değil. Alt tutar üst tutardan büyük olamaz.');
+      setNotice(t('Fiyat aralığı, para birimi veya tutar geçerli değil. Alt tutar üst tutardan büyük olamaz.'));
       return;
     }
     await mutate(() => api(`/api/services/${service.id}`, {
@@ -187,14 +188,14 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
         sortOrder: Number(data.get('sortOrder')),
         ...price,
       }),
-    }), 'Hizmet güncellendi.');
+    }), t('Hizmet güncellendi.'));
   }
 
   async function setServiceActive(service: ManagedService, active: boolean) {
     await mutate(() => api(`/api/services/${service.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ expectedUpdatedAt: service.updated_at, active }),
-    }), active ? 'Hizmet yeniden etkinleştirildi.' : 'Hizmet arşivlendi. Geçmiş randevular değişmedi.');
+    }), active ? t('Hizmet yeniden etkinleştirildi.') : t('Hizmet arşivlendi. Geçmiş randevular değişmedi.'));
   }
 
   async function createStaff(event: FormEvent<HTMLFormElement>) {
@@ -204,7 +205,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
     const saved = await mutate(() => api('/api/staff', {
       method: 'POST',
       body: JSON.stringify({ name: data.get('name'), phone: data.get('phone') }),
-    }), 'Personel eklendi.');
+    }), t('Personel eklendi.'));
     if (saved) form.reset();
   }
 
@@ -218,14 +219,14 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
         name: data.get('name'),
         phone: data.get('phone'),
       }),
-    }), 'Personel güncellendi.');
+    }), t('Personel güncellendi.'));
   }
 
   async function setStaffActive(person: ManagedStaff, active: boolean) {
     await mutate(() => api(`/api/staff/${person.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ expectedUpdatedAt: person.updated_at, active }),
-    }), active ? 'Personel yeniden etkinleştirildi.' : 'Personel arşivlendi. Geçmiş randevular değişmedi.');
+    }), active ? t('Personel yeniden etkinleştirildi.') : t('Personel arşivlendi. Geçmiş randevular değişmedi.'));
   }
 
   async function toggleAssignment(person: ManagedStaff, service: ManagedService, active: boolean) {
@@ -236,15 +237,15 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
         active,
         expectedUpdatedAt: existing?.updated_at ?? null,
       }),
-    }), 'Hizmet yetkinliği güncellendi.');
+    }), t('Hizmet yetkinliği güncellendi.'));
   }
 
   return (
     <>
       <section className="availability-card catalog-settings-card">
         <div className="section-head">
-          <div><h2>Hizmetler</h2><small>Kategori, sıralama, fiyat, süre ve tampon süreleri</small></div>
-          <span>{activeServices.length} aktif</span>
+          <div><h2>{t('Hizmetler')}</h2><small>{t('Kategori, sıralama, fiyat, süre ve tampon süreleri')}</small></div>
+          <span>{t('{length} aktif', { length: activeServices.length })}</span>
         </div>
         <div className="catalog-stack">
           {catalog.services.map((service) => (
@@ -252,103 +253,103 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
               <div className="catalog-editor-head">
                 <div>
                   <strong>{service.name}</strong>
-                  <span>{categoryOf(service)} · sıra {sortOrderOf(service)} · {service.duration_minutes} dk · {formatServicePrice(service)}</span>
-                  <small>{priceTypeOf(service) === 'range' ? 'Fiyat aralığı' : 'Sabit fiyat'} · politika v{pricePolicyVersionOf(service)}</small>
+                  <span>{t('{service} · sıra {service2} · {duration_minutes} dk · {service3}', { service: categoryOf(service), service2: sortOrderOf(service), duration_minutes: service.duration_minutes, service3: formatServicePrice(service) })}</span>
+                  <small>{t('{service} · politika v{service2}', { service: priceTypeOf(service) === 'range' ? t('Fiyat aralığı') : t('Sabit fiyat'), service2: pricePolicyVersionOf(service) })}</small>
                 </div>
-                <span className="status-pill">{service.active ? 'Aktif' : 'Arşivde'}</span>
+                <span className="status-pill">{service.active ? t('Aktif') : t('Arşivde')}</span>
               </div>
               {canManage && (
                 <form className="catalog-edit-form" onSubmit={(event) => void updateService(event, service)}>
-                  <label>Hizmet adı<input name="name" defaultValue={service.name} minLength={2} maxLength={120} required /></label>
-                  <label>Kategori<input name="category" defaultValue={categoryOf(service)} minLength={1} maxLength={80} required /></label>
-                  <label>Sıra<input name="sortOrder" type="number" min={0} max={1000000} defaultValue={sortOrderOf(service)} required /></label>
-                  <label>Süre (dk)<input name="duration" type="number" min={5} max={720} defaultValue={service.duration_minutes} required /></label>
-                  <label>Ön tampon (dk)<input name="bufferBefore" type="number" min={0} max={240} defaultValue={service.buffer_before_minutes} required /></label>
-                  <label>Son tampon (dk)<input name="bufferAfter" type="number" min={0} max={240} defaultValue={service.buffer_after_minutes} required /></label>
+                  <label>{t('Hizmet adı')}<input name="name" defaultValue={service.name} minLength={2} maxLength={120} required /></label>
+                  <label>{t('Kategori')}<input name="category" defaultValue={categoryOf(service)} minLength={1} maxLength={80} required /></label>
+                  <label>{t('Sıra')}<input name="sortOrder" type="number" min={0} max={1000000} defaultValue={sortOrderOf(service)} required /></label>
+                  <label>{t('Süre (dk)')}<input name="duration" type="number" min={5} max={720} defaultValue={service.duration_minutes} required /></label>
+                  <label>{t('Ön tampon (dk)')}<input name="bufferBefore" type="number" min={0} max={240} defaultValue={service.buffer_before_minutes} required /></label>
+                  <label>{t('Son tampon (dk)')}<input name="bufferAfter" type="number" min={0} max={240} defaultValue={service.buffer_after_minutes} required /></label>
                   <label>Fiyat tipi
                     <select name="priceType" defaultValue={priceTypeOf(service)}>
-                      <option value="fixed">Sabit</option>
-                      <option value="range">Aralık</option>
+                      <option value="fixed">{t('Sabit')}</option>
+                      <option value="range">{t('Aralık')}</option>
                     </select>
                   </label>
-                  <label>Alt / sabit fiyat<input name="priceMin" inputMode="decimal" defaultValue={(priceMinOf(service) / 100).toFixed(2)} required /></label>
-                  <label>Üst fiyat<input name="priceMax" inputMode="decimal" defaultValue={(priceMaxOf(service) / 100).toFixed(2)} required /></label>
-                  <label>Para birimi<input name="currency" defaultValue={service.currency} minLength={3} maxLength={3} pattern="[A-Za-z]{3}" required /></label>
+                  <label>{t('Alt / sabit fiyat')}<input name="priceMin" inputMode="decimal" defaultValue={(priceMinOf(service) / 100).toFixed(2)} required /></label>
+                  <label>{t('Üst fiyat')}<input name="priceMax" inputMode="decimal" defaultValue={(priceMaxOf(service) / 100).toFixed(2)} required /></label>
+                  <label>{t('Para birimi')}<input name="currency" defaultValue={service.currency} minLength={3} maxLength={3} pattern="[A-Za-z]{3}" required /></label>
                   <div className="catalog-actions">
-                    <button className="primary-button" disabled={busy}>Kaydet</button>
+                    <button className="primary-button" disabled={busy}>{t('Kaydet')}</button>
                     <button className="ghost-button" type="button" disabled={busy} onClick={() => void setServiceActive(service, !service.active)}>
-                      {service.active ? 'Arşivle' : 'Etkinleştir'}
+                      {service.active ? t('Arşivle') : t('Etkinleştir')}
                     </button>
                   </div>
                 </form>
               )}
             </article>
           ))}
-          {!catalog.services.length && <p className="empty">Henüz hizmet yok.</p>}
+          {!catalog.services.length && <p className="empty">{t('Henüz hizmet yok.')}</p>}
         </div>
         {canManage && (
           <form className="catalog-create-form" onSubmit={createService}>
-            <h3>Yeni hizmet</h3>
-            <input name="name" placeholder="Hizmet adı" minLength={2} maxLength={120} required />
-            <input name="category" placeholder="Kategori" defaultValue="Genel" minLength={1} maxLength={80} required />
-            <input name="sortOrder" type="number" min={0} max={1000000} defaultValue={nextSortOrder} aria-label="Sıra" required />
-            <input name="duration" type="number" min={5} max={720} defaultValue={30} aria-label="Süre dakika" required />
-            <input name="bufferBefore" type="number" min={0} max={240} defaultValue={0} aria-label="Ön tampon dakika" required />
-            <input name="bufferAfter" type="number" min={0} max={240} defaultValue={0} aria-label="Son tampon dakika" required />
-            <select name="priceType" defaultValue="fixed" aria-label="Fiyat tipi">
-              <option value="fixed">Sabit fiyat</option>
-              <option value="range">Fiyat aralığı</option>
+            <h3>{t('Yeni hizmet')}</h3>
+            <input name="name" placeholder={t('Hizmet adı')} minLength={2} maxLength={120} required />
+            <input name="category" placeholder={t('Kategori')} defaultValue="Genel" minLength={1} maxLength={80} required />
+            <input name="sortOrder" type="number" min={0} max={1000000} defaultValue={nextSortOrder} aria-label={t('Sıra')} required />
+            <input name="duration" type="number" min={5} max={720} defaultValue={30} aria-label={t('Süre dakika')} required />
+            <input name="bufferBefore" type="number" min={0} max={240} defaultValue={0} aria-label={t('Ön tampon dakika')} required />
+            <input name="bufferAfter" type="number" min={0} max={240} defaultValue={0} aria-label={t('Son tampon dakika')} required />
+            <select name="priceType" defaultValue="fixed" aria-label={t('Fiyat tipi')}>
+              <option value="fixed">{t('Sabit fiyat')}</option>
+              <option value="range">{t('Fiyat aralığı')}</option>
             </select>
-            <input name="priceMin" inputMode="decimal" defaultValue="0.00" aria-label="Alt veya sabit fiyat" required />
-            <input name="priceMax" inputMode="decimal" defaultValue="0.00" aria-label="Üst fiyat" required />
-            <input name="currency" defaultValue="TRY" minLength={3} maxLength={3} pattern="[A-Za-z]{3}" aria-label="Para birimi" required />
-            <button className="primary-button" disabled={busy}>Hizmet ekle</button>
+            <input name="priceMin" inputMode="decimal" defaultValue="0.00" aria-label={t('Alt veya sabit fiyat')} required />
+            <input name="priceMax" inputMode="decimal" defaultValue="0.00" aria-label={t('Üst fiyat')} required />
+            <input name="currency" defaultValue="TRY" minLength={3} maxLength={3} pattern="[A-Za-z]{3}" aria-label={t('Para birimi')} required />
+            <button className="primary-button" disabled={busy}>{t('Hizmet ekle')}</button>
           </form>
         )}
       </section>
 
       <section className="availability-card catalog-settings-card">
         <div className="section-head">
-          <div><h2>Personel</h2><small>Operasyon kaydı ve aktiflik</small></div>
-          <span>{activeStaff.length} aktif</span>
+          <div><h2>{t('Personel')}</h2><small>{t('Operasyon kaydı ve aktiflik')}</small></div>
+          <span>{t('{length} aktif', { length: activeStaff.length })}</span>
         </div>
         <div className="catalog-stack">
           {catalog.staff.map((person) => (
             <article className={`catalog-editor ${person.active ? '' : 'archived'}`} key={`${person.id}:${person.updated_at}`}>
               <div className="catalog-editor-head">
-                <div><strong>{person.name}</strong><span>{person.phone || 'Telefon eklenmedi'}{person.membership_id ? ' · hesaba bağlı' : ''}</span></div>
-                <span className="status-pill">{person.active ? 'Aktif' : 'Arşivde'}</span>
+                <div><strong>{person.name}</strong><span>{person.phone || t('Telefon eklenmedi')}{person.membership_id ? t(' · hesaba bağlı') : ''}</span></div>
+                <span className="status-pill">{person.active ? t('Aktif') : t('Arşivde')}</span>
               </div>
               {canManage && (
                 <form className="catalog-edit-form staff-edit" onSubmit={(event) => void updateStaff(event, person)}>
-                  <label>Ad<input name="name" defaultValue={person.name} minLength={2} maxLength={120} required /></label>
-                  <label>Telefon<input name="phone" defaultValue={person.phone ?? ''} maxLength={40} /></label>
+                  <label>{t('Ad')}<input name="name" defaultValue={person.name} minLength={2} maxLength={120} required /></label>
+                  <label>{t('Telefon')}<input name="phone" defaultValue={person.phone ?? ''} maxLength={40} /></label>
                   <div className="catalog-actions">
-                    <button className="primary-button" disabled={busy}>Kaydet</button>
+                    <button className="primary-button" disabled={busy}>{t('Kaydet')}</button>
                     <button className="ghost-button" type="button" disabled={busy} onClick={() => void setStaffActive(person, !person.active)}>
-                      {person.active ? 'Arşivle' : 'Etkinleştir'}
+                      {person.active ? t('Arşivle') : t('Etkinleştir')}
                     </button>
                   </div>
                 </form>
               )}
             </article>
           ))}
-          {!catalog.staff.length && <p className="empty">Henüz personel yok.</p>}
+          {!catalog.staff.length && <p className="empty">{t('Henüz personel yok.')}</p>}
         </div>
         {canManage && (
           <form className="catalog-create-form compact-create" onSubmit={createStaff}>
-            <h3>Yeni personel</h3>
-            <input name="name" placeholder="Personel adı" minLength={2} maxLength={120} required />
-            <input name="phone" placeholder="Telefon (isteğe bağlı)" maxLength={40} />
-            <button className="primary-button" disabled={busy}>Personel ekle</button>
+            <h3>{t('Yeni personel')}</h3>
+            <input name="name" placeholder={t('Personel adı')} minLength={2} maxLength={120} required />
+            <input name="phone" placeholder={t('Telefon (isteğe bağlı)')} maxLength={40} />
+            <button className="primary-button" disabled={busy}>{t('Personel ekle')}</button>
           </form>
         )}
       </section>
 
       <section className="availability-card catalog-settings-card span-settings">
-        <div className="section-head"><div><h2>Hizmet yetkinlikleri</h2><small>Aktif personelin hangi aktif hizmetleri verebildiği</small></div></div>
+        <div className="section-head"><div><h2>{t('Hizmet yetkinlikleri')}</h2><small>{t('Aktif personelin hangi aktif hizmetleri verebildiği')}</small></div></div>
         {!activeStaff.length || !activeServices.length ? (
-          <p className="empty">Eşleştirme için en az bir aktif hizmet ve aktif personel gerekli.</p>
+          <p className="empty">{t('Eşleştirme için en az bir aktif hizmet ve aktif personel gerekli.')}</p>
         ) : (
           <div className="settings-matrix">
             {activeStaff.map((person) => (
