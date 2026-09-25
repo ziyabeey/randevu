@@ -157,9 +157,10 @@ for record in definitions.values():
     })
 
 def resolve_relative(current_module, level, target):
+    if not level:
+        return target
     parts = current_module.split(".") if current_module else []
-    if level:
-        parts = parts[:max(0, len(parts) - level)]
+    parts = parts[:max(0, len(parts) - level)]
     if target:
         parts += target.split(".")
     return ".".join([p for p in parts if p])
