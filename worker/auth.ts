@@ -336,8 +336,11 @@ export async function requireAuth<E extends AuthEnv>(context: AppContext<E>): Pr
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-// A cancelled plan leaves the business readable but not writable. The embed is
-// always present from the database; a present-but-empty embed fails closed.
+// A cancelled plan leaves the business readable but not writable. requireMember
+// only receives memberships from activeMembership, whose select always embeds
+// the plan, so in production `plan` is an object or null and null fails closed.
+// `undefined` means a membership fetched without the embed (the pre-F16-08
+// fixtures), which keeps the earlier write behaviour.
 export function planAllowsWrite(membership: Membership) {
   if (membership.plan === undefined) return true;
   return membership.plan?.plan_access === 'full';
