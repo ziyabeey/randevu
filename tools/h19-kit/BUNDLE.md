@@ -107,9 +107,9 @@ M8 remains advisory. It does not change dispatcher action authority, write/execu
 
 ## Active milestone — M9 Relational Case Composer
 
-The composer gate in `specs/RELATIONAL_CASE_COMPOSER_GATE-v0.1.md` is frozen on #591 and exact-head CI #2941 is green at `5a75955d6f75b9ef45fad7c4ea104a040869ba9f`.
+The composer gate in `specs/RELATIONAL_CASE_COMPOSER_GATE-v0.1.md` is frozen on #591 and final exact-head CI #2944 is green at `def7f4bc2d22484c30d3de00bd12566e3478c30e`.
 
-Bundle **M9** implements RC1–RC15:
+Bundle **M9** implements RC1–RC16:
 
 - explicit hypothesis/unit/path/related-path fact scope;
 - reason-specific direct anchor evidence;
@@ -118,6 +118,8 @@ Bundle **M9** implements RC1–RC15:
 - deterministic subset selection ordered by independent-family count → family diversity → lowest lineage overlap → minimality → scope strength → lexical fact IDs;
 - explicit 20-case batch cap and skipped ledger;
 - content-addressed related-path relationship records;
+- canonical `compositionInputSha256` over fact-pool/scope/relationship inputs;
+- exact selected-scope bindings for every emitted case;
 - no Jev/model/API call during composition.
 
 M9 remains advisory and deterministic. Jev receives a case only after H19 has selected and frozen its evidence.
