@@ -59,3 +59,5 @@ export * from './graph/merge-scip-indexes.mjs';
 export * from './perf/graph-equivalence.mjs';
 export * from './indexing/typescript-evidence-graph.mjs';
 export * from './perf/project-shard-adoption.mjs';
+export * from './indexing/cache-prune.mjs';
+export * from './indexing/typescript-shard-plan.mjs';
