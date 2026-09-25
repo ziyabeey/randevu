@@ -7,6 +7,7 @@
     "schemaVersion",
     "packetSha256",
     "sourceRevision",
+    "compositionInputSha256",
     "maxCases",
     "cases",
     "skipped",
@@ -39,6 +40,7 @@
           "hypothesisId",
           "caseSha256",
           "selectedFactIds",
+          "selectedScopes",
           "independentFamilyCount",
           "selectionReason"
         ],
@@ -68,6 +70,48 @@
           },
           "selectionReason": {
             "const": "max-independent-evidence"
+          },
+          "selectedScopes": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 4,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "required": [
+                "factId",
+                "kind",
+                "strength",
+                "relationDigest"
+              ],
+              "properties": {
+                "factId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "kind": {
+                  "enum": [
+                    "hypothesis",
+                    "semantic-unit",
+                    "path",
+                    "related-path"
+                  ]
+                },
+                "strength": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "relationDigest": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "additionalProperties": false
+            }
           }
         },
         "additionalProperties": false
@@ -111,6 +155,10 @@
       "type": "boolean"
     },
     "batchSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "compositionInputSha256": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     }
