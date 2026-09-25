@@ -70,9 +70,16 @@ The plan hash remains independent of timestamps.
 
 For each planned row, H19 checks the existing exact per-case Jev cache key first.
 
-Valid cached judgments are replayed immediately and are omitted from the provider fan-out request.
+A v0.2 replay-eligible cache entry must bind both:
 
-Invalid exact-key cache content becomes an immutable `invalid_cache` advisory error for that row and MUST NOT fall through to a live request.
+- the exact validated M8 judgment identity; and
+- the exact four-option probability distribution returned with that judgment.
+
+Only probability-complete v0.2 entries are replayed immediately and omitted from the provider fan-out request.
+
+A valid legacy v0.1 judgment-only cache entry is not tampering, but it is insufficient for v0.2 scientific replay because its probability vector was not preserved. It is treated as `cache-upgrade-required` and may enter the live fan-out selection under the normal question budget.
+
+Invalid/tampered exact-key cache content becomes an immutable `invalid_cache` advisory error for that row and MUST NOT fall through to a live request.
 
 ## 6. Fan-out selection
 
@@ -254,10 +261,10 @@ Batch/case mismatch fails before cache/provider work.
 Equivalent inputs produce identical request-plan identity.
 
 ### JF3 — cache first
-Exact valid cache hits never enter the fan-out state/questions and consume no live-question budget.
+Exact probability-complete v0.2 cache hits never enter the fan-out state/questions and consume no live-question budget.
 
-### JF4 — invalid cache fail-closed
-Tampered exact-key cache content becomes `invalid_cache`, never a live fallback.
+### JF4 — cache schema/tamper handling
+A valid legacy judgment-only cache entry becomes `cache-upgrade-required` and may be refreshed live. Tampered or identity-invalid cache content becomes `invalid_cache` and never receives a live fallback.
 
 ### JF5 — bounded questions
 Selected live questions never exceed `maxLiveQuestions` or 20.
