@@ -366,7 +366,7 @@ function CommissionRatesEditor({ businessId }: { businessId: string }) {
                       void saveOverride(item, serviceId, rateBps);
                     }}
                   >
-                    <label>Hizmet istisnası
+                    <label>{t('Hizmet istisnası')}
                       <select name="serviceId" defaultValue="">
                         <option value="" disabled>{t('Hizmet seçin')}</option>
                         {available.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}

@@ -266,7 +266,7 @@ export default function CatalogSettingsPanel({ catalog, busy, setBusy, setNotice
                   <label>{t('Süre (dk)')}<input name="duration" type="number" min={5} max={720} defaultValue={service.duration_minutes} required /></label>
                   <label>{t('Ön tampon (dk)')}<input name="bufferBefore" type="number" min={0} max={240} defaultValue={service.buffer_before_minutes} required /></label>
                   <label>{t('Son tampon (dk)')}<input name="bufferAfter" type="number" min={0} max={240} defaultValue={service.buffer_after_minutes} required /></label>
-                  <label>Fiyat tipi
+                  <label>{t('Fiyat tipi')}
                     <select name="priceType" defaultValue={priceTypeOf(service)}>
                       <option value="fixed">{t('Sabit')}</option>
                       <option value="range">{t('Aralık')}</option>

@@ -177,7 +177,7 @@ export default function ServicePackagesPanel({ businessId, services, canManage }
       {canManage && (
         <form className="service-package-form create" onSubmit={create}>
           <h3>{t('Yeni paket')}</h3>
-          <label>Hizmet
+          <label>{t('Hizmet')}
             <select name="serviceId" required defaultValue="">
               <option value="" disabled>{t('Hizmet seçin')}</option>
               {activeServices.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}

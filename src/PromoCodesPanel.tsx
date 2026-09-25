@@ -179,7 +179,7 @@ export default function PromoCodesPanel({ businessId, services, canManage }: {
         <form className="service-package-form create promo-code-form" onSubmit={create}>
           <h3>{t('Yeni kampanya kodu')}</h3>
           <label>{t('Kod')}<input name="code" placeholder={t('YAZ20')} required minLength={3} maxLength={32} autoCapitalize="characters" /></label>
-          <label>İndirim türü
+          <label>{t('İndirim türü')}
             <select value={kind} onChange={(event) => setKind(event.target.value as 'percent' | 'fixed')}>
               <option value="percent">{t('Yüzde')}</option>
               <option value="fixed">{t('Sabit tutar (TL)')}</option>

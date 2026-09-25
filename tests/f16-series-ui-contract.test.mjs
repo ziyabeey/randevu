@@ -10,8 +10,8 @@ const worker=readFileSync(path.join(root,'worker/f16-series-http.ts'),'utf8');
 const migration=readFileSync(path.join(root,'supabase/migrations/20260924023800_f16_recurring_series.sql'),'utf8');
 
 test('F16-01 operator composer exposes bounded daily/weekly recurring creation',()=>{
-  assert.match(page,/value="daily">Her gün/);
-  assert.match(page,/value="weekly">Her hafta/);
+  assert.match(page,/value="daily">\{t\('Her gün'\)\}/);
+  assert.match(page,/value="weekly">\{t\('Her hafta'\)\}/);
   assert.match(page,/min=\{2\} max=\{12\}/);
   assert.match(page,/\/api\/bookings\/series\/preview/);
   assert.match(page,/seriesPreview\.allAvailable/);

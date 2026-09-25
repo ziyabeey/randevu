@@ -229,7 +229,7 @@ export default function TeamPage() {
                           event.target.checked ? t('Üyelik etkinleştirildi.') : t('Üyelik pasifleştirildi.'),
                         )}
                       />
-                      Uygulamaya erişebilir
+                      {t('Uygulamaya erişebilir')}
                     </label>
                   </div>
                 </article>
@@ -248,7 +248,7 @@ export default function TeamPage() {
                     <div><strong>{person.name}</strong><span>{person.active ? t('Randevu operasyonunda aktif') : t('Operasyonda pasif')}</span></div>
                   </div>
                   <label>
-                    Giriş hesabı bağlantısı
+                    {t('Giriş hesabı bağlantısı')}
                     <select
                       value={person.membershipId ?? ''}
                       disabled={busy || !canManage}

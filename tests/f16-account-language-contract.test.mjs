@@ -15,7 +15,7 @@ function sourceFiles(dir) {
   });
 }
 
-const I18N_IMPORT = /from '(?:\.\.?\/)+i18n'/;
+const I18N_IMPORT = /from '(?:\.\.?\/)+i18n(?:\.ts)?'/;
 const translatedFiles = sourceFiles('src').filter((file) => !/\/i18n(-en)?\.ts$/.test(file) && I18N_IMPORT.test(read(file)));
 
 function unescape(value) {
@@ -29,7 +29,9 @@ function literalKeys(source) {
 function block(source, name) {
   const start = source.indexOf(`const ${name}`);
   assert.notEqual(start, -1, `${name} is missing`);
-  const open = source.slice(start).search(/[[{]/);
+  // Skip a type annotation: the value starts after the assignment.
+  const assign = source.indexOf('= ', start) + 2;
+  const open = source.slice(assign).search(/[[{]/) + assign - start;
   let depth = 0;
   for (let index = start + open; index < source.length; index += 1) {
     if ('[{'.includes(source[index])) depth += 1;
@@ -84,6 +86,11 @@ test('F16-08 every translated string has an English entry with the same placehol
   const keys = new Set([...translatedFiles.flatMap((file) => literalKeys(read(file))), ...dynamicKeys()]);
   const missing = [...keys].filter((key) => !english.has(key) && !SAME_IN_ALL_LANGUAGES.has(key));
   assert.deepEqual(missing, [], 'untranslated keys');
+  // Entries not used by the UI must be API messages, which ApiRequestError
+  // passes through t(); anything else is a stale entry.
+  const apiMessages = new Set([...sourceFiles('worker'), 'src/api.ts'].flatMap((file) => read(file).split('\n').flatMap(strings)));
+  const stale = [...english.keys()].filter((key) => !keys.has(key) && !apiMessages.has(key));
+  assert.deepEqual(stale, [], 'stale catalog entries');
   for (const [key, value] of english) {
     assert.ok(value.trim(), `empty translation for ${key}`);
     assert.deepEqual(placeholders(value), placeholders(key), `placeholder mismatch for ${key}`);

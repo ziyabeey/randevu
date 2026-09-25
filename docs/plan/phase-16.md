@@ -140,3 +140,13 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 
 G16 için sekiz görevin kabulü ve referans matrisi birlikte kapanır. Adisyon/rapor formunun görsellerde görünmeyen ayrıntıları YZT tasarımı olarak belgelenir; rakibin bilinmeyen davranışı hakkında iddia kurulmaz.
 - **v3 bakım sınırı:** F10/F12/F13’te kurulan ortak metin/tarih/tutar sınırını kullan; tüm ekranları yeni framework’le yeniden yazma. Plan/erişim modeli gelecekteki PDF abonelik/AI kredi sistemini bu MVP’ye taşımaz.
+- **Uygulanan model (2026-09-25):** Devir listesi ve üç kolun eylem audit'i [f16-08-action-audit.md](f16-08-action-audit.md) içindedir.
+  - **Hesap menüsü.** Randevu panelinin üst barında bir `Hesap` menüsü, SalonApp'in "Diğer" sekmesinde de "Hesap ve üyelik" paneli vardır. İkisi de `GET /api/account` okur. Gösterilenler: giriş yapan hesap, aktif işletme, üyelik rolü, staff için mali yetkiler, plan ve dönem sonu. İşletme menüden değil membership'ten gelir. Dil seçimi, parola değiştirme ve çıkış mevcut ortak akışlara bağlıdır. İşletme geçişi var olan üyelik seçicisidir; yeni bir üst tenant hiyerarşisi eklenmez.
+  - **Plan.** Kaynak `core.subscriptions`'tır. Kayıt yoksa pilot plan geçerlidir ve manuel etkinleştirilir. `cancelled` salt okunurdur:
+    - paylaşılan hazırlık kontrolü `PLAN_INACTIVE` ile yeni public randevuyu kapatır;
+    - Worker üye yazmalarını RPC'den önce `PLAN_READ_ONLY` ile reddeder;
+    - mevcut müşteri randevusu yönetim bağlantısıyla görüntülenebilir, taşınabilir ve iptal edilebilir.
+
+    `past_due` yalnız uyarıdır. Otomatik tahsilat yoktur.
+  - **Dil.** Türkçe varsayılan ve kaynak dildir. İngilizce kataloğu tembel yüklenir; seçim sırası `?lang=`, cihaz tercihi, sonra Türkçe. Eksik çeviri Türkçeye düşer, teknik anahtar görünmez. Üç kolun arayüz metinleri ve tarih/sayı/tutar biçimleri seçilen dile uyar. İşletmenin girdiği içerik çevrilmez.
+  - **Boş eylemler.** SalonApp'te "Henüz kullanıma açık değil" diye bekleyen yedi eylem F16-03…F16-07 yüzeylerine bağlandı; "Yeni paket satışı" F16-05 satış route'uyla kendi adisyonunu açar. Disabled kalan tek eylem, nedeni yazılı olan Destek'tir.

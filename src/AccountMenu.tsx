@@ -103,7 +103,7 @@ export default function AccountMenu({ businessId, email, onChangePassword, onLog
         )}
       </dl>
       {account?.plan.access === 'read_only' && (
-        <p className="account-plan-warning" role="status">{t('Plan aktif değil: kayıtlar yalnızca görüntülenebilir ve yeni online randevu alınmaz. Mevcut müşteri randevuları yönetim bağlantısından görüntülenip iptal edilebilir.')}</p>
+        <p className="account-plan-warning" role="status">{t('Plan aktif değil: kayıtlar yalnızca görüntülenebilir ve yeni online randevu alınmaz. Müşteriler mevcut randevularını yönetim bağlantısından görüntüleyebilir, taşıyabilir ve iptal edebilir.')}</p>
       )}
       {account?.plan.status === 'past_due' && (
         <p className="account-plan-warning" role="status">{t('Plan ödemesi bekleniyor. Erişim şimdilik devam ediyor; otomatik tahsilat yapılmaz.')}</p>

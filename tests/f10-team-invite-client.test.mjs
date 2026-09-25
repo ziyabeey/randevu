@@ -56,7 +56,7 @@ test('F10 management capability hash is never consumed as an invitation', () => 
 });
 
 test('F10 recovery invite keeps the token while routing to the real password surface', () => {
-  assert.match(invitePage, /href="\/app">Parola ekranına dön<\/a>/);
+  assert.match(invitePage, /href="\/app">\{t\('Parola ekranına dön'\)\}<\/a>/);
   assert.match(routes, /pathname === '\/' && pendingInvite/);
   assert.match(routes, /if \(pathname === '\/'\) return \{ kind: 'redirect', to: '\/app' \}/);
   assert.doesNotMatch(routes, /'\/app': 'invite'/);

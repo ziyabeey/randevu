@@ -15,8 +15,9 @@ begin;
 --     preview (enforced in the database through the shared readiness function
 --     every public path already uses, including the public appointment insert
 --     guard);
---   * existing customers keep their management link: viewing and cancelling an
---     existing appointment are updates, not public inserts, and stay available;
+--   * existing customers keep their management link: viewing, moving and
+--     cancelling an existing appointment are updates, not public inserts, and
+--     stay available;
 --   * member writes are refused by the Worker API before any RPC runs, while
 --     reads (calendar, customers, reports) stay available. The Worker reads the
 --     access from businesses.plan_access, embedded in the membership lookup it

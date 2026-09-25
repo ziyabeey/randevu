@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 export type BookingInformationContact = {
   businessName: string;
   phone?: string | null;
@@ -73,7 +75,7 @@ export default function PublicBookingInformation({
 
       {!informationReady && (
         <p className="public-information-warning" role="alert">
-          İşletmenin zorunlu rezervasyon bilgilendirmeleri henüz tamamlanmadı. Bu bilgiler yayınlanmadan yeni randevu oluşturulamaz.
+          {t('İşletmenin zorunlu rezervasyon bilgilendirmeleri henüz tamamlanmadı. Bu bilgiler yayınlanmadan yeni randevu oluşturulamaz.')}
         </p>
       )}
 
@@ -118,4 +120,3 @@ export default function PublicBookingInformation({
     </section>
   );
 }
-import { t } from './i18n';

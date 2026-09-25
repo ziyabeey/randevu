@@ -1737,6 +1737,35 @@
           "file": "supabase/tests/f15_day_report.sql"
         }
       ]
+    },
+    {
+      "name": "Verify F16-08 account summary, plan access and readiness",
+      "steps": [
+        {
+          "database": "yzt_test",
+          "file": "supabase/migrations/20260924220000_f16_account_plan.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/f16_account_plan.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/f12_booking_information.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/migrations/20260924220000_f16_account_plan.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f16_account_plan.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f12_booking_information.sql"
+        }
+      ]
     }
   ]
 }

@@ -150,6 +150,29 @@ begin
 end
 $pastdue$;
 
+-- An existing customer appointment with its own management link.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f16e0000-0000-4000-8000-000000000001',true);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',true);
+do $existing$
+declare v_row public.appointments;
+begin
+  select * into v_row from public.create_appointment(
+    'f16e1000-0000-4000-8000-000000000001','f1608-manage-0001','Plan Müşteri',
+    'f16e4000-0000-4000-8000-000000000001','f16e5000-0000-4000-8000-000000000001',
+    ((date_trunc('week',current_date)::date+7)+time '10:00') at time zone 'Europe/Istanbul','05550001608',null,null
+  );
+  perform set_config('f1608.appointment_id', v_row.id::text, true);
+end
+$existing$;
+reset role;
+insert into public.appointment_management_capabilities(appointment_id,business_id,token_hash)
+values (
+  current_setting('f1608.appointment_id')::uuid,
+  'f16e1000-0000-4000-8000-000000000001',
+  public.management_token_hash('F1608PlanManageToken________________________')
+);
+
 -- A cancelled plan: read-only for members, closed for new public bookings.
 update core.subscriptions set status = 'cancelled', version = version + 1
 where business_id = 'f16e1000-0000-4000-8000-000000000001';
@@ -175,6 +198,26 @@ begin
   end;
 end
 $cancelled$;
+
+-- The customer's management link is not left in doubt: an existing appointment
+-- can still be viewed, moved and cancelled while the plan is cancelled.
+do $managed$
+declare
+  v_token constant text := 'F1608PlanManageToken________________________';
+  v record;
+  v_slots integer;
+begin
+  select * into strict v from public.get_public_managed_appointment(v_token);
+  if v.status <> 'scheduled' or not v.can_reschedule or not v.can_cancel then
+    raise exception 'F16-08 cancelled plan hid existing appointment management: %', row_to_json(v);
+  end if;
+  select count(*) into v_slots
+  from public.compute_public_management_slots(v_token, date_trunc('week',current_date)::date+8, null);
+  if v_slots = 0 then raise exception 'F16-08 cancelled plan removed reschedule slots for an existing appointment'; end if;
+  select * into strict v from public.cancel_public_managed_appointment(v_token,'f1608-manage-cancel-0001','Plan kapalı');
+  if v.status <> 'cancelled' then raise exception 'F16-08 cancelled plan blocked customer cancellation: %', row_to_json(v); end if;
+end
+$managed$;
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub','f16e0000-0000-4000-8000-000000000001',true);

@@ -19,6 +19,7 @@ import './expenses.css';
 import './financial-reports.css';
 import './team.css';
 import './onboarding.css';
+import './account.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('The application root element is missing.');

@@ -11,10 +11,10 @@ const productionBrowser = await readFile(new URL('../scripts/browser-f13-booking
 const browserSmoke = await readFile(new URL('../scripts/browser-smoke.sh', import.meta.url), 'utf8');
 
 test('F13-03 operator composer keeps the required field order and uses the atomic group engine', () => {
-  const time = booking.indexOf('<strong>Zaman</strong>');
-  const customer = booking.indexOf('<strong>Müşteri</strong>');
-  const lines = booking.indexOf('<strong>Hizmet / personel satırları</strong>');
-  const note = booking.indexOf('<strong>Not ve oluştur</strong>');
+  const time = booking.indexOf("<strong>{t('Zaman')}</strong>");
+  const customer = booking.indexOf("<strong>{t('Müşteri')}</strong>");
+  const lines = booking.indexOf("<strong>{t('Hizmet / personel satırları')}</strong>");
+  const note = booking.indexOf("<strong>{t('Not ve oluştur')}</strong>");
   assert.ok(time >= 0 && time < customer && customer < lines && lines < note);
   assert.ok(booking.includes("'/api/availability/group-slots'"));
   assert.match(booking, /api\('\/api\/bookings\/groups'/);
@@ -27,9 +27,9 @@ test('F13-03 operator composer keeps the required field order and uses the atomi
 });
 
 test('F13-03 close-time stays adjacent while F14-04 owns the live ticket connection point', () => {
-  assert.match(booking, /closeOpen \? 'Kapat' : 'Saat kapat'/);
+  assert.match(booking, /closeOpen \? t\('Kapat'\) : t\('Saat kapat'\)/);
   assert.match(booking, /api\('\/api\/availability\/blocks'/);
-  assert.match(booking, /<span aria-disabled="true">Fotoğraf<\/span>/);
+  assert.match(booking, /<span aria-disabled="true">\{t\('Fotoğraf'\)\}<\/span>/);
   assert.match(booking, /openTicketForBooking/);
   assert.match(booking, /\/api\/tickets\/from-booking-group/);
   assert.match(booking, /Idempotency-Key/);

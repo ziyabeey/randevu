@@ -851,7 +851,7 @@ export default function TicketCashierPage() {
     <div className="ticket-page" role="main">
       <div className="ticket-toolbar">
         <div><p className="ticket-eyebrow">{t('ADİSYONLAR')}</p><h1>{t('Kasa ve adisyon')}</h1></div>
-        <label>Durum
+        <label>{t('Durum')}
           <select value={status} onChange={(event) => { setStatus(event.target.value as typeof status); setSelected(null); }}>
             <option value="open">{t('Açık')}</option><option value="closed">{t('Kapalı')}</option><option value="cancelled">{t('İptal')}</option><option value="all">{t('Tümü')}</option>
           </select>
@@ -863,7 +863,7 @@ export default function TicketCashierPage() {
           <span>{notice}</span>
           {pendingAmbiguity?.businessId === activeBusinessId && (
             <button type="button" disabled={busy} onClick={() => void retryPendingAmbiguity()}>
-              Belirsiz işlemi doğrula
+              {t('Belirsiz işlemi doğrula')}
             </button>
           )}
         </div>
@@ -871,7 +871,7 @@ export default function TicketCashierPage() {
 
       {showStandaloneProductSale && (
         <form className="ticket-product-sale" onSubmit={createProductSale}>
-          <label>Yeni ürün satışı
+          <label>{t('Yeni ürün satışı')}
             <select name="customerId" required defaultValue="">
               <option value="" disabled>{t('Müşteri seçin')}</option>
               {customers.map((customer) => <option key={customer.customer_id} value={customer.customer_id}>{customer.name}</option>)}
@@ -888,7 +888,7 @@ export default function TicketCashierPage() {
 
       {showStandalonePackageSale && (
         <form className="ticket-product-sale ticket-package-sale" onSubmit={createPackageSale}>
-          <label>Yeni paket satışı
+          <label>{t('Yeni paket satışı')}
             <select name="customerId" required defaultValue="">
               <option value="" disabled>{t('Müşteri seçin')}</option>
               {customers.map((customer) => <option key={customer.customer_id} value={customer.customer_id}>{customer.name}</option>)}
@@ -909,7 +909,7 @@ export default function TicketCashierPage() {
       )}
 
       <form className="ticket-walkin" onSubmit={createWalkIn}>
-        <label>Randevusuz adisyon
+        <label>{t('Randevusuz adisyon')}
           <select name="customerId" required defaultValue="">
             <option value="" disabled>{t('Müşteri seçin')}</option>
             {customers.map((customer) => <option key={customer.customer_id} value={customer.customer_id}>{customer.name}</option>)}

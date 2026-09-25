@@ -1084,7 +1084,7 @@ export default function BookingPage() {
             }} />
             <small>{t('En fazla 12 randevu')}</small>
           </label>}
-          <span><strong>{t('SMS')}</strong><small>{t('F16-02 ile açılacak')}</small></span>
+          <span aria-disabled="true"><strong>{t('SMS')}</strong><small>{t('Henüz bağlı değil')}</small></span>
         </div>
         {selectedCreateSlot && recurrenceFrequency !== 'none' && <div className="booking-actions">
           <button className="secondary-button" type="button" disabled={busy || seriesPreviewBusy} onClick={() => void previewSeriesCreate()}>
@@ -1202,7 +1202,7 @@ export default function BookingPage() {
             </select>
           </label>
           <label>
-            Başlangıç tekrarı
+            {t('Başlangıç tekrarı')}
             <select value={seriesFromOrdinal} onChange={(event) => {
               const ordinal = Number(event.target.value);
               setSeriesFromOrdinal(ordinal);
