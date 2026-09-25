@@ -256,6 +256,9 @@ jobs:
       - name: Run H19 Kit cache-prune smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:cache-prune
+      - name: Run H19 Kit graph-cache prune smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:graph-cache-prune
       - name: Run H19 Kit cache-plan smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:cache-plan
@@ -344,6 +347,9 @@ jobs:
       - name: Prune H19 production evidence cache
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-production-synthesis' && steps.h19_prod_post.outputs.ready == 'true' }}
         run: npm --prefix tools/h19-kit run perf:prune-cache -- --root "${GITHUB_WORKSPACE}/.h19/artifacts" --keep-per-shard 3 --max-bytes 268435456
+      - name: Prune H19 production graph cache
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-production-synthesis' && steps.h19_prod_post.outputs.ready == 'true' }}
+        run: npm --prefix tools/h19-kit run perf:prune-graph-cache -- --root "${GITHUB_WORKSPACE}/.h19/cache" --keep 3 --max-bytes 67108864
       - name: Upload H19 production evidence synthesis
         if: ${{ always() && steps.h19_prod_post.outcome == 'success' }}
         uses: actions/upload-artifact@v4
