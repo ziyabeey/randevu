@@ -228,4 +228,111 @@ exception when others then
 end
 $f1606race$;
 
+
+-- F16-06 R1-B1/B2: the booking-side attach and ticket open share F14's
+-- per-group ticket lock. While a ticket open for the group is in flight, an
+-- attach through the booking's management link waits on that lock; once the
+-- ticket commits, the attach is refused and no booking code is reserved.
+insert into public.staff_profiles(id,business_id,name,active)
+values ('f1686000-0000-4000-8000-000000000001','f1681000-0000-4000-8000-000000000001','F16-06 Race Ayla',true);
+insert into public.staff_services(business_id,staff_id,service_id,active)
+values ('f1681000-0000-4000-8000-000000000001','f1686000-0000-4000-8000-000000000001','f1684000-0000-4000-8000-000000000001',true);
+insert into public.business_hours(business_id,weekday,starts_local,ends_local,active)
+select 'f1681000-0000-4000-8000-000000000001', d, time '09:00', time '18:00', true from generate_series(0,6) d;
+insert into public.staff_hours(business_id,staff_id,weekday,starts_local,ends_local,active)
+select 'f1681000-0000-4000-8000-000000000001','f1686000-0000-4000-8000-000000000001', d, time '09:00', time '18:00', true
+from generate_series(0,6) d;
+
+set role authenticated;
+select set_config('request.jwt.claim.sub','f1680000-0000-4000-8000-000000000001',false);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false);
+do $f1606groupsetup$
+declare v_group jsonb;
+begin
+  perform public.create_promo_code_guarded(
+    'f1681000-0000-4000-8000-000000000001','f1685000-0000-4000-8000-000000000002','ACIK','percent',1000,null,
+    now() - interval '1 day', null, null, '{}'::uuid[]);
+  v_group := public.create_appointment_group('f1681000-0000-4000-8000-000000000001','f1606-race-group','F16-06 Race Group',
+    jsonb_build_array(jsonb_build_object('serviceId','f1684000-0000-4000-8000-000000000001','staffId','f1686000-0000-4000-8000-000000000001')),
+    ((current_date + 7) + time '11:00') at time zone 'Europe/Istanbul','05551680099',null);
+  perform set_config('f1606.race_group', v_group->>'groupId', false);
+end
+$f1606groupsetup$;
+reset role;
+insert into public.appointment_management_capabilities(appointment_id, business_id, group_id, token_hash)
+select a.id, a.business_id, a.group_id, public.management_token_hash(repeat('R', 43))
+from public.appointments a where a.group_id = current_setting('f1606.race_group')::uuid;
+
+do $f1606attachrace$
+declare
+  v_business uuid := 'f1681000-0000-4000-8000-000000000001';
+  v_owner uuid := 'f1680000-0000-4000-8000-000000000001';
+  v_group uuid := current_setting('f1606.race_group')::uuid;
+  v_blocked integer := 0;
+  v_error text;
+  v_rows integer := 0;
+  v_result jsonb;
+begin
+  perform dblink_connect('f1606_open',
+    'host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1606_open');
+  perform dblink_connect('f1606_attach',
+    'host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1606_attach');
+  perform dblink_exec('f1606_attach','set statement_timeout=30000');
+
+  -- The salon opens the ticket for the group and has not committed yet.
+  perform dblink_exec('f1606_open','begin');
+  perform dblink_exec('f1606_open','set local role authenticated');
+  perform dblink_exec('f1606_open','set local "request.jwt.claim.sub" = '''||v_owner::text||'''');
+  perform dblink_exec('f1606_open',$q$set local "request.jwt.claims" = '{"amr":[{"method":"password"}]}'$q$);
+  perform dblink_exec('f1606_open', format(
+    'do $o$ begin perform public.open_ticket_from_booking_group_guarded(%L::uuid,%L::uuid,%L,%L); end $o$;',
+    v_business, v_group, 'f1606-race-open-group', repeat('d',64)));
+
+  -- The customer attaches a code through the booking link at the same time.
+  if dblink_send_query('f1606_attach', $q$select to_jsonb(r) from public.attach_public_managed_promo('$q$ || repeat('R',43) || $q$','ACIK') r$q$) <> 1 then
+    raise exception 'F16-06 could not start the concurrent attach';
+  end if;
+  for i in 1..500 loop
+    perform pg_stat_clear_snapshot();
+    select count(*)::integer into v_blocked from pg_stat_activity
+    where application_name = 'f1606_attach' and wait_event_type = 'Lock';
+    exit when v_blocked = 1;
+    perform pg_sleep(0.01);
+  end loop;
+  if v_blocked <> 1 then raise exception 'F16-06 attach did not wait for the in-flight ticket open'; end if;
+
+  perform dblink_exec('f1606_open','commit');
+  perform dblink_disconnect('f1606_open');
+
+  for i in 1..3000 loop
+    exit when dblink_is_busy('f1606_attach') = 0;
+    perform pg_sleep(0.01);
+  end loop;
+  begin
+    select t.result into v_result from dblink_get_result('f1606_attach', false) as t(result jsonb);
+    get diagnostics v_rows = row_count;
+  exception when others then v_rows := 0;
+  end;
+  v_error := dblink_error_message('f1606_attach');
+  perform * from dblink_get_result('f1606_attach', false) as t(result jsonb);
+  perform dblink_disconnect('f1606_attach');
+
+  if v_rows <> 0 or position('PROMO_NOT_ATTACHABLE' in coalesce(v_error,'')) = 0 then
+    raise exception 'F16-06 attach after a concurrent ticket open was not refused: rows=% result=% error=%', v_rows, v_result, v_error;
+  end if;
+  if exists (select 1 from public.promo_redemptions r where r.business_id = v_business and r.appointment_group_id = v_group) then
+    raise exception 'F16-06 refused attach still reserved a booking code';
+  end if;
+  if not exists (select 1 from public.tickets t where t.business_id = v_business and t.appointment_group_id = v_group) then
+    raise exception 'F16-06 race ticket was not opened';
+  end if;
+  raise notice 'F16-06 booking attach waited for the ticket open and was refused';
+exception when others then
+  begin perform dblink_exec('f1606_open','rollback'); exception when others then null; end;
+  begin perform dblink_disconnect('f1606_open'); exception when others then null; end;
+  begin perform dblink_disconnect('f1606_attach'); exception when others then null; end;
+  raise;
+end
+$f1606attachrace$;
+
 -- The CI database is disposable; financial history is deliberately not deleted.

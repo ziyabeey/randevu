@@ -346,5 +346,6 @@ try {
   }
   for (const socket of sockets) socket.destroy();
   await new Promise((resolve) => server.close(resolve)).catch(() => {});
-  rmSync(work, { recursive: true, force: true });
+  // Chrome's helper processes can still be flushing the profile after SIGKILL.
+  rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 }

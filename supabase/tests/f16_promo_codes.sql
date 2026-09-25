@@ -344,6 +344,42 @@ begin
 end
 $booking_ticket$;
 
+-- A ticket opened before the customer attaches a code closes the booking-side
+-- attach: the customer link can no longer change ticket money (R1-B1), and a
+-- staff code on that ticket cannot meet a second booking code (R1-B2).
+do $late_attach_open$
+declare
+  v_business uuid := 'f1671000-0000-4000-8000-000000000001';
+  v_ticket jsonb;
+begin
+  v_ticket := public.open_ticket_from_booking_group_guarded(v_business,(select id from f1606_ids where name = 'g6'),'f1606-open-g6',repeat('c',63)||'1');
+  v_ticket := public.record_ticket_payment_guarded(v_business,(v_ticket->>'ticketId')::uuid,'cash',15000,'f1606-g6-pay',repeat('c',63)||'3');
+  insert into f1606_ids values ('t6', (v_ticket->>'ticketId')::uuid);
+  perform set_config('f1606.t6_version', v_ticket->>'version', true);
+end
+$late_attach_open$;
+reset role;
+do $late_attach$
+declare
+  v jsonb;
+  v_t6 uuid := (select id from f1606_ids where name = 't6');
+begin
+  v := pg_temp.pr('manage_promo_view', jsonb_build_object('p_token', repeat('6', 43)));
+  if (v->'data'->0->>'attachable')::boolean then raise exception 'F16-06 attach offered after the ticket opened: %', v; end if;
+  v := pg_temp.pr('manage_promo_attach', jsonb_build_object('p_token', repeat('6', 43), 'p_code', 'KESIM50'));
+  if v->'error'->>'message' <> 'PROMO_NOT_ATTACHABLE' then raise exception 'F16-06 attach after ticket open: %', v; end if;
+  if exists (select 1 from public.promo_redemptions r where r.appointment_group_id = (select id from f1606_ids where name = 'g6') or r.ticket_id = v_t6) then
+    raise exception 'F16-06 late attach reserved a code';
+  end if;
+  if (select version from public.tickets where id = v_t6) <> current_setting('f1606.t6_version')::int
+     or public.f16_ticket_total_minor('f1671000-0000-4000-8000-000000000001', v_t6) <> 15000 then
+    raise exception 'F16-06 late attach changed the paid ticket';
+  end if;
+end
+$late_attach$;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','f1670000-0000-4000-8000-000000000001',true);
+
 -- Ticket-applied codes: scope, fixed cap, removal, allocation remainder, payment guard ------
 do $ticket_codes$
 declare
