@@ -94,3 +94,28 @@ The authoritative synthesis artifact recorded:
 - final plan: 3 hits / 0 misses, graph hit, indexer not required, decoder not required, `ready=true`.
 
 This documentation-only commit intentionally triggers the mandatory warm continuation. The next CI run must restore the prior H19 cache and prove the all-hit path without installing scip-typescript or building the SCIP decoder.
+
+
+## Warm acceptance receipt
+
+The mandatory warm continuation passed on CI run `36092698821` at exact head
+`ae377a15e212267dd9be6d589dda1c8afb16a0a7`.
+
+The restored-cache artifact recorded:
+
+- initial index plan: 3 hits / 0 misses;
+- initial graph state: hit;
+- `needsIndexer=false`;
+- `needsDecoder=false`;
+- scip-typescript installation skipped;
+- Go decoder setup skipped;
+- SCIP decoder build skipped;
+- no shard materialization was required;
+- cached graph build: 75.353 ms;
+- graph key: `352706ff46d2a99068927959f895dbacb65bbd38249387956d04b346497a63bb`;
+- 77 documents;
+- 9,686 graph nodes;
+- final graph state: hit;
+- final `ready=true`.
+
+The cold and warm acceptance runs therefore satisfy the production synthesis gate. The active line may now move to feature-line revalidation; M6/M7 must still be restacked on this accepted synthesis lineage before promotion.
