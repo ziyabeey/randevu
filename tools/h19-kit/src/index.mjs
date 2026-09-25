@@ -64,4 +64,5 @@ export * from './perf/typescript-shards.mjs';
 export * from './graph/merge-scip-indexes.mjs';
 export * from './perf/graph-equivalence.mjs';
 export * from './indexing/typescript-evidence-graph.mjs';
+export * from './indexing/python-evidence-graph.mjs';
 export * from './perf/project-shard-adoption.mjs';
