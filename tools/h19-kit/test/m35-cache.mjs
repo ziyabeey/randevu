@@ -17,6 +17,16 @@ try {
   await writeFile(path.join(project, 'src.ts'), 'export const amount = 1;\n');
 
   const cache = new ArtifactCache(path.join(temp, '.h19', 'artifacts'));
+  assert.equal(path.isAbsolute(cache.root), true);
+
+  const relativeCacheRoot = path.relative(
+    process.cwd(),
+    path.join(temp, '.h19-relative', 'artifacts'),
+  );
+  const relativeCache = new ArtifactCache(relativeCacheRoot);
+  assert.equal(path.isAbsolute(relativeCache.root), true);
+  assert.equal(relativeCache.root, path.resolve(relativeCacheRoot));
+
   const indexer = scipTypeScriptIndexer({ version: '0.3.0-test' });
 
   let executions = 0;
@@ -44,16 +54,27 @@ try {
   assert.equal(executions, 1);
   assert.equal((await readFile(first.indexFile)).toString(), 'fake-scip-1');
 
+  // A cache created from a relative root must still return absolute artifact paths.
+  // This protects consumers that index one repository while running from another cwd.
+  const crossCwd = await indexProject({
+    ...spec,
+    cache: relativeCache,
+  });
+  assert.equal(crossCwd.cache, 'miss');
+  assert.equal(path.isAbsolute(crossCwd.indexFile), true);
+  assert.equal((await readFile(crossCwd.indexFile)).toString(), 'fake-scip-2');
+  assert.equal(executions, 2);
+
   const second = await indexProject(spec);
   assert.equal(second.cache, 'hit');
-  assert.equal(executions, 1);
+  assert.equal(executions, 2);
   assert.equal(second.fingerprint.fingerprint, first.fingerprint.fingerprint);
 
   // Unrelated repository content does not affect the project shard.
   await writeFile(path.join(temp, 'README.md'), 'new repository docs\n');
   const third = await indexProject(spec);
   assert.equal(third.cache, 'hit');
-  assert.equal(executions, 1);
+  assert.equal(executions, 2);
 
   // HEAD is provenance, not the content-addressed shard key.
   const manifestA = createHeadIndexManifest({
@@ -81,7 +102,7 @@ try {
   await writeFile(path.join(project, 'src.ts'), 'export const amount = 2;\n');
   const sourceChanged = await indexProject(spec);
   assert.equal(sourceChanged.cache, 'miss');
-  assert.equal(executions, 2);
+  assert.equal(executions, 3);
   assert.notEqual(sourceChanged.fingerprint.fingerprint, first.fingerprint.fingerprint);
 
   // Dependency public-surface changes invalidate downstream shard.
@@ -90,7 +111,7 @@ try {
     dependencySurfaces: { '../auth': 'surface-auth-v2' },
   });
   assert.equal(dependencyChanged.cache, 'miss');
-  assert.equal(executions, 3);
+  assert.equal(executions, 4);
 
   // Indexer version is part of the cache key.
   const versionChanged = await indexProject({
@@ -99,7 +120,7 @@ try {
     indexer: scipTypeScriptIndexer({ version: '0.4.0-test' }),
   });
   assert.equal(versionChanged.cache, 'miss');
-  assert.equal(executions, 4);
+  assert.equal(executions, 5);
 
   const fp = await projectFingerprint({
     cwd: temp,
