@@ -241,6 +241,18 @@ jobs:
       - name: Run H19 Kit TypeScript shard resolver smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:ts-shards
+      - name: Run H19 Kit cross-run cache smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:cache-persistence
+      - name: Restore H19 Kit cross-run cache
+        id: h19-cache
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-cache-persistence' }}
+        uses: actions/cache@v4
+        with:
+          path: .h19
+          key: h19-scip-v1-${{ runner.os }}-0.4.0-${{ hashFiles('package-lock.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.worker.json', 'tsconfig.node.json') }}-${{ github.event.pull_request.head.sha }}
+          restore-keys: |
+            h19-scip-v1-${{ runner.os }}-0.4.0-${{ hashFiles('package-lock.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.worker.json', 'tsconfig.node.json') }}-
       - name: Install pinned SCIP TypeScript for performance baseline
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
         run: npm install --global @sourcegraph/scip-typescript@0.4.0
@@ -255,10 +267,15 @@ jobs:
           path: ${{ runner.temp }}/h19-perf-baseline.json
           if-no-files-found: error
       - name: Measure H19 Kit TypeScript shard performance
-        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-tsconfig-shards' }}
-        run: npm --prefix tools/h19-kit run perf:ts-shards -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-ts-shard-performance.json" --scip-version 0.4.0
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-tsconfig-shards' || github.event.pull_request.head.ref == 'h19-kit-performance-cache-persistence') }}
+        run: |
+          args=(--repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-ts-shard-performance.json" --scip-version 0.4.0)
+          if [ "${{ github.event.pull_request.head.ref }}" = "h19-kit-performance-cache-persistence" ]; then
+            args+=(--cache-root "${GITHUB_WORKSPACE}/.h19")
+          fi
+          npm --prefix tools/h19-kit run perf:ts-shards -- "${args[@]}"
       - name: Upload H19 Kit TypeScript shard performance
-        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-tsconfig-shards' }}
+        if: ${{ always() && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-tsconfig-shards' || github.event.pull_request.head.ref == 'h19-kit-performance-cache-persistence') }}
         uses: actions/upload-artifact@v4
         with:
           name: h19-ts-shard-performance
