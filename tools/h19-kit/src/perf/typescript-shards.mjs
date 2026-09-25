@@ -1,4 +1,4 @@
-import { appendFile, mkdtemp, rm, stat, symlink } from 'node:fs/promises';
+import { appendFile, mkdtemp, readdir, rm, stat, symlink } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
@@ -23,6 +23,26 @@ async function timed(fn) {
     value,
     wallMs: round(performance.now() - started),
   };
+}
+
+async function countCachedIndexes(root) {
+  let count = 0;
+  async function walk(dir) {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch (error) {
+      if (error?.code === 'ENOENT') return;
+      throw error;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else if (entry.isFile() && entry.name === 'index.scip') count += 1;
+    }
+  }
+  await walk(root);
+  return count;
 }
 
 async function indexShard({
@@ -59,6 +79,7 @@ export async function runTypeScriptShardBenchmark({
   cwd = process.cwd(),
   version = '0.4.0',
   execute = null,
+  persistentCacheRoot = null,
 } = {}) {
   const repoRoot = path.resolve(cwd);
   const temp = await mkdtemp(path.join(os.tmpdir(), 'h19-ts-shard-perf-'));
@@ -66,6 +87,46 @@ export async function runTypeScriptShardBenchmark({
   try {
     const shards = await resolveTypeScriptProjectShards({ cwd: repoRoot });
     if (!shards.length) throw new Error('no TypeScript project shards resolved');
+
+    let crossRunCache = {
+      status: 'not-configured',
+      restoredArtifactsBefore: 0,
+      shardHits: 0,
+      shardMisses: 0,
+      totalMs: null,
+      rows: [],
+    };
+
+    if (persistentCacheRoot) {
+      const persistentArtifactsRoot = path.join(path.resolve(persistentCacheRoot), 'artifacts');
+      const restoredArtifactsBefore = await countCachedIndexes(persistentArtifactsRoot);
+      const persistentCache = new ArtifactCache(persistentArtifactsRoot);
+      const rows = [];
+      const persistentTotal = await timed(async () => {
+        for (const shard of shards) {
+          const row = await timed(() => indexShard({
+            cwd: repoRoot,
+            shard,
+            cache: persistentCache,
+            version,
+            execute,
+          }));
+          rows.push({
+            id: shard.id,
+            cache: row.value.cache,
+            wallMs: row.wallMs,
+          });
+        }
+      });
+      crossRunCache = {
+        status: 'measured',
+        restoredArtifactsBefore,
+        shardHits: rows.filter((x) => x.cache === 'hit').length,
+        shardMisses: rows.filter((x) => x.cache === 'miss').length,
+        totalMs: persistentTotal.wallMs,
+        rows,
+      };
+    }
 
     const cache = new ArtifactCache(path.join(temp, 'artifacts'));
     const coldRows = [];
@@ -239,6 +300,7 @@ export async function runTypeScriptShardBenchmark({
         configFiles: shard.configFiles,
       })),
       measurements: {
+        crossRunCache,
         coldSequentialMs: coldTotal.wallMs,
         cold: coldRows,
         exactWarmSequentialMs: warmTotal.wallMs,
