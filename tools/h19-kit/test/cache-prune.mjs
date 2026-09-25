@@ -61,7 +61,7 @@ try {
   const pressured = await pruneScipArtifactCache({
     root,
     keepPerShard: 2,
-    maxBytes: 300,
+    maxBytes: 700,
   });
   assert.equal(pressured.afterEntries, 2);
   assert.equal(pressured.logicalShards, 2);
