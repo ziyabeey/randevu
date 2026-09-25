@@ -24,6 +24,7 @@
     "test:m5-validation-packet": "node test/m5-validation-packet.mjs",
     "test:m6-test-spec": "node test/m6-test-spec.mjs",
     "test:m7-test-candidate": "node test/m7-test-candidate.mjs",
+    "test:m8-relational": "node test/m8-relational-evidence.mjs",
     "test:perf-baseline": "node test/perf-baseline.mjs",
     "perf:baseline": "node perf/run-baseline.mjs",
     "test:ts-shards": "node test/typescript-project-shards.mjs",
