@@ -77,23 +77,30 @@ Production adoption is implemented in #581 and exact-head CI-green at `13fbc34ba
 
 The project-scoped evidence graph is therefore available to the joined feature line, with whole-index fallback remaining explicit and fail-closed.
 
-## Next authorized feature gate
+## Joined parent gate
 
-**Relational evidence contract over M5–M7 outcomes and repository evidence.**
+M7 and project-scoped TypeScript evidence-graph adoption are joined in #588.
 
-The gate must define a deterministic representation for:
+Exact joined head:
 
-- normalized evidence facts with provenance;
-- pairwise and higher-order relations such as support, contradiction, agreement and divergence;
-- baseline-relative statistics such as ratio, lift and observed sample size;
-- Jev advisory judgments as bounded structured outputs, never free-form authority;
-- deterministic verification and outcome binding;
-- calibration records that compare Jev confidence with later observed outcomes;
-- explicit separation between hypothesis strength and permission to execute an action.
+`1e485164350cfa6b43d2a36aac8bafff30fc9c5e`
 
-The first Jev-enabled gate must remain advisory. Jev may propose or compare relations; deterministic H19 policy retains execution authority.
+Repository CI is green on that exact head.
 
-**No M8 number is assigned yet.** Freeze this relational-evidence scope and acceptance contract on the joined M7 + project-shard base before implementation.
+## Frozen next feature gate
+
+`specs/RELATIONAL_EVIDENCE_GATE-v0.1.md` freezes the relational-evidence contract over the joined M7 + project-shard base.
+
+The contract requires:
+
+- provenance-bound normalized facts;
+- lineage-aware deterministic ratios/lift/baseline features;
+- bounded Jev `RELATION_DIRECTION-v0.1` choice output;
+- content-addressed model/question/input replay;
+- external outcome binding and future calibration;
+- advisory-only Jev authority.
+
+**No M8 implementation is authorized until this freeze PR is exact-head CI-green.**
 
 ## Side-hardening HOLD
 
