@@ -9,6 +9,9 @@ for (const name of [
   'resolveTypeScriptProjectShards',
   'analyzeChangeImpact',
   'discoverCoverageHypotheses',
+  'buildRelationalJudgmentRequestPlan',
+  'runRelationalJudgmentBatch',
+  'validateRelationalJudgmentRun',
 ]) {
   assert.equal(typeof api[name], 'function', `missing public export: ${name}`);
 }
