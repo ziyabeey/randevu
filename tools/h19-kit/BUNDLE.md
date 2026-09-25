@@ -71,7 +71,15 @@ PERF-003 then measured TypeScript-project-scoped invalidation: a real app-source
 
 GRAPH-EQ-001 then passed semantic graph-composition equivalence on the real repository: 77 whole-index documents matched 77 merged-shard documents exactly, the 9,686-node H19 graph digest was identical, and 20 representative blast-radius units had zero mismatches.
 
-The next authorized performance action is **production adoption of project-scoped SCIP fingerprints/index shards with the equivalence invariant retained as a regression gate**.
+Project-scoped production adoption is now proven on #581, including the equivalence invariant.
+
+The active performance action is **production synthesis**: combine the adopted project-shard evidence graph with cross-run persistent cache transport, cache-first external-tool planning, and bounded cache pruning. See PERFORMANCE_SYNTHESIS.md.
+
+This synthesis must pass both a cold run and a docs-only warm continuation where indexer and decoder installation are both skipped before M6/M7 become the active product line.
+
+## Feature-line HOLD
+
+M6 (#561) and M7 (#566) are green on the earlier pre-performance lineage, but they remain HOLD. After the performance synthesis passes its cold and warm continuation gates, they must be retargeted/revalidated on the synthesis head before becoming active.
 
 ## Next authorized feature gate
 
