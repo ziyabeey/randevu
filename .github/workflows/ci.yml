@@ -241,6 +241,9 @@ jobs:
       - name: Run H19 Kit M7 executable test-candidate smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m7-test-candidate
+      - name: Run H19 Kit M8 relational evidence smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m8-relational
       - name: Run H19 Kit performance-baseline smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:perf-baseline
