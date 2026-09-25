@@ -49,43 +49,79 @@ Hypotheses are frozen into a content-addressed validation packet and later recor
 
 A surviving mutant is ranked ahead of a plain coverage-gap hypothesis only when priority and target path are otherwise equal.
 
-## Performance evidence gate
+## Performance synthesis — accepted
 
-Before the next feature milestone, freeze a reproducible performance baseline for the current M0→M5 engine.
+The M0→M5 performance line is now closed with both correctness and operational cache evidence.
 
-Required measurements:
+Evidence chain:
 
-- real-repository semantic inventory wall time and throughput;
-- Git-history cold vs warm-cache wall time;
-- real scip-typescript cold indexing time and index size;
-- H19 project-shard warm cache-hit time;
-- real single-source-change reindex cost;
-- tsconfig-scoped shard invalidation cost and unchanged-shard cache reuse;
-- deterministic M4/M5 synthetic scale probe.
+- PERF-002 exposed whole-root over-invalidation: a one-file change cost ~8.95 s, about 96% of first-index cost.
+- PERF-003 proved project-scoped invalidation: a real app-source edit dropped from 5.66 s whole-root reindex to 3.87 s single-shard reindex, with unchanged shards reused.
+- GRAPH-EQ-001 proved exact semantic equivalence: 77/77 documents, identical 9,686-node graph digest, 20/20 blast-radius samples.
+- #581 adopted the project-scoped TypeScript evidence graph and kept whole-index fallback/fail-closed boundaries.
+- #584 synthesized cross-run cache transport, cache-first tool planning, bounded cache pruning and the adopted graph path.
 
-The first run is measurement-only. Do not invent pass/fail thresholds before the baseline is captured.
+### Cold synthesis receipt
 
-PERF-002 established a concrete bottleneck: a single changed file caused ~8.95 s reindex, ~96% of whole-repository first-index cost, while exact-content cache hit was ~28 ms.
+CI `36092255998`, head `765b7187559f688460739432a6711f7746fe0706`:
 
-PERF-003 then measured TypeScript-project-scoped invalidation: a real app-source edit dropped from 5.66 s whole-root reindex to 3.87 s single-shard reindex (31.5% reduction), while two unchanged shards remained cache hits and an out-of-project script change invalidated zero declared TypeScript shards.
+- initial plan: 0 hits / 3 misses;
+- graph blocked on index misses;
+- indexer required: true;
+- decoder required: true;
+- 3 shards materialized;
+- final plan: 3 hits / 0 misses;
+- merged graph: hit;
+- documents: 77;
+- graph nodes: 9,686;
+- final `ready=true`.
 
-GRAPH-EQ-001 then passed semantic graph-composition equivalence on the real repository: 77 whole-index documents matched 77 merged-shard documents exactly, the 9,686-node H19 graph digest was identical, and 20 representative blast-radius units had zero mismatches.
+### Warm synthesis receipt
 
-Project-scoped production adoption is now proven on #581, including the equivalence invariant.
+A documentation-only continuation produced exact head
+`ae377a15e212267dd9be6d589dda1c8afb16a0a7`.
 
-The active performance action is **production synthesis**: combine the adopted project-shard evidence graph with cross-run persistent cache transport, cache-first external-tool planning, and bounded cache pruning. See PERFORMANCE_SYNTHESIS.md.
+CI `36092698821` passed with:
 
-This synthesis must pass both a cold run and a docs-only warm continuation where indexer and decoder installation are both skipped before M6/M7 become the active product line.
+- initial plan: 3 hits / 0 misses;
+- initial merged graph: hit;
+- `needsIndexer=false`;
+- `needsDecoder=false`;
+- scip-typescript installation: skipped;
+- Go decoder setup: skipped;
+- SCIP decoder build: skipped;
+- materialization work: none;
+- cached project-shard graph build: 75.353 ms;
+- graph key unchanged: `352706ff46d2a99068927959f895dbacb65bbd38249387956d04b346497a63bb`;
+- 77 documents / 9,686 graph nodes;
+- final `ready=true`.
 
-## Feature-line HOLD
+The absolute timings are evidence from GitHub-hosted runners, not frozen latency thresholds. The accepted production invariants are exact semantic equivalence, project-scoped invalidation, content-addressed reuse, cache-first external-tool skipping, and fail-closed graph construction.
 
-M6 (#561) and M7 (#566) are green on the earlier pre-performance lineage, but they remain HOLD. After the performance synthesis passes its cold and warm continuation gates, they must be retargeted/revalidated on the synthesis head before becoming active.
+**Performance production synthesis is complete.**
 
-## Next authorized feature gate
+## Next authorized integration gate
 
-**Minimal test specification from validated/high-value coverage hypotheses.**
+The prepared feature line remains:
 
-For a surviving-mutant-driven target, the first specification contract must be able to state:
+- #560 — frozen Test Specification Gate v0.1;
+- #561 — M6 minimal test specification;
+- #564 — frozen Executable Test Candidate Gate v0.1;
+- #566 — M7 executable test candidate.
+
+Those PRs are green on an older lineage and must not be promoted directly.
+
+The next authorized action is:
+
+1. carry #560's frozen schema and contract byte-for-byte onto this accepted synthesis closeout;
+2. require exact-head CI green;
+3. restack #561 M6 implementation on that accepted gate without dropping any synthesis/cache code;
+4. require exact-head CI green;
+5. only then repeat the same gate-before-code sequence for #564/#566.
+
+No post-M7 milestone is authorized until that revalidation chain is green.
+
+For a surviving-mutant-driven target, the M6 contract remains:
 
 ```text
 setup
@@ -95,9 +131,7 @@ setup
 → required observations
 ```
 
-This is the next planned bundle gate.
-
-**No M6 number is assigned here yet.** Freeze the scope and acceptance contract before naming/promoting the next milestone.
+M6/M7 remain **HOLD** only until their synthesis-based restacks pass. No new feature semantics are introduced during restack.
 
 ## Side-hardening HOLD
 
