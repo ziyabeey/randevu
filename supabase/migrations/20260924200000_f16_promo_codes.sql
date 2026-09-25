@@ -1017,6 +1017,14 @@ begin
     v_ref.business_id::text || ':ticket-group:' || v_ref.group_id::text, 0
   ));
   perform pg_advisory_xact_lock(hashtextextended('f16:promo-group:' || v_ref.group_id::text, 0));
+  -- A status change (cancel/no-show) takes this row lock too, so an attach can
+  -- no longer reserve a code that the concurrent release trigger cannot see.
+  -- The group state is read again after the lock.
+  perform 1 from public.appointment_groups g
+  where g.business_id = v_ref.business_id and g.id = v_ref.group_id
+  for no key update;
+  select * into v_ref from public.f16_promo_ref(p_token);
+  if not found then raise exception 'MANAGEMENT_NOT_FOUND'; end if;
 
   select * into v_existing
   from public.f16_group_promo_state(v_ref.business_id, v_ref.group_id, false) s
