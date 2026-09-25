@@ -4,80 +4,83 @@
     "workflowRun": 36058537684,
     "workflowRunNumber": 2897,
     "headSha": "d5a580c476c145dd089c47e40a3c5666afdffb2b",
-    "artifactId": 10834275830,
-    "artifactDigest": "sha256:75b1f3e60a17419eb9a21ad767c77bbbe587c238020966a6fe4c211514cfa7be"
+    "shardArtifactId": 10834275830,
+    "shardArtifactDigest": "sha256:75b1f3e60a17419eb9a21ad767c77bbbe587c238020966a6fe4c211514cfa7be",
+    "fullArtifactId": 10833986370,
+    "fullArtifactDigest": "sha256:216db280918941a6bae3c5cc1976afb9b6d22b96d1e5e252c0536c8077befaac"
   },
-  "report": {
-    "schemaVersion": 2,
-    "kind": "h19-typescript-shard-performance",
-    "generatedAt": "2026-09-24T21:07:02.457Z",
-    "indexer": {
-      "id": "scip-typescript",
-      "version": "0.4.0"
-    },
+  "referenceEnvironment": {
+    "platform": "linux",
+    "arch": "x64",
+    "cpuCount": 4,
+    "cpuModel": "Intel(R) Xeon(R) 6973P-C",
+    "node": "v24.21.0",
+    "scipTypescript": "0.4.0"
+  },
+  "wholeRepository": {
+    "sourceFiles": 333,
+    "sourceLines": 67201,
+    "firstIndexMs": 5786.51,
+    "exactContentWarmHitMs": 18.612,
+    "singleIrrelevantFileChangeMs": 5762.989
+  },
+  "projectShards": {
+    "count": 3,
+    "coldSequentialMs": 6598.186,
+    "exactWarmSequentialMs": 6.707,
     "shards": [
       {
         "id": "tsconfig.app.json",
         "sourceFiles": 41,
         "coldMs": 3866.072,
-        "indexBytes": 2928670,
-        "warmHitMs": 3.378
+        "indexBytes": 2928670
       },
       {
         "id": "tsconfig.node.json",
         "sourceFiles": 1,
         "coldMs": 798.414,
-        "indexBytes": 2658,
-        "warmHitMs": 0.51
+        "indexBytes": 2658
       },
       {
         "id": "tsconfig.worker.json",
         "sourceFiles": 35,
         "coldMs": 1933.441,
-        "indexBytes": 2250481,
-        "warmHitMs": 2.652
+        "indexBytes": 2250481
       }
-    ],
-    "measurements": {
-      "coldSequentialMs": 6598.186,
-      "exactWarmSequentialMs": 6.707,
-      "singleFileChange": {
-        "path": "src/App.tsx",
-        "ownerShard": "tsconfig.app.json",
-        "affectedShards": ["tsconfig.app.json"],
-        "affectedShardCount": 1,
-        "fullRootReindexMs": 5655.077,
-        "shardReindexMs": 3873.727,
-        "speedup": 1.46,
-        "reductionPct": 31.5,
-        "unaffected": [
-          {
-            "id": "tsconfig.node.json",
-            "cache": "hit",
-            "lookupMs": 0.794
-          },
-          {
-            "id": "tsconfig.worker.json",
-            "cache": "hit",
-            "lookupMs": 2.894
-          }
-        ]
+    ]
+  },
+  "singleProjectSourceChange": {
+    "path": "src/App.tsx",
+    "ownerShard": "tsconfig.app.json",
+    "affectedShardCount": 1,
+    "fullRootReindexMs": 5655.077,
+    "shardReindexMs": 3873.727,
+    "speedup": 1.46,
+    "reductionPct": 31.5,
+    "unaffectedShardHits": [
+      {
+        "id": "tsconfig.node.json",
+        "lookupMs": 0.794
       },
-      "irrelevantChange": {
-        "path": "scripts/browser-booking-recovery.mjs",
-        "affectedShards": [],
-        "decisionMs": 0.013
+      {
+        "id": "tsconfig.worker.json",
+        "lookupMs": 2.894
       }
-    }
+    ]
+  },
+  "outOfProjectChange": {
+    "path": "scripts/browser-booking-recovery.mjs",
+    "affectedShardCount": 0,
+    "decisionMs": 0.013
   },
   "interpretation": {
     "thresholdsFrozen": false,
     "findings": [
-      "TypeScript project boundaries correctly isolate an app source change to one shard.",
-      "Unchanged worker and node shards remained cache hits.",
-      "An out-of-project scripts/*.mjs change invalidated zero TypeScript SCIP shards.",
-      "The measured app-source mutation reduced same-run reindex wall time by 31.5% versus the whole-root control.",
-      "Cross-run CI cache persistence is not yet proven by this baseline."
+      "Project-scoped invalidation is correct for the measured repository: only the owning TypeScript project reindexed.",
+      "A real app-source edit reduced SCIP reindex wall time by 31.5% on the same runner.",
+      "Sequential cold indexing of all shards was slower than one whole-repository cold index, so sharding is not a universal cold-start win.",
+      "Out-of-project script changes no longer invalidate TypeScript project shards.",
+      "Production adoption is blocked on semantic graph-composition equivalence between whole-repository and sharded indexes."
     ]
   }
 }
