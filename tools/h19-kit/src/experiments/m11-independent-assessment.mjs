@@ -19,6 +19,7 @@ const assert = (ok, message) => {
 };
 const nonEmpty = (value) => typeof value === 'string' && value.trim().length > 0;
 const sha256 = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+const gitSha = (value) => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
 const same = (a, b) => stableJson(a) === stableJson(b);
 
 function deepFreeze(value) {
@@ -47,7 +48,7 @@ export function validateM11IndependentAssessmentFreeze(freeze, { bridge = null }
     && freeze.status === 'frozen-inputs-labels-pending',
   'unsupported independent-assessment freeze');
   assert(freeze.labelsCollected === 0, 'freeze must not contain collected labels');
-  assert(sha256(freeze.bridgeSha256) && sha256(freeze.sourceRevision),
+  assert(sha256(freeze.bridgeSha256) && gitSha(freeze.sourceRevision),
     'freeze digest/source bindings invalid');
   assert(same(freeze.question, RELATION_DIRECTION_QUESTION),
     'freeze relation question differs from implementation');
