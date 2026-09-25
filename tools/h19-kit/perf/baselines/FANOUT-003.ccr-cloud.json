@@ -1,0 +1,1073 @@
+{
+  "id": "FANOUT-003",
+  "status": "exploratory follow-up to FANOUT-001/002; not pre-registered",
+  "model": "jev-1.13.0",
+  "environment": "ccr-cloud-egress-proxy",
+  "caseSetSha256": "33a13e3a6ec36f9044180db72c5de4bcf0700744b825c750a7fba81a83d6408c",
+  "providerRequests": 72,
+  "summary": [
+    {
+      "concurrency": 1,
+      "repeat": 1,
+      "wallMs": 522,
+      "medianRequestLatencyMs": 521,
+      "statuses": [
+        200
+      ],
+      "valid": 1,
+      "inputTokens": 1607
+    },
+    {
+      "concurrency": 5,
+      "repeat": 1,
+      "wallMs": 539,
+      "medianRequestLatencyMs": 471,
+      "statuses": [
+        200
+      ],
+      "valid": 5,
+      "inputTokens": 9503
+    },
+    {
+      "concurrency": 10,
+      "repeat": 1,
+      "wallMs": 600,
+      "medianRequestLatencyMs": 486,
+      "statuses": [
+        200
+      ],
+      "valid": 10,
+      "inputTokens": 18059
+    },
+    {
+      "concurrency": 20,
+      "repeat": 1,
+      "wallMs": 709,
+      "medianRequestLatencyMs": 525.5,
+      "statuses": [
+        200
+      ],
+      "valid": 20,
+      "inputTokens": 36040
+    },
+    {
+      "concurrency": 1,
+      "repeat": 2,
+      "wallMs": 205,
+      "medianRequestLatencyMs": 205,
+      "statuses": [
+        200
+      ],
+      "valid": 1,
+      "inputTokens": 1607
+    },
+    {
+      "concurrency": 5,
+      "repeat": 2,
+      "wallMs": 460,
+      "medianRequestLatencyMs": 244,
+      "statuses": [
+        200
+      ],
+      "valid": 5,
+      "inputTokens": 9503
+    },
+    {
+      "concurrency": 10,
+      "repeat": 2,
+      "wallMs": 508,
+      "medianRequestLatencyMs": 379,
+      "statuses": [
+        200
+      ],
+      "valid": 10,
+      "inputTokens": 18059
+    },
+    {
+      "concurrency": 20,
+      "repeat": 2,
+      "wallMs": 669,
+      "medianRequestLatencyMs": 585,
+      "statuses": [
+        200
+      ],
+      "valid": 20,
+      "inputTokens": 36040
+    }
+  ],
+  "concurrent20RepeatAgreement": {
+    "n": 20,
+    "meanAbsDelta": 0.02275,
+    "argmaxAgreement": 0.9
+  },
+  "lanes": [
+    {
+      "concurrency": 1,
+      "repeat": 1,
+      "wallMs": 522,
+      "medianRequestLatencyMs": 521,
+      "statuses": [
+        200
+      ],
+      "valid": 1,
+      "inputTokens": 1607,
+      "answers": [
+        {
+          "caseSha256": "e0eedc141c7920657c0352331dcd6990d06575feb4353ad85b5b5f537fe21c55",
+          "status": 200,
+          "latencyMs": 521,
+          "inputTokens": 1607,
+          "probabilities": {
+            "strengthens": 0.55,
+            "weakens": 0.02,
+            "unrelated": 0.23,
+            "insufficient": 0.2
+          }
+        }
+      ]
+    },
+    {
+      "concurrency": 5,
+      "repeat": 1,
+      "wallMs": 539,
+      "medianRequestLatencyMs": 471,
+      "statuses": [
+        200
+      ],
+      "valid": 5,
+      "inputTokens": 9503,
+      "answers": [
+        {
+          "caseSha256": "e0eedc141c7920657c0352331dcd6990d06575feb4353ad85b5b5f537fe21c55",
+          "status": 200,
+          "latencyMs": 212,
+          "inputTokens": 1607,
+          "probabilities": {
+            "strengthens": 0.51,
+            "weakens": 0.02,
+            "unrelated": 0.25,
+            "insufficient": 0.22
+          }
+        },
+        {
+          "caseSha256": "160b1ce7cc8946edc2051bc3ceb9a2819100260d176d1615056f4a5f9390e040",
+          "status": 200,
+          "latencyMs": 463,
+          "inputTokens": 2052,
+          "probabilities": {
+            "strengthens": 0.6,
+            "weakens": 0.03,
+            "unrelated": 0.26,
+            "insufficient": 0.11
+          }
+        },
+        {
+          "caseSha256": "0b77fc1d549d68f77e8130e4d2b5e324e9531011ea736a9f86e9eed407120661",
+          "status": 200,
+          "latencyMs": 471,
+          "inputTokens": 2091,
+          "probabilities": {
+            "strengthens": 0.36,
+            "weakens": 0.06,
+            "unrelated": 0.34,
+            "insufficient": 0.24
+          }
+        },
+        {
+          "caseSha256": "35d63fe23fc32a24fabd0bb60a3f79fa9e7bdf5c94a850a4701027101837dfb2",
+          "status": 200,
+          "latencyMs": 487,
+          "inputTokens": 1667,
+          "probabilities": {
+            "strengthens": 0.54,
+            "weakens": 0.03,
+            "unrelated": 0.31,
+            "insufficient": 0.12
+          }
+        },
+        {
+          "caseSha256": "bb3072ec5178be0545260c536d1616dbe80e234fe5fd04edf6a919330363f650",
+          "status": 200,
+          "latencyMs": 534,
+          "inputTokens": 2086,
+          "probabilities": {
+            "strengthens": 0.18,
+            "weakens": 0.05,
+            "unrelated": 0.35,
+            "insufficient": 0.42
+          }
+        }
+      ]
+    },
+    {
+      "concurrency": 10,
+      "repeat": 1,
+      "wallMs": 600,
+      "medianRequestLatencyMs": 486,
+      "statuses": [
+        200
+      ],
+      "valid": 10,
+      "inputTokens": 18059,
+      "answers": [
+        {
+          "caseSha256": "e0eedc141c7920657c0352331dcd6990d06575feb4353ad85b5b5f537fe21c55",
+          "status": 200,
+          "latencyMs": 253,
+          "inputTokens": 1607,
+          "probabilities": {
+            "strengthens": 0.5,
+            "weakens": 0.03,
+            "unrelated": 0.24,
+            "insufficient": 0.23
+          }
+        },
+        {
+          "caseSha256": "160b1ce7cc8946edc2051bc3ceb9a2819100260d176d1615056f4a5f9390e040",
+          "status": 200,
+          "latencyMs": 259,
+          "inputTokens": 2052,
+          "probabilities": {
+            "strengthens": 0.54,
+            "weakens": 0.04,
+            "unrelated": 0.3,
+            "insufficient": 0.12
+          }
+        },
+        {
+          "caseSha256": "0b77fc1d549d68f77e8130e4d2b5e324e9531011ea736a9f86e9eed407120661",
+          "status": 200,
+          "latencyMs": 243,
+          "inputTokens": 2091,
+          "probabilities": {
+            "strengthens": 0.33,
+            "weakens": 0.05,
+            "unrelated": 0.41,
+            "insufficient": 0.21
+          }
+        },
+        {
+          "caseSha256": "35d63fe23fc32a24fabd0bb60a3f79fa9e7bdf5c94a850a4701027101837dfb2",
+          "status": 200,
+          "latencyMs": 322,
+          "inputTokens": 1667,
+          "probabilities": {
+            "strengthens": 0.49,
+            "weakens": 0.03,
+            "unrelated": 0.32,
+            "insufficient": 0.16
+          }
+        },
+        {
+          "caseSha256": "bb3072ec5178be0545260c536d1616dbe80e234fe5fd04edf6a919330363f650",
+          "status": 200,
+          "latencyMs": 545,
+          "inputTokens": 2086,
+          "probabilities": {
+            "strengthens": 0.23,
+            "weakens": 0.04,
+            "unrelated": 0.37,
+            "insufficient": 0.36
+          }
+        },
+        {
+          "caseSha256": "0b466217560258102449501a0d3f961c92903ea756dd449acb2df6c803acfa8c",
+          "status": 200,
+          "latencyMs": 543,
+          "inputTokens": 1600,
+          "probabilities": {
+            "strengthens": 0.49,
+            "weakens": 0.03,
+            "unrelated": 0.33,
+            "insufficient": 0.15
+          }
+        },
+        {
+          "caseSha256": "4bd9fa76a1e671e0de3ea6897c7484dd6d3c2d10f943188c7d8d14a7e9263d2c",
+          "status": 200,
+          "latencyMs": 474,
+          "inputTokens": 1615,
+          "probabilities": {
+            "strengthens": 0.19,
+            "weakens": 0.25,
+            "unrelated": 0.46,
+            "insufficient": 0.1
+          }
+        },
+        {
+          "caseSha256": "39ece8641bcf409d6f2950adb1c3cc6427cec4b5acf1b4571e707dbddb8f6ef1",
+          "status": 200,
+          "latencyMs": 591,
+          "inputTokens": 1589,
+          "probabilities": {
+            "strengthens": 0.31,
+            "weakens": 0.16,
+            "unrelated": 0.27,
+            "insufficient": 0.26
+          }
+        },
+        {
+          "caseSha256": "2ff5758980e00bcd88c689262e66917b654771390defba7df81d828df084d4e5",
+          "status": 200,
+          "latencyMs": 498,
+          "inputTokens": 1664,
+          "probabilities": {
+            "strengthens": 0.44,
+            "weakens": 0.06,
+            "unrelated": 0.34,
+            "insufficient": 0.16
+          }
+        },
+        {
+          "caseSha256": "b0287d5317d557a89755f6e1fabf6c8be700f15dcd0d8358d5fe17c71caedbd7",
+          "status": 200,
+          "latencyMs": 521,
+          "inputTokens": 2088,
+          "probabilities": {
+            "strengthens": 0.23,
+            "weakens": 0.03,
+            "unrelated": 0.4,
+            "insufficient": 0.34
+          }
+        }
+      ]
+    },
+    {
+      "concurrency": 20,
+      "repeat": 1,
+      "wallMs": 709,
+      "medianRequestLatencyMs": 525.5,
+      "statuses": [
+        200
+      ],
+      "valid": 20,
+      "inputTokens": 36040,
+      "answers": [
+        {
+          "caseSha256": "e0eedc141c7920657c0352331dcd6990d06575feb4353ad85b5b5f537fe21c55",
+          "status": 200,
+          "latencyMs": 286,
+          "inputTokens": 1607,
+          "probabilities": {
+            "strengthens": 0.48,
+            "weakens": 0.02,
+            "unrelated": 0.28,
+            "insufficient": 0.22
+          }
+        },
+        {
+          "caseSha256": "160b1ce7cc8946edc2051bc3ceb9a2819100260d176d1615056f4a5f9390e040",
+          "status": 200,
+          "latencyMs": 332,
+          "inputTokens": 2052,
+          "probabilities": {
+            "strengthens": 0.58,
+            "weakens": 0.03,
+            "unrelated": 0.29,
+            "insufficient": 0.1
+          }
+        },
+        {
+          "caseSha256": "0b77fc1d549d68f77e8130e4d2b5e324e9531011ea736a9f86e9eed407120661",
+          "status": 200,
+          "latencyMs": 313,
+          "inputTokens": 2091,
+          "probabilities": {
+            "strengthens": 0.35,
+            "weakens": 0.08,
+            "unrelated": 0.35,
+            "insufficient": 0.22
+          }
+        },
+        {
+          "caseSha256": "35d63fe23fc32a24fabd0bb60a3f79fa9e7bdf5c94a850a4701027101837dfb2",
+          "status": 200,
+          "latencyMs": 299,
+          "inputTokens": 1667,
+          "probabilities": {
+            "strengthens": 0.49,
+            "weakens": 0.03,
+            "unrelated": 0.35,
+            "insufficient": 0.13
+          }
+        },
+        {
+          "caseSha256": "bb3072ec5178be0545260c536d1616dbe80e234fe5fd04edf6a919330363f650",
+          "status": 200,
+          "latencyMs": 519,
+          "inputTokens": 2086,
+          "probabilities": {
+            "strengthens": 0.19,
+            "weakens": 0.04,
+            "unrelated": 0.44,
+            "insufficient": 0.33
+          }
+        },
+        {
+          "caseSha256": "0b466217560258102449501a0d3f961c92903ea756dd449acb2df6c803acfa8c",
+          "status": 200,
+          "latencyMs": 578,
+          "inputTokens": 1600,
+          "probabilities": {
+            "strengthens": 0.47,
+            "weakens": 0.03,
+            "unrelated": 0.3,
+            "insufficient": 0.2
+          }
+        },
+        {
+          "caseSha256": "4bd9fa76a1e671e0de3ea6897c7484dd6d3c2d10f943188c7d8d14a7e9263d2c",
+          "status": 200,
+          "latencyMs": 376,
+          "inputTokens": 1615,
+          "probabilities": {
+            "strengthens": 0.21,
+            "weakens": 0.26,
+            "unrelated": 0.43,
+            "insufficient": 0.1
+          }
+        },
+        {
+          "caseSha256": "39ece8641bcf409d6f2950adb1c3cc6427cec4b5acf1b4571e707dbddb8f6ef1",
+          "status": 200,
+          "latencyMs": 540,
+          "inputTokens": 1589,
+          "probabilities": {
+            "strengthens": 0.3,
+            "weakens": 0.12,
+            "unrelated": 0.29,
+            "insufficient": 0.29
+          }
+        },
+        {
+          "caseSha256": "2ff5758980e00bcd88c689262e66917b654771390defba7df81d828df084d4e5",
+          "status": 200,
+          "latencyMs": 600,
+          "inputTokens": 1664,
+          "probabilities": {
+            "strengthens": 0.52,
+            "weakens": 0.03,
+            "unrelated": 0.28,
+            "insufficient": 0.17
+          }
+        },
+        {
+          "caseSha256": "b0287d5317d557a89755f6e1fabf6c8be700f15dcd0d8358d5fe17c71caedbd7",
+          "status": 200,
+          "latencyMs": 522,
+          "inputTokens": 2088,
+          "probabilities": {
+            "strengthens": 0.25,
+            "weakens": 0.04,
+            "unrelated": 0.38,
+            "insufficient": 0.33
+          }
+        },
+        {
+          "caseSha256": "56b9b26e087c5ff36b075b40eade9cca6f7d908e49fbd366ad652bc02c80cacb",
+          "status": 200,
+          "latencyMs": 529,
+          "inputTokens": 1651,
+          "probabilities": {
+            "strengthens": 0.35,
+            "weakens": 0.11,
+            "unrelated": 0.4,
+            "insufficient": 0.14
+          }
+        },
+        {
+          "caseSha256": "ef5d4bf85400aaaf03147bab240968d722991aefce65d70a5a65561e6b09389f",
+          "status": 200,
+          "latencyMs": 563,
+          "inputTokens": 1646,
+          "probabilities": {
+            "strengthens": 0.35,
+            "weakens": 0.06,
+            "unrelated": 0.51,
+            "insufficient": 0.08
+          }
+        },
+        {
+          "caseSha256": "550e186bf4205f0e0453086688ce8029435baebe9609a37bc273145c4806473d",
+          "status": 200,
+          "latencyMs": 518,
+          "inputTokens": 1597,
+          "probabilities": {
+            "strengthens": 0.64,
+            "weakens": 0.01,
+            "unrelated": 0.23,
+            "insufficient": 0.12
+          }
+        },
+        {
+          "caseSha256": "992bf42d99ce06d84826e7c20d2655b298da6e8cb7f77fdb77ff64c2e76e9579",
+          "status": 200,
+          "latencyMs": 572,
+          "inputTokens": 2072,
+          "probabilities": {
+            "strengthens": 0.29,
+            "weakens": 0.38,
+            "unrelated": 0.2,
+            "insufficient": 0.13
+          }
+        },
+        {
+          "caseSha256": "87f587f137c9416626232f314e1a344c19e7251d0c3835860f1c5bc88fa996fb",
+          "status": 200,
+          "latencyMs": 514,
+          "inputTokens": 2088,
+          "probabilities": {
+            "strengthens": 0.19,
+            "weakens": 0.06,
+            "unrelated": 0.5,
+            "insufficient": 0.25
+          }
+        },
+        {
+          "caseSha256": "52f94d290ebe159c807ce97a3d0427d1233cde4b2feb0453bd25ea69d991ff6f",
+          "status": 200,
+          "latencyMs": 548,
+          "inputTokens": 2057,
+          "probabilities": {
+            "strengthens": 0.44,
+            "weakens": 0.09,
+            "unrelated": 0.28,
+            "insufficient": 0.19
+          }
+        },
+        {
+          "caseSha256": "a7a3146852d87c28f60412a6dc3042f832469f121c5af44a24b2202d76c2b386",
+          "status": 200,
+          "latencyMs": 697,
+          "inputTokens": 1590,
+          "probabilities": {
+            "strengthens": 0.51,
+            "weakens": 0.02,
+            "unrelated": 0.3,
+            "insufficient": 0.17
+          }
+        },
+        {
+          "caseSha256": "c859fcad17189267ebf13d68e6d9da3ec971107ca9479bb7d2165e406d72c721",
+          "status": 200,
+          "latencyMs": 514,
+          "inputTokens": 1620,
+          "probabilities": {
+            "strengthens": 0.33,
+            "weakens": 0.18,
+            "unrelated": 0.29,
+            "insufficient": 0.2
+          }
+        },
+        {
+          "caseSha256": "36bd31032416a5281a613b7854659eba1e5efa881b83423c871f2afa3674d0e2",
+          "status": 200,
+          "latencyMs": 591,
+          "inputTokens": 2056,
+          "probabilities": {
+            "strengthens": 0.2,
+            "weakens": 0.12,
+            "unrelated": 0.35,
+            "insufficient": 0.33
+          }
+        },
+        {
+          "caseSha256": "6fd89484b1f7fb9cc967a8ab4567512c45404b7797ff14077403313e07e53e11",
+          "status": 200,
+          "latencyMs": 588,
+          "inputTokens": 1604,
+          "probabilities": {
+            "strengthens": 0.31,
+            "weakens": 0.02,
+            "unrelated": 0.35,
+            "insufficient": 0.32
+          }
+        }
+      ]
+    },
+    {
+      "concurrency": 1,
+      "repeat": 2,
+      "wallMs": 205,
+      "medianRequestLatencyMs": 205,
+      "statuses": [
+        200
+      ],
+      "valid": 1,
+      "inputTokens": 1607,
+      "answers": [
+        {
+          "caseSha256": "e0eedc141c7920657c0352331dcd6990d06575feb4353ad85b5b5f537fe21c55",
+          "status": 200,
+          "latencyMs": 205,
+          "inputTokens": 1607,
+          "probabilities": {
+            "strengthens": 0.47,
+            "weakens": 0.03,
+            "unrelated": 0.27,
+            "insufficient": 0.23
+          }
+        }
+      ]
+    },
+    {
+      "concurrency": 5,
+      "repeat": 2,
+      "wallMs": 460,
+      "medianRequestLatencyMs": 244,
+      "statuses": [
+        200
+      ],
+      "valid": 5,
+      "inputTokens": 9503,
+      "answers": [
+        {
+          "caseSha256": "e0eedc141c7920657c0352331dcd6990d06575feb4353ad85b5b5f537fe21c55",
+          "status": 200,
+          "latencyMs": 254,
+          "inputTokens": 1607,
+          "probabilities": {
+            "strengthens": 0.54,
+            "weakens": 0.02,
+            "unrelated": 0.23,
+            "insufficient": 0.21
+          }
+        },
+        {
+          "caseSha256": "160b1ce7cc8946edc2051bc3ceb9a2819100260d176d1615056f4a5f9390e040",
+          "status": 200,
+          "latencyMs": 231,
+          "inputTokens": 2052,
+          "probabilities": {
+            "strengthens": 0.59,
+            "weakens": 0.04,
+            "unrelated": 0.26,
+            "insufficient": 0.11
+          }
+        },
+        {
+          "caseSha256": "0b77fc1d549d68f77e8130e4d2b5e324e9531011ea736a9f86e9eed407120661",
+          "status": 200,
+          "latencyMs": 244,
+          "inputTokens": 2091,
+          "probabilities": {
+            "strengthens": 0.37,
+            "weakens": 0.05,
+            "unrelated": 0.35,
+            "insufficient": 0.23
+          }
+        },
+        {
+          "caseSha256": "35d63fe23fc32a24fabd0bb60a3f79fa9e7bdf5c94a850a4701027101837dfb2",
+          "status": 200,
+          "latencyMs": 236,
+          "inputTokens": 1667,
+          "probabilities": {
+            "strengthens": 0.49,
+            "weakens": 0.03,
+            "unrelated": 0.34,
+            "insufficient": 0.14
+          }
+        },
+        {
+          "caseSha256": "bb3072ec5178be0545260c536d1616dbe80e234fe5fd04edf6a919330363f650",
+          "status": 200,
+          "latencyMs": 456,
+          "inputTokens": 2086,
+          "probabilities": {
+            "strengthens": 0.18,
+            "weakens": 0.04,
+            "unrelated": 0.42,
+            "insufficient": 0.36
+          }
+        }
+      ]
+    },
+    {
+      "concurrency": 10,
+      "repeat": 2,
+      "wallMs": 508,
+      "medianRequestLatencyMs": 379,
+      "statuses": [
+        200
+      ],
+      "valid": 10,
+      "inputTokens": 18059,
+      "answers": [
+        {
+          "caseSha256": "e0eedc141c7920657c0352331dcd6990d06575feb4353ad85b5b5f537fe21c55",
+          "status": 200,
+          "latencyMs": 263,
+          "inputTokens": 1607,
+          "probabilities": {
+            "strengthens": 0.44,
+            "weakens": 0.02,
+            "unrelated": 0.25,
+            "insufficient": 0.29
+          }
+        },
+        {
+          "caseSha256": "160b1ce7cc8946edc2051bc3ceb9a2819100260d176d1615056f4a5f9390e040",
+          "status": 200,
+          "latencyMs": 228,
+          "inputTokens": 2052,
+          "probabilities": {
+            "strengthens": 0.49,
+            "weakens": 0.04,
+            "unrelated": 0.32,
+            "insufficient": 0.15
+          }
+        },
+        {
+          "caseSha256": "0b77fc1d549d68f77e8130e4d2b5e324e9531011ea736a9f86e9eed407120661",
+          "status": 200,
+          "latencyMs": 247,
+          "inputTokens": 2091,
+          "probabilities": {
+            "strengthens": 0.36,
+            "weakens": 0.06,
+            "unrelated": 0.33,
+            "insufficient": 0.25
+          }
+        },
+        {
+          "caseSha256": "35d63fe23fc32a24fabd0bb60a3f79fa9e7bdf5c94a850a4701027101837dfb2",
+          "status": 200,
+          "latencyMs": 239,
+          "inputTokens": 1667,
+          "probabilities": {
+            "strengthens": 0.52,
+            "weakens": 0.03,
+            "unrelated": 0.33,
+            "insufficient": 0.12
+          }
+        },
+        {
+          "caseSha256": "bb3072ec5178be0545260c536d1616dbe80e234fe5fd04edf6a919330363f650",
+          "status": 200,
+          "latencyMs": 464,
+          "inputTokens": 2086,
+          "probabilities": {
+            "strengthens": 0.21,
+            "weakens": 0.03,
+            "unrelated": 0.34,
+            "insufficient": 0.42
+          }
+        },
+        {
+          "caseSha256": "0b466217560258102449501a0d3f961c92903ea756dd449acb2df6c803acfa8c",
+          "status": 200,
+          "latencyMs": 502,
+          "inputTokens": 1600,
+          "probabilities": {
+            "strengthens": 0.47,
+            "weakens": 0.04,
+            "unrelated": 0.31,
+            "insufficient": 0.18
+          }
+        },
+        {
+          "caseSha256": "4bd9fa76a1e671e0de3ea6897c7484dd6d3c2d10f943188c7d8d14a7e9263d2c",
+          "status": 200,
+          "latencyMs": 482,
+          "inputTokens": 1615,
+          "probabilities": {
+            "strengthens": 0.21,
+            "weakens": 0.25,
+            "unrelated": 0.42,
+            "insufficient": 0.12
+          }
+        },
+        {
+          "caseSha256": "39ece8641bcf409d6f2950adb1c3cc6427cec4b5acf1b4571e707dbddb8f6ef1",
+          "status": 200,
+          "latencyMs": 503,
+          "inputTokens": 1589,
+          "probabilities": {
+            "strengthens": 0.35,
+            "weakens": 0.14,
+            "unrelated": 0.27,
+            "insufficient": 0.24
+          }
+        },
+        {
+          "caseSha256": "2ff5758980e00bcd88c689262e66917b654771390defba7df81d828df084d4e5",
+          "status": 200,
+          "latencyMs": 294,
+          "inputTokens": 1664,
+          "probabilities": {
+            "strengthens": 0.56,
+            "weakens": 0.04,
+            "unrelated": 0.29,
+            "insufficient": 0.11
+          }
+        },
+        {
+          "caseSha256": "b0287d5317d557a89755f6e1fabf6c8be700f15dcd0d8358d5fe17c71caedbd7",
+          "status": 200,
+          "latencyMs": 479,
+          "inputTokens": 2088,
+          "probabilities": {
+            "strengthens": 0.26,
+            "weakens": 0.04,
+            "unrelated": 0.39,
+            "insufficient": 0.31
+          }
+        }
+      ]
+    },
+    {
+      "concurrency": 20,
+      "repeat": 2,
+      "wallMs": 669,
+      "medianRequestLatencyMs": 585,
+      "statuses": [
+        200
+      ],
+      "valid": 20,
+      "inputTokens": 36040,
+      "answers": [
+        {
+          "caseSha256": "e0eedc141c7920657c0352331dcd6990d06575feb4353ad85b5b5f537fe21c55",
+          "status": 200,
+          "latencyMs": 300,
+          "inputTokens": 1607,
+          "probabilities": {
+            "strengthens": 0.43,
+            "weakens": 0.02,
+            "unrelated": 0.3,
+            "insufficient": 0.25
+          }
+        },
+        {
+          "caseSha256": "160b1ce7cc8946edc2051bc3ceb9a2819100260d176d1615056f4a5f9390e040",
+          "status": 200,
+          "latencyMs": 314,
+          "inputTokens": 2052,
+          "probabilities": {
+            "strengthens": 0.6,
+            "weakens": 0.03,
+            "unrelated": 0.24,
+            "insufficient": 0.13
+          }
+        },
+        {
+          "caseSha256": "0b77fc1d549d68f77e8130e4d2b5e324e9531011ea736a9f86e9eed407120661",
+          "status": 200,
+          "latencyMs": 341,
+          "inputTokens": 2091,
+          "probabilities": {
+            "strengthens": 0.34,
+            "weakens": 0.08,
+            "unrelated": 0.33,
+            "insufficient": 0.25
+          }
+        },
+        {
+          "caseSha256": "35d63fe23fc32a24fabd0bb60a3f79fa9e7bdf5c94a850a4701027101837dfb2",
+          "status": 200,
+          "latencyMs": 364,
+          "inputTokens": 1667,
+          "probabilities": {
+            "strengthens": 0.46,
+            "weakens": 0.04,
+            "unrelated": 0.37,
+            "insufficient": 0.13
+          }
+        },
+        {
+          "caseSha256": "bb3072ec5178be0545260c536d1616dbe80e234fe5fd04edf6a919330363f650",
+          "status": 200,
+          "latencyMs": 597,
+          "inputTokens": 2086,
+          "probabilities": {
+            "strengthens": 0.2,
+            "weakens": 0.05,
+            "unrelated": 0.42,
+            "insufficient": 0.33
+          }
+        },
+        {
+          "caseSha256": "0b466217560258102449501a0d3f961c92903ea756dd449acb2df6c803acfa8c",
+          "status": 200,
+          "latencyMs": 610,
+          "inputTokens": 1600,
+          "probabilities": {
+            "strengthens": 0.49,
+            "weakens": 0.04,
+            "unrelated": 0.32,
+            "insufficient": 0.15
+          }
+        },
+        {
+          "caseSha256": "4bd9fa76a1e671e0de3ea6897c7484dd6d3c2d10f943188c7d8d14a7e9263d2c",
+          "status": 200,
+          "latencyMs": 623,
+          "inputTokens": 1615,
+          "probabilities": {
+            "strengthens": 0.23,
+            "weakens": 0.25,
+            "unrelated": 0.44,
+            "insufficient": 0.08
+          }
+        },
+        {
+          "caseSha256": "39ece8641bcf409d6f2950adb1c3cc6427cec4b5acf1b4571e707dbddb8f6ef1",
+          "status": 200,
+          "latencyMs": 536,
+          "inputTokens": 1589,
+          "probabilities": {
+            "strengthens": 0.35,
+            "weakens": 0.14,
+            "unrelated": 0.28,
+            "insufficient": 0.23
+          }
+        },
+        {
+          "caseSha256": "2ff5758980e00bcd88c689262e66917b654771390defba7df81d828df084d4e5",
+          "status": 200,
+          "latencyMs": 582,
+          "inputTokens": 1664,
+          "probabilities": {
+            "strengthens": 0.54,
+            "weakens": 0.04,
+            "unrelated": 0.28,
+            "insufficient": 0.14
+          }
+        },
+        {
+          "caseSha256": "b0287d5317d557a89755f6e1fabf6c8be700f15dcd0d8358d5fe17c71caedbd7",
+          "status": 200,
+          "latencyMs": 575,
+          "inputTokens": 2088,
+          "probabilities": {
+            "strengthens": 0.27,
+            "weakens": 0.03,
+            "unrelated": 0.33,
+            "insufficient": 0.37
+          }
+        },
+        {
+          "caseSha256": "56b9b26e087c5ff36b075b40eade9cca6f7d908e49fbd366ad652bc02c80cacb",
+          "status": 200,
+          "latencyMs": 468,
+          "inputTokens": 1651,
+          "probabilities": {
+            "strengthens": 0.36,
+            "weakens": 0.1,
+            "unrelated": 0.38,
+            "insufficient": 0.16
+          }
+        },
+        {
+          "caseSha256": "ef5d4bf85400aaaf03147bab240968d722991aefce65d70a5a65561e6b09389f",
+          "status": 200,
+          "latencyMs": 538,
+          "inputTokens": 1646,
+          "probabilities": {
+            "strengthens": 0.3,
+            "weakens": 0.06,
+            "unrelated": 0.53,
+            "insufficient": 0.11
+          }
+        },
+        {
+          "caseSha256": "550e186bf4205f0e0453086688ce8029435baebe9609a37bc273145c4806473d",
+          "status": 200,
+          "latencyMs": 567,
+          "inputTokens": 1597,
+          "probabilities": {
+            "strengthens": 0.64,
+            "weakens": 0.01,
+            "unrelated": 0.23,
+            "insufficient": 0.12
+          }
+        },
+        {
+          "caseSha256": "992bf42d99ce06d84826e7c20d2655b298da6e8cb7f77fdb77ff64c2e76e9579",
+          "status": 200,
+          "latencyMs": 588,
+          "inputTokens": 2072,
+          "probabilities": {
+            "strengthens": 0.32,
+            "weakens": 0.37,
+            "unrelated": 0.2,
+            "insufficient": 0.11
+          }
+        },
+        {
+          "caseSha256": "87f587f137c9416626232f314e1a344c19e7251d0c3835860f1c5bc88fa996fb",
+          "status": 200,
+          "latencyMs": 601,
+          "inputTokens": 2088,
+          "probabilities": {
+            "strengthens": 0.21,
+            "weakens": 0.06,
+            "unrelated": 0.5,
+            "insufficient": 0.23
+          }
+        },
+        {
+          "caseSha256": "52f94d290ebe159c807ce97a3d0427d1233cde4b2feb0453bd25ea69d991ff6f",
+          "status": 200,
+          "latencyMs": 609,
+          "inputTokens": 2057,
+          "probabilities": {
+            "strengthens": 0.36,
+            "weakens": 0.08,
+            "unrelated": 0.36,
+            "insufficient": 0.2
+          }
+        },
+        {
+          "caseSha256": "a7a3146852d87c28f60412a6dc3042f832469f121c5af44a24b2202d76c2b386",
+          "status": 200,
+          "latencyMs": 656,
+          "inputTokens": 1590,
+          "probabilities": {
+            "strengthens": 0.51,
+            "weakens": 0.02,
+            "unrelated": 0.31,
+            "insufficient": 0.16
+          }
+        },
+        {
+          "caseSha256": "c859fcad17189267ebf13d68e6d9da3ec971107ca9479bb7d2165e406d72c721",
+          "status": 200,
+          "latencyMs": 588,
+          "inputTokens": 1620,
+          "probabilities": {
+            "strengthens": 0.43,
+            "weakens": 0.21,
+            "unrelated": 0.24,
+            "insufficient": 0.12
+          }
+        },
+        {
+          "caseSha256": "36bd31032416a5281a613b7854659eba1e5efa881b83423c871f2afa3674d0e2",
+          "status": 200,
+          "latencyMs": 597,
+          "inputTokens": 2056,
+          "probabilities": {
+            "strengthens": 0.2,
+            "weakens": 0.12,
+            "unrelated": 0.4,
+            "insufficient": 0.28
+          }
+        },
+        {
+          "caseSha256": "6fd89484b1f7fb9cc967a8ab4567512c45404b7797ff14077403313e07e53e11",
+          "status": 200,
+          "latencyMs": 627,
+          "inputTokens": 1604,
+          "probabilities": {
+            "strengthens": 0.39,
+            "weakens": 0.02,
+            "unrelated": 0.31,
+            "insufficient": 0.28
+          }
+        }
+      ]
+    }
+  ]
+}
