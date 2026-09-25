@@ -31,7 +31,7 @@ Side-hardening PRs may be developed in parallel, but they remain **HOLD** and do
 | M5 | Coverage discovery + frozen validation packet | #555 | CI #2833, head `32f0bda2296af99ec8720b9be43438268d16b7e2` |
 | M6 | Minimal test specification | #561 | CI #2840, head `e52e459a08c5ab56f466303e132beb93400050cb` |
 | M7 | Executable test candidate materialization | #566 | CI green, head `7239197bf8cbe010c8c9a1e519992a8931a9f970` |
-| M8 | Relational evidence core: deterministic relation math + bounded advisory Jev judgment/outcome chain | #590 | CI #2938, head `49f91ea591345ab477228b3c8ce91cbaa30d60c1` |
+| M8 | Relational evidence core: deterministic relation math + bounded advisory Jev judgment/outcome chain | #590 | CI #2938, head `49f91ea591345ab477228b3c8ce91cbaa30d60c1` |\n| M9 | Relational case composer: deterministic scoped evidence selection before Jev | #592 | CI green, head `440a8b2de05bddec1617600a3187c5c229c1c072` |
 
 ## M5 contract
 
@@ -123,6 +123,28 @@ Bundle **M9** implements RC1–RC16:
 - no Jev/model/API call during composition.
 
 M9 remains advisory and deterministic. Jev receives a case only after H19 has selected and frozen its evidence.
+
+## Frozen next feature gate — Relational Judgment Batch
+
+`specs/RELATIONAL_JUDGMENT_BATCH_GATE-v0.1.md` freezes the orchestration boundary between M9's deterministic case batch and M8's bounded Jev adapter.
+
+The gate requires:
+
+- exact M9 batch → exact M8 case binding before any provider call;
+- deterministic content-addressed request planning;
+- cache-first replay using the existing M8 model/question/input identity;
+- explicit `maxLiveCalls` bounded to 0..20;
+- one provider attempt per uncached in-budget case, with no hidden retry loop;
+- explicit `live-call-budget` skipped rows when the budget is exhausted;
+- immutable answered/error judgment rows;
+- `insufficient` preserved as a valid answered abstention;
+- provider confidence stored only as provider metadata, never as calibrated probability or dispatcher authority;
+- no cross-case aggregate risk/winner score;
+- independent M8 outcomes required for any later calibration;
+- fake-provider CI only, with no live Jev credential dependency;
+- no H19s crossover.
+
+**No next Bundle number is assigned until this freeze is exact-head CI-green.**
 
 ## Side-hardening HOLD
 
