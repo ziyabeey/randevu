@@ -104,6 +104,22 @@ Bundle **M8** implements the frozen RE1–RE13 contract:
 
 M8 remains advisory. It does not change dispatcher action authority, write/execute tests, or modify H19s.
 
+## Frozen next feature gate
+
+`specs/RELATIONAL_CASE_COMPOSER_GATE-v0.1.md` freezes deterministic evidence selection before any further Jev work.
+
+The gate requires:
+
+- explicit hypothesis/unit/path/related-path scope;
+- reason-specific direct anchor evidence;
+- minimum two independent evidence families;
+- at most one 2–4 fact case per hypothesis;
+- deterministic subset selection with lineage/scope tie-breaks;
+- explicit 20-case batch cap and skipped ledger;
+- no Jev call during composition.
+
+**No next Bundle number is assigned until this freeze is exact-head CI-green.**
+
 ## Side-hardening HOLD
 
 The following work does not advance the active bundle sequence until explicitly integrated after the active parent line remains green:
