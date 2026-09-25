@@ -85,26 +85,20 @@ The same CI run measured the whole-repository baseline at 8.460 s first index an
 
 Production adoption is therefore complete. GRAPH-EQ remains a regression gate for future evidence-graph changes.
 
-## Next authorized feature/integration gate
+## Active integration milestone — M6 Minimal Test Specification
 
-The minimal test-specification and executable-candidate work already exists as a prepared feature line:
+The Test Specification Gate v0.1 was revalidated byte-for-byte on the production-adoption line in #583.
 
-- #560 — frozen minimal test-spec gate;
-- #561 — M6 minimal test specification, CI-green on its pre-adoption stack;
-- #564 — frozen executable test-candidate gate;
-- #566 — M7 executable test candidate, CI-green on its pre-adoption stack.
+Accepted gate evidence:
 
-Under the sequencing invariant, those prepared PRs are **not yet promoted onto the active bundle line**, because they were built from the pre-#581 base.
+- source freeze: #560 head `82066517d86cf2d284356f5eb0f277bde83523ac`;
+- restacked freeze: #583 head `7bd3b1faca00a13a38efdede9cca5ab2e8fd5ea7`;
+- schema blob and gate-contract blob are identical to #560;
+- exact-head CI `36092063295`: green.
 
-The next authorized action is therefore **integration revalidation, not new feature work**:
+With the contract revalidated on the active parent, Bundle **M6** is authorized for implementation on top of #583.
 
-1. restack/revalidate the #560/#561 test-spec line on top of the accepted #581 production-adoption head;
-2. require exact-head CI green with no H19s changes;
-3. then restack/revalidate #564/#566 on top of that accepted M6 integration;
-4. require exact-head CI green again;
-5. only then authorize a post-M7 gate.
-
-For a surviving-mutant-driven target, the M6 specification contract remains:
+M6 converts an eligible M5 hypothesis into a deterministic, provenance-bound minimal test specification:
 
 ```text
 setup
@@ -114,7 +108,11 @@ setup
 → required observations
 ```
 
-Do not create or promote M8 while the prepared M6/M7 line is still on the old base.
+M6 remains limited to the frozen TS1–TS8 acceptance gates. It does not generate executable test source, write repository tests, invoke Jev/another model, or change H19s.
+
+The implementation is a restack of the previously green #561 logic. Promotion requires this new exact head to pass CI while retaining the production project-shard evidence path.
+
+The prepared M7 line (#564/#566) remains blocked until this M6 restack is exact-head green.
 
 ## Side-hardening HOLD
 
