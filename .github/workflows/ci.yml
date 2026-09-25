@@ -276,7 +276,7 @@ jobs:
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-m11-notification-behavioral-validation' && hashFiles('tools/h19-kit/experiments/m11/notification-validation-001/RESULT.json') == '' }}
         env:
           H19_M11_NOTIFICATION_SOURCE_REVISION: 07688ae08ef5c834bcadf5dc6a23c4e42e4621dd
-          H19_M11_NOTIFICATION_PLAN_SHA256: 77ae3c50eeffe8220cd8736727e7e3efc34a1f6fa2fb3e6be7928959e31aa064
+          H19_M11_NOTIFICATION_PLAN_SHA256: 9478ae5199235075f1b142fab20de20222aa150a29a68c856239da1008855e3c
         run: |
           set -euo pipefail
           source_root="${RUNNER_TEMP}/h19-m11-notification-source"
