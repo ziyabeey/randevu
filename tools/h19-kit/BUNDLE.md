@@ -69,7 +69,9 @@ PERF-002 established a concrete bottleneck: a single changed file caused ~8.95 s
 
 PERF-003 then measured TypeScript-project-scoped invalidation: a real app-source edit dropped from 5.66 s whole-root reindex to 3.87 s single-shard reindex (31.5% reduction), while two unchanged shards remained cache hits and an out-of-project script change invalidated zero declared TypeScript shards.
 
-Before production adoption, the next mandatory correctness gate is **semantic graph-composition equivalence** between the whole-repository SCIP index and the union of project-sharded indexes.
+GRAPH-EQ-001 then passed semantic graph-composition equivalence on the real repository: 77 whole-index documents matched 77 merged-shard documents exactly, the 9,686-node H19 graph digest was identical, and 20 representative blast-radius units had zero mismatches.
+
+The next authorized performance action is **production adoption of project-scoped SCIP fingerprints/index shards with the equivalence invariant retained as a regression gate**.
 
 ## Next authorized feature gate
 
