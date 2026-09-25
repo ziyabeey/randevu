@@ -39,7 +39,9 @@
     "perf:materialize-cache": "node perf/materialize-shard-cache.mjs",
     "test:perf-synthesis": "node test/performance-synthesis.mjs",
     "perf:plan-evidence": "node perf/plan-evidence-graph.mjs",
-    "perf:materialize-evidence": "node perf/materialize-evidence-graph.mjs"
+    "perf:materialize-evidence": "node perf/materialize-evidence-graph.mjs",
+    "test:graph-cache-prune": "node test/graph-cache-prune.mjs",
+    "perf:prune-graph-cache": "node perf/prune-graph-cache.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
