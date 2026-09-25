@@ -125,23 +125,21 @@ Bundle **M9** implements RC1–RC16:
 
 M9 remains advisory and deterministic. Jev receives a case only after H19 has selected and frozen its evidence.
 
-## Active milestone — M10 Relational Judgment Batch
+## Active milestone — M10 Relational Judgment Fan-out (v0.2)
 
-The judgment-batch gate in `specs/RELATIONAL_JUDGMENT_BATCH_GATE-v0.1.md` is frozen on #593 and exact-head CI #2949 is green at `fd2bc67598bc9f4d9dd98946ccf19242d7b1d3d6`.
+The first judgment-batch freeze, `specs/RELATIONAL_JUDGMENT_BATCH_GATE-v0.1.md`, is exact-head CI-green on #593 and remains historical evidence. `specs/RELATIONAL_JUDGMENT_BATCH_GATE-v0.2.md` (#595) supersedes its execution shape while retaining its authority/provenance boundaries. M10 is restacked onto that freeze and implements JF1–JF22:
 
-Bundle **M10** implements JB1–JB17:
-
-- exact M9 batch → exact M8 case binding;
+- exact M9 batch → exact M8 case binding before cache or provider work;
 - deterministic content-addressed request planning;
-- cache-first exact-input replay;
-- explicit `maxLiveCalls` bounded to 0..20;
-- deterministic budget order with explicit `live-call-budget` skips;
-- at most one provider attempt per uncached in-budget case;
-- immutable answered/error/skipped judgment ledger;
-- `insufficient` preserved as a valid answered abstention;
-- provider confidence preserved only as provider metadata;
-- no cross-case aggregate risk/winner score;
-- no self-calibration from Jev answers;
+- cache-first replay of probability-complete v0.2 entries only; valid legacy judgment-only entries become `cache-upgrade-required`, tampered or identity-invalid entries become `invalid_cache` with no live fallback;
+- `maxLiveQuestions` bounded to 0..20; cached rows consume zero live-question budget;
+- all selected uncached cases become one structured shared state + one parallel Choice question each, every question naming only its own `cases[i].state` path;
+- exactly zero or one provider request per run, with no hidden retry;
+- explicit `live-question-budget` skips for overflow, in request-plan order;
+- atomic live acceptance: a missing/extra answer, wrong model or malformed answer fails the whole live response and nothing from it is cached;
+- each live answer preserves the exact four-option probability distribution plus provider confidence;
+- `insufficient` remains a valid answered abstention;
+- no aggregate risk/winner score, no dispatcher authority, no self-calibration;
 - fake-provider CI only and no H19s crossover.
 
 M10 remains advisory. It cannot alter dispatcher authority or execute M7 candidates.
