@@ -791,7 +791,12 @@ export async function runManagementAcceptance(options = {}) {
       })()`),
       'root workspace did not retain verified Salon B selection',
     );
-    await waitText(pageC, 'Çıkış yap');
+    // F16-08 moved sign-out into the header account menu (a closed <details>),
+    // so the authenticated shell is proven by the button being mounted.
+    await waitFor(
+      () => pageC.evaluate(`[...document.querySelectorAll('.account-menu button')].some((item) => (item.textContent ?? '').includes('Çıkış yap'))`),
+      'UI did not contain Çıkış yap',
+    );
     state.sessionFailureOnce = true;
     await reload(pageC);
     await waitText(pageC, 'Oturum şu anda doğrulanamıyor');
@@ -971,7 +976,16 @@ export async function runManagementAcceptance(options = {}) {
     for (const page of pages) {
       try { page.close(); } catch { /* best effort */ }
     }
-    if (chrome && chrome.exitCode === null) chrome.kill('SIGTERM');
+    if (chrome && chrome.exitCode === null && chrome.signalCode === null) {
+      // Wait for Chrome to release its profile before removing it.
+      const exited = new Promise((resolve) => chrome.once('exit', resolve));
+      chrome.kill('SIGTERM');
+      await Promise.race([exited, sleep(3_000)]);
+      if (chrome.exitCode === null && chrome.signalCode === null) {
+        chrome.kill('SIGKILL');
+        await Promise.race([exited, sleep(2_000)]);
+      }
+    }
     if (chromeFd !== undefined) closeSync(chromeFd);
     if (server) {
       for (const socket of sockets) socket.destroy();

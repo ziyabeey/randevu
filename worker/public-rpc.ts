@@ -15,7 +15,7 @@ type Result<T> = { ok: true; data: T; status: number }
 // SQL errors are returned normally so the quota transaction can commit. Never
 // interpret an HTTP 200 error envelope (or legacy array) as successful booking.
 export async function boundedRpc<T extends unknown[]>(
-  env: AuthEnv, name: 'execute_public_operation' | 'create_business_with_owner_guarded',
+  env: AuthEnv, name: 'execute_public_operation' | 'execute_public_feedback_operation' | 'execute_public_promo_operation' | 'create_business_with_owner_guarded',
   args: Record<string, unknown>, accessToken?: string,
 ): Promise<Result<T>> {
   const result = await supabaseRequest<unknown>(env, `rest/v1/rpc/${name}`, {
@@ -44,6 +44,36 @@ export function publicOperation<T extends unknown[]>(
   env: AuthEnv, action: Operation, args: Record<string, unknown>, identity: PublicAbuseIdentity,
 ) {
   return boundedRpc<T>(env, 'execute_public_operation', {
+    p_action: action, p_args: args, p_gate_secret: identity.gateSecret,
+    p_actor_hash: identity.actorHash, p_network_hash: identity.networkHash,
+  });
+}
+
+type FeedbackOperation = 'reviews' | 'manage_feedback_view' | 'manage_feedback_submit';
+
+/**
+ * F16-04 sibling gate: the same gate secret and S04 rate classes, with a closed
+ * feedback/review action list so the booking gateway is not widened.
+ */
+export function feedbackOperation<T extends unknown[]>(
+  env: AuthEnv, action: FeedbackOperation, args: Record<string, unknown>, identity: PublicAbuseIdentity,
+) {
+  return boundedRpc<T>(env, 'execute_public_feedback_operation', {
+    p_action: action, p_args: args, p_gate_secret: identity.gateSecret,
+    p_actor_hash: identity.actorHash, p_network_hash: identity.networkHash,
+  });
+}
+
+type PromoOperation = 'promo_preview' | 'manage_promo_view' | 'manage_promo_attach';
+
+/**
+ * F16-06 sibling gate for promo codes: the same gate secret and S04 rate
+ * classes with a closed promo action list; the booking gateway is not widened.
+ */
+export function promoOperation<T extends unknown[]>(
+  env: AuthEnv, action: PromoOperation, args: Record<string, unknown>, identity: PublicAbuseIdentity,
+) {
+  return boundedRpc<T>(env, 'execute_public_promo_operation', {
     p_action: action, p_args: args, p_gate_secret: identity.gateSecret,
     p_actor_hash: identity.actorHash, p_network_hash: identity.networkHash,
   });

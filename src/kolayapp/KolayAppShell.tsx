@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { t } from '../i18n';
 import KolayBottomNav from './KolayBottomNav';
 import { kolayAppTabLabel, type KolayAppTab } from './model';
 import './kolayapp.css';
@@ -31,19 +32,19 @@ export default function KolayAppShell({
   hideBusinessSummary = false,
   children,
 }: Props) {
-  const businessName = business?.name ?? 'İşletme seçilmedi';
+  const businessName = business?.name ?? t('İşletme seçilmedi');
   const screenTitle = title ?? kolayAppTabLabel(activeTab);
 
   const businessSummary = (
     <>
       <span className="kolay-business-switch__name">{businessName}</span>
-      <span className="kolay-business-switch__meta">{business?.meta ?? 'İşletme seçimi hazır değil'}</span>
+      <span className="kolay-business-switch__meta">{business?.meta ?? t('İşletme seçimi hazır değil')}</span>
     </>
   );
 
   return (
-    <section className="kolay-app-shell" data-active-tab={activeTab} aria-label="KolayApp mobil çalışma alanı">
-      <a className="kolay-skip-link" href="#kolayapp-content">İçeriğe geç</a>
+    <section className="kolay-app-shell" data-active-tab={activeTab} aria-label={t('KolayApp mobil çalışma alanı')}>
+      <a className="kolay-skip-link" href="#kolayapp-content">{t('İçeriğe geç')}</a>
 
       <header className="kolay-app-header">
         <div className="kolay-app-header__copy">

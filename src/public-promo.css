@@ -1,0 +1,14 @@
+/* F16-06 campaign code on the public booking form, confirmation and manage page. */
+.public-promo-field { display: grid; gap: .35rem; }
+.public-promo-field > label { display: grid; gap: .35rem; }
+.public-promo-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: stretch; }
+.public-promo-row input { flex: 1 1 10rem; min-width: 0; min-height: 44px; text-transform: uppercase; }
+.public-promo-row button { min-height: 44px; }
+.public-promo-ok { margin: 0; font-size: .85rem; color: var(--public-success, #1b6b3a); overflow-wrap: anywhere; }
+.public-promo-attach { margin: .5rem 0; padding: .6rem .75rem; border-radius: 10px; background: var(--public-surface-muted, #f4f6f8); overflow-wrap: anywhere; }
+.public-promo-attach.is-ok { color: var(--public-success, #1b6b3a); }
+.public-promo-attach.is-error { color: var(--public-danger, #9f1d1d); }
+.manage-promo { display: grid; gap: .5rem; margin: 1rem 0; padding: 1rem; border: 1px solid var(--border, #d9dde5); border-radius: 14px; }
+.manage-promo h2 { margin: 0; font-size: 1.05rem; }
+.manage-promo p { margin: 0; overflow-wrap: anywhere; }
+.manage-promo-note { color: var(--muted, #667085); font-size: .9rem; }

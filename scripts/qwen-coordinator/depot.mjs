@@ -129,6 +129,9 @@ export function depotEligible(pr, decision, config) {
     'FILES_TRUNCATED',
     'THREADS_TRUNCATED',
     'BASE_NOT_CURRENT_MAIN',
+    'STACK_DEPENDENCY_PENDING',
+    'STACK_BASE_NOT_DECLARED',
+    'STACK_PARENT_HEAD_STALE',
     'CROSS_REPOSITORY_HEAD',
   ]);
   const githubAwaiting = ['missing', 'pending'].includes(decision.ci?.status);

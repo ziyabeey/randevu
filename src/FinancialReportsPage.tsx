@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { intlLocale, t } from './i18n';
 import type { FormEvent } from 'react';
 import { api } from './api';
 import { useWorkspace } from './workspace-context';
+import StaffCommissionPanel from './StaffCommissionPanel';
 
 type FinancialReport = {
   businessId: string;
@@ -32,6 +34,10 @@ type FinancialReport = {
   appointmentCount: number;
   serviceSaleMinor: number;
   productSaleMinor: number;
+  packageSaleMinor?: number;
+  promoDiscountMinor?: number;
+  packageCoveredSessionCount?: number;
+  packageCoveredValueMinor?: number;
   saleValueMinor: number;
   outstandingMinor: number;
   ticketCount: number;
@@ -50,11 +56,11 @@ function localDateInZone(timeZone: string) {
 }
 
 function money(minor: number, currency: string | null) {
-  if (!currency) return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(minor / 100);
+  if (!currency) return new Intl.NumberFormat(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(minor / 100);
   try {
-    return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
+    return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100);
   } catch {
-    return `${new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(minor / 100)} ${currency}`;
+    return `${new Intl.NumberFormat(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(minor / 100)} ${currency}`;
   }
 }
 
@@ -66,7 +72,7 @@ function moneyRange(minorMin: number, minorMax: number, currency: string | null)
 function timeLabel(instant: string, timeZone: string) {
   const date = new Date(instant);
   if (!Number.isFinite(date.getTime())) return instant;
-  return new Intl.DateTimeFormat('tr-TR', {
+  return new Intl.DateTimeFormat(intlLocale(), {
     timeZone,
     dateStyle: 'short',
     timeStyle: 'medium',
@@ -74,7 +80,7 @@ function timeLabel(instant: string, timeZone: string) {
 }
 
 export default function FinancialReportsPage() {
-  const { activeBusinessId, activeBusiness, scopeEpoch } = useWorkspace();
+  const { activeBusinessId, activeBusiness, activeMembership, scopeEpoch } = useWorkspace();
   const timeZone = activeBusiness?.timezone ?? 'Europe/Istanbul';
   const today = useMemo(() => localDateInZone(timeZone), [timeZone]);
   const [startDate, setStartDate] = useState(today);
@@ -84,6 +90,7 @@ export default function FinancialReportsPage() {
   const [notice, setNotice] = useState('');
   const requestController = useRef<AbortController | null>(null);
   const requestGeneration = useRef(0);
+  const [commissionKey, setCommissionKey] = useState(0);
 
   const load = useCallback(async (from = startDate, to = endDate) => {
     requestController.current?.abort();
@@ -98,12 +105,12 @@ export default function FinancialReportsPage() {
         signal: controller.signal,
       });
       if (controller.signal.aborted || generation !== requestGeneration.current) return;
-      if (result.report.businessId !== activeBusinessId) throw new Error('Rapor güncel işletmeyle eşleşmiyor.');
+      if (result.report.businessId !== activeBusinessId) throw new Error(t('Rapor güncel işletmeyle eşleşmiyor.'));
       setReport(result.report);
     } catch (error) {
       if (controller.signal.aborted || generation !== requestGeneration.current) return;
       setReport(null);
-      setNotice(error instanceof Error ? error.message : 'Mali rapor hazırlanamadı.');
+      setNotice(error instanceof Error ? error.message : t('Mali rapor hazırlanamadı.'));
     } finally {
       if (generation === requestGeneration.current) setLoading(false);
       if (requestController.current === controller) requestController.current = null;
@@ -116,6 +123,7 @@ export default function FinancialReportsPage() {
     setEndDate(next);
     setReport(null);
     setNotice('');
+    setCommissionKey((key) => key + 1);
     void load(next, next);
     return () => {
       requestGeneration.current += 1;
@@ -129,9 +137,10 @@ export default function FinancialReportsPage() {
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!startDate || !endDate || endDate < startDate) {
-      setNotice('Başlangıç tarihi bitiş tarihinden sonra olamaz.');
+      setNotice(t('Başlangıç tarihi bitiş tarihinden sonra olamaz.'));
       return;
     }
+    setCommissionKey((key) => key + 1);
     void load();
   }
 
@@ -141,9 +150,9 @@ export default function FinancialReportsPage() {
     <main className="financial-report-shell">
       <header className="financial-report-hero">
         <div>
-          <p className="financial-report-eyebrow">KASA VE RAPORLAR</p>
-          <h1>Gün sonu görünümü</h1>
-          <p>Tahsilat, iade, masraf, satış ve açık bakiye aynı kaynak kayıtlarından yeniden hesaplanır. Bu ekran muhasebe kapanışı oluşturmaz.</p>
+          <p className="financial-report-eyebrow">{t('KASA VE RAPORLAR')}</p>
+          <h1>{t('Gün sonu görünümü')}</h1>
+          <p>{t('Tahsilat, iade, masraf, satış ve açık bakiye aynı kaynak kayıtlarından yeniden hesaplanır. Bu ekran muhasebe kapanışı oluşturmaz.')}</p>
         </div>
       </header>
 
@@ -156,77 +165,95 @@ export default function FinancialReportsPage() {
           Bitiş
           <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} required />
         </label>
-        <button disabled={loading}>Raporu getir</button>
+        <button disabled={loading}>{t('Raporu getir')}</button>
       </form>
 
       {notice && <div className="financial-report-notice" role="status">{notice}</div>}
-      {loading ? <p className="financial-report-loading" aria-busy="true">Rapor hazırlanıyor…</p> : report && (
+      {loading ? <p className="financial-report-loading" aria-busy="true">{t('Rapor hazırlanıyor…')}</p> : report && (
         <>
-          <section className="financial-report-meta" aria-label="Rapor kimliği">
+          <section className="financial-report-meta" aria-label={t('Rapor kimliği')}>
             <span>{report.startDate === report.endDate ? report.startDate : `${report.startDate} → ${report.endDate}`}</span>
             <span>{report.timezone}</span>
-            <span>Hesaplama: {timeLabel(report.asOf, report.timezone)}</span>
+            <span>{t('Hesaplama: {asOf}', { asOf: timeLabel(report.asOf, report.timezone) })}</span>
           </section>
 
-          <section className="financial-report-cards" aria-label="Mali özet">
+          <section className="financial-report-cards" aria-label={t('Mali özet')}>
             <article className="financial-report-card financial-report-card--primary">
-              <span>Net hareket</span>
+              <span>{t('Net hareket')}</span>
               <strong>{money(report.netMovementMinor, currency)}</strong>
-              <small>Tahsilat etkisi − net masraf</small>
+              <small>{t('Tahsilat etkisi − net masraf')}</small>
             </article>
             <article className="financial-report-card">
-              <span>Tahsilat</span>
+              <span>{t('Tahsilat')}</span>
               <strong>{money(report.collectedMinor, currency)}</strong>
-              <small>Nakit {money(report.cashCollectedMinor, currency)} · Kart {money(report.cardCollectedMinor, currency)}</small>
+              <small>{t('Nakit {cashCollected} · Kart {cardCollected}', { cashCollected: money(report.cashCollectedMinor, currency), cardCollected: money(report.cardCollectedMinor, currency) })}</small>
             </article>
             <article className="financial-report-card">
-              <span>İade</span>
+              <span>{t('İade')}</span>
               <strong>{money(report.refundMinor, currency)}</strong>
-              <small>Düzeltme +{money(report.correctionIncreaseMinor, currency)} / −{money(report.correctionDecreaseMinor, currency)}</small>
+              <small>{t('Düzeltme +{correctionIncrease} / −{correctionDecrease}', { correctionIncrease: money(report.correctionIncreaseMinor, currency), correctionDecrease: money(report.correctionDecreaseMinor, currency) })}</small>
             </article>
             <article className="financial-report-card">
-              <span>Masraf</span>
+              <span>{t('Masraf')}</span>
               <strong>{money(report.expenseMinor, currency)}</strong>
-              <small>Nakit {money(report.cashExpenseMinor, currency)} · Kart {money(report.cardExpenseMinor, currency)}</small>
+              <small>{t('Nakit {cashExpense} · Kart {cardExpense}', { cashExpense: money(report.cashExpenseMinor, currency), cardExpense: money(report.cardExpenseMinor, currency) })}</small>
             </article>
             <article className="financial-report-card">
-              <span>Beklenen tutar</span>
+              <span>{t('Beklenen tutar')}</span>
               <strong>{moneyRange(report.expectedMinMinor, report.expectedMaxMinor, currency)}</strong>
-              <small>Kesinleşmemiş adisyonlar dahil snapshot aralığı</small>
+              <small>{t('Kesinleşmemiş adisyonlar dahil snapshot aralığı')}</small>
             </article>
             <article className="financial-report-card">
-              <span>Beklenen randevu bedeli</span>
+              <span>{t('Beklenen randevu bedeli')}</span>
               <strong>{moneyRange(report.expectedAppointmentMinMinor, report.expectedAppointmentMaxMinor, currency)}</strong>
-              <small>{report.appointmentCount} randevu · gerçekleşen satıştan ayrıdır</small>
+              <small>{t('{appointmentCount} randevu · gerçekleşen satıştan ayrıdır', { appointmentCount: report.appointmentCount })}</small>
             </article>
             <article className="financial-report-card">
-              <span>Satış değeri</span>
+              <span>{t('Satış değeri')}</span>
               <strong>{money(report.saleValueMinor, currency)}</strong>
-              <small>Hizmet {money(report.serviceSaleMinor, currency)} · Ürün {money(report.productSaleMinor, currency)}</small>
+              <small>{t('Hizmet {serviceSale} · Ürün {productSale} · Paket {packageSale}', { serviceSale: money(report.serviceSaleMinor, currency), productSale: money(report.productSaleMinor, currency), packageSale: money(report.packageSaleMinor ?? 0, currency) })}</small>
             </article>
             <article className="financial-report-card">
-              <span>Açık bakiye</span>
+              <span>{t('Kampanya indirimi')}</span>
+              <strong>{money(report.promoDiscountMinor ?? 0, currency)}</strong>
+              <small>{t('Hizmet satışından düşülmüş tutar; tahsilattan ayrıdır')}</small>
+            </article>
+            <article className="financial-report-card">
+              <span>{t('Paketten karşılanan seans')}</span>
+              <strong>{report.packageCoveredSessionCount ?? 0}</strong>
+              <small>{t('Seans değeri {packageCoveredValue} · paket satışında gelir yazıldı, tekrar sayılmaz', { packageCoveredValue: money(report.packageCoveredValueMinor ?? 0, currency) })}</small>
+            </article>
+            <article className="financial-report-card">
+              <span>{t('Açık bakiye')}</span>
               <strong>{money(report.outstandingMinor, currency)}</strong>
-              <small>Para girişine eklenmez</small>
+              <small>{t('Para girişine eklenmez')}</small>
             </article>
           </section>
 
-          <section className="financial-report-reconcile" aria-label="Mutabakat">
+          <section className="financial-report-reconcile" aria-label={t('Mutabakat')}>
             <div>
-              <h2>Kaynak mutabakatı</h2>
-              <p>Nakit net {money(report.cashNetMovementMinor, currency)} · Kart net {money(report.cardNetMovementMinor, currency)}</p>
+              <h2>{t('Kaynak mutabakatı')}</h2>
+              <p>{t('Nakit net {cashNetMovement} · Kart net {cardNetMovement}', { cashNetMovement: money(report.cashNetMovementMinor, currency), cardNetMovement: money(report.cardNetMovementMinor, currency) })}</p>
             </div>
             <div>
               <strong>{report.ticketCount}</strong>
-              <span>adisyon</span>
+              <span>{t('adisyon')}</span>
             </div>
             <div>
               <strong>{report.unsettledTicketCount}</strong>
-              <span>kesinleşmemiş toplam</span>
+              <span>{t('kesinleşmemiş toplam')}</span>
             </div>
           </section>
         </>
       )}
+
+      <StaffCommissionPanel
+        businessId={activeBusinessId}
+        startDate={startDate}
+        endDate={endDate}
+        requestKey={commissionKey}
+        canManage={activeMembership.role !== 'staff'}
+      />
     </main>
   );
 }

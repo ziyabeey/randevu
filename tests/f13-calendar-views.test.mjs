@@ -12,10 +12,10 @@ const browser = await readFile(new URL('../scripts/browser-f11-group-consumers.m
 test('F13-02 calendar exposes day week list, direct date and explicit list range controls', () => {
   assert.match(calendar, /type ViewMode = 'day' \| 'week' \| 'list'/);
   assert.match(calendar, /className="calendar-date-filter"/);
-  assert.match(calendar, />Liste<\/button>/);
+  assert.match(calendar, />\{t\('Liste'\)\}<\/button>/);
   assert.match(calendar, /calendar-range-toggle/);
-  assert.match(calendar, />1 gün<\/button>/);
-  assert.match(calendar, />7 gün<\/button>/);
+  assert.match(calendar, />\{t\('1 gün'\)\}<\/button>/);
+  assert.match(calendar, />\{t\('7 gün'\)\}<\/button>/);
   assert.match(calendar, /calendar-list-view/);
   assert.match(calendar, /new Map<string, CalendarAppointment\[\]>/);
 });

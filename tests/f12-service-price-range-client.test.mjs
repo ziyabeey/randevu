@@ -20,7 +20,7 @@ test('F12-03 catalog editor carries canonical category/order/range fields', () =
 test('F12-03 operator booking never presents a range lower-bound as a fixed price', () => {
   assert.doesNotMatch(booking, /legacyCreateBookable/);
   assert.match(booking, /catalog\?\.services\.filter\(\(item\) => item\.active\)/);
-  assert.match(booking, /item\.price_type === 'range' \? ' · fiyat aralığı'/);
+  assert.match(booking, /item\.price_type === 'range' \? t\('\{name\} · \{minutes\} dk · fiyat aralığı'/);
   assert.match(booking, /Kesin tutar adisyonda belirlenir/);
   assert.match(booking, /Fiyat aralıklı hizmetler tahmin olarak gösterilir/);
   assert.match(booking, /priceType === 'fixed'/);

@@ -12,7 +12,7 @@ test('F15-01 exposes stock setup; product sale activation is owned by F15-02', (
   const shell = readFileSync(path.join(root, 'src/WorkspaceShell.tsx'), 'utf8');
 
   // F15-02 activates "Yeni ürün satışı"; its pin lives in f15-product-sale-source-contract.
-  assert.match(kolay, /AppLink href="\/app\/products"><strong>Ürün ve stok<\/strong>/);
+  assert.match(kolay, /ActionLink href="\/app\/products" title="Ürün ve stok"/);
   assert.match(routes, /'\/app\/products': 'products'/);
   assert.match(shell, /lazy\(\(\) => import\('\.\/ProductsPage'\)\)/);
 });

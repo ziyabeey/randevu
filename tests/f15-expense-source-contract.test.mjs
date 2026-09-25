@@ -11,9 +11,9 @@ test('F15-03 expense flows remain canonical when F15-04 report navigation is ena
   const routes=readFileSync(path.join(root,'src/workspace-route.ts'),'utf8');
   const shell=readFileSync(path.join(root,'src/WorkspaceShell.tsx'),'utf8');
 
-  assert.match(kolay,/AppLink href="\/app\/expenses"><strong>Yeni masraf<\/strong>/);
-  assert.match(kolay,/AppLink href="\/app\/expenses"><strong>Masraflar<\/strong>/);
-  assert.match(kolay,/AppLink href="\/app\/reports"><strong>Kasa<\/strong>/);
+  assert.match(kolay,/ActionLink href="\/app\/expenses" title="Yeni masraf"/);
+  assert.match(kolay,/ActionLink href="\/app\/expenses" title="Masraflar"/);
+  assert.match(kolay,/ActionLink href="\/app\/reports" title="Kasa"/);
   assert.match(routes,/'\/app\/expenses': 'expenses'/);
   assert.match(routes,/'\/app\/reports': 'reports'/);
   assert.match(shell,/lazy\(\(\) => import\('\.\/ExpensesPage'\)\)/);
@@ -45,7 +45,7 @@ test('F15-03 persists only exact expense write intents after ambiguous network r
 
 test('F15-03 expense UI renders business-local time and retires reversed source actions',()=>{
   const source=readFileSync(path.join(root,'src/ExpensesPage.tsx'),'utf8');
-  assert.match(source,/new Intl\.DateTimeFormat\('tr-TR',\{\s*timeZone,/s);
+  assert.match(source,/new Intl\.DateTimeFormat\(intlLocale\(\),\{\s*timeZone,/s);
   assert.match(source,/const reversedSourceIds=new Set\(/);
   assert.match(source,/!reversedSourceIds\.has\(e\.eventId\)/);
   assert.match(source,/Düzeltildi \/ iptal edildi/);

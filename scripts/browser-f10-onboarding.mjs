@@ -284,6 +284,13 @@ function call(page, method, ...args) {
   return page.evaluate(`window.__f10[${JSON.stringify(method)}](...${JSON.stringify(args)})`, 10_000);
 }
 
+// Page actions retry until their control is rendered and enabled: after a save
+// the page shows its result before it clears the busy flag that disables the
+// next form's button, so a one-shot call can land in that gap.
+async function act(page, method, ...args) {
+  return waitFor(() => call(page, method, ...args), `${method}(${args.map((arg) => JSON.stringify(arg)).join(', ')}) was not available`);
+}
+
 async function uiContains(page, text, timeoutMs = 7_000) {
   return waitFor(async () => (await call(page, 'text')).includes(text), `UI did not contain ${text}`, timeoutMs);
 }
@@ -346,33 +353,33 @@ try {
   await uiContains(page, 'A Only Service');
 
   await page.evaluate('document.querySelector("summary")?.click()');
-  assert.equal(await call(page, 'setIn', 'Oluştur', 'name', 'Salon B'), true);
-  assert.equal(await call(page, 'submit', 'Oluştur'), true);
+  await act(page, 'setIn', 'Oluştur', 'name', 'Salon B');
+  await act(page, 'submit', 'Oluştur');
   await uiContains(page, 'Salon B');
   await uiOmits(page, 'A Only Service');
   assert.equal(state.selected, ids.b);
 
-  assert.equal(await call(page, 'setIn', 'İlk hizmeti ekle', 'name', 'B Only Service'), true);
-  assert.equal(await call(page, 'setIn', 'İlk hizmeti ekle', 'duration', '45'), true);
-  assert.equal(await call(page, 'setIn', 'İlk hizmeti ekle', 'price', '350'), true);
-  assert.equal(await call(page, 'submit', 'İlk hizmeti ekle'), true);
+  await act(page, 'setIn', 'İlk hizmeti ekle', 'name', 'B Only Service');
+  await act(page, 'setIn', 'İlk hizmeti ekle', 'duration', '45');
+  await act(page, 'setIn', 'İlk hizmeti ekle', 'price', '350');
+  await act(page, 'submit', 'İlk hizmeti ekle');
   await uiContains(page, 'B Only Service');
 
-  assert.equal(await call(page, 'setIn', 'Personeli ekle', 'name', 'Browser Owner'), true);
-  assert.equal(await call(page, 'checkIn', 'Personeli ekle', 'ownerAsStaff', true), true);
-  assert.equal(await call(page, 'submit', 'Personeli ekle'), true);
+  await act(page, 'setIn', 'Personeli ekle', 'name', 'Browser Owner');
+  await act(page, 'checkIn', 'Personeli ekle', 'ownerAsStaff', true);
+  await act(page, 'submit', 'Personeli ekle');
   await uiContains(page, 'Personel eklendi.');
   assert.equal(state.businesses[ids.b].staff[0].membership_id, ids.mb);
 
-  assert.equal(await call(page, 'submit', 'Çalışma gününü kaydet'), true);
+  await act(page, 'submit', 'Çalışma gününü kaydet');
   await uiContains(page, 'Çalışma saatleri kaydedildi.');
   await uiContains(page, 'Yayına hazır');
 
-  assert.equal(await call(page, 'set', 'date', '2026-09-21'), true);
-  assert.equal(await call(page, 'submit', 'Saatleri önizle'), true);
+  await act(page, 'set', 'date', '2026-09-21');
+  await act(page, 'submit', 'Saatleri önizle');
   await uiContains(page, '10:00');
 
-  assert.equal(await call(page, 'click', 'Rezervasyon sayfasını yayınla'), true);
+  await act(page, 'click', 'Rezervasyon sayfasını yayınla');
   await uiContains(page, 'Rezervasyon sayfanız yayında.');
   assert.equal(state.businesses[ids.b].enabled, true);
   await waitFor(
@@ -380,7 +387,7 @@ try {
     'Published salon link did not appear',
   );
 
-  assert.equal(await call(page, 'click', 'Salon A'), true);
+  await act(page, 'click', 'Salon A');
   await uiContains(page, 'A Only Service');
   await uiOmits(page, 'B Only Service');
   assert.equal(state.selected, ids.a);

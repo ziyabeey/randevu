@@ -1,4 +1,5 @@
 import type { CustomerNotificationStatus, CustomerNotificationStatusCode } from '../shared/customer-notification-status';
+import { t } from './i18n';
 
 const statusText: Record<CustomerNotificationStatusCode, string> = {
   not_requested: 'E-posta adresi verilmedi; e-posta gönderimi istenmedi.',
@@ -10,9 +11,9 @@ const statusText: Record<CustomerNotificationStatusCode, string> = {
 };
 
 export function customerNotificationStatusText(notification: CustomerNotificationStatus) {
-  return statusText[notification.status];
+  return t(statusText[notification.status]);
 }
 
 export default function PublicNotificationStatus({ notification }: { notification: CustomerNotificationStatus }) {
-  return <p><strong>Bildirim durumu:</strong> {customerNotificationStatusText(notification)}</p>;
+  return <p><strong>{t('Bildirim durumu:')}</strong> {customerNotificationStatusText(notification)}</p>;
 }

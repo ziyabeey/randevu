@@ -36,8 +36,8 @@ test('F12-04 gives recoverable catalog, staff and slot failures an explicit retr
   assert.match(component, /staffAttempt/);
   assert.match(component, /staffRetryable/);
   assert.match(component, /slotRetryable/);
-  assert.match(component, />Tekrar dene</);
-  assert.match(component, />Personeli tekrar yükle</);
+  assert.match(component, />\{t\('Tekrar dene'\)\}</);
+  assert.match(component, />\{t\('Personeli tekrar yükle'\)\}</);
   assert.match(component, /Uygun saatleri tekrar dene/);
   assert.match(component, /Şu anda seçilebilecek hizmet bulunmuyor/);
 });

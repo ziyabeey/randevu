@@ -345,6 +345,24 @@ const cookieMutations = [
   ['POST', '/api/bookings/series/:seriesId/future/preview'],
   ['POST', '/api/bookings/series/:seriesId/future/reschedule'],
   ['POST', '/api/bookings/series/:seriesId/future/cancel'],
+  ['POST', '/api/bookings/groups/:groupId/photos'],
+  ['POST', '/api/private-media/cleanup'],
+  ['DELETE', '/api/private-media/:mediaId'],
+  ['POST', '/api/private-media/:mediaId/publish'],
+  ['POST', '/api/service-packages'],
+  ['PATCH', '/api/service-packages/:id'],
+  ['POST', '/api/tickets/package-sales'],
+  ['POST', '/api/tickets/:id/package-lines'],
+  ['POST', '/api/tickets/:id/lines/:lineId/package-usage'],
+  ['POST', '/api/tickets/:id/lines/:lineId/package-usage/reverse'],
+  ['POST', '/api/customer-packages/:id/refund'],
+  ['POST', '/api/promo-codes'],
+  ['PATCH', '/api/promo-codes/:id'],
+  ['POST', '/api/tickets/:id/promo'],
+  ['POST', '/api/tickets/:id/promo/remove'],
+  ['POST', '/api/feedback/:feedbackId/moderate'],
+  ['POST', '/api/commission-rates/:staffId'],
+  ['POST', '/api/commission-rates/:staffId/services/:serviceId'],
 ];
 const exceptions = [
   '/api/public/business/:slug/book',
@@ -353,6 +371,8 @@ const exceptions = [
   '/api/public/verify/whatsapp/start', '/api/public/verify/whatsapp/check',
   '/api/public/booking/recover', '/api/public/booking/resolve',
   '/api/manage/view', '/api/manage/slots', '/api/manage/reschedule', '/api/manage/cancel',
+  '/api/manage/feedback/view', '/api/manage/feedback',
+  '/api/manage/promo/view', '/api/manage/promo',
 ];
 const concrete = (path) => path.replace(':weekday', '1').replace(':slug', 'test-salon').replace(/:[A-Za-z]+/g, businessId);
 const csrfValue = 'C'.repeat(43);

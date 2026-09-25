@@ -286,3 +286,21 @@
     display: grid;
   }
 }
+
+/* F16-05 service packages */
+.ticket-package-use, .ticket-package-reverse, .ticket-package-refund, .ticket-add-package { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ticket-package-use select, .ticket-package-reverse input, .ticket-package-refund input, .ticket-add-package select { min-height: 44px; flex: 1 1 180px; min-width: 0; }
+.ticket-package-use button, .ticket-package-reverse button, .ticket-package-refund button, .ticket-add-package button { min-height: 44px; }
+.ticket-package-refund p { flex: 1 1 100%; margin: 0; overflow-wrap: anywhere; }
+.ticket-customer-packages { display: grid; gap: 8px; }
+.ticket-customer-packages h3 { margin: 0; }
+.ticket-customer-packages article { display: grid; gap: 2px; border: 1px solid var(--border, #d9dde5); border-radius: 12px; padding: 10px 12px; }
+.ticket-customer-packages span { color: var(--muted, #667085); font-size: .9rem; overflow-wrap: anywhere; }
+
+/* F16-06 campaign code */
+.ticket-promo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ticket-promo p { flex: 1 1 100%; margin: 0; overflow-wrap: anywhere; }
+.ticket-promo input { min-height: 44px; flex: 1 1 180px; min-width: 0; text-transform: uppercase; }
+.ticket-promo input[name="reason"] { text-transform: none; }
+.ticket-promo button { min-height: 44px; }
+.ticket-promo-note { margin: 0; color: var(--muted, #667085); }

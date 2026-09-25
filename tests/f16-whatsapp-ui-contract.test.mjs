@@ -15,6 +15,11 @@ test('F16-02 public booking exposes WhatsApp OTP start and check before create',
   assert.match(booking, /inputMode="numeric"/);
   assert.match(booking, /verificationChallenge/);
   assert.match(booking, /otpCode\.length !== 6/);
+  // The code check and the digit filter must use real regex classes: a
+  // double-escaped `\\d` matches a literal backslash and never lets a code through.
+  assert.match(booking, /!\/\^\\d\{6\}\$\/\.test\(otpCode\.trim\(\)\)/);
+  assert.match(booking, /\.replace\(\/\\D\/g, ''\)/);
+  assert.doesNotMatch(booking, /\\\\[dD]/);
 });
 
 test('F16-02 changing the phone invalidates the previous OTP proof', () => {
