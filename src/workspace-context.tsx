@@ -25,6 +25,8 @@ export type WorkspaceContextValue = {
   scopeEpoch: number;
   refreshSession(): Promise<WorkspaceSession>;
   selectBusiness(businessId: string, options?: { to?: string }): Promise<void>;
+  // F16-08 account actions shared by the Randevu panel and SalonApp menus.
+  account?: { openPasswordChange(): void; logout(): Promise<void> };
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);

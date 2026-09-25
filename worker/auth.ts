@@ -33,6 +33,9 @@ export type Membership = {
   business_id: string;
   role: Role;
   active: boolean;
+  // F16-08 plan access, embedded from the business row (kept equal to the
+  // subscription state by a database trigger).
+  plan?: { plan_access: 'full' | 'read_only' } | null;
 };
 export type SupabaseResult<T> = {
   ok: boolean;
@@ -284,7 +287,7 @@ export async function activeMembership<E extends AuthEnv>(
   if (!businessId) return null;
 
   const query = new URLSearchParams({
-    select: 'id,business_id,role,active',
+    select: 'id,business_id,role,active,plan:businesses!memberships_business_id_fkey(plan_access)',
     business_id: `eq.${businessId}`,
     user_id: `eq.${auth.user.id}`,
     active: 'eq.true',
@@ -331,6 +334,15 @@ export async function requireAuth<E extends AuthEnv>(context: AppContext<E>): Pr
   }
 }
 
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+// A cancelled plan leaves the business readable but not writable. The embed is
+// always present from the database; a present-but-empty embed fails closed.
+export function planAllowsWrite(membership: Membership) {
+  if (membership.plan === undefined) return true;
+  return membership.plan?.plan_access === 'full';
+}
+
 export async function requireMember<E extends AuthEnv>(context: AppContext<E>): Promise<MemberAccess> {
   const resolved = await requireAuth(context);
   if (resolved.error) return { error: resolved.error };
@@ -348,6 +360,16 @@ export async function requireMember<E extends AuthEnv>(context: AppContext<E>): 
     const membership = await activeMembership(context, resolved.auth);
     if (!membership) {
       return { error: context.json({ error: { code: 'TENANT_REQUIRED', message: 'Aktif işletme seçin.' } }, 403) };
+    }
+    if (WRITE_METHODS.has(context.req.method.toUpperCase()) && !planAllowsWrite(membership)) {
+      return {
+        error: context.json({
+          error: {
+            code: 'PLAN_READ_ONLY',
+            message: 'İşletme planı aktif değil; kayıtlar yalnızca görüntülenebilir. Planı yeniden etkinleştirmek için bizimle iletişime geçin.',
+          },
+        }, 403),
+      };
     }
     return { auth: resolved.auth, membership };
   } catch (error) {

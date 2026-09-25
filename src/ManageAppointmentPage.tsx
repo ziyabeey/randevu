@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { t } from './i18n';
 import { api } from './api';
 import PublicBookingInformation from './PublicBookingInformation';
 import PublicNotificationStatus from './PublicNotificationStatus';
@@ -108,12 +109,12 @@ function moneyRange(min: number, max: number, currency: string) {
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
-    scheduled: 'Planlandı',
-    confirmed: 'Onaylandı',
-    completed: 'Tamamlandı',
+    scheduled: t('Planlandı'),
+    confirmed: t('Onaylandı'),
+    completed: t('Tamamlandı'),
     no_show: 'Gelmedi',
-    cancelled: 'İptal edildi',
-    partial: 'Kısmen değişti',
+    cancelled: t('İptal edildi'),
+    partial: t('Kısmen değişti'),
   };
   return labels[status] ?? status;
 }
@@ -152,7 +153,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
       setLoading(true);
       setNotice('');
       if (!token) {
-        setNotice('Bu randevu yönetim bağlantısı geçerli değil.');
+        setNotice(t('Bu randevu yönetim bağlantısı geçerli değil.'));
         setLoading(false);
         return;
       }
@@ -168,7 +169,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         setNotification(customerNotificationStatus(result.notification));
         setDate(result.appointment.local_date);
       } catch (error) {
-        if (!cancelled) setNotice(error instanceof Error ? error.message : 'Randevu bilgisi yüklenemedi.');
+        if (!cancelled) setNotice(error instanceof Error ? error.message : t('Randevu bilgisi yüklenemedi.'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -198,7 +199,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         setGroupSlots(result.slots);
         setSlots([]);
         if (!preserveNotice) {
-          setNotice(result.slots.length ? `${result.slots.length} uygun grup saati bulundu.` : 'Bu gün için grubun tamamına uygun saat bulunamadı.');
+          setNotice(result.slots.length ? `${result.slots.length} uygun grup saati bulundu.` : t('Bu gün için grubun tamamına uygun saat bulunamadı.'));
         }
       } else {
         const result = await api<{ slots: ManagedSlot[] }>('/api/manage/slots', {
@@ -209,13 +210,13 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         setSlots(result.slots);
         setGroupSlots([]);
         if (!preserveNotice) {
-          setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : 'Bu gün için uygun saat bulunamadı.');
+          setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : t('Bu gün için uygun saat bulunamadı.'));
         }
       }
     } catch (error) {
       setSlots([]);
       setGroupSlots([]);
-      setNotice(error instanceof Error ? error.message : 'Uygun saatler yüklenemedi.');
+      setNotice(error instanceof Error ? error.message : t('Uygun saatler yüklenemedi.'));
     } finally {
       setBusy(false);
     }
@@ -274,8 +275,8 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
       cancelCommand.current = { fingerprint, key: `manage-cancel-${crypto.randomUUID()}` };
     }
     const prompt = group
-      ? 'Bu rezervasyondaki aktif hizmetlerin tamamını iptal etmek istediğinize emin misiniz?'
-      : 'Bu randevuyu iptal etmek istediğinize emin misiniz?';
+      ? t('Bu rezervasyondaki aktif hizmetlerin tamamını iptal etmek istediğinize emin misiniz?')
+      : t('Bu randevuyu iptal etmek istediğinize emin misiniz?');
     if (!window.confirm(prompt)) return;
 
     setBusy(true);
@@ -294,7 +295,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
       setGroupSlots([]);
       setSelectedSlot(null);
       await loadAppointment();
-      setNotice(group ? 'Rezervasyondaki aktif hizmetler iptal edildi.' : 'Randevu iptal edildi. Ayrılan saat yeniden müsait hale geldi.');
+      setNotice(group ? 'Rezervasyondaki aktif hizmetler iptal edildi.' : t('Randevu iptal edildi. Ayrılan saat yeniden müsait hale geldi.'));
     } catch (error) {
       const coded = error as Error & { code?: string };
       setNotice(coded.message || 'Randevu iptal edilemedi.');
@@ -307,16 +308,16 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
   }
 
   if (loading) {
-    return <main className="manage-shell"><section className="manage-card"><p>Randevu hazırlanıyor…</p></section></main>;
+    return <main className="manage-shell"><section className="manage-card"><p>{t('Randevu hazırlanıyor…')}</p></section></main>;
   }
 
   if (!appointment) {
     return (
       <main className="manage-shell">
         <section className="manage-card manage-empty">
-          <p className="public-kicker">RANDEVU YÖNETİMİ</p>
-          <h1>Bu bağlantı geçerli değil.</h1>
-          <p>{notice || 'Bağlantı hatalı, iptal edilmiş veya artık kullanılamıyor olabilir.'}</p>
+          <p className="public-kicker">{t('RANDEVU YÖNETİMİ')}</p>
+          <h1>{t('Bu bağlantı geçerli değil.')}</h1>
+          <p>{notice || t('Bağlantı hatalı, iptal edilmiş veya artık kullanılamıyor olabilir.')}</p>
         </section>
       </main>
     );
@@ -329,7 +330,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
   return (
     <main className="manage-shell">
       <header className="manage-header">
-        <p className="public-kicker">RANDEVUMU YÖNET</p>
+        <p className="public-kicker">{t('RANDEVUMU YÖNET')}</p>
         <h1>{appointment.business_name}</h1>
         <span className={`manage-status status-${displayStatus}`}>{statusLabel(displayStatus)}</span>
       </header>
@@ -342,11 +343,11 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
           {group ? (
             <>
               <dl className="public-confirmation-list">
-                <div><dt>Başlangıç</dt><dd>{formatDateTime(group.startsAt, group.timezone)}</dd></div>
-                <div><dt>Hizmet sayısı</dt><dd>{group.lineCount}</dd></div>
-                <div><dt>Tahmini toplam</dt><dd>{moneyRange(group.estimateMinMinor, group.estimateMaxMinor, group.currency)}</dd></div>
+                <div><dt>{t('Başlangıç')}</dt><dd>{formatDateTime(group.startsAt, group.timezone)}</dd></div>
+                <div><dt>{t('Hizmet sayısı')}</dt><dd>{group.lineCount}</dd></div>
+                <div><dt>{t('Tahmini toplam')}</dt><dd>{moneyRange(group.estimateMinMinor, group.estimateMaxMinor, group.currency)}</dd></div>
               </dl>
-              <div className="manage-group-lines" aria-label="Rezervasyon hizmetleri">
+              <div className="manage-group-lines" aria-label={t('Rezervasyon hizmetleri')}>
                 {group.lines.map((line) => (
                   <article className="manage-group-line" key={line.appointmentId}>
                     <div>
@@ -363,23 +364,23 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
             </>
           ) : (
             <dl className="public-confirmation-list">
-              <div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div>
-              <div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div>
-              <div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div>
-              <div><dt>Ücret</dt><dd>{money(appointment.price_minor, appointment.currency)}</dd></div>
+              <div><dt>{t('Hizmet')}</dt><dd>{appointment.service_name}</dd></div>
+              <div><dt>{t('Personel')}</dt><dd>{appointment.staff_name}</dd></div>
+              <div><dt>{t('Tarih')}</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div>
+              <div><dt>{t('Ücret')}</dt><dd>{money(appointment.price_minor, appointment.currency)}</dd></div>
             </dl>
           )}
-          <div className="public-result-status is-neutral" aria-label="Bildirim durumu"><PublicNotificationStatus notification={notification} /></div>
-          <p className="manage-security-note">Bu sayfanın bağlantısı randevunuzu değiştirme yetkisi verir. Bağlantıyı yalnız güvendiğiniz kişilerle paylaşın.</p>
+          <div className="public-result-status is-neutral" aria-label={t('Bildirim durumu')}><PublicNotificationStatus notification={notification} /></div>
+          <p className="manage-security-note">{t('Bu sayfanın bağlantısı randevunuzu değiştirme yetkisi verir. Bağlantıyı yalnız güvendiğiniz kişilerle paylaşın.')}</p>
         </section>
 
         <section className="manage-card">
-          <h2>{group ? 'Rezervasyonu başka saate taşı' : 'Başka saate taşı'}</h2>
+          <h2>{group ? t('Rezervasyonu başka saate taşı') : t('Başka saate taşı')}</h2>
           {canReschedule ? (
             <>
               <div className="manage-date-row">
                 <input type="date" value={date} min={appointment.local_date} max={appointment.max_date} onChange={(event) => { setDate(event.target.value); setSlots([]); setGroupSlots([]); setSelectedSlot(null); }} />
-                <button className="public-primary" type="button" disabled={busy} onClick={() => void loadSlots()}>{busy ? 'Bakılıyor…' : 'Saatleri göster'}</button>
+                <button className="public-primary" type="button" disabled={busy} onClick={() => void loadSlots()}>{busy ? t('Bakılıyor…') : t('Saatleri göster')}</button>
               </div>
               {slotCount > 0 && (
                 <div className="public-slot-grid manage-slots">
@@ -404,7 +405,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
                   })}
                 </div>
               )}
-              {selectedSlot && <button className="public-primary manage-confirm" type="button" disabled={busy} onClick={() => void reschedule()}>Seçilen saate taşı</button>}
+              {selectedSlot && <button className="public-primary manage-confirm" type="button" disabled={busy} onClick={() => void reschedule()}>{t('Seçilen saate taşı')}</button>}
             </>
           ) : <p className="public-muted">Bu {group ? 'rezervasyon' : 'randevu'} artık taşınamaz.</p>}
         </section>
@@ -414,10 +415,10 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
           {canCancel ? (
             <>
               <label>
-                <span>İptal nedeni <small>(isteğe bağlı)</small></span>
+                <span>{t('İptal nedeni')} <small>{t('(isteğe bağlı)')}</small></span>
                 <textarea value={reason} maxLength={240} rows={3} onChange={(event) => setReason(event.target.value)} />
               </label>
-              <button className="manage-cancel-button" type="button" disabled={busy} onClick={() => void cancelAppointment()}>{group ? 'Aktif hizmetlerin tamamını iptal et' : 'Randevuyu iptal et'}</button>
+              <button className="manage-cancel-button" type="button" disabled={busy} onClick={() => void cancelAppointment()}>{group ? t('Aktif hizmetlerin tamamını iptal et') : 'Randevuyu iptal et'}</button>
             </>
           ) : <p className="public-muted">Bu {group ? 'rezervasyon' : 'randevu'} artık iptal edilemez.</p>}
         </section>

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import AppRouter from './AppRouter';
+import { initLocale, useLocale } from './i18n';
 import { setWorkspaceGuard } from './api';
 import { captureTeamInviteFromLocation, readPendingTeamInvite } from './teamInvite';
 import { installWorkspaceCoherence, workspaceGuard } from './workspace-coherence';
@@ -39,8 +40,17 @@ if (initialRoute.kind === 'workspace') {
   setWorkspaceGuard(null);
 }
 
-createRoot(root).render(
-  <StrictMode>
-    <AppRouter />
-  </StrictMode>,
-);
+// F16-08: a language change remounts the app so every screen re-renders in
+// the new language; Turkish needs no catalog, English loads it lazily first.
+function LocaleRoot() {
+  const locale = useLocale();
+  return <AppRouter key={locale} />;
+}
+
+void initLocale().finally(() => {
+  createRoot(root).render(
+    <StrictMode>
+      <LocaleRoot />
+    </StrictMode>,
+  );
+});

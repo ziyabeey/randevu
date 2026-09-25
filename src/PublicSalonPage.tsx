@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { t } from './i18n';
+import LanguageSwitch from './LanguageSwitch';
 import { ApiRequestError, api } from './api';
 import PublicBookingPage from './PublicBookingPage';
 import PublicMultiServiceSelection from './PublicMultiServiceSelection';
@@ -65,14 +67,14 @@ function MediaImage({ media, className, eager = false, fallbackName }: {
 }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
-    return <div className={`${className} public-salon-photo-fallback`} role="img" aria-label="Fotoğraf yüklenemedi">
-      <strong>{initials(fallbackName)}</strong><span>Fotoğraf yüklenemedi</span>
+    return <div className={`${className} public-salon-photo-fallback`} role="img" aria-label={t('Fotoğraf yüklenemedi')}>
+      <strong>{initials(fallbackName)}</strong><span>{t('Fotoğraf yüklenemedi')}</span>
     </div>;
   }
   return <img
     className={className}
     src={`/api/public/media/${encodeURIComponent(media.id)}`}
-    alt={media.alt_text ?? `${fallbackName} salon fotoğrafı`}
+    alt={media.alt_text ?? t('{name} salon fotoğrafı', { name: fallbackName })}
     width={media.width}
     height={media.height}
     loading={eager ? 'eager' : 'lazy'}
@@ -102,7 +104,7 @@ function publicContactLinks(profile: PublicProfile) {
   const links: Array<{ label: string; href: string }> = [];
   if (profile.public_phone) links.push({ label: profile.public_phone, href: `tel:${profile.public_phone.replace(/\s+/g, '')}` });
   if (profile.public_email) links.push({ label: profile.public_email, href: `mailto:${profile.public_email}` });
-  if (profile.public_website) links.push({ label: 'Web sitesi', href: profile.public_website });
+  if (profile.public_website) links.push({ label: t('Web sitesi'), href: profile.public_website });
   if (profile.public_whatsapp) links.push({ label: 'WhatsApp', href: `https://wa.me/${profile.public_whatsapp.replace(/\D/g, '')}` });
   return links;
 }
@@ -111,57 +113,58 @@ function PublicInformationPage({ slug, profile, section }: { slug: string; profi
   const contacts = publicContactLinks(profile);
   const base = `/r/${encodeURIComponent(slug)}`;
   const commonContact = <div className="public-information-contact">
-    <h2>İletişim</h2>
-    <p>Rezervasyon desteği için işletmenin yayınladığı iletişim kanallarını kullanabilirsiniz.</p>
+    <h2>{t('İletişim')}</h2>
+    <p>{t('Rezervasyon desteği için işletmenin yayınladığı iletişim kanallarını kullanabilirsiniz.')}</p>
     <div className="public-salon-contacts">
       {contacts.map((item) => <ContactLink key={item.href} label={item.label} href={item.href} />)}
     </div>
     {profile.address_text && <address>{profile.address_text}</address>}
   </div>;
 
-  let title = 'Bilgilendirme';
+  let title = t('Bilgilendirme');
   let body: React.ReactNode = null;
 
   if (section === 'kvkk') {
-    title = 'KVKK / Aydınlatma';
+    title = t('KVKK / Aydınlatma');
     body = <>
       {profile.kvkk_notice_text?.trim()
         ? <p className="public-information-prewrap">{profile.kvkk_notice_text}</p>
-        : <p className="public-muted">İşletmenin aydınlatma metni bu sayfada yayınlanmamış.</p>}
-      {profile.kvkk_notice_url?.trim() && <a className="public-preview-link" href={profile.kvkk_notice_url} target="_blank" rel="noreferrer">İşletmenin yayınladığı aydınlatma metnini aç ↗</a>}
+        : <p className="public-muted">{t('İşletmenin aydınlatma metni bu sayfada yayınlanmamış.')}</p>}
+      {profile.kvkk_notice_url?.trim() && <a className="public-preview-link" href={profile.kvkk_notice_url} target="_blank" rel="noreferrer">{t('İşletmenin yayınladığı aydınlatma metnini aç ↗')}</a>}
     </>;
   } else if (section === 'privacy') {
-    title = 'Gizlilik Politikası';
+    title = t('Gizlilik Politikası');
     body = profile.privacy_policy_url?.trim()
-      ? <a className="public-preview-link" href={profile.privacy_policy_url} target="_blank" rel="noreferrer">İşletmenin yayınladığı gizlilik politikasını aç ↗</a>
-      : <p className="public-muted">İşletmenin gizlilik politikası bağlantısı henüz yayınlanmamış.</p>;
+      ? <a className="public-preview-link" href={profile.privacy_policy_url} target="_blank" rel="noreferrer">{t('İşletmenin yayınladığı gizlilik politikasını aç ↗')}</a>
+      : <p className="public-muted">{t('İşletmenin gizlilik politikası bağlantısı henüz yayınlanmamış.')}</p>;
   } else if (section === 'terms') {
-    title = 'Randevu / İptal / Değişiklik Koşulları';
+    title = t('Randevu / İptal / Değişiklik Koşulları');
     body = <>
       {profile.booking_terms_text?.trim()
         ? <p className="public-information-prewrap">{profile.booking_terms_text}</p>
-        : <p className="public-muted">İşletmenin randevu koşulları henüz yayınlanmamış.</p>}
-      {profile.booking_terms_url?.trim() && <a className="public-preview-link" href={profile.booking_terms_url} target="_blank" rel="noreferrer">Ayrıntılı koşulları aç ↗</a>}
+        : <p className="public-muted">{t('İşletmenin randevu koşulları henüz yayınlanmamış.')}</p>}
+      {profile.booking_terms_url?.trim() && <a className="public-preview-link" href={profile.booking_terms_url} target="_blank" rel="noreferrer">{t('Ayrıntılı koşulları aç ↗')}</a>}
     </>;
   } else {
-    title = 'Destek';
-    body = <p>Rezervasyonla ilgili destek için aşağıdaki işletme iletişim kanallarını kullanın.</p>;
+    title = t('Destek');
+    body = <p>{t('Rezervasyonla ilgili destek için aşağıdaki işletme iletişim kanallarını kullanın.')}</p>;
   }
 
   return <main className="public-salon-page public-information-page">
     <article className="public-information-card">
-      <p className="public-kicker">RANDEVU KOLAY</p>
+      <p className="public-kicker">{t('RANDEVU KOLAY')}</p>
       <h1>{title}</h1>
       <p className="public-information-business">{profile.public_name}</p>
       <div className="public-information-copy">{body}</div>
       {commonContact}
-      <nav className="public-information-nav" aria-label="Bilgilendirme sayfaları">
-        <a href={`${base}/kvkk`}>KVKK / Aydınlatma</a>
-        <a href={`${base}/privacy`}>Gizlilik</a>
-        <a href={`${base}/terms`}>Randevu koşulları</a>
-        <a href={`${base}/support`}>Destek</a>
+      <nav className="public-information-nav" aria-label={t('Bilgilendirme sayfaları')}>
+        <a href={`${base}/kvkk`}>{t('KVKK / Aydınlatma')}</a>
+        <a href={`${base}/privacy`}>{t('Gizlilik')}</a>
+        <a href={`${base}/terms`}>{t('Randevu koşulları')}</a>
+        <a href={`${base}/support`}>{t('Destek')}</a>
       </nav>
-      <a className="public-preview-link" href={base}>Salona ve randevuya dön</a>
+      <a className="public-preview-link" href={base}>{t('Salona ve randevuya dön')}</a>
+      <LanguageSwitch className="public-language-switch" />
     </article>
   </main>;
 }
@@ -201,7 +204,7 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
           setInactive(true);
           return;
         }
-        setNotice(error instanceof Error ? error.message : 'Salon bilgileri şu anda yüklenemedi.');
+        setNotice(error instanceof Error ? error.message : t('Salon bilgileri şu anda yüklenemedi.'));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -222,9 +225,9 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
       if (next) window.localStorage.setItem(favoriteKey(slug), '1');
       else window.localStorage.removeItem(favoriteKey(slug));
       setFavorite(next);
-      setActionNotice(next ? 'Salon bu cihazda favorilere eklendi.' : 'Salon bu cihazdaki favorilerden çıkarıldı.');
+      setActionNotice(next ? t('Salon bu cihazda favorilere eklendi.') : t('Salon bu cihazdaki favorilerden çıkarıldı.'));
     } catch {
-      setActionNotice('Favori tercihi bu cihazda kaydedilemedi.');
+      setActionNotice(t('Favori tercihi bu cihazda kaydedilemedi.'));
     }
   }
 
@@ -232,19 +235,19 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
     const url = safePublicSalonUrl();
     try {
       if (typeof navigator.share === 'function') {
-        await navigator.share({ title: profile?.public_name ?? 'Salon', url });
-        setActionNotice('Salon bağlantısı paylaşıldı.');
+        await navigator.share({ title: profile?.public_name ?? t('Salon'), url });
+        setActionNotice(t('Salon bağlantısı paylaşıldı.'));
         return;
       }
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(url);
-        setActionNotice('Salon bağlantısı kopyalandı.');
+        setActionNotice(t('Salon bağlantısı kopyalandı.'));
         return;
       }
-      setActionNotice('Paylaşım bu tarayıcıda kullanılamıyor.');
+      setActionNotice(t('Paylaşım bu tarayıcıda kullanılamıyor.'));
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
-      setActionNotice('Salon bağlantısı paylaşılamadı.');
+      setActionNotice(t('Salon bağlantısı paylaşılamadı.'));
     }
   }
 
@@ -261,15 +264,16 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
   if (inactive) {
     return <main className="public-salon-page public-salon-inactive">
       <section className="public-salon-state-card">
-        <p className="public-kicker">ONLINE RANDEVU</p>
-        <h1>Bu rezervasyon bağlantısı şu anda aktif değil.</h1>
-        <p>İşletme bağlantıyı kapatmış, kurulumu eksik kalmış veya adres geçersiz olabilir.</p>
+        <p className="public-kicker">{t('ONLINE RANDEVU')}</p>
+        <h1>{t('Bu rezervasyon bağlantısı şu anda aktif değil.')}</h1>
+        <p>{t('İşletme bağlantıyı kapatmış, kurulumu eksik kalmış veya adres geçersiz olabilir.')}</p>
+        <LanguageSwitch className="public-language-switch" />
       </section>
     </main>;
   }
 
   return <div className="public-salon-page">
-    {loading && <section className="public-salon-hero public-salon-hero-loading" aria-busy="true" aria-label="Salon bilgileri yükleniyor">
+    {loading && <section className="public-salon-hero public-salon-hero-loading" aria-busy="true" aria-label={t('Salon bilgileri yükleniyor')}>
       <div className="public-salon-photo-skeleton" />
       <div className="public-salon-copy-skeleton"><span /><span /><span /></div>
     </section>}
@@ -279,34 +283,35 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
         <div className="public-salon-cover">
           {cover
             ? <MediaImage media={cover} className="public-salon-cover-image" eager fallbackName={profile.public_name} />
-            : <div className="public-salon-cover-placeholder" role="img" aria-label="Salon fotoğrafı henüz eklenmedi">
+            : <div className="public-salon-cover-placeholder" role="img" aria-label={t('Salon fotoğrafı henüz eklenmedi')}>
               <strong>{initials(profile.public_name)}</strong>
-              <span>Fotoğraf henüz eklenmedi</span>
+              <span>{t('Fotoğraf henüz eklenmedi')}</span>
             </div>}
         </div>
         <div className="public-salon-hero-copy">
-          <p className="public-kicker">ONLINE RANDEVU</p>
+          <p className="public-kicker">{t('ONLINE RANDEVU')}</p>
           <h1>{profile.public_name}</h1>
           {profile.short_description && <p className="public-salon-lead">{profile.short_description}</p>}
-          <nav className="public-salon-section-nav" aria-label="Salon bölümleri">
-            <a href="#randevu">Hizmetler</a>
-            <a href="#salon-yorumlar">Yorumlar</a>
-            <a href="#salon-bilgileri">Bilgiler</a>
+          <nav className="public-salon-section-nav" aria-label={t('Salon bölümleri')}>
+            <a href="#randevu">{t('Hizmetler')}</a>
+            <a href="#salon-yorumlar">{t('Yorumlar')}</a>
+            <a href="#salon-bilgileri">{t('Bilgiler')}</a>
           </nav>
-          <div className="public-salon-actions" aria-label="Salon işlemleri">
+          <div className="public-salon-actions" aria-label={t('Salon işlemleri')}>
             <button type="button" aria-pressed={favorite} onClick={toggleFavorite}>
-              {favorite ? 'Favorilerde' : 'Favoriye ekle'}
+              {favorite ? t('Favorilerde') : t('Favoriye ekle')}
             </button>
-            <button type="button" onClick={() => void shareSalon()}>Paylaş</button>
+            <button type="button" onClick={() => void shareSalon()}>{t('Paylaş')}</button>
           </div>
+          <LanguageSwitch className="public-language-switch" />
           {actionNotice && <p className="public-salon-action-notice" role="status">{actionNotice}</p>}
         </div>
       </header>
 
       {gallery.length > 0 && <section className="public-salon-gallery" aria-labelledby="salon-gallery-title">
         <div className="public-salon-section-head">
-          <p className="public-kicker">SALONDAN</p>
-          <h2 id="salon-gallery-title">Fotoğraflar</h2>
+          <p className="public-kicker">{t('SALONDAN')}</p>
+          <h2 id="salon-gallery-title">{t('Fotoğraflar')}</h2>
         </div>
         <div className="public-salon-gallery-grid">
           {gallery.map((media) => <MediaImage key={media.id} media={media} className="public-salon-gallery-image" fallbackName={profile.public_name} />)}
@@ -317,26 +322,26 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
 
       <section id="salon-bilgileri" className="public-salon-info" aria-labelledby="salon-info-title">
         <div className="public-salon-info-copy">
-          <p className="public-kicker">SALON BİLGİLERİ</p>
-          <h2 id="salon-info-title">Bilgiler</h2>
+          <p className="public-kicker">{t('SALON BİLGİLERİ')}</p>
+          <h2 id="salon-info-title">{t('Bilgiler')}</h2>
           {profile.long_description
             ? <p>{profile.long_description}</p>
             : profile.short_description
               ? <p>{profile.short_description}</p>
-              : <p className="public-muted">Salon açıklaması henüz eklenmedi.</p>}
+              : <p className="public-muted">{t('Salon açıklaması henüz eklenmedi.')}</p>}
           {profile.address_text && <address>{profile.address_text}</address>}
           <div className="public-salon-contacts">
             {profile.public_phone && <ContactLink label={profile.public_phone} href={`tel:${profile.public_phone.replace(/\s+/g, '')}`} />}
             {profile.public_email && <ContactLink label={profile.public_email} href={`mailto:${profile.public_email}`} />}
-            {profile.public_website && <ContactLink label="Web sitesi" href={profile.public_website} />}
+            {profile.public_website && <ContactLink label={t('Web sitesi')} href={profile.public_website} />}
             {profile.public_whatsapp && <ContactLink label="WhatsApp" href={`https://wa.me/${profile.public_whatsapp.replace(/\D/g, '')}`} />}
           </div>
         </div>
         {profile.show_work_hours && profile.work_hours.length > 0 && <div className="public-salon-hours">
-          <h3>Çalışma saatleri</h3>
+          <h3>{t('Çalışma saatleri')}</h3>
           <dl>
             {profile.work_hours.map((hours, index) => <div key={`${hours.weekday}-${hours.starts_local}-${index}`}>
-              <dt>{dayLabels[hours.weekday] ?? `Gün ${hours.weekday}`}</dt>
+              <dt>{t(dayLabels[hours.weekday] ?? 'Gün {day}', { day: hours.weekday })}</dt>
               <dd>{timeLabel(hours.starts_local)}–{timeLabel(hours.ends_local)}</dd>
             </div>)}
           </dl>
@@ -345,7 +350,7 @@ export default function PublicSalonPage({ slug }: { slug: string }) {
     </>}
 
     {notice && <div className="public-salon-notice" role="status">
-      <strong>Salon bilgileri gösterilemedi.</strong> {notice} Randevu alanını yine de kullanabilirsiniz.
+      <strong>{t('Salon bilgileri gösterilemedi.')}</strong> {notice} {t('Randevu alanını yine de kullanabilirsiniz.')}
     </div>}
 
     <div id="randevu" className="public-salon-booking">

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { t } from './i18n';
 import { api } from './api';
 
 type FeedbackState = {
@@ -12,9 +13,9 @@ type FeedbackState = {
 };
 
 const STATUS_TEXT: Record<'pending' | 'published' | 'hidden', string> = {
-  pending: 'Değerlendirmeniz işletmeye iletildi.',
-  published: 'Yorumunuz salon sayfasında yayında.',
-  hidden: 'Değerlendirmeniz işletmeye iletildi; salon sayfasında yayınlanmıyor.',
+  pending: t('Değerlendirmeniz işletmeye iletildi.'),
+  published: t('Yorumunuz salon sayfasında yayında.'),
+  hidden: t('Değerlendirmeniz işletmeye iletildi; salon sayfasında yayınlanmıyor.'),
 };
 
 // F16-04: a customer reviews a completed appointment through their own
@@ -32,13 +33,13 @@ export default function ManageFeedback({ token }: { token: string }) {
     void api<{ feedback: FeedbackState }>('/api/manage/feedback/view', {
       method: 'POST', csrf: 'skip', body: JSON.stringify({ token }),
     }).then((result) => { if (!cancelled) setState(result.feedback); })
-      .catch((error: unknown) => { if (!cancelled) setNotice(error instanceof Error ? error.message : 'Değerlendirme bilgisi alınamadı.'); });
+      .catch((error: unknown) => { if (!cancelled) setNotice(error instanceof Error ? error.message : t('Değerlendirme bilgisi alınamadı.')); });
     return () => { cancelled = true; };
   }, [token]);
 
   async function submit() {
     if (rating < 1) {
-      setNotice('Lütfen 1 ile 5 arasında bir puan seçin.');
+      setNotice(t('Lütfen 1 ile 5 arasında bir puan seçin.'));
       return;
     }
     setBusy(true);
@@ -49,9 +50,9 @@ export default function ManageFeedback({ token }: { token: string }) {
         body: JSON.stringify({ token, rating, comment: comment.trim() || null, publishConsent: consent }),
       });
       setState(result.feedback);
-      setNotice('Teşekkürler, değerlendirmeniz alındı.');
+      setNotice(t('Teşekkürler, değerlendirmeniz alındı.'));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : 'Değerlendirme gönderilemedi.');
+      setNotice(error instanceof Error ? error.message : t('Değerlendirme gönderilemedi.'));
     } finally {
       setBusy(false);
     }
@@ -59,29 +60,29 @@ export default function ManageFeedback({ token }: { token: string }) {
 
   if (!state && !notice) return null;
   return <section className="manage-card manage-feedback" aria-labelledby="manage-feedback-title">
-    <h2 id="manage-feedback-title">Deneyiminizi değerlendirin</h2>
+    <h2 id="manage-feedback-title">{t('Deneyiminizi değerlendirin')}</h2>
     {state?.reason === 'submitted' && state.status ? <>
       <p className="manage-feedback-rating" aria-label={`${state.rating} / 5 puan`}>{'★'.repeat(state.rating ?? 0)}{'☆'.repeat(5 - (state.rating ?? 0))}</p>
       {state.comment && <blockquote>{state.comment}</blockquote>}
       <p className="public-muted" role="status">{STATUS_TEXT[state.status]}</p>
     </> : state?.eligible ? <>
       <fieldset className="manage-feedback-stars">
-        <legend>Puanınız</legend>
+        <legend>{t('Puanınız')}</legend>
         {[1, 2, 3, 4, 5].map((value) => <label key={value} className={value <= rating ? 'is-selected' : ''}>
           <input type="radio" name="feedback-rating" value={value} checked={rating === value} disabled={busy} onChange={() => setRating(value)} />
           <span aria-hidden="true">★</span><span className="manage-visually-hidden">{value} puan</span>
         </label>)}
       </fieldset>
       <label>
-        <span>Yorumunuz <small>(isteğe bağlı)</small></span>
+        <span>{t('Yorumunuz')} <small>{t('(isteğe bağlı)')}</small></span>
         <textarea value={comment} maxLength={1000} rows={4} disabled={busy} onChange={(event) => setComment(event.target.value)} />
       </label>
       <label className="manage-feedback-consent">
         <input type="checkbox" checked={consent} disabled={busy} onChange={(event) => setConsent(event.target.checked)} />
-        <span>Yorumumun salon sayfasında adımın baş harfiyle (ör. “Ayşe D.”) yayınlanmasına izin veriyorum. İşletme yayınlamadan önce inceler.</span>
+        <span>{t('Yorumumun salon sayfasında adımın baş harfiyle (ör. “Ayşe D.”) yayınlanmasına izin veriyorum. İşletme yayınlamadan önce inceler.')}</span>
       </label>
-      <button className="public-primary" type="button" disabled={busy || rating < 1} onClick={() => void submit()}>{busy ? 'Gönderiliyor…' : 'Değerlendirmeyi gönder'}</button>
-    </> : state?.reason === 'not_completed' ? <p className="public-muted">Randevunuz tamamlandıktan sonra buradan değerlendirme yapabilirsiniz.</p> : null}
+      <button className="public-primary" type="button" disabled={busy || rating < 1} onClick={() => void submit()}>{busy ? t('Gönderiliyor…') : t('Değerlendirmeyi gönder')}</button>
+    </> : state?.reason === 'not_completed' ? <p className="public-muted">{t('Randevunuz tamamlandıktan sonra buradan değerlendirme yapabilirsiniz.')}</p> : null}
     {notice && <p className="public-muted" role="status">{notice}</p>}
   </section>;
 }

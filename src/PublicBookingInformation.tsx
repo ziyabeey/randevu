@@ -63,12 +63,12 @@ export default function PublicBookingInformation({
   };
 
   return (
-    <section className={`public-booking-information ${className}`.trim()} aria-label="Rezervasyon bilgilendirmeleri">
-      <nav className="public-information-links" aria-label="Bilgilendirme bağlantıları">
-        <a href={`${informationBase}/kvkk`} target="_blank" rel="noreferrer">Aydınlatma ve KVKK</a>
-        <a href={`${informationBase}/privacy`} target="_blank" rel="noreferrer">Gizlilik</a>
-        <a href={`${informationBase}/terms`} target="_blank" rel="noreferrer">Randevu koşulları</a>
-        <a href={`${informationBase}/support`} target="_blank" rel="noreferrer">Destek</a>
+    <section className={`public-booking-information ${className}`.trim()} aria-label={t('Rezervasyon bilgilendirmeleri')}>
+      <nav className="public-information-links" aria-label={t('Bilgilendirme bağlantıları')}>
+        <a href={`${informationBase}/kvkk`} target="_blank" rel="noreferrer">{t('Aydınlatma ve KVKK')}</a>
+        <a href={`${informationBase}/privacy`} target="_blank" rel="noreferrer">{t('Gizlilik')}</a>
+        <a href={`${informationBase}/terms`} target="_blank" rel="noreferrer">{t('Randevu koşulları')}</a>
+        <a href={`${informationBase}/support`} target="_blank" rel="noreferrer">{t('Destek')}</a>
       </nav>
 
       {!informationReady && (
@@ -79,37 +79,37 @@ export default function PublicBookingInformation({
 
       <div className="public-information-sections">
         <article id={ids.notice} tabIndex={-1}>
-          <h3>Aydınlatma ve KVKK</h3>
+          <h3>{t('Aydınlatma ve KVKK')}</h3>
           {contact?.kvkkNoticeText?.trim()
             ? <p className="public-information-prewrap">{contact.kvkkNoticeText}</p>
-            : <p className="public-muted">İşletmenin yayınladığı aydınlatma metni bu ekranda yer almıyor.</p>}
-          {contact?.kvkkNoticeUrl?.trim() && <ExternalLink href={contact.kvkkNoticeUrl}>İşletmenin aydınlatma metnini aç</ExternalLink>}
+            : <p className="public-muted">{t('İşletmenin yayınladığı aydınlatma metni bu ekranda yer almıyor.')}</p>}
+          {contact?.kvkkNoticeUrl?.trim() && <ExternalLink href={contact.kvkkNoticeUrl}>{t('İşletmenin aydınlatma metnini aç')}</ExternalLink>}
         </article>
 
         <article id={ids.privacy} tabIndex={-1}>
-          <h3>Gizlilik</h3>
+          <h3>{t('Gizlilik')}</h3>
           {contact?.privacyPolicyUrl?.trim()
-            ? <ExternalLink href={contact.privacyPolicyUrl}>İşletmenin gizlilik politikasını aç</ExternalLink>
-            : <p className="public-muted">İşletmenin gizlilik politikası bağlantısı henüz yayınlanmadı.</p>}
+            ? <ExternalLink href={contact.privacyPolicyUrl}>{t('İşletmenin gizlilik politikasını aç')}</ExternalLink>
+            : <p className="public-muted">{t('İşletmenin gizlilik politikası bağlantısı henüz yayınlanmadı.')}</p>}
         </article>
 
         <article id={ids.terms} tabIndex={-1}>
-          <h3>Randevu, iptal ve değişiklik koşulları</h3>
+          <h3>{t('Randevu, iptal ve değişiklik koşulları')}</h3>
           {contact?.bookingTermsText?.trim()
             ? <p className="public-information-prewrap">{contact.bookingTermsText}</p>
-            : <p className="public-muted">İşletmenin randevu koşulları henüz yayınlanmadı.</p>}
-          {contact?.bookingTermsUrl?.trim() && <ExternalLink href={contact.bookingTermsUrl}>Ayrıntılı koşulları aç</ExternalLink>}
+            : <p className="public-muted">{t('İşletmenin randevu koşulları henüz yayınlanmadı.')}</p>}
+          {contact?.bookingTermsUrl?.trim() && <ExternalLink href={contact.bookingTermsUrl}>{t('Ayrıntılı koşulları aç')}</ExternalLink>}
         </article>
 
         <article id={ids.support} tabIndex={-1}>
-          <h3>Destek ve iletişim</h3>
-          <p>Rezervasyonla ilgili destek için {contact?.businessName?.trim() || 'işletme'} ile iletişime geçin.</p>
+          <h3>{t('Destek ve iletişim')}</h3>
+          <p>Rezervasyonla ilgili destek için {contact?.businessName?.trim() || t('işletme')} ile iletişime geçin.</p>
           {contact && (
             <div className="public-information-contact">
               {contact.phone?.trim() && <a href={phoneHref(contact.phone)}>{contact.phone}</a>}
               {contact.email?.trim() && <a href={`mailto:${contact.email}`}>{contact.email}</a>}
-              {contact.whatsapp?.trim() && <a href={whatsappHref(contact.whatsapp)} rel="noreferrer">WhatsApp</a>}
-              {contact.website?.trim() && <ExternalLink href={contact.website}>İşletme web sitesi</ExternalLink>}
+              {contact.whatsapp?.trim() && <a href={whatsappHref(contact.whatsapp)} rel="noreferrer">{t('WhatsApp')}</a>}
+              {contact.website?.trim() && <ExternalLink href={contact.website}>{t('İşletme web sitesi')}</ExternalLink>}
               {contact.address?.trim() && <address>{contact.address}</address>}
             </div>
           )}
@@ -118,3 +118,4 @@ export default function PublicBookingInformation({
     </section>
   );
 }
+import { t } from './i18n';

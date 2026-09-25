@@ -305,6 +305,7 @@ export default function TicketCashierPage() {
   const initialTicketId = initialParams.get('ticketId');
   const initialCustomerId = initialParams.get('customerId');
   const showStandaloneProductSale = initialParams.get('newProductSale') === '1';
+  const showStandalonePackageSale = initialParams.get('newPackageSale') === '1';
   const keys = useRef(new Map<string, string>());
   const listGeneration = useRef(0);
 
@@ -498,6 +499,32 @@ export default function TicketCashierPage() {
       'Yeni adisyon açıldı.',
     );
     if (ticket) setSelected(ticket);
+  }
+
+  // F16-08: the SalonApp "Yeni paket satışı" action opens a package sale as its
+  // own ticket (the F16-05 package-sale route), like a standalone product sale.
+  async function createPackageSale(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const customerId = String(data.get('customerId') ?? '');
+    const packageId = String(data.get('packageId') ?? '');
+    const item = servicePackages.find((row) => row.packageId === packageId);
+    if (!customerId || !item) return setNotice('Müşteri ve paket seçin.');
+    const ticket = await mutation(
+      `package-sale:${customerId}:${packageId}:${item.version}`,
+      '/api/tickets/package-sales',
+      {
+        method: 'POST',
+        body: JSON.stringify({ customerId, packageId, expectedPackageVersion: item.version }),
+      },
+      'Paket satışı adisyona dönüştürüldü.',
+    );
+    if (ticket) {
+      setSelected(ticket);
+      form.reset();
+      await loadLookups();
+    }
   }
 
   async function createProductSale(event: FormEvent<HTMLFormElement>) {
@@ -855,6 +882,28 @@ export default function TicketCashierPage() {
           </select>
           <input name="quantity" inputMode="numeric" type="number" min="1" max="1000" defaultValue="1" required />
           <button disabled={busy}>Ürün satışını oluştur</button>
+        </form>
+      )}
+
+      {showStandalonePackageSale && (
+        <form className="ticket-product-sale ticket-package-sale" onSubmit={createPackageSale}>
+          <label>Yeni paket satışı
+            <select name="customerId" required defaultValue="">
+              <option value="" disabled>Müşteri seçin</option>
+              {customers.map((customer) => <option key={customer.customer_id} value={customer.customer_id}>{customer.name}</option>)}
+            </select>
+          </label>
+          {servicePackages.length === 0 ? (
+            <p className="ticket-empty">Satılabilir paket yok. Önce Hizmetler sayfasından paket tanımlayın.</p>
+          ) : (
+            <select name="packageId" required defaultValue="" aria-label="Satılacak paket">
+              <option value="" disabled>Paket seçin</option>
+              {servicePackages.map((item) => (
+                <option key={item.packageId} value={item.packageId}>{item.name} · {item.sessionCount} seans · {money(item.priceMinor, item.currency)}</option>
+              ))}
+            </select>
+          )}
+          <button disabled={busy || servicePackages.length === 0}>Paket satışını oluştur</button>
         </form>
       )}
 

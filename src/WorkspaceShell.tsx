@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent, MouseEvent, ReactNode } from 'react';
 import { api, ApiRequestError } from './api';
+import AccountMenu from './AccountMenu';
+import { t } from './i18n';
 import { kolayAppTabFromWorkspacePage, navigateApp, workspaceHref, type WorkspacePage } from './workspace-route';
 import {
   WorkspaceProvider,
@@ -276,12 +278,18 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
       scopeEpoch,
       refreshSession,
       selectBusiness,
+      account: {
+        openPasswordChange: () => setShowPasswordChange(true),
+        logout,
+      },
     };
+  // logout reads only setters and api; it is stable enough for the context.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMembership, ready, refreshSession, scopeEpoch, selectBusiness, session]);
 
   if (loading && !session) return <main className="center-card"><p>Çalışma alanı hazırlanıyor…</p></main>;
 
-  if (ready && contextValue && kolayTab) {
+  if (ready && contextValue && kolayTab && !showPasswordChange) {
     return (
       <WorkspaceProvider value={contextValue}>
         <Suspense fallback={<main className="route-loading" aria-busy="true">KolayApp hazırlanıyor…</main>}>
@@ -321,12 +329,20 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
             </label>
           </div>
         )}
-        {session?.user && (
+        {session?.user && (ready && session.activeBusinessId ? (
+          <AccountMenu
+            businessId={session.activeBusinessId}
+            email={session.user.email}
+            onChangePassword={() => setShowPasswordChange(true)}
+            onLogout={() => void logout()}
+            busy={busy}
+          />
+        ) : (
           <div className="header-actions">
-            {!passwordRequired && <button className="ghost-button" type="button" onClick={() => setShowPasswordChange(true)} disabled={busy}>Parolayı değiştir</button>}
-            <button className="ghost-button" type="button" onClick={() => void logout()} disabled={busy}>Çıkış yap</button>
+            {!passwordRequired && <button className="ghost-button" type="button" onClick={() => setShowPasswordChange(true)} disabled={busy}>{t('Parolayı değiştir')}</button>}
+            <button className="ghost-button" type="button" onClick={() => void logout()} disabled={busy}>{t('Çıkış yap')}</button>
           </div>
-        )}
+        ))}
       </header>
 
       {ready && (

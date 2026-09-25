@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { t } from './i18n';
 import type { FormEvent } from 'react';
 import { ApiRequestError, api } from './api';
 import { PromoAttachResult, PublicPromoField } from './PublicPromo';
@@ -267,19 +268,19 @@ function groupMatchesSelection(group: GroupConfirmation, selection: PublicBookin
 function confirmationOutcome(appointment: Confirmation, group?: GroupConfirmation) {
   const status = group?.status ?? appointment.status;
   switch (status) {
-    case 'scheduled': return { active: true, tone: 'active', symbol: '✓', kicker: 'RANDEVU OLUŞTURULDU', state: 'Randevunuz işletmenin paneline kaydedildi.', groupTail: 'kaydedildi.' };
-    case 'confirmed': return { active: true, tone: 'active', symbol: '✓', kicker: 'RANDEVU ONAYLANDI', state: 'Randevunuz işletme tarafından onaylandı.', groupTail: 'işletme tarafından onaylandı.' };
-    case 'completed': return { active: false, tone: 'neutral', symbol: '✓', kicker: 'RANDEVU TAMAMLANDI', state: 'Randevunuz tamamlandı.', groupTail: 'tamamlandı.' };
-    case 'no_show': return { active: false, tone: 'attention', symbol: '!', kicker: 'RANDEVUYA GELİNMEDİ', state: 'Randevu gelinmedi olarak işaretlendi.', groupTail: 'gelinmedi olarak işaretlendi.' };
-    case 'cancelled': return { active: false, tone: 'attention', symbol: '×', kicker: 'RANDEVU İPTAL EDİLDİ', state: 'Randevunuz iptal edilmiş.', groupTail: 'iptal edilmiş.' };
-    case 'partial': return { active: false, tone: 'attention', symbol: '!', kicker: 'RANDEVU PLANI KISMEN DEĞİŞTİ', state: 'Grup randevunuzun hizmet durumları birbirinden farklı.', groupTail: 'kısmen değişmiş.' };
+    case 'scheduled': return { active: true, tone: 'active', symbol: '✓', kicker: t('RANDEVU OLUŞTURULDU'), state: t('Randevunuz işletmenin paneline kaydedildi.'), groupTail: 'kaydedildi.' };
+    case 'confirmed': return { active: true, tone: 'active', symbol: '✓', kicker: 'RANDEVU ONAYLANDI', state: t('Randevunuz işletme tarafından onaylandı.'), groupTail: t('işletme tarafından onaylandı.') };
+    case 'completed': return { active: false, tone: 'neutral', symbol: '✓', kicker: 'RANDEVU TAMAMLANDI', state: t('Randevunuz tamamlandı.'), groupTail: t('tamamlandı.') };
+    case 'no_show': return { active: false, tone: 'attention', symbol: '!', kicker: t('RANDEVUYA GELİNMEDİ'), state: t('Randevu gelinmedi olarak işaretlendi.'), groupTail: t('gelinmedi olarak işaretlendi.') };
+    case 'cancelled': return { active: false, tone: 'attention', symbol: '×', kicker: t('RANDEVU İPTAL EDİLDİ'), state: t('Randevunuz iptal edilmiş.'), groupTail: t('iptal edilmiş.') };
+    case 'partial': return { active: false, tone: 'attention', symbol: '!', kicker: t('RANDEVU PLANI KISMEN DEĞİŞTİ'), state: t('Grup randevunuzun hizmet durumları birbirinden farklı.'), groupTail: t('kısmen değişmiş.') };
   }
 }
 
 function appointmentStatusLabel(status: AppointmentStatus) {
   const labels: Record<AppointmentStatus, string> = {
-    scheduled: 'Planlandı', confirmed: 'Onaylandı', completed: 'Tamamlandı',
-    no_show: 'Gelinmedi', cancelled: 'İptal edildi',
+    scheduled: t('Planlandı'), confirmed: t('Onaylandı'), completed: t('Tamamlandı'),
+    no_show: 'Gelinmedi', cancelled: t('İptal edildi'),
   };
   return labels[status];
 }
@@ -350,7 +351,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     } catch (error) {
       if (request === storageRequest.current) {
         setStorageReady(false);
-        setStorageError(messageFor(error, 'Randevu işlemi bu tarayıcıda güvenli olarak saklanamadı.'));
+        setStorageError(messageFor(error, t('Randevu işlemi bu tarayıcıda güvenli olarak saklanamadı.')));
       }
       return null;
     }
@@ -367,7 +368,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
 
   async function refreshPageForClock() {
     const next = await api<PagePayload>(`/api/public/business/${encodeURIComponent(slug)}`, { timeoutMs: HTTP_TIMEOUT_MS });
-    if (!validClock(next.bookingClock)) throw new Error('Rezervasyon saati doğrulanamadı. Lütfen tekrar deneyin.');
+    if (!validClock(next.bookingClock)) throw new Error(t('Rezervasyon saati doğrulanamadı. Lütfen tekrar deneyin.'));
     rememberClock(next);
     setPage(next);
     if (!serviceId) setServiceId(next.services[0]?.service_id ?? '');
@@ -411,7 +412,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         setServiceId(next.services[0]?.service_id ?? '');
         setDate(next.business.local_date);
       } catch (error) {
-        if (!cancelled && !confirmation) setNotice(messageFor(error, 'Rezervasyon sayfası yüklenemedi.'));
+        if (!cancelled && !confirmation) setNotice(messageFor(error, t('Rezervasyon sayfası yüklenemedi.')));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -432,7 +433,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         const result = await api<{ staff: PublicStaff[] }>(`/api/public/business/${encodeURIComponent(slug)}/staff?serviceId=${encodeURIComponent(serviceId)}`);
         if (!cancelled) setStaff(result.staff);
       } catch (error) {
-        if (!cancelled) setNotice(messageFor(error, 'Personel bilgileri yüklenemedi.'));
+        if (!cancelled) setNotice(messageFor(error, t('Personel bilgileri yüklenemedi.')));
       }
     }
     void loadStaff();
@@ -475,7 +476,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       const params = new URLSearchParams({ serviceId, date, staffId });
       const result = await api<{ slots: PublicSlot[] }>(`/api/public/business/${encodeURIComponent(slug)}/slots?${params}`);
       setSlots(result.slots);
-      setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : 'Bu gün için uygun saat kalmamış.');
+      setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : t('Bu gün için uygun saat kalmamış.'));
     } catch (error) {
       setSlots([]);
       setNotice(messageFor(error, 'Uygun saatler getirilemedi.'));
@@ -515,10 +516,10 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           ]);
         }
       } else {
-        setConfirmationStorageError('Randevu alındı ancak güvenli cihaz kaydı henüz tamamlanamadı.');
+        setConfirmationStorageError(t('Randevu alındı ancak güvenli cihaz kaydı henüz tamamlanamadı.'));
       }
     } catch {
-      setConfirmationStorageError('Randevu alındı ancak güvenli cihaz kaydı henüz tamamlanamadı.');
+      setConfirmationStorageError(t('Randevu alındı ancak güvenli cihaz kaydı henüz tamamlanamadı.'));
     }
     await refreshBookingRecords();
   }
@@ -532,7 +533,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         'committed',
       );
       if (!completed.applied && completed.record?.status !== 'committed') {
-        setConfirmationStorageError('Güvenli cihaz kaydı tamamlanamadı. Lütfen tekrar deneyin.');
+        setConfirmationStorageError(t('Güvenli cihaz kaydı tamamlanamadı. Lütfen tekrar deneyin.'));
         return;
       }
       setConfirmationRecordId(unpersistedConfirmation.id);
@@ -546,7 +547,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       }
       await refreshBookingRecords();
     } catch {
-      setConfirmationStorageError('Güvenli cihaz kaydı tamamlanamadı. Lütfen tekrar deneyin.');
+      setConfirmationStorageError(t('Güvenli cihaz kaydı tamamlanamadı. Lütfen tekrar deneyin.'));
     }
   }
 
@@ -560,7 +561,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     }
     if (record.status === 'submitting' && Date.now() < record.settleAfterEpochMs) {
       if (automatic) automaticResolveIds.current.delete(record.id);
-      setNotice('İlk randevu isteği hâlâ tamamlanıyor. Birkaç saniye sonra sonucu kontrol edin.');
+      setNotice(t('İlk randevu isteği hâlâ tamamlanıyor. Birkaç saniye sonra sonucu kontrol edin.'));
       return;
     }
     const retryAt = recoveryCooldowns.current.get(record.id) ?? 0;
@@ -577,7 +578,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           method: 'POST', csrf: 'skip', timeoutMs: HTTP_TIMEOUT_MS,
           body: JSON.stringify({ recoveryId: record.recoveryId, idempotencyKey: record.idempotencyKey, recoverySecret: record.recoverySecret }),
         });
-        if (!validConfirmation(result.appointment) || !validManagementUrl(result.management?.url, true)) throw new Error('Randevu sonucu doğrulanamadı.');
+        if (!validConfirmation(result.appointment) || !validManagementUrl(result.management?.url, true)) throw new Error(t('Randevu sonucu doğrulanamadı.'));
         await keepConfirmedResult(record, ['legacy_pending'], result.appointment, result.management.url, result.notification);
         setNotice('');
       } else {
@@ -587,7 +588,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           method: 'POST', csrf: 'skip', timeoutMs: HTTP_TIMEOUT_MS,
           body: JSON.stringify({ recoveryId: record.recoveryId, idempotencyKey: record.idempotencyKey, recoverySecret: record.recoverySecret }),
         });
-        if (result.recoveryId !== record.recoveryId || !['committed', 'exists_nolink', 'closed_absent'].includes(result.resolution)) throw new Error('Randevu sonucu doğrulanamadı.');
+        if (result.recoveryId !== record.recoveryId || !['committed', 'exists_nolink', 'closed_absent'].includes(result.resolution)) throw new Error(t('Randevu sonucu doğrulanamadı.'));
         if (result.resolution === 'committed'
             && (expectsGroup !== (result.group !== undefined)
               || !validConfirmation(result.appointment, expectsGroup)
@@ -597,10 +598,10 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
               || (result.group === undefined && result.appointment?.price_minor === null)
               || !validManagementUrl(result.management?.url)
               || typeof result.recovery?.expiresAt !== 'string'
-              || !Number.isFinite(Date.parse(result.recovery.expiresAt)))) throw new Error('Randevu sonucu doğrulanamadı.');
+              || !Number.isFinite(Date.parse(result.recovery.expiresAt)))) throw new Error(t('Randevu sonucu doğrulanamadı.'));
         if (result.resolution !== 'committed'
             && (result.appointment !== undefined || result.group !== undefined || result.management !== undefined || result.recovery !== undefined)) {
-          throw new Error('Randevu sonucu doğrulanamadı.');
+          throw new Error(t('Randevu sonucu doğrulanamadı.'));
         }
         if (result.resolution === 'committed') {
           await keepConfirmedResult(record, ['submitting', 'unresolved'], result.appointment!, result.management!.url, result.notification, undefined, result.group);
@@ -608,9 +609,9 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         } else {
           const completed = await completePublicBookingIntent(record.id, ['submitting', 'unresolved'], result.resolution);
           if (result.resolution === 'exists_nolink' && completed.applied) {
-            setNotice('Randevunuz alınmış. Yönetim bağlantısı artık bu cihazdan açılamıyor.');
+            setNotice(t('Randevunuz alınmış. Yönetim bağlantısı artık bu cihazdan açılamıyor.'));
           } else if (result.resolution === 'closed_absent' && completed.applied) {
-            setNotice('Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Yeni bir saat seçerek yeniden deneyebilirsiniz.');
+            setNotice(t('Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Yeni bir saat seçerek yeniden deneyebilirsiniz.'));
             if (expectsGroup) onPlanNeedsRefresh?.();
             else {
               setSelectedSlot(null);
@@ -625,7 +626,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         recoveryCooldowns.current.set(record.id, Date.now() + error.retryAfter * 1000);
         setSettleTick((value) => value + 1);
       }
-      setNotice(messageFor(error, 'Önceki randevu işleminizin sonucu henüz doğrulanamadı. Yeni randevu oluşturmadan önce tekrar kontrol edin.'));
+      setNotice(messageFor(error, t('Önceki randevu işleminizin sonucu henüz doğrulanamadı. Yeni randevu oluşturmadan önce tekrar kontrol edin.')));
       await refreshBookingRecords();
     } finally {
       resolvingIds.current.delete(record.id);
@@ -643,7 +644,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     const customerEmail = String(formData.get('customerEmail') ?? '').trim();
     const notes = String(formData.get('notes') ?? '').trim();
     if (!customerPhone) {
-      setContactError('Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.');
+      setContactError(t('Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.'));
       return;
     }
     setContactError('');
@@ -675,7 +676,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       const managementToken = createSecret();
       const deadline = clock.serverNowEpochSeconds + clock.submitWindowSeconds;
       const intent = await derivePublicBookingIntentV2(recoveryId, deadline, recoverySecret);
-      if (!intent) throw new Error('Rezervasyon işlemi güvenli olarak hazırlanamadı.');
+      if (!intent) throw new Error(t('Rezervasyon işlemi güvenli olarak hazırlanamadı.'));
       const sampledAtEpochMs = Date.now();
       const acquired = await acquirePublicBookingIntent({
         slug, bookingKind: isGroupMode ? 'group' : 'single', groupPlan: isGroupMode ? multiServiceSelection! : undefined,
@@ -687,7 +688,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       });
       await refreshBookingRecords();
       if (!acquired.created) {
-        setNotice('Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.');
+        setNotice(t('Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.'));
         return;
       }
       pending = acquired.record;
@@ -706,12 +707,12 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       });
       if (result.management?.url !== `/m#${managementToken}`
           || typeof result.recovery?.expiresAt !== 'string'
-          || !Number.isFinite(Date.parse(result.recovery.expiresAt))) throw new Error('Randevu sonucu doğrulanamadı.');
+          || !Number.isFinite(Date.parse(result.recovery.expiresAt))) throw new Error(t('Randevu sonucu doğrulanamadı.'));
       if (isGroupMode) {
         if (!validUuid(result.appointmentId)
             || !validGroupConfirmation(result.group)
             || result.group.lines[0]?.appointmentId !== result.appointmentId
-            || !groupMatchesSelection(result.group, multiServiceSelection!)) throw new Error('Grup rezervasyonu sonucu seçili planla eşleşmedi.');
+            || !groupMatchesSelection(result.group, multiServiceSelection!)) throw new Error(t('Grup rezervasyonu sonucu seçili planla eşleşmedi.'));
         const anchor = result.group.lines[0]!;
         const appointment: Confirmation = {
           appointment_id: result.appointmentId,
@@ -727,22 +728,22 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         };
         await keepConfirmedResult(pending, ['submitting', 'unresolved'], appointment, result.management.url, result.notification, page?.business.name, result.group);
       } else {
-        if (!validConfirmation(result.appointment) || result.group !== undefined || result.appointmentId !== undefined) throw new Error('Randevu sonucu doğrulanamadı.');
+        if (!validConfirmation(result.appointment) || result.group !== undefined || result.appointmentId !== undefined) throw new Error(t('Randevu sonucu doğrulanamadı.'));
         await keepConfirmedResult(pending, ['submitting', 'unresolved'], result.appointment, result.management.url, result.notification, page?.business.name);
       }
       setNotice('');
     } catch (error) {
       if (!pending) {
-        setNotice(messageFor(error, 'Randevu işlemi bu tarayıcıda güvenli olarak hazırlanamadı.'));
+        setNotice(messageFor(error, t('Randevu işlemi bu tarayıcıda güvenli olarak hazırlanamadı.')));
       } else {
         const unresolved = await markPublicBookingUnresolved(pending.id, pending.ownerId).catch(() => null);
         await refreshBookingRecords();
         if (error instanceof ApiRequestError && error.retryAfter !== undefined) {
           recoveryCooldowns.current.set(pending.id, Date.now() + error.retryAfter * 1000);
           setSettleTick((value) => value + 1);
-          setNotice(messageFor(error, 'Çok fazla istek yapıldı. Daha sonra sonucu tekrar kontrol edin.'));
+          setNotice(messageFor(error, t('Çok fazla istek yapıldı. Daha sonra sonucu tekrar kontrol edin.')));
         } else {
-          setNotice('Randevu isteğinin sonucu belirsiz kaldı. Aynı işlemin sonucunu bir kez kontrol ediyoruz…');
+          setNotice(t('Randevu isteğinin sonucu belirsiz kaldı. Aynı işlemin sonucunu bir kez kontrol ediyoruz…'));
           if (unresolved && isRecoverableRecord(unresolved)) {
             await resolveStoredResult(unresolved, true);
           }
@@ -757,7 +758,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     try {
       const removed = record.source === 'legacy_v1' ? await forgetLegacyBookingRecord(record.id) : await dismissPublicBookingRecord(record.id);
       if (!removed) {
-        setNotice('Bu işlem devam ederken cihazdaki kayıt kaldırılamaz. Önce sonucu kontrol edin.');
+        setNotice(t('Bu işlem devam ederken cihazdaki kayıt kaldırılamaz. Önce sonucu kontrol edin.'));
         return;
       }
       setConfirmation(null);
@@ -765,11 +766,11 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       setNotice('');
       await refreshBookingRecords();
     } catch (error) {
-      setNotice(messageFor(error, 'Cihazdaki randevu hatırlatıcısı kaldırılamadı.'));
+      setNotice(messageFor(error, t('Cihazdaki randevu hatırlatıcısı kaldırılamadı.')));
     }
   }
 
-  if (loading && !confirmation) return <main className="public-booking-shell"><section className="public-booking-card"><p>Uygun saatler hazırlanıyor…</p></section></main>;
+  if (loading && !confirmation) return <main className="public-booking-shell"><section className="public-booking-card"><p>{t('Uygun saatler hazırlanıyor…')}</p></section></main>;
 
   const waitingForCreate = blockingRecord?.status === 'submitting' && Date.now() < blockingRecord.settleAfterEpochMs;
   const activeRetryAt = blockingRecord ? recoveryCooldowns.current.get(blockingRecord.id) ?? 0 : 0;
@@ -789,104 +790,104 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           <span><strong>{line.serviceName}</strong><small>{line.staffName} · {formatTime(line.startsAt, confirmation.group!.timezone)}–{formatTime(line.endsAt, confirmation.group!.timezone)}</small><small>Durum: {appointmentStatusLabel(line.status)}</small></span>
           <span>{line.priceMinMinor === line.priceMaxMinor ? money(line.priceMinMinor, line.currency) : `${money(line.priceMinMinor, line.currency)} – ${money(line.priceMaxMinor, line.currency)}`}</span>
         </li>)}</ol>
-        <dl className="public-confirmation-list"><div><dt>Başlangıç</dt><dd>{formatDateTime(confirmation.group.startsAt, confirmation.group.timezone)}</dd></div><div><dt>Fiyat</dt><dd>{estimateMoney(confirmation.group.estimateMinMinor, confirmation.group.estimateMaxMinor, confirmation.group.currency)}</dd></div></dl>
-        <p className="public-confirmation-note">Bu tutar rezervasyon tahminidir. Kesin tahsilat tutarı değildir.</p>
-      </> : <dl className="public-confirmation-list"><div><dt>Hizmet</dt><dd>{appointment.service_name}</dd></div><div><dt>Personel</dt><dd>{appointment.staff_name}</dd></div><div><dt>Tarih</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div><div><dt>Ücret</dt><dd>{appointment.price_minor === null ? 'İşletmede netleşecek' : money(appointment.price_minor, appointment.currency)}</dd></div></dl>}
-      <div className={`public-result-status is-${outcome.tone}`} aria-label="Rezervasyon ve bildirim durumu"><p><strong>Kayıt durumu:</strong> {outcome.state}</p><PublicNotificationStatus notification={confirmation.notification} /></div>
+        <dl className="public-confirmation-list"><div><dt>{t('Başlangıç')}</dt><dd>{formatDateTime(confirmation.group.startsAt, confirmation.group.timezone)}</dd></div><div><dt>{t('Fiyat')}</dt><dd>{estimateMoney(confirmation.group.estimateMinMinor, confirmation.group.estimateMaxMinor, confirmation.group.currency)}</dd></div></dl>
+        <p className="public-confirmation-note">{t('Bu tutar rezervasyon tahminidir. Kesin tahsilat tutarı değildir.')}</p>
+      </> : <dl className="public-confirmation-list"><div><dt>{t('Hizmet')}</dt><dd>{appointment.service_name}</dd></div><div><dt>{t('Personel')}</dt><dd>{appointment.staff_name}</dd></div><div><dt>{t('Tarih')}</dt><dd>{formatDateTime(appointment.starts_at, appointment.timezone)}</dd></div><div><dt>{t('Ücret')}</dt><dd>{appointment.price_minor === null ? t('İşletmede netleşecek') : money(appointment.price_minor, appointment.currency)}</dd></div></dl>}
+      <div className={`public-result-status is-${outcome.tone}`} aria-label={t('Rezervasyon ve bildirim durumu')}><p><strong>{t('Kayıt durumu:')}</strong> {outcome.state}</p><PublicNotificationStatus notification={confirmation.notification} /></div>
       {promoCode && outcome.active && <PromoAttachResult manageUrl={confirmation.manageUrl} code={promoCode} />}
-      <p className="public-confirmation-note">{outcome.active ? 'Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.' : 'Randevu ayrıntılarınızı yönetim bağlantısından görüntüleyebilirsiniz.'}</p>
+      <p className="public-confirmation-note">{outcome.active ? t('Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.') : t('Randevu ayrıntılarınızı yönetim bağlantısından görüntüleyebilirsiniz.')}</p>
       <PublicBookingInformation slug={slug} contact={informationContact} prefix="result" />
-      <a className="public-primary" href={confirmation.manageUrl}>{outcome.active ? 'Randevumu yönet' : 'Randevu ayrıntılarını aç'}</a>
+      <a className="public-primary" href={confirmation.manageUrl}>{outcome.active ? t('Randevumu yönet') : t('Randevu ayrıntılarını aç')}</a>
       {confirmationStorageError && <div className="public-booking-notice" role="alert">{confirmationStorageError} Bu kayıt tamamlanana kadar yeni randevu başlatmayın.</div>}
-      {unpersistedConfirmation && <button className="public-secondary" type="button" onClick={() => void retryConfirmationPersistence()}>Güvenli kaydı yeniden dene</button>}
-      <button className="public-secondary" type="button" disabled={!receipt} onClick={() => { if (receipt) void removeReminder(receipt); }}>Yeni randevu oluştur</button>
+      {unpersistedConfirmation && <button className="public-secondary" type="button" onClick={() => void retryConfirmationPersistence()}>{t('Güvenli kaydı yeniden dene')}</button>}
+      <button className="public-secondary" type="button" disabled={!receipt} onClick={() => { if (receipt) void removeReminder(receipt); }}>{t('Yeni randevu oluştur')}</button>
     </section></main>;
   }
 
   if (blockingRecord && (blockingRecord.status === 'committed' || blockingRecord.status === 'exists_nolink')) {
     return <main className="public-booking-shell"><section className="public-booking-card public-confirmation">
-      <div className="public-success-mark">✓</div><p className="public-kicker">RANDEVU KAYDI BULUNDU</p><h1>Önceki randevunuz alındı.</h1>
-      <p className="public-confirmation-note">Yönetim bağlantısı güvenlik nedeniyle bu cihazda saklanmadı. Bağlantıyı kaybettiyseniz randevu bilgilerinizi işletmeyle kontrol edin.</p>
+      <div className="public-success-mark">✓</div><p className="public-kicker">{t('RANDEVU KAYDI BULUNDU')}</p><h1>{t('Önceki randevunuz alındı.')}</h1>
+      <p className="public-confirmation-note">{t('Yönetim bağlantısı güvenlik nedeniyle bu cihazda saklanmadı. Bağlantıyı kaybettiyseniz randevu bilgilerinizi işletmeyle kontrol edin.')}</p>
       <PublicBookingInformation slug={slug} contact={informationContact} prefix="receipt" />
-      <button className="public-secondary" type="button" onClick={() => void removeReminder(blockingRecord)}>Yeni randevu oluştur</button>
+      <button className="public-secondary" type="button" onClick={() => void removeReminder(blockingRecord)}>{t('Yeni randevu oluştur')}</button>
     </section></main>;
   }
 
   if (blockingRecord && (blockingRecord.status === 'legacy_unknown' || blockingRecord.status === 'expired_unverified')) {
     return <main className="public-booking-shell"><section className="public-booking-card public-empty-state">
-      <p className="public-kicker">ÖNCEKİ İŞLEM BELİRSİZ</p><h1>Önceki randevunuzu kontrol edin.</h1>
-      <p>Bu cihazdaki kayıt sonucu doğrulamaya yetmiyor. E-posta veya yönetim bağlantınızı kontrol edin ya da işletmeyle görüşün.</p>
-      <p>Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.</p>
+      <p className="public-kicker">{t('ÖNCEKİ İŞLEM BELİRSİZ')}</p><h1>{t('Önceki randevunuzu kontrol edin.')}</h1>
+      <p>{t('Bu cihazdaki kayıt sonucu doğrulamaya yetmiyor. E-posta veya yönetim bağlantınızı kontrol edin ya da işletmeyle görüşün.')}</p>
+      <p>{t('Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.')}</p>
       <PublicBookingInformation slug={slug} contact={informationContact} prefix="uncertain" />
-      <button className="public-secondary" type="button" onClick={() => void removeReminder(blockingRecord)}>Cihazdaki hatırlatıcıyı kaldır</button>
+      <button className="public-secondary" type="button" onClick={() => void removeReminder(blockingRecord)}>{t('Cihazdaki hatırlatıcıyı kaldır')}</button>
     </section></main>;
   }
 
   if (!page) return <main className="public-booking-shell"><section className="public-booking-card public-empty-state">
-    <p className="public-kicker">YZT RANDEVU</p><h1>Bu rezervasyon bağlantısı şu anda aktif değil.</h1><p>{notice || 'İşletme bağlantıyı kapatmış veya adres geçersiz olabilir.'}</p>
-    {blockingRecord && isRecoverableRecord(blockingRecord) && <button className="public-primary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Randevu sonucu kontrol ediliyor…' : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : 'Önceki randevu sonucunu kontrol et'}</button>}
+    <p className="public-kicker">{t('YZT RANDEVU')}</p><h1>{t('Bu rezervasyon bağlantısı şu anda aktif değil.')}</h1><p>{notice || t('İşletme bağlantıyı kapatmış veya adres geçersiz olabilir.')}</p>
+    {blockingRecord && isRecoverableRecord(blockingRecord) && <button className="public-primary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Randevu sonucu kontrol ediliyor…' : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : t('Önceki randevu sonucunu kontrol et')}</button>}
   </section></main>;
 
   if (isGroupMode) return <div className="public-booking-shell public-booking-checkout-shell">
     {notice && <div className="public-booking-notice" role="status">{notice}</div>}
-    {storageError && <div className="public-booking-notice" role="alert">{storageError} Tarayıcı depolamasını açıp tekrar deneyin. <button className="public-secondary" type="button" onClick={() => void refreshBookingRecords()}>Depolamayı yeniden dene</button></div>}
-    {closedReceipt && !blockingRecord && <div className="public-booking-notice" role="status">Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Hizmet seçiminiz korundu; yeni uygunluk getiriliyor.</div>}
+    {storageError && <div className="public-booking-notice" role="alert">{storageError} Tarayıcı depolamasını açıp tekrar deneyin. <button className="public-secondary" type="button" onClick={() => void refreshBookingRecords()}>{t('Depolamayı yeniden dene')}</button></div>}
+    {closedReceipt && !blockingRecord && <div className="public-booking-notice" role="status">{t('Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Hizmet seçiminiz korundu; yeni uygunluk getiriliyor.')}</div>}
     {blockingRecord && isRecoverableRecord(blockingRecord) && <div className="public-booking-notice" role="status">
-      <span>Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.</span>{' '}
-      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Kontrol ediliyor…' : waitingForCreate ? 'İlk istek tamamlanıyor…' : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : 'Sonucu tekrar kontrol et'}</button>
-      {blockingRecord.source === 'legacy_v1' && <><span>Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.</span> <button className="public-secondary" type="button" disabled={recoveryBusy} onClick={() => void removeReminder(blockingRecord)}>Cihazdaki hatırlatıcıyı kaldır</button></>}
+      <span>{t('Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.')}</span>{' '}
+      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Kontrol ediliyor…' : waitingForCreate ? t('İlk istek tamamlanıyor…') : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : 'Sonucu tekrar kontrol et'}</button>
+      {blockingRecord.source === 'legacy_v1' && <><span>{t('Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.')}</span> <button className="public-secondary" type="button" disabled={recoveryBusy} onClick={() => void removeReminder(blockingRecord)}>{t('Cihazdaki hatırlatıcıyı kaldır')}</button></>}
     </div>}
     <section className={`public-booking-card public-customer-card public-group-customer-card ${multiServiceSelection ? 'is-ready' : ''}`} aria-labelledby="public-group-customer-title">
-      <span className="public-step">B</span><h2 id="public-group-customer-title">İletişim ve onay</h2>
+      <span className="public-step">{t('B')}</span><h2 id="public-group-customer-title">{t('İletişim ve onay')}</h2>
       {multiServiceSelection ? <>
         <div className="public-selection-summary public-group-selection-summary">
           <span><strong>{multiServiceSelection.slot.lines.length} hizmet</strong><small>{formatDateTime(multiServiceSelection.slot.startsAt, multiServiceSelection.slot.timezone)}</small></span>
-          <span><strong>{estimateMoney(multiServiceSelection.slot.estimateMinMinor, multiServiceSelection.slot.estimateMaxMinor, multiServiceSelection.slot.currency)}</strong><small>Kesin tahsilat tutarı değildir.</small></span>
+          <span><strong>{estimateMoney(multiServiceSelection.slot.estimateMinMinor, multiServiceSelection.slot.estimateMaxMinor, multiServiceSelection.slot.currency)}</strong><small>{t('Kesin tahsilat tutarı değildir.')}</small></span>
         </div>
         <form className="public-customer-form" onSubmit={(event) => void book(event)}>
-          <label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label>
-          <div className="public-two-columns"><label><span>Telefon <small>(zorunlu)</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div>
-          <small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>
+          <label><span>{t('Ad soyad')}</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label>
+          <div className="public-two-columns"><label><span>{t('Telefon')} <small>{t('(zorunlu)')}</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder={t('05xx…')} aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>{t('E-posta')} <small>{t('(isteğe bağlı)')}</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder={t('ornek@eposta.com')} aria-describedby="public-contact-help" /></label></div>
+          <small id="public-contact-help" className="public-field-hint">{t('Telefon zorunlu. E-posta isteğe bağlıdır.')}</small>
           {contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}
-          <label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={1000} rows={3} /></label>
+          <label><span>{t('Not')} <small>{t('(isteğe bağlı)')}</small></span><textarea name="notes" maxLength={1000} rows={3} /></label>
           <PublicPromoField slug={slug} serviceIds={multiServiceSelection.lines.map((line) => line.serviceId)} onChange={setPromoCode} />
           <PublicBookingInformation slug={slug} contact={informationContact} prefix="group-booking" />
-          <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Planı onayla ve randevuyu oluştur'}</button>
+          <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? t('Önceki randevu kontrol ediliyor…') : !storageReady ? t('Güvenli kayıt hazırlanıyor…') : busy ? t('Randevu oluşturuluyor…') : t('Planı onayla ve randevuyu oluştur')}</button>
         </form>
-      </> : <p className="public-muted">İletişim formunu açmak için yukarıdan hizmetlerinizi ve birlikte uygun bir saati seçin.</p>}
+      </> : <p className="public-muted">{t('İletişim formunu açmak için yukarıdan hizmetlerinizi ve birlikte uygun bir saati seçin.')}</p>}
     </section>
     <footer className="public-booking-footer">Saatler {page.business.timezone} saat dilimine göre gösterilir. Randevu kaydı ile mesaj teslimi ayrı durumlardır.</footer>
   </div>;
 
   return <main className="public-booking-shell">
-    <header className="public-booking-header"><p className="public-kicker">ONLINE RANDEVU</p><h1>{page.business.name}</h1><p>Hizmeti ve günü seçin, gerçek boş saatlerden birini ayırın.</p></header>
+    <header className="public-booking-header"><p className="public-kicker">{t('ONLINE RANDEVU')}</p><h1>{page.business.name}</h1><p>{t('Hizmeti ve günü seçin, gerçek boş saatlerden birini ayırın.')}</p></header>
     {notice && <div className="public-booking-notice" role="status">{notice}</div>}
-    {storageError && <div className="public-booking-notice" role="alert">{storageError} Tarayıcı depolamasını açıp tekrar deneyin. <button className="public-secondary" type="button" onClick={() => void refreshBookingRecords()}>Depolamayı yeniden dene</button></div>}
-    {closedReceipt && !blockingRecord && <div className="public-booking-notice" role="status">Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Yeni bir saat seçerek yeniden deneyebilirsiniz.</div>}
+    {storageError && <div className="public-booking-notice" role="alert">{storageError} Tarayıcı depolamasını açıp tekrar deneyin. <button className="public-secondary" type="button" onClick={() => void refreshBookingRecords()}>{t('Depolamayı yeniden dene')}</button></div>}
+    {closedReceipt && !blockingRecord && <div className="public-booking-notice" role="status">{t('Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Yeni bir saat seçerek yeniden deneyebilirsiniz.')}</div>}
     {blockingRecord && isRecoverableRecord(blockingRecord) && <div className="public-booking-notice" role="status">
-      <span>Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.</span>{' '}
-      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Kontrol ediliyor…' : waitingForCreate ? 'İlk istek tamamlanıyor…' : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : 'Sonucu tekrar kontrol et'}</button>
-      {blockingRecord.source === 'legacy_v1' && <><span>Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.</span> <button className="public-secondary" type="button" disabled={recoveryBusy} onClick={() => void removeReminder(blockingRecord)}>Cihazdaki hatırlatıcıyı kaldır</button></>}
+      <span>{t('Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.')}</span>{' '}
+      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Kontrol ediliyor…' : waitingForCreate ? t('İlk istek tamamlanıyor…') : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : 'Sonucu tekrar kontrol et'}</button>
+      {blockingRecord.source === 'legacy_v1' && <><span>{t('Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.')}</span> <button className="public-secondary" type="button" disabled={recoveryBusy} onClick={() => void removeReminder(blockingRecord)}>{t('Cihazdaki hatırlatıcıyı kaldır')}</button></>}
     </div>}
     <div className="public-booking-layout">
-      <section className="public-booking-card"><span className="public-step">1</span><h2>Hizmet ve tarih</h2>
+      <section className="public-booking-card"><span className="public-step">1</span><h2>{t('Hizmet ve tarih')}</h2>
         {page.services.length ? <form className="public-picker-form" onSubmit={(event) => void loadSlots(event)}>
-          <label><span>Hizmet</span><select value={serviceId} onChange={(event) => { setServiceId(event.target.value); resetSlotSelection(); }}>{page.services.map((service) => <option key={service.service_id} value={service.service_id}>{service.name} · {service.duration_minutes} dk · {money(service.price_minor, service.currency)}</option>)}</select></label>
-          <label><span>Personel</span><select value={staffId} onChange={(event) => { setStaffId(event.target.value); resetSlotSelection(); }}><option value="any">Fark etmez</option>{staff.map((person) => <option key={person.staff_id} value={person.staff_id}>{person.staff_name}</option>)}</select></label>
-          <label><span>Tarih</span><input type="date" value={date} min={page.business.local_date} max={page.business.max_date} onChange={(event) => { setDate(event.target.value); resetSlotSelection(); }} required /></label>
-          <button className="public-primary" disabled={busy || !serviceId}>{busy ? 'Bakılıyor…' : 'Uygun saatleri göster'}</button>
-        </form> : <p className="public-muted">Şu anda online randevuya açık hizmet bulunmuyor.</p>}
+          <label><span>{t('Hizmet')}</span><select value={serviceId} onChange={(event) => { setServiceId(event.target.value); resetSlotSelection(); }}>{page.services.map((service) => <option key={service.service_id} value={service.service_id}>{service.name} · {service.duration_minutes} dk · {money(service.price_minor, service.currency)}</option>)}</select></label>
+          <label><span>{t('Personel')}</span><select value={staffId} onChange={(event) => { setStaffId(event.target.value); resetSlotSelection(); }}><option value="any">{t('Fark etmez')}</option>{staff.map((person) => <option key={person.staff_id} value={person.staff_id}>{person.staff_name}</option>)}</select></label>
+          <label><span>{t('Tarih')}</span><input type="date" value={date} min={page.business.local_date} max={page.business.max_date} onChange={(event) => { setDate(event.target.value); resetSlotSelection(); }} required /></label>
+          <button className="public-primary" disabled={busy || !serviceId}>{busy ? t('Bakılıyor…') : t('Uygun saatleri göster')}</button>
+        </form> : <p className="public-muted">{t('Şu anda online randevuya açık hizmet bulunmuyor.')}</p>}
       </section>
-      <section className="public-booking-card"><span className="public-step">2</span><h2>Uygun saat</h2>
-        {slots.length ? <div className="public-slot-grid">{slots.map((slot) => { const active = selectedSlot?.staff_id === slot.staff_id && selectedSlot.starts_at === slot.starts_at; return <button className={`public-slot ${active ? 'is-selected' : ''}`} type="button" key={`${slot.staff_id}-${slot.starts_at}`} onClick={() => { setSelectedSlot(slot); setNotice(''); }}><strong>{formatTime(slot.starts_at, slot.timezone)}</strong><span>{slot.staff_name}</span></button>; })}</div> : <p className="public-muted">Önce hizmet ve tarih seçip uygun saatleri getirin.</p>}
+      <section className="public-booking-card"><span className="public-step">2</span><h2>{t('Uygun saat')}</h2>
+        {slots.length ? <div className="public-slot-grid">{slots.map((slot) => { const active = selectedSlot?.staff_id === slot.staff_id && selectedSlot.starts_at === slot.starts_at; return <button className={`public-slot ${active ? 'is-selected' : ''}`} type="button" key={`${slot.staff_id}-${slot.starts_at}`} onClick={() => { setSelectedSlot(slot); setNotice(''); }}><strong>{formatTime(slot.starts_at, slot.timezone)}</strong><span>{slot.staff_name}</span></button>; })}</div> : <p className="public-muted">{t('Önce hizmet ve tarih seçip uygun saatleri getirin.')}</p>}
       </section>
-      <section className={`public-booking-card public-customer-card ${selectedSlot ? 'is-ready' : ''}`}><span className="public-step">3</span><h2>İletişim bilgileri</h2>
+      <section className={`public-booking-card public-customer-card ${selectedSlot ? 'is-ready' : ''}`}><span className="public-step">3</span><h2>{t('İletişim bilgileri')}</h2>
         {selectedSlot && selectedService ? <><div className="public-selection-summary"><strong>{selectedService.name}</strong><span>{formatDateTime(selectedSlot.starts_at, selectedSlot.timezone)} · {selectedSlot.staff_name}</span></div>
-          <form className="public-customer-form" onSubmit={(event) => void book(event)}><label><span>Ad soyad</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label><div className="public-two-columns"><label><span>Telefon <small>(zorunlu)</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder="05xx…" aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>E-posta <small>(isteğe bağlı)</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder="ornek@eposta.com" aria-describedby="public-contact-help" /></label></div><small id="public-contact-help" className="public-field-hint">Telefon zorunlu. E-posta isteğe bağlıdır.</small>{contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}<label><span>Not <small>(isteğe bağlı)</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
+          <form className="public-customer-form" onSubmit={(event) => void book(event)}><label><span>{t('Ad soyad')}</span><input name="customerName" minLength={2} maxLength={120} autoComplete="name" required aria-describedby="public-contact-help" /></label><div className="public-two-columns"><label><span>{t('Telefon')} <small>{t('(zorunlu)')}</small></span><input name="customerPhone" maxLength={40} autoComplete="tel" placeholder={t('05xx…')} aria-required="true" aria-describedby={`public-contact-help${contactError ? ' public-contact-error' : ''}`} aria-invalid={Boolean(contactError)} onInput={() => setContactError('')} /></label><label><span>{t('E-posta')} <small>{t('(isteğe bağlı)')}</small></span><input name="customerEmail" maxLength={254} type="email" autoComplete="email" placeholder={t('ornek@eposta.com')} aria-describedby="public-contact-help" /></label></div><small id="public-contact-help" className="public-field-hint">{t('Telefon zorunlu. E-posta isteğe bağlıdır.')}</small>{contactError && <div id="public-contact-error" className="public-field-error" role="alert">{contactError}</div>}<label><span>{t('Not')} <small>{t('(isteğe bağlı)')}</small></span><textarea name="notes" maxLength={500} rows={3} /></label>
             <PublicPromoField slug={slug} serviceIds={selectedService ? [selectedService.service_id] : []} onChange={setPromoCode} />
             <PublicBookingInformation slug={slug} contact={informationContact} prefix="booking" />
-            <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? 'Önceki randevu kontrol ediliyor…' : !storageReady ? 'Güvenli kayıt hazırlanıyor…' : busy ? 'Randevu oluşturuluyor…' : 'Randevuyu oluştur'}</button>
-          </form></> : <p className="public-muted">Bir saat seçtiğinizde iletişim formu burada açılır.</p>}
+            <button className="public-primary public-book-button" disabled={busy || Boolean(blockingRecord) || !storageReady || !informationReady}>{blockingRecord ? t('Önceki randevu kontrol ediliyor…') : !storageReady ? t('Güvenli kayıt hazırlanıyor…') : busy ? t('Randevu oluşturuluyor…') : t('Randevuyu oluştur')}</button>
+          </form></> : <p className="public-muted">{t('Bir saat seçtiğinizde iletişim formu burada açılır.')}</p>}
       </section>
     </div>
     <footer className="public-booking-footer">Saatler {page.business.timezone} saat dilimine göre gösterilir.</footer>
