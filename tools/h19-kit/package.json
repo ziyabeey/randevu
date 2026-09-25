@@ -43,7 +43,8 @@
     "test:m11-validation": "node test/m11-targeted-validation.mjs",
     "test:m11-supplement": "node test/m11-supplement.mjs",
     "test:m11-notification-freeze": "node test/m11-notification-validation-freeze.mjs",
-    "test:m11-notification-result": "node test/m11-notification-validation-result.mjs"
+    "test:m11-notification-result": "node test/m11-notification-validation-result.mjs",
+    "test:m11-independent-assessment-freeze": "node test/m11-independent-assessment-freeze.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
