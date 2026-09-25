@@ -726,7 +726,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         />
       </label>
       <div className="public-otp-controls" aria-label={t('WhatsApp telefon doğrulaması')}>
-        {!verified && <button className="public-secondary" type="button" disabled={otpBusy || !customerPhoneValue.trim()} onClick={() => void sendWhatsappOtp()}>
+        {!verified && <button className="public-secondary" type="button" disabled={otpBusy} onClick={() => void sendWhatsappOtp()}>
           {otpBusy ? t('Gönderiliyor…') : otpSent ? t('Kodu yeniden gönder') : t('WhatsApp kodu gönder')}
         </button>}
         {otpSent && !verified && <>

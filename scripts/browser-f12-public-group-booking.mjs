@@ -298,8 +298,19 @@ const server = createServer(async (request, response) => {
     staff_id: staffB, staff_name: 'Deniz', starts_at: '2026-09-20T07:00:00.000Z',
     ends_at: '2026-09-20T07:30:00.000Z', timezone: 'Europe/Istanbul',
   }] });
+  // F16-02: the phone is proven with a WhatsApp code before create.
+  if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/start') {
+    return sendJson(response, 200, { verificationChallenge: `f12-otp-challenge-${body.phone}` });
+  }
+  if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/check') {
+    if (body.code !== '123456' || body.verificationChallenge !== `f12-otp-challenge-${body.phone}`) {
+      return sendJson(response, 400, { error: { code: 'PHONE_VERIFICATION_INVALID', message: 'WhatsApp kodu doğrulanamadı.' } });
+    }
+    return sendJson(response, 200, { phoneVerificationToken: `f12-phone-proof-${body.phone}` });
+  }
   const bookMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/group-book$/);
   if (request.method === 'POST' && bookMatch) {
+    assert.equal(body.phoneVerificationToken, `f12-phone-proof-${body.customerPhone}`, 'group create did not carry the WhatsApp phone proof');
     const group = createdGroup(body.lines);
     const mutation = mutationScenario(bookMatch[1]);
     if (bookMatch[1] === 'reassign-salon' || bookMatch[1] === 'invalid-pinned-salon') {
@@ -366,6 +377,7 @@ const server = createServer(async (request, response) => {
       : sendJson(response, 200, { resolution: 'closed_absent', recoveryId: body.recoveryId });
   }
   const singleBookMatch = url.pathname.match(/^\/api\/public\/business\/([^/]+)\/book$/);
+  if (request.method === 'POST' && singleBookMatch) assert.equal(body.phoneVerificationToken, `f12-phone-proof-${body.customerPhone}`, 'single create did not carry the WhatsApp phone proof');
   if (request.method === 'POST' && singleBookMatch) return sendJson(response, 201, {
     appointment: {
       appointment_id: appointmentB, business_name: 'F12 Salon', status: 'scheduled',
@@ -519,8 +531,45 @@ async function preparePlan(page, slug, pinFirstStaff = false, checkKeyboard = tr
   await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-group-customer-card input[name=customerName]"))'), `${slug} contact form did not open`);
 }
 
-async function submitContact(page) {
-  await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const phone=document.querySelector("input[name=customerPhone]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(phone,"05550001122"); phone.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
+const clickEnabledButton = (text) => `(() => { const button=Array.from(document.querySelectorAll("button")).find((item)=>item.textContent.includes(${JSON.stringify(text)})); if (!button || button.disabled) return false; button.click(); return true; })()`;
+
+// F16-02: the phone is proven with a WhatsApp code; create enables only after it.
+async function verifyPhoneAndBook(page, slug, createText = 'Planı onayla') {
+  await waitFor(() => page.evaluate(clickEnabledButton('WhatsApp kodu gönder')), `${slug} WhatsApp code send button did not enable`);
+  await waitFor(() => page.evaluate('Boolean(document.querySelector("input[autocomplete=one-time-code]"))'), `${slug} WhatsApp code input did not appear`);
+  await page.evaluate('(() => { const input=document.querySelector("input[autocomplete=one-time-code]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"123456"); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await waitFor(() => page.evaluate(clickEnabledButton('Kodu doğrula')), `${slug} WhatsApp code verify button did not enable`);
+  await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-otp-ok"))'), `${slug} phone was not verified`);
+  await waitFor(() => page.evaluate(clickEnabledButton(createText)), `${slug} create button did not enable after phone verification`);
+}
+
+const setInputValue = (selector, value) => `(() => { const input=document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event("input",{bubbles:true})); })()`;
+const createEnabled = (text) => `Boolean(Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes(${JSON.stringify(text)}) && !button.disabled))`;
+
+// F16-02 failure paths: a wrong code is refused with a visible notice and no
+// proof, and changing the phone after verification drops the proof again.
+async function exerciseWhatsappFailures(page, slug) {
+  await waitFor(() => page.evaluate(clickEnabledButton('WhatsApp kodu gönder')), `${slug} WhatsApp code send button did not enable`);
+  await waitFor(() => page.evaluate('Boolean(document.querySelector("input[autocomplete=one-time-code]"))'), `${slug} WhatsApp code input did not appear`);
+  await page.evaluate(setInputValue('input[autocomplete=one-time-code]', '000000'));
+  await waitFor(() => page.evaluate(clickEnabledButton('Kodu doğrula')), `${slug} WhatsApp code verify button did not enable`);
+  await waitFor(() => page.evaluate('document.body.innerText.includes("WhatsApp kodu doğrulanamadı.")'), `${slug} wrong WhatsApp code was not reported`);
+  assert.equal(await page.evaluate('Boolean(document.querySelector(".public-otp-ok"))'), false, `${slug} a wrong WhatsApp code verified the phone`);
+  assert.equal(await page.evaluate(createEnabled('Planı onayla')), false, `${slug} create enabled after a wrong WhatsApp code`);
+  await page.evaluate(setInputValue('input[autocomplete=one-time-code]', '123456'));
+  await waitFor(() => page.evaluate(clickEnabledButton('Kodu doğrula')), `${slug} WhatsApp code verify button did not re-enable`);
+  await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-otp-ok"))'), `${slug} phone was not verified`);
+  await waitFor(() => page.evaluate(createEnabled('Planı onayla')), `${slug} create did not enable after phone verification`);
+  await page.evaluate(setInputValue('input[name=customerPhone]', '05550001123'));
+  await waitFor(() => page.evaluate('!document.querySelector(".public-otp-ok") && !document.querySelector("input[autocomplete=one-time-code]")'), `${slug} changing the phone kept the WhatsApp proof`);
+  assert.equal(await page.evaluate(createEnabled('Planı onayla')), false, `${slug} create stayed enabled for an unverified phone`);
+  await page.evaluate(setInputValue('input[name=customerPhone]', '05550001122'));
+  assert.equal(await page.evaluate(createEnabled('Planı onayla')), false, `${slug} returning to the old phone reused a dropped proof`);
+}
+
+async function submitContact(page, slug = 'contact') {
+  await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const phone=document.querySelector("input[name=customerPhone]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(phone,"05550001122"); phone.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await verifyPhoneAndBook(page, slug);
 }
 
 async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
@@ -541,12 +590,16 @@ async function runJourney(debugUrl, origin, slug, width, expectsRecovery) {
     assert.equal(contactFocus.name, 'customerPhone', `${slug} keyboard did not advance into contact fields`);
     assert.ok(contactFocus.focusVisible && contactFocus.outlineStyle !== 'none' && contactFocus.outlineWidth !== '0px', `${slug} contact field did not receive visible keyboard focus: ${JSON.stringify(contactFocus)}`);
 
-    await page.evaluate('(() => { const input=document.querySelector("input[name=customerName]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"Deniz Örnek"); input.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
+    await page.evaluate('(() => { const input=document.querySelector("input[name=customerName]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"Deniz Örnek"); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+    // Asking for a WhatsApp code without a phone surfaces the associated contact error.
+    assert.equal(await page.evaluate(clickEnabledButton('WhatsApp kodu gönder')), true, `${slug} WhatsApp code button was not usable before a phone was entered`);
     await waitFor(() => page.evaluate('Boolean(document.querySelector("#public-contact-error"))'), `${slug} contact relation error did not appear`);
     const relation = await page.evaluate('(() => { const input=document.querySelector("input[name=customerPhone]"); const error=document.querySelector("#public-contact-error"); const email=document.querySelector("input[name=customerEmail]"); return {invalid:input.getAttribute("aria-invalid"),required:input.getAttribute("aria-required"),describedBy:input.getAttribute("aria-describedby"),emailRequired:email.getAttribute("aria-required"),role:error?.getAttribute("role")}; })()');
     assert.deepEqual(relation, { invalid: 'true', required: 'true', describedBy: 'public-contact-help public-contact-error', emailRequired: null, role: 'alert' });
 
-    await page.evaluate('(() => { const input=document.querySelector("input[name=customerPhone]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"05550001122"); input.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Planı onayla"))?.click(); })()');
+    await page.evaluate('(() => { const input=document.querySelector("input[name=customerPhone]"); const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; setter.call(input,"05550001122"); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+    await exerciseWhatsappFailures(page, slug);
+    await verifyPhoneAndBook(page, slug);
     await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), `${slug} confirmation did not appear`);
     const result = await page.evaluate('(() => { const root=document.documentElement; const controls=Array.from(document.querySelectorAll("button,input,textarea,a.public-primary")); const status=document.querySelector(".public-result-status"); const marker=document.querySelector(".public-result-mark"); return {text:document.body.innerText,overflow:root.scrollWidth>root.clientWidth+1,targets:controls.length>0&&controls.every((node)=>node.getBoundingClientRect().height>=44),shortControls:controls.map((node)=>({tag:node.tagName,className:node.className,text:(node.textContent||node.name||"").trim(),height:node.getBoundingClientRect().height})).filter((item)=>item.height<44),planner:Boolean(document.querySelector(".public-multi-service")),href:document.querySelector("a.public-primary")?.getAttribute("href"),statusClass:status?.className,markerClass:marker?.className}; })()');
     assert.equal(result.overflow, false, `${slug} overflowed at ${width}px`);
@@ -811,7 +864,8 @@ async function runLegacyFallback(debugUrl, origin) {
     await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-slot"))'), 'legacy slot did not load');
     await page.evaluate('document.querySelector(".public-slot")?.click()');
     await waitFor(() => page.evaluate('Boolean(document.querySelector(".public-customer-card input[name=customerName]"))'), 'legacy contact form did not open');
-    await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const phone=document.querySelector("input[name=customerPhone]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(phone,"05550001122"); phone.dispatchEvent(new Event("input",{bubbles:true})); Array.from(document.querySelectorAll("button")).find((button)=>button.textContent.includes("Randevuyu oluştur"))?.click(); })()');
+    await page.evaluate('(() => { const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,"value")?.set; const name=document.querySelector("input[name=customerName]"); const phone=document.querySelector("input[name=customerPhone]"); setter.call(name,"Deniz Örnek"); name.dispatchEvent(new Event("input",{bubbles:true})); setter.call(phone,"05550001122"); phone.dispatchEvent(new Event("input",{bubbles:true})); })()');
+    await verifyPhoneAndBook(page, 'legacy', 'Randevuyu oluştur');
     await waitFor(() => page.evaluate('document.body.innerText.includes("RANDEVU OLUŞTURULDU")'), 'legacy /book fallback did not complete');
     const journeyRequests = requests.slice(start);
     assert.equal(journeyRequests.filter((item) => item.path.endsWith('/book')).length, 1, 'legacy fallback did not issue one /book create');
@@ -1001,7 +1055,7 @@ try {
     assert.ok([...servedChunks].some((name) => /PublicSalonPage-.*\.js$/.test(name)), `production public route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
     assert.ok([...servedChunks].some((name) => /ManageAppointmentPage-.*\.js$/.test(name)), `production management route lazy chunk was not requested: ${JSON.stringify([...servedChunks])}`);
   });
-  console.log('F12-05 public group browser passed: named production-route loading/lazy chunks, 360/390 create, legacy /book fallback, immutable recovery, all lifecycle tones, create/automatic/manual service/end/price mutation rejection, malformed slot timezone, closed_absent and /m management.');
+  console.log('F12-05 public group browser passed: named production-route loading/lazy chunks, 360/390 create with F16-02 WhatsApp OTP (empty phone, wrong code, phone change), legacy /book fallback, immutable recovery, all lifecycle tones, create/automatic/manual service/end/price mutation rejection, malformed slot timezone, closed_absent and /m management.');
 } catch (error) {
   let diagnostics = '';
   try { diagnostics = `\nChrome log:\n${readFileSync(chromeLog, 'utf8').slice(-4000)}`; } catch { /* noop */ }
