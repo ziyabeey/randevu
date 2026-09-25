@@ -206,6 +206,17 @@ The combined ledger contains three unique M9 cases, nine materialized anchors,
 is retained as insufficient evidence. These remain development feasibility
 results; a named-entry gap is not automatically a useful behavioral test target.
 Paid collection still requires its concrete budget and independently sourced evidence.
+
+The next bounded development validation is frozen in
+`specs/M11_NOTIFICATION_BEHAVIORAL_VALIDATION_GATE-v0.1.md`. It targets the
+single M9 notification case `2b924bfe4d9dc5e15d40199189b6b8070bee47d2cca3dc68eb24357f660e33f2`
+whose saved suite observation left `validGroupSummary` and `renderTemplateV2`
+uncalled. The future child must use a new separately frozen suite, retain raw
+TAP/V8 evidence, exercise the pre-existing F11 notification contract without a
+real provider call, and bind at most one M8 `m5-validation` outcome for this one
+case. Existing F11 tests are prior contract evidence only and cannot be recycled
+as the new outcome.
+
 M12 selection remains a later contract, not an activated milestone.
 
 ## Side-hardening HOLD
