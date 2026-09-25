@@ -838,7 +838,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       {blockingRecord.source === 'legacy_v1' && <><span>{t('Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.')}</span> <button className="public-secondary" type="button" disabled={recoveryBusy} onClick={() => void removeReminder(blockingRecord)}>{t('Cihazdaki hatırlatıcıyı kaldır')}</button></>}
     </div>}
     <section className={`public-booking-card public-customer-card public-group-customer-card ${multiServiceSelection ? 'is-ready' : ''}`} aria-labelledby="public-group-customer-title">
-      <span className="public-step">{t('B')}</span><h2 id="public-group-customer-title">{t('İletişim ve onay')}</h2>
+      <span className="public-step">B</span><h2 id="public-group-customer-title">{t('İletişim ve onay')}</h2>
       {multiServiceSelection ? <>
         <div className="public-selection-summary public-group-selection-summary">
           <span><strong>{t('{count} hizmet', { count: multiServiceSelection.slot.lines.length })}</strong><small>{formatDateTime(multiServiceSelection.slot.startsAt, multiServiceSelection.slot.timezone)}</small></span>

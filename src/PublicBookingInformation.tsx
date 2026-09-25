@@ -108,7 +108,7 @@ export default function PublicBookingInformation({
             <div className="public-information-contact">
               {contact.phone?.trim() && <a href={phoneHref(contact.phone)}>{contact.phone}</a>}
               {contact.email?.trim() && <a href={`mailto:${contact.email}`}>{contact.email}</a>}
-              {contact.whatsapp?.trim() && <a href={whatsappHref(contact.whatsapp)} rel="noreferrer">{t('WhatsApp')}</a>}
+              {contact.whatsapp?.trim() && <a href={whatsappHref(contact.whatsapp)} rel="noreferrer">WhatsApp</a>}
               {contact.website?.trim() && <ExternalLink href={contact.website}>{t('İşletme web sitesi')}</ExternalLink>}
               {contact.address?.trim() && <address>{contact.address}</address>}
             </div>

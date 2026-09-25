@@ -6,11 +6,11 @@ import { fileURLToPath } from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
-test('F15-02 activates product sale while preserving accepted expense scope and keeping package sale closed', () => {
+test('F15-02 activates product sale while preserving accepted expense scope', () => {
   const kolay=readFileSync(path.join(root,'src/kolayapp/KolayAppSurface.tsx'),'utf8');
-  assert.match(kolay,/AppLink href="\/app\/mobile\/tickets\?newProductSale=1"><strong>Yeni ürün satışı<\/strong>/);
-  assert.match(kolay,/DisabledAction title="Yeni paket satışı"/);
-  assert.match(kolay,/AppLink href="\/app\/expenses"><strong>Yeni masraf<\/strong>/);
+  assert.match(kolay,/ActionLink href="\/app\/mobile\/tickets\?newProductSale=1" title="Yeni ürün satışı"/);
+  // F16-08 opens "Yeni paket satışı"; its pin lives in f16-account-language-contract.
+  assert.match(kolay,/ActionLink href="\/app\/expenses" title="Yeni masraf"/);
 });
 
 test('F15-02 keeps financial refund and physical stock return explicit', () => {

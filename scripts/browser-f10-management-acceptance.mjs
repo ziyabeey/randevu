@@ -791,7 +791,12 @@ export async function runManagementAcceptance(options = {}) {
       })()`),
       'root workspace did not retain verified Salon B selection',
     );
-    await waitText(pageC, 'Çıkış yap');
+    // F16-08 moved sign-out into the header account menu (a closed <details>),
+    // so the authenticated shell is proven by the button being mounted.
+    await waitFor(
+      () => pageC.evaluate(`[...document.querySelectorAll('.account-menu button')].some((item) => (item.textContent ?? '').includes('Çıkış yap'))`),
+      'UI did not contain Çıkış yap',
+    );
     state.sessionFailureOnce = true;
     await reload(pageC);
     await waitText(pageC, 'Oturum şu anda doğrulanamıyor');

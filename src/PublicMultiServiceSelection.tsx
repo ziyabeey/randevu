@@ -368,11 +368,11 @@ export default function PublicMultiServiceSelection({ slug, availabilityRefreshT
     return [...groups.entries()];
   }, [services]);
 
-  if (loading) return <section className="public-booking-card public-multi-service" aria-busy="true"><span className="public-step">{t('A')}</span><h2>{t('Birden fazla hizmet planla')}</h2><p className="public-muted">{t('Hizmetler hazırlanıyor…')}</p></section>;
-  if (!page) return <section className="public-booking-card public-multi-service"><span className="public-step">{t('A')}</span><h2>{t('Birden fazla hizmet planla')}</h2><div className="public-inline-notice is-error" role="alert"><p>{notice || t('Çoklu hizmet seçimi şu anda hazırlanamadı.')}</p><button className="public-retry" type="button" onClick={() => setCatalogAttempt((current) => current + 1)}>{t('Tekrar dene')}</button></div></section>;
+  if (loading) return <section className="public-booking-card public-multi-service" aria-busy="true"><span className="public-step">A</span><h2>{t('Birden fazla hizmet planla')}</h2><p className="public-muted">{t('Hizmetler hazırlanıyor…')}</p></section>;
+  if (!page) return <section className="public-booking-card public-multi-service"><span className="public-step">A</span><h2>{t('Birden fazla hizmet planla')}</h2><div className="public-inline-notice is-error" role="alert"><p>{notice || t('Çoklu hizmet seçimi şu anda hazırlanamadı.')}</p><button className="public-retry" type="button" onClick={() => setCatalogAttempt((current) => current + 1)}>{t('Tekrar dene')}</button></div></section>;
 
   return <section className="public-booking-card public-multi-service" aria-labelledby="public-multi-service-title">
-    <span className="public-step">{t('A')}</span>
+    <span className="public-step">A</span>
     <div className="public-multi-heading"><div><h2 id="public-multi-service-title">{t('Hizmet planınızı oluşturun')}</h2><p className="public-muted">{t('Bir veya daha fazla hizmeti sırayla seçin. Personeli her hizmet için ayrı belirleyebilirsiniz.')}</p></div><strong>{selectedIds.length}/{MAX_LINES}</strong></div>
     {notice && <div className="public-inline-notice" role="status">{notice}</div>}
     {staffRetryable && <button className="public-retry" type="button" onClick={() => { setNotice(''); setStaffRetryable(false); setStaffAttempt((current) => current + 1); }}>{t('Personeli tekrar yükle')}</button>}

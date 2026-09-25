@@ -29,13 +29,13 @@ type AuthMode = 'login' | 'signup' | 'recovery';
 const NAV_ITEMS: Array<{ page: Exclude<WorkspacePage, 'not-found'>; label: string }> = [
   { page: 'calendar', label: 'Takvim' },
   { page: 'bookings', label: 'Randevular' },
-  { page: 'customers', label: t('Müşteriler') },
+  { page: 'customers', label: 'Müşteriler' },
   { page: 'services', label: 'Hizmetler' },
-  { page: 'products', label: t('Ürün ve stok') },
+  { page: 'products', label: 'Ürün ve stok' },
   { page: 'expenses', label: 'Masraflar' },
   { page: 'reports', label: 'Kasa ve raporlar' },
   { page: 'team', label: 'Ekip' },
-  { page: 'availability', label: t('Müsaitlik') },
+  { page: 'availability', label: 'Müsaitlik' },
   { page: 'setup', label: 'Kurulum' },
   { page: 'public-booking', label: 'Online Randevu' },
   { page: 'feedback', label: 'Yorumlar' },
@@ -308,7 +308,7 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
     <div className="app-shell workspace-app-shell">
       <header className="app-header workspace-header">
         <a className="brand" href="/app" aria-label={t('Randevu çalışma alanı')}>
-          <span className="wordmark">{t('yzt')}<span>.</span></span><span className="product-name">{t('randevu')}</span>
+          <span className="wordmark">yzt<span>.</span></span><span className="product-name">randevu</span>
         </a>
         {ready && session && activeMembership && (
           <div className="workspace-business">
