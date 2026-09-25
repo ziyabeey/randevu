@@ -208,6 +208,17 @@ results; a named-entry gap is not automatically a useful behavioral test target.
 Paid collection still requires its concrete budget and independently sourced evidence.
 M12 selection remains a later contract, not an activated milestone.
 
+### Frozen next M11 evidence gate — cross-suite coverage adjudication
+
+`specs/M11_CROSS_SUITE_ADJUDICATION-v0.1.md` freezes a bounded check for the notification case
+`2b924bfe4d9dc5e15d40199189b6b8070bee47d2cca3dc68eb24357f660e33f2`.
+
+The saved S07 observation reports `validGroupSummary` and `renderTemplateV2` as uncalled in that suite. Before generating any new test, H19 will execute the already-existing pinned `tests/f11-group-notifications.test.mjs` once under isolated V8 coverage and determine whether those same named functions are already exercised elsewhere.
+
+A passing adjudication confirms the suite-scoped gap while recording `crossSuiteCoverage=covered-by-existing-suite` and `newPermanentTestRecommendation=none`. It does not claim global correctness or activate Jev/M12.
+
+Execution is not authorized until this freeze is exact-head CI-green.
+
 ## Side-hardening HOLD
 
 The following work does not advance the active bundle sequence until explicitly integrated after the active parent line remains green:
