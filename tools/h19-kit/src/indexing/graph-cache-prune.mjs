@@ -48,7 +48,7 @@ export async function pruneGraphCache({
 
   for (const row of [...retained].sort((a, b) => a.mtimeMs - b.mtimeMs || a.key.localeCompare(b.key))) {
     if (retainedBytes <= maxBytes) break;
-    if (retained.length - remove.size <= 1) break;
+    if (retained.filter((candidate) => !remove.has(candidate.key)).length <= 1) break;
     if (remove.has(row.key)) continue;
     remove.add(row.key);
     retainedBytes -= row.bytes;
