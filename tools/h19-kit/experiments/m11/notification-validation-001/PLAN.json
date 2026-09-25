@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "m11-notification-behavioral-validation-plan",
   "version": "0.1",
-  "frozenAt": "2026-09-25T15:17:03.897Z",
+  "frozenAt": "2026-09-25T15:25:38.266Z",
   "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
   "inventorySha256": "79b802f95f6612a628ea23d8d7cb2cf6719465124a35743fa956eff4784ff662",
   "bridgeSha256": "24fc94cbbe6aa2e1491f25c3ba593859a2476fe3e25b24b6f0b1d749bf44c50d",
@@ -26,7 +26,7 @@
     "bin/h19-m11-validate-notification.mjs": "d67b45a11ea65ebebb842594c12260f65a9417bd",
     "src/experiments/m11-notification-validation.mjs": "2551b0a34db95e773caab051daca32328a65351e"
   },
-  "runtime": "v24.19.0",
+  "runtime": "v24.21.0",
   "candidate": {
     "path": "notification-validation-001/notification-template.test.mjs",
     "gitBlobSha": "749c7d34980f4a9b24a7222ef2a5fff09c264d5f",
@@ -101,5 +101,5 @@
     "The same implementer authored this development validation; it is not a blinded independent relation assessor.",
     "No real provider delivery, evaluation execution, Jev call or M12 authority is part of this run."
   ],
-  "planSha256": "77ae3c50eeffe8220cd8736727e7e3efc34a1f6fa2fb3e6be7928959e31aa064"
+  "planSha256": "9478ae5199235075f1b142fab20de20222aa150a29a68c856239da1008855e3c"
 }
