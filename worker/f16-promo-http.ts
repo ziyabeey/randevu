@@ -70,7 +70,7 @@ export function promoError(message: string) {
   if (message.includes('PUBLIC_BOOKING_GATE_') || message === 'PUBLIC_OPERATION_UNAVAILABLE') return { code: 'PROMO_UNAVAILABLE', message: 'Kampanya kodu şu anda doğrulanamıyor. Lütfen tekrar deneyin.', status: 503 as const };
   if (message.includes('MANAGEMENT_NOT_FOUND') || message.includes('INVALID_MANAGEMENT_TOKEN')) return { code: 'MANAGEMENT_NOT_FOUND', message: 'Bu randevu yönetim bağlantısı geçerli değil.', status: 404 as const };
   if (message.includes('PUBLIC_BOOKING_NOT_FOUND')) return { code: 'PUBLIC_BOOKING_NOT_FOUND', message: 'Bu salon sayfası şu anda aktif değil.', status: 404 as const };
-  if (message.includes('PROMO_NOT_ATTACHABLE')) return { code: 'PROMO_NOT_ATTACHABLE', message: 'Kampanya kodu yalnız yaklaşan ve iptal edilmemiş randevuya eklenebilir.', status: 409 as const };
+  if (message.includes('PROMO_NOT_ATTACHABLE')) return { code: 'PROMO_NOT_ATTACHABLE', message: 'Kampanya kodu yalnız yaklaşan, iptal edilmemiş ve adisyonu henüz açılmamış randevuya eklenebilir. Adisyon açıldıysa kodu salonda iletin.', status: 409 as const };
   if (message.includes('INVALID_PROMO') || message.includes('INVALID_PUBLIC_OPERATION')) return { code: 'INVALID_PROMO', message: 'Kampanya bilgisi geçerli değil.', status: 400 as const };
   return ticketError(message);
 }
