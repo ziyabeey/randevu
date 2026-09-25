@@ -79,3 +79,18 @@ Warm unchanged/out-of-project paths and changed-project paths therefore remain s
 ## Feature sequencing
 
 M6/M7 code may exist on earlier green branches, but it is not the active product line until this performance synthesis gate passes and those feature branches are rebased/retargeted onto the resulting green head.
+
+
+## Cold acceptance receipt
+
+Cold synthesis acceptance passed on CI run `36092255998` at head
+`765b7187559f688460739432a6711f7746fe0706`.
+
+The authoritative synthesis artifact recorded:
+
+- initial plan: 0 hits / 3 misses, graph blocked, indexer + decoder required;
+- materialization: 3 shards indexed;
+- build: 3 hits / 0 misses after materialization, 77 documents, 9,686 graph nodes;
+- final plan: 3 hits / 0 misses, graph hit, indexer not required, decoder not required, `ready=true`.
+
+This documentation-only commit intentionally triggers the mandatory warm continuation. The next CI run must restore the prior H19 cache and prove the all-hit path without installing scip-typescript or building the SCIP decoder.
