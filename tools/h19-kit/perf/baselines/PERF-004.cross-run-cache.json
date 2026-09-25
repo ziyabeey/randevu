@@ -1,0 +1,39 @@
+{
+  "baselineId": "PERF-004",
+  "kind": "h19-cross-run-cache-proof",
+  "seed": {
+    "workflowRun": 36086184451,
+    "attempt": 1,
+    "headSha": "fb3545ca66982e17e286ad44e957e9e7d2a48793",
+    "restoredArtifactsBefore": 0,
+    "shardHits": 0,
+    "shardMisses": 3,
+    "cacheSaved": true
+  },
+  "exactHeadRerun": {
+    "workflowRun": 36086184451,
+    "attempt": 3,
+    "headSha": "fb3545ca66982e17e286ad44e957e9e7d2a48793",
+    "restoredKey": "h19-scip-v1-Linux-0.4.0-f730b6a34c121df021ae34a2f5ffccc0411c19b5ea5d667c0c022be3d2941ba3-fb3545ca66982e17e286ad44e957e9e7d2a48793",
+    "restoredArtifactsBefore": 3,
+    "shardHits": 3,
+    "shardMisses": 0,
+    "result": "pass"
+  },
+  "newHeadPrefixRestore": {
+    "workflowRun": 36087314659,
+    "headSha": "66f259361f28ce85fea8abf7fbc7447e79ca27a2",
+    "restoredKeyFromPreviousHead": "h19-scip-v1-Linux-0.4.0-f730b6a34c121df021ae34a2f5ffccc0411c19b5ea5d667c0c022be3d2941ba3-fb3545ca66982e17e286ad44e957e9e7d2a48793",
+    "restoredArtifactsBefore": 3,
+    "shardHits": 3,
+    "shardMisses": 0,
+    "savedNewKey": "h19-scip-v1-Linux-0.4.0-f730b6a34c121df021ae34a2f5ffccc0411c19b5ea5d667c0c022be3d2941ba3-66f259361f28ce85fea8abf7fbc7447e79ca27a2",
+    "result": "pass"
+  },
+  "interpretation": {
+    "crossRunnerExactHeadPersistence": "proven",
+    "crossCommitCompatiblePrefixReuse": "proven",
+    "fingerprintAuthority": "unchanged",
+    "nextRisk": "bound cache growth before operational adoption"
+  }
+}
