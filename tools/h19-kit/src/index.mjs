@@ -52,6 +52,7 @@ export * from './impact/unit-symbol-map.mjs';
 export * from './impact/change-impact.mjs';
 export * from './discovery/coverage-discovery.mjs';
 export * from './discovery/validation-packet.mjs';
+export * from './specification/test-spec.mjs';
 export * from './perf/baseline.mjs';
 export * from './indexing/typescript-project-shards.mjs';
 export * from './perf/typescript-shards.mjs';
