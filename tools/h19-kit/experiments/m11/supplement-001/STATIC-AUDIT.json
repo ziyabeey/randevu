@@ -1,0 +1,1094 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-dependency-witness-audit",
+  "inventorySha256": "79b802f95f6612a628ea23d8d7cb2cf6719465124a35743fa956eff4784ff662",
+  "recipeSha256": "b1e6b8a866e3f735f01d6c1bc15a0768c1d4c2da0acdcb48d9c3a1137fc5aee5",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "parser": {
+    "name": "@typescript/typescript6",
+    "packageVersion": "6.0.2",
+    "compilerVersion": "6.0.3"
+  },
+  "sourceBindings": {
+    "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+    "shared/customer-notification-status.ts": "bd963a809a2a09825ba74dbf577b7ec884c72315",
+    "shared/public-booking-intent.ts": "aadb31a3817c7faeb55afb523c28e1622f45f218",
+    "src/AppointmentPhotos.tsx": "88f471588e659772d18e9cf4c7e3969c17b2c814",
+    "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+    "src/CatalogSettingsPanel.tsx": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc",
+    "src/PublicBookingInformation.tsx": "b654e5b73acbc05ca609c451ba7ba525f57c98d6",
+    "src/PublicBookingPage.tsx": "d0831db2b55ab8cc7d2d1cee66945ca5dc37c8bf",
+    "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+    "src/PublicNotificationStatus.tsx": "2c873447c0440fe60f4d67290535866c146cc6e3",
+    "src/PublicReviews.tsx": "b03c02af8c998931acb67da3512d58003e1ba0aa",
+    "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+    "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+    "src/catalog-settings.css": "5106d1b22497671f5e09cc750d8d000780c9c5b9",
+    "src/private-media.css": "3351d46503dda7ed43f156fcda131f776005ce7a",
+    "src/public-booking-pending.ts": "41f2dd89794a2e592d0f86832a07c5adc4eb64cd",
+    "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+    "src/publicMedia.ts": "82b3cfbe008427d9b67017a86834c9d76dc31378",
+    "src/workspace-context.tsx": "5a435f84d8f295e2475b034e90d42dc106aeaa3a",
+    "src/workspace-route.ts": "23fb5ada0d3afb3121911d13c909a0e313020d73",
+    "supabase/migrations/20260915150000_f12_service_price_range.sql": "39a018189ae682395e9dce3de4665b125863d9cd",
+    "tests/f12-notification-status.test.mjs": "6b5574bc1661d8e1ba647c9d7a491406e1ec9ad8",
+    "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+    "tests/f12-service-price-range-client.test.mjs": "99723fb4a92419a68e7f78651b5180b6589f206f",
+    "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+    "tests/s07-runtime-budgets.test.mjs": "a942457f1854c676ad6e63bfbc7246ada49d9156",
+    "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+    "worker/auth-routes.ts": "a568f7fd994ac07273bdc896e6644e63db193fbb",
+    "worker/auth.ts": "004678bd3ede27ce5e741c5a7ed9d689e6cda4f5",
+    "worker/availability.ts": "28cc297d5b68c365b4b698f12d860c1e83830aa9",
+    "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+    "worker/calendar.ts": "5a02a07186bd830bcde13ac888b5dbf824a81ff6",
+    "worker/catalog-management.ts": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8",
+    "worker/customer-manage.ts": "484e884ccfe65ffea455ce1a98de3481f71ef5c5",
+    "worker/customers.ts": "1fd9eaadee3aa1fc22d9ee0edf43ddf33fc1c499",
+    "worker/deployment-health.ts": "cbc098ff51102e6dd722bf85910205d2557d4ac6",
+    "worker/entry.ts": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38",
+    "worker/expenses.ts": "4ec4c864809ee289032c662480c3309932fe1620",
+    "worker/f11-group-consumer-reads.ts": "ac36db9e2e02f8b23a8b609167f2fe75172a2127",
+    "worker/f11-group-http.ts": "485f452b06b557e5f92274701e52e42d197be7c5",
+    "worker/f11-group-line-management-http.ts": "1144c94232563fd11f8f11649211a80f68bb928b",
+    "worker/f11-group-management-http.ts": "282c61c7309e6cbb51929835f3c2b3e10c9db711",
+    "worker/f16-feedback-http.ts": "bc4620bbef3b914355ac82d75730d257b36a35fc",
+    "worker/f16-packages-http.ts": "dfb7294f9d1fa029dcfa3b502a0692a3aebe72f9",
+    "worker/f16-private-media-http.ts": "e109bbc2e6e5dfc5b89199e6eb62fba611629d83",
+    "worker/f16-series-http.ts": "d560d0f48c936e4afacc3d2483de8f266baf6671",
+    "worker/index.ts": "420f40bdfa1a6e37bec30de6302343891def97bf",
+    "worker/notification-maintenance.ts": "1149288fb2fc690aed0602009aac66252fc1a141",
+    "worker/notifications.ts": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+    "worker/onboarding.ts": "8500ca412757dc83854208ee6a55d6569a6dadd4",
+    "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+    "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+    "worker/products.ts": "b048ec595a6e225e1c9b4a5c9377fd08fd915c4f",
+    "worker/public-abuse.ts": "792d83c6b0e0d64c4d3eb6a8a1aafd1df8bd6718",
+    "worker/public-booking-information.ts": "98c9b34e6e90d856e9150fcdb65d522b7c844e9d",
+    "worker/public-booking-recovery.ts": "25844aecdc2fe10b230bfe02a83d6a6924973e96",
+    "worker/public-booking.ts": "42cd726413d00eaae42546687f5134839881fc58",
+    "worker/public-profile.ts": "71984a061c12ccff63a61059cf1a824979fe0ee6",
+    "worker/public-rpc.ts": "c9b1d5eb8f6c9a7987dee498ebb77a0832e9c99f",
+    "worker/reports.ts": "ee04b8ec1982b7842355d88e9f7242311fe2cfa9",
+    "worker/snapshot-bounds.ts": "fcf13934bde7fc4a691a508904fa0c1c300f72f7",
+    "worker/snapshot-reads.ts": "e41e01b209a7f44046a819b8d6cb46cf87a04492",
+    "worker/team.ts": "7ab33ab5631f832e58e809147a47bcc56c795b27",
+    "worker/tickets.ts": "66a57cdb9af8a795f993742db1d77837f6cfc273"
+  },
+  "scope": "bounded-static-import-witnesses",
+  "complete": false,
+  "status": "incomplete-no-conflict-found",
+  "edges": [
+    {
+      "fromPath": "shared/public-booking-intent.ts",
+      "toPath": "shared/base64.ts",
+      "specifier": "./base64.ts",
+      "line": 1,
+      "statement": "import { base64UrlToBytes, bytesToBase64Url } from './base64.ts';"
+    },
+    {
+      "fromPath": "src/AppointmentPhotos.tsx",
+      "toPath": "src/api.ts",
+      "specifier": "./api",
+      "line": 3,
+      "statement": "import { api } from './api';"
+    },
+    {
+      "fromPath": "src/AppointmentPhotos.tsx",
+      "toPath": "src/private-media.css",
+      "specifier": "./private-media.css",
+      "line": 5,
+      "statement": "import './private-media.css';"
+    },
+    {
+      "fromPath": "src/AppointmentPhotos.tsx",
+      "toPath": "src/publicMedia.ts",
+      "specifier": "./publicMedia",
+      "line": 4,
+      "statement": "import { preparePublicMedia } from './publicMedia';"
+    },
+    {
+      "fromPath": "src/BookingPage.tsx",
+      "toPath": "src/api.ts",
+      "specifier": "./api",
+      "line": 2,
+      "statement": "import { api } from './api';"
+    },
+    {
+      "fromPath": "src/BookingPage.tsx",
+      "toPath": "src/AppointmentPhotos.tsx",
+      "specifier": "./AppointmentPhotos",
+      "line": 5,
+      "statement": "import AppointmentPhotos from './AppointmentPhotos';"
+    },
+    {
+      "fromPath": "src/BookingPage.tsx",
+      "toPath": "src/workspace-context.tsx",
+      "specifier": "./workspace-context",
+      "line": 4,
+      "statement": "import { useWorkspace } from './workspace-context';"
+    },
+    {
+      "fromPath": "src/BookingPage.tsx",
+      "toPath": "src/workspace-route.ts",
+      "specifier": "./workspace-route",
+      "line": 3,
+      "statement": "import { navigateApp } from './workspace-route';"
+    },
+    {
+      "fromPath": "src/CatalogSettingsPanel.tsx",
+      "toPath": "src/api.ts",
+      "specifier": "./api",
+      "line": 2,
+      "statement": "import { ApiRequestError, api } from './api';"
+    },
+    {
+      "fromPath": "src/CatalogSettingsPanel.tsx",
+      "toPath": "src/catalog-settings.css",
+      "specifier": "./catalog-settings.css",
+      "line": 3,
+      "statement": "import './catalog-settings.css';"
+    },
+    {
+      "fromPath": "src/public-booking-pending.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "specifier": "../shared/public-booking-intent.ts",
+      "line": 1,
+      "statement": "import {\n  isCanonicalPublicBookingRecoveryId,\n  isCanonicalPublicBookingSecret,\n  verifyPublicBookingIntentV2,\n} from '../shared/public-booking-intent.ts';"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "shared/base64.ts",
+      "specifier": "../shared/base64.ts",
+      "line": 17,
+      "statement": "import { randomBase64Url } from '../shared/base64.ts';"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "shared/customer-notification-status.ts",
+      "specifier": "../shared/customer-notification-status",
+      "line": 22,
+      "statement": "import { customerNotificationStatus, type CustomerNotificationStatus } from '../shared/customer-notification-status';"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "shared/public-booking-intent.ts",
+      "specifier": "../shared/public-booking-intent",
+      "line": 18,
+      "statement": "import { derivePublicBookingIntentV2, sha256Hex } from '../shared/public-booking-intent';"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/api.ts",
+      "specifier": "./api",
+      "line": 3,
+      "statement": "import { ApiRequestError, api } from './api';"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/public-booking-pending.ts",
+      "specifier": "./public-booking-pending",
+      "line": 4,
+      "statement": "import {\n  PUBLIC_BOOKING_RECOVERY_TTL_MS,\n  PUBLIC_BOOKING_SETTLE_MS,\n  acquirePublicBookingIntent,\n  blockingPublicBookingRecord,\n  completePublicBookingIntent,\n  dismissPublicBookingRecord,\n  forgetLegacyBookingRecord,\n  loadPublicBookingRecords,\n  markPublicBookingUnresolved,\n  watchPublicBookingRecords,\n} from './public-booking-pending';"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/public-booking-pending.ts",
+      "specifier": "./public-booking-pending",
+      "line": 16,
+      "statement": "import type { LegacyPendingRecord, PublicBookingGroupPlan, PublicBookingRecord, V2PendingRecord } from './public-booking-pending';"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/PublicBookingInformation.tsx",
+      "specifier": "./PublicBookingInformation",
+      "line": 20,
+      "statement": "import PublicBookingInformation, { hasPublicBookingInformation, type BookingInformationContact } from './PublicBookingInformation';"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/PublicMultiServiceSelection.tsx",
+      "specifier": "./PublicMultiServiceSelection",
+      "line": 19,
+      "statement": "import type { PublicMultiServiceSelectionState } from './PublicMultiServiceSelection';"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/PublicNotificationStatus.tsx",
+      "specifier": "./PublicNotificationStatus",
+      "line": 21,
+      "statement": "import PublicNotificationStatus from './PublicNotificationStatus';"
+    },
+    {
+      "fromPath": "src/PublicMultiServiceSelection.tsx",
+      "toPath": "src/api.ts",
+      "specifier": "./api",
+      "line": 2,
+      "statement": "import { ApiRequestError, api } from './api';"
+    },
+    {
+      "fromPath": "src/PublicNotificationStatus.tsx",
+      "toPath": "shared/customer-notification-status.ts",
+      "specifier": "../shared/customer-notification-status",
+      "line": 1,
+      "statement": "import type { CustomerNotificationStatus, CustomerNotificationStatusCode } from '../shared/customer-notification-status';"
+    },
+    {
+      "fromPath": "src/PublicReviews.tsx",
+      "toPath": "src/api.ts",
+      "specifier": "./api",
+      "line": 2,
+      "statement": "import { api } from './api';"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/api.ts",
+      "specifier": "./api",
+      "line": 2,
+      "statement": "import { ApiRequestError, api } from './api';"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/public-multi-service.css",
+      "specifier": "./public-multi-service.css",
+      "line": 6,
+      "statement": "import './public-multi-service.css';"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/PublicBookingPage.tsx",
+      "specifier": "./PublicBookingPage",
+      "line": 3,
+      "statement": "import PublicBookingPage from './PublicBookingPage';"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/PublicMultiServiceSelection.tsx",
+      "specifier": "./PublicMultiServiceSelection",
+      "line": 4,
+      "statement": "import PublicMultiServiceSelection from './PublicMultiServiceSelection';"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/PublicMultiServiceSelection.tsx",
+      "specifier": "./PublicMultiServiceSelection",
+      "line": 5,
+      "statement": "import type { PublicMultiServiceSelectionState } from './PublicMultiServiceSelection';"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/PublicReviews.tsx",
+      "specifier": "./PublicReviews",
+      "line": 7,
+      "statement": "import PublicReviews from './PublicReviews';"
+    },
+    {
+      "fromPath": "tests/f12-notification-status.test.mjs",
+      "toPath": "shared/customer-notification-status.ts",
+      "specifier": "../shared/customer-notification-status.ts",
+      "line": 4,
+      "statement": "import { customerNotificationStatus } from '../shared/customer-notification-status.ts';"
+    },
+    {
+      "fromPath": "tests/s07-pagination.test.mjs",
+      "toPath": "worker/pagination.ts",
+      "specifier": "../worker/pagination.ts",
+      "line": 3,
+      "statement": "import {\n  decodePageCursor,\n  encodePageCursor,\n  pageResult,\n  parsePageLimit,\n} from '../worker/pagination.ts';"
+    },
+    {
+      "fromPath": "tests/s07-runtime-budgets.test.mjs",
+      "toPath": "worker/entry.ts",
+      "specifier": "../worker/entry.ts",
+      "line": 4,
+      "statement": "import entry from '../worker/entry.ts';"
+    },
+    {
+      "fromPath": "tests/s07-runtime-budgets.test.mjs",
+      "toPath": "worker/notifications.ts",
+      "specifier": "../worker/notifications.ts",
+      "line": 5,
+      "statement": "import { dispatchNotificationBatch } from '../worker/notifications.ts';"
+    },
+    {
+      "fromPath": "tests/s07-runtime-budgets.test.mjs",
+      "toPath": "worker/outbound-request.ts",
+      "specifier": "../worker/outbound-request.ts",
+      "line": 6,
+      "statement": "import {\n  OutboundRequestTimeoutError,\n  fetchTextWithTimeout,\n} from '../worker/outbound-request.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 26,
+      "statement": "import {\n  mutationSecurityError,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/availability.ts",
+      "specifier": "./availability.ts",
+      "line": 3,
+      "statement": "import availability from './availability.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/bookings.ts",
+      "specifier": "./bookings.ts",
+      "line": 4,
+      "statement": "import bookings from './bookings.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/calendar.ts",
+      "specifier": "./calendar.ts",
+      "line": 14,
+      "statement": "import calendar from './calendar.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/customer-manage.ts",
+      "specifier": "./customer-manage.ts",
+      "line": 12,
+      "statement": "import customerManage from './customer-manage.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/customers.ts",
+      "specifier": "./customers.ts",
+      "line": 13,
+      "statement": "import customers from './customers.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/deployment-health.ts",
+      "specifier": "./deployment-health.ts",
+      "line": 31,
+      "statement": "import { deploymentHealth, type DeploymentEnv } from './deployment-health.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/expenses.ts",
+      "specifier": "./expenses.ts",
+      "line": 19,
+      "statement": "import expenses from './expenses.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f11-group-consumer-reads.ts",
+      "specifier": "./f11-group-consumer-reads.ts",
+      "line": 8,
+      "statement": "import f11GroupConsumerReads from './f11-group-consumer-reads.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f11-group-http.ts",
+      "specifier": "./f11-group-http.ts",
+      "line": 5,
+      "statement": "import f11Groups from './f11-group-http.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f11-group-line-management-http.ts",
+      "specifier": "./f11-group-line-management-http.ts",
+      "line": 7,
+      "statement": "import f11GroupLineManagement from './f11-group-line-management-http.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f11-group-management-http.ts",
+      "specifier": "./f11-group-management-http.ts",
+      "line": 6,
+      "statement": "import f11GroupManagement from './f11-group-management-http.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f16-feedback-http.ts",
+      "specifier": "./f16-feedback-http.ts",
+      "line": 24,
+      "statement": "import f16Feedback from './f16-feedback-http.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f16-packages-http.ts",
+      "specifier": "./f16-packages-http.ts",
+      "line": 23,
+      "statement": "import f16Packages from './f16-packages-http.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f16-private-media-http.ts",
+      "specifier": "./f16-private-media-http.ts",
+      "line": 22,
+      "statement": "import f16PrivateMedia from './f16-private-media-http.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f16-series-http.ts",
+      "specifier": "./f16-series-http.ts",
+      "line": 21,
+      "statement": "import f16Series from './f16-series-http.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/index.ts",
+      "specifier": "./index.ts",
+      "line": 2,
+      "statement": "import coreApp from './index.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/onboarding.ts",
+      "specifier": "./onboarding.ts",
+      "line": 25,
+      "statement": "import onboarding from './onboarding.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/products.ts",
+      "specifier": "./products.ts",
+      "line": 18,
+      "statement": "import products from './products.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 30,
+      "statement": "import type { PublicAbuseEnv } from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/public-booking-recovery.ts",
+      "specifier": "./public-booking-recovery.ts",
+      "line": 9,
+      "statement": "import publicBookingRecovery from './public-booking-recovery.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/public-booking.ts",
+      "specifier": "./public-booking.ts",
+      "line": 10,
+      "statement": "import publicBooking from './public-booking.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/public-profile.ts",
+      "specifier": "./public-profile.ts",
+      "line": 11,
+      "statement": "import publicProfile from './public-profile.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/reports.ts",
+      "specifier": "./reports.ts",
+      "line": 20,
+      "statement": "import reports from './reports.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/snapshot-reads.ts",
+      "specifier": "./snapshot-reads.ts",
+      "line": 15,
+      "statement": "import snapshotReads from './snapshot-reads.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/team.ts",
+      "specifier": "./team.ts",
+      "line": 16,
+      "statement": "import team from './team.ts';"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/tickets.ts",
+      "specifier": "./tickets.ts",
+      "line": 17,
+      "statement": "import tickets from './tickets.ts';"
+    },
+    {
+      "fromPath": "worker/auth-routes.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  AuthUnavailableError,\n  accessTokenRecoveryState,\n  applicationOrigin,\n  beginAuthFlow,\n  clearBusinessCookie,\n  clearPasswordRecoveryCookie,\n  clearSessionCookies,\n  ensureCsrfToken,\n  findAuthFlow,\n  getActiveBusinessId,\n  readJson,\n  removeAuthFlow,\n  requireAuth,\n  resolveAuth,\n  setPasswordRecoveryCookie,\n  setSessionCookies,\n  supabaseRequest,\n  type AppContext,\n  type AuthEnv,\n  type AuthFlowAction,\n  type AuthUser,\n  type Membership,\n  type TokenResponse,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/auth.ts",
+      "toPath": "shared/base64.ts",
+      "specifier": "../shared/base64.ts",
+      "line": 3,
+      "statement": "import { base64UrlToText, bytesToBase64Url, randomBase64Url, textToBase64Url } from '../shared/base64.ts';"
+    },
+    {
+      "fromPath": "worker/auth.ts",
+      "toPath": "worker/outbound-request.ts",
+      "specifier": "./outbound-request.ts",
+      "line": 4,
+      "statement": "import { fetchTextWithTimeout } from './outbound-request.ts';"
+    },
+    {
+      "fromPath": "worker/availability.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  canManage,\n  first,\n  readJson,\n  requireMember,\n  supabaseRequest,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/bookings.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  first,\n  readJson,\n  requireMember,\n  supabaseRequest,\n  type AppContext,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/bookings.ts",
+      "toPath": "worker/pagination.ts",
+      "specifier": "./pagination.ts",
+      "line": 10,
+      "statement": "import {\n  BOOKING_CURSOR_RESTART_REQUIRED,\n  bookingPageResult,\n  decodeBookingPageCursor,\n  decodePageCursor,\n  pageResult,\n  parsePageLimit,\n} from './pagination.ts';"
+    },
+    {
+      "fromPath": "worker/calendar.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  first,\n  requireMember,\n  supabaseRequest,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/catalog-management.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  canManage,\n  first,\n  readJson,\n  requireMember,\n  supabaseRequest,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/customer-manage.ts",
+      "toPath": "shared/customer-notification-status.ts",
+      "specifier": "../shared/customer-notification-status.ts",
+      "line": 2,
+      "statement": "import { customerNotificationStatus } from '../shared/customer-notification-status.ts';"
+    },
+    {
+      "fromPath": "worker/customer-manage.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 4,
+      "statement": "import { publicGateUnavailableBody, publicRateLimitedBody, rateLimitFromRpcError, resolvePublicAbuseIdentity, type PublicAbuseEnv } from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/customer-manage.ts",
+      "toPath": "worker/public-rpc.ts",
+      "specifier": "./public-rpc.ts",
+      "line": 1,
+      "statement": "import { publicOperation } from './public-rpc.ts';"
+    },
+    {
+      "fromPath": "worker/customers.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  first,\n  readJson,\n  requireMember,\n  supabaseRequest,\n  type AppContext,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/customers.ts",
+      "toPath": "worker/pagination.ts",
+      "specifier": "./pagination.ts",
+      "line": 10,
+      "statement": "import {\n  decodePageCursor,\n  pageResult,\n  parsePageLimit,\n} from './pagination.ts';"
+    },
+    {
+      "fromPath": "worker/deployment-health.ts",
+      "toPath": "shared/base64.ts",
+      "specifier": "../shared/base64.ts",
+      "line": 1,
+      "statement": "import { base64UrlToBytes, bytesToBase64Url } from '../shared/base64.ts';"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/app.ts",
+      "specifier": "./app.ts",
+      "line": 1,
+      "statement": "import app from './app.ts';"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/deployment-health.ts",
+      "specifier": "./deployment-health.ts",
+      "line": 5,
+      "statement": "import { recordStagingHeartbeat, type DeploymentEnv } from './deployment-health.ts';"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/notification-maintenance.ts",
+      "specifier": "./notification-maintenance.ts",
+      "line": 2,
+      "statement": "import { maintainNotificationState } from './notification-maintenance.ts';"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/notifications.ts",
+      "specifier": "./notifications.ts",
+      "line": 3,
+      "statement": "import { dispatchNotificationBatch } from './notifications.ts';"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/notifications.ts",
+      "specifier": "./notifications.ts",
+      "line": 4,
+      "statement": "import type { NotificationEnv } from './notifications.ts';"
+    },
+    {
+      "fromPath": "worker/expenses.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  readJson,\n  requireMember,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/expenses.ts",
+      "toPath": "worker/pagination.ts",
+      "specifier": "./pagination.ts",
+      "line": 9,
+      "statement": "import {\n  decodePageCursor,\n  pageResult,\n  parsePageLimit,\n} from './pagination.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-consumer-reads.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  requireMember,\n  supabaseRequest,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-consumer-reads.ts",
+      "toPath": "worker/pagination.ts",
+      "specifier": "./pagination.ts",
+      "line": 7,
+      "statement": "import {\n  decodePageCursor,\n  pageResult,\n  parsePageLimit,\n} from './pagination.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-consumer-reads.ts",
+      "toPath": "worker/snapshot-bounds.ts",
+      "specifier": "./snapshot-bounds.ts",
+      "line": 12,
+      "statement": "import {\n  SNAPSHOT_LIMITS,\n  snapshotOverflow,\n  snapshotProbeLimit,\n} from './snapshot-bounds.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "shared/base64.ts",
+      "specifier": "../shared/base64.ts",
+      "line": 2,
+      "statement": "import { base64UrlToBytes, bytesToBase64Url } from '../shared/base64.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "shared/customer-notification-status.ts",
+      "specifier": "../shared/customer-notification-status.ts",
+      "line": 12,
+      "statement": "import { customerNotificationStatus } from '../shared/customer-notification-status.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "specifier": "../shared/public-booking-intent.ts",
+      "line": 20,
+      "statement": "import {\n  PUBLIC_BOOKING_MAX_FUTURE_SECONDS,\n  isCanonicalPublicBookingRecoveryId,\n  isCanonicalPublicBookingSecret,\n  looksLikePublicBookingIntentV2,\n  sha256Hex,\n  verifyPublicBookingIntentV2,\n} from '../shared/public-booking-intent.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 3,
+      "statement": "import {\n  readJson,\n  requireMember,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 13,
+      "statement": "import {\n  publicGateUnavailableBody,\n  publicRateLimitedBody,\n  rateLimitFromRpcError,\n  resolvePublicAbuseIdentity,\n  type PublicAbuseEnv,\n} from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "worker/public-booking-information.ts",
+      "specifier": "./public-booking-information.ts",
+      "line": 11,
+      "statement": "import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "worker/public-rpc.ts",
+      "specifier": "./public-rpc.ts",
+      "line": 10,
+      "statement": "import { publicOperation } from './public-rpc.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-line-management-http.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  readJson,\n  requireMember,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-management-http.ts",
+      "toPath": "shared/customer-notification-status.ts",
+      "specifier": "../shared/customer-notification-status.ts",
+      "line": 10,
+      "statement": "import { customerNotificationStatus } from '../shared/customer-notification-status.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-management-http.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  readJson,\n  requireMember,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-management-http.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 11,
+      "statement": "import {\n  publicGateUnavailableBody,\n  publicRateLimitedBody,\n  rateLimitFromRpcError,\n  resolvePublicAbuseIdentity,\n  type PublicAbuseEnv,\n} from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/f11-group-management-http.ts",
+      "toPath": "worker/public-rpc.ts",
+      "specifier": "./public-rpc.ts",
+      "line": 9,
+      "statement": "import { publicOperation } from './public-rpc.ts';"
+    },
+    {
+      "fromPath": "worker/f16-feedback-http.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import { canManage, readJson, requireMember, supabaseRequest, type AuthEnv } from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/f16-feedback-http.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 3,
+      "statement": "import {\n  publicGateUnavailableBody,\n  publicRateLimitedBody,\n  rateLimitFromRpcError,\n  resolvePublicAbuseIdentity,\n  type PublicAbuseEnv,\n} from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/f16-feedback-http.ts",
+      "toPath": "worker/public-rpc.ts",
+      "specifier": "./public-rpc.ts",
+      "line": 10,
+      "statement": "import { feedbackOperation } from './public-rpc.ts';"
+    },
+    {
+      "fromPath": "worker/f16-packages-http.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  readJson,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/f16-packages-http.ts",
+      "toPath": "worker/tickets.ts",
+      "specifier": "./tickets.ts",
+      "line": 8,
+      "statement": "import {\n  cleanReason,\n  idempotencyKey,\n  integerIn,\n  isUuid,\n  requestHash,\n  requirePaymentsWrite,\n  requirePricingWrite,\n  requireStandardMember,\n  rpcWrite,\n  ticketError,\n} from './tickets.ts';"
+    },
+    {
+      "fromPath": "worker/f16-private-media-http.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  canManage,\n  first,\n  readJson,\n  requireMember,\n  supabaseRequest,\n  type AppContext,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/f16-private-media-http.ts",
+      "toPath": "worker/public-profile.ts",
+      "specifier": "./public-profile.ts",
+      "line": 11,
+      "statement": "import { webpDimensions } from './public-profile.ts';"
+    },
+    {
+      "fromPath": "worker/f16-series-http.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  readJson,\n  requireMember,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/auth-routes.ts",
+      "specifier": "./auth-routes.ts",
+      "line": 4,
+      "statement": "import authRoutes from './auth-routes.ts';"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 6,
+      "statement": "import {\n  first,\n  readJson,\n  requireAuth,\n  requireMember,\n  setBusinessCookie,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AppContext,\n  type AuthEnv,\n  type Membership,\n  type Role,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/catalog-management.ts",
+      "specifier": "./catalog-management.ts",
+      "line": 5,
+      "statement": "import catalogManagement from './catalog-management.ts';"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 2,
+      "statement": "import { rateLimitFromRpcError } from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/public-rpc.ts",
+      "specifier": "./public-rpc.ts",
+      "line": 1,
+      "statement": "import { boundedRpc } from './public-rpc.ts';"
+    },
+    {
+      "fromPath": "worker/notification-maintenance.ts",
+      "toPath": "worker/notifications.ts",
+      "specifier": "./notifications",
+      "line": 1,
+      "statement": "import type { NotificationEnv } from './notifications';"
+    },
+    {
+      "fromPath": "worker/notification-maintenance.ts",
+      "toPath": "worker/outbound-request.ts",
+      "specifier": "./outbound-request.ts",
+      "line": 2,
+      "statement": "import { fetchTextWithTimeout } from './outbound-request.ts';"
+    },
+    {
+      "fromPath": "worker/notifications.ts",
+      "toPath": "shared/base64.ts",
+      "specifier": "../shared/base64.ts",
+      "line": 1,
+      "statement": "import { base64UrlToBytes } from '../shared/base64.ts';"
+    },
+    {
+      "fromPath": "worker/notifications.ts",
+      "toPath": "worker/outbound-request.ts",
+      "specifier": "./outbound-request.ts",
+      "line": 2,
+      "statement": "import { fetchTextWithTimeout } from './outbound-request.ts';"
+    },
+    {
+      "fromPath": "worker/onboarding.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  first,\n  requireMember,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/pagination.ts",
+      "toPath": "shared/base64.ts",
+      "specifier": "../shared/base64.ts",
+      "line": 1,
+      "statement": "import { base64UrlToText, textToBase64Url } from '../shared/base64.ts';"
+    },
+    {
+      "fromPath": "worker/products.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  readJson,\n  requireMember,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/products.ts",
+      "toPath": "worker/pagination.ts",
+      "specifier": "./pagination.ts",
+      "line": 9,
+      "statement": "import {\n  decodePageCursor,\n  pageResult,\n  parsePageLimit,\n} from './pagination.ts';"
+    },
+    {
+      "fromPath": "worker/public-abuse.ts",
+      "toPath": "shared/base64.ts",
+      "specifier": "../shared/base64.ts",
+      "line": 3,
+      "statement": "import { bytesToBase64Url } from '../shared/base64.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "shared/base64.ts",
+      "specifier": "../shared/base64.ts",
+      "line": 5,
+      "statement": "import { base64UrlToBytes, bytesToBase64Url } from '../shared/base64.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "shared/customer-notification-status.ts",
+      "specifier": "../shared/customer-notification-status.ts",
+      "line": 2,
+      "statement": "import { customerNotificationStatus } from '../shared/customer-notification-status.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "specifier": "../shared/public-booking-intent.ts",
+      "line": 13,
+      "statement": "import {\n  PUBLIC_BOOKING_MAX_FUTURE_SECONDS,\n  isCanonicalPublicBookingRecoveryId,\n  isCanonicalPublicBookingSecret,\n  looksLikePublicBookingIntentV2,\n  parsePublicBookingIntentV2Key,\n  sha256Hex,\n  verifyPublicBookingIntentV2,\n} from '../shared/public-booking-intent.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 6,
+      "statement": "import {\n  publicGateUnavailableBody,\n  publicRateLimitedBody,\n  rateLimitFromRpcError,\n  resolvePublicAbuseIdentity,\n  type PublicAbuseEnv,\n} from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "worker/public-booking-information.ts",
+      "specifier": "./public-booking-information.ts",
+      "line": 3,
+      "statement": "import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "worker/public-rpc.ts",
+      "specifier": "./public-rpc.ts",
+      "line": 1,
+      "statement": "import { publicOperation } from './public-rpc.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "specifier": "../shared/public-booking-intent.ts",
+      "line": 19,
+      "statement": "import { PUBLIC_BOOKING_SUBMIT_WINDOW_SECONDS } from '../shared/public-booking-intent.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 3,
+      "statement": "import {\n  canManage,\n  first,\n  readJson,\n  requireMember,\n  supabaseRequest,\n  type AppContext,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 12,
+      "statement": "import {\n  publicGateUnavailableBody,\n  publicRateLimitedBody,\n  rateLimitFromRpcError,\n  resolvePublicAbuseIdentity,\n  type PublicAbuseEnv,\n} from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/public-booking.ts",
+      "toPath": "worker/public-rpc.ts",
+      "specifier": "./public-rpc.ts",
+      "line": 1,
+      "statement": "import { publicOperation } from './public-rpc.ts';"
+    },
+    {
+      "fromPath": "worker/public-profile.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  canManage,\n  first,\n  readJson,\n  requireMember,\n  supabaseRequest,\n  type AppContext,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/public-profile.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 11,
+      "statement": "import {\n  publicGateUnavailableBody,\n  resolvePublicAbuseIdentity,\n  type PublicAbuseEnv,\n} from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/public-profile.ts",
+      "toPath": "worker/public-rpc.ts",
+      "specifier": "./public-rpc.ts",
+      "line": 16,
+      "statement": "import { publicOperation } from './public-rpc.ts';"
+    },
+    {
+      "fromPath": "worker/public-rpc.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 1,
+      "statement": "import { supabaseRequest, type AuthEnv } from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/public-rpc.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 2,
+      "statement": "import type { PublicAbuseIdentity } from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/reports.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  requireMember,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "specifier": "../shared/public-booking-intent.ts",
+      "line": 23,
+      "statement": "import { PUBLIC_BOOKING_SUBMIT_WINDOW_SECONDS } from '../shared/public-booking-intent.ts';"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  AuthUnavailableError,\n  clearBusinessCookie,\n  clearSessionCookies,\n  ensureCsrfToken,\n  first,\n  getActiveBusinessId,\n  requireMember,\n  resolveAuth,\n  supabaseRequest,\n  type AuthEnv,\n  type Membership,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "worker/public-abuse.ts",
+      "specifier": "./public-abuse.ts",
+      "line": 15,
+      "statement": "import {\n  publicGateUnavailableBody,\n  publicRateLimitedBody,\n  rateLimitFromRpcError,\n  resolvePublicAbuseIdentity,\n  type PublicAbuseEnv,\n} from './public-abuse.ts';"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "worker/public-rpc.ts",
+      "specifier": "./public-rpc.ts",
+      "line": 22,
+      "statement": "import { publicOperation } from './public-rpc.ts';"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "worker/snapshot-bounds.ts",
+      "specifier": "./snapshot-bounds.ts",
+      "line": 24,
+      "statement": "import { SNAPSHOT_LIMITS, snapshotOverflow, snapshotProbeLimit } from './snapshot-bounds.ts';"
+    },
+    {
+      "fromPath": "worker/team.ts",
+      "toPath": "shared/base64.ts",
+      "specifier": "../shared/base64.ts",
+      "line": 2,
+      "statement": "import { randomBase64Url } from '../shared/base64.ts';"
+    },
+    {
+      "fromPath": "worker/team.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 3,
+      "statement": "import {\n  applicationOrigin,\n  canManage,\n  clearBusinessCookie,\n  first,\n  readJson,\n  requireAuth,\n  requireMember,\n  setBusinessCookie,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AppContext,\n  type AuthEnv,\n  type Role,\n  type SupabaseResult,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/tickets.ts",
+      "toPath": "worker/auth.ts",
+      "specifier": "./auth.ts",
+      "line": 2,
+      "statement": "import {\n  readJson,\n  requireMember,\n  supabaseRequest,\n  upstreamUnavailable,\n  type AuthEnv,\n} from './auth.ts';"
+    },
+    {
+      "fromPath": "worker/tickets.ts",
+      "toPath": "worker/pagination.ts",
+      "specifier": "./pagination.ts",
+      "line": 9,
+      "statement": "import {\n  decodePageCursor,\n  pageResult,\n  parsePageLimit,\n} from './pagination.ts';"
+    }
+  ],
+  "unresolvedImports": [],
+  "conflicts": [],
+  "auditSha256": "1144245a19655183dbbd002ba7e3552369cbb9e6bb769542060e41ac48d6a14a"
+}
