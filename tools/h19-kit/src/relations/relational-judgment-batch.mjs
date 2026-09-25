@@ -5,20 +5,31 @@ import {
   RELATION_DIRECTION_QUESTION,
   freezeJevRelationalJudgment,
   relationalInputDigest,
+  relationalJevState,
   validateJevRelationalJudgment,
   validateRelationalEvidenceCase,
 } from './relational-evidence.mjs';
 import { validateRelationalCaseBatch } from './relational-case-composer.mjs';
 import {
+  JEV_RELATIONAL_CACHE_NAMESPACE,
   JEV_RELATIONAL_MODEL,
-  askJevRelationalDirection,
+  RELATION_CHOICE_DOMAIN,
+  TYPESAFE_SYSTEMONE_URL,
+  classifyJevRelationalCacheValue,
+  freezeJevRelationalCacheEntry,
   jevRelationalCacheKey,
+  normalizeRelationProbabilities,
+  relationalTransportErrorCode,
+  validateJevRelationalCacheEntry,
 } from '../adapters/jev-relational.mjs';
 
 const sha256 = (value) => createHash('sha256').update(String(value)).digest('hex');
 const hashBody = (value) => sha256(`${stableJson(value)}\n`);
 
-export const RELATIONAL_JUDGMENT_BATCH_MAX_LIVE_CALLS = 20;
+// RELATIONAL_JUDGMENT_BATCH_GATE-v0.2: all selected uncached cases share one state and one provider request.
+export const RELATIONAL_JUDGMENT_GATE = 'RELATIONAL_JUDGMENT_BATCH_GATE-v0.2';
+export const RELATIONAL_JUDGMENT_MAX_LIVE_QUESTIONS = 20;
+const CACHE_STATUSES = ['hit', 'miss', 'upgrade-required', 'invalid'];
 
 function nonEmpty(value) {
   return typeof value === 'string' && value.trim().length > 0;
@@ -38,11 +49,11 @@ function clone(value) {
   return structuredClone(value);
 }
 
-function normalizeMaxLiveCalls(value) {
+function normalizeMaxLiveQuestions(value) {
   if (!Number.isInteger(value)
     || value < 0
-    || value > RELATIONAL_JUDGMENT_BATCH_MAX_LIVE_CALLS) {
-    throw new TypeError('maxLiveCalls must be an integer between 0 and 20');
+    || value > RELATIONAL_JUDGMENT_MAX_LIVE_QUESTIONS) {
+    throw new TypeError('maxLiveQuestions must be an integer between 0 and 20');
   }
   return value;
 }
@@ -199,7 +210,7 @@ function runCounts(rows) {
   });
 }
 
-function judgmentRow({ planRow, judgment, source }) {
+function assertJudgmentMatchesPlan(judgment, planRow) {
   validateJevRelationalJudgment(judgment);
   if (judgment.caseSha256 !== planRow.caseSha256
     || judgment.inputSha256 !== planRow.inputSha256
@@ -209,56 +220,140 @@ function judgmentRow({ planRow, judgment, source }) {
     || judgment.questionVersion !== planRow.questionVersion) {
     throw new Error('judgment does not match planned request identity');
   }
+}
 
-  if (judgment.status === 'answered') {
-    return deepFreeze({
-      kind: 'answered',
-      hypothesisId: planRow.hypothesisId,
-      caseSha256: planRow.caseSha256,
-      judgmentSha256: judgment.judgmentSha256,
-      source,
-      choice: judgment.choice,
-      providerConfidence: judgment.providerConfidence,
-      errorCode: null,
-      reason: null,
-    });
-  }
+function answeredRow({ planRow, judgment, probabilities, source, cacheStatus }) {
+  assertJudgmentMatchesPlan(judgment, planRow);
+  return deepFreeze({
+    kind: 'answered',
+    hypothesisId: planRow.hypothesisId,
+    caseSha256: planRow.caseSha256,
+    cacheStatus,
+    judgmentSha256: judgment.judgmentSha256,
+    source,
+    choice: judgment.choice,
+    probabilities: structuredClone(probabilities),
+    providerConfidence: judgment.providerConfidence,
+    errorCode: null,
+    reason: null,
+  });
+}
 
+function errorRow({ planRow, judgment, source, cacheStatus }) {
+  assertJudgmentMatchesPlan(judgment, planRow);
   return deepFreeze({
     kind: 'error',
     hypothesisId: planRow.hypothesisId,
     caseSha256: planRow.caseSha256,
+    cacheStatus,
     judgmentSha256: judgment.judgmentSha256,
     source,
     choice: null,
+    probabilities: null,
     providerConfidence: null,
     errorCode: judgment.errorCode,
     reason: null,
   });
 }
 
-function budgetSkipRow(planRow) {
+function budgetSkipRow(planRow, cacheStatus) {
   return deepFreeze({
     kind: 'skipped',
     hypothesisId: planRow.hypothesisId,
     caseSha256: planRow.caseSha256,
+    cacheStatus,
     judgmentSha256: null,
     source: null,
     choice: null,
+    probabilities: null,
     providerConfidence: null,
     errorCode: null,
-    reason: 'live-call-budget',
+    reason: 'live-question-budget',
   });
 }
 
-function cacheInvalidJudgment(relationalCase, planRow) {
+function errorJudgment(relationalCase, planRow, errorCode) {
   return freezeJevRelationalJudgment({
     relationalCase,
     provider: planRow.provider,
     model: planRow.model,
-    errorCode: 'invalid_cache',
+    errorCode,
     inputSha256: planRow.inputSha256,
   });
+}
+
+async function probeCache({ cache, relationalCase, planRow }) {
+  if (!cache?.get) return { status: 'miss' };
+  let value;
+  try {
+    value = await cache.get(JEV_RELATIONAL_CACHE_NAMESPACE, planRow.cacheKey);
+  } catch {
+    return { status: 'invalid' };
+  }
+  // Cloned so replay never freezes or aliases the caller's cache storage.
+  return classifyJevRelationalCacheValue(value == null ? value : structuredClone(value), {
+    relationalCase,
+    provider: planRow.provider,
+    model: planRow.model,
+  });
+}
+
+// Opaque transport IDs; the model-visible binding is the explicit state path in the instructions (§7).
+const fanoutQuestionId = (index) => `q${String(index).padStart(2, '0')}`;
+
+function fanoutQuestion(index) {
+  return {
+    type: RELATION_DIRECTION_QUESTION.type,
+    instructions: `Evaluate only cases[${index}].state for this relation judgment. ${RELATION_DIRECTION_QUESTION.instructions}`,
+    criteria: structuredClone(RELATION_DIRECTION_QUESTION.criteria),
+  };
+}
+
+export function buildRelationalFanoutRequest({ model, selected }) {
+  if (!Array.isArray(selected) || selected.length < 1 || selected.length > RELATIONAL_JUDGMENT_MAX_LIVE_QUESTIONS) {
+    throw new Error('fan-out request needs 1..20 selected cases');
+  }
+  return deepFreeze({
+    model,
+    state: {
+      schemaVersion: 1,
+      cases: selected.map(({ relationalCase }) => ({
+        caseSha256: relationalCase.caseSha256,
+        state: structuredClone(relationalJevState(relationalCase)),
+      })),
+    },
+    questions: Object.fromEntries(selected.map((_, index) => [fanoutQuestionId(index), fanoutQuestion(index)])),
+  });
+}
+
+// §9 atomic acceptance: every submitted question has exactly one valid typed Choice answer, or nothing is accepted.
+function acceptFanoutResponse(json, { model, questionIds }) {
+  if (!json || typeof json !== 'object') return { errorCode: 'invalid_response' };
+  if (json.model !== model) return { errorCode: 'model_mismatch' };
+  const answers = json.answers;
+  if (!answers || typeof answers !== 'object' || Array.isArray(answers)) return { errorCode: 'invalid_response' };
+  const returned = Object.keys(answers);
+  if (returned.length !== questionIds.length || !questionIds.every((id) => returned.includes(id))) {
+    return { errorCode: 'answer_set_mismatch' };
+  }
+  const accepted = {};
+  for (const id of questionIds) {
+    const answer = answers[id];
+    const probabilities = normalizeRelationProbabilities(answer?.probabilities);
+    if (!answer
+      || typeof answer !== 'object'
+      || answer.type !== 'choice'
+      || !RELATION_CHOICE_DOMAIN.includes(answer.choice)
+      || typeof answer.confidence !== 'number'
+      || !Number.isFinite(answer.confidence)
+      || answer.confidence < 0
+      || answer.confidence > 1
+      || !probabilities) {
+      return { errorCode: 'invalid_answer' };
+    }
+    accepted[id] = { choice: answer.choice, confidence: answer.confidence, probabilities };
+  }
+  return { answers: accepted };
 }
 
 export async function runRelationalJudgmentBatch({
@@ -266,13 +361,15 @@ export async function runRelationalJudgmentBatch({
   relationalCases,
   provider = 'typesafe',
   model = JEV_RELATIONAL_MODEL,
-  maxLiveCalls = RELATIONAL_JUDGMENT_BATCH_MAX_LIVE_CALLS,
+  maxLiveQuestions = RELATIONAL_JUDGMENT_MAX_LIVE_QUESTIONS,
   apiKey = '',
   cache = null,
   fetchImpl = fetch,
   timeoutMs = 8_000,
+  ...rest
 } = {}) {
-  const boundedLiveCalls = normalizeMaxLiveCalls(maxLiveCalls);
+  if ('maxLiveCalls' in rest) throw new TypeError('maxLiveCalls was replaced by maxLiveQuestions (gate v0.2)');
+  const boundedQuestions = normalizeMaxLiveQuestions(maxLiveQuestions);
   const requestPlan = buildRelationalJudgmentRequestPlan({
     batch,
     relationalCases,
@@ -284,62 +381,116 @@ export async function runRelationalJudgmentBatch({
   const bySha = exactCaseIndex(batch, relationalCases);
   const sourceCasesBefore = stableJson(relationalCases);
   const sourceBatchBefore = stableJson(batch);
-  const rows = [];
+  const rows = new Array(requestPlan.rows.length);
   const judgments = [];
-  let liveSlotsUsed = 0;
+  const cacheEntries = [];
+  const pending = [];
 
-  for (const planRow of requestPlan.rows) {
+  // §5 cache-first: hits are replayed and never enter the fan-out state or budget.
+  for (const [index, planRow] of requestPlan.rows.entries()) {
     const relationalCase = bySha.get(planRow.caseSha256);
-
-    let probe;
-    try {
-      probe = await askJevRelationalDirection({
-        relationalCase,
-        apiKey: '',
-        model,
-        fetchImpl: async () => {
-          throw new Error('cache probe attempted provider access');
-        },
-        cache,
-        timeoutMs,
+    const probe = await probeCache({ cache, relationalCase, planRow });
+    if (probe.status === 'hit') {
+      judgments.push(probe.entry.judgment);
+      cacheEntries.push(probe.entry);
+      rows[index] = answeredRow({
+        planRow,
+        judgment: probe.entry.judgment,
+        probabilities: probe.entry.probabilities,
+        source: 'cache',
+        cacheStatus: 'hit',
       });
-    } catch {
-      const judgment = cacheInvalidJudgment(relationalCase, planRow);
+    } else if (probe.status === 'invalid') {
+      const judgment = errorJudgment(relationalCase, planRow, 'invalid_cache');
       judgments.push(judgment);
-      rows.push(judgmentRow({ planRow, judgment, source: 'cache' }));
-      continue;
+      rows[index] = errorRow({ planRow, judgment, source: 'cache', cacheStatus: 'invalid' });
+    } else {
+      pending.push({ index, planRow, relationalCase, cacheStatus: probe.status });
+    }
+  }
+
+  // §6 deterministic selection in request-plan order; overflow is an explicit skip.
+  const selected = pending.slice(0, boundedQuestions);
+  for (const item of pending.slice(boundedQuestions)) {
+    rows[item.index] = budgetSkipRow(item.planRow, item.cacheStatus);
+  }
+
+  let providerRequestCount = 0;
+  let fanoutRequestSha256 = null;
+  const failSelected = (errorCode) => {
+    for (const item of selected) {
+      const judgment = errorJudgment(item.relationalCase, item.planRow, errorCode);
+      judgments.push(judgment);
+      rows[item.index] = errorRow({ planRow: item.planRow, judgment, source: 'live', cacheStatus: item.cacheStatus });
+    }
+  };
+
+  if (selected.length && !nonEmpty(apiKey)) {
+    failSelected('missing_api_key');
+  } else if (selected.length) {
+    const request = buildRelationalFanoutRequest({ model, selected });
+    fanoutRequestSha256 = hashBody(request);
+    const questionIds = Object.keys(request.questions);
+    const options = {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${apiKey.trim()}`,
+      },
+      body: JSON.stringify(request),
+    };
+    if (Number.isFinite(timeoutMs) && timeoutMs > 0 && typeof AbortSignal?.timeout === 'function') {
+      options.signal = AbortSignal.timeout(timeoutMs);
     }
 
-    if (probe.cached) {
-      validateJevRelationalJudgment(probe.judgment, { relationalCase });
-      judgments.push(probe.judgment);
-      rows.push(judgmentRow({ planRow, judgment: probe.judgment, source: 'cache' }));
-      continue;
+    // §12 exactly one provider request, no retry.
+    providerRequestCount = 1;
+    let outcome;
+    try {
+      const response = await fetchImpl(TYPESAFE_SYSTEMONE_URL, options);
+      if (!response?.ok) {
+        outcome = { errorCode: `http_${Number.isInteger(response?.status) ? response.status : 0}` };
+      } else {
+        outcome = acceptFanoutResponse(await response.json(), { model, questionIds });
+      }
+    } catch (error) {
+      outcome = { errorCode: relationalTransportErrorCode(error) };
     }
 
-    if (liveSlotsUsed >= boundedLiveCalls) {
-      rows.push(budgetSkipRow(planRow));
-      continue;
+    if (outcome.errorCode) {
+      failSelected(outcome.errorCode);
+    } else {
+      const accepted = [];
+      for (const [position, item] of selected.entries()) {
+        const answer = outcome.answers[questionIds[position]];
+        const judgment = freezeJevRelationalJudgment({
+          relationalCase: item.relationalCase,
+          provider: item.planRow.provider,
+          model: item.planRow.model,
+          answer: { choice: answer.choice, confidence: answer.confidence },
+          inputSha256: item.planRow.inputSha256,
+        });
+        const entry = freezeJevRelationalCacheEntry({
+          judgment,
+          probabilities: answer.probabilities,
+          requestSha256: fanoutRequestSha256,
+        });
+        accepted.push({ item, judgment, entry });
+      }
+      // §14 canonical cache writes only after the whole live response was accepted.
+      for (const { item, judgment, entry } of accepted) {
+        if (cache?.set) await cache.set(JEV_RELATIONAL_CACHE_NAMESPACE, item.planRow.cacheKey, entry);
+        judgments.push(judgment);
+        cacheEntries.push(entry);
+        rows[item.index] = answeredRow({
+          planRow: item.planRow,
+          judgment,
+          probabilities: entry.probabilities,
+          source: 'live',
+          cacheStatus: item.cacheStatus,
+        });
+      }
     }
-
-    liveSlotsUsed += 1;
-    const result = await askJevRelationalDirection({
-      relationalCase,
-      apiKey,
-      model,
-      fetchImpl,
-      cache,
-      timeoutMs,
-    });
-
-    validateJevRelationalJudgment(result.judgment, { relationalCase });
-    judgments.push(result.judgment);
-    rows.push(judgmentRow({
-      planRow,
-      judgment: result.judgment,
-      source: result.cached ? 'cache' : 'live',
-    }));
-    if (result.cached) liveSlotsUsed -= 1;
   }
 
   if (stableJson(relationalCases) !== sourceCasesBefore || stableJson(batch) !== sourceBatchBefore) {
@@ -348,7 +499,8 @@ export async function runRelationalJudgmentBatch({
 
   const counts = runCounts(rows);
   const run = freezeRun({
-    schemaVersion: 1,
+    schemaVersion: 2,
+    gate: RELATIONAL_JUDGMENT_GATE,
     authority: 'advisory',
     batchSha256: batch.batchSha256,
     compositionInputSha256: batch.compositionInputSha256,
@@ -357,7 +509,9 @@ export async function runRelationalJudgmentBatch({
     model,
     questionId: RELATION_DIRECTION_QUESTION.id,
     questionVersion: RELATION_DIRECTION_QUESTION.version,
-    maxLiveCalls: boundedLiveCalls,
+    maxLiveQuestions: boundedQuestions,
+    providerRequestCount,
+    fanoutRequestSha256,
     rows,
     counts,
   });
@@ -366,7 +520,54 @@ export async function runRelationalJudgmentBatch({
     requestPlan,
     run,
     judgments,
+    cacheEntries,
   });
+}
+
+function validateRunRow(row) {
+  if (!nonEmpty(row.hypothesisId) || !shaLike(row.caseSha256)) throw new Error('invalid judgment run row binding');
+  if (!CACHE_STATUSES.includes(row.cacheStatus)) throw new Error('invalid judgment run cache status');
+  const liveEligible = row.cacheStatus === 'miss' || row.cacheStatus === 'upgrade-required';
+  if (row.kind === 'answered') {
+    const probabilities = normalizeRelationProbabilities(row.probabilities);
+    if (!shaLike(row.judgmentSha256)
+      || !RELATION_CHOICE_DOMAIN.includes(row.choice)
+      || !probabilities
+      || stableJson(probabilities) !== stableJson(row.probabilities)
+      || typeof row.providerConfidence !== 'number'
+      || !Number.isFinite(row.providerConfidence)
+      || row.providerConfidence < 0
+      || row.providerConfidence > 1
+      || row.errorCode !== null
+      || row.reason !== null
+      || !((row.source === 'cache' && row.cacheStatus === 'hit') || (row.source === 'live' && liveEligible))) {
+      throw new Error('invalid answered judgment run row');
+    }
+  } else if (row.kind === 'error') {
+    if (!shaLike(row.judgmentSha256)
+      || row.choice !== null
+      || row.probabilities !== null
+      || row.providerConfidence !== null
+      || !nonEmpty(row.errorCode)
+      || row.reason !== null
+      || !((row.source === 'cache' && row.cacheStatus === 'invalid' && row.errorCode === 'invalid_cache')
+        || (row.source === 'live' && liveEligible))) {
+      throw new Error('invalid error judgment run row');
+    }
+  } else if (row.kind === 'skipped') {
+    if (row.judgmentSha256 !== null
+      || row.source !== null
+      || row.choice !== null
+      || row.probabilities !== null
+      || row.providerConfidence !== null
+      || row.errorCode !== null
+      || row.reason !== 'live-question-budget'
+      || !liveEligible) {
+      throw new Error('invalid skipped judgment run row');
+    }
+  } else {
+    throw new Error('invalid judgment run row kind');
+  }
 }
 
 export function validateRelationalJudgmentRun(run, {
@@ -374,11 +575,12 @@ export function validateRelationalJudgmentRun(run, {
   requestPlan = null,
   relationalCases = null,
   judgments = null,
+  cacheEntries = null,
 } = {}) {
   if (!run?.judgmentRunSha256) throw new TypeError('relational judgment run required');
   const { judgmentRunSha256, ...body } = clone(run);
   if (hashBody(body) !== judgmentRunSha256) throw new Error('relational judgment run hash mismatch');
-  if (run.schemaVersion !== 1 || run.authority !== 'advisory') {
+  if (run.schemaVersion !== 2 || run.gate !== RELATIONAL_JUDGMENT_GATE || run.authority !== 'advisory') {
     throw new Error('unsupported relational judgment run version/authority');
   }
   if (!shaLike(run.batchSha256)
@@ -386,7 +588,7 @@ export function validateRelationalJudgmentRun(run, {
     || !shaLike(run.requestPlanSha256)) {
     throw new Error('invalid relational judgment run digest binding');
   }
-  normalizeMaxLiveCalls(run.maxLiveCalls);
+  normalizeMaxLiveQuestions(run.maxLiveQuestions);
   if (run.questionId !== RELATION_DIRECTION_QUESTION.id
     || run.questionVersion !== RELATION_DIRECTION_QUESTION.version
     || !nonEmpty(run.provider)
@@ -394,48 +596,36 @@ export function validateRelationalJudgmentRun(run, {
     throw new Error('invalid relational judgment run identity');
   }
   if (!Array.isArray(run.rows) || run.rows.length > 20) throw new Error('invalid judgment run rows');
-
-  for (const row of run.rows) {
-    if (!nonEmpty(row.hypothesisId) || !shaLike(row.caseSha256)) throw new Error('invalid judgment run row binding');
-    if (row.kind === 'answered') {
-      if (!shaLike(row.judgmentSha256)
-        || !['cache', 'live'].includes(row.source)
-        || !['strengthens', 'weakens', 'unrelated', 'insufficient'].includes(row.choice)
-        || typeof row.providerConfidence !== 'number'
-        || row.providerConfidence < 0
-        || row.providerConfidence > 1
-        || row.errorCode !== null
-        || row.reason !== null) {
-        throw new Error('invalid answered judgment run row');
-      }
-    } else if (row.kind === 'error') {
-      if (!shaLike(row.judgmentSha256)
-        || !['cache', 'live'].includes(row.source)
-        || row.choice !== null
-        || row.providerConfidence !== null
-        || !nonEmpty(row.errorCode)
-        || row.reason !== null) {
-        throw new Error('invalid error judgment run row');
-      }
-    } else if (row.kind === 'skipped') {
-      if (row.judgmentSha256 !== null
-        || row.source !== null
-        || row.choice !== null
-        || row.providerConfidence !== null
-        || row.errorCode !== null
-        || row.reason !== 'live-call-budget') {
-        throw new Error('invalid skipped judgment run row');
-      }
-    } else {
-      throw new Error('invalid judgment run row kind');
-    }
-  }
+  for (const row of run.rows) validateRunRow(row);
 
   const expectedCounts = runCounts(run.rows);
   if (stableJson(expectedCounts) !== stableJson(run.counts)) {
     throw new Error('relational judgment run count mismatch');
   }
-  if (run.counts.live > run.maxLiveCalls) throw new Error('relational judgment live-call budget exceeded');
+  if (run.counts.live > run.maxLiveQuestions) throw new Error('relational judgment live-question budget exceeded');
+  // §6 overflow only once the budget is exhausted, and never ahead of a selected row.
+  if (run.counts.skipped > 0 && run.counts.live !== run.maxLiveQuestions) {
+    throw new Error('budget skip while live-question budget remained');
+  }
+  let skippedSeen = false;
+  for (const row of run.rows) {
+    if (row.kind === 'skipped') skippedSeen = true;
+    else if (row.source === 'live' && skippedSeen) throw new Error('live question selected after a budget skip');
+  }
+  // §2 zero-or-one provider request.
+  const liveRows = run.rows.filter((row) => row.source === 'live');
+  const requestExpected = liveRows.length > 0 && !liveRows.every((row) => row.errorCode === 'missing_api_key');
+  if (requestExpected) {
+    if (run.providerRequestCount !== 1 || !shaLike(run.fanoutRequestSha256)) {
+      throw new Error('live questions require exactly one provider request');
+    }
+  } else if (run.providerRequestCount !== 0 || run.fanoutRequestSha256 !== null) {
+    throw new Error('provider request recorded without live questions');
+  }
+  // §9 one live response is accepted or failed as a whole.
+  if (liveRows.some((row) => row.kind === 'answered') && liveRows.some((row) => row.kind === 'error')) {
+    throw new Error('partial live acceptance');
+  }
 
   if (requestPlan) {
     validateRelationalJudgmentRequestPlan(
@@ -465,6 +655,8 @@ export function validateRelationalJudgmentRun(run, {
     }
   }
 
+  const caseIndex = relationalCases ? exactCaseIndex(batch, relationalCases) : null;
+
   if (judgments) {
     const bySha = new Map();
     for (const judgment of judgments) {
@@ -477,10 +669,6 @@ export function validateRelationalJudgmentRun(run, {
     if (bySha.size !== expectedJudgmentRows.length) {
       throw new Error('judgment artifact set does not exactly match run');
     }
-
-    const caseIndex = relationalCases
-      ? exactCaseIndex(batch, relationalCases)
-      : null;
 
     for (const row of expectedJudgmentRows) {
       const judgment = bySha.get(row.judgmentSha256);
@@ -503,6 +691,26 @@ export function validateRelationalJudgmentRun(run, {
       }
       if (row.kind === 'error' && judgment.errorCode !== row.errorCode) {
         throw new Error('error judgment row mismatch');
+      }
+    }
+  }
+
+  if (cacheEntries) {
+    const byJudgment = new Map();
+    for (const entry of cacheEntries) {
+      validateJevRelationalCacheEntry(entry, { provider: run.provider, model: run.model });
+      if (byJudgment.has(entry.judgment.judgmentSha256)) throw new Error('duplicate cache entry');
+      byJudgment.set(entry.judgment.judgmentSha256, entry);
+    }
+    const answeredRows = run.rows.filter((row) => row.kind === 'answered');
+    if (byJudgment.size !== answeredRows.length) throw new Error('cache entry set does not exactly match answered rows');
+    for (const row of answeredRows) {
+      const entry = byJudgment.get(row.judgmentSha256);
+      if (!entry || stableJson(entry.probabilities) !== stableJson(row.probabilities)) {
+        throw new Error('answered row probability mismatch');
+      }
+      if (row.source === 'live' && entry.requestSha256 !== run.fanoutRequestSha256) {
+        throw new Error('live cache entry is not bound to this fan-out request');
       }
     }
   }
