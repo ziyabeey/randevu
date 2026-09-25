@@ -191,8 +191,11 @@ The [first development collection](experiments/m11/COLLECTION-001.md) now record
 actual suite-scoped V8 observations and five cross-split dependency witnesses.
 The v0.1 split is blocked. A [versioned source split repair](experiments/m11/REFREEZE-001.md)
 now binds 66 source files and separates whole components: 22 development /
-2 evaluation anchors, one component per split. Source readiness passes; real
-M5/M9 observation receipts and renewed fact-lineage checks are next. Paid collection still requires its concrete budget and independently
+2 evaluation anchors, one component per split. The [saved-observation bridge](experiments/m11/BRIDGE-001.md)
+now produces one eligible M9 case bound to five controls, with 17 retained skips.
+The separate run/static observation roots remain intact; this is not five
+independent trials or a defect finding. Independent validation/labels remain
+pending. Paid collection still requires its concrete budget and independently
 sourced evidence.
 M12 selection remains a later contract, not an activated milestone.
 

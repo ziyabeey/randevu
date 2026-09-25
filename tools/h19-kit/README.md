@@ -70,3 +70,11 @@ The `scan` command is intentionally model-free. It combines already-produced evi
 rules. H19s decides whether the Kepenk semantic router is eligible to become a packaged adapter later.
 
 See [ROADMAP.md](ROADMAP.md) and [integrations/catalog.v0.1.json](integrations/catalog.v0.1.json).
+
+## M11 development preparation
+
+The [saved-observation bridge](specs/M11_OBSERVATION_BRIDGE-v0.1.md) binds the
+original TAP/V8 and static closure observations to the repaired inventory.
+[Result 001](experiments/m11/BRIDGE-001.md) contains one eligible M9 case shared
+by five reference controls, plus 17 retained skips. This is a draft preparation
+result; labels, independent functional outcomes and paid comparisons are pending.
