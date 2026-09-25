@@ -335,4 +335,90 @@ exception when others then
 end
 $f1606attachrace$;
 
+-- F16-06 R1 residual: an attach racing a cancel of the same booking. The cancel
+-- holds the group row while its release trigger runs; the attach waits for
+-- that row, then sees the cancelled group and reserves nothing, so no quota
+-- slot is orphaned on a cancelled booking.
+set role authenticated;
+select set_config('request.jwt.claim.sub','f1680000-0000-4000-8000-000000000001',false);
+select set_config('request.jwt.claims','{"amr":[{"method":"password"}]}',false);
+do $f1606cancelsetup$
+declare v_group jsonb;
+begin
+  v_group := public.create_appointment_group('f1681000-0000-4000-8000-000000000001','f1606-race-cancel-group','F16-06 Race Cancel',
+    jsonb_build_array(jsonb_build_object('serviceId','f1684000-0000-4000-8000-000000000001','staffId','f1686000-0000-4000-8000-000000000001')),
+    ((current_date + 7) + time '13:00') at time zone 'Europe/Istanbul','05551680098',null);
+  perform set_config('f1606.race_cancel_group', v_group->>'groupId', false);
+end
+$f1606cancelsetup$;
+reset role;
+insert into public.appointment_management_capabilities(appointment_id, business_id, group_id, token_hash)
+select a.id, a.business_id, a.group_id, public.management_token_hash(repeat('S', 43))
+from public.appointments a where a.group_id = current_setting('f1606.race_cancel_group')::uuid;
+
+do $f1606cancelrace$
+declare
+  v_business uuid := 'f1681000-0000-4000-8000-000000000001';
+  v_group uuid := current_setting('f1606.race_cancel_group')::uuid;
+  v_blocked integer := 0;
+  v_error text;
+  v_rows integer := 0;
+  v_result jsonb;
+begin
+  perform dblink_connect('f1606_cancel',
+    'host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1606_cancel');
+  perform dblink_connect('f1606_attach2',
+    'host=127.0.0.1 port=5432 dbname='||current_database()||' user=postgres password=postgres application_name=f1606_attach2');
+  perform dblink_exec('f1606_attach2','set statement_timeout=30000');
+
+  -- The customer (or salon) cancels the booking and has not committed yet.
+  perform dblink_exec('f1606_cancel','begin');
+  perform dblink_exec('f1606_cancel', format(
+    'update public.appointment_groups set status = %L where business_id = %L::uuid and id = %L::uuid',
+    'cancelled', v_business, v_group));
+
+  if dblink_send_query('f1606_attach2', $q$select to_jsonb(r) from public.attach_public_managed_promo('$q$ || repeat('S',43) || $q$','ACIK') r$q$) <> 1 then
+    raise exception 'F16-06 could not start the attach racing a cancel';
+  end if;
+  for i in 1..500 loop
+    perform pg_stat_clear_snapshot();
+    select count(*)::integer into v_blocked from pg_stat_activity
+    where application_name = 'f1606_attach2' and wait_event_type = 'Lock';
+    exit when v_blocked = 1;
+    perform pg_sleep(0.01);
+  end loop;
+  if v_blocked <> 1 then raise exception 'F16-06 attach did not wait for the in-flight cancel'; end if;
+
+  perform dblink_exec('f1606_cancel','commit');
+  perform dblink_disconnect('f1606_cancel');
+
+  for i in 1..3000 loop
+    exit when dblink_is_busy('f1606_attach2') = 0;
+    perform pg_sleep(0.01);
+  end loop;
+  begin
+    select t.result into v_result from dblink_get_result('f1606_attach2', false) as t(result jsonb);
+    get diagnostics v_rows = row_count;
+  exception when others then v_rows := 0;
+  end;
+  v_error := dblink_error_message('f1606_attach2');
+  perform * from dblink_get_result('f1606_attach2', false) as t(result jsonb);
+  perform dblink_disconnect('f1606_attach2');
+
+  if v_rows <> 0 or position('PROMO_NOT_ATTACHABLE' in coalesce(v_error,'')) = 0 then
+    raise exception 'F16-06 attach after a concurrent cancel was not refused: rows=% result=% error=%', v_rows, v_result, v_error;
+  end if;
+  if exists (select 1 from public.promo_redemptions r
+             where r.business_id = v_business and r.appointment_group_id = v_group and r.status = 'reserved') then
+    raise exception 'F16-06 attach left a reserved code on a cancelled booking';
+  end if;
+  raise notice 'F16-06 booking attach waited for the cancel and reserved nothing';
+exception when others then
+  begin perform dblink_exec('f1606_cancel','rollback'); exception when others then null; end;
+  begin perform dblink_disconnect('f1606_cancel'); exception when others then null; end;
+  begin perform dblink_disconnect('f1606_attach2'); exception when others then null; end;
+  raise;
+end
+$f1606cancelrace$;
+
 -- The CI database is disposable; financial history is deliberately not deleted.

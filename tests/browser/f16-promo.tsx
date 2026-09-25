@@ -13,7 +13,7 @@ type Control = {
   checkedCode(): string | null;
   layout(): { overflow: number; shortTargets: string[] };
 };
-declare global { interface Window { __f1606: Control; __f1606Code: string | null } }
+declare global { interface Window { __f1606: Control; __f1606Code: string | null; __f1606Errors: string[] } }
 
 const el = (scope: string) => document.querySelector<HTMLElement>(`[data-scope="${scope}"]`);
 function setValue(element: HTMLInputElement | HTMLSelectElement, value: string) {
@@ -69,10 +69,15 @@ function PublicScope() {
   return <PublicPromoField slug="salon-a" serviceIds={[services[0].id]} onChange={setCode} />;
 }
 
+window.__f1606Errors = [];
+window.addEventListener('error', (event) => window.__f1606Errors.push(String(event.message)));
+window.addEventListener('unhandledrejection', (event) => window.__f1606Errors.push(String(event.reason)));
+
 createRoot(document.getElementById('root')!).render(<main>
   <div data-scope="public"><PublicScope /></div>
   <div data-scope="attach"><PromoAttachResult manageUrl={`/m#${'M'.repeat(43)}`} code="YAZ20" /></div>
   <div data-scope="manage"><ManagePromo token={'N'.repeat(43)} /></div>
+  <div data-scope="manage-ticket-open"><ManagePromo token={'O'.repeat(43)} /></div>
   <div data-scope="codes"><PromoCodesPanel businessId="f1680000-0000-4000-8000-000000000602" services={services} canManage /></div>
   <div data-scope="cashier"><BrowserWorkspaceProvider><TicketCashierPage /></BrowserWorkspaceProvider></div>
 </main>);

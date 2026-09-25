@@ -29,7 +29,7 @@ PRODUCT_SPEC kuralı ("var olmayan özellik tamamlanabilir işlem gibi sunulmaz"
 | Menü (masaüstü + mobil `İşletme menüsü`) | Takvim, Randevular, Müşteriler, Hizmetler, Ürün ve stok, Masraflar, Kasa ve raporlar, Ekip, Müsaitlik, Kurulum, Online Randevu, Yorumlar | çalışıyor |
 | Takvim | Gün/Hafta/Liste, Önceki/Sonraki dönem, Bugün, tarih, 1/7 gün aralığı, Yenile/Yeniden dene, `+ Yeni randevu`, randevu çekmecesi (Onayla, Tamamlandı, Gelmedi, İptal et, Tüm rezervasyonu iptal et, Gelişmiş randevu işlemlerine git, İşletmeye dön) | çalışıyor |
 | Randevular | Zaman → müşteri → hizmetler → not oluşturma, `+ Hizmet ekle`, Uygun saatleri getir, Saat kapat, Tekrar (Her gün/Her hafta) + Tüm tekrarları önizle + Seriyi oluştur, Detay, Adisyon, Hizmeti değiştir, Satırı taşı/iptal et, Tümünü taşı/iptal et, Seriyi yönet (Kapsamı önizle, Kapsamdaki randevuları taşı/iptal et), Daha fazla randevu/geçmiş yükle | çalışıyor |
-| Randevular → Fotoğraf sekmesi | F16-03 özel fotoğraflar | çalışıyor (F16-03 merge'iyle) |
+| Randevular → Fotoğraf sekmesi | F16-03 özel fotoğraflar: yükle, görüntüle, sil, onaylı galeride yayınla | çalışıyor |
 | Randevular → SMS | Bildirim kanalı satırı "Henüz bağlı değil" | açıkça disabled/upcoming |
 | Müşteriler | Ara, Müşteri oluştur, Bilgileri güncelle, Adisyon geçmişi, Daha eski rezervasyonları göster, Daha fazla göster | çalışıyor |
 | Hizmetler | Hizmet/personel ekle-kaydet-arşivle, yetkinlikler, Seans paketleri (ekle/düzenle/satışa aç-kapat), Kampanya kodları (ekle/aç-kapat), Hizmet fotoğraf arşivi (F16-03) | çalışıyor |

@@ -93,11 +93,12 @@ await test('F16-06 invalid public input is rejected before any upstream call', a
 
 await test('F16-06 capability attach keeps the token out of URLs and maps refusals', async () => {
   let refusal = null;
+  let viewAttachable = true;
   await withFetch(async ({ path, body }) => {
     assert.equal(path, '/rest/v1/rpc/execute_public_promo_operation');
     if (body.p_action === 'manage_promo_view') {
       assert.deepEqual(body.p_args, { p_token: token });
-      return json({ ok: true, data: [{ code: null, kind: null, percent_bps: null, amount_minor: null, currency: null, status: null, attachable: true }] });
+      return json({ ok: true, data: [{ code: null, kind: null, percent_bps: null, amount_minor: null, currency: null, status: null, attachable: viewAttachable }] });
     }
     assert.equal(body.p_action, 'manage_promo_attach');
     assert.deepEqual(body.p_args, { p_token: token, p_code: 'YAZ20' });
@@ -120,8 +121,19 @@ await test('F16-06 capability attach keeps the token out of URLs and maps refusa
         method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.82' }, body: JSON.stringify({ token, code: 'YAZ20' }),
       }, env);
       assert.equal(response.status, status, message);
-      if (status !== 429) assert.equal((await response.json()).error.code, message.split(':')[0]);
+      if (status !== 429) {
+        const error = (await response.json()).error;
+        assert.equal(error.code, message.split(':')[0]);
+        if (message === 'PROMO_NOT_ATTACHABLE') assert.match(error.message, /Adisyon açıldıysa kodu salonda iletin/);
+      }
     }
+    // Once the salon opened the ticket the view is closed: no code, not attachable.
+    viewAttachable = false;
+    const closed = await app.request('http://localhost/api/manage/promo/view', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.82' }, body: JSON.stringify({ token }),
+    }, env);
+    assert.equal(closed.status, 200);
+    assert.deepEqual((await closed.json()).promo, { code: null, kind: null, percentBps: null, amountMinor: null, currency: null, status: null, attachable: false });
     assert.ok(calls.every((call) => !call.url.includes(token)), 'token never appears in an upstream URL');
   });
 });
