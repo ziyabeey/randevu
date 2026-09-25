@@ -123,6 +123,34 @@ Bağlayıcı topology [K04](docs/plan/k04-platform-core-contract.md), paket/bağ
 | DEV-ENGINE-09 | CI observer'ı canonical Development Dispatcher üzerinden gözleme; doğrudan Luna/model çağrısı ve REPAIR_REQUIRED yönlendirmesi yok | DEV-ENGINE-02, DEV-ENGINE-06 | Main'de / kabul açık | Sol + koordinatör / 2026-09-23 | [PR #200](https://github.com/ziyabeey/randevu/pull/200) merged · final head `10e2d0bc` · exact-head [CI #2525](https://github.com/ziyabeey/randevu/actions/runs/35895683856) SUCCESS · Issue #65 history acceptance/effective-state evidence olmaktan çıkarıldı · coordinator exception audit bağımsız R1 receipt olarak temsil edilmedi · main `19bca04e` · post-main [CI #2532](https://github.com/ziyabeey/randevu/actions/runs/35896802228) SUCCESS · bağımsız R1 receipt yok; final kabul fail-closed açık |
 | [DEV-ENGINE-10](https://github.com/ziyabeey/randevu/issues/430) | GitHub CI bootstrap süresini azaltma ve Depot prewarmed custom image | DEV-ENGINE-07 | Main'de / kabul açık | Sol + koordinatör / 2026-09-23 | `dev-engine/depot-ci-prewarm` · [PR #432](https://github.com/ziyabeey/randevu/pull/432) merged main `3bb511bf` · post-main CI #2439 SUCCESS · measured bootstrap ~27s → ~11s (~59% sample reduction) · Depot prewarmed image activation remains open behind Code Access preflight |
 
+## H19 Kit research/tooling track — 54 MVP görevinin dışında
+
+Bu tablo yalnız H19 Kit geliştirme zincirinin canonical PR bağlarını tutar. Stacked PR'lar kendi önkoşulu main'e inmeden ready/merge yetkisi kazanmaz; HOLD satırları özellikle fail-closed kalır.
+
+| Kimlik | İş | Önkoşullar | Durum | Sahip / UTC güncelleme | Branch / PR / kanıt veya engel |
+| --- | --- | --- | --- | --- | --- |
+| H19-KIT-M0 | Foundation: typed evidence, provenance, dispatcher, cache ve scan çekirdeği | TEMEL | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m0-foundation` · [PR #533](https://github.com/ziyabeey/randevu/pull/533) |
+| H19-KIT-M1 | Repository intelligence: semantic units, inventory, hotspots ve coverage adapters | H19-KIT-M0 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m1-repo-intelligence` · [PR #536](https://github.com/ziyabeey/randevu/pull/536) |
+| H19-KIT-M2 | Static evidence: Semgrep fact normalization ve declarative rules | H19-KIT-M1 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m2-static-evidence` · [PR #537](https://github.com/ziyabeey/randevu/pull/537) |
+| H19-KIT-M3 | Experiment engine: freeze, blind sampling, gates ve experiment ledger | H19-KIT-M2 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m3-experiment-engine` · [PR #538](https://github.com/ziyabeey/randevu/pull/538) |
+| H19-KIT-M35-GRAPH | Deterministic SCIP reference/relationship graph ve blast-radius evidence | H19-KIT-M3 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m35-impact-graph` · [PR #544](https://github.com/ziyabeey/randevu/pull/544) · #541 aynı M3.5 yüzeyinin superseded/orphan lane'i olarak kapatılacak |
+| H19-KIT-M35-SCIP-CACHE | SCIP shard cache | H19-KIT-M35-GRAPH | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m35-scip-cache` · [PR #547](https://github.com/ziyabeey/randevu/pull/547) |
+| H19-KIT-M35-AFFECTED | Affected-project resolver | H19-KIT-M35-SCIP-CACHE | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m35-affected` · [PR #548](https://github.com/ziyabeey/randevu/pull/548) |
+| H19-KIT-M35-GRAPH-CACHE | Normalized SCIP graph cache | H19-KIT-M35-AFFECTED | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m35-graph-cache` · [PR #549](https://github.com/ziyabeey/randevu/pull/549) |
+| H19-KIT-M35-TREESITTER | Tree-sitter fallback | H19-KIT-M35-GRAPH-CACHE | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m35-tree-sitter` · [PR #550](https://github.com/ziyabeey/randevu/pull/550) |
+| H19-KIT-M35-UNIT-MAP | Semantic-unit → SCIP mapping | H19-KIT-M35-TREESITTER | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m35-unit-symbol-map` · [PR #551](https://github.com/ziyabeey/randevu/pull/551) |
+| H19-KIT-M35-INDEXER | SCIP indexer registry | H19-KIT-M35-UNIT-MAP | Engelli | Sol + koordinatör / 2026-09-24 | `h19-kit-m35-indexer-registry` · [PR #556](https://github.com/ziyabeey/randevu/pull/556) · PR başlığındaki HOLD korunur |
+| H19-KIT-M35-CALL-EDGE | Call-edge contract | H19-KIT-M35-INDEXER | Engelli | Sol + koordinatör / 2026-09-24 | `h19-kit-m35-call-edge-contract` · [PR #557](https://github.com/ziyabeey/randevu/pull/557) · PR başlığındaki HOLD korunur |
+| H19-KIT-M4 | Change-impact orchestrator | H19-KIT-M35-UNIT-MAP | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m4-change-impact-orchestrator` · [PR #554](https://github.com/ziyabeey/randevu/pull/554) |
+| H19-KIT-M5 | Coverage discovery | H19-KIT-M4 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m5-coverage-discovery` · [PR #555](https://github.com/ziyabeey/randevu/pull/555) |
+| H19-KIT-ROADMAP | Bundle roadmap synchronization | H19-KIT-M5 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-bundle-roadmap-sync` · [PR #559](https://github.com/ziyabeey/randevu/pull/559) |
+| H19-KIT-TEST-GATE-V01 | Minimal test-spec gate v0.1 freeze | H19-KIT-ROADMAP | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-test-spec-gate-freeze` · [PR #560](https://github.com/ziyabeey/randevu/pull/560) |
+| H19-KIT-M6 | Minimal test specification | H19-KIT-TEST-GATE-V01 | Çalışılıyor | Sol + koordinatör / 2026-09-24 | `h19-kit-m6-test-specification` · [PR #561](https://github.com/ziyabeey/randevu/pull/561) |
+| H19-KIT-M7 | Executable test candidate materialization | H19-KIT-M6 | Çalışılıyor | Sol + koordinatör / 2026-09-25 | [PR #566](https://github.com/ziyabeey/randevu/pull/566) · joined integration [PR #588](https://github.com/ziyabeey/randevu/pull/588); main kabulü bekleniyor |
+| H19-KIT-M8 | Relational evidence core | H19-KIT-M7 | Çalışılıyor | Sol + koordinatör / 2026-09-25 | [PR #590](https://github.com/ziyabeey/randevu/pull/590) · bounded advisory judgments ve bağımsız outcome kontratı; main kabulü bekleniyor |
+| H19-KIT-M9 | Deterministic relational case composer | H19-KIT-M8 | Çalışılıyor | Sol + koordinatör / 2026-09-25 | [PR #592](https://github.com/ziyabeey/randevu/pull/592) · RC1–RC16 seçimi; mevcut descendant #594 içinde seçim-eşdeğerliği koruyan maliyet onarımı |
+| H19-KIT-M10 | Concurrent single-case relational judgments + bounded repair | H19-KIT-M9 | Çalışılıyor | Codex + koordinatör / 2026-09-25 | `h19-kit-m10-relational-judgment-batch` · [PR #594](https://github.com/ziyabeey/randevu/pull/594) · v0.3 freeze #597 · [repair context](docs/handoffs/H19-KIT-M10-repair.md) · cache yazma izolasyonu, exact request replay doğrulaması ve M9 seçim eşdeğerliği; main kabulü bekleniyor |
+
 ## Kabul kapıları
 
 | Kapı | Kapsam | Durum / kanıt |

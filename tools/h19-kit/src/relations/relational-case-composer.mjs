@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 import { stableJson } from '../core/cache.mjs';
 import {
   buildRelationalEvidenceCase,
-  lineageFeatures,
   normalizeRelationalFact,
   validateRelationalEvidenceCase,
 } from './relational-evidence.mjs';
@@ -212,53 +211,45 @@ function bestScopeMatch(hypothesis, scopes, relations) {
   return matches[0] ?? null;
 }
 
-function lineageOverlapCount(facts) {
-  let count = 0;
-  for (let i = 0; i < facts.length; i += 1) {
-    const left = new Set(facts[i].lineageIds);
-    for (let j = i + 1; j < facts.length; j += 1) {
-      if (facts[j].lineageIds.some((id) => left.has(id))) count += 1;
-    }
-  }
-  return count;
-}
-
-function independentFamilyCount(facts) {
-  const feature = lineageFeatures(facts)
-    .find((item) => item.kind === 'independent-family-count');
-  return feature?.value ?? 0;
-}
-
 function directAnchor(candidate, hypothesis) {
   const requiredFamily = ANCHOR_FAMILY[hypothesis.reason];
   if (!requiredFamily) throw new Error(`unsupported hypothesis reason: ${hypothesis.reason}`);
   return candidate.fact.family === requiredFamily && candidate.scopeStrength >= SCOPE_STRENGTH.path;
 }
 
-function combinations(items, minSize = 2, maxSize = 4) {
-  const result = [];
-  const visit = (start, picked) => {
-    if (picked.length >= minSize) result.push([...picked]);
-    if (picked.length === maxSize) return;
-    for (let i = start; i < items.length; i += 1) {
-      picked.push(items[i]);
-      visit(i + 1, picked);
-      picked.pop();
-    }
-  };
-  visit(0, []);
-  return result;
-}
-
 function subsetScore(subset) {
+  // Facts were normalized once by dedupeFactPool. At most four are scored here;
+  // do not re-normalize/freeze the same facts for every candidate combination.
   const facts = subset.map((item) => item.fact);
   const familyCount = new Set(facts.map((fact) => fact.family)).size;
   const factIds = facts.map((fact) => fact.factId).sort();
+  const conflicts = new Array(subset.length).fill(0);
+  let overlapCount = 0;
+  for (let i = 0; i < subset.length; i += 1) {
+    for (let j = i + 1; j < subset.length; j += 1) {
+      const overlap = facts[j].lineageIds.some((id) => subset[i].lineageSet.has(id));
+      if (overlap) overlapCount += 1;
+      if (overlap || facts[i].family === facts[j].family) {
+        conflicts[i] |= 1 << j;
+        conflicts[j] |= 1 << i;
+      }
+    }
+  }
+  let independentCount = 0;
+  for (let mask = 1; mask < (1 << subset.length); mask += 1) {
+    let count = 0;
+    for (let i = 0; i < subset.length; i += 1) {
+      if (!(mask & (1 << i))) continue;
+      if (conflicts[i] & mask) { count = 0; break; }
+      count += 1;
+    }
+    independentCount = Math.max(independentCount, count);
+  }
   return {
-    independentFamilyCount: independentFamilyCount(facts),
+    independentFamilyCount: independentCount,
     familyCount,
     scopeStrengthSum: subset.reduce((sum, item) => sum + item.scopeStrength, 0),
-    lineageOverlapCount: lineageOverlapCount(facts),
+    lineageOverlapCount: overlapCount,
     caseSize: subset.length,
     factIds,
   };
@@ -273,7 +264,62 @@ function compareSubset(a, b) {
     || stableJson(a.score.factIds).localeCompare(stableJson(b.score.factIds));
 }
 
-function selectForHypothesis({ packet, hypothesis, facts, relations }) {
+function bestSubset(eligible, hypothesis, existenceOnly) {
+  // Search promising branches first, but preserve the frozen comparison of all
+  // admissible results. No heuristic truncation or fact budget changes RC5.
+  const items = [...eligible].sort((a, b) =>
+    Number(directAnchor(b, hypothesis)) - Number(directAnchor(a, hypothesis))
+    || b.scopeStrength - a.scopeStrength
+    || a.fact.factId.localeCompare(b.fact.factId));
+  const suffixFamilies = new Array(items.length + 1);
+  const suffixAnchor = new Array(items.length + 1).fill(false);
+  suffixFamilies[items.length] = new Set();
+  for (let i = items.length - 1; i >= 0; i -= 1) {
+    suffixFamilies[i] = new Set(suffixFamilies[i + 1]);
+    suffixFamilies[i].add(items[i].fact.family);
+    suffixAnchor[i] = directAnchor(items[i], hypothesis) || suffixAnchor[i + 1];
+  }
+  let winner = null;
+  const picked = [];
+  const visit = (start, hasAnchor) => {
+    const score = subsetScore(picked);
+    if (hasAnchor && picked.length >= 2 && score.independentFamilyCount >= 2) {
+      const candidate = { subset: picked, score };
+      if (!winner || compareSubset(candidate, winner) < 0) {
+        winner = { subset: [...picked], score };
+      }
+      if (existenceOnly) return true;
+    }
+    const slots = Math.min(4 - picked.length, items.length - start);
+    if (!slots || (!hasAnchor && !suffixAnchor[start])) return false;
+    if (winner) {
+      const families = new Set(suffixFamilies[start]);
+      for (const item of picked) families.add(item.fact.family);
+      const familyUpper = Math.min(families.size, picked.length + slots);
+      const independentUpper = Math.min(familyUpper, score.independentFamilyCount + slots);
+      if (independentUpper < winner.score.independentFamilyCount) return false;
+      if (independentUpper === winner.score.independentFamilyCount) {
+        if (familyUpper < winner.score.familyCount) return false;
+        if (familyUpper === winner.score.familyCount) {
+          if (score.lineageOverlapCount > winner.score.lineageOverlapCount) return false;
+          if (score.lineageOverlapCount === winner.score.lineageOverlapCount
+            && Math.max(picked.length + 1, familyUpper, 2) > winner.score.caseSize) return false;
+        }
+      }
+    }
+    for (let i = start; i < items.length; i += 1) {
+      picked.push(items[i]);
+      const found = visit(i + 1, hasAnchor || directAnchor(items[i], hypothesis));
+      picked.pop();
+      if (found) return true;
+    }
+    return false;
+  };
+  visit(0, false);
+  return winner;
+}
+
+function selectForHypothesis({ packet, hypothesis, facts, relations, existenceOnly = false }) {
   const eligible = [];
 
   for (const entry of facts) {
@@ -281,6 +327,7 @@ function selectForHypothesis({ packet, hypothesis, facts, relations }) {
     if (!scoped) continue;
     eligible.push({
       fact: entry.fact,
+      lineageSet: new Set(entry.fact.lineageIds),
       scope: scoped.scope,
       scopeStrength: scoped.match.strength,
       relationDigest: scoped.match.relationDigest ?? null,
@@ -311,13 +358,8 @@ function selectForHypothesis({ packet, hypothesis, facts, relations }) {
     };
   }
 
-  const valid = combinations(eligible)
-    .filter((subset) => subset.some((candidate) => directAnchor(candidate, hypothesis)))
-    .map((subset) => ({ subset, score: subsetScore(subset) }))
-    .filter((candidate) => candidate.score.independentFamilyCount >= 2)
-    .sort(compareSubset);
-
-  if (!valid.length) {
+  const winner = bestSubset(eligible, hypothesis, existenceOnly);
+  if (!winner) {
     return {
       skipped: {
         hypothesisId: hypothesis.id,
@@ -327,7 +369,8 @@ function selectForHypothesis({ packet, hypothesis, facts, relations }) {
     };
   }
 
-  const winner = valid[0];
+  // Overflow needs an existence proof, not an optimum or an unused M8 case.
+  if (existenceOnly) return { eligibleFactIds };
   const relationalCase = buildRelationalEvidenceCase({
     packet,
     hypothesisId: hypothesis.id,
@@ -382,25 +425,28 @@ export function composeRelationalCaseBatch({
   const inputSha256 = compositionInputSha256(packet, facts, relations);
   const accepted = [];
   const skipped = [];
+  let truncated = false;
 
   for (const hypothesis of orderedHypotheses(packet)) {
-    const result = selectForHypothesis({ packet, hypothesis, facts, relations });
+    const atCap = accepted.length === RELATIONAL_CASE_BATCH_MAX;
+    const result = selectForHypothesis({ packet, hypothesis, facts, relations, existenceOnly: atCap });
     if (result.skipped) {
       skipped.push(result.skipped);
+      continue;
+    }
+    if (atCap) {
+      truncated = true;
+      skipped.push({
+        hypothesisId: hypothesis.id,
+        reason: 'batch-cap',
+        eligibleFactIds: result.eligibleFactIds,
+      });
       continue;
     }
     accepted.push(result);
   }
 
-  const emitted = accepted.slice(0, RELATIONAL_CASE_BATCH_MAX);
-  const overflow = accepted.slice(RELATIONAL_CASE_BATCH_MAX);
-  for (const result of overflow) {
-    skipped.push({
-      hypothesisId: result.summary.hypothesisId,
-      reason: 'batch-cap',
-      eligibleFactIds: result.eligibleFactIds,
-    });
-  }
+  const emitted = accepted;
 
   const emittedIds = new Set(emitted.map((item) => item.summary.hypothesisId));
   const hypothesisOrder = new Map(orderedHypotheses(packet).map((item, index) => [item.id, index]));
@@ -417,7 +463,7 @@ export function composeRelationalCaseBatch({
     maxCases: RELATIONAL_CASE_BATCH_MAX,
     cases: emitted.map((item) => item.summary),
     skipped,
-    truncated: overflow.length > 0,
+    truncated,
   });
 
   return deepFreeze({

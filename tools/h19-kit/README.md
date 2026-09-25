@@ -42,7 +42,10 @@ semantic probes        deterministic rules
 - H19-owned static transaction facts and declarative rule cards;
 - small CLI and layered smoke tests.
 
-No Jev call and no external AI call is performed by this package yet.
+The M8/M10 library APIs support explicit opt-in advisory Jev calls. M9 composes
+the cases deterministically; M10 sends one isolated request per selected case,
+concurrently. The CLI `scan` path remains model-free and does not invoke them.
+CI uses fake providers only. See [BUNDLE.md](BUNDLE.md) for the active sequence.
 
 ## Licensing state
 

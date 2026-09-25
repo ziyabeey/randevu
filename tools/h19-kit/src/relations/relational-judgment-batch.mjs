@@ -412,6 +412,7 @@ export async function runRelationalJudgmentBatch({
   const rows = new Array(requestPlan.rows.length);
   const judgments = [];
   const cacheEntries = [];
+  const cacheWriteErrors = [];
   const pending = [];
 
   for (const [index, planRow] of requestPlan.rows.entries()) {
@@ -462,7 +463,17 @@ export async function runRelationalJudgmentBatch({
 
     if (outcome.judgment && outcome.entry) {
       if (cache?.set) {
-        await cache.set(JEV_RELATIONAL_CACHE_NAMESPACE, item.planRow.cacheKey, outcome.entry);
+        try {
+          await cache.set(JEV_RELATIONAL_CACHE_NAMESPACE, item.planRow.cacheKey, outcome.entry);
+        } catch {
+          // Persistence is operational metadata, not a failed provider judgment.
+          // Keep every accepted artifact and continue persisting sibling rows.
+          cacheWriteErrors.push({
+            caseSha256: item.planRow.caseSha256,
+            cacheKey: item.planRow.cacheKey,
+            errorCode: 'cache_write_failed',
+          });
+        }
       }
       judgments.push(outcome.judgment);
       cacheEntries.push(outcome.entry);
@@ -518,6 +529,7 @@ export async function runRelationalJudgmentBatch({
     run,
     judgments,
     cacheEntries,
+    cacheWriteErrors,
   });
 }
 
@@ -668,6 +680,18 @@ export function validateRelationalJudgmentRun(run, {
 
   const caseIndex = relationalCases ? exactCaseIndex(batch, relationalCases) : null;
 
+  if (caseIndex) {
+    for (const row of attemptedRows) {
+      const expectedRequest = buildJevRelationalSingleCaseRequest({
+        relationalCase: caseIndex.get(row.caseSha256),
+        model: run.model,
+      });
+      if (row.requestSha256 !== jevRelationalRequestSha256(expectedRequest)) {
+        throw new Error('live row request digest does not match its exact case');
+      }
+    }
+  }
+
   if (judgments) {
     const bySha = new Map();
     for (const judgment of judgments) {
@@ -704,7 +728,11 @@ export function validateRelationalJudgmentRun(run, {
   if (cacheEntries) {
     const byJudgment = new Map();
     for (const entry of cacheEntries) {
-      validateJevRelationalCacheEntry(entry, { provider: run.provider, model: run.model });
+      validateJevRelationalCacheEntry(entry, {
+        provider: run.provider,
+        model: run.model,
+        relationalCase: caseIndex?.get(entry.judgment.caseSha256) ?? null,
+      });
       if (byJudgment.has(entry.judgment.judgmentSha256)) throw new Error('duplicate cache entry');
       byJudgment.set(entry.judgment.judgmentSha256, entry);
     }

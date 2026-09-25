@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { selectionInput } from './m9-selection-inputs.mjs';
 
 import { freezeCoverageDiscoveryPacket } from '../src/discovery/validation-packet.mjs';
 import {
@@ -364,4 +365,53 @@ function compose(factPool, relationships = [], p = basePacket) {
   }), /composition input replay mismatch/);
 }
 
-console.log('H19 Kit M9 relational case composer smoke passed (RC1-RC16).');
+// Full artifact identity must remain byte-equivalent to the original exhaustive
+// v0.1 selector, not just to a second copy of the optimized implementation.
+{
+  const golden = JSON.parse(await readFile(new URL('./m9-selection-v01-golden.json', import.meta.url), 'utf8'));
+  for (const expected of golden.cases) {
+    const input = selectionInput(expected.seed);
+    const result = composeRelationalCaseBatch(input);
+    assert.equal(result.batch.batchSha256, expected.batchSha256, `frozen batch seed ${expected.seed}`);
+    assert.equal(result.relationalCases[0]?.caseSha256 ?? null, expected.caseSha256);
+    const reversed = composeRelationalCaseBatch({ ...input, factPool: [...input.factPool].reverse() });
+    assert.equal(reversed.batch.batchSha256, expected.batchSha256);
+  }
+}
+
+// A wide two-family pool has a two-fact optimum. Extra same-family context must
+// not produce a combinatorial allocation or change minimality/tie-breaking.
+{
+  const pool = Array.from({ length: 100 }, (_, index) => scoped(fact({
+    factId: `wide:${String(index).padStart(3, '0')}`,
+    family: index === 0 ? 'mutation' : 'coverage',
+  }), { kind: 'path', path: 'src/a.ts' }));
+  const result = compose(pool);
+  assert.deepEqual(result.batch.cases[0].selectedFactIds, ['wide:000', 'wide:001']);
+}
+
+// After 20 accepted cases, invalid hypotheses keep their original reasons;
+// only an actually valid overflow hypothesis may become batch-cap.
+{
+  const hs = Array.from({ length: 24 }, (_, index) => hypothesis({
+    id: `overflow:${String(index).padStart(2, '0')}`, path: `src/o${index}.ts`,
+  }));
+  const pool = hs.flatMap((h, index) => {
+    const items = [
+      fact({ factId: `overflow-m:${index}`, family: index === 20 ? 'history' : 'mutation' }),
+      fact({ factId: `overflow-c:${index}`, family: 'coverage' }),
+    ];
+    if (index === 21) for (const item of items) item.lineageIds = ['same'];
+    if (index === 22) items.pop();
+    return items.map((item) => scoped(item, { kind: 'path', path: h.target.path }));
+  });
+  const result = compose(pool, [], packet(hs));
+  assert.equal(result.batch.cases.length, 20);
+  assert.equal(result.batch.truncated, true);
+  assert.deepEqual(result.batch.skipped.map((row) => row.reason), [
+    'missing-required-anchor', 'insufficient-independent-families',
+    'insufficient-eligible-facts', 'batch-cap',
+  ]);
+}
+
+console.log('H19 Kit M9 relational case composer smoke passed (RC1-RC16 + 96 frozen selection cases).');

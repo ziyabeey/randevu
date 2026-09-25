@@ -152,6 +152,27 @@ Bundle **M10** therefore implements JS1–JS22:
 
 M10 remains advisory. It cannot alter dispatcher authority or execute M7 candidates.
 
+### Bounded repair behavior
+
+Cache persistence failures do not turn an accepted provider judgment into an error
+or discard sibling artifacts. `runRelationalJudgmentBatch` returns sanitized
+`cacheWriteErrors` beside `run`; they are operational diagnostics outside the
+scientific run hash. A failed write is not claimed as persisted and is not retried.
+The exact request-body digest is re-derived when replaying a cache entry with its
+case and when validating a live run against its cases.
+
+M9 selection keeps RC1–RC16, the same comparison objective and the same artifact
+identities. It streams candidates with admissible bounds rather than allocating
+and sorting all subsets. After the 20-case cap, it proves existence only and still
+preserves the precise skipped reason for invalid hypotheses. Worst-case exact
+search can remain combinatorial in CPU; the cap is not a universal CPU bound.
+
+Regression evidence includes 96 frozen outputs from the original v0.1 selector,
+large-pool minimality, mixed valid/invalid overflow, cache persistence failure,
+request identity, real abort, response isolation and 20 concurrent requests.
+The local selector-only measurement is recorded in
+`perf/baselines/M9-REPAIR-001.local.json`; it is not an end-to-end CI speed claim.
+
 ## Side-hardening HOLD
 
 The following work does not advance the active bundle sequence until explicitly integrated after the active parent line remains green:

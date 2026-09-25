@@ -106,6 +106,15 @@ export function validateJevRelationalCacheEntry(entry, {
     throw new Error('invalid cached relation probability distribution');
   }
   if (!shaLike(entry.requestSha256)) throw new Error('invalid cached request digest');
+  if (relationalCase) {
+    const expectedRequest = buildJevRelationalSingleCaseRequest({
+      relationalCase,
+      model: entry.judgment.model,
+    });
+    if (entry.requestSha256 !== jevRelationalRequestSha256(expectedRequest)) {
+      throw new Error('cached request digest does not match the exact single-case request');
+    }
+  }
   return entry;
 }
 

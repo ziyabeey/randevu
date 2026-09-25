@@ -13,6 +13,7 @@ import {
   freezeJevRelationalCacheEntry,
   jevRelationalCacheKey,
   jevRelationalRequestSha256,
+  validateJevRelationalCacheEntry,
 } from '../src/adapters/jev-relational.mjs';
 import {
   RELATIONAL_JUDGMENT_GATE,
@@ -482,4 +483,127 @@ assert.doesNotMatch(source, /process\.env|JEV_API_KEY|TYPESAFE_API_KEY/);
 assert.equal(JSON.stringify(batch), batchBefore);
 assert.equal(JSON.stringify(relationalCases), casesBefore);
 
-console.log('H19 Kit M10 concurrent single-case judgment smoke passed (JS1-JS22).');
+// Persistence failure must preserve accepted results and persist later siblings.
+{
+  const goodResponse = async () => okJson({ model: JEV_RELATIONAL_MODEL,
+    answers: { relation: answer('strengthens', 0.8, dist(0.8, 0.05, 0.1, 0.05)) } });
+  const reference = await runRelationalJudgmentBatch({ batch, relationalCases,
+    maxLiveQuestions: 4, apiKey: 'fixture-key', fetchImpl: goodResponse });
+  const failingCache = new MemoryCache();
+  let attempts = 0;
+  const persist = failingCache.set.bind(failingCache);
+  failingCache.set = async (...args) => {
+    attempts += 1;
+    if (attempts === 2) throw new Error('disk failure with private fixture-key details');
+    return persist(...args);
+  };
+  const result = await runRelationalJudgmentBatch({ batch, relationalCases,
+    maxLiveQuestions: 4, apiKey: 'fixture-key', cache: failingCache, fetchImpl: goodResponse });
+  assert.equal(attempts, 4);
+  assert.equal(failingCache.writes, 3);
+  assert.deepEqual(result.run, reference.run, 'persistence cannot change scientific identity');
+  assert.deepEqual(result.judgments, reference.judgments);
+  assert.deepEqual(result.cacheEntries, reference.cacheEntries);
+  assert.deepEqual(result.cacheWriteErrors, [{ caseSha256: byOrder[1].caseSha256,
+    cacheKey: keyOf(byOrder[1]), errorCode: 'cache_write_failed' }]);
+  assert.doesNotMatch(JSON.stringify(result), /fixture-key|private|disk failure/);
+  validateRelationalJudgmentRun(result.run, { batch, relationalCases,
+    requestPlan: result.requestPlan, judgments: result.judgments, cacheEntries: result.cacheEntries });
+}
+
+// A well-formed receipt still has to describe the exact request for its case.
+{
+  const entry = freezeJevRelationalCacheEntry({
+    judgment: judgmentFor(byOrder[0], 'strengthens', 0.8),
+    probabilities: dist(0.8, 0.05, 0.1, 0.05),
+    requestSha256: jevRelationalRequestSha256(buildJevRelationalSingleCaseRequest({
+      relationalCase: byOrder[1], model: JEV_RELATIONAL_MODEL,
+    })),
+  });
+  assert.throws(() => validateJevRelationalCacheEntry(entry, {
+    relationalCase: byOrder[0], provider: 'typesafe', model: JEV_RELATIONAL_MODEL,
+  }), /exact single-case request/);
+  const receiptCache = new MemoryCache();
+  receiptCache.map.set(keyOf(byOrder[0]), entry);
+  const result = await runRelationalJudgmentBatch({ batch, relationalCases,
+    maxLiveQuestions: 0, cache: receiptCache,
+    fetchImpl: async () => { throw new Error('invalid receipt must not call provider'); } });
+  assert.equal(result.run.rows[0].errorCode, 'invalid_cache');
+  assert.equal(result.run.providerRequestCount, 0);
+}
+
+// Exercise AbortSignal.timeout itself and retain a successful sibling.
+{
+  let calls = 0;
+  const result = await runRelationalJudgmentBatch({ batch, relationalCases,
+    maxLiveQuestions: 2, apiKey: 'k', timeoutMs: 15,
+    fetchImpl: async (_url, options) => {
+      calls += 1;
+      if (calls === 1) return okJson({ model: JEV_RELATIONAL_MODEL,
+        answers: { relation: answer('strengthens', 0.8, dist(0.8, 0.05, 0.1, 0.05)) } });
+      return new Promise((resolve, reject) => {
+        const watchdog = setTimeout(() => reject(new Error('abort not delivered')), 1000);
+        const abort = () => { clearTimeout(watchdog); reject(options.signal.reason); };
+        if (options.signal.aborted) abort();
+        else options.signal.addEventListener('abort', abort, { once: true });
+      });
+    },
+  });
+  assert.equal(calls, 2, 'no timeout retry');
+  assert.equal(result.run.rows[0].kind, 'answered');
+  assert.equal(result.run.rows[1].errorCode, 'timeout');
+}
+
+// Actual 20-case transport bound; input budgets outside 0..20 fail before work.
+{
+  const manyHypotheses = Array.from({ length: 21 }, (_, index) => hypothesis(index + 10));
+  const manyPacket = freezeCoverageDiscoveryPacket({ changeId: 'bound-20', sourceRevision: 'rev-1',
+    impact: { changedFiles: manyHypotheses.map((item) => item.target.path), unknowns: [], safeToNarrow: true },
+    discovery: { hypotheses: manyHypotheses } });
+  const many = composeRelationalCaseBatch({ packet: manyPacket,
+    factPool: manyHypotheses.flatMap((item, index) => [
+      fact({ factId: `bound-m:${index}`, family: 'mutation', path: item.target.path }),
+      fact({ factId: `bound-c:${index}`, family: 'coverage', path: item.target.path }),
+    ]) });
+  let calls = 0;
+  let inFlight = 0;
+  let peak = 0;
+  const boundedFetch = async () => {
+    calls += 1; inFlight += 1; peak = Math.max(peak, inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    inFlight -= 1;
+    return okJson({ model: JEV_RELATIONAL_MODEL,
+      answers: { relation: answer('strengthens', 0.8, dist(0.8, 0.05, 0.1, 0.05)) } });
+  };
+  const result = await runRelationalJudgmentBatch({ ...many, apiKey: 'k', fetchImpl: boundedFetch });
+  assert.equal(many.batch.cases.length, 20);
+  assert.equal(many.batch.skipped.filter((row) => row.reason === 'batch-cap').length, 1);
+  assert.equal(calls, 20);
+  assert.equal(peak, 20);
+  assert.equal(result.run.providerRequestCount, 20);
+  for (const budget of [-1, 21, 0.5]) {
+    await assert.rejects(() => runRelationalJudgmentBatch({ ...many,
+      maxLiveQuestions: budget, apiKey: 'k', fetchImpl: boundedFetch }));
+  }
+  assert.equal(calls, 20);
+}
+
+// Wrong model and extra answer IDs fail locally without discarding a valid sibling.
+{
+  let calls = 0;
+  const result = await runRelationalJudgmentBatch({ batch, relationalCases,
+    maxLiveQuestions: 3, apiKey: 'k', fetchImpl: async () => {
+      calls += 1;
+      const payload = { model: JEV_RELATIONAL_MODEL,
+        answers: { relation: answer('strengthens', 0.8, dist(0.8, 0.05, 0.1, 0.05)) } };
+      if (calls === 1) payload.model = 'other-model';
+      if (calls === 2) payload.answers.extra = payload.answers.relation;
+      return okJson(payload);
+    } });
+  assert.equal(result.run.rows[0].errorCode, 'model_mismatch');
+  assert.equal(result.run.rows[1].errorCode, 'answer_set_mismatch');
+  assert.equal(result.run.rows[2].kind, 'answered');
+  assert.equal(result.cacheEntries.length, 1);
+}
+
+console.log('H19 Kit M10 concurrent single-case judgment smoke passed (JS1-JS22 + repair regressions).');
