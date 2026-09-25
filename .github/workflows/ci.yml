@@ -244,17 +244,23 @@ jobs:
       - name: Run H19 Kit graph-equivalence smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:graph-equivalence
+      - name: Run H19 Kit TypeScript evidence-graph adoption smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:ts-evidence-graph
+      - name: Run H19 Kit public entrypoint smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:public-entrypoint
       - name: Install pinned SCIP TypeScript for performance baseline
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
         run: npm install --global @sourcegraph/scip-typescript@0.4.0
       - name: Set up Go for pinned SCIP decoder
-        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' }}
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' || github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption') }}
         uses: actions/setup-go@v5
         with:
           go-version: '1.25.0'
           cache: false
       - name: Build pinned SCIP decoder
-        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' }}
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' || github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption') }}
         run: |
           set -euo pipefail
           repo_dir="${RUNNER_TEMP}/scip-code"
@@ -279,14 +285,24 @@ jobs:
           path: ${{ runner.temp }}/h19-perf-baseline.json
           if-no-files-found: error
       - name: Measure H19 Kit SCIP graph equivalence
-        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' }}
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' || github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption') }}
         run: npm --prefix tools/h19-kit run perf:graph-equivalence -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-graph-equivalence.json" --scip "${RUNNER_TEMP}/scip-h19" --scip-typescript-version 0.4.0
       - name: Upload H19 Kit SCIP graph equivalence
-        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' }}
+        if: ${{ always() && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' || github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption') }}
         uses: actions/upload-artifact@v4
         with:
           name: h19-graph-equivalence
           path: ${{ runner.temp }}/h19-graph-equivalence.json
+          if-no-files-found: error
+      - name: Measure H19 Kit project-shard adoption
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption' }}
+        run: npm --prefix tools/h19-kit run perf:project-shard-adoption -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-project-shard-adoption.json" --scip "${RUNNER_TEMP}/scip-h19" --decoder-id db62094c7f9d464d0a6d9fd7815fcf3c9214b4c2 --scip-typescript-version 0.4.0
+      - name: Upload H19 Kit project-shard adoption
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-project-shard-adoption
+          path: ${{ runner.temp }}/h19-project-shard-adoption.json
           if-no-files-found: error
       - name: Measure H19 Kit TypeScript shard performance
         if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-tsconfig-shards' }}
