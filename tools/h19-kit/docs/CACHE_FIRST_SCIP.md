@@ -77,3 +77,12 @@ It does not:
 - establish a universal latency percentage.
 
 Production blast-radius use of multiple SCIP indexes still requires a separate graph-composition correctness gate.
+
+
+## Warm acceptance continuation
+
+The commit that adds this section intentionally changes documentation only. It does not change any TypeScript
+project source, tsconfig, package metadata, lockfile, indexer version or shard flags.
+
+The following CI run is therefore the cache-first warm acceptance run. It must begin from restored artifacts,
+plan all declared TypeScript shards as hits, and skip both pinned SCIP installation and shard materialization.
