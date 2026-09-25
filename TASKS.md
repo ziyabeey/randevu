@@ -150,6 +150,7 @@ Bu tablo yalnız H19 Kit geliştirme zincirinin canonical PR bağlarını tutar.
 | H19-KIT-M8 | Relational evidence core | H19-KIT-M7 | Çalışılıyor | Sol + koordinatör / 2026-09-25 | [PR #590](https://github.com/ziyabeey/randevu/pull/590) · bounded advisory judgments ve bağımsız outcome kontratı; main kabulü bekleniyor |
 | H19-KIT-M9 | Deterministic relational case composer | H19-KIT-M8 | Çalışılıyor | Sol + koordinatör / 2026-09-25 | [PR #592](https://github.com/ziyabeey/randevu/pull/592) · RC1–RC16 seçimi; mevcut descendant #594 içinde seçim-eşdeğerliği koruyan maliyet onarımı |
 | H19-KIT-M10 | Concurrent single-case relational judgments + bounded repair | H19-KIT-M9 | Çalışılıyor | Codex + koordinatör / 2026-09-25 | `h19-kit-m10-relational-judgment-batch` · [PR #594](https://github.com/ziyabeey/randevu/pull/594) · v0.3 freeze #597 · [repair context](docs/handoffs/H19-KIT-M10-repair.md) · cache yazma izolasyonu, exact request replay doğrulaması ve M9 seçim eşdeğerliği; main kabulü bekleniyor |
+| H19-KIT-M11-GATE | Relational measurement contract and source-bound pilot inventory | H19-KIT-M10 | Planlandı | Codex + koordinatör / 2026-09-25 | `h19-kit-m11-measurement-contract` · [context](docs/handoffs/H19-KIT-M11-measurement-contract.md) · sözleşme/24 kaynak bağlı örnek hazırlığı; runner, bağımsız sonuç ve canlı ölçüm henüz yok; M10 kabulü bekleniyor |
 
 ## Kabul kapıları
 

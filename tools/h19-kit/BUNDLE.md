@@ -173,6 +173,21 @@ request identity, real abort, response isolation and 20 concurrent requests.
 The local selector-only measurement is recorded in
 `perf/baselines/M9-REPAIR-001.local.json`; it is not an end-to-end CI speed claim.
 
+## Next preparation — proposed M11 measurement gate
+
+The [M11 measurement contract](specs/RELATIONAL_MEASUREMENT_GATE-v0.1.md) and
+[24-anchor pilot inventory](experiments/m11/README.md) are a review draft.
+They specify existing-suite / deterministic-H19 / H19-plus-Jev comparisons,
+independent relation labels and functional outcomes, explicit denominators,
+cost/cache measurements and a bounded collection plan.
+
+This preparation does not mark M10 accepted or M11 implemented. The inventory
+contains no materialized cases or labels. M10 remains advisory: B/C test plans
+stay identical, so this gate cannot claim a Jev-driven test-selection gain.
+The next implementation slice is an offline development-split materializer;
+paid collection requires its concrete budget and independently sourced evidence.
+M12 selection remains a later contract, not an activated milestone.
+
 ## Side-hardening HOLD
 
 The following work does not advance the active bundle sequence until explicitly integrated after the active parent line remains green:
