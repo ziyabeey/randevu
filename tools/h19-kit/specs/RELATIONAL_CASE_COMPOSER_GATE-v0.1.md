@@ -202,14 +202,37 @@ The generic composer does not invent related paths.
 
 Tampering with the related-path record or digest makes the fact ineligible/fail closed.
 
-## 12. Batch artifact
+## 12. Composition input identity and batch artifact
+
+Before selection, the composer canonicalizes the normalized fact pool, all accepted scope wrappers and the validated relationship records. Input ordering and exact duplicate fact/scope records do not change this canonical form.
+
+The exact composition input is bound as:
+
+```text
+compositionInputSha256 = sha256(stableJson({
+  packetSha256,
+  factPool,
+  relationships
+}) + "\n")
+```
+
+Changing a fact, scope binding or relationship record changes `compositionInputSha256` even when the same final M8 fact set would otherwise be selected.
+
+Each emitted case summary also records the exact selected scope binding for every selected fact:
+
+```text
+factId + scope kind + scope strength + relationDigest|null
+```
+
+This makes the selection decision independently auditable instead of preserving only its final fact IDs.
 
 The composer emits:
 
 - packet SHA;
 - source revision;
+- `compositionInputSha256`;
 - maxCases=20;
-- ordered emitted cases;
+- ordered emitted cases including selected scope bindings;
 - ordered skipped records;
 - truncation flag;
 - `batchSha256`.
@@ -290,6 +313,10 @@ Composed cases remain M8 `authority: advisory` and do not affect dispatcher acti
 
 Composer imports no H19s routing/cohort state and changes no H19s protocol.
 
+### RC16 — composition provenance binding
+
+Canonical input order and exact duplicate wrappers produce the same `compositionInputSha256`. Changing any normalized fact, eligible scope binding or validated relationship record changes it. Every emitted case summary binds the exact scope selected for each selected fact, including the relationship digest for `related-path`.
+
 ## 15. Non-goals
 
 v0.1 does not:
@@ -308,4 +335,4 @@ v0.1 does not:
 
 Only after this gate is exact-head CI-green may the implementation milestone receive its next Bundle number.
 
-The implementation inherits RC1–RC15 unchanged.
+The implementation inherits RC1–RC16 unchanged.
