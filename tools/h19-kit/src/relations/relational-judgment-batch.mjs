@@ -188,7 +188,9 @@ function freezeRun(body) {
 
 function runCounts(rows) {
   return deepFreeze({
-    cached: rows.filter((row) => row.source === 'cache').length,
+    // "cached" means a successful replay hit, not merely a row whose error
+    // originated while reading the cache.
+    cached: rows.filter((row) => row.source === 'cache' && row.cacheStatus === 'hit').length,
     live: rows.filter((row) => row.source === 'live').length,
     answered: rows.filter((row) => row.kind === 'answered').length,
     insufficient: rows.filter((row) => row.kind === 'answered' && row.choice === 'insufficient').length,
