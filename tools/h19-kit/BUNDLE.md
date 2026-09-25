@@ -87,20 +87,22 @@ Exact joined head:
 
 Repository CI is green on that exact head.
 
-## Frozen next feature gate
+## Active milestone — M8 Relational Evidence Core
 
-`specs/RELATIONAL_EVIDENCE_GATE-v0.1.md` freezes the relational-evidence contract over the joined M7 + project-shard base.
+The gate is frozen in `specs/RELATIONAL_EVIDENCE_GATE-v0.1.md` and passed exact-head CI #2937 at freeze head `61e6c22617dc0f29dacf4380895c7a4b0981bc05`.
 
-The contract requires:
+Bundle **M8** implements the frozen RE1–RE13 contract:
 
-- provenance-bound normalized facts;
-- lineage-aware deterministic ratios/lift/baseline features;
-- bounded Jev `RELATION_DIRECTION-v0.1` choice output;
-- content-addressed model/question/input replay;
-- external outcome binding and future calibration;
-- advisory-only Jev authority.
+- immutable `RelationalEvidenceCase`;
+- deterministic baseline delta/lift and lineage features;
+- dimension-safe same-metric ratio helper;
+- immutable bounded `JevRelationalJudgment`;
+- content-addressed Jev replay identity;
+- advisory TypeSafe/Jev adapter with no live-CI dependency;
+- immutable externally sourced `RelationalOutcome`;
+- calibration-row materialization without treating provider confidence as probability.
 
-**No M8 implementation is authorized until this freeze PR is exact-head CI-green.**
+M8 remains advisory. It does not change dispatcher action authority, write/execute tests, or modify H19s.
 
 ## Side-hardening HOLD
 
