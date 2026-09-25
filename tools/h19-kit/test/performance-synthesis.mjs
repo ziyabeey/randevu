@@ -7,6 +7,7 @@ import { ArtifactCache } from '../src/core/artifact-cache.mjs';
 import { FileCache } from '../src/core/cache.mjs';
 import { pruneScipArtifactCache } from '../src/indexing/cache-prune.mjs';
 import { buildTypeScriptEvidenceGraph } from '../src/indexing/typescript-evidence-graph.mjs';
+import { planTypeScriptEvidenceGraph } from '../src/indexing/typescript-evidence-plan.mjs';
 import {
   materializeTypeScriptShardPlan,
   planTypeScriptShardIndexes,
@@ -82,6 +83,19 @@ try {
   assert.equal(warmPlan.hits, 2);
   assert.equal(warmPlan.misses, 0);
 
+  const beforeGraphPlan = await planTypeScriptEvidenceGraph({
+    cwd: temp,
+    artifactCache,
+    graphCache,
+    scipVersion: '0.4.0-test',
+    decoderIdentity: 'decoder-test-v1',
+  });
+  assert.equal(beforeGraphPlan.index.misses, 0);
+  assert.equal(beforeGraphPlan.graph.state, 'miss');
+  assert.equal(beforeGraphPlan.needsIndexer, false);
+  assert.equal(beforeGraphPlan.needsDecoder, true);
+  assert.equal(beforeGraphPlan.ready, false);
+
   let decoderReads = 0;
   const readIndex = async ({ indexFile }) => {
     decoderReads += 1;
@@ -156,6 +170,19 @@ try {
   assert.equal(warmGraph.graphCacheKey, coldGraph.graphCacheKey);
   assert.equal(decoderReads, 2);
 
+  const allHitPlan = await planTypeScriptEvidenceGraph({
+    cwd: temp,
+    artifactCache,
+    graphCache,
+    scipVersion: '0.4.0-test',
+    decoderIdentity: 'decoder-test-v1',
+  });
+  assert.equal(allHitPlan.index.misses, 0);
+  assert.equal(allHitPlan.graph.state, 'hit');
+  assert.equal(allHitPlan.needsIndexer, false);
+  assert.equal(allHitPlan.needsDecoder, false);
+  assert.equal(allHitPlan.ready, true);
+
   await writeFile(path.join(temp, 'scripts', 'ignored.mjs'), 'export const ignored = false;\n');
   const irrelevantPlan = await planTypeScriptShardIndexes({
     cwd: temp,
@@ -187,6 +214,18 @@ try {
   assert.equal(changedPlan.hits, 1);
   assert.equal(changedPlan.misses, 1);
 
+  const changedEvidencePlan = await planTypeScriptEvidenceGraph({
+    cwd: temp,
+    artifactCache,
+    graphCache,
+    scipVersion: '0.4.0-test',
+    decoderIdentity: 'decoder-test-v1',
+  });
+  assert.equal(changedEvidencePlan.graph.state, 'blocked-on-index-misses');
+  assert.equal(changedEvidencePlan.needsIndexer, true);
+  assert.equal(changedEvidencePlan.needsDecoder, true);
+  assert.equal(changedEvidencePlan.ready, false);
+
   const changedMaterialization = await materializeTypeScriptShardPlan({
     cwd: temp,
     plan: changedPlan,
@@ -209,6 +248,17 @@ try {
   assert.equal(changedGraph.cache.indexHits, 2);
   assert.equal(changedGraph.cache.graph, 'miss');
   assert.notEqual(changedGraph.graphCacheKey, coldGraph.graphCacheKey);
+
+  const finalPlan = await planTypeScriptEvidenceGraph({
+    cwd: temp,
+    artifactCache,
+    graphCache,
+    scipVersion: '0.4.0-test',
+    decoderIdentity: 'decoder-test-v1',
+  });
+  assert.equal(finalPlan.index.misses, 0);
+  assert.equal(finalPlan.graph.state, 'hit');
+  assert.equal(finalPlan.ready, true);
 
   const pruned = await pruneScipArtifactCache({
     root: artifactRoot,
