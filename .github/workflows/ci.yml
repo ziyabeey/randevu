@@ -244,6 +244,9 @@ jobs:
       - name: Run H19 Kit M8 relational evidence smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m8-relational
+      - name: Run H19 Kit M9 relational case-composer smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m9-relational-composer
       - name: Run H19 Kit performance-baseline smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:perf-baseline

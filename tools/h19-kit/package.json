@@ -25,6 +25,7 @@
     "test:m6-test-spec": "node test/m6-test-spec.mjs",
     "test:m7-test-candidate": "node test/m7-test-candidate.mjs",
     "test:m8-relational": "node test/m8-relational-evidence.mjs",
+    "test:m9-relational-composer": "node test/m9-relational-case-composer.mjs",
     "test:perf-baseline": "node test/perf-baseline.mjs",
     "perf:baseline": "node perf/run-baseline.mjs",
     "test:ts-shards": "node test/typescript-project-shards.mjs",

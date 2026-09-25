@@ -31,6 +31,7 @@ Side-hardening PRs may be developed in parallel, but they remain **HOLD** and do
 | M5 | Coverage discovery + frozen validation packet | #555 | CI #2833, head `32f0bda2296af99ec8720b9be43438268d16b7e2` |
 | M6 | Minimal test specification | #561 | CI #2840, head `e52e459a08c5ab56f466303e132beb93400050cb` |
 | M7 | Executable test candidate materialization | #566 | CI green, head `7239197bf8cbe010c8c9a1e519992a8931a9f970` |
+| M8 | Relational evidence core: deterministic relation math + bounded advisory Jev judgment/outcome chain | #590 | CI #2938, head `49f91ea591345ab477228b3c8ce91cbaa30d60c1` |
 
 ## M5 contract
 
@@ -87,7 +88,7 @@ Exact joined head:
 
 Repository CI is green on that exact head.
 
-## Active milestone — M8 Relational Evidence Core
+## M8 Relational Evidence Core
 
 The gate is frozen in `specs/RELATIONAL_EVIDENCE_GATE-v0.1.md` and passed exact-head CI #2937 at freeze head `61e6c22617dc0f29dacf4380895c7a4b0981bc05`.
 
@@ -104,21 +105,22 @@ Bundle **M8** implements the frozen RE1–RE13 contract:
 
 M8 remains advisory. It does not change dispatcher action authority, write/execute tests, or modify H19s.
 
-## Frozen next feature gate
+## Active milestone — M9 Relational Case Composer
 
-`specs/RELATIONAL_CASE_COMPOSER_GATE-v0.1.md` freezes deterministic evidence selection before any further Jev work.
+The composer gate in `specs/RELATIONAL_CASE_COMPOSER_GATE-v0.1.md` is frozen on #591 and exact-head CI #2941 is green at `5a75955d6f75b9ef45fad7c4ea104a040869ba9f`.
 
-The gate requires:
+Bundle **M9** implements RC1–RC15:
 
-- explicit hypothesis/unit/path/related-path scope;
+- explicit hypothesis/unit/path/related-path fact scope;
 - reason-specific direct anchor evidence;
 - minimum two independent evidence families;
 - at most one 2–4 fact case per hypothesis;
-- deterministic subset selection with lineage/scope tie-breaks;
+- deterministic subset selection ordered by independent-family count → family diversity → lowest lineage overlap → minimality → scope strength → lexical fact IDs;
 - explicit 20-case batch cap and skipped ledger;
-- no Jev call during composition.
+- content-addressed related-path relationship records;
+- no Jev/model/API call during composition.
 
-**No next Bundle number is assigned until this freeze is exact-head CI-green.**
+M9 remains advisory and deterministic. Jev receives a case only after H19 has selected and frozen its evidence.
 
 ## Side-hardening HOLD
 
