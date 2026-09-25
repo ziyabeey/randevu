@@ -268,6 +268,35 @@ jobs:
       - name: Run H19 Kit M11 development-supplement receipt smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m11-supplement
+      - name: Run H19 Kit M11 notification-validation freeze smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-notification-freeze
+      - name: Run H19 Kit M11 notification empirical validation once
+        id: h19_m11_notification_validation
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-m11-notification-behavioral-validation' && hashFiles('tools/h19-kit/experiments/m11/notification-validation-001/RESULT.json') == '' }}
+        env:
+          H19_M11_NOTIFICATION_SOURCE_REVISION: 07688ae08ef5c834bcadf5dc6a23c4e42e4621dd
+          H19_M11_NOTIFICATION_PLAN_SHA256: 77ae3c50eeffe8220cd8736727e7e3efc34a1f6fa2fb3e6be7928959e31aa064
+        run: |
+          set -euo pipefail
+          source_root="${RUNNER_TEMP}/h19-m11-notification-source"
+          result="${RUNNER_TEMP}/h19-m11-notification-result.json"
+          rm -rf "${source_root}"
+          mkdir -p "${source_root}"
+          git archive "${H19_M11_NOTIFICATION_SOURCE_REVISION}" | tar -x -C "${source_root}"
+          node tools/h19-kit/bin/h19-m11-validate-notification.mjs \
+            tools/h19-kit/experiments/m11 \
+            tools/h19-kit/experiments/m11/notification-validation-001/PLAN.json \
+            "${H19_M11_NOTIFICATION_PLAN_SHA256}" \
+            "${source_root}" > "${result}"
+          test -s "${result}"
+      - name: Upload H19 Kit M11 notification empirical validation
+        if: ${{ always() && steps.h19_m11_notification_validation.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-m11-notification-validation-001
+          path: ${{ runner.temp }}/h19-m11-notification-result.json
+          if-no-files-found: error
       - name: Run H19 Kit performance-baseline smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:perf-baseline
