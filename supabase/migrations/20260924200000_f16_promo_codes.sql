@@ -978,6 +978,10 @@ begin
   return query select * from public.f16_group_promo_state(
     v_ref.business_id, v_ref.group_id,
     v_ref.group_status in ('scheduled','confirmed') and v_ref.first_start > now()
+      and not exists (
+        select 1 from public.tickets t
+        where t.business_id = v_ref.business_id and t.appointment_group_id = v_ref.group_id
+      )
   );
 end
 $f1606manageview$;
@@ -1006,7 +1010,12 @@ begin
   if not found then raise exception 'MANAGEMENT_NOT_FOUND'; end if;
   if v_code is null then raise exception 'PROMO_NOT_FOUND'; end if;
 
-  -- One code per appointment: serialize attaches of the same group.
+  -- Share F14's per-group ticket lock with ticket open and staff apply, so a
+  -- booking-side attach and a ticket for the same group are serialized. Then
+  -- serialize attaches of the same group (one code per appointment).
+  perform pg_advisory_xact_lock(hashtextextended(
+    v_ref.business_id::text || ':ticket-group:' || v_ref.group_id::text, 0
+  ));
   perform pg_advisory_xact_lock(hashtextextended('f16:promo-group:' || v_ref.group_id::text, 0));
 
   select * into v_existing
@@ -1021,6 +1030,15 @@ begin
   end if;
 
   if v_ref.group_status not in ('scheduled','confirmed') or v_ref.first_start is null or v_ref.first_start <= now() then
+    raise exception 'PROMO_NOT_ATTACHABLE';
+  end if;
+  -- Once the salon opened the ticket, the code is applied there by staff under
+  -- the ticket version and the paid guard; the customer link no longer changes
+  -- ticket money.
+  if exists (
+    select 1 from public.tickets t
+    where t.business_id = v_ref.business_id and t.appointment_group_id = v_ref.group_id
+  ) then
     raise exception 'PROMO_NOT_ATTACHABLE';
   end if;
 
@@ -1359,6 +1377,7 @@ set search_path = ''
 as $f1606apply$
 declare
   v_actor public.memberships;
+  v_group_id uuid;
   v_ticket public.tickets;
   v_services uuid[];
   v_total bigint;
@@ -1371,6 +1390,17 @@ begin
     p_business_id, v_actor.id, 'apply_promo', p_idempotency_key, p_request_hash
   );
   if v_replay is not null then return v_replay; end if;
+
+  -- Same lock order as ticket open and the booking-side attach: the per-group
+  -- ticket lock first, then the ticket row.
+  select t.appointment_group_id into v_group_id
+  from public.tickets t
+  where t.business_id = p_business_id and t.id = p_ticket_id;
+  if v_group_id is not null then
+    perform pg_advisory_xact_lock(hashtextextended(
+      p_business_id::text || ':ticket-group:' || v_group_id::text, 0
+    ));
+  end if;
 
   select * into v_ticket
   from public.tickets t
