@@ -42,3 +42,23 @@ The benchmark verifies:
 This experiment optimizes cache invalidation and index generation. It does not yet switch the production blast-radius
 pipeline to a multi-index graph. Graph composition must be proven separately before sharded indexes become
 production evidence.
+
+## PERF-003 result
+
+Reference run: GitHub Actions #2897 on head `d5a580c476c145dd089c47e40a3c5666afdffb2b`.
+
+Observed on the same runner:
+
+| Measurement | Whole-root | Project shards |
+| --- | ---: | ---: |
+| Cold index | 5.79 s | 6.60 s sequential |
+| Exact-content warm lookup | 18.6 ms | 6.7 ms total |
+| One app-source change | 5.66 s | 3.87 s |
+| App-source change reduction | — | 31.5% |
+| Out-of-project `scripts/*.mjs` change | full invalidation | 0 shards |
+
+The result supports project-scoped invalidation as an incremental optimization, not as an automatic cold-start optimization.
+
+The next required gate is **semantic graph-composition equivalence**. Production blast-radius analysis must not
+consume sharded indexes until their merged symbol/reference evidence is shown to preserve the relevant whole-index
+semantics or any differences are explicitly bounded and fail-closed.
