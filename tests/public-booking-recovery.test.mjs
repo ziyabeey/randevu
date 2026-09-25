@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import bookingRecovery from '../worker/public-booking-recovery.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 
 const managementToken = 'ccccccccccccccccccccccccccccccccccccccccccc';
 const recoverySecret = 'ddddddddddddddddddddddddddddddddddddddddddd';
@@ -19,6 +20,8 @@ const env = {
 const bookingBody = {
   customerName: 'HTTP Recovery',
   customerPhone: '+90 555 900 00 01',
+  // F16-02: public create requires the slug+phone-bound WhatsApp proof.
+  phoneVerificationToken: await issueWhatsappPhoneProof(gateSecret, 'recovery-test', '+90 555 900 00 01'),
   customerEmail: 'http-recovery@example.test',
   notes: null,
   serviceId: '6a000000-0000-4000-8000-000000000001',

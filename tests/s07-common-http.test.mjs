@@ -3,6 +3,7 @@ import test from 'node:test';
 import app from '../worker/app.ts';
 import { supabaseRequest } from '../worker/auth.ts';
 import bookingRecovery from '../worker/public-booking-recovery.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 
 const env = {
   SUPABASE_URL: 'https://supabase.example.test',
@@ -249,6 +250,8 @@ await test('S07 legacy first-create cutover error is mapped without another requ
     body: JSON.stringify({
       customerName: 'Legacy Client',
       customerPhone: '05550000230',
+      // F16-02: public create requires the slug+phone-bound WhatsApp proof.
+      phoneVerificationToken: await issueWhatsappPhoneProof(bookingEnv.PUBLIC_BOOKING_GATE_SECRET, 's07-salon', '05550000230'),
       customerEmail: 'legacy-cutover@example.test',
       notes: null,
       serviceId: '6c000000-0000-4000-8000-000000000230',
