@@ -89,7 +89,7 @@ export function validateM11NotificationInputs(input) {
     'notification baseline coverage mismatch');
   assert(same(plan.requiredEntries, target.coverage.uncalledNamedFunctions)
     && plan.requiredEntries.length === 2
-    && same(plan.requiredEntries.map((item) => item.name), ['renderTemplateV2', 'validGroupSummary'].sort()),
+    && same(plan.requiredEntries.map((item) => item.name).sort(), ['renderTemplateV2', 'validGroupSummary'].sort()),
   'notification original gap entries differ');
 
   const reached = new Set([plan.targetPath]);
