@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
 import { navigateApp } from './workspace-route';
 import { useWorkspace } from './workspace-context';
+import AppointmentPhotos from './AppointmentPhotos';
 
 type Role = 'owner' | 'manager' | 'staff';
 type Service = {
@@ -249,6 +250,9 @@ export default function BookingPage() {
   const [closeStaff, setCloseStaff] = useState('all');
   const [closeReason, setCloseReason] = useState('');
   const [detailFor, setDetailFor] = useState<BookingGroup | null>(null);
+  const [detailTab, setDetailTab] = useState<'detail' | 'photos'>('detail');
+  const detailGroupId = detailFor?.groupId ?? null;
+  useEffect(() => { setDetailTab('detail'); }, [detailGroupId]);
 
   const [rescheduleTarget, setRescheduleTarget] = useState<RescheduleTarget | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState(dateToday());
@@ -1146,11 +1150,15 @@ export default function BookingPage() {
 
     {detailFor && <section className="booking-card booking-modal-card booking-detail-card">
       <div className="section-head"><div><p className="eyebrow">RANDEVU DETAYI</p><h2>{detailFor.customerName}</h2></div><button type="button" onClick={() => setDetailFor(null)}>Kapat</button></div>
-      <div className="booking-detail-tabs" aria-label="Randevu bölümleri">
-        <span className="is-active">Detay</span>
-        <span aria-disabled="true">Fotoğraf</span>
+      <div className="booking-detail-tabs" role="tablist" aria-label="Randevu bölümleri">
+        <button type="button" role="tab" aria-selected={detailTab === 'detail'} className={detailTab === 'detail' ? 'is-active' : ''} onClick={() => setDetailTab('detail')}>Detay</button>
+        <button type="button" role="tab" aria-selected={detailTab === 'photos'} className={detailTab === 'photos' ? 'is-active' : ''} onClick={() => setDetailTab('photos')}>Fotoğraf</button>
         <button type="button" disabled={busy} onClick={() => void openTicketForBooking(detailFor)}>Adisyon</button>
       </div>
+      {detailTab === 'photos' ? <AppointmentPhotos
+        groupId={detailFor.groupId}
+        services={detailFor.lines.filter((line, index, all) => all.findIndex((item) => item.serviceId === line.serviceId) === index).map((line) => ({ serviceId: line.serviceId, serviceName: line.serviceName }))}
+      /> : <>
       <dl className="booking-detail-grid">
         <div><dt>Zaman</dt><dd>{formatDateTime(detailFor.startsAt, detailFor.timezone)} – {formatTime(detailFor.endsAt, detailFor.timezone)}</dd></div>
         <div><dt>Durum</dt><dd><span className="status-pill">{statusText[detailFor.status]}</span></dd></div>
@@ -1174,7 +1182,8 @@ export default function BookingPage() {
           {detailFor.canCancelGroup && <button disabled={busy} onClick={() => void cancelGroup(detailFor)}>Tümünü iptal et</button>}
         </>}
       </div>
-      <p className="muted booking-detail-future">Fotoğraf bölümü henüz kullanıma açık değil. Adisyon aynı randevu kaynağından güvenli biçimde açılır veya yeniden kullanılır.</p>
+      </>}
+      <p className="muted booking-detail-future">Adisyon aynı randevu kaynağından güvenli biçimde açılır veya yeniden kullanılır.</p>
     </section>}
 
     {seriesFor && <section className="booking-card booking-modal-card booking-detail-card">

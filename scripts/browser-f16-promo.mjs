@@ -88,6 +88,8 @@ const server = createServer(async (request, response) => {
       return sendJson(response, 404, { error: { code: 'PROMO_NOT_FOUND', message: 'Kampanya kodu bulunamadı veya aktif değil.' } });
     }
     if (url.pathname === '/api/manage/promo/view') {
+      // The salon already opened the ticket for this booking: closed view.
+      if (body.token === 'O'.repeat(43)) return sendJson(response, 200, { promo: { code: null, kind: null, percentBps: null, amountMinor: null, currency: null, status: null, attachable: false } });
       assert.equal(body.token, 'N'.repeat(43));
       return sendJson(response, 200, { promo: state.managePromo ?? { code: null, kind: null, percentBps: null, amountMinor: null, currency: null, status: null, attachable: true } });
     }
@@ -334,18 +336,32 @@ try {
   await waitFor(async () => !(await call(page, 'text', 'cashier')).includes('Kampanya (YAZ20)'), 'promo removal did not clear the total row');
   assert.deepEqual(requestsTo(`/api/tickets/${ids.openTicket}/promo/remove`)[0].body, { reason: 'Yanlış kod', expectedVersion: 3 });
 
+  // A booking whose ticket is already open: the manage page offers no attach,
+  // renders no empty promo panel and raises no error.
+  await waitFor(() => requestsTo('/api/manage/promo/view').some((item) => item.body.token === 'O'.repeat(43)), 'ticket-open manage view was not requested');
+  await sleep(300);
+  assert.equal(await page.evaluate(`document.querySelector('[data-scope="manage-ticket-open"]').children.length`), 0, 'closed manage view rendered a promo panel');
+  assert.equal(requestsTo('/api/manage/promo').some((item) => item.body.token === 'O'.repeat(43)), false, 'closed manage view attached a code');
+  assert.deepEqual(await page.evaluate('window.__f1606Errors'), [], 'F16-06 surfaces raised page errors');
+
   const layout = await call(page, 'layout');
   assert.ok(layout.overflow <= 1, `F16-06 surfaces overflow at 390px by ${layout.overflow}px`);
   assert.deepEqual(layout.shortTargets, [], 'F16-06 touch targets below 44px');
-  console.log('F16-06 Chrome acceptance passed: 390px booking code check, one-shot capability reservation, manage attach, scoped salon code and cashier apply/remove.');
+  console.log('F16-06 Chrome acceptance passed: 390px booking code check, one-shot capability reservation, manage attach, closed manage view after ticket open, scoped salon code and cashier apply/remove.');
 } finally {
   page?.close();
-  chrome?.kill('SIGKILL');
-  if (chromeFd !== undefined) {
-    try { await new Promise((resolve) => chrome?.once('exit', resolve)); } catch {}
+  // Let Chrome shut down its helper processes and release the profile before
+  // removing it; SIGKILL only if it does not exit in time.
+  if (chrome && chrome.exitCode === null && chrome.signalCode === null) {
+    const exited = new Promise((resolve) => chrome.once('exit', resolve));
+    chrome.kill('SIGTERM');
+    await Promise.race([exited, sleep(3_000)]);
+    if (chrome.exitCode === null && chrome.signalCode === null) {
+      chrome.kill('SIGKILL');
+      await Promise.race([exited, sleep(2_000)]);
+    }
   }
   for (const socket of sockets) socket.destroy();
   await new Promise((resolve) => server.close(resolve)).catch(() => {});
-  // Chrome's helper processes can still be flushing the profile after SIGKILL.
   rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 }

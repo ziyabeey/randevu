@@ -19,6 +19,7 @@ import products from './products.ts';
 import expenses from './expenses.ts';
 import reports from './reports.ts';
 import f16Series from './f16-series-http.ts';
+import f16PrivateMedia from './f16-private-media-http.ts';
 import f16Packages from './f16-packages-http.ts';
 import f16Promo from './f16-promo-http.ts';
 import f16Feedback from './f16-feedback-http.ts';
@@ -114,6 +115,8 @@ app.route('/api', f11GroupManagement);
 // F11-02 exact group create/availability routes stay isolated behind management.
 // F16-01 recurring-series preview/create/read reuses the F11 physical group authority.
 app.route('/api', f16Series);
+// F16-03 private appointment photos: cookie-authenticated, membership-checked on every read.
+app.route('/api', f16PrivateMedia);
 // F16-04 capability feedback, public reviews and member moderation.
 app.route('/api', f16Feedback);
 app.route('/api', f11Groups);
