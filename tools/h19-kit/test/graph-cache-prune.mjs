@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -8,11 +8,7 @@ import {
   pruneGraphCache,
 } from '../src/indexing/graph-cache-prune.mjs';
 
-const temp = await mkdir(path.join(os.tmpdir(), `h19-graph-prune-${process.pid}-${Date.now()}`), { recursive: true })
-  .then(() => path.join(os.tmpdir(), `h19-graph-prune-${process.pid}-${Date.now()}`));
-
-// mkdir above uses Date.now twice; use a stable sibling instead.
-const root = path.join(os.tmpdir(), `h19-graph-prune-stable-${process.pid}`);
+const root = await mkdtemp(path.join(os.tmpdir(), 'h19-graph-prune-'));
 try {
   const ns = path.join(root, 'ts-project-graph-v1');
   await mkdir(ns, { recursive: true });
