@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { t } from './i18n';
+import { intlLocale, t } from './i18n';
 import { ApiRequestError, api } from './api';
 
 type PublicBusiness = {
@@ -73,11 +73,11 @@ const MAX_LINES = 10;
 const HTTP_TIMEOUT_MS = 10_000;
 
 function formatMoney(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
+  return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100);
 }
 
 function formatTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+  return new Intl.DateTimeFormat(intlLocale(), { timeZone: timezone, hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
 function serviceRange(service: PublicService) {
@@ -104,7 +104,7 @@ function abortError(error: unknown) {
 function errorMessage(error: unknown, fallback: string) {
   if (abortError(error)) return '';
   if (error instanceof ApiRequestError && error.retryAfter !== undefined) {
-    return `${error.message} Lütfen ${error.retryAfter} saniye sonra tekrar deneyin.`;
+    return `${error.message} ${t('Lütfen {seconds} saniye sonra tekrar deneyin.', { seconds: error.retryAfter })}`;
   }
   return error instanceof Error && error.message ? error.message : fallback;
 }
@@ -256,7 +256,7 @@ export default function PublicMultiServiceSelection({ slug, availabilityRefreshT
     setSelectedIds((current) => {
       if (current.includes(serviceId)) return current.filter((id) => id !== serviceId);
       if (current.length >= MAX_LINES) {
-        setNotice(`Bir rezervasyonda en fazla ${MAX_LINES} hizmet seçilebilir.`);
+        setNotice(t('Bir rezervasyonda en fazla {max} hizmet seçilebilir.', { max: MAX_LINES }));
         return current;
       }
       return [...current, serviceId];
@@ -333,7 +333,7 @@ export default function PublicMultiServiceSelection({ slug, availabilityRefreshT
       }
       setSlots(next);
       setSlotRetryable(false);
-      setNotice(next.length ? `${next.length} birlikte uygun başlangıç bulundu.` : t('Bu seçim için uygun ortak saat bulunamadı. Başka bir tarih seçin.'));
+      setNotice(next.length ? t('{count} birlikte uygun başlangıç bulundu.', { count: next.length }) : t('Bu seçim için uygun ortak saat bulunamadı. Başka bir tarih seçin.'));
     } catch (error) {
       if (generation !== slotGeneration.current || abortError(error)) return;
       setSlots([]);
@@ -390,22 +390,22 @@ export default function PublicMultiServiceSelection({ slug, availabilityRefreshT
 
     {selectedServices.length > 0 && <div className="public-selected-lines" aria-label={t('Seçilen hizmet sırası')}>
       {selectedServices.map((service, index) => <div className="public-selected-line" key={service.service_id}>
-        <div className="public-line-order"><span>{index + 1}</span><div><strong>{service.name}</strong><small>{service.duration_minutes} dk · {servicePriceLabel(service)}</small></div></div>
-        <label><span className="sr-only">{service.name} için personel</span><select value={staffChoice[service.service_id] ?? 'any'} onChange={(event) => { setStaffChoice((current) => ({ ...current, [service.service_id]: event.target.value })); invalidatePlan(); }}><option value="any">{t('Personel fark etmez')}</option>{(staffByService[service.service_id] ?? []).map((person) => <option key={person.staff_id} value={person.staff_id}>{person.staff_name}</option>)}</select></label>
-        <div className="public-line-actions"><button type="button" disabled={index === 0} aria-label={`${service.name} hizmetini yukarı taşı`} onClick={() => moveService(index, -1)}>↑</button><button type="button" disabled={index === selectedServices.length - 1} aria-label={`${service.name} hizmetini aşağı taşı`} onClick={() => moveService(index, 1)}>↓</button><button type="button" aria-label={`${service.name} hizmetini kaldır`} onClick={() => toggleService(service.service_id)}>{t('Kaldır')}</button></div>
+        <div className="public-line-order"><span>{index + 1}</span><div><strong>{service.name}</strong><small>{t('{minutes} dk', { minutes: service.duration_minutes })} · {servicePriceLabel(service)}</small></div></div>
+        <label><span className="sr-only">{t('{service} için personel', { service: service.name })}</span><select value={staffChoice[service.service_id] ?? 'any'} onChange={(event) => { setStaffChoice((current) => ({ ...current, [service.service_id]: event.target.value })); invalidatePlan(); }}><option value="any">{t('Personel fark etmez')}</option>{(staffByService[service.service_id] ?? []).map((person) => <option key={person.staff_id} value={person.staff_id}>{person.staff_name}</option>)}</select></label>
+        <div className="public-line-actions"><button type="button" disabled={index === 0} aria-label={t('{service} hizmetini yukarı taşı', { service: service.name })} onClick={() => moveService(index, -1)}>↑</button><button type="button" disabled={index === selectedServices.length - 1} aria-label={t('{service} hizmetini aşağı taşı', { service: service.name })} onClick={() => moveService(index, 1)}>↓</button><button type="button" aria-label={`${service.name} hizmetini kaldır`} onClick={() => toggleService(service.service_id)}>{t('Kaldır')}</button></div>
       </div>)}
     </div>}
 
     {selectedServices.length > 0 && <div className="public-multi-date-row">
       <div className="public-date-shortcuts" aria-label={t('Tarih kısayolları')}><button type="button" className={date === page.business.local_date ? 'is-selected' : ''} onClick={() => { setDate(page.business.local_date); invalidatePlan(); }}>{t('Bugün')}</button><button type="button" onClick={() => { const next = new Date(`${page.business.local_date}T12:00:00Z`); next.setUTCDate(next.getUTCDate() + 1); const value = next.toISOString().slice(0, 10); if (value <= page.business.max_date) { setDate(value); invalidatePlan(); } }}>{t('Yarın')}</button></div>
       <label><span>{t('Tarih')}</span><input type="date" value={date} min={page.business.local_date} max={page.business.max_date} onChange={(event) => { setDate(event.target.value); invalidatePlan(); }} /></label>
-      <button className="public-primary" type="button" disabled={busy || !date || !selectedIds.length} onClick={() => void loadSlots()}>{busy ? t('Birlikte uygunluk aranıyor…') : slotRetryable ? 'Uygun saatleri tekrar dene' : 'Birlikte uygun saatleri bul'}</button>
+      <button className="public-primary" type="button" disabled={busy || !date || !selectedIds.length} onClick={() => void loadSlots()}>{busy ? t('Birlikte uygunluk aranıyor…') : slotRetryable ? t('Uygun saatleri tekrar dene') : t('Birlikte uygun saatleri bul')}</button>
     </div>}
 
     {slots.length > 0 && <div className="public-group-slot-grid" aria-label={t('Çoklu hizmet uygun saatleri')}>{slots.map((slot) => {
       const active = selectedSlot?.startsAt === slot.startsAt && selectedSlot?.endsAt === slot.endsAt;
       return <button type="button" key={`${slot.startsAt}-${slot.endsAt}`} className={`public-group-slot ${active ? 'is-selected' : ''}`} aria-pressed={active} onClick={() => chooseSlot(slot)}>
-        <span><strong>{formatTime(slot.startsAt, slot.timezone)}</strong><small>{slot.lines.length} hizmet · {formatTime(slot.endsAt, slot.timezone)} bitiş</small></span><span>{slotPriceLabel(slot)}</span>
+        <span><strong>{formatTime(slot.startsAt, slot.timezone)}</strong><small>{t('{count} hizmet · {end} bitiş', { count: slot.lines.length, end: formatTime(slot.endsAt, slot.timezone) })}</small></span><span>{slotPriceLabel(slot)}</span>
       </button>;
     })}</div>}
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { t } from './i18n';
+import { intlLocale, t } from './i18n';
 import type { FormEvent } from 'react';
 import { ApiRequestError, api } from './api';
 import { PromoAttachResult, PublicPromoField } from './PublicPromo';
@@ -85,21 +85,21 @@ const HTTP_TIMEOUT_MS = 10_000;
 const CLOCK_MAX_AGE_MS = 30_000;
 
 function formatTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+  return new Intl.DateTimeFormat(intlLocale(), { timeZone: timezone, hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 }
 
 function formatDateTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', { timeZone: timezone, dateStyle: 'long', timeStyle: 'short' }).format(new Date(value));
+  return new Intl.DateTimeFormat(intlLocale(), { timeZone: timezone, dateStyle: 'long', timeStyle: 'short' }).format(new Date(value));
 }
 
 function money(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
+  return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100);
 }
 
 function estimateMoney(minorMin: number, minorMax: number, currency: string) {
   return minorMin === minorMax
-    ? `Tahmini ${money(minorMin, currency)}`
-    : `Tahmini ${money(minorMin, currency)} – ${money(minorMax, currency)}`;
+    ? t('Tahmini {amount}', { amount: money(minorMin, currency) })
+    : t('Tahmini {min} – {max}', { min: money(minorMin, currency), max: money(minorMax, currency) });
 }
 
 function createSecret() {
@@ -268,9 +268,9 @@ function groupMatchesSelection(group: GroupConfirmation, selection: PublicBookin
 function confirmationOutcome(appointment: Confirmation, group?: GroupConfirmation) {
   const status = group?.status ?? appointment.status;
   switch (status) {
-    case 'scheduled': return { active: true, tone: 'active', symbol: '✓', kicker: t('RANDEVU OLUŞTURULDU'), state: t('Randevunuz işletmenin paneline kaydedildi.'), groupTail: 'kaydedildi.' };
-    case 'confirmed': return { active: true, tone: 'active', symbol: '✓', kicker: 'RANDEVU ONAYLANDI', state: t('Randevunuz işletme tarafından onaylandı.'), groupTail: t('işletme tarafından onaylandı.') };
-    case 'completed': return { active: false, tone: 'neutral', symbol: '✓', kicker: 'RANDEVU TAMAMLANDI', state: t('Randevunuz tamamlandı.'), groupTail: t('tamamlandı.') };
+    case 'scheduled': return { active: true, tone: 'active', symbol: '✓', kicker: t('RANDEVU OLUŞTURULDU'), state: t('Randevunuz işletmenin paneline kaydedildi.'), groupTail: t('kaydedildi.') };
+    case 'confirmed': return { active: true, tone: 'active', symbol: '✓', kicker: t('RANDEVU ONAYLANDI'), state: t('Randevunuz işletme tarafından onaylandı.'), groupTail: t('işletme tarafından onaylandı.') };
+    case 'completed': return { active: false, tone: 'neutral', symbol: '✓', kicker: t('RANDEVU TAMAMLANDI'), state: t('Randevunuz tamamlandı.'), groupTail: t('tamamlandı.') };
     case 'no_show': return { active: false, tone: 'attention', symbol: '!', kicker: t('RANDEVUYA GELİNMEDİ'), state: t('Randevu gelinmedi olarak işaretlendi.'), groupTail: t('gelinmedi olarak işaretlendi.') };
     case 'cancelled': return { active: false, tone: 'attention', symbol: '×', kicker: t('RANDEVU İPTAL EDİLDİ'), state: t('Randevunuz iptal edilmiş.'), groupTail: t('iptal edilmiş.') };
     case 'partial': return { active: false, tone: 'attention', symbol: '!', kicker: t('RANDEVU PLANI KISMEN DEĞİŞTİ'), state: t('Grup randevunuzun hizmet durumları birbirinden farklı.'), groupTail: t('kısmen değişmiş.') };
@@ -280,7 +280,7 @@ function confirmationOutcome(appointment: Confirmation, group?: GroupConfirmatio
 function appointmentStatusLabel(status: AppointmentStatus) {
   const labels: Record<AppointmentStatus, string> = {
     scheduled: t('Planlandı'), confirmed: t('Onaylandı'), completed: t('Tamamlandı'),
-    no_show: 'Gelinmedi', cancelled: t('İptal edildi'),
+    no_show: t('Gelinmedi'), cancelled: t('İptal edildi'),
   };
   return labels[status];
 }
@@ -295,7 +295,7 @@ function messageFor(error: unknown, fallback: string) {
   if (error instanceof ApiRequestError && error.retryAfter !== undefined) {
     return error.message.includes(String(error.retryAfter))
       ? error.message
-      : `${error.message} Lütfen ${error.retryAfter} saniye sonra tekrar deneyin.`;
+      : `${error.message} ${t('Lütfen {seconds} saniye sonra tekrar deneyin.', { seconds: error.retryAfter })}`;
   }
   return error.message || fallback;
 }
@@ -476,10 +476,10 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       const params = new URLSearchParams({ serviceId, date, staffId });
       const result = await api<{ slots: PublicSlot[] }>(`/api/public/business/${encodeURIComponent(slug)}/slots?${params}`);
       setSlots(result.slots);
-      setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : t('Bu gün için uygun saat kalmamış.'));
+      setNotice(result.slots.length ? t('{count} uygun saat bulundu.', { count: result.slots.length }) : t('Bu gün için uygun saat kalmamış.'));
     } catch (error) {
       setSlots([]);
-      setNotice(messageFor(error, 'Uygun saatler getirilemedi.'));
+      setNotice(messageFor(error, t('Uygun saatler getirilemedi.')));
     } finally {
       setBusy(false);
     }
@@ -566,7 +566,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     }
     const retryAt = recoveryCooldowns.current.get(record.id) ?? 0;
     if (Date.now() < retryAt) {
-      setNotice(`Çok fazla istek yapıldı. ${Math.ceil((retryAt - Date.now()) / 1000)} saniye sonra tekrar deneyin.`);
+      setNotice(t('Çok fazla istek yapıldı. {seconds} saniye sonra tekrar deneyin.', { seconds: Math.ceil((retryAt - Date.now()) / 1000) }));
       return;
     }
     if (resolvingIds.current.has(record.id)) return;
@@ -783,11 +783,11 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
     const outcome = confirmationOutcome(appointment, confirmation.group);
     return <main className="public-booking-shell"><section className="public-booking-card public-confirmation">
       <div className={`public-result-mark is-${outcome.tone}`}>{outcome.symbol}</div><p className="public-kicker">{outcome.kicker}</p>
-      <h1>{appointment.business_name ?? page?.business.name ?? 'Randevu'}</h1>
+      <h1>{appointment.business_name ?? page?.business.name ?? t('Randevu')}</h1>
       {confirmation.group ? <>
-        <p className="public-confirmation-lead">{confirmation.group.lines.length} hizmetlik planınız {outcome.groupTail}</p>
+        <p className="public-confirmation-lead">{t('{count} hizmetlik planınız', { count: confirmation.group.lines.length })} {outcome.groupTail}</p>
         <ol className="public-confirmation-services">{confirmation.group.lines.map((line) => <li key={line.appointmentId}>
-          <span><strong>{line.serviceName}</strong><small>{line.staffName} · {formatTime(line.startsAt, confirmation.group!.timezone)}–{formatTime(line.endsAt, confirmation.group!.timezone)}</small><small>Durum: {appointmentStatusLabel(line.status)}</small></span>
+          <span><strong>{line.serviceName}</strong><small>{line.staffName} · {formatTime(line.startsAt, confirmation.group!.timezone)}–{formatTime(line.endsAt, confirmation.group!.timezone)}</small><small>{t('Durum: {status}', { status: appointmentStatusLabel(line.status) })}</small></span>
           <span>{line.priceMinMinor === line.priceMaxMinor ? money(line.priceMinMinor, line.currency) : `${money(line.priceMinMinor, line.currency)} – ${money(line.priceMaxMinor, line.currency)}`}</span>
         </li>)}</ol>
         <dl className="public-confirmation-list"><div><dt>{t('Başlangıç')}</dt><dd>{formatDateTime(confirmation.group.startsAt, confirmation.group.timezone)}</dd></div><div><dt>{t('Fiyat')}</dt><dd>{estimateMoney(confirmation.group.estimateMinMinor, confirmation.group.estimateMaxMinor, confirmation.group.currency)}</dd></div></dl>
@@ -798,7 +798,7 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
       <p className="public-confirmation-note">{outcome.active ? t('Yönetim bağlantınızı kaybetmeyin; bu bağlantı randevuyu taşıma ve iptal etme yetkisi verir.') : t('Randevu ayrıntılarınızı yönetim bağlantısından görüntüleyebilirsiniz.')}</p>
       <PublicBookingInformation slug={slug} contact={informationContact} prefix="result" />
       <a className="public-primary" href={confirmation.manageUrl}>{outcome.active ? t('Randevumu yönet') : t('Randevu ayrıntılarını aç')}</a>
-      {confirmationStorageError && <div className="public-booking-notice" role="alert">{confirmationStorageError} Bu kayıt tamamlanana kadar yeni randevu başlatmayın.</div>}
+      {confirmationStorageError && <div className="public-booking-notice" role="alert">{confirmationStorageError} {t('Bu kayıt tamamlanana kadar yeni randevu başlatmayın.')}</div>}
       {unpersistedConfirmation && <button className="public-secondary" type="button" onClick={() => void retryConfirmationPersistence()}>{t('Güvenli kaydı yeniden dene')}</button>}
       <button className="public-secondary" type="button" disabled={!receipt} onClick={() => { if (receipt) void removeReminder(receipt); }}>{t('Yeni randevu oluştur')}</button>
     </section></main>;
@@ -825,23 +825,23 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
 
   if (!page) return <main className="public-booking-shell"><section className="public-booking-card public-empty-state">
     <p className="public-kicker">{t('YZT RANDEVU')}</p><h1>{t('Bu rezervasyon bağlantısı şu anda aktif değil.')}</h1><p>{notice || t('İşletme bağlantıyı kapatmış veya adres geçersiz olabilir.')}</p>
-    {blockingRecord && isRecoverableRecord(blockingRecord) && <button className="public-primary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Randevu sonucu kontrol ediliyor…' : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : t('Önceki randevu sonucunu kontrol et')}</button>}
+    {blockingRecord && isRecoverableRecord(blockingRecord) && <button className="public-primary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? t('Randevu sonucu kontrol ediliyor…') : waitingForRetry ? t('{seconds} saniye sonra tekrar deneyin', { seconds: retryWaitSeconds }) : t('Önceki randevu sonucunu kontrol et')}</button>}
   </section></main>;
 
   if (isGroupMode) return <div className="public-booking-shell public-booking-checkout-shell">
     {notice && <div className="public-booking-notice" role="status">{notice}</div>}
-    {storageError && <div className="public-booking-notice" role="alert">{storageError} Tarayıcı depolamasını açıp tekrar deneyin. <button className="public-secondary" type="button" onClick={() => void refreshBookingRecords()}>{t('Depolamayı yeniden dene')}</button></div>}
+    {storageError && <div className="public-booking-notice" role="alert">{storageError} {t('Tarayıcı depolamasını açıp tekrar deneyin.')} <button className="public-secondary" type="button" onClick={() => void refreshBookingRecords()}>{t('Depolamayı yeniden dene')}</button></div>}
     {closedReceipt && !blockingRecord && <div className="public-booking-notice" role="status">{t('Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Hizmet seçiminiz korundu; yeni uygunluk getiriliyor.')}</div>}
     {blockingRecord && isRecoverableRecord(blockingRecord) && <div className="public-booking-notice" role="status">
       <span>{t('Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.')}</span>{' '}
-      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Kontrol ediliyor…' : waitingForCreate ? t('İlk istek tamamlanıyor…') : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : 'Sonucu tekrar kontrol et'}</button>
+      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? t('Kontrol ediliyor…') : waitingForCreate ? t('İlk istek tamamlanıyor…') : waitingForRetry ? t('{seconds} saniye sonra tekrar deneyin', { seconds: retryWaitSeconds }) : t('Sonucu tekrar kontrol et')}</button>
       {blockingRecord.source === 'legacy_v1' && <><span>{t('Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.')}</span> <button className="public-secondary" type="button" disabled={recoveryBusy} onClick={() => void removeReminder(blockingRecord)}>{t('Cihazdaki hatırlatıcıyı kaldır')}</button></>}
     </div>}
     <section className={`public-booking-card public-customer-card public-group-customer-card ${multiServiceSelection ? 'is-ready' : ''}`} aria-labelledby="public-group-customer-title">
       <span className="public-step">{t('B')}</span><h2 id="public-group-customer-title">{t('İletişim ve onay')}</h2>
       {multiServiceSelection ? <>
         <div className="public-selection-summary public-group-selection-summary">
-          <span><strong>{multiServiceSelection.slot.lines.length} hizmet</strong><small>{formatDateTime(multiServiceSelection.slot.startsAt, multiServiceSelection.slot.timezone)}</small></span>
+          <span><strong>{t('{count} hizmet', { count: multiServiceSelection.slot.lines.length })}</strong><small>{formatDateTime(multiServiceSelection.slot.startsAt, multiServiceSelection.slot.timezone)}</small></span>
           <span><strong>{estimateMoney(multiServiceSelection.slot.estimateMinMinor, multiServiceSelection.slot.estimateMaxMinor, multiServiceSelection.slot.currency)}</strong><small>{t('Kesin tahsilat tutarı değildir.')}</small></span>
         </div>
         <form className="public-customer-form" onSubmit={(event) => void book(event)}>
@@ -856,17 +856,17 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
         </form>
       </> : <p className="public-muted">{t('İletişim formunu açmak için yukarıdan hizmetlerinizi ve birlikte uygun bir saati seçin.')}</p>}
     </section>
-    <footer className="public-booking-footer">Saatler {page.business.timezone} saat dilimine göre gösterilir. Randevu kaydı ile mesaj teslimi ayrı durumlardır.</footer>
+    <footer className="public-booking-footer">{t('Saatler {timezone} saat dilimine göre gösterilir. Randevu kaydı ile mesaj teslimi ayrı durumlardır.', { timezone: page.business.timezone })}</footer>
   </div>;
 
   return <main className="public-booking-shell">
     <header className="public-booking-header"><p className="public-kicker">{t('ONLINE RANDEVU')}</p><h1>{page.business.name}</h1><p>{t('Hizmeti ve günü seçin, gerçek boş saatlerden birini ayırın.')}</p></header>
     {notice && <div className="public-booking-notice" role="status">{notice}</div>}
-    {storageError && <div className="public-booking-notice" role="alert">{storageError} Tarayıcı depolamasını açıp tekrar deneyin. <button className="public-secondary" type="button" onClick={() => void refreshBookingRecords()}>{t('Depolamayı yeniden dene')}</button></div>}
+    {storageError && <div className="public-booking-notice" role="alert">{storageError} {t('Tarayıcı depolamasını açıp tekrar deneyin.')} <button className="public-secondary" type="button" onClick={() => void refreshBookingRecords()}>{t('Depolamayı yeniden dene')}</button></div>}
     {closedReceipt && !blockingRecord && <div className="public-booking-notice" role="status">{t('Önceki randevu isteği oluşturulmadan güvenli olarak kapatıldı. Yeni bir saat seçerek yeniden deneyebilirsiniz.')}</div>}
     {blockingRecord && isRecoverableRecord(blockingRecord) && <div className="public-booking-notice" role="status">
       <span>{t('Önceki randevu işleminizin sonucu netleşmeden yeni randevu oluşturmayacağız.')}</span>{' '}
-      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? 'Kontrol ediliyor…' : waitingForCreate ? t('İlk istek tamamlanıyor…') : waitingForRetry ? `${retryWaitSeconds} saniye sonra tekrar deneyin` : 'Sonucu tekrar kontrol et'}</button>
+      <button className="public-secondary" type="button" disabled={recoveryBusy || waitingForCreate || waitingForRetry} onClick={() => void resolveStoredResult(blockingRecord)}>{recoveryBusy ? t('Kontrol ediliyor…') : waitingForCreate ? t('İlk istek tamamlanıyor…') : waitingForRetry ? t('{seconds} saniye sonra tekrar deneyin', { seconds: retryWaitSeconds }) : t('Sonucu tekrar kontrol et')}</button>
       {blockingRecord.source === 'legacy_v1' && <><span>{t('Cihazdaki hatırlatıcıyı kaldırmak randevuyu iptal etmez ve işlemin yapılmadığını kanıtlamaz.')}</span> <button className="public-secondary" type="button" disabled={recoveryBusy} onClick={() => void removeReminder(blockingRecord)}>{t('Cihazdaki hatırlatıcıyı kaldır')}</button></>}
     </div>}
     <div className="public-booking-layout">
@@ -890,6 +890,6 @@ export default function PublicBookingPage({ slug, groupMode = false, multiServic
           </form></> : <p className="public-muted">{t('Bir saat seçtiğinizde iletişim formu burada açılır.')}</p>}
       </section>
     </div>
-    <footer className="public-booking-footer">Saatler {page.business.timezone} saat dilimine göre gösterilir.</footer>
+    <footer className="public-booking-footer">{t('Saatler {timezone} saat dilimine göre gösterilir.', { timezone: page.business.timezone })}</footer>
   </main>;
 }

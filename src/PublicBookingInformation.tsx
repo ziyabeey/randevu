@@ -103,7 +103,7 @@ export default function PublicBookingInformation({
 
         <article id={ids.support} tabIndex={-1}>
           <h3>{t('Destek ve iletişim')}</h3>
-          <p>Rezervasyonla ilgili destek için {contact?.businessName?.trim() || t('işletme')} ile iletişime geçin.</p>
+          <p>{t('Rezervasyonla ilgili destek için {business} ile iletişime geçin.', { business: contact?.businessName?.trim() || t('işletme') })}</p>
           {contact && (
             <div className="public-information-contact">
               {contact.phone?.trim() && <a href={phoneHref(contact.phone)}>{contact.phone}</a>}

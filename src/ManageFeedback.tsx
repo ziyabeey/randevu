@@ -13,9 +13,9 @@ type FeedbackState = {
 };
 
 const STATUS_TEXT: Record<'pending' | 'published' | 'hidden', string> = {
-  pending: t('Değerlendirmeniz işletmeye iletildi.'),
-  published: t('Yorumunuz salon sayfasında yayında.'),
-  hidden: t('Değerlendirmeniz işletmeye iletildi; salon sayfasında yayınlanmıyor.'),
+  pending: 'Değerlendirmeniz işletmeye iletildi.',
+  published: 'Yorumunuz salon sayfasında yayında.',
+  hidden: 'Değerlendirmeniz işletmeye iletildi; salon sayfasında yayınlanmıyor.',
 };
 
 // F16-04: a customer reviews a completed appointment through their own
@@ -62,15 +62,15 @@ export default function ManageFeedback({ token }: { token: string }) {
   return <section className="manage-card manage-feedback" aria-labelledby="manage-feedback-title">
     <h2 id="manage-feedback-title">{t('Deneyiminizi değerlendirin')}</h2>
     {state?.reason === 'submitted' && state.status ? <>
-      <p className="manage-feedback-rating" aria-label={`${state.rating} / 5 puan`}>{'★'.repeat(state.rating ?? 0)}{'☆'.repeat(5 - (state.rating ?? 0))}</p>
+      <p className="manage-feedback-rating" aria-label={t('{rating} / 5 puan', { rating: state.rating ?? 0 })}>{'★'.repeat(state.rating ?? 0)}{'☆'.repeat(5 - (state.rating ?? 0))}</p>
       {state.comment && <blockquote>{state.comment}</blockquote>}
-      <p className="public-muted" role="status">{STATUS_TEXT[state.status]}</p>
+      <p className="public-muted" role="status">{t(STATUS_TEXT[state.status])}</p>
     </> : state?.eligible ? <>
       <fieldset className="manage-feedback-stars">
         <legend>{t('Puanınız')}</legend>
         {[1, 2, 3, 4, 5].map((value) => <label key={value} className={value <= rating ? 'is-selected' : ''}>
           <input type="radio" name="feedback-rating" value={value} checked={rating === value} disabled={busy} onChange={() => setRating(value)} />
-          <span aria-hidden="true">★</span><span className="manage-visually-hidden">{value} puan</span>
+          <span aria-hidden="true">★</span><span className="manage-visually-hidden">{t('{value} puan', { value })}</span>
         </label>)}
       </fieldset>
       <label>

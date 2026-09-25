@@ -11,7 +11,7 @@ const statusText: Record<CustomerNotificationStatusCode, string> = {
 };
 
 export function customerNotificationStatusText(notification: CustomerNotificationStatus) {
-  return statusText[notification.status];
+  return t(statusText[notification.status]);
 }
 
 export default function PublicNotificationStatus({ notification }: { notification: CustomerNotificationStatus }) {

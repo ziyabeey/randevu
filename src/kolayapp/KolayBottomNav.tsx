@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { t } from '../i18n';
 import type { KeyboardEvent } from 'react';
 import { adjacentKolayAppTab, KOLAY_APP_TABS, type KolayAppTab } from './model';
 
@@ -69,7 +70,7 @@ export default function KolayBottomNav({ activeTab, onTabChange }: Props) {
   }
 
   return (
-    <nav className="kolay-bottom-nav" aria-label="KolayApp ana menü">
+    <nav className="kolay-bottom-nav" aria-label={t('KolayApp ana menü')}>
       {KOLAY_APP_TABS.map((tab, index) => (
         <button
           key={tab.id}
@@ -82,7 +83,7 @@ export default function KolayBottomNav({ activeTab, onTabChange }: Props) {
           onKeyDown={(event) => handleKeyDown(event, tab.id)}
         >
           <span className="kolay-bottom-nav__icon"><TabIcon tab={tab.id} /></span>
-          <span className="kolay-bottom-nav__label">{tab.label}</span>
+          <span className="kolay-bottom-nav__label">{t(tab.label)}</span>
         </button>
       ))}
     </nav>

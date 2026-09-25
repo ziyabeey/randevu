@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { t } from './i18n';
 import { readPendingTeamInvite } from './teamInvite';
 import { navigateApp, resolveAppRoute, subscribeAppNavigation } from './workspace-route';
 
@@ -10,10 +11,10 @@ const ManageAppointmentPage = lazy(() => import('./ManageAppointmentPage'));
 function NotFoundPage() {
   return (
     <main className="center-card">
-      <p className="eyebrow">SAYFA BULUNAMADI</p>
-      <h1>Bu adres bulunamadı</h1>
-      <p className="muted">İşletme çalışma alanına dönüp devam edebilirsiniz.</p>
-      <a className="primary-link" href="/app">Çalışma alanına dön</a>
+      <p className="eyebrow">{t('SAYFA BULUNAMADI')}</p>
+      <h1>{t('Bu adres bulunamadı')}</h1>
+      <p className="muted">{t('İşletme çalışma alanına dönüp devam edebilirsiniz.')}</p>
+      <a className="primary-link" href="/app">{t('Çalışma alanına dön')}</a>
     </main>
   );
 }
@@ -29,11 +30,11 @@ export default function AppRouter() {
   }, [route.kind === 'redirect' ? route.to : null]);
 
   if (route.kind === 'redirect') {
-    return <main className="route-loading" aria-busy="true">Çalışma alanı açılıyor…</main>;
+    return <main className="route-loading" aria-busy="true">{t('Çalışma alanı açılıyor…')}</main>;
   }
 
   return (
-    <Suspense fallback={<main className="route-loading" aria-busy="true">Sayfa hazırlanıyor…</main>}>
+    <Suspense fallback={<main className="route-loading" aria-busy="true">{t('Sayfa hazırlanıyor…')}</main>}>
       {route.kind === 'management'
         ? <ManageAppointmentPage token={window.location.hash.replace(/^#/, '')} />
         : route.kind === 'public'

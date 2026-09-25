@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { t } from './i18n';
+import { intlLocale, t } from './i18n';
 import { api } from './api';
 import PublicBookingInformation from './PublicBookingInformation';
 import PublicNotificationStatus from './PublicNotificationStatus';
@@ -84,7 +84,7 @@ type SlotChoice =
 type ViewResponse = { appointment: ManagedAppointment; group?: ManagedGroup; notification?: unknown };
 
 function formatDateTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
+  return new Intl.DateTimeFormat(intlLocale(), {
     timeZone: timezone,
     dateStyle: 'long',
     timeStyle: 'short',
@@ -92,7 +92,7 @@ function formatDateTime(value: string, timezone: string) {
 }
 
 function formatTime(value: string, timezone: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
+  return new Intl.DateTimeFormat(intlLocale(), {
     timeZone: timezone,
     hour: '2-digit',
     minute: '2-digit',
@@ -100,7 +100,7 @@ function formatTime(value: string, timezone: string) {
 }
 
 function money(minor: number, currency: string) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(minor / 100);
+  return new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100);
 }
 
 function moneyRange(min: number, max: number, currency: string) {
@@ -199,7 +199,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         setGroupSlots(result.slots);
         setSlots([]);
         if (!preserveNotice) {
-          setNotice(result.slots.length ? `${result.slots.length} uygun grup saati bulundu.` : t('Bu gün için grubun tamamına uygun saat bulunamadı.'));
+          setNotice(result.slots.length ? t('{count} uygun grup saati bulundu.', { count: result.slots.length }) : t('Bu gün için grubun tamamına uygun saat bulunamadı.'));
         }
       } else {
         const result = await api<{ slots: ManagedSlot[] }>('/api/manage/slots', {
@@ -210,7 +210,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         setSlots(result.slots);
         setGroupSlots([]);
         if (!preserveNotice) {
-          setNotice(result.slots.length ? `${result.slots.length} uygun saat bulundu.` : t('Bu gün için uygun saat bulunamadı.'));
+          setNotice(result.slots.length ? t('{count} uygun saat bulundu.', { count: result.slots.length }) : t('Bu gün için uygun saat bulunamadı.'));
         }
       }
     } catch (error) {
@@ -251,7 +251,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
       const next = await loadAppointment();
       const nextStart = next.group?.startsAt ?? next.appointment.starts_at;
       const nextTimezone = next.group?.timezone ?? next.appointment.timezone;
-      setNotice(`Randevu ${formatDateTime(nextStart, nextTimezone)} tarihine taşındı.`);
+      setNotice(t('Randevu {date} tarihine taşındı.', { date: formatDateTime(nextStart, nextTimezone) }));
     } catch (error) {
       const coded = error as Error & { code?: string };
       setNotice(coded.message);
@@ -295,10 +295,10 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
       setGroupSlots([]);
       setSelectedSlot(null);
       await loadAppointment();
-      setNotice(group ? 'Rezervasyondaki aktif hizmetler iptal edildi.' : t('Randevu iptal edildi. Ayrılan saat yeniden müsait hale geldi.'));
+      setNotice(group ? t('Rezervasyondaki aktif hizmetler iptal edildi.') : t('Randevu iptal edildi. Ayrılan saat yeniden müsait hale geldi.'));
     } catch (error) {
       const coded = error as Error & { code?: string };
-      setNotice(coded.message || 'Randevu iptal edilemedi.');
+      setNotice(coded.message || t('Randevu iptal edilemedi.'));
       if (coded.code === 'BOOKING_GROUP_VERSION_CONFLICT') {
         try { await loadAppointment(); } catch { /* retain the conflict notice */ }
       }
@@ -339,7 +339,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
 
       <div className="manage-grid">
         <section className="manage-card manage-summary">
-          <h2>{group ? 'Rezervasyon bilgileri' : 'Randevu bilgileri'}</h2>
+          <h2>{group ? t('Rezervasyon bilgileri') : t('Randevu bilgileri')}</h2>
           {group ? (
             <>
               <dl className="public-confirmation-list">
@@ -389,7 +389,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
                     return (
                       <button className={`public-slot ${selected ? 'is-selected' : ''}`} type="button" key={slot.starts_at} onClick={() => setSelectedSlot({ mode: 'group', slot })}>
                         <strong>{formatTime(slot.starts_at, slot.timezone)}</strong>
-                        <span>{slot.total_duration_minutes} dk · {slot.lines.length} hizmet</span>
+                        <span>{t('{minutes} dk · {count} hizmet', { minutes: slot.total_duration_minutes, count: slot.lines.length })}</span>
                       </button>
                     );
                   }) : slots.map((slot) => {
@@ -407,20 +407,20 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
               )}
               {selectedSlot && <button className="public-primary manage-confirm" type="button" disabled={busy} onClick={() => void reschedule()}>{t('Seçilen saate taşı')}</button>}
             </>
-          ) : <p className="public-muted">Bu {group ? 'rezervasyon' : 'randevu'} artık taşınamaz.</p>}
+          ) : <p className="public-muted">{group ? t('Bu rezervasyon artık taşınamaz.') : t('Bu randevu artık taşınamaz.')}</p>}
         </section>
 
         <section className="manage-card manage-danger">
-          <h2>{group ? 'Rezervasyonu iptal et' : 'Randevuyu iptal et'}</h2>
+          <h2>{group ? t('Rezervasyonu iptal et') : t('Randevuyu iptal et')}</h2>
           {canCancel ? (
             <>
               <label>
                 <span>{t('İptal nedeni')} <small>{t('(isteğe bağlı)')}</small></span>
                 <textarea value={reason} maxLength={240} rows={3} onChange={(event) => setReason(event.target.value)} />
               </label>
-              <button className="manage-cancel-button" type="button" disabled={busy} onClick={() => void cancelAppointment()}>{group ? t('Aktif hizmetlerin tamamını iptal et') : 'Randevuyu iptal et'}</button>
+              <button className="manage-cancel-button" type="button" disabled={busy} onClick={() => void cancelAppointment()}>{group ? t('Aktif hizmetlerin tamamını iptal et') : t('Randevuyu iptal et')}</button>
             </>
-          ) : <p className="public-muted">Bu {group ? 'rezervasyon' : 'randevu'} artık iptal edilemez.</p>}
+          ) : <p className="public-muted">{group ? t('Bu rezervasyon artık iptal edilemez.') : t('Bu randevu artık iptal edilemez.')}</p>}
         </section>
       </div>
 
@@ -445,7 +445,7 @@ export default function ManageAppointmentPage({ token }: { token: string }) {
         prefix="manage"
         className="manage-information"
       />
-      <footer className="public-booking-footer">Saatler {displayTimezone} saat dilimine göre gösterilir.</footer>
+      <footer className="public-booking-footer">{t('Saatler {timezone} saat dilimine göre gösterilir.', { timezone: displayTimezone })}</footer>
     </main>
   );
 }
