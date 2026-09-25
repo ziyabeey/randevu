@@ -124,27 +124,29 @@ Bundle **M9** implements RC1–RC16:
 
 M9 remains advisory and deterministic. Jev receives a case only after H19 has selected and frozen its evidence.
 
-## Frozen next feature gate — Relational Judgment Batch
+## Frozen next feature gate — Relational Judgment Batch v0.2
 
-`specs/RELATIONAL_JUDGMENT_BATCH_GATE-v0.1.md` freezes the orchestration boundary between M9's deterministic case batch and M8's bounded Jev adapter.
+The first judgment-batch freeze, `RELATIONAL_JUDGMENT_BATCH_GATE-v0.1.md`, is exact-head CI-green on #593 and remains historical evidence.
 
-The gate requires:
+Before implementation, TypeSafe's native parallel-question contract exposed a better execution shape, so `specs/RELATIONAL_JUDGMENT_BATCH_GATE-v0.2.md` supersedes the execution portion of v0.1 while retaining its authority/provenance boundaries.
 
-- exact M9 batch → exact M8 case binding before any provider call;
+v0.2 requires:
+
+- exact M9 batch → exact M8 case binding before provider work;
 - deterministic content-addressed request planning;
-- cache-first replay using the existing M8 model/question/input identity;
-- explicit `maxLiveCalls` bounded to 0..20;
-- one provider attempt per uncached in-budget case, with no hidden retry loop;
-- explicit `live-call-budget` skipped rows when the budget is exhausted;
-- immutable answered/error judgment rows;
-- `insufficient` preserved as a valid answered abstention;
-- provider confidence stored only as provider metadata, never as calibrated probability or dispatcher authority;
-- no cross-case aggregate risk/winner score;
-- independent M8 outcomes required for any later calibration;
-- fake-provider CI only, with no live Jev credential dependency;
-- no H19s crossover.
+- cache-first exact-input replay;
+- `maxLiveQuestions` bounded to 0..20;
+- cached rows consume zero live-question budget;
+- all selected uncached cases become one structured shared state + one parallel Choice question each;
+- exactly zero or one provider request per run;
+- explicit `live-question-budget` skips for overflow;
+- each live answer preserves the exact four-option probability distribution plus provider confidence;
+- `insufficient` remains a valid answered abstention;
+- no aggregate risk/winner score and no dispatcher authority;
+- independent M8 outcomes remain mandatory for calibration;
+- fake-provider CI only and no H19s crossover.
 
-**No next Bundle number is assigned until this freeze is exact-head CI-green.**
+**M10 must not be accepted against v0.1. It may be restacked only after this v0.2 freeze is exact-head CI-green.**
 
 ## Side-hardening HOLD
 
