@@ -15,17 +15,23 @@ export const TYPESAFE_SYSTEMONE_URL = 'https://api.typesafe.ai/v1/systemone';
 const CACHE_NAMESPACE = 'jev-relational-v0.1';
 export const JEV_RELATIONAL_CACHE_NAMESPACE = CACHE_NAMESPACE;
 
-// Frozen Choice domain, in M8 criteria order.
 export const RELATION_CHOICE_DOMAIN = Object.freeze(Object.keys(RELATION_DIRECTION_QUESTION.criteria));
-// Provider probabilities are rounded; 160 recorded TypeSafe Choice answers summed to 0.99–1.00.
 export const PROBABILITY_SUM_TOLERANCE = 0.02;
 const CACHE_ENTRY_KIND = 'jev-relational-cache-entry';
+export const JEV_RELATIONAL_CACHE_SCHEMA = 3;
+export const JEV_RELATIONAL_EXECUTION_SHAPE = 'single-case';
 
 const hashBody = (value) => createHash('sha256').update(`${stableJson(value)}\n`).digest('hex');
 const shaLike = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 
 function nonEmpty(value) {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const item of Object.values(value)) deepFreeze(item);
+  return Object.freeze(value);
 }
 
 export function relationalTransportErrorCode(error) {
@@ -35,13 +41,6 @@ export function relationalTransportErrorCode(error) {
   return 'transport_error';
 }
 
-function deepFreeze(value) {
-  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
-  for (const item of Object.values(value)) deepFreeze(item);
-  return Object.freeze(value);
-}
-
-// Returns the canonical four-option map, or null when the value is not an exact valid distribution.
 export function normalizeRelationProbabilities(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const keys = Object.keys(value);
@@ -59,16 +58,24 @@ export function normalizeRelationProbabilities(value) {
   return out;
 }
 
-// v0.2 probability-complete cache entry: exact M8 judgment + exact four-option distribution.
-export function freezeJevRelationalCacheEntry({ judgment, probabilities, requestSha256 = null } = {}) {
+export function freezeJevRelationalCacheEntry({
+  judgment,
+  probabilities,
+  requestSha256,
+  executionShape = JEV_RELATIONAL_EXECUTION_SHAPE,
+} = {}) {
   validateJevRelationalJudgment(judgment);
   if (judgment.status !== 'answered') throw new Error('only answered judgments are cached');
   const normalized = normalizeRelationProbabilities(probabilities);
   if (!normalized) throw new Error('invalid relation probability distribution');
-  if (requestSha256 !== null && !shaLike(requestSha256)) throw new Error('invalid fan-out request digest');
+  if (!shaLike(requestSha256)) throw new Error('single-case cache entry requires request digest');
+  if (executionShape !== JEV_RELATIONAL_EXECUTION_SHAPE) {
+    throw new Error('v0.3 cache entry execution shape must be single-case');
+  }
   const body = {
-    schemaVersion: 2,
+    schemaVersion: JEV_RELATIONAL_CACHE_SCHEMA,
     kind: CACHE_ENTRY_KIND,
+    executionShape,
     judgment: structuredClone(judgment),
     probabilities: normalized,
     requestSha256,
@@ -81,8 +88,11 @@ export function validateJevRelationalCacheEntry(entry, {
   provider = null,
   model = null,
 } = {}) {
-  if (!entry || entry.kind !== CACHE_ENTRY_KIND || entry.schemaVersion !== 2) {
-    throw new Error('not a v0.2 relational cache entry');
+  if (!entry
+    || entry.kind !== CACHE_ENTRY_KIND
+    || entry.schemaVersion !== JEV_RELATIONAL_CACHE_SCHEMA
+    || entry.executionShape !== JEV_RELATIONAL_EXECUTION_SHAPE) {
+    throw new Error('not a v0.3 single-case relational cache entry');
   }
   const { entrySha256, ...body } = structuredClone(entry);
   if (hashBody(body) !== entrySha256) throw new Error('relational cache entry hash mismatch');
@@ -95,26 +105,54 @@ export function validateJevRelationalCacheEntry(entry, {
   if (!normalized || stableJson(normalized) !== stableJson(entry.probabilities)) {
     throw new Error('invalid cached relation probability distribution');
   }
-  if (entry.requestSha256 !== null && !shaLike(entry.requestSha256)) throw new Error('invalid cached request digest');
+  if (!shaLike(entry.requestSha256)) throw new Error('invalid cached request digest');
   return entry;
 }
 
-// Classifies the value stored under a per-case cache key for v0.2 replay:
-//   hit              — valid probability-complete v0.2 entry
-//   upgrade-required — valid legacy v0.1 judgment-only answered entry
-//   invalid          — anything else under the exact key
+function validateLegacyV02CacheEntry(entry, { relationalCase, provider, model }) {
+  if (!entry || entry.kind !== CACHE_ENTRY_KIND || entry.schemaVersion !== 2) {
+    throw new Error('not a v0.2 relational cache entry');
+  }
+  const { entrySha256, ...body } = structuredClone(entry);
+  if (hashBody(body) !== entrySha256) throw new Error('legacy cache entry hash mismatch');
+  validateJevRelationalJudgment(entry.judgment, { relationalCase });
+  if (entry.judgment.status !== 'answered'
+    || entry.judgment.provider !== provider
+    || entry.judgment.model !== model) {
+    throw new Error('legacy cache identity mismatch');
+  }
+  if (!normalizeRelationProbabilities(entry.probabilities)) {
+    throw new Error('invalid legacy probability distribution');
+  }
+  if (entry.requestSha256 !== null && !shaLike(entry.requestSha256)) {
+    throw new Error('invalid legacy request digest');
+  }
+  return entry;
+}
+
+// v0.3 replay classification:
+// hit              -> exact v0.3 single-case entry
+// upgrade-required -> valid legacy judgment-only or v0.2 fan-out entry
+// invalid          -> tampered/identity-invalid/unknown content under exact key
 export function classifyJevRelationalCacheValue(value, { relationalCase, provider, model }) {
   if (value == null) return { status: 'miss' };
   try {
-    if (value.kind === CACHE_ENTRY_KIND) {
-      return { status: 'hit', entry: validateJevRelationalCacheEntry(value, { relationalCase, provider, model }) };
+    if (value.kind === CACHE_ENTRY_KIND && value.schemaVersion === JEV_RELATIONAL_CACHE_SCHEMA) {
+      return {
+        status: 'hit',
+        entry: validateJevRelationalCacheEntry(value, { relationalCase, provider, model }),
+      };
+    }
+    if (value.kind === CACHE_ENTRY_KIND && value.schemaVersion === 2) {
+      validateLegacyV02CacheEntry(value, { relationalCase, provider, model });
+      return { status: 'upgrade-required' };
     }
     validateJevRelationalJudgment(value, { relationalCase });
     if (value.status === 'answered' && value.provider === provider && value.model === model) {
       return { status: 'upgrade-required' };
     }
   } catch {
-    // fall through
+    return { status: 'invalid' };
   }
   return { status: 'invalid' };
 }
@@ -134,11 +172,63 @@ export function jevRelationalCacheKey({
   });
 }
 
-function providerQuestion() {
+export function jevRelationalProviderQuestion() {
   return {
     type: RELATION_DIRECTION_QUESTION.type,
     instructions: RELATION_DIRECTION_QUESTION.instructions,
     criteria: structuredClone(RELATION_DIRECTION_QUESTION.criteria),
+  };
+}
+
+export function buildJevRelationalSingleCaseRequest({
+  relationalCase,
+  model = JEV_RELATIONAL_MODEL,
+} = {}) {
+  validateRelationalEvidenceCase(relationalCase);
+  if (!nonEmpty(model)) throw new TypeError('model required');
+  return deepFreeze({
+    model,
+    state: structuredClone(relationalJevState(relationalCase)),
+    questions: {
+      relation: jevRelationalProviderQuestion(),
+    },
+  });
+}
+
+export function jevRelationalRequestSha256(request) {
+  return hashBody(request);
+}
+
+// Strict v0.3 transport acceptance. This is intentionally stricter than the
+// legacy M8 adapter so M8's historical contract remains backward-compatible.
+export function acceptJevRelationalSingleCaseResponse(json, { model = JEV_RELATIONAL_MODEL } = {}) {
+  if (!json || typeof json !== 'object') return { errorCode: 'invalid_response' };
+  if (json.model !== model) return { errorCode: 'model_mismatch' };
+  const answers = json.answers;
+  if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
+    return { errorCode: 'invalid_response' };
+  }
+  const ids = Object.keys(answers);
+  if (ids.length !== 1 || ids[0] !== 'relation') return { errorCode: 'answer_set_mismatch' };
+  const answer = answers.relation;
+  const probabilities = normalizeRelationProbabilities(answer?.probabilities);
+  if (!answer
+    || typeof answer !== 'object'
+    || answer.type !== 'choice'
+    || !RELATION_CHOICE_DOMAIN.includes(answer.choice)
+    || typeof answer.confidence !== 'number'
+    || !Number.isFinite(answer.confidence)
+    || answer.confidence < 0
+    || answer.confidence > 1
+    || !probabilities) {
+    return { errorCode: 'invalid_answer' };
+  }
+  return {
+    answer: {
+      choice: answer.choice,
+      confidence: answer.confidence,
+      probabilities,
+    },
   };
 }
 
@@ -157,10 +247,16 @@ export async function askJevRelationalDirection({
   const inputSha256 = relationalInputDigest(relationalCase);
   const key = jevRelationalCacheKey({ relationalCase, provider, model });
 
+  // Preserve the original M8 replay behavior, including legacy judgment-only
+  // entries created by this adapter.
   if (cache?.get) {
     let cached = await cache.get(CACHE_NAMESPACE, key);
     if (cached?.kind === CACHE_ENTRY_KIND) {
-      cached = validateJevRelationalCacheEntry(cached, { relationalCase, provider, model }).judgment;
+      if (cached.schemaVersion === JEV_RELATIONAL_CACHE_SCHEMA) {
+        cached = validateJevRelationalCacheEntry(cached, { relationalCase, provider, model }).judgment;
+      } else if (cached.schemaVersion === 2) {
+        cached = validateLegacyV02CacheEntry(cached, { relationalCase, provider, model }).judgment;
+      }
     }
     if (cached) {
       validateJevRelationalJudgment(cached, { relationalCase });
@@ -186,19 +282,14 @@ export async function askJevRelationalDirection({
   }
 
   try {
+    const request = buildJevRelationalSingleCaseRequest({ relationalCase, model });
     const options = {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${apiKey.trim()}`,
       },
-      body: JSON.stringify({
-        model,
-        state: relationalJevState(relationalCase),
-        questions: {
-          relation: providerQuestion(),
-        },
-      }),
+      body: JSON.stringify(request),
     };
 
     if (Number.isFinite(timeoutMs) && timeoutMs > 0 && typeof AbortSignal?.timeout === 'function') {
