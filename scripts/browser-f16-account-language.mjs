@@ -251,7 +251,7 @@ try {
   await scopeContains(page, 'public', '24 Eyl 2026');
   await scopeContains(page, 'kolay', 'Hesap ve üyelik');
   await scopeContains(page, 'kolay', 'Pilot plan · Pilot (manuel etkinleştirme)');
-  assert.equal(await call(page, 'openAccountMenu'), true);
+  await waitFor(() => call(page, 'openAccountMenu'), 'account menu did not mount');
   await scopeContains(page, 'header', 'İşletme sahibi');
   for (const text of ['owner@example.test', 'Dil Salon', 'Pilot plan · Pilot (manuel etkinleştirme)', 'Parolayı değiştir', 'Çıkış yap', 'Dil']) {
     await scopeContains(page, 'header', text);
@@ -278,7 +278,7 @@ try {
   assert.match(await call(page, 'text', 'public'), /24 Sept? 2026/);
   await scopeContains(page, 'kolay', 'Account and membership');
   for (const text of ['Support', 'Staff commission', 'Promotions', 'Pilot plan · Pilot (manual activation)', 'Sign out']) await scopeContains(page, 'kolay', text);
-  assert.equal(await call(page, 'openAccountMenu'), true);
+  await waitFor(() => call(page, 'openAccountMenu'), 'account menu did not mount');
   for (const text of ['Owner', 'MEMBERSHIP', 'Change password', 'Sign out', 'Language']) await scopeContains(page, 'header', text);
   for (const scope of ['header', 'kolay', 'public']) {
     const text = await call(page, 'text', scope);
@@ -293,14 +293,14 @@ try {
   state.planStatus = 'cancelled';
   await boot(page, origin);
   assert.equal(await page.evaluate('document.documentElement.lang'), 'en');
-  assert.equal(await call(page, 'openAccountMenu'), true);
+  await waitFor(() => call(page, 'openAccountMenu'), 'account menu did not mount');
   await scopeContains(page, 'header', 'The plan is not active: records are view-only');
   await scopeContains(page, 'header', 'Period ends:');
 
   // Switch back from the Randevu panel header.
   assert.equal(await call(page, 'setField', 'header', '.language-switch select', 'tr'), true);
   await waitFor(() => page.evaluate('document.documentElement.lang === "tr"'), 'language did not switch back to Turkish');
-  assert.equal(await call(page, 'openAccountMenu'), true);
+  await waitFor(() => call(page, 'openAccountMenu'), 'account menu did not mount');
   await scopeContains(page, 'header', 'Plan aktif değil: kayıtlar yalnızca görüntülenebilir');
   await scopeContains(page, 'kolay', 'Aktif değil');
   await scopeContains(page, 'public', 'Yorumlar');
