@@ -30,7 +30,14 @@
     "perf:graph-equivalence": "node perf/run-graph-equivalence.mjs",
     "test:ts-evidence-graph": "node test/typescript-evidence-graph.mjs",
     "test:public-entrypoint": "node test/public-entrypoint.mjs",
-    "perf:project-shard-adoption": "node perf/run-project-shard-adoption.mjs"
+    "perf:project-shard-adoption": "node perf/run-project-shard-adoption.mjs",
+    "test:cache-persistence": "node test/typescript-shard-persistence.mjs",
+    "test:cache-prune": "node test/cache-prune.mjs",
+    "perf:prune-cache": "node perf/prune-cache.mjs",
+    "test:cache-plan": "node test/typescript-shard-plan.mjs",
+    "perf:plan-cache": "node perf/plan-shard-cache.mjs",
+    "perf:materialize-cache": "node perf/materialize-shard-cache.mjs",
+    "test:perf-synthesis": "node test/performance-synthesis.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
