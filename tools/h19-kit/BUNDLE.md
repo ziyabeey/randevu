@@ -189,8 +189,10 @@ now verifies sources/receipts and delegates case selection to M9. Its initial
 source-only run records 12 missing-observation skips, not fabricated cases.
 The [first development collection](experiments/m11/COLLECTION-001.md) now records
 actual suite-scoped V8 observations and five cross-split dependency witnesses.
-The v0.1 split is blocked; complete closure and a versioned inventory re-freeze
-are next. Paid collection still requires its concrete budget and independently
+The v0.1 split is blocked. A [versioned source split repair](experiments/m11/REFREEZE-001.md)
+now binds 66 source files and separates whole components: 22 development /
+2 evaluation anchors, one component per split. Source readiness passes; real
+M5/M9 observation receipts and renewed fact-lineage checks are next. Paid collection still requires its concrete budget and independently
 sourced evidence.
 M12 selection remains a later contract, not an activated milestone.
 

@@ -140,3 +140,12 @@ passing development controls, actual suite-scoped V8 coverage, and five
 cross-split dependency witnesses. The v0.1 inventory is retained as historical
 input, but its split is blocked for materialization. Complete lineage closure
 and a new versioned inventory are required before cases or labels.
+
+## Versioned source split repair
+
+[Repair 001](REFREEZE-001.md) completes the repository-file traversal under the
+[frozen v0.2 profile](../../specs/M11_COHORT_REFREEZE-v0.2.md). The new inventory
+retains all 24 anchors and assigns whole components: 22 development / 2 evaluation,
+one component each, with no shared repository files. The original inventory and
+collection remain historical records. Source-only readiness passes with 22
+missing-observation skips; future fact lineage and independent labels are pending.
