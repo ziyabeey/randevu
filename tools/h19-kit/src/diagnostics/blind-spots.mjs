@@ -6,6 +6,7 @@ const CATEGORIES = new Set([
   'extraction-error',
   'semantic-unit-absence',
   'semantic-unit-symbol-unmatched',
+  'runtime-coverage-unknown-path',
   'impact-unknown',
 ]);
 
@@ -196,7 +197,33 @@ export function detectH19BlindSpots({
       }));
     }
 
+    const unknownCoveragePaths = uniqueSorted(
+      impact.symbolImpact?.report?.unknownCoveragePaths ?? [],
+    );
+
     for (const unknown of uniqueSorted(impact.unknowns)) {
+      if (unknown === 'runtime-coverage' && unknownCoveragePaths.length > 0) {
+        for (const path of unknownCoveragePaths) {
+          spots.push(blindSpotRecord({
+            category: 'runtime-coverage-unknown-path',
+            sourceRevision,
+            subject: {
+              scopeId,
+              path: normalizePath(path),
+            },
+            reason: 'impacted reference path has no explicit runtime-coverage observation',
+            evidence: {
+              scopeId,
+              path: normalizePath(path),
+              changedFiles: [...impact.changedFiles],
+              coverageState: 'unknown',
+              safeToNarrow: impact.safeToNarrow === true,
+            },
+          }));
+        }
+        continue;
+      }
+
       spots.push(blindSpotRecord({
         category: 'impact-unknown',
         sourceRevision,
