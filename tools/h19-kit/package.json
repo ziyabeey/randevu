@@ -52,7 +52,8 @@
     "test:m11-independent-assessment-receipts": "node test/m11-independent-assessment-receipts.mjs",
     "test:blind-spots": "node test/blind-spots.mjs",
     "test:python-blind-spot-probe": "node test/python-blind-spot-probe.mjs",
-    "test:runtime-coverage-blind-spots": "node test/runtime-coverage-blind-spots.mjs"
+    "test:runtime-coverage-blind-spots": "node test/runtime-coverage-blind-spots.mjs",
+    "test:jev-utility-router": "node test/jev-utility-router.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
