@@ -69,6 +69,12 @@ Yayın öncesi eksikler açıkça gösterilir. Mevcut müsaitlik önizlemesi tam
 
 Sahte salon fotoğrafı, yorum, adres veya fiyat kullanılmaz. Fotoğraf yoksa mevcut nötr durum korunur. İlk teslimatta fotoğraf yüklemeyi zorunlu kılan yeni bir yayın engeli icat edilmez.
 
+### 4.1. Mobil kurulum ve gerçek içerik yönü
+
+26 Eylül ürün devamı [mobil hizmet kurulumu, DM ve gerçek fotoğraf yardımcısı](mobile-service-setup-dm-real-photo.md) ekinde kayıtlıdır. İşletme sahibi hazır hizmet baloncuklarını basılı tutup üstteki seçili alana taşıyabilir veya tek dokunuşla ekleyebilir; ad, fiyat ve süreyi düzenleyip onaylar. Otomatik doldurma taslak önerisidir, kesin fiyat/süre veya otomatik yayın değildir. Bu deneyim aşağıdaki B paketine bağlanır.
+
+Aynı ek, gelen Instagram DM talebini randevuya dönüştürme ve LLM ile fotoğraf üretmek yerine gerçek fotoğraf çektirme yönünü ayrı sonraki dilimler olarak korur. Site renderı LLM'ye bağlanmaz; DM/sosyal içerik site/domain veya mevcut F17 tesliminin yeni önkoşulu yapılmaz. Platform izinleri, yanıt penceresi ve fotoğraf yayın hakları doğrulanmadan aktivasyon/yayın kabulü verilmez.
+
 ## 5. Sınırlı uygulama paketleri
 
 Bunlar uygulama sırası ve kabul sınırıdır; yeni aktif görev/durum kayıtları değildir. İşin sahibi ve current main belirlendiğinde her paket ayrıca boyutlandırılır; tüm paketler tek büyük implementation PR'ına sıkıştırılmaz.
