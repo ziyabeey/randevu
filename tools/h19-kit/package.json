@@ -20,6 +20,8 @@
     "test:m35-tree-sitter": "node test/m35-tree-sitter.mjs",
     "test:m35-unit-symbol": "node test/m35-unit-symbol-map.mjs",
     "test:python-evidence-graph": "node test/python-evidence-graph.mjs",
+    "test:python-module-units": "node test/python-module-units.mjs",
+    "test:python-batched-units": "node test/python-batched-units.mjs",
     "test:m4-change-impact": "node test/m4-change-impact.mjs",
     "test:m5-coverage-discovery": "node test/m5-coverage-discovery.mjs",
     "test:m5-validation-packet": "node test/m5-validation-packet.mjs",
@@ -38,6 +40,7 @@
     "test:ts-evidence-graph": "node test/typescript-evidence-graph.mjs",
     "test:public-entrypoint": "node test/public-entrypoint.mjs",
     "perf:project-shard-adoption": "node perf/run-project-shard-adoption.mjs",
+    "perf:python-units": "node perf/run-python-unit-batch.mjs",
     "test:m11-collection": "node test/m11-collection.mjs",
     "test:m11-closure": "node test/m11-closure.mjs",
     "test:m11-bridge": "node test/m11-observation-bridge.mjs",
@@ -46,7 +49,8 @@
     "test:m11-notification-freeze": "node test/m11-notification-validation-freeze.mjs",
     "test:m11-notification-result": "node test/m11-notification-validation-result.mjs",
     "test:m11-independent-assessment-freeze": "node test/m11-independent-assessment-freeze.mjs",
-    "test:m11-independent-assessment-receipts": "node test/m11-independent-assessment-receipts.mjs"
+    "test:m11-independent-assessment-receipts": "node test/m11-independent-assessment-receipts.mjs",
+    "test:blind-spots": "node test/blind-spots.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

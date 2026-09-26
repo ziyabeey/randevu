@@ -50,6 +50,7 @@ export * from './extractors/tree-sitter-units.mjs';
 export * from './extractors/tree-sitter-profiles.mjs';
 export * from './impact/unit-symbol-map.mjs';
 export * from './impact/change-impact.mjs';
+export * from './diagnostics/blind-spots.mjs';
 export * from './discovery/coverage-discovery.mjs';
 export * from './discovery/validation-packet.mjs';
 export * from './specification/test-spec.mjs';

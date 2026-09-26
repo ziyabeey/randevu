@@ -12,6 +12,7 @@ import { repositoryInventory } from '../src/repository/inventory.mjs';
 import { scan } from '../src/pipeline/scan.mjs';
 import { freezeCases } from '../src/experiments/freeze.mjs';
 import { blindSample } from '../src/experiments/blind-sample.mjs';
+import { compareH19BlindSpotLedgers, detectH19BlindSpots } from '../src/diagnostics/blind-spots.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -69,6 +70,26 @@ if (command === 'inventory') {
   process.exit(result.errors.length ? 1 : 0);
 }
 
+if (command === 'blind-spots') {
+  const file = args[0];
+  if (!file) throw new Error('blind-spots requires <input.json>');
+  const input = JSON.parse(readFileSync(file, 'utf8'));
+  const ledger = detectH19BlindSpots(input);
+  console.log(JSON.stringify(ledger, null, 2));
+  process.exit(0);
+}
+
+if (command === 'blind-spots-compare') {
+  const [beforeFile, afterFile] = args;
+  if (!beforeFile || !afterFile) {
+    throw new Error('blind-spots-compare requires <before-ledger.json> <after-ledger.json>');
+  }
+  const before = JSON.parse(readFileSync(beforeFile, 'utf8'));
+  const after = JSON.parse(readFileSync(afterFile, 'utf8'));
+  console.log(JSON.stringify(compareH19BlindSpotLedgers(before, after), null, 2));
+  process.exit(0);
+}
+
 if (command === 'experiment-freeze') {
   const [file, experimentId, protocolVersion] = args;
   if (!file || !experimentId || !protocolVersion) {
@@ -112,6 +133,8 @@ console.error([
   '  history [repo]',
   '  hotspots [repo]',
   '  scan <input.json> [--sarif]',
+  '  blind-spots <input.json>',
+  '  blind-spots-compare <before-ledger.json> <after-ledger.json>',
   '  experiment-freeze <cases.json> <experiment-id> <protocol-version>',
   '  experiment-blind <frozen.json> [count]',
 ].join('\n'));
