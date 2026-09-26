@@ -141,6 +141,8 @@ export async function sendWhatsappVerificationCode(
       NETGSM_WHATSAPP_OTP_URL,
       {
         method: 'POST',
+        // Credentials, phone and OTP belong only to the fixed provider endpoint.
+        redirect: 'error',
         headers: {
           Authorization: netgsmBasicAuth(config.usercode, config.password),
           'Content-Type': 'application/json',
@@ -157,11 +159,16 @@ export async function sendWhatsappVerificationCode(
     );
     if (response.ok && providerCode === '00') return { status: 'sent', providerCode };
 
-    const rawCode = providerCode || `http_${response.status}`;
+    // Only documented failure codes may cross the diagnostic boundary. A
+    // truncated remote body can still contain credentials, phone numbers or OTPs.
+    // Code 00 on a failed HTTP response must not look like provider success.
+    const diagnosticCode = ['30', '60', '70', '80', '100'].includes(providerCode)
+      ? providerCode
+      : `http_${response.status}`;
     return {
       status: 'failed',
-      errorClass: `netgsm_whatsapp_${rawCode}`.slice(0, 120),
-      retryable: response.status === 408 || response.status === 429 || response.status >= 500 || rawCode === '100',
+      errorClass: `netgsm_whatsapp_${diagnosticCode}`,
+      retryable: response.status === 408 || response.status === 429 || response.status >= 500 || diagnosticCode === '100',
       retryAfterSeconds: retryAfter(response),
     };
   } catch (error) {
