@@ -238,3 +238,21 @@ H19 Kit bundle work must not:
 - change H19s routing thresholds or questions;
 - run Jev before the H19s blind-label sequence authorizes it;
 - treat H19s synthetic/real-traffic evidence as equivalent to H19 Kit integration progress.
+
+
+## Next control-plane preparation — Jev Utility Router
+
+The proposed gate in [`specs/JEV_UTILITY_ROUTER_GATE-v0.1.md`](specs/JEV_UTILITY_ROUTER_GATE-v0.1.md)
+reframes Jev as a bounded semantic sensor rather than an oracle.
+
+The route order is:
+
+`deterministic → exact cache → single live → bounded fan-out → abstain`.
+
+The optimization target is reliable resolved uncertainty per provider cost, with explicit token,
+cost, latency, disagreement, abstention, false-confidence and later-evaluation accounting.
+Shannon information-gain terminology remains prohibited until a preregistered prior/posterior
+update contract exists.
+
+This preparation adds no live-provider or M12 authority. The first child must be a pure deterministic
+route planner with fake-provider tests only.
