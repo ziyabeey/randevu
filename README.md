@@ -88,10 +88,12 @@ npm run dev
 | `/app/mobile/new` | KolayApp Yeni sekmesi |
 | `/app/mobile/customers` | KolayApp Müşteriler sekmesi |
 | `/app/mobile/more` | KolayApp Diğer sekmesi |
+| `/app/products` | Ürün kataloğu ve stok yönetimi |
+| `/app/expenses` | İşletme gider kayıtları |
 | `/r/:slug` | Müşteri rezervasyonu |
 | `/m#<token>` | Tek randevuyu veya rezervasyon grubunu güvenli bağlantıyla yönetme |
 
-Eski private yollar (`/calendar`, `/bookings`, `/customers`, `/services`, `/availability`, `/setup`, `/team`, `/public-booking`) karşılık gelen kanonik `/app/*` yoluna; `/account` ise `/app` yoluna yönlendirilir. Marketing homepage runtime'ı PR #77 merge edilmeden main işlevi sayılmaz.
+Eski private yollar (`/calendar`, `/bookings`, `/customers`, `/services`, `/availability`, `/setup`, `/team`, `/public-booking`, `/products`, `/expenses`) karşılık gelen kanonik `/app/*` yoluna; `/account` ise `/app` yoluna yönlendirilir. Marketing homepage runtime'ı PR #77 merge edilmeden main işlevi sayılmaz.
 
 ## Korunan teknik sınırlar
 
