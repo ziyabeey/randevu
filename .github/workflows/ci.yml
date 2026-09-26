@@ -145,7 +145,7 @@ jobs:
           docker run --detach --name randevu-ci-postgres \
             --env POSTGRES_PASSWORD=postgres --env POSTGRES_DB=yzt_test \
             --publish 127.0.0.1:5432:5432 \
-            --health-cmd='pg_isready -U postgres -d yzt_test' \
+            --health-cmd='pg_isready -h 127.0.0.1 -p 5432 -U postgres -d yzt_test' \
             --health-interval=1s --health-timeout=3s --health-retries=30 postgres:17 \
             >"${RUNNER_TEMP}/postgres-container-id" 2>"${pg_launch_log}" &
           pg_launch_pid=$!
@@ -175,17 +175,20 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in {1..30}; do
-            if [ "$(docker inspect --format '{{.State.Health.Status}}' randevu-ci-postgres)" = healthy ]; then
-              server_version_num="$(psql -h 127.0.0.1 -U postgres -d yzt_test -Atqc 'show server_version_num')"
-              case "${server_version_num}" in
-                17*) exit 0 ;;
-                *) echo "Expected PostgreSQL 17, got server_version_num=${server_version_num}" >&2; exit 1 ;;
-              esac
+            if health="$(docker inspect --format '{{.State.Health.Status}}' randevu-ci-postgres)" && [ "${health}" = healthy ]; then
+              # Docker health can precede host connectivity during startup.
+              # Guard the assignment so set -e does not skip the retry loop.
+              if server_version_num="$(PGCONNECT_TIMEOUT=2 psql --no-psqlrc --no-password -h 127.0.0.1 -p 5432 -U postgres -d yzt_test -v ON_ERROR_STOP=1 -Atqc 'show server_version_num')"; then
+                case "${server_version_num}" in
+                  17[0-9][0-9][0-9][0-9]) echo "CI_POSTGRES_READY server_version_num=${server_version_num} attempt=${attempt}"; exit 0 ;;
+                  *) echo "Expected PostgreSQL 17, got server_version_num=${server_version_num}" >&2; exit 1 ;;
+                esac
+              fi
             fi
             sleep 1
           done
           cat "${RUNNER_TEMP}/postgres-launch.log" >&2 || true
-          echo 'Test PostgreSQL did not become healthy.'
+          echo 'Test PostgreSQL host connection did not become ready.'
           exit 1
       - name: Run all required code checks
         id: verify

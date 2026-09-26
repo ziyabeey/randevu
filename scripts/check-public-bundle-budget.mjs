@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { emitRouteBundleReceipt } from './f17-route-bundle-receipt.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const clientRoot = path.join(root, 'dist/client');
@@ -59,3 +60,6 @@ if (total > limitBytes) {
 }
 
 console.log(`Public bundle budget passed: ${(total / 1024).toFixed(2)} kB gzip / 120.00 kB. ${receipt.map((item) => `${item.file}=${(item.gzipBytes / 1024).toFixed(2)} kB`).join(', ')}`);
+
+// Keep the existing public budget and eager-private guard authoritative.
+emitRouteBundleReceipt({ clientRoot });
