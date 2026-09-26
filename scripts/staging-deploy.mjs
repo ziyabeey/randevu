@@ -127,6 +127,7 @@ const gates = {
   f10: env.RUN_F10_ACCEPTANCE === 'true',
   f10team: env.RUN_F10_TEAM_ACCEPTANCE === 'true',
   s01: env.RUN_S01_ACCEPTANCE === 'true',
+  g16: env.RUN_G16_ACCEPTANCE === 'true',
   mailbox: env.S01_RECOVERY_EMAIL ?? '',
 };
 const s07C4Input = {
@@ -237,6 +238,7 @@ await executeCutover({
     if (current.fixtures === 0 && !state.rotating && mode !== 'resume') command('npm', ['run', 'staging:seed']);
     else if (current.fixtures !== 2) throw new Error('Staging fixtures incomplete; never reset encrypted data during rotation');
     command('npm', ['run', 'staging:smoke']);
+    if (gates.g16) command('npm', ['run', 'staging:g16-acceptance']);
     if (gates.f09) command('npm', ['run', 'staging:f09-acceptance']);
     if (gates.f10) command('npm', ['run', 'staging:f10-auth-acceptance']);
     if (gates.f10team) command('npm', ['run', 'staging:f10-team-acceptance']);

@@ -24,6 +24,11 @@ on:
         required: false
         default: false
         type: boolean
+      run_g16_acceptance:
+        description: Run G16 Netgsm OTP transport and private Storage gate
+        required: false
+        default: false
+        type: boolean
       run_s01_acceptance:
         description: Run S01 public mailbox recovery boundary
         required: false
@@ -58,6 +63,7 @@ jobs:
       RUN_F09_ACCEPTANCE: ${{ inputs.run_f09_acceptance || inputs.operation == 'rotate' || inputs.operation == 'resume' }}
       RUN_F10_ACCEPTANCE: ${{ inputs.run_f10_auth_acceptance }}
       RUN_F10_TEAM_ACCEPTANCE: ${{ inputs.run_f10_team_acceptance || inputs.run_f10_auth_acceptance }}
+      RUN_G16_ACCEPTANCE: ${{ inputs.run_g16_acceptance }}
       RUN_S01_ACCEPTANCE: ${{ inputs.run_s01_acceptance }}
       RUN_S07_C4_ACCEPTANCE: ${{ inputs.run_s07_c4_acceptance }}
       S01_RECOVERY_EMAIL: ${{ inputs.s01_recovery_email }}
@@ -72,10 +78,9 @@ jobs:
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       NOTIFICATION_FROM_EMAIL: randevu@notify.kepenk.ai
-      ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
-      ZERNIO_WHATSAPP_ACCOUNT_ID: ${{ vars.ZERNIO_WHATSAPP_ACCOUNT_ID }}
-      ZERNIO_WHATSAPP_TEMPLATE_NAME: ${{ vars.ZERNIO_WHATSAPP_TEMPLATE_NAME }}
-      ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE: ${{ vars.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE }}
+      NETGSM_USERCODE: ${{ secrets.NETGSM_USERCODE || secrets.NETGSM_USERNAME }}
+      NETGSM_PASSWORD: ${{ secrets.NETGSM_PASSWORD }}
+      NETGSM_ACCEPTANCE_PHONE: ${{ secrets.NETGSM_ACCEPTANCE_PHONE }}
 
     steps:
       - name: Checkout
@@ -159,10 +164,13 @@ jobs:
             throw new Error(`Missing staging external settings: ${missingExternal.join(', ')}`);
           }
 
-          const zernioRuntime = ['ZERNIO_API_KEY', 'ZERNIO_WHATSAPP_ACCOUNT_ID', 'ZERNIO_WHATSAPP_TEMPLATE_NAME'];
-          const configuredZernio = zernioRuntime.filter((name) => Boolean(process.env[name])).length;
-          if (configuredZernio !== 0 && configuredZernio !== zernioRuntime.length) {
-            throw new Error('Zernio WhatsApp staging settings must be configured together');
+          const netgsmRuntime = ['NETGSM_USERCODE', 'NETGSM_PASSWORD'];
+          const configuredNetgsm = netgsmRuntime.filter((name) => Boolean(process.env[name])).length;
+          if (configuredNetgsm !== 0 && configuredNetgsm !== netgsmRuntime.length) {
+            throw new Error('Netgsm WhatsApp staging settings must be configured together');
+          }
+          if (process.env.RUN_G16_ACCEPTANCE === 'true' && (!process.env.NETGSM_ACCEPTANCE_PHONE || configuredNetgsm !== netgsmRuntime.length)) {
+            throw new Error('G16 acceptance requires NETGSM_USERCODE, NETGSM_PASSWORD and NETGSM_ACCEPTANCE_PHONE');
           }
 
           const requiredWorkflow = [

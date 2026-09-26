@@ -283,3 +283,24 @@ npm run test:ci-coverage
 ```
 
 F17-01 base environment kabulü `34679959999`, F09-05 gerçek provider delivery kabulü `34681540142` ile kanıtlanmıştır. Yeni workflow değişiklikleri kabul edilirken base staging smoke ve ilgili opt-in gate yeniden yeşil gösterilmelidir.
+
+## G16 hosted closeout
+
+G16'nın iki hosted-only kanıtı aynı açık opt-in staging gate'inde kapanır. Normal deploy bu gate'i çalıştırmaz.
+
+GitHub Environment `staging` üzerinde:
+
+- Worker runtime secrets: `NETGSM_USERCODE`, `NETGSM_PASSWORD`
+- acceptance-only secret: `NETGSM_ACCEPTANCE_PHONE`
+
+`NETGSM_ACCEPTANCE_PHONE` mesaj almayı kabul eden test mobilidir; workflow input'u değildir, Worker binding'ine taşınmaz ve loglanmaz. Eksik veya Türkiye mobil formatında değilse gate fail-closed durur.
+
+Kabul koşusu: **Staging deploy** → `operation=deploy` → `run_g16_acceptance=true`.
+
+`staging:g16-acceptance` base smoke sonrasında iki bağımsız gerçek-ortam kanıtı üretir:
+
+1. F16-02: production `sendWhatsappVerificationCode` helper'ını aynen kullanarak Netgsm WhatsApp OTP endpoint'ine acceptance-only gerçek alıcı için altı haneli kod yollar. İstek yalnız E.164 `to` + numeric `code` taşır; API credentials HTTP Basic Auth ile server-side kalır. Gate yalnız Netgsm provider cevabı `code=00` ise geçer. Telefon ve üretilen OTP loglanmaz. Bu receipt provider'ın isteği kabul ettiğini kanıtlar; dokümante edilmemiş bir delivery-status API'si varmış gibi davranmaz.
+2. F16-03: fixture Salon A altında geçici müşteri/grup oluşturur, gerçek Worker yoluyla WebP'yi private `appointment-private-media` bucket'ına yükler; owner A read, owner B tenant denial ve anon direct-Storage denial kanıtlarını alır; Worker üzerinden siler ve geçici DB fixture'ını temizler.
+
+Gate eksik credential, Netgsm provider reject'i, private bucket/policy uyumsuzluğu, cross-tenant/anon okunabilirlik veya silinmeyen obje durumunda fail-closed'dur. Başarılı run'ın exact `GITHUB_SHA`, run/job kimliği ve iki PASS satırı G16 closeout receipt'ine yazılır; ancak o gerçek run'dan sonra TASKS'taki F16-02/F16-03 hosted residual notları kapatılır.
+
