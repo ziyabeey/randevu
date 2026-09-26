@@ -58,7 +58,8 @@ jobs:
       RUN_F09_ACCEPTANCE: ${{ inputs.run_f09_acceptance || inputs.operation == 'rotate' || inputs.operation == 'resume' }}
       RUN_F10_ACCEPTANCE: ${{ inputs.run_f10_auth_acceptance }}
       RUN_F10_TEAM_ACCEPTANCE: ${{ inputs.run_f10_team_acceptance || inputs.run_f10_auth_acceptance }}
-      RUN_G16_ACCEPTANCE: ${{ inputs.run_g16_acceptance }}\n      RUN_S01_ACCEPTANCE: ${{ inputs.run_s01_acceptance }}
+      RUN_G16_ACCEPTANCE: ${{ inputs.run_g16_acceptance }}
+      RUN_S01_ACCEPTANCE: ${{ inputs.run_s01_acceptance }}
       S01_RECOVERY_EMAIL: ${{ inputs.s01_recovery_email }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -74,7 +75,8 @@ jobs:
       ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
       ZERNIO_WHATSAPP_ACCOUNT_ID: ${{ vars.ZERNIO_WHATSAPP_ACCOUNT_ID }}
       ZERNIO_WHATSAPP_TEMPLATE_NAME: ${{ vars.ZERNIO_WHATSAPP_TEMPLATE_NAME }}
-      ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE: ${{ vars.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE }}\n      ZERNIO_ACCEPTANCE_PHONE: ${{ secrets.ZERNIO_ACCEPTANCE_PHONE }}
+      ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE: ${{ vars.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE }}
+      ZERNIO_ACCEPTANCE_PHONE: ${{ secrets.ZERNIO_ACCEPTANCE_PHONE }}
 
     steps:
       - name: Checkout
