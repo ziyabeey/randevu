@@ -1,4 +1,11 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
+import { repositoryInventory } from '../src/repository/inventory.mjs';
+import { buildPythonEvidenceGraph } from '../src/indexing/python-evidence-graph.mjs';
+import { analyzeChangeImpact } from '../src/impact/change-impact.mjs';
 
 import {
   compareH19BlindSpotLedgers,
@@ -206,5 +213,89 @@ assert.throws(
   }),
   /scopeId and impact/,
 );
+
+
+const integrationRoot = await mkdtemp(path.join(os.tmpdir(), 'h19-blind-spot-integration-'));
+try {
+  await mkdir(path.join(integrationRoot, 'tests'), { recursive: true });
+  await writeFile(path.join(integrationRoot, 'app.py'), [
+    'def foo(x):',
+    '    return x + 1',
+    '',
+    'def caller():',
+    '    return foo(1)',
+    '',
+  ].join('\n'));
+  await writeFile(path.join(integrationRoot, 'tests', 'test_app.py'), [
+    'from app import foo',
+    '',
+    'def test_foo():',
+    '    assert foo(1) == 2',
+    '',
+  ].join('\n'));
+
+  const realInventory = await repositoryInventory(integrationRoot);
+  const realUnits = realInventory.units.filter((unit) => unit.path === 'app.py');
+  assert.equal(realUnits.length, 2);
+
+  const realBeforeImpact = analyzeChangeImpact({
+    changedFiles: ['app.py'],
+    semanticUnits: realUnits,
+    symbolGraph: null,
+    coverageByPath: {},
+    temporalCoupling: [],
+  });
+  const realBefore = detectH19BlindSpots({
+    inventory: realInventory,
+    focusFiles: ['app.py'],
+    impacts: [{ scopeId: 'python-production-chain', impact: realBeforeImpact }],
+    sourceRevision: revision,
+  });
+
+  assert.equal(
+    realBefore.counts.byCategory['semantic-unit-symbol-unmatched'],
+    2,
+  );
+  assert.ok(realBefore.spots.some((spot) =>
+    spot.category === 'impact-unknown'
+    && spot.subject.unknown === 'symbol-graph'));
+
+  const realGraph = await buildPythonEvidenceGraph({ cwd: integrationRoot });
+  const realAfterImpact = analyzeChangeImpact({
+    changedFiles: ['app.py'],
+    semanticUnits: realUnits,
+    symbolGraph: realGraph.graph,
+    coverageByPath: {},
+    temporalCoupling: [],
+  });
+  const realAfter = detectH19BlindSpots({
+    inventory: realInventory,
+    focusFiles: ['app.py'],
+    impacts: [{ scopeId: 'python-production-chain', impact: realAfterImpact }],
+    sourceRevision: revision,
+  });
+
+  assert.equal(
+    realAfter.counts.byCategory['semantic-unit-symbol-unmatched'],
+    0,
+  );
+  assert.ok(!realAfter.spots.some((spot) =>
+    spot.category === 'impact-unknown'
+    && spot.subject.unknown === 'symbol-graph'));
+  assert.ok(realAfter.spots.some((spot) =>
+    spot.category === 'impact-unknown'
+    && spot.subject.unknown === 'runtime-coverage'));
+
+  const realComparison = compareH19BlindSpotLedgers(realBefore, realAfter);
+  assert.equal(realComparison.comparable, true);
+  assert.ok(realComparison.counts.resolved >= 4);
+  assert.equal(realComparison.counts.persistent, 2);
+  assert.equal(realComparison.counts.introduced, 1);
+  assert.ok(realComparison.blindSpotReductionRate > 0);
+} finally {
+  await rm(integrationRoot, { recursive: true, force: true });
+}
+
+console.log('H19 blind-spot production-chain integration: real inventory -> Python graph -> M4 -> ledger comparison PASS');
 
 console.log('H19 blind-spot ledger: deterministic candidates, resolution/persistence/introduction tracking, extraction precedence and comparison boundaries PASS');
