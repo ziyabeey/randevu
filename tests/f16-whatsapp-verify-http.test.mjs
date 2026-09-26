@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import app from '../worker/app.ts';
-import { issueWhatsappOtpChallenge, verifyWhatsappPhoneProof, whatsappPhoneRateKey } from '../worker/whatsapp-verify.ts';
+import {
+  issueWhatsappOtpChallenge,
+  verifyWhatsappPhoneProof,
+  whatsappOtpChallengeUseKey,
+  whatsappPhoneRateKey,
+} from '../worker/whatsapp-verify.ts';
 
 const gateSecret = 'g'.repeat(48);
 const env = {
@@ -94,10 +99,12 @@ test('F16-02 approved app-issued WhatsApp OTP returns a slug-and-phone-bound boo
   globalThis.fetch = async (input, init = {}) => {
     const url = String(input);
     if (url.endsWith('/rest/v1/rpc/execute_public_operation')) {
-      // R1-B1: every code check spends the per-phone check budget.
+      // R1-B1: every code check spends the per-phone check budget, and a
+      // matched code consumes its challenge in the same call.
       const wire = JSON.parse(String(init.body));
       assert.equal(wire.p_args.p_phase, 'check');
       assert.equal(wire.p_args.p_phone_key, phoneKey);
+      assert.equal(wire.p_args.p_challenge_key, await whatsappOtpChallengeUseKey(verificationChallenge));
       return rpc([{ name: 'Salon A', slug: 'salon-a' }]);
     }
     throw new Error(`unexpected fetch ${url}`);
@@ -130,6 +137,64 @@ test('F16-02 approved app-issued WhatsApp OTP returns a slug-and-phone-bound boo
   } finally {
     globalThis.fetch = original;
   }
+});
+
+async function checkWith(dbResponse, code) {
+  const original = globalThis.fetch;
+  const verificationChallenge = await issueWhatsappOtpChallenge(gateSecret, 'salon-a', '05551602001', '123456');
+  const wires = [];
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith('/rest/v1/rpc/execute_public_operation')) {
+      wires.push(JSON.parse(String(init.body)));
+      return dbResponse;
+    }
+    throw new Error(`unexpected fetch ${url}`);
+  };
+  try {
+    const response = await app.request('http://localhost/api/public/verify/whatsapp/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '203.0.113.45' },
+      body: JSON.stringify({ slug: 'salon-a', phone: '05551602001', code, verificationChallenge }),
+    }, env);
+    return { response, body: await response.json(), wires, verificationChallenge };
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+test('F16-02 a wrong OTP spends the per-phone check budget and yields no proof', async () => {
+  const { response, body, wires } = await checkWith(rpc([{ name: 'Salon A', slug: 'salon-a' }]), '654321');
+  assert.equal(response.status, 400);
+  assert.equal(body.error.code, 'WHATSAPP_OTP_INVALID');
+  assert.equal(body.phoneVerificationToken, undefined);
+  // The guess reached the budget before its outcome was revealed, and it
+  // cannot consume the challenge.
+  assert.equal(wires.length, 1);
+  assert.equal(wires[0].p_args.p_phase, 'check');
+  assert.equal(wires[0].p_args.p_phone_key, await whatsappPhoneRateKey(gateSecret, '05551602001'));
+  assert.equal('p_challenge_key' in wires[0].p_args, false);
+});
+
+test('F16-02 a replayed verified challenge is refused without a second proof', async () => {
+  const { response, body, wires, verificationChallenge } = await checkWith(
+    json({ ok: false, error: { message: 'WHATSAPP_OTP_CHALLENGE_USED' } }),
+    '123456',
+  );
+  assert.equal(response.status, 400);
+  assert.equal(body.error.code, 'WHATSAPP_OTP_INVALID');
+  assert.equal(body.phoneVerificationToken, undefined);
+  assert.equal(wires[0].p_args.p_challenge_key, await whatsappOtpChallengeUseKey(verificationChallenge));
+});
+
+test('F16-02 a correct OTP past the per-phone budget is rate limited without a proof', async () => {
+  const { response, body } = await checkWith(
+    json({ ok: false, error: { message: 'PUBLIC_BOOKING_RATE_LIMITED:120' } }),
+    '123456',
+  );
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get('Retry-After'), '120');
+  assert.equal(body.phoneVerificationToken, undefined);
 });
 
 test('F16-02 single public booking fails closed before provider or DB work without WhatsApp proof', async () => {

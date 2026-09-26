@@ -12,17 +12,21 @@ grant execute on function pg_temp.f16_verify_assert(boolean,text) to anon;
 
 -- One phone_verify call: a missing slug is enough to prove the admission
 -- boundary without customer or appointment state.
-create function pg_temp.f16_verify_call(p_phase text, p_phone_key text, p_actor text, p_network text)
+create function pg_temp.f16_verify_call(
+  p_phase text, p_phone_key text, p_actor text, p_network text, p_challenge_key text default null
+)
 returns jsonb language sql as $$
   select public.execute_public_operation(
     'phone_verify',
-    jsonb_build_object('p_slug','f16-missing-salon','p_phase',p_phase,'p_phone_key',p_phone_key),
+    jsonb_strip_nulls(jsonb_build_object(
+      'p_slug','f16-missing-salon','p_phase',p_phase,'p_phone_key',p_phone_key,'p_challenge_key',p_challenge_key
+    )),
     repeat('g',43),
     p_actor,
     p_network
   )
 $$;
-grant execute on function pg_temp.f16_verify_call(text,text,text,text) to anon;
+grant execute on function pg_temp.f16_verify_call(text,text,text,text,text) to anon;
 
 insert into public.public_booking_abuse_config(
   config_key, gate_secret_hash,
@@ -199,6 +203,58 @@ end
 $$;
 
 reset role;
+
+-- R1-B1 single use: a check whose code matched consumes its challenge once. A
+-- replay of the same challenge is refused and still spends the phone budget;
+-- another challenge for the same phone is unaffected.
+delete from public.public_booking_rate_counters where action like 'verify%';
+
+set local role anon;
+do $$
+declare
+  v_result jsonb;
+  v_phone text := encode(digest('f16-single-use-phone','sha256'),'hex');
+  v_first text := encode(digest('f16-challenge-1','sha256'),'hex');
+  v_second text := encode(digest('f16-challenge-2','sha256'),'hex');
+begin
+  v_result := pg_temp.f16_verify_call('check', v_phone, repeat('b',64), repeat('c',64), v_first);
+  perform pg_temp.f16_verify_assert(v_result->>'ok'='true', 'first use of a matched challenge was rejected: '||v_result::text);
+
+  v_result := pg_temp.f16_verify_call('check', v_phone, encode(digest('f16-replay-actor','sha256'),'hex'),
+    encode(digest('f16-replay-network','sha256'),'hex'), v_first);
+  perform pg_temp.f16_verify_assert(
+    v_result#>>'{error,message}'='WHATSAPP_OTP_CHALLENGE_USED',
+    'a replayed challenge from a new actor and network was accepted: '||v_result::text
+  );
+
+  v_result := pg_temp.f16_verify_call('check', v_phone, repeat('b',64), repeat('c',64), v_second);
+  perform pg_temp.f16_verify_assert(v_result->>'ok'='true', 'a fresh challenge for the same phone was rejected: '||v_result::text);
+
+  v_result := pg_temp.f16_verify_call('start', v_phone, repeat('b',64), repeat('c',64), v_second);
+  perform pg_temp.f16_verify_assert(v_result#>>'{error,message}'='PUBLIC_BOOKING_GATE_INVALID_PROOF', 'a start carried a challenge key: '||v_result::text);
+  v_result := pg_temp.f16_verify_call('check', v_phone, repeat('b',64), repeat('c',64), 'not-a-challenge-key');
+  perform pg_temp.f16_verify_assert(v_result#>>'{error,message}'='PUBLIC_BOOKING_GATE_INVALID_PROOF', 'a malformed challenge key was accepted: '||v_result::text);
+end
+$$;
+
+reset role;
+
+select pg_temp.f16_verify_assert(
+  (select count=3 from public.public_booking_rate_counters
+   where action='verify_check' and dimension='phone' and key_hash=encode(digest('f16-single-use-phone','sha256'),'hex')),
+  'a replayed challenge did not spend the per-phone check budget'
+);
+select pg_temp.f16_verify_assert(
+  (select count(*)=2 from public.public_booking_rate_counters
+   where action='verify_used' and dimension='challenge'
+     and key_hash in (encode(digest('f16-challenge-1','sha256'),'hex'), encode(digest('f16-challenge-2','sha256'),'hex'))),
+  'verified challenges were not recorded as used'
+);
+select pg_temp.f16_verify_assert(
+  public.public_operation_error('WHATSAPP_OTP_CHALLENGE_USED')#>>'{error,message}'='WHATSAPP_OTP_CHALLENGE_USED'
+  and public.public_operation_error('private email=user@example.test token=secret')#>>'{error,message}'='PUBLIC_OPERATION_UNAVAILABLE',
+  'public error vocabulary lost the challenge refusal or leaked an unknown error'
+);
 
 select pg_temp.f16_verify_assert(
   not exists (select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace

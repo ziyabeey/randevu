@@ -66,6 +66,10 @@ async function hmac(secret: string, purpose: string, value: string) {
   ));
 }
 
+function toHex(bytes: Uint8Array) {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 async function phoneHash(phone: string) {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(phone));
   return bytesToBase64Url(new Uint8Array(digest));
@@ -83,8 +87,13 @@ export async function whatsappPhoneRateKey(secret: string, phone: string) {
     false,
     ['sign'],
   );
-  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`public-booking-phone|${normalized}`)));
-  return [...mac].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  return toHex(new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`public-booking-phone|${normalized}`))));
+}
+
+// Single-use key for a verified challenge. The signature covers the exact
+// encoded payload, so a valid token string names exactly one issued challenge.
+export async function whatsappOtpChallengeUseKey(token: string) {
+  return toHex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`whatsapp-otp-challenge-use|${token}`))));
 }
 
 export function normalizeWhatsappPhone(value: string) {

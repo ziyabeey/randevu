@@ -6,6 +6,7 @@ import {
   rateLimitFromRpcError,
   resolvePublicAbuseIdentity,
   type PublicAbuseEnv,
+  type PublicAbuseIdentity,
 } from './public-abuse.ts';
 import { publicOperation } from './public-rpc.ts';
 import {
@@ -15,6 +16,7 @@ import {
   normalizeWhatsappPhone,
   sendWhatsappVerificationCode,
   verifyWhatsappOtpChallenge,
+  whatsappOtpChallengeUseKey,
   whatsappPhoneRateKey,
   zernioWhatsappConfigured,
   type ZernioWhatsappEnv,
@@ -32,18 +34,29 @@ function validSlug(value: unknown): value is string {
     && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value);
 }
 
+type PhoneVerifyArgs = {
+  p_phase: 'start' | 'check';
+  // Present only on a check whose code already matched: the database consumes
+  // it once, so one challenge yields at most one booking proof.
+  p_challenge_key?: string;
+};
+
 // Spends the actor/network `verify` budget and the per-phone budget for this
-// phase before any Zernio send or code check, then confirms the salon is live.
-async function validatePublicBusiness(context: any, slug: string, phase: 'start' | 'check', phone: string) {
-  const abuse = await resolvePublicAbuseIdentity(context);
-  if (!abuse) return { response: context.json(publicGateUnavailableBody(), 503) } as const;
+// phase before any Zernio send or check outcome, then confirms the salon is live.
+async function validatePublicBusiness(
+  context: any,
+  abuse: PublicAbuseIdentity,
+  slug: string,
+  phone: string,
+  args: PhoneVerifyArgs,
+) {
   const phoneKey = await whatsappPhoneRateKey(abuse.gateSecret, phone);
   if (!phoneKey) return { response: context.json(publicGateUnavailableBody(), 503) } as const;
 
   const result = await publicOperation<PublicBusiness[]>(
     context.env,
     'phone_verify',
-    { p_slug: slug, p_phase: phase, p_phone_key: phoneKey },
+    { p_slug: slug, p_phone_key: phoneKey, ...args },
     abuse,
   );
   if (!result.ok) {
@@ -52,6 +65,9 @@ async function validatePublicBusiness(context: any, slug: string, phase: 'start'
       const response = context.json(publicRateLimitedBody(retryAfter), 429);
       response.headers.set('Retry-After', String(retryAfter));
       return { response } as const;
+    }
+    if (result.data.message === 'WHATSAPP_OTP_CHALLENGE_USED') {
+      return { response: context.json(otpInvalidBody(), 400) } as const;
     }
     return {
       response: context.json({
@@ -66,7 +82,11 @@ async function validatePublicBusiness(context: any, slug: string, phase: 'start'
       }, 404),
     } as const;
   }
-  return { abuse } as const;
+  return { ok: true } as const;
+}
+
+function otpInvalidBody() {
+  return { error: { code: 'WHATSAPP_OTP_INVALID', message: 'Kod yanlış veya süresi dolmuş.' } };
 }
 
 router.post('/verify/whatsapp/start', async (context) => {
@@ -84,11 +104,13 @@ router.post('/verify/whatsapp/start', async (context) => {
     }, 503);
   }
 
-  const validated = await validatePublicBusiness(context, slug, 'start', phone);
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+  const validated = await validatePublicBusiness(context, abuse, slug, phone, { p_phase: 'start' });
   if ('response' in validated) return validated.response;
 
   const code = generateWhatsappOtpCode();
-  const challenge = await issueWhatsappOtpChallenge(validated.abuse.gateSecret, slug, phone, code);
+  const challenge = await issueWhatsappOtpChallenge(abuse.gateSecret, slug, phone, code);
   if (!challenge) {
     return context.json({
       error: { code: 'WHATSAPP_OTP_UNAVAILABLE', message: 'Telefon doğrulama hazırlanamadı.' },
@@ -139,25 +161,19 @@ router.post('/verify/whatsapp/check', async (context) => {
     }, 503);
   }
 
-  const validated = await validatePublicBusiness(context, slug, 'check', phone);
+  const abuse = await resolvePublicAbuseIdentity(context);
+  if (!abuse) return context.json(publicGateUnavailableBody(), 503);
+
+  // The outcome is computed here but revealed only after the database has
+  // spent this check's budget, so a guess costs the same whether it is right.
+  const verified = await verifyWhatsappOtpChallenge(abuse.gateSecret, challenge, slug, phone, code);
+  const validated = await validatePublicBusiness(context, abuse, slug, phone, verified
+    ? { p_phase: 'check', p_challenge_key: await whatsappOtpChallengeUseKey(challenge) }
+    : { p_phase: 'check' });
   if ('response' in validated) return validated.response;
+  if (!verified) return context.json(otpInvalidBody(), 400);
 
-  if (!await verifyWhatsappOtpChallenge(
-    validated.abuse.gateSecret,
-    challenge,
-    slug,
-    phone,
-    code,
-  )) {
-    return context.json({
-      error: {
-        code: 'WHATSAPP_OTP_INVALID',
-        message: 'Kod yanlış veya süresi dolmuş.',
-      },
-    }, 400);
-  }
-
-  const proof = await issueWhatsappPhoneProof(validated.abuse.gateSecret, slug, phone);
+  const proof = await issueWhatsappPhoneProof(abuse.gateSecret, slug, phone);
   if (!proof) {
     return context.json({
       error: { code: 'WHATSAPP_OTP_UNAVAILABLE', message: 'Telefon doğrulama kanıtı hazırlanamadı.' },

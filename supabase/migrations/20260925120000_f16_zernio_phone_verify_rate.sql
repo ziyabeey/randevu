@@ -7,14 +7,16 @@ begin;
 -- checks across networks. Every start and check therefore also spends a
 -- per-phone budget keyed by the Worker's HMAC of the normalized number (never
 -- the number itself): 3 sends and 5 checks per 10 minutes and 30 operations
--- per 24 hours, whatever actor or network asks.
+-- per 24 hours, whatever actor or network asks. A check whose code matched
+-- also consumes its challenge once (`verify_used` / `challenge`), so one issued
+-- code yields at most one booking proof.
 alter table public.public_booking_rate_counters
   drop constraint public_booking_rate_counters_action_check,
   add constraint public_booking_rate_counters_action_check check
-    (action in ('read','create','recover','slot','request','manage_read','manage_slot','manage_change','manage_cancel','business_create','verify','verify_send','verify_check','verify_day')),
+    (action in ('read','create','recover','slot','request','manage_read','manage_slot','manage_change','manage_cancel','business_create','verify','verify_send','verify_check','verify_day','verify_used')),
   drop constraint public_booking_rate_counters_dimension_check,
   add constraint public_booking_rate_counters_dimension_check check
-    (dimension in ('actor','network','business','user','phone'));
+    (dimension in ('actor','network','business','user','phone','challenge'));
 
 create or replace function public.consume_public_booking_rate(
   p_action text,
@@ -121,16 +123,25 @@ revoke all on function public.enforce_public_booking_rate(text,text,text,uuid)
   from public, anon, authenticated;
 
 -- Per-phone OTP budget. The key is the Worker's HMAC of the normalized phone,
--- so the counter never stores a reversible phone number.
-create or replace function public.enforce_public_phone_verify_rate(p_phase text, p_phone_key text)
-returns void
+-- so the counter never stores a reversible phone number. The Worker sends a
+-- challenge key only for a check whose code matched; it is consumed once and a
+-- replay returns false after the budget has still been spent. The marker row
+-- outlives the 10-minute challenge until the 48-hour counter prune.
+drop function if exists public.enforce_public_phone_verify_rate(text,text);
+create or replace function public.enforce_public_phone_verify_rate(
+  p_phase text, p_phone_key text, p_challenge_key text
+)
+returns boolean
 language plpgsql
 security definer
 set search_path = ''
 as $f1602phone$
+declare
+  v_now timestamptz := clock_timestamp();
 begin
   if p_phase is null or p_phase not in ('start','check')
-     or p_phone_key is null or p_phone_key !~ '^[0-9a-f]{64}$' then
+     or p_phone_key is null or p_phone_key !~ '^[0-9a-f]{64}$'
+     or (p_challenge_key is not null and (p_phase <> 'check' or p_challenge_key !~ '^[0-9a-f]{64}$')) then
     raise exception 'PUBLIC_BOOKING_GATE_INVALID_PROOF';
   end if;
   if p_phase = 'start' then
@@ -139,9 +150,54 @@ begin
     perform public.consume_public_booking_rate('verify_check', 'phone', p_phone_key, 5, 600);
   end if;
   perform public.consume_public_booking_rate('verify_day', 'phone', p_phone_key, 30, 86400);
+
+  if p_challenge_key is null then
+    return true;
+  end if;
+  insert into public.public_booking_rate_counters(
+    action, dimension, key_hash, window_started_at, count, updated_at
+  ) values ('verify_used', 'challenge', p_challenge_key, v_now, 1, v_now)
+  on conflict (action, dimension, key_hash) do nothing;
+  return found;
 end
 $f1602phone$;
-revoke all on function public.enforce_public_phone_verify_rate(text,text)
+revoke all on function public.enforce_public_phone_verify_rate(text,text,text)
+  from public, anon, authenticated;
+
+-- Same bounded vocabulary as F12-04C plus the single-use challenge refusal.
+create or replace function public.public_operation_error(p_message text)
+returns jsonb
+language sql
+immutable
+set search_path = public
+as $$
+  select jsonb_build_object('ok',false,'error',jsonb_build_object('message',
+    case when p_message ~ '^PUBLIC_BOOKING_RATE_LIMITED:[0-9]{1,5}$' then p_message
+    when p_message = any(array[
+      'PUBLIC_BOOKING_GATE_UNAVAILABLE','PUBLIC_BOOKING_GATE_INVALID_PROOF',
+      'PUBLIC_BOOKING_NOT_FOUND','PUBLIC_BOOKING_DISABLED','PUBLIC_SERVICES_LIMIT_EXCEEDED','IDEMPOTENCY_CONFLICT',
+      'IDEMPOTENCY_IN_PROGRESS','APPOINTMENT_CONFLICT','SLOT_UNAVAILABLE',
+      'GROUP_SLOT_UNAVAILABLE','GROUP_LINE_LIMIT_EXCEEDED','GROUP_SLOT_BUDGET_EXCEEDED',
+      'MIXED_CURRENCY','DATE_OUT_OF_RANGE',
+      'PUBLIC_CONTACT_REQUIRED','INVALID_CUSTOMER_NAME','INVALID_CUSTOMER_PHONE',
+      'INVALID_CUSTOMER_EMAIL','NOTES_TOO_LONG','INVALID_START','INVALID_DATE',
+      'INVALID_GROUP_LINES','INVALID_BOOKING_RECOVERY_BOOTSTRAP','INVALID_IDEMPOTENCY_KEY',
+      'BOOKING_CLIENT_UPDATE_REQUIRED','BOOKING_INTENT_CLOSED','BOOKING_INTENT_DEADLINE_EXPIRED',
+      'MANAGEMENT_NOT_FOUND','INVALID_MANAGEMENT_TOKEN','APPOINTMENT_NOT_MANAGEABLE',
+      'REASON_TOO_LONG','SERVICE_NOT_FOUND','STAFF_NOT_ELIGIBLE',
+      'AUTH_REQUIRED','INVALID_BUSINESS_NAME','INVALID_BUSINESS_SLUG','BUSINESS_SLUG_TAKEN',
+      'INVALID_PUBLIC_OPERATION',
+      -- F11-03 group management vocabulary.
+      'MANAGEMENT_GROUP_REQUIRED','BOOKING_GROUP_MUTATION_REQUIRED',
+      'BOOKING_GROUP_VERSION_CONFLICT','INVALID_GROUP_VERSION',
+      'BOOKING_GROUP_NOT_RESCHEDULABLE','BOOKING_GROUP_NOT_CANCELLABLE',
+      'CANCELLATION_REASON_TOO_LONG',
+      -- F16-02: a replayed, already verified OTP challenge.
+      'WHATSAPP_OTP_CHALLENGE_USED'
+    ]) then p_message else 'PUBLIC_OPERATION_UNAVAILABLE' end));
+$$;
+
+revoke all on function public.public_operation_error(text)
   from public, anon, authenticated;
 
 -- Keep execute_public_operation as the sole anonymous transport. phone_verify
@@ -196,7 +252,12 @@ begin
 
   if p_action = 'phone_verify' then
     begin
-      perform public.enforce_public_phone_verify_rate(p_args->>'p_phase', p_args->>'p_phone_key');
+      -- A replayed challenge returns (rather than raises) so the spent budget stays.
+      if not public.enforce_public_phone_verify_rate(
+        p_args->>'p_phase', p_args->>'p_phone_key', p_args->>'p_challenge_key'
+      ) then
+        return public.public_operation_error('WHATSAPP_OTP_CHALLENGE_USED');
+      end if;
     exception when others then return public.public_operation_error(sqlerrm);
     end;
   end if;
