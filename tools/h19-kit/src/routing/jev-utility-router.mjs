@@ -126,11 +126,16 @@ export function validateJevQuestionCandidate(input) {
   return deepFreeze(candidate);
 }
 
+function candidateDigest(candidate) {
+  return cacheKey('h19-jev-question-candidate:v1', candidate);
+}
+
 function decisionBody(candidate, route, reasonCode, plannedLiveQuestions) {
   return {
     schemaVersion: 1,
     kind: 'h19-jev-utility-route-decision',
     gate: JEV_UTILITY_ROUTER_GATE,
+    candidateSha256: candidateDigest(candidate),
     question: structuredClone(candidate.question),
     route,
     reasonCode,
@@ -189,6 +194,9 @@ export function routeJevQuestion(input) {
   } else if (!candidate.live.monetaryCeiling) {
     route = 'abstain';
     reasonCode = 'monetary-ceiling-missing';
+  } else if (candidate.live.monetaryCeiling.amount === 0) {
+    route = 'abstain';
+    reasonCode = 'monetary-ceiling-zero';
   } else if (candidate.live.fanout.requested) {
     if (!candidate.live.fanout.eligible) {
       route = 'single-live';
@@ -222,6 +230,7 @@ export function validateJevRouteDecision(decision, { candidate } = {}) {
     && decision.kind === 'h19-jev-utility-route-decision'
     && decision.gate === JEV_UTILITY_ROUTER_GATE,
   'unsupported Jev route decision');
+  assert(sha256(decision.candidateSha256), 'candidate digest required');
   assert(ROUTES.has(decision.route), 'invalid Jev route');
   assert(nonEmpty(decision.reasonCode), 'route reasonCode required');
   assert(integerNonNegative(decision.plannedLiveQuestions),
@@ -246,7 +255,10 @@ export function validateJevRouteDecision(decision, { candidate } = {}) {
   }
 
   if (candidate) {
-    const replay = routeJevQuestion(candidate);
+    const validated = validateJevQuestionCandidate(candidate);
+    assert(decision.candidateSha256 === candidateDigest(validated),
+      'route decision candidate mismatch');
+    const replay = routeJevQuestion(validated);
     assert(stableJson(replay) === stableJson(decision),
       'route decision replay mismatch');
   }
