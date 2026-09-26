@@ -24,7 +24,7 @@
     "staging:f10-auth-acceptance": "node scripts/staging-f10-auth-acceptance.mjs",
     "staging:f10-team-acceptance": "node scripts/staging-f10-team-acceptance.mjs",
     "staging:s01-acceptance": "node scripts/staging-s01-recovery-acceptance-runner.mjs",
-    "staging:s07-acceptance": "node scripts/staging-s07-acceptance.mjs",
+    "staging:s07-acceptance": "node scripts/staging-s07-acceptance.mjs",\n    "staging:g16-acceptance": "node scripts/staging-g16-acceptance.mjs",
     "build:ci": "vite build",
     "build:staging:ci": "CLOUDFLARE_ENV=staging vite build",
     "test:docs": "node scripts/ci-docs.mjs"
