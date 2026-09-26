@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent, MouseEvent, ReactNode } from 'react';
 import { api, ApiRequestError } from './api';
 import AccountMenu from './AccountMenu';
@@ -90,8 +90,6 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [scopeEpoch, setScopeEpoch] = useState(0);
   const [scopeChanging, setScopeChanging] = useState(false);
-  const businessSelectionQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const businessSelectionIntentRef = useRef(0);
 
   const refreshSession = useCallback(async () => {
     const next = await api<WorkspaceSession>('/api/session');
@@ -222,50 +220,32 @@ export default function WorkspaceShell({ page }: { page: WorkspacePage }) {
     } finally { setBusy(false); }
   }
 
-  const selectBusiness = useCallback((businessId: string, options: { to?: string } = {}) => {
-    const intent = businessSelectionIntentRef.current + 1;
-    businessSelectionIntentRef.current = intent;
+  const selectBusiness = useCallback(async (businessId: string, options: { to?: string } = {}) => {
+    if (businessId === session?.activeBusinessId) return;
     setBusy(true);
     setScopeChanging(true);
     setNotice('');
     setScopeEpoch((value) => value + 1);
-
-    const run = async () => {
-      try {
-        await api('/api/businesses/select', {
-          method: 'POST',
-          body: JSON.stringify({ businessId }),
-        });
-
-        // Business selection changes the authoritative cookie. Keep requests
-        // serialized so an older, slower response cannot overwrite a newer
-        // user intent. Only the latest intent is allowed to publish UI state.
-        if (intent !== businessSelectionIntentRef.current) return;
-
-        const verified = await refreshSession();
-        if (intent !== businessSelectionIntentRef.current) return;
-        if (verified.activeBusinessId !== businessId) {
-          throw new ApiRequestError(t('İşletme seçimi sunucuda doğrulanamadı.'), 409, 'WORKSPACE_CONTEXT_CHANGED');
-        }
-        setScopeEpoch((value) => value + 1);
-        navigateApp(options.to ?? '/app/calendar', { replace: true });
-      } catch (error) {
-        if (intent !== businessSelectionIntentRef.current) return;
-        try { await refreshSession(); } catch { /* preserve the actionable selection error */ }
-        setNotice(error instanceof Error ? error.message : t('İşletme seçilemedi.'));
-        throw error;
-      } finally {
-        if (intent === businessSelectionIntentRef.current) {
-          setScopeChanging(false);
-          setBusy(false);
-        }
+    try {
+      await api('/api/businesses/select', {
+        method: 'POST',
+        body: JSON.stringify({ businessId }),
+      });
+      const verified = await refreshSession();
+      if (verified.activeBusinessId !== businessId) {
+        throw new ApiRequestError(t('İşletme seçimi sunucuda doğrulanamadı.'), 409, 'WORKSPACE_CONTEXT_CHANGED');
       }
-    };
-
-    const queued = businessSelectionQueueRef.current.catch(() => undefined).then(run);
-    businessSelectionQueueRef.current = queued.catch(() => undefined);
-    return queued;
-  }, [refreshSession]);
+      setScopeEpoch((value) => value + 1);
+      navigateApp(options.to ?? '/app/calendar', { replace: true });
+    } catch (error) {
+      try { await refreshSession(); } catch { /* preserve the actionable selection error */ }
+      setNotice(error instanceof Error ? error.message : t('İşletme seçilemedi.'));
+      throw error;
+    } finally {
+      setScopeChanging(false);
+      setBusy(false);
+    }
+  }, [refreshSession, session?.activeBusinessId]);
 
   async function logout() {
     setBusy(true);
