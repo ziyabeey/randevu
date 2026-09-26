@@ -78,7 +78,7 @@ jobs:
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       NOTIFICATION_FROM_EMAIL: randevu@notify.kepenk.ai
-      NETGSM_USERCODE: ${{ secrets.NETGSM_USERCODE }}
+      NETGSM_USERCODE: ${{ secrets.NETGSM_USERCODE || secrets.NETGSM_USERNAME }}
       NETGSM_PASSWORD: ${{ secrets.NETGSM_PASSWORD }}
       NETGSM_ACCEPTANCE_PHONE: ${{ secrets.NETGSM_ACCEPTANCE_PHONE }}
 
