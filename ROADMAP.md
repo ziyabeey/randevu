@@ -12,6 +12,7 @@
 | Ortak teknik kurallar nedir? | [K01/K02/K03](docs/plan/architecture-contracts.md), [DECISIONS](DECISIONS.md) |
 | Release/pilot ne zaman kabul edilir? | [MVP_ACCEPTANCE](MVP_ACCEPTANCE.md), F17-04/05 |
 | Marketing homepage yönü nedir? | [docs/brand/README.md](docs/brand/README.md), MKT-01 / Issue #70 |
+| İşletmenin kendi sayfası nasıl teslim edilir? | [İşletme sayfası teslimat planı](docs/plan/public-salon-site-delivery.md), DOMAIN-01 |
 
 TASKS sahiplik/durum kaynağıdır. ROADMAP yalnız ürün sırası ve bağımlılıkları özetler; eski PR/branch durumlarını tekrar etmez.
 
@@ -55,6 +56,12 @@ Bu tablo **durum göstermez**. Yalnız işlerin hangi sırayla açılabileceğin
 - Main kaydığında branch güncellenir; eski branch state'i main yerine kaynak sayılmaz.
 - Head'e bağlı teknik tüyo doğrulandığı SHA'yı taşır ve hedef kart açılırken current main'de yeniden ölçülür.
 - 2–3 başarısız yaklaşımda aynı deneme tekrar edilmez; varsayım ve kanıt yeniden incelenir.
+
+## İşletmeye özel sayfa teslimatı
+
+[İşletme sayfası teslimat planı](docs/plan/public-salon-site-delivery.md), mevcut F10/F12 müşteri yüzeyini işletmeye özel adres, anlaşılır kurulum/yayın akışı ve gerçek işletme kabulüyle teslim etmeyi tarif eder. Bu, Randevu ürününün salon sayfasıdır; MKT-01 tanıtım sitesi veya Kepenk için genel amaçlı website builder değildir.
+
+Domain sınırı mevcut DOMAIN-01 sözleşmesidir. Plan kaydı uygulamayı başlatmaz, canlı yayın kabulü vermez ve 54 MVP görev sayısını değiştirmez. Uygulama paketleri açılırken kapsam/sahiplik TASKS'a bağlanır; gerçek teslim kanıtı mevcut F17 kabul/pilot sürecine girer.
 
 ## Marketing / site track
 
