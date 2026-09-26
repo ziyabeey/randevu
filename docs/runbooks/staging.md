@@ -283,3 +283,26 @@ npm run test:ci-coverage
 ```
 
 F17-01 base environment kabulü `34679959999`, F09-05 gerçek provider delivery kabulü `34681540142` ile kanıtlanmıştır. Yeni workflow değişiklikleri kabul edilirken base staging smoke ve ilgili opt-in gate yeniden yeşil gösterilmelidir.
+
+## G16 hosted closeout
+
+G16'nın iki hosted-only kanıtı aynı açık opt-in staging gate'inde kapanır. Normal deploy bu gate'i çalıştırmaz.
+
+GitHub Environment `staging` üzerinde runtime Zernio sözleşmesine ek olarak şu acceptance-only secret gerekir:
+
+- `ZERNIO_ACCEPTANCE_PHONE`: mesaj almayı kabul eden doğrulama telefonu. Workflow input'u değildir ve loglanmaz.
+
+Runtime Zernio değerleri mevcut sözleşmeyi kullanır:
+
+- secret: `ZERNIO_API_KEY`
+- vars: `ZERNIO_WHATSAPP_ACCOUNT_ID`, `ZERNIO_WHATSAPP_TEMPLATE_NAME`, `ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE`
+
+Kabul koşusu: **Staging deploy** → `operation=deploy` → `run_g16_acceptance=true`.
+
+`staging:g16-acceptance` base smoke sonrasında iki bağımsız gerçek-ortam kanıtı üretir:
+
+1. F16-02: production transport helper'ı ile onaylı numeric-OTP template'i gerçek alıcıya yollar; Zernio conversation mesajlarını aynı `messageId` ile geri okur ve yalnız `delivered` veya `read` durumunda geçer. Telefon ve üretilen OTP loglanmaz.
+2. F16-03: fixture Salon A altında geçici müşteri/grup oluşturur, gerçek Worker yoluyla WebP'yi private `appointment-private-media` bucket'ına yükler; owner A read, owner B tenant denial ve anon direct-Storage denial kanıtlarını alır; Worker üzerinden siler ve geçici DB fixture'ını temizler.
+
+Gate eksik credential, provider teslim hatası, private bucket/policy uyumsuzluğu, cross-tenant/anon okunabilirlik veya silinmeyen obje durumunda fail-closed'dur. Başarılı run'ın exact `GITHUB_SHA`, run/job kimliği ve iki PASS satırı G16 closeout receipt'ine yazılır; ancak o gerçek run'dan sonra TASKS'taki F16-02/F16-03 hosted residual notları kaldırılır.
+
