@@ -29,6 +29,11 @@ on:
         required: false
         default: false
         type: boolean
+      run_s07_c4_acceptance:
+        description: Require S07 C4; fail closed unless deploy + F09/F10/S01 gates are all enabled
+        required: false
+        default: false
+        type: boolean
       s01_recovery_email:
         description: Resend Receiving test mailbox for S01
         required: false
@@ -54,6 +59,7 @@ jobs:
       RUN_F10_ACCEPTANCE: ${{ inputs.run_f10_auth_acceptance }}
       RUN_F10_TEAM_ACCEPTANCE: ${{ inputs.run_f10_team_acceptance || inputs.run_f10_auth_acceptance }}
       RUN_S01_ACCEPTANCE: ${{ inputs.run_s01_acceptance }}
+      RUN_S07_C4_ACCEPTANCE: ${{ inputs.run_s07_c4_acceptance }}
       S01_RECOVERY_EMAIL: ${{ inputs.s01_recovery_email }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
