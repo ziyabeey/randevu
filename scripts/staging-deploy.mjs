@@ -1,6 +1,7 @@
 import { appendFileSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { decideS07C4, enforceS07C4 } from './staging-s07-c4-policy.mjs';
 import { controlSql } from './staging-control-db.mjs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { UUID, newKeys, keyPair, inheritBindings, secretBundle, probe, previewOrigin, deployCandidate, requireResumeContract, executeCutover, readCloudState, rollbackTransition } from './staging-deployment.mjs';
@@ -129,6 +130,17 @@ const gates = {
   g16: env.RUN_G16_ACCEPTANCE === 'true',
   mailbox: env.S01_RECOVERY_EMAIL ?? '',
 };
+const s07C4Input = {
+  mode,
+  explicit: env.RUN_S07_C4_ACCEPTANCE === 'true',
+  f09: gates.f09,
+  f10: gates.f10,
+  s01: gates.s01,
+};
+const s07C4Preflight = decideS07C4(s07C4Input);
+if (s07C4Preflight.action === 'fail') {
+  throw new Error(`S07_C4_BLOCKED reason=${s07C4Preflight.reason}`);
+}
 const commit = env.GITHUB_SHA;
 if (!/^[a-f0-9]{40}$/.test(commit ?? '')) throw new Error('Missing exact workflow commit');
 const state = {
@@ -231,7 +243,7 @@ await executeCutover({
     if (gates.f10) command('npm', ['run', 'staging:f10-auth-acceptance']);
     if (gates.f10team) command('npm', ['run', 'staging:f10-team-acceptance']);
     if (gates.s01) command('npm', ['run', 'staging:s01-acceptance']);
-    if (mode === 'deploy' && gates.f09 && gates.f10 && gates.s01) {
+    if (enforceS07C4(s07C4Input)) {
       command('npm', ['run', 'staging:s07-acceptance']);
       const readback = database();
       if (readback.pending || readback.fixtures !== 2) throw new Error('S07 C4 staging readback failed');

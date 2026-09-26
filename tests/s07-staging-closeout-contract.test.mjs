@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { decideS07C4, enforceS07C4 } from '../scripts/staging-s07-c4-policy.mjs';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const deploy = readFileSync('scripts/staging-deploy.mjs', 'utf8');
@@ -17,12 +18,39 @@ await test('S07 C4 acceptance is a routine triple-gate step after F09/F10/S01', 
   const s01 = deploy.indexOf("command('npm', ['run', 'staging:s01-acceptance'])");
   const s07 = deploy.indexOf("command('npm', ['run', 'staging:s07-acceptance'])");
   assert.ok(smoke >= 0 && f09 > smoke && f10 > f09 && s01 > f10 && s07 > s01);
-  assert.match(deploy, /if \(mode === 'deploy' && gates\.f09 && gates\.f10 && gates\.s01\) \{/);
+  assert.match(deploy, /if \(enforceS07C4\(s07C4Input\)\) \{/);
+  assert.match(deploy, /S07_C4_BLOCKED reason=/);
   assert.match(deploy, /const readback = database\(\)/);
   assert.match(deploy, /if \(readback\.pending \|\| readback\.fixtures !== 2\)/);
   assert.match(deploy, /const active = await cloudState\(\)/);
   assert.match(deploy, /if \(active\.version !== state\.target\)/);
   assert.match(deploy, /S07 C4 staging readback passed/);
+});
+
+await test('S07 C4 behavior emits an explicit skip receipt and fails closed for incomplete explicit intent', () => {
+  const skipped = [];
+  assert.equal(enforceS07C4({
+    mode: 'deploy', explicit: false, f09: false, f10: false, s01: false,
+  }, { log: (line) => skipped.push(line) }), false);
+  assert.deepEqual(skipped, ['S07_C4_SKIPPED reason=missing_gates=f09,f10,s01']);
+
+  const complete = [];
+  assert.equal(enforceS07C4({
+    mode: 'deploy', explicit: false, f09: true, f10: true, s01: true,
+  }, { log: (line) => complete.push(line) }), true);
+  assert.deepEqual(complete, []);
+
+  assert.throws(() => enforceS07C4({
+    mode: 'deploy', explicit: true, f09: true, f10: false, s01: true,
+  }), /S07_C4_BLOCKED reason=missing_gates=f10/);
+
+  assert.deepEqual(
+    decideS07C4({ mode: 'rotate', explicit: false, f09: true, f10: true, s01: true }),
+    { action: 'skip', reason: 'mode=rotate', missing: [] },
+  );
+  assert.throws(() => enforceS07C4({
+    mode: 'rotate', explicit: true, f09: true, f10: true, s01: true,
+  }), /S07_C4_BLOCKED reason=mode=rotate/);
 });
 
 await test('S07 C4 runner has a fixed SQL allowlist, bounded psql and redacted failure output', () => {
@@ -54,9 +82,11 @@ await test('S07 C4 uses the existing three real workflow gates and mailbox input
   assert.match(workflow, /run_f09_acceptance:/);
   assert.match(workflow, /run_f10_auth_acceptance:/);
   assert.match(workflow, /run_s01_acceptance:/);
+  assert.match(workflow, /run_s07_c4_acceptance:/);
   assert.match(workflow, /s01_recovery_email:/);
   assert.match(workflow, /RUN_F09_ACCEPTANCE: \$\{\{ inputs\.run_f09_acceptance/);
   assert.match(workflow, /RUN_F10_ACCEPTANCE: \$\{\{ inputs\.run_f10_auth_acceptance \}\}/);
   assert.match(workflow, /RUN_S01_ACCEPTANCE: \$\{\{ inputs\.run_s01_acceptance \}\}/);
+  assert.match(workflow, /RUN_S07_C4_ACCEPTANCE: \$\{\{ inputs\.run_s07_c4_acceptance \}\}/);
   assert.match(workflow, /S01_RECOVERY_EMAIL: \$\{\{ inputs\.s01_recovery_email \}\}/);
 });
