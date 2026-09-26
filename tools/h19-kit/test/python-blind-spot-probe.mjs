@@ -75,7 +75,12 @@ try {
   assert.equal(probe.ledger.sourceRevision, revision);
   assert.equal(probe.ledger.counts.byCategory['semantic-unit-symbol-unmatched'], 0);
   assert.equal(probe.ledger.counts.byCategory['semantic-unit-absence'], 0);
-  assert.ok(probe.ledger.spots.some((spot) =>
+  const runtimeCoverageSpots = probe.ledger.spots.filter((spot) =>
+    spot.category === 'runtime-coverage-unknown-path');
+  assert.ok(runtimeCoverageSpots.length >= 2);
+  assert.ok(runtimeCoverageSpots.some((spot) => spot.subject.path === 'app.py'));
+  assert.ok(runtimeCoverageSpots.some((spot) => spot.subject.path === 'script.py'));
+  assert.ok(!probe.ledger.spots.some((spot) =>
     spot.category === 'impact-unknown'
     && spot.subject.unknown === 'runtime-coverage'));
 
