@@ -51,7 +51,8 @@
     "test:m11-independent-assessment-freeze": "node test/m11-independent-assessment-freeze.mjs",
     "test:m11-independent-assessment-receipts": "node test/m11-independent-assessment-receipts.mjs",
     "test:blind-spots": "node test/blind-spots.mjs",
-    "test:python-blind-spot-probe": "node test/python-blind-spot-probe.mjs"
+    "test:python-blind-spot-probe": "node test/python-blind-spot-probe.mjs",
+    "test:runtime-coverage-blind-spots": "node test/runtime-coverage-blind-spots.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
