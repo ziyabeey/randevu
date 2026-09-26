@@ -13,6 +13,7 @@ import { scan } from '../src/pipeline/scan.mjs';
 import { freezeCases } from '../src/experiments/freeze.mjs';
 import { blindSample } from '../src/experiments/blind-sample.mjs';
 import { compareH19BlindSpotLedgers, detectH19BlindSpots } from '../src/diagnostics/blind-spots.mjs';
+import { runPythonBlindSpotProbe } from '../src/diagnostics/python-probe.mjs';
 
 const [command, ...args] = process.argv.slice(2);
 
@@ -79,6 +80,20 @@ if (command === 'blind-spots') {
   process.exit(0);
 }
 
+if (command === 'python-blind-spots-probe') {
+  const [repo, sourceRevision, ...focusFiles] = args;
+  if (!repo || !sourceRevision) {
+    throw new Error('python-blind-spots-probe requires <repo> <source-revision> [focus.py ...]');
+  }
+  const result = await runPythonBlindSpotProbe({
+    repoRoot: repo,
+    sourceRevision,
+    focusFiles: focusFiles.length ? focusFiles : null,
+  });
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(0);
+}
+
 if (command === 'blind-spots-compare') {
   const [beforeFile, afterFile] = args;
   if (!beforeFile || !afterFile) {
@@ -134,6 +149,7 @@ console.error([
   '  hotspots [repo]',
   '  scan <input.json> [--sarif]',
   '  blind-spots <input.json>',
+  '  python-blind-spots-probe <repo> <source-revision> [focus.py ...]',
   '  blind-spots-compare <before-ledger.json> <after-ledger.json>',
   '  experiment-freeze <cases.json> <experiment-id> <protocol-version>',
   '  experiment-blind <frozen.json> [count]',
