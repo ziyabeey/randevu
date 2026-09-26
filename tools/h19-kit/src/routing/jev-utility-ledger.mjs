@@ -158,8 +158,17 @@ export function validateFakeJevExecutionObservation(observation, { decision } = 
   return observation;
 }
 
-export function buildJevUtilityLedger(observations) {
+export function buildJevUtilityLedger(observations, { decisions } = {}) {
   assert(Array.isArray(observations), 'Jev utility observations array required');
+  assert(Array.isArray(decisions), 'exact Jev route decisions array required');
+
+  const decisionIndex = new Map();
+  for (const decision of decisions) {
+    validateJevRouteDecision(decision);
+    assert(!decisionIndex.has(decision.decisionSha256), 'duplicate Jev route decision');
+    decisionIndex.set(decision.decisionSha256, decision);
+  }
+
   const seen = new Set();
 
   const counts = {
@@ -187,7 +196,9 @@ export function buildJevUtilityLedger(observations) {
   const costs = new Map();
 
   for (const observation of observations) {
-    validateFakeJevExecutionObservation(observation);
+    const decision = decisionIndex.get(observation.decisionSha256);
+    assert(decision, 'Jev utility observation missing exact route decision');
+    validateFakeJevExecutionObservation(observation, { decision });
     assert(!seen.has(observation.observationSha256), 'duplicate Jev utility observation');
     seen.add(observation.observationSha256);
 
