@@ -40,6 +40,7 @@
     "test:ts-evidence-graph": "node test/typescript-evidence-graph.mjs",
     "test:public-entrypoint": "node test/public-entrypoint.mjs",
     "perf:project-shard-adoption": "node perf/run-project-shard-adoption.mjs",
+    "perf:python-units": "node perf/run-python-unit-batch.mjs",
     "test:m11-collection": "node test/m11-collection.mjs",
     "test:m11-closure": "node test/m11-closure.mjs",
     "test:m11-bridge": "node test/m11-observation-bridge.mjs",
