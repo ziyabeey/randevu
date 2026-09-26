@@ -49,7 +49,8 @@
     "test:m11-notification-freeze": "node test/m11-notification-validation-freeze.mjs",
     "test:m11-notification-result": "node test/m11-notification-validation-result.mjs",
     "test:m11-independent-assessment-freeze": "node test/m11-independent-assessment-freeze.mjs",
-    "test:m11-independent-assessment-receipts": "node test/m11-independent-assessment-receipts.mjs"
+    "test:m11-independent-assessment-receipts": "node test/m11-independent-assessment-receipts.mjs",
+    "test:blind-spots": "node test/blind-spots.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
