@@ -71,6 +71,22 @@ async function phoneHash(phone: string) {
   return bytesToBase64Url(new Uint8Array(digest));
 }
 
+// Per-phone OTP rate key: an HMAC of the normalized number, so the database
+// budget never stores a reversible phone number.
+export async function whatsappPhoneRateKey(secret: string, phone: string) {
+  const normalized = normalizeWhatsappPhone(phone);
+  if (secret.trim().length < 43 || !normalized) return null;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret.trim()),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`public-booking-phone|${normalized}`)));
+  return [...mac].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 export function normalizeWhatsappPhone(value: string) {
   const compact = value.replace(/[\s()-]/g, '');
   const digits = compact.replace(/^\+/, '');

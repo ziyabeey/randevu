@@ -15,6 +15,7 @@ import {
   normalizeWhatsappPhone,
   sendWhatsappVerificationCode,
   verifyWhatsappOtpChallenge,
+  whatsappPhoneRateKey,
   zernioWhatsappConfigured,
   type ZernioWhatsappEnv,
 } from './whatsapp-verify.ts';
@@ -31,14 +32,18 @@ function validSlug(value: unknown): value is string {
     && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value);
 }
 
-async function validatePublicBusiness(context: any, slug: string) {
+// Spends the actor/network `verify` budget and the per-phone budget for this
+// phase before any Zernio send or code check, then confirms the salon is live.
+async function validatePublicBusiness(context: any, slug: string, phase: 'start' | 'check', phone: string) {
   const abuse = await resolvePublicAbuseIdentity(context);
   if (!abuse) return { response: context.json(publicGateUnavailableBody(), 503) } as const;
+  const phoneKey = await whatsappPhoneRateKey(abuse.gateSecret, phone);
+  if (!phoneKey) return { response: context.json(publicGateUnavailableBody(), 503) } as const;
 
   const result = await publicOperation<PublicBusiness[]>(
     context.env,
     'phone_verify',
-    { p_slug: slug },
+    { p_slug: slug, p_phase: phase, p_phone_key: phoneKey },
     abuse,
   );
   if (!result.ok) {
@@ -79,7 +84,7 @@ router.post('/verify/whatsapp/start', async (context) => {
     }, 503);
   }
 
-  const validated = await validatePublicBusiness(context, slug);
+  const validated = await validatePublicBusiness(context, slug, 'start', phone);
   if ('response' in validated) return validated.response;
 
   const code = generateWhatsappOtpCode();
@@ -134,7 +139,7 @@ router.post('/verify/whatsapp/check', async (context) => {
     }, 503);
   }
 
-  const validated = await validatePublicBusiness(context, slug);
+  const validated = await validatePublicBusiness(context, slug, 'check', phone);
   if ('response' in validated) return validated.response;
 
   if (!await verifyWhatsappOtpChallenge(

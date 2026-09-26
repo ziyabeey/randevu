@@ -1,10 +1,20 @@
 begin;
 
 -- F16-02 owns OTP attempt limiting now that Zernio is transport-only.
+--
+-- The OTP challenge is stateless, so the actor/network `verify` class alone
+-- cannot bound guesses: an attacker can rotate the actor cookie and spread
+-- checks across networks. Every start and check therefore also spends a
+-- per-phone budget keyed by the Worker's HMAC of the normalized number (never
+-- the number itself): 3 sends and 5 checks per 10 minutes and 30 operations
+-- per 24 hours, whatever actor or network asks.
 alter table public.public_booking_rate_counters
   drop constraint public_booking_rate_counters_action_check,
   add constraint public_booking_rate_counters_action_check check
-    (action in ('read','create','recover','slot','request','manage_read','manage_slot','manage_change','manage_cancel','business_create','verify'));
+    (action in ('read','create','recover','slot','request','manage_read','manage_slot','manage_change','manage_cancel','business_create','verify','verify_send','verify_check','verify_day')),
+  drop constraint public_booking_rate_counters_dimension_check,
+  add constraint public_booking_rate_counters_dimension_check check
+    (dimension in ('actor','network','business','user','phone'));
 
 create or replace function public.consume_public_booking_rate(
   p_action text,
@@ -24,8 +34,8 @@ declare
   v_count integer;
   v_retry_after integer;
 begin
-  if p_action not in ('read','create','recover','slot','request','manage_read','manage_slot','manage_change','manage_cancel','business_create','verify')
-     or p_dimension not in ('actor','network','business','user')
+  if p_action not in ('read','create','recover','slot','request','manage_read','manage_slot','manage_change','manage_cancel','business_create','verify','verify_send','verify_check','verify_day')
+     or p_dimension not in ('actor','network','business','user','phone')
      or p_key_hash is null
      or p_key_hash !~ '^[0-9a-f]{64}$'
      or p_limit is null or p_limit < 1
@@ -110,6 +120,30 @@ $$;
 revoke all on function public.enforce_public_booking_rate(text,text,text,uuid)
   from public, anon, authenticated;
 
+-- Per-phone OTP budget. The key is the Worker's HMAC of the normalized phone,
+-- so the counter never stores a reversible phone number.
+create or replace function public.enforce_public_phone_verify_rate(p_phase text, p_phone_key text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $f1602phone$
+begin
+  if p_phase is null or p_phase not in ('start','check')
+     or p_phone_key is null or p_phone_key !~ '^[0-9a-f]{64}$' then
+    raise exception 'PUBLIC_BOOKING_GATE_INVALID_PROOF';
+  end if;
+  if p_phase = 'start' then
+    perform public.consume_public_booking_rate('verify_send', 'phone', p_phone_key, 3, 600);
+  else
+    perform public.consume_public_booking_rate('verify_check', 'phone', p_phone_key, 5, 600);
+  end if;
+  perform public.consume_public_booking_rate('verify_day', 'phone', p_phone_key, 30, 86400);
+end
+$f1602phone$;
+revoke all on function public.enforce_public_phone_verify_rate(text,text)
+  from public, anon, authenticated;
+
 -- Keep execute_public_operation as the sole anonymous transport. phone_verify
 -- returns only the same public business projection while consuming the stricter
 -- 10-minute verification budget before Zernio send/check work happens.
@@ -158,6 +192,13 @@ begin
 
   if p_args is null or jsonb_typeof(p_args)<>'object' or octet_length(p_args::text)>16384 then
     return public.public_operation_error('INVALID_PUBLIC_OPERATION');
+  end if;
+
+  if p_action = 'phone_verify' then
+    begin
+      perform public.enforce_public_phone_verify_rate(p_args->>'p_phase', p_args->>'p_phone_key');
+    exception when others then return public.public_operation_error(sqlerrm);
+    end;
   end if;
 
   if p_action in ('book','group_book') then

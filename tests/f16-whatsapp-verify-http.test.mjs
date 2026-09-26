@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import app from '../worker/app.ts';
-import { issueWhatsappOtpChallenge, verifyWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
+import { issueWhatsappOtpChallenge, verifyWhatsappPhoneProof, whatsappPhoneRateKey } from '../worker/whatsapp-verify.ts';
 
 const gateSecret = 'g'.repeat(48);
 const env = {
@@ -30,6 +30,7 @@ function rpc(data) {
 test('F16-02 public WhatsApp OTP start is an explicit public mutation and reaches Zernio transport', async () => {
   const original = globalThis.fetch;
   const calls = [];
+  const phoneKeys = [];
   globalThis.fetch = async (input, init = {}) => {
     const url = String(input);
     calls.push(url);
@@ -37,6 +38,11 @@ test('F16-02 public WhatsApp OTP start is an explicit public mutation and reache
       const wire = JSON.parse(String(init.body));
       assert.equal(wire.p_action, 'phone_verify');
       assert.equal(wire.p_args.p_slug, 'salon-a');
+      // R1-B1: the start spends the per-phone budget under an HMAC key, never the number.
+      assert.equal(wire.p_args.p_phase, 'start');
+      assert.match(wire.p_args.p_phone_key, /^[0-9a-f]{64}$/);
+      assert.ok(!JSON.stringify(wire).includes('5551602001'), 'the phone number reached the rate RPC');
+      phoneKeys.push(wire.p_args.p_phone_key);
       assert.match(wire.p_actor_hash, /^[0-9a-f]{64}$/);
       assert.match(wire.p_network_hash, /^[0-9a-f]{64}$/);
       return rpc([{ name: 'Salon A', slug: 'salon-a' }]);
@@ -73,6 +79,8 @@ test('F16-02 public WhatsApp OTP start is an explicit public mutation and reache
     assert.equal(body.retryAfterSeconds, 30);
     assert.ok(typeof body.verificationChallenge === 'string' && body.verificationChallenge.length > 80);
     assert.equal(calls.length, 2);
+    // Any spelling of the same number shares one per-phone budget.
+    assert.deepEqual(phoneKeys, [await whatsappPhoneRateKey(gateSecret, '+90 555 160 20 01')]);
   } finally {
     globalThis.fetch = original;
   }
@@ -82,9 +90,14 @@ test('F16-02 approved app-issued WhatsApp OTP returns a slug-and-phone-bound boo
   const original = globalThis.fetch;
   const verificationChallenge = await issueWhatsappOtpChallenge(gateSecret, 'salon-a', '05551602001', '123456');
   assert.ok(verificationChallenge);
-  globalThis.fetch = async (input) => {
+  const phoneKey = await whatsappPhoneRateKey(gateSecret, '05551602001');
+  globalThis.fetch = async (input, init = {}) => {
     const url = String(input);
     if (url.endsWith('/rest/v1/rpc/execute_public_operation')) {
+      // R1-B1: every code check spends the per-phone check budget.
+      const wire = JSON.parse(String(init.body));
+      assert.equal(wire.p_args.p_phase, 'check');
+      assert.equal(wire.p_args.p_phone_key, phoneKey);
       return rpc([{ name: 'Salon A', slug: 'salon-a' }]);
     }
     throw new Error(`unexpected fetch ${url}`);
