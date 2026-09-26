@@ -19,16 +19,18 @@ test('G16 Zernio proof reuses production transport and requires delivered or rea
   assert.match(script, /sendWhatsappVerificationCode\(process\.env, acceptancePhone, code\)/);
   assert.match(script, /\/v1\/inbox\/conversations\/\$\{encodeURIComponent\(conversationId\)\}\/messages/);
   assert.match(script, /deliveryStatus/);
+  assert.match(script, /createdAt >= sentAfterMs/);
+  assert.match(script, /item\.message\.includes\(code\)/);
   assert.match(script, /lastStatus === 'delivered' \|\| lastStatus === 'read'/);
   assert.doesNotMatch(script, /console\.log\([^\n]*(acceptancePhone|\bcode\b)/);
 });
 
 test('G16 hosted Storage proof covers owner read, cross-tenant and anon denial, then delete', () => {
   assert.match(script, /appointment-private-media/);
-  assert.match(script, /Cross-tenant Worker read unexpectedly succeeded/);
-  assert.match(script, /Hosted Storage cross-tenant RLS read unexpectedly succeeded/);
-  assert.match(script, /Hosted Storage anonymous private-object read unexpectedly succeeded/);
-  assert.match(script, /Hosted Storage object remained readable after delete/);
+  assert.match(script, /Cross-tenant Worker denial was not a fail-closed 4xx/);
+  assert.match(script, /Hosted Storage cross-tenant RLS denial was not a fail-closed 4xx/);
+  assert.match(script, /Hosted Storage anonymous denial was not a fail-closed 4xx/);
+  assert.match(script, /Hosted Storage post-delete read was not a fail-closed 4xx/);
   assert.match(script, /G16 hosted private-media Storage smoke passed/);
 });
 
