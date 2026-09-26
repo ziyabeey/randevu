@@ -18,11 +18,11 @@ import {
   verifyWhatsappOtpChallenge,
   whatsappOtpChallengeUseKey,
   whatsappPhoneRateKey,
-  zernioWhatsappConfigured,
-  type ZernioWhatsappEnv,
+  netgsmWhatsappConfigured,
+  type NetgsmWhatsappEnv,
 } from './whatsapp-verify.ts';
 
-type Env = AuthEnv & PublicAbuseEnv & ZernioWhatsappEnv;
+type Env = AuthEnv & PublicAbuseEnv & NetgsmWhatsappEnv;
 type PublicBusiness = { name: string; slug: string };
 
 const router = new Hono<{ Bindings: Env }>();
@@ -42,7 +42,7 @@ type PhoneVerifyArgs = {
 };
 
 // Spends the actor/network `verify` budget and the per-phone budget for this
-// phase before any Zernio send or check outcome, then confirms the salon is live.
+// phase before any Netgsm send or check outcome, then confirms the salon is live.
 async function validatePublicBusiness(
   context: any,
   abuse: PublicAbuseIdentity,
@@ -98,7 +98,7 @@ router.post('/verify/whatsapp/start', async (context) => {
       error: { code: 'INVALID_WHATSAPP_OTP_REQUEST', message: 'Telefon bilgisi geçerli değil.' },
     }, 400);
   }
-  if (!zernioWhatsappConfigured(context.env)) {
+  if (!netgsmWhatsappConfigured(context.env)) {
     return context.json({
       error: { code: 'WHATSAPP_OTP_UNAVAILABLE', message: 'WhatsApp doğrulama henüz hazır değil.' },
     }, 503);
@@ -155,7 +155,7 @@ router.post('/verify/whatsapp/check', async (context) => {
       error: { code: 'INVALID_WHATSAPP_OTP_CHECK', message: 'Doğrulama kodu geçerli değil.' },
     }, 400);
   }
-  if (!zernioWhatsappConfigured(context.env)) {
+  if (!netgsmWhatsappConfigured(context.env)) {
     return context.json({
       error: { code: 'WHATSAPP_OTP_UNAVAILABLE', message: 'WhatsApp doğrulama henüz hazır değil.' },
     }, 503);

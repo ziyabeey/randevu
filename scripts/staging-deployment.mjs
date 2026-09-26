@@ -74,18 +74,14 @@ export function secretBundle(env, generated = {}) {
     COOKIE_SECURE: 'true', RESEND_API_KEY: env.RESEND_API_KEY,
     NOTIFICATION_FROM_EMAIL: env.NOTIFICATION_FROM_EMAIL, PUBLIC_APP_ORIGIN: env.STAGING_APP_ORIGIN,
   };
-  const zernioNames = ['ZERNIO_API_KEY', 'ZERNIO_WHATSAPP_ACCOUNT_ID', 'ZERNIO_WHATSAPP_TEMPLATE_NAME'];
-  const zernioValues = zernioNames.map((name) => typeof env[name] === 'string' ? env[name].trim() : '');
-  const configuredZernio = zernioValues.filter(Boolean).length;
-  if (configuredZernio !== 0 && configuredZernio !== zernioNames.length) {
-    throw new Error('Zernio WhatsApp Worker settings must be supplied as a complete tuple');
+  const netgsmNames = ['NETGSM_USERCODE', 'NETGSM_PASSWORD'];
+  const netgsmValues = netgsmNames.map((name) => typeof env[name] === 'string' ? env[name].trim() : '');
+  const configuredNetgsm = netgsmValues.filter(Boolean).length;
+  if (configuredNetgsm !== 0 && configuredNetgsm !== netgsmNames.length) {
+    throw new Error('Netgsm WhatsApp Worker settings must be supplied as a complete tuple');
   }
-  if (configuredZernio === zernioNames.length) {
-    for (let index = 0; index < zernioNames.length; index += 1) payload[zernioNames[index]] = zernioValues[index];
-    payload.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE =
-      typeof env.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE === 'string' && env.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE.trim()
-        ? env.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE.trim()
-        : 'tr';
+  if (configuredNetgsm === netgsmNames.length) {
+    for (let index = 0; index < netgsmNames.length; index += 1) payload[netgsmNames[index]] = netgsmValues[index];
   }
   for (const name of KEY_NAMES) if (Object.hasOwn(generated, name)) payload[name] = generated[name];
   if (Object.values(payload).some((value) => typeof value !== 'string' || !value)) throw new Error('Worker configuration incomplete');

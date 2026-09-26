@@ -27,7 +27,7 @@ import f16Commission from './f16-commission-http.ts';
 import f16Account from './f16-account-http.ts';
 import onboarding from './onboarding.ts';
 import whatsappVerify from './whatsapp-verify-http.ts';
-import type { ZernioWhatsappEnv } from './whatsapp-verify.ts';
+import type { NetgsmWhatsappEnv } from './whatsapp-verify.ts';
 import {
   mutationSecurityError,
   type AuthEnv,
@@ -35,7 +35,7 @@ import {
 import type { PublicAbuseEnv } from './public-abuse.ts';
 import { deploymentHealth, type DeploymentEnv } from './deployment-health.ts';
 
-type Env = AuthEnv & PublicAbuseEnv & DeploymentEnv & ZernioWhatsappEnv & {
+type Env = AuthEnv & PublicAbuseEnv & DeploymentEnv & NetgsmWhatsappEnv & {
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
 };
 

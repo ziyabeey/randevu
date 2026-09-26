@@ -1,18 +1,16 @@
 import { bytesToBase64Url, randomBase64Url, textToBase64Url, base64UrlToText } from '../shared/base64.ts';
 
-export type ZernioWhatsappEnv = {
-  ZERNIO_API_KEY?: string;
-  ZERNIO_WHATSAPP_ACCOUNT_ID?: string;
-  ZERNIO_WHATSAPP_TEMPLATE_NAME?: string;
-  ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE?: string;
+export type NetgsmWhatsappEnv = {
+  NETGSM_USERCODE?: string;
+  NETGSM_PASSWORD?: string;
   PUBLIC_BOOKING_GATE_SECRET?: string;
 };
 
 export type VerifySendResult =
-  | { status: 'sent'; providerMessageId: string; conversationId: string }
+  | { status: 'sent'; providerCode: string }
   | { status: 'failed'; errorClass: string; retryable: boolean; retryAfterSeconds?: number };
 
-const ZERNIO_ROOT = 'https://zernio.com/api/v1';
+const NETGSM_WHATSAPP_OTP_URL = 'https://whatsappapi.netgsm.com.tr/v1/otp';
 const REQUEST_TIMEOUT_MS = 10_000;
 const PROOF_TTL_SECONDS = 10 * 60;
 const OTP_TTL_SECONDS = 10 * 60;
@@ -47,7 +45,7 @@ async function jsonWithTimeout(url: string, init: RequestInit, fetchImpl: typeof
     let data: Record<string, unknown> | null = null;
     try { data = raw ? JSON.parse(raw) as Record<string, unknown> : null; }
     catch { data = null; }
-    return { response, data };
+    return { response, data, raw };
   } finally {
     clearTimeout(timer);
   }
@@ -105,18 +103,19 @@ export function normalizeWhatsappPhone(value: string) {
   return null;
 }
 
-export function zernioWhatsappConfigured(env: ZernioWhatsappEnv) {
-  const apiKey = clean(env.ZERNIO_API_KEY);
-  const accountId = clean(env.ZERNIO_WHATSAPP_ACCOUNT_ID);
-  const templateName = clean(env.ZERNIO_WHATSAPP_TEMPLATE_NAME);
-  const templateLanguage = clean(env.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE) ?? 'tr';
+export function netgsmWhatsappConfigured(env: NetgsmWhatsappEnv) {
+  const usercode = clean(env.NETGSM_USERCODE);
+  const password = clean(env.NETGSM_PASSWORD);
+  if (!usercode || !/^\d{10,12}$/.test(usercode)) return null;
+  if (!password || password.length > 512) return null;
+  return { usercode, password };
+}
 
-  if (!apiKey || !/^sk_[0-9a-f]{64}$/i.test(apiKey)) return null;
-  if (!accountId || !/^[0-9a-f]{24}$/i.test(accountId)) return null;
-  if (!templateName || !/^[a-z0-9_]{1,128}$/.test(templateName)) return null;
-  if (!/^[a-z]{2}(?:_[A-Z]{2})?$/.test(templateLanguage)) return null;
-
-  return { apiKey, accountId, templateName, templateLanguage };
+function netgsmBasicAuth(usercode: string, password: string) {
+  const bytes = new TextEncoder().encode(`${usercode}:${password}`);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return `Basic ${btoa(binary)}`;
 }
 
 export function generateWhatsappOtpCode() {
@@ -126,62 +125,51 @@ export function generateWhatsappOtpCode() {
 }
 
 export async function sendWhatsappVerificationCode(
-  env: ZernioWhatsappEnv,
+  env: NetgsmWhatsappEnv,
   phone: string,
   code: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<VerifySendResult> {
-  const config = zernioWhatsappConfigured(env);
+  const config = netgsmWhatsappConfigured(env);
   const normalized = normalizeWhatsappPhone(phone);
   if (!config || !normalized || !/^\d{6}$/.test(code)) {
-    return { status: 'failed', errorClass: 'zernio_whatsapp_not_configured_or_invalid_phone', retryable: false };
+    return { status: 'failed', errorClass: 'netgsm_whatsapp_not_configured_or_invalid_phone', retryable: false };
   }
 
   try {
-    const { response, data } = await jsonWithTimeout(
-      `${ZERNIO_ROOT}/inbox/conversations`,
+    const { response, data, raw } = await jsonWithTimeout(
+      NETGSM_WHATSAPP_OTP_URL,
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${config.apiKey}`,
+          Authorization: netgsmBasicAuth(config.usercode, config.password),
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
-        body: JSON.stringify({
-          accountId: config.accountId,
-          participantId: normalized.slice(1),
-          templateName: config.templateName,
-          templateLanguage: config.templateLanguage,
-          templateParams: [code],
-        }),
+        body: JSON.stringify({ to: normalized, code }),
       },
       fetchImpl,
     );
+    const providerCode = (
+      typeof data?.code === 'number' || typeof data?.code === 'string'
+        ? String(data.code)
+        : raw.trim()
+    );
+    if (response.ok && providerCode === '00') return { status: 'sent', providerCode };
 
-    const nested = data?.data && typeof data.data === 'object'
-      ? data.data as Record<string, unknown>
-      : null;
-    const providerMessageId = typeof nested?.messageId === 'string' ? nested.messageId.trim() : '';
-    const conversationId = typeof nested?.conversationId === 'string' ? nested.conversationId.trim() : '';
-    if (response.ok && providerMessageId && conversationId) {
-      return { status: 'sent', providerMessageId, conversationId };
-    }
-
-    const rawCode = typeof data?.code === 'number' || typeof data?.code === 'string'
-      ? String(data.code)
-      : `http_${response.status}`;
+    const rawCode = providerCode || `http_${response.status}`;
     return {
       status: 'failed',
-      errorClass: `zernio_whatsapp_${rawCode}`.slice(0, 120),
-      retryable: response.status === 408 || response.status === 429 || response.status >= 500,
+      errorClass: `netgsm_whatsapp_${rawCode}`.slice(0, 120),
+      retryable: response.status === 408 || response.status === 429 || response.status >= 500 || rawCode === '100',
       retryAfterSeconds: retryAfter(response),
     };
   } catch (error) {
     return {
       status: 'failed',
       errorClass: error instanceof DOMException && error.name === 'AbortError'
-        ? 'zernio_whatsapp_send_timeout'
-        : 'zernio_whatsapp_send_network_error',
+        ? 'netgsm_whatsapp_send_timeout'
+        : 'netgsm_whatsapp_send_network_error',
       retryable: true,
     };
   }
