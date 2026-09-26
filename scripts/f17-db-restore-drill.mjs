@@ -169,8 +169,8 @@ function dropTarget(execute) {
     select pg_terminate_backend(pid)
     from pg_stat_activity
     where datname = '${TARGET_DB}' and pid <> pg_backend_pid();
-    drop database if exists ${TARGET_DB};
   `]));
+  run(execute, 'psql', argsForPsql('postgres', ['-c', `drop database if exists ${TARGET_DB};`]));
 }
 
 export function runF17DatabaseRestoreDrill({
