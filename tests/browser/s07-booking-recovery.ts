@@ -200,6 +200,13 @@ async function uiSubmit() {
   );
   setValue(form.elements.namedItem('customerName') as HTMLInputElement, 'Browser Customer');
   setValue(form.elements.namedItem('customerPhone') as HTMLInputElement, '05550000707');
+  // F16-02: the phone is proven with a WhatsApp code before create.
+  const otpButton = (label: string) => [...form.querySelectorAll<HTMLButtonElement>('.public-otp-controls button')]
+    .find((button) => button.textContent?.includes(label) && !button.disabled);
+  (await until(() => otpButton('WhatsApp kodu gönder'), 'WhatsApp code send button')).click();
+  setValue(await until(() => form.querySelector<HTMLInputElement>('input[autocomplete="one-time-code"]'), 'WhatsApp code input'), '123456');
+  (await until(() => otpButton('Kodu doğrula'), 'WhatsApp code verify button')).click();
+  await until(() => form.querySelector('.public-otp-ok'), 'verified phone');
   await until(() => {
     const button = form.querySelector<HTMLButtonElement>('.public-book-button');
     return button && !button.disabled ? button : null;

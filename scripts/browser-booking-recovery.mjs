@@ -94,9 +94,19 @@ const server = createServer(async (request, response) => {
         bookingClock: { serverNowEpochSeconds: Math.floor(Date.now() / 1000) + fixture.clockOffsetSeconds, submitWindowSeconds: 300 },
       });
     }
+    if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/start') {
+      assert.equal(requestBody?.phone, '05550000707');
+      return sendJson(response, 200, { verificationChallenge: 'browser-otp-challenge' });
+    }
+    if (request.method === 'POST' && url.pathname === '/api/public/verify/whatsapp/check') {
+      assert.equal(requestBody?.code, '123456');
+      assert.equal(requestBody?.verificationChallenge, 'browser-otp-challenge');
+      return sendJson(response, 200, { phoneVerificationToken: 'browser-phone-proof' });
+    }
     if (request.method === 'POST' && /\/api\/public\/business\/[^/]+\/book$/.test(url.pathname)) {
       if (fixture.bookMode === 'hang') return hold(response);
       assert.equal(typeof requestBody?.managementToken, 'string');
+      assert.equal(requestBody?.phoneVerificationToken, 'browser-phone-proof');
       return sendJson(response, 201, {
         appointment: { appointment_id: '90000000-0000-4000-8000-000000000001', status: 'scheduled', starts_at: '2026-09-20T09:00:00.000Z', ends_at: '2026-09-20T09:30:00.000Z', timezone: 'Europe/Istanbul', service_name: 'Browser Service', staff_name: 'Browser Staff', price_minor: 25000, currency: 'TRY' },
         management: { url: `/m#${encodeURIComponent(requestBody.managementToken)}` },

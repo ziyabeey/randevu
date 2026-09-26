@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import app from '../worker/app.ts';
 import { derivePublicBookingIntentV2 } from '../shared/public-booking-intent.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 
 const businessId = '20000000-0000-4000-8000-000000000011';
 const foreignBusinessId = '20000000-0000-4000-8000-000000000099';
@@ -19,6 +20,9 @@ const env = {
   PUBLIC_BOOKING_GATE_SECRET: 'G'.repeat(48),
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1: canonicalSecret(1),
 };
+
+// F16-02: public create requires the slug+phone-bound WhatsApp proof.
+const phoneVerificationToken = await issueWhatsappPhoneProof(env.PUBLIC_BOOKING_GATE_SECRET, 'test-salon', '05551112233');
 
 const publishedInformation = {
   kvkk_notice_text: 'Test işletmesi aydınlatma metni.',
@@ -245,7 +249,7 @@ await test('F12-05 public group create stops before mutation when published info
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': intent.idempotencyKey, 'CF-Connecting-IP': '203.0.113.12' },
       body: JSON.stringify({
         customerName: 'Deniz',
-        customerPhone: '05551112233',
+        customerPhone: '05551112233', phoneVerificationToken,
         startsAt: '2026-09-20T07:00:00Z',
         lines: lines(),
         recoveryId,
@@ -289,7 +293,7 @@ await test('F11-02 public group create uses guarded v2 recovery and canonical re
     for (let i = 0; i < 2; i += 1) {
       const response = await app.request('http://localhost/api/public/business/test-salon/group-book', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': intent.idempotencyKey, 'CF-Connecting-IP': '203.0.113.12' },
-        body: JSON.stringify({ customerName: 'Deniz', customerPhone: '05551112233', startsAt: '2026-09-20T07:00:00Z',
+        body: JSON.stringify({ customerName: 'Deniz', customerPhone: '05551112233', phoneVerificationToken, startsAt: '2026-09-20T07:00:00Z',
           lines: lines(), recoveryId, recoverySecret, managementToken }),
       }, env);
       assert.equal(response.status, 201);
@@ -333,7 +337,7 @@ await test('F11-02 public group create maps semantic failures and status 0/>=500
     try {
       const response = await app.request('http://localhost/api/public/business/test-salon/group-book', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': intent.idempotencyKey },
-        body: JSON.stringify({ customerName: 'Deniz', customerPhone: '05551112233', startsAt: '2026-09-20T07:00:00Z',
+        body: JSON.stringify({ customerName: 'Deniz', customerPhone: '05551112233', phoneVerificationToken, startsAt: '2026-09-20T07:00:00Z',
           lines: lines(), recoveryId, recoverySecret, managementToken }),
       }, env);
       assert.equal(response.status, expectedStatus, message);

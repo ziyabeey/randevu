@@ -26,6 +26,8 @@ import f16Feedback from './f16-feedback-http.ts';
 import f16Commission from './f16-commission-http.ts';
 import f16Account from './f16-account-http.ts';
 import onboarding from './onboarding.ts';
+import whatsappVerify from './whatsapp-verify-http.ts';
+import type { ZernioWhatsappEnv } from './whatsapp-verify.ts';
 import {
   mutationSecurityError,
   type AuthEnv,
@@ -33,7 +35,7 @@ import {
 import type { PublicAbuseEnv } from './public-abuse.ts';
 import { deploymentHealth, type DeploymentEnv } from './deployment-health.ts';
 
-type Env = AuthEnv & PublicAbuseEnv & DeploymentEnv & {
+type Env = AuthEnv & PublicAbuseEnv & DeploymentEnv & ZernioWhatsappEnv & {
   MANAGEMENT_LINK_ENCRYPTION_KEY_V1?: string;
 };
 
@@ -66,7 +68,9 @@ function mutationClass(method: string, path: string): MutationClass {
       || path === '/api/public/booking/resolve'
       || /^\/api\/public\/business\/[^/]+\/book$/.test(path)
       || /^\/api\/public\/business\/[^/]+\/group-slots$/.test(path)
-      || /^\/api\/public\/business\/[^/]+\/group-book$/.test(path))) {
+      || /^\/api\/public\/business\/[^/]+\/group-book$/.test(path)
+      || path === '/api/public/verify/whatsapp/start'
+      || path === '/api/public/verify/whatsapp/check')) {
     return 'public';
   }
 
@@ -127,6 +131,7 @@ app.route('/api/customers', customers);
 app.route('/api/public', publicBookingRecovery);
 app.route('/api/public', publicProfile);
 app.route('/api/public', publicBooking);
+app.route('/api/public', whatsappVerify);
 app.route('/api/manage', customerManage);
 app.route('/api/calendar', calendar);
 app.route('/api/team', team);

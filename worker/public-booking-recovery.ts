@@ -1,5 +1,6 @@
 import { publicOperation } from './public-rpc.ts';
 import { customerNotificationStatus } from '../shared/customer-notification-status.ts';
+import { verifyWhatsappPhoneProof } from './whatsapp-verify.ts';
 import { hasRequiredPublicBookingInformation, type PublicBookingInformationProjection } from './public-booking-information.ts';
 import { Hono } from 'hono';
 import { base64UrlToBytes, bytesToBase64Url } from '../shared/base64.ts';
@@ -334,6 +335,7 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
   const managementToken = body?.managementToken;
   const recoveryId = body?.recoveryId;
   const recoverySecret = body?.recoverySecret;
+  const phoneVerificationToken = typeof body?.phoneVerificationToken === 'string' ? body.phoneVerificationToken.trim() : '';
 
   if (!validSlug(slug) || !key || !validSecret(managementToken) || !validUuid(recoveryId) || !validSecret(recoverySecret)) {
     return context.json({ error: { code: 'INVALID_PUBLIC_BOOKING', message: 'Rezervasyon isteği geçerli değil.' } }, 400);
@@ -346,6 +348,16 @@ bookingRecovery.post('/business/:slug/book', async (context) => {
   }
   if (customerPhone === null) {
     return context.json({ error: { code: 'PUBLIC_CONTACT_REQUIRED', message: 'Telefon bilgisi zorunlu. E-posta isteğe bağlıdır.' } }, 400);
+  }
+  if (!phoneVerificationToken || !await verifyWhatsappPhoneProof(
+    context.env.PUBLIC_BOOKING_GATE_SECRET ?? '',
+    phoneVerificationToken,
+    slug,
+    customerPhone,
+  )) {
+    return context.json({
+      error: { code: 'PHONE_VERIFICATION_REQUIRED', message: 'Telefon numarasını WhatsApp koduyla doğrulayın.' },
+    }, 403);
   }
 
   if (looksLikePublicBookingIntentV2(rawKey)) {

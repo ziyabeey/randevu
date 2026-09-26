@@ -2,11 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import publicBooking from '../worker/public-booking.ts';
 import bookingRecovery from '../worker/public-booking-recovery.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 
 const gateSecret = 'ggggggggggggggggggggggggggggggggggggggggggg';
 const encryptionKey = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 const managementToken = 'ccccccccccccccccccccccccccccccccccccccccccc';
 const recoverySecret = 'ddddddddddddddddddddddddddddddddddddddddddd';
+// F16-02: public create requires the slug+phone-bound WhatsApp proof.
+const phoneVerificationToken = await issueWhatsappPhoneProof(gateSecret, 'abuse-test', '+90 555 900 00 44');
 const env = {
   SUPABASE_URL: 'https://supabase.example.test',
   SUPABASE_ANON_KEY: 'anon-test-key',
@@ -223,6 +226,7 @@ test('F09-04 public abuse Worker boundary', async (t) => {
         body: JSON.stringify({
           customerName: 'Rate Limit Test',
           customerPhone: '+90 555 900 00 44',
+          phoneVerificationToken,
           customerEmail: 'ratelimit@example.test',
           serviceId: service.service_id,
           staffId: '7b000000-0000-4000-8000-000000000001',

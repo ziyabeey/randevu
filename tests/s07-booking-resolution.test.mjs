@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import bookingRecovery from '../worker/public-booking-recovery.ts';
 import publicBooking from '../worker/public-booking.ts';
+import { issueWhatsappPhoneProof } from '../worker/whatsapp-verify.ts';
 import {
   derivePublicBookingIntentV2,
   isCanonicalPublicBookingSecret,
@@ -104,6 +105,8 @@ await test('S07 v2 create verifies the exact proof and sends the immutable key/h
   const booking = {
     customerName: 'S07 Customer',
     customerPhone: '+90 555 207 00 01',
+    // F16-02: public create requires the slug+phone-bound WhatsApp proof.
+    phoneVerificationToken: await issueWhatsappPhoneProof(gateSecret, 's07-salon', '+90 555 207 00 01'),
     customerEmail: 's07@example.test',
     notes: null,
     serviceId: '6c000000-0000-4000-8000-000000000207',

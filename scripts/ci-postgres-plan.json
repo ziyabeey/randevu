@@ -1787,6 +1787,51 @@
           "file": "supabase/tests/f12_booking_information.sql"
         }
       ]
+    },
+    {
+      "name": "Verify F16-02 Zernio WhatsApp phone verification abuse boundary",
+      "steps": [
+        {
+          "database": "yzt_test",
+          "file": "supabase/migrations/20260925120000_f16_zernio_phone_verify_rate.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/f16_zernio_phone_verify_rate.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/f12_notification_status.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/f12_booking_information.sql"
+        },
+        {
+          "database": "yzt_test",
+          "file": "supabase/tests/f16_account_plan.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/migrations/20260925120000_f16_zernio_phone_verify_rate.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f16_zernio_phone_verify_rate.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f12_notification_status.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f12_booking_information.sql"
+        },
+        {
+          "database": "yzt_s08_upgrade",
+          "file": "supabase/tests/f16_account_plan.sql"
+        }
+      ]
     }
   ]
 }

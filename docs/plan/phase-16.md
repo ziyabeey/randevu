@@ -19,16 +19,17 @@ Bu işler MVP hedefinden çıkarılmamıştır. Her biri ayrı PR olabilir; gör
 
 ## F16-02
 
-**Hatırlatma, SMS ve yaşam döngüsü bildirimleri · 16A**
+**WhatsApp OTP ile public telefon doğrulama · 16A**
 
-- **Bağımlılık:** F09-05, F11-03, F17-01.
-- **Sorumluluk:** Backend + işletme ayarları/QA. **Çakışma alanı:** Ortak bildirim işleri ve şablonlar.
-- **İş ve çıktı:** E-posta/SMS hatırlatma, iptal/taşıma bildirimi ve randevu başına kanal/hatırlatma tercihlerini ekle. Zamanlanmış gönderim güncel durum/sürüme bağlı olsun; işlem mesajlarıyla pazarlama amaçları karıştırılmasın. Sağlayıcı hesabı/gönderici ve test alıcıları ortam notunda belirtilsin.
-- **Kabul:** İptal edilen/taşınan randevunun eski saat mesajı gönderilmez. Kuyruk tekrarında aynı olay için kontrolsüz çift mesaj oluşmaz. Kanal yokluğu/sağlayıcı kesintisi randevuyu bozmaz; gerçek test alıcısında teslim doğrulanır. Mesaj içeriği başka tenant veya gereksiz özel bilgi taşımaz.
-- **Devir:** Olay/kanal matrisi, şablonlar, yeniden deneme sınırları, gerçek teslim kanıtları ve maliyet/limit ayarlarının nereden yönetildiği.
-- **v3 sıra ve sınır:** Seri özelliğini beklemez; tek/çok hizmetli normal grup olaylarına bağlanır. Aynı notification motoru ve S03 provider anahtarı/sabit içerik modeli kullanılır. Seri hazır olduğunda yalnız olay üreticisi entegre edilir; G16 ortak kabulü ikisini test eder. SMS sağlayıcı/ücret/limit ve güvenli test alıcısı uygulama öncesi somutlaştırılır.
-- **Hazır olan / dispatcher:** Faz 9 outbox lease/retry/max-attempt ve provider receipt modeli tek bildirim dispatcher'ıdır. SMS bunun üzerinde yeni kanal/adapter'dır; ikinci kuyruk/cron/retry motoru kurulmaz.
-- **Production claim kapanışı:** F16-02 accepted+main olduktan sonra MKT-01 `MARKETING_RELEASE_GATES.reminders` aynı teslimin kabul checklist'inde `true`'ya çevrilir ve “Yakında” proof/copy'si gerçek accepted davranışla hizalanır. Feature henüz kabul edilmediyse gate fail-closed kalır.
+- **Bağımlılık:** F12-05, F17-01.
+- **Sorumluluk:** Public booking + provider doğrulama. **Çakışma alanı:** Public müşteri telefonu ve booking create proof'u.
+- **Ürün kararı (2026-09-24):** SMS, SMS hatırlatma ve SMS yaşam döngüsü kapsamdan çıkarıldı. F16-02 telefon sahipliğini Kepenk tarafından üretilen tek kullanımlık kod ve Zernio WhatsApp template transportu ile doğrular. Zernio doğrulama otoritesi değil taşıma katmanıdır; WhatsApp pazarlama/reminder kanalı değildir.
+- **İş ve çıktı:** Public booking formunda telefon için WhatsApp OTP başlat/check akışı ekle. Başarılı check sonrası 10 dakikalık, slug+normalize telefon numarasına bağlı imzalı proof üret. Tekli ve çoklu public booking create bu proof olmadan fail-closed reddedilir.
+- **Güvenlik:** Zernio API anahtarı istemciye çıkmaz; OTP düz halde DB/log/challenge içine yazılmaz. İmzalı OTP challenge ve booking proof başka slug/telefon için kullanılamaz ve 10 dakika sonunda geçersizdir. `phone_verify` rate sınıfı start/check toplamını aktör başına 8/10 dk, network başına 80/10 dk ile sınırlar. Challenge stateless olduğundan tahmin sınırı aktör/network'e bırakılmaz: her start/check ayrıca telefonun Worker HMAC anahtarıyla (ham numara DB'ye yazılmaz) telefon başına 3 gönderim/10 dk, 5 kontrol/10 dk ve 30 işlem/24 saat bütçesi tüketir; aktör veya network değiştirmek bu bütçeyi yenilemez. Kodu doğru çıkan check challenge'ı DB'de tek sefer tüketir; aynı challenge tekrar gönderilirse bütçe yine harcanır ve ikinci proof üretilmez. Telefon değişirse UI challenge ve proof'u sıfırlar.
+- **Zernio sınırı:** Production WABA Zernio'ya bağlı olmalı; runtime `accountId`, onaylı template adı ve dilini kullanır. Business-initiated gönderim `POST /v1/inbox/conversations` üzerinden yapılır. Sandbox yalnız transport/webhook testi içindir ve kilitli `sandbox_start` template'i numeric OTP kabul etmediğinden production OTP kabulü sayılmaz. Provider/template hazır değilse booking doğrulaması bypass edilmez.
+- **Kabul:** Gerçek Zernio isteğinde WhatsApp `accountId`, digits-only participant, template adı/dili ve OTP parametresi kanıtlanır; yanlış/süresi dolmuş OTP proof üretmez; challenge/proof başka telefon/slug'da reddedilir; verified telefonla tekli ve grup booking geçer; OTP olmadan ikisi de reddedilir; 390/360 px mobil akış kod gönder → doğrula → booking sırasını açık gösterir.
+- **Devir:** Zernio WhatsApp account id, onaylı template adı/dili, WABA provisioning durumu, hosted verified-recipient kanıtı, OTP challenge/proof TTL sözleşmesi ve Zernio hata/rate-limit davranışı.
+- **Kapsam dışı:** SMS, SMS fallback, appointment reminder mesajları, WhatsApp kampanya/marketing, çalışan login OTP, yeni auth/session sistemi veya ikinci notification queue.
 
 ## F16-03
 
