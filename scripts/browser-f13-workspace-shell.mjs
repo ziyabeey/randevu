@@ -41,6 +41,8 @@ const TOKEN = 'T'.repeat(48);
 const CSRF = 'C'.repeat(43);
 
 let activeBusinessId = BUSINESS_A;
+let delayedBusinessSelectId = null;
+const completedBusinessSelects = [];
 let appointmentStatus = 'scheduled';
 let ticketPaidMinor = 0;
 let ticketVersion = 1;
@@ -702,7 +704,12 @@ try {
     if (request.method === 'GET' && url.pathname === '/api/csrf') return sendJson(response, 200, { csrfToken: CSRF });
     if (request.method === 'POST' && url.pathname === '/api/businesses/select') {
       assert.ok(body.businessId === BUSINESS_A || body.businessId === BUSINESS_B, 'unexpected business switch');
+      if (delayedBusinessSelectId === body.businessId) {
+        delayedBusinessSelectId = null;
+        await sleep(300);
+      }
       activeBusinessId = body.businessId;
+      completedBusinessSelects.push(body.businessId);
       return sendJson(response, 200, { activeBusinessId, csrfToken: CSRF });
     }
     if (request.method === 'GET' && url.pathname === '/api/calendar') return sendJson(response, 200, calendarPayload(url));
@@ -2008,6 +2015,33 @@ try {
   await waitFor(
     () => page.evaluate(`document.body.innerText.includes('Salon A') && document.body.innerText.includes('Ada Public')`),
     'business switch did not return to verified A context',
+  );
+
+  const rapidSwitchStart = completedBusinessSelects.length;
+  delayedBusinessSelectId = BUSINESS_B;
+  await page.evaluate(`(() => {
+    const select=document.querySelector('.workspace-business select');
+    select.value='${BUSINESS_B}';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+    select.value='${BUSINESS_A}';
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+  })()`);
+  await waitFor(
+    () => completedBusinessSelects.length >= rapidSwitchStart + 2,
+    'rapid business round-trip did not serialize both selection intents',
+  );
+  assert.deepEqual(
+    completedBusinessSelects.slice(rapidSwitchStart, rapidSwitchStart + 2),
+    [BUSINESS_B, BUSINESS_A],
+    'rapid business round-trip did not preserve user intent order',
+  );
+  assert.equal(activeBusinessId, BUSINESS_A, 'stale business selection overwrote the latest server context');
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar'
+      && document.querySelector('.workspace-business select')?.value === '${BUSINESS_A}'
+      && document.body.innerText.includes('Salon A')
+      && document.body.innerText.includes('Ada Public')`),
+    'rapid business round-trip did not settle on the latest verified A context',
   );
 
   await page.evaluate(`[...document.querySelectorAll('button')].find((node) => node.textContent.includes('Ada Public')).click()`);
