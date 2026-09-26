@@ -32,6 +32,7 @@ const SERIES_GROUPS = [
 ];
 let recurringBookings = [];
 let seriesVersion = 1;
+let availabilitySetupReads = 0;
 
 function seriesGroup(ordinal, startsAt) {
   const end = new Date(new Date(startsAt).getTime() + 30 * 60_000).toISOString();
@@ -293,6 +294,7 @@ try {
       });
     }
     if (request.method === 'GET' && url.pathname === '/api/availability/setup') {
+      availabilitySetupReads += 1;
       return sendJson(response, 200, { timezone: 'Europe/Istanbul' });
     }
     if (request.method === 'POST' && url.pathname === '/api/availability/group-slots') {
@@ -461,6 +463,18 @@ try {
   const page = await Cdp.connect(target.webSocketDebuggerUrl);
   await page.send('Runtime.enable');
   await page.send('Page.enable');
+  await page.send('Emulation.setTimezoneOverride', { timezoneId: 'Pacific/Pago_Pago' });
+  await page.send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `(() => {
+      const RealDate = Date;
+      const fixedNow = RealDate.parse('2026-09-26T08:00:00.000Z');
+      class FixedDate extends RealDate {
+        constructor(...args) { super(...(args.length ? args : [fixedNow])); }
+        static now() { return fixedNow; }
+      }
+      globalThis.Date = FixedDate;
+    })();`,
+  });
   await page.send('Page.navigate', { url: `${origin}/app/bookings` });
 
   await waitFor(
@@ -475,6 +489,28 @@ try {
   assert.equal(await page.evaluate("document.querySelector('a[aria-current=\"page\"]')?.textContent"), 'Randevular');
 
   await page.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+
+  const initialDateAuthority = await page.evaluate(`(() => {
+    const composerDate = document.querySelector('.booking-composer input[type="date"]')?.value ?? null;
+    const now = new Date();
+    const browserDate = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-');
+    return { composerDate, browserDate };
+  })()`);
+  assert.deepEqual(
+    initialDateAuthority,
+    { composerDate: '2026-09-26', browserDate: '2026-09-25' },
+    'F13-03 create date did not prefer the active business day over the browser-local day',
+  );
+  await page.evaluate(`document.querySelector('.booking-inline-action button').click()`);
+  await waitFor(
+    () => page.evaluate(`document.querySelector('.booking-close-panel input[type="date"]')?.value === '2026-09-26'`),
+    'F13-03 close-time date did not initialize from the active business day',
+  );
+
   const setControl = async (labelText, value, tag = 'input') => page.evaluate(`(() => {
     const label=[...document.querySelectorAll('label')].find((node)=>node.textContent.includes(${JSON.stringify(labelText)}));
     const field=label?.querySelector(${JSON.stringify(tag)});
@@ -486,6 +522,8 @@ try {
     return true;
   })()`);
 
+  assert.equal(await setControl('Tarih', '2026-10-05'), true, 'F13-03 create date input missing');
+  assert.equal(await setControl('Gün', '2026-10-06'), true, 'F13-03 close-time date input missing');
   assert.equal(await setControl('Müşteri', 'F16 Seri Müşteri'), true, 'F16-01 customer input missing');
   await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.includes('Uygun saatleri getir')).click()`);
   await waitFor(
@@ -509,10 +547,24 @@ try {
   assert.match(create390.text, /Her hafta/);
   assert.match(create390.text, /3\. tekrar/);
 
+  const setupReadsBeforeSeriesCreate = availabilitySetupReads;
   await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.trim()==='Seriyi oluştur').click()`);
   await waitFor(
     () => page.evaluate(`document.body.innerText.includes('3 randevuluk seri atomik olarak oluşturuldu.') && [...document.querySelectorAll('button')].some((node)=>node.textContent.trim()==='Seri')`),
     'F16-01 series create did not refresh occurrence list',
+  );
+  await waitFor(
+    () => availabilitySetupReads > setupReadsBeforeSeriesCreate,
+    'F13-03 same-business post-create reload did not re-read availability setup',
+  );
+  const preservedDateEdits = await page.evaluate(`(() => ({
+    createDate: document.querySelector('.booking-composer input[type="date"]')?.value ?? null,
+    closeDate: document.querySelector('.booking-close-panel input[type="date"]')?.value ?? null,
+  }))()`);
+  assert.deepEqual(
+    preservedDateEdits,
+    { createDate: '2026-10-05', closeDate: '2026-10-06' },
+    'F13-03 same-business reload reset user-edited create/close dates',
   );
 
   await page.evaluate(`[...document.querySelectorAll('button')].find((node)=>node.textContent.trim()==='Seri').click()`);
@@ -579,6 +631,7 @@ try {
   page.close();
 
   console.log('F16-01 production Chrome acceptance passed: weekly preview/create, exact future scope, atomic reschedule/cancel and 390px.');
+  console.log('F13-03 business-date acceptance passed: business-local default beats browser-local day and same-business reload preserves user edits.');
   console.log('F13-03 production-entry browser passed: src/main.tsx /app/bookings route requested BookingPage lazy chunk and rendered workspace UI.');
 } catch (error) {
   let diagnostics = '';
