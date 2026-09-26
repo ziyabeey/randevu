@@ -179,9 +179,12 @@ export function runF17DatabaseRestoreDrill({
   remove = rmSync,
   log = console.log,
   now = () => Date.now(),
+  toolContainer = null,
 } = {}) {
-  const temp = makeTempDir();
-  const dumpPath = path.join(temp, 'randevu.dump');
+  const temp = toolContainer ? null : makeTempDir();
+  const dumpPath = toolContainer
+    ? `/tmp/randevu-f17-restore-${process.pid}.dump`
+    : path.join(temp, 'randevu.dump');
   let seeded = false;
 
   try {
@@ -193,27 +196,51 @@ export function runF17DatabaseRestoreDrill({
     assertFingerprint(sourceFingerprint, 'source');
 
     const dumpStarted = now();
-    run(execute, 'pg_dump', [
-      '-h', '127.0.0.1',
-      '-U', 'postgres',
-      '-d', SOURCE_DB,
-      '--format=custom',
-      '--no-owner',
-      '--file', dumpPath,
-    ], { timeout: 10 * 60 * 1000 });
+    if (toolContainer) {
+      run(execute, 'docker', [
+        'exec', toolContainer,
+        'pg_dump',
+        '-U', 'postgres',
+        '-d', SOURCE_DB,
+        '--format=custom',
+        '--no-owner',
+        '--file', dumpPath,
+      ], { timeout: 10 * 60 * 1000 });
+    } else {
+      run(execute, 'pg_dump', [
+        '-h', '127.0.0.1',
+        '-U', 'postgres',
+        '-d', SOURCE_DB,
+        '--format=custom',
+        '--no-owner',
+        '--file', dumpPath,
+      ], { timeout: 10 * 60 * 1000 });
+    }
     const dumpMs = Math.max(0, now() - dumpStarted);
 
     run(execute, 'psql', argsForPsql('postgres', ['-c', `create database ${TARGET_DB};`]));
 
     const restoreStarted = now();
-    run(execute, 'pg_restore', [
-      '-h', '127.0.0.1',
-      '-U', 'postgres',
-      '-d', TARGET_DB,
-      '--no-owner',
-      '--exit-on-error',
-      dumpPath,
-    ], { timeout: 10 * 60 * 1000 });
+    if (toolContainer) {
+      run(execute, 'docker', [
+        'exec', toolContainer,
+        'pg_restore',
+        '-U', 'postgres',
+        '-d', TARGET_DB,
+        '--no-owner',
+        '--exit-on-error',
+        dumpPath,
+      ], { timeout: 10 * 60 * 1000 });
+    } else {
+      run(execute, 'pg_restore', [
+        '-h', '127.0.0.1',
+        '-U', 'postgres',
+        '-d', TARGET_DB,
+        '--no-owner',
+        '--exit-on-error',
+        dumpPath,
+      ], { timeout: 10 * 60 * 1000 });
+    }
     const restoreMs = Math.max(0, now() - restoreStarted);
 
     const restoredFingerprint = readFingerprint(execute, TARGET_DB);
@@ -234,6 +261,14 @@ export function runF17DatabaseRestoreDrill({
       try { cleanupFixture(execute); } catch (error) { log(`F17 restore source cleanup failed: ${error.message}`); }
     }
     try { dropTarget(execute); } catch (error) { log(`F17 restore target cleanup failed: ${error.message}`); }
-    remove(temp, { recursive: true, force: true });
+    if (toolContainer) {
+      try {
+        run(execute, 'docker', ['exec', toolContainer, 'rm', '-f', dumpPath], { capture: true });
+      } catch (error) {
+        log(`F17 restore archive cleanup failed: ${error.message}`);
+      }
+    } else {
+      remove(temp, { recursive: true, force: true });
+    }
   }
 }

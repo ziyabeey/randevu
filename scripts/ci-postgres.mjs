@@ -146,7 +146,9 @@ if (isMain()) {
   try {
     const completed = runPostgresPlan(readPostgresPlan());
     console.log(`PostgreSQL plan passed (${completed} steps).`);
-    runF17DatabaseRestoreDrill();
+    runF17DatabaseRestoreDrill({
+      toolContainer: process.env.GITHUB_ACTIONS === 'true' ? 'randevu-ci-postgres' : null,
+    });
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = error?.exitCode ?? 1;

@@ -71,6 +71,34 @@ test('F17-03B1 performs a real-command-shape dump and restore into a separate di
   assert.match(receipt, /storage_bytes=NOT_COVERED/);
 });
 
+test('F17-03B1 uses the PostgreSQL 17 CI container tools when explicitly selected', () => {
+  const { calls, execute } = fakeRunner();
+  const times = [100, 140, 200, 275];
+
+  runF17DatabaseRestoreDrill({
+    execute,
+    makeTempDir: () => { throw new Error('container mode must not create a host archive directory'); },
+    remove: () => { throw new Error('container mode must not remove a host archive directory'); },
+    log: () => {},
+    now: () => times.shift(),
+    toolContainer: 'randevu-ci-postgres',
+  });
+
+  const dump = calls.find((call) => call.name === 'docker' && call.args.includes('pg_dump'));
+  assert.ok(dump);
+  assert.deepEqual(dump.args.slice(0, 3), ['exec', 'randevu-ci-postgres', 'pg_dump']);
+  assert.ok(dump.args.includes('yzt_test'));
+  assert.ok(dump.args.some((arg) => String(arg).startsWith('/tmp/randevu-f17-restore-')));
+
+  const restore = calls.find((call) => call.name === 'docker' && call.args.includes('pg_restore'));
+  assert.ok(restore);
+  assert.deepEqual(restore.args.slice(0, 3), ['exec', 'randevu-ci-postgres', 'pg_restore']);
+  assert.ok(restore.args.includes('yzt_f17_restore'));
+
+  const cleanup = calls.find((call) => call.name === 'docker' && call.args.includes('rm'));
+  assert.ok(cleanup, 'container archive must be removed after the drill');
+});
+
 test('F17-03B1 cleans the source fixture and target database when restore fails', () => {
   const { calls, execute } = fakeRunner({ failRestore: true });
   const logs = [];
