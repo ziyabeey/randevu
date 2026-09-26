@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { randomInt, randomUUID } from 'node:crypto';
+import { formatG16ProviderFailure } from './staging-g16-provider-diagnostics.mjs';
 import {
   normalizeWhatsappPhone,
   sendWhatsappVerificationCode,
@@ -217,8 +218,8 @@ async function verifyNetgsmOtpSend() {
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
   const sent = await sendWhatsappVerificationCode(process.env, acceptancePhone, code);
   if (sent.status !== 'sent' || sent.providerCode !== '00') {
-    // The provider helper can contain remote response text; never echo it here.
-    const errorClass = sent.status === 'failed' ? 'provider_request_failed' : 'unexpected_provider_code';
+    // Preserve only approved failure classes; never echo provider details.
+    const errorClass = formatG16ProviderFailure(sent);
     throw new Error(`Netgsm verified-recipient OTP send failed: ${errorClass}`);
   }
   console.log('G16 Netgsm verified-recipient OTP send accepted by provider: code 00.');
