@@ -247,6 +247,9 @@ jobs:
       - name: Run H19 Kit Jev utility router smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:jev-utility-router
+      - name: Run H19 Kit Jev utility ledger smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:jev-utility-ledger
       - name: Run H19 Kit M4 change-impact orchestrator smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m4-change-impact
