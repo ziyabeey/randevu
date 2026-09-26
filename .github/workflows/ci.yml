@@ -232,6 +232,9 @@ jobs:
       - name: Run H19 Kit Python module-unit smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:python-module-units
+      - name: Run H19 Kit Python batch-extraction smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:python-batched-units
       - name: Run H19 Kit M4 change-impact orchestrator smoke
         if: ${{ steps.scope.outputs.mode == 'code' }}
         run: npm --prefix tools/h19-kit run test:m4-change-impact
