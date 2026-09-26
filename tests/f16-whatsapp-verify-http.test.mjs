@@ -15,10 +15,8 @@ const env = {
   SUPABASE_ANON_KEY: 'anon-test-key',
   COOKIE_SECURE: 'false',
   PUBLIC_BOOKING_GATE_SECRET: gateSecret,
-  ZERNIO_API_KEY: `sk_${'a'.repeat(64)}`,
-  ZERNIO_WHATSAPP_ACCOUNT_ID: '0123456789abcdef01234567',
-  ZERNIO_WHATSAPP_TEMPLATE_NAME: 'randevu_phone_verification',
-  ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE: 'tr',
+  NETGSM_USERCODE: '8503030303',
+  NETGSM_PASSWORD: 'netgsm-test-password',
 };
 
 function json(data, status = 200) {
@@ -32,7 +30,7 @@ function rpc(data) {
   return json({ ok: true, data });
 }
 
-test('F16-02 public WhatsApp OTP start is an explicit public mutation and reaches Zernio transport', async () => {
+test('F16-02 public WhatsApp OTP start is an explicit public mutation and reaches Netgsm transport', async () => {
   const original = globalThis.fetch;
   const calls = [];
   const phoneKeys = [];
@@ -43,7 +41,6 @@ test('F16-02 public WhatsApp OTP start is an explicit public mutation and reache
       const wire = JSON.parse(String(init.body));
       assert.equal(wire.p_action, 'phone_verify');
       assert.equal(wire.p_args.p_slug, 'salon-a');
-      // R1-B1: the start spends the per-phone budget under an HMAC key, never the number.
       assert.equal(wire.p_args.p_phase, 'start');
       assert.match(wire.p_args.p_phone_key, /^[0-9a-f]{64}$/);
       assert.ok(!JSON.stringify(wire).includes('5551602001'), 'the phone number reached the rate RPC');
@@ -52,24 +49,17 @@ test('F16-02 public WhatsApp OTP start is an explicit public mutation and reache
       assert.match(wire.p_network_hash, /^[0-9a-f]{64}$/);
       return rpc([{ name: 'Salon A', slug: 'salon-a' }]);
     }
-    if (url === 'https://zernio.com/api/v1/inbox/conversations') {
+    if (url === 'https://whatsappapi.netgsm.com.tr/v1/otp') {
       const headers = new Headers(init.headers);
-      assert.equal(headers.get('Authorization'), `Bearer ${env.ZERNIO_API_KEY}`);
+      assert.equal(headers.get('Authorization'), `Basic ${Buffer.from(`${env.NETGSM_USERCODE}:${env.NETGSM_PASSWORD}`).toString('base64')}`);
       const wire = JSON.parse(String(init.body));
-      assert.equal(wire.accountId, env.ZERNIO_WHATSAPP_ACCOUNT_ID);
-      assert.equal(wire.participantId, '905551602001');
-      assert.equal(wire.templateName, env.ZERNIO_WHATSAPP_TEMPLATE_NAME);
-      assert.equal(wire.templateLanguage, 'tr');
-      assert.equal(wire.templateParams.length, 1);
-      assert.match(wire.templateParams[0], /^\d{6}$/);
-      return json({
-        success: true,
-        data: { messageId: 'msg_123', conversationId: 'conv_456', participantId: wire.participantId },
-      }, 201);
+      assert.equal(wire.to, '+905551602001');
+      assert.match(wire.code, /^\d{6}$/);
+      assert.deepEqual(Object.keys(wire).sort(), ['code', 'to']);
+      return json({ code: '00', description: 'success' }, 200);
     }
     throw new Error(`unexpected fetch ${url}`);
   };
-
   try {
     const response = await app.request('http://localhost/api/public/verify/whatsapp/start', {
       method: 'POST',
@@ -84,11 +74,8 @@ test('F16-02 public WhatsApp OTP start is an explicit public mutation and reache
     assert.equal(body.retryAfterSeconds, 30);
     assert.ok(typeof body.verificationChallenge === 'string' && body.verificationChallenge.length > 80);
     assert.equal(calls.length, 2);
-    // Any spelling of the same number shares one per-phone budget.
     assert.deepEqual(phoneKeys, [await whatsappPhoneRateKey(gateSecret, '+90 555 160 20 01')]);
-  } finally {
-    globalThis.fetch = original;
-  }
+  } finally { globalThis.fetch = original; }
 });
 
 test('F16-02 approved app-issued WhatsApp OTP returns a slug-and-phone-bound booking proof', async () => {

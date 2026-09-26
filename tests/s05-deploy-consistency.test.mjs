@@ -72,19 +72,16 @@ test('S05 supported inheritance preserves required bindings and never imports am
   assert.throws(() => inheritBindings(config, { id: 'latest', number: 12 }, {}));
   const supplied = secretBundle({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'public', RESEND_API_KEY: 'sending',
     NOTIFICATION_FROM_EMAIL: 'test@example.com', STAGING_APP_ORIGIN: 'https://example.com', SUPABASE_ADMIN_KEY: 'never-deploy',
-    ZERNIO_API_KEY: `sk_${'a'.repeat(64)}`, ZERNIO_WHATSAPP_ACCOUNT_ID: '0123456789abcdef01234567',
-    ZERNIO_WHATSAPP_TEMPLATE_NAME: 'randevu_phone_verification',
-    ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE: 'tr', ZERNIO_TEST_RECIPIENT: '+905551602001', ...keys });
+    NETGSM_USERCODE: '8503030303', NETGSM_PASSWORD: 'netgsm-test-password',
+    NETGSM_ACCEPTANCE_PHONE: '+905551602001', ...keys });
   assert.equal('SUPABASE_ADMIN_KEY' in supplied, false);
-  assert.equal(supplied.ZERNIO_API_KEY, `sk_${'a'.repeat(64)}`);
-  assert.equal(supplied.ZERNIO_WHATSAPP_ACCOUNT_ID, '0123456789abcdef01234567');
-  assert.equal(supplied.ZERNIO_WHATSAPP_TEMPLATE_NAME, 'randevu_phone_verification');
-  assert.equal(supplied.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE, 'tr');
-  assert.equal('ZERNIO_TEST_RECIPIENT' in supplied, false, 'acceptance recipient must never become a Worker binding');
+  assert.equal(supplied.NETGSM_USERCODE, '8503030303');
+  assert.equal(supplied.NETGSM_PASSWORD, 'netgsm-test-password');
+  assert.equal('NETGSM_ACCEPTANCE_PHONE' in supplied, false, 'acceptance recipient must never become a Worker binding');
   for (const name of KEY_NAMES) assert.equal(name in supplied, false, 'routine must not source critical keys from ambient env');
   assert.throws(() => secretBundle({ SUPABASE_URL: 'https://example.supabase.co', SUPABASE_ANON_KEY: 'public', RESEND_API_KEY: 'sending',
     NOTIFICATION_FROM_EMAIL: 'test@example.com', STAGING_APP_ORIGIN: 'https://example.com',
-    ZERNIO_API_KEY: `sk_${'a'.repeat(64)}` }), /complete tuple/);
+    NETGSM_USERCODE: '8503030303' }), /complete tuple/);
 });
 
 test('S05 scheduled heartbeat is bounded, carries actual version and cannot block delivery on network failure', async () => {

@@ -25,7 +25,7 @@ on:
         default: false
         type: boolean
       run_g16_acceptance:
-        description: Run G16 verified-recipient WhatsApp and private Storage gate
+        description: Run G16 Netgsm OTP transport and private Storage gate
         required: false
         default: false
         type: boolean
@@ -72,11 +72,9 @@ jobs:
       STAGING_OWNER_B_EMAIL: randevu-staging-owner-b@example.com
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       NOTIFICATION_FROM_EMAIL: randevu@notify.kepenk.ai
-      ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
-      ZERNIO_WHATSAPP_ACCOUNT_ID: ${{ vars.ZERNIO_WHATSAPP_ACCOUNT_ID }}
-      ZERNIO_WHATSAPP_TEMPLATE_NAME: ${{ vars.ZERNIO_WHATSAPP_TEMPLATE_NAME }}
-      ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE: ${{ vars.ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE }}
-      ZERNIO_ACCEPTANCE_PHONE: ${{ secrets.ZERNIO_ACCEPTANCE_PHONE }}
+      NETGSM_USERCODE: ${{ secrets.NETGSM_USERCODE }}
+      NETGSM_PASSWORD: ${{ secrets.NETGSM_PASSWORD }}
+      NETGSM_ACCEPTANCE_PHONE: ${{ secrets.NETGSM_ACCEPTANCE_PHONE }}
 
     steps:
       - name: Checkout
@@ -160,10 +158,13 @@ jobs:
             throw new Error(`Missing staging external settings: ${missingExternal.join(', ')}`);
           }
 
-          const zernioRuntime = ['ZERNIO_API_KEY', 'ZERNIO_WHATSAPP_ACCOUNT_ID', 'ZERNIO_WHATSAPP_TEMPLATE_NAME'];
-          const configuredZernio = zernioRuntime.filter((name) => Boolean(process.env[name])).length;
-          if (configuredZernio !== 0 && configuredZernio !== zernioRuntime.length) {
-            throw new Error('Zernio WhatsApp staging settings must be configured together');
+          const netgsmRuntime = ['NETGSM_USERCODE', 'NETGSM_PASSWORD'];
+          const configuredNetgsm = netgsmRuntime.filter((name) => Boolean(process.env[name])).length;
+          if (configuredNetgsm !== 0 && configuredNetgsm !== netgsmRuntime.length) {
+            throw new Error('Netgsm WhatsApp staging settings must be configured together');
+          }
+          if (process.env.RUN_G16_ACCEPTANCE === 'true' && (!process.env.NETGSM_ACCEPTANCE_PHONE || configuredNetgsm !== netgsmRuntime.length)) {
+            throw new Error('G16 acceptance requires NETGSM_USERCODE, NETGSM_PASSWORD and NETGSM_ACCEPTANCE_PHONE');
           }
 
           const requiredWorkflow = [

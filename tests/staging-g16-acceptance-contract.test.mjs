@@ -7,24 +7,21 @@ const workflow = readFileSync(new URL('../.github/workflows/staging.yml', import
 const deploy = readFileSync(new URL('../scripts/staging-deploy.mjs', import.meta.url), 'utf8');
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-test('G16 hosted acceptance is explicit opt-in and keeps recipient discovery private', () => {
+test('G16 hosted acceptance is explicit opt-in and keeps the recipient acceptance-only', () => {
   assert.equal(pkg.scripts['staging:g16-acceptance'], 'node scripts/staging-g16-acceptance.mjs');
   assert.match(workflow, /run_g16_acceptance:/);
   assert.match(workflow, /RUN_G16_ACCEPTANCE: \$\{\{ inputs\.run_g16_acceptance \}\}/);
-  assert.match(workflow, /ZERNIO_ACCEPTANCE_PHONE: \$\{\{ secrets\.ZERNIO_ACCEPTANCE_PHONE \}\}/);
-  assert.doesNotMatch(workflow, /zernio_acceptance_phone:\s*\n\s*description:/i);
-  assert.match(script, /\/v1\/whatsapp\/sandbox\/sessions/);
-  assert.match(script, /exactly one active verified Zernio sandbox recipient/);
+  assert.match(workflow, /NETGSM_ACCEPTANCE_PHONE: \$\{\{ secrets\.NETGSM_ACCEPTANCE_PHONE \}\}/);
+  assert.doesNotMatch(workflow, /netgsm_acceptance_phone:\s*\n\s*description:/i);
+  assert.match(script, /G16 Netgsm acceptance requires staging secret NETGSM_ACCEPTANCE_PHONE/);
 });
 
-test('G16 Zernio proof reuses production transport and requires delivered or read status', () => {
+test('G16 Netgsm proof reuses production OTP transport and requires provider success code 00', () => {
   assert.match(script, /sendWhatsappVerificationCode\(process\.env, acceptancePhone, code\)/);
-  assert.match(script, /\/v1\/inbox\/conversations\/\$\{encodeURIComponent\(conversationId\)\}\/messages/);
-  assert.match(script, /deliveryStatus/);
-  assert.match(script, /createdAt >= sentAfterMs/);
-  assert.match(script, /item\.message\.includes\(code\)/);
-  assert.match(script, /lastStatus === 'delivered' \|\| lastStatus === 'read'/);
+  assert.match(script, /sent\.providerCode !== '00'/);
+  assert.match(script, /Netgsm verified-recipient OTP send accepted by provider: code 00/);
   assert.doesNotMatch(script, /console\.log\([^\n]*(acceptancePhone|\bcode\b)/);
+  assert.doesNotMatch(script, /zernio/i);
 });
 
 test('G16 hosted Storage proof covers owner read, cross-tenant and anon denial, then delete', () => {
