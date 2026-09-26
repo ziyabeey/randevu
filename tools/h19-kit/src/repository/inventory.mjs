@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { extractSqlRoutines } from '../extractors/sql-routines.mjs';
 import { extractTypeScriptUnits } from '../extractors/typescript-units.mjs';
-import { extractPythonUnits } from '../extractors/python-units.mjs';
+import { extractPythonUnits, extractPythonUnitsBatch } from '../extractors/python-units.mjs';
 import { extractTreeSitterUnits } from '../extractors/tree-sitter-units.mjs';
 
 const DEFAULT_EXTENSIONS = new Set(['.sql','.ts','.tsx','.js','.jsx','.mjs','.cjs','.py']);
@@ -73,7 +73,26 @@ export async function repositoryInventory(root = process.cwd(), options = {}) {
   const files = await sourceFiles(root, { ...options, extensions: configuredExtensions });
   const units = [];
   const errors = [];
+
+  const pythonFiles = files.filter((file) => path.extname(file).toLowerCase() === '.py');
+  if (pythonFiles.length) {
+    try {
+      const batch = await extractPythonUnitsBatch(await Promise.all(
+        pythonFiles.map(async (file) => ({
+          path: file,
+          text: await readFile(path.join(root, file), 'utf8'),
+        })),
+      ));
+      for (const row of batch.results) units.push(...row.units);
+      errors.push(...batch.errors);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      for (const file of pythonFiles) errors.push({ path: file, error: message });
+    }
+  }
+
   for (const file of files) {
+    if (path.extname(file).toLowerCase() === '.py') continue;
     try {
       units.push(...await extractFileUnits(root, file, { treeSitterFallbacks }));
     } catch (error) {
@@ -85,6 +104,6 @@ export async function repositoryInventory(root = process.cwd(), options = {}) {
     root,
     filesScanned: files.length,
     units: units.sort((a, b) => a.path.localeCompare(b.path) || (a.startLine ?? 0) - (b.startLine ?? 0)),
-    errors,
+    errors: errors.sort((a, b) => a.path.localeCompare(b.path)),
   };
 }
