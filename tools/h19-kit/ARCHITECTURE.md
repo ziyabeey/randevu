@@ -31,3 +31,13 @@ System Two is an optional escalation target, not the source of truth for determi
 
 Experiment results and failed approaches belong in a machine-readable ledger. A future adapter must be able to
 ask whether a proposed method has already failed prospectively before recommending it again.
+
+
+## A6. Jev is a measured semantic sensor
+
+Jev is never the authority for deterministic facts. A live Jev call is permitted only after
+deterministic resolution and exact cache replay are considered. Every live route must bind its
+question/input identity, budget and later evaluation method.
+
+H19 optimizes **reliable resolved uncertainty per unit of provider cost**, not raw call volume.
+Repeated model votes are not independent truth; disagreement and `insufficient` may remain unresolved.
