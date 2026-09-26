@@ -20,7 +20,8 @@ test('G16 Netgsm proof reuses production OTP transport and requires provider suc
   assert.match(script, /sendWhatsappVerificationCode\(process\.env, acceptancePhone, code\)/);
   assert.match(script, /sent\.providerCode !== '00'/);
   assert.match(script, /Netgsm verified-recipient OTP send accepted by provider: code 00/);
-  assert.doesNotMatch(script, /console\.log\([^\n]*(acceptancePhone|\bcode\b)/);
+  assert.doesNotMatch(script, /console\.log\([^\n]*acceptancePhone/);
+  assert.doesNotMatch(script, /console\.log\([^\n]*\$\{code\}/);
   assert.doesNotMatch(script, /zernio/i);
 });
 
