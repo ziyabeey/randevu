@@ -7,12 +7,14 @@ const workflow = readFileSync(new URL('../.github/workflows/staging.yml', import
 const deploy = readFileSync(new URL('../scripts/staging-deploy.mjs', import.meta.url), 'utf8');
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-test('G16 hosted acceptance is explicit opt-in and uses a secret verified recipient', () => {
+test('G16 hosted acceptance is explicit opt-in and keeps recipient discovery private', () => {
   assert.equal(pkg.scripts['staging:g16-acceptance'], 'node scripts/staging-g16-acceptance.mjs');
   assert.match(workflow, /run_g16_acceptance:/);
   assert.match(workflow, /RUN_G16_ACCEPTANCE: \$\{\{ inputs\.run_g16_acceptance \}\}/);
   assert.match(workflow, /ZERNIO_ACCEPTANCE_PHONE: \$\{\{ secrets\.ZERNIO_ACCEPTANCE_PHONE \}\}/);
   assert.doesNotMatch(workflow, /zernio_acceptance_phone:\s*\n\s*description:/i);
+  assert.match(script, /\/v1\/whatsapp\/sandbox\/sessions/);
+  assert.match(script, /exactly one active verified Zernio sandbox recipient/);
 });
 
 test('G16 Zernio proof reuses production transport and requires delivered or read status', () => {
