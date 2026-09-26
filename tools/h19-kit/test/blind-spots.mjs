@@ -91,6 +91,7 @@ assert.equal(before.counts.total, 5);
 assert.deepEqual(before.counts.byCategory, {
   'extraction-error': 0,
   'impact-unknown': 2,
+  'runtime-coverage-unknown-path': 0,
   'semantic-unit-absence': 1,
   'semantic-unit-symbol-unmatched': 2,
 });
