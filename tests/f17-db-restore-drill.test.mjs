@@ -120,3 +120,117 @@ test('F17-03B1 cleans the source fixture and target database when restore fails'
     && call.args.some((arg) => String(arg).includes('drop database if exists yzt_f17_restore')));
   assert.equal(dropCalls.length >= 2, true, 'target database must be dropped before and after the failed drill');
 });
+
+// Inject failures into the actual orchestration without invoking a database.
+function observeDrill({ failSteps = [], toolContainer = null } = {}) {
+  const runner = fakeRunner();
+  const events = [];
+  const logs = [];
+  let drops = 0;
+  const failed = new Set(failSteps);
+  const options = {
+    toolContainer,
+    makeTempDir: () => '/tmp/f17-cleanup-regression',
+    now: () => 0,
+    log: (line) => {
+      logs.push(line);
+      if (line.startsWith('F17_DB_RESTORE_DRILL ')) events.push('receipt');
+    },
+    remove: () => {
+      events.push('host_archive');
+      if (failed.has('host_archive')) throw new Error('injected archive removal failure');
+    },
+    execute: (name, args, options) => {
+      const result = runner.execute(name, args, options);
+      const sql = args[args.indexOf('-c') + 1] ?? '';
+      let step;
+      if (name === 'psql' && String(sql).includes('drop database if exists')) {
+        step = ++drops === 1 ? 'preflight' : 'target_database';
+      } else if (name === 'psql' && String(sql).includes('insert into auth.users')) {
+        step = 'seed_users';
+      } else if (args.includes('supabase/seeds/staging_fixture.sql')) {
+        step = 'seed_fixture';
+      } else if (args.includes('supabase/seeds/staging_reset.sql')) {
+        step = 'source_fixture';
+      } else if (name === 'psql' && String(sql).includes('delete from auth.users')) {
+        step = 'source_users';
+      } else if (name === 'pg_restore' || (name === 'docker' && args[2] === 'pg_restore')) {
+        step = 'restore';
+      } else if (name === 'docker' && args[2] === 'rm') {
+        step = 'container_archive';
+      }
+      if (step) events.push(step);
+      if (failed.has(step)) return { status: 2, stdout: '', stderr: 'injected failure' };
+      return result;
+    },
+  };
+  return { events, logs, options };
+}
+
+for (const step of ['seed_users', 'seed_fixture']) {
+  test(`F17-03B1 cleans partial source state when ${step} fails`, () => {
+    const { events, logs, options } = observeDrill({ failSteps: [step] });
+    assert.throws(() => runF17DatabaseRestoreDrill(options), /command failed: psql status=2/);
+    assert.ok(events.includes('source_fixture'), 'partial fixture must be reset');
+    assert.ok(events.includes('source_users'), 'partial auth users must be removed');
+    assert.ok(events.includes('target_database'));
+    assert.ok(events.includes('host_archive'));
+    assert.equal(logs.some((line) => line.startsWith('F17_DB_RESTORE_DRILL ')), false);
+  });
+}
+
+for (const step of ['source_fixture', 'source_users', 'target_database', 'host_archive', 'container_archive']) {
+  test(`F17-03B1 fails closed and withholds success when ${step} cleanup fails`, () => {
+    const toolContainer = step === 'container_archive' ? 'randevu-ci-postgres' : null;
+    const { events, logs, options } = observeDrill({ failSteps: [step], toolContainer });
+    assert.throws(() => runF17DatabaseRestoreDrill(options), (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.match(error.message, new RegExp(`cleanup failed: ${step}`));
+      assert.equal(error.errors.length, 1);
+      return true;
+    });
+    // One failed cleanup must not suppress independent cleanup attempts.
+    assert.ok(events.includes('source_fixture'));
+    assert.ok(events.includes('source_users'));
+    assert.ok(events.includes('target_database'));
+    assert.ok(events.includes(toolContainer ? 'container_archive' : 'host_archive'));
+    assert.equal(logs.some((line) => line.startsWith('F17_DB_RESTORE_DRILL ')), false);
+  });
+}
+
+test('F17-03B1 emits success only after every cleanup completes', () => {
+  const { events, options } = observeDrill();
+  runF17DatabaseRestoreDrill(options);
+  assert.deepEqual(events.slice(-5), [
+    'source_fixture', 'source_users', 'target_database', 'host_archive', 'receipt',
+  ]);
+});
+
+test('F17-03B1 retains the restore failure together with all cleanup failures', () => {
+  const { events, logs, options } = observeDrill({
+    failSteps: ['restore', 'source_fixture', 'target_database', 'host_archive'],
+  });
+  assert.throws(() => runF17DatabaseRestoreDrill(options), (error) => {
+    assert.ok(error instanceof AggregateError);
+    assert.equal(error.errors.length, 4);
+    assert.strictEqual(error.cause, error.errors[0]);
+    assert.match(error.cause.message, /command failed: pg_restore status=2/);
+    assert.match(error.message, /command failed: pg_restore status=2/);
+    for (const step of ['source_fixture', 'target_database', 'host_archive']) {
+      assert.match(error.message, new RegExp(`cleanup failed: ${step}`));
+    }
+    return true;
+  });
+  assert.ok(events.includes('source_users'));
+  assert.ok(events.includes('host_archive'));
+  assert.equal(logs.some((line) => line.startsWith('F17_DB_RESTORE_DRILL ')), false);
+});
+
+test('F17-03B1 never resets source fixtures if preflight fails before seeding', () => {
+  const { events, options } = observeDrill({ failSteps: ['preflight'] });
+  assert.throws(() => runF17DatabaseRestoreDrill(options), /command failed: psql status=2/);
+  assert.equal(events.includes('seed_users'), false);
+  assert.equal(events.includes('source_fixture'), false);
+  assert.equal(events.includes('source_users'), false);
+  assert.ok(events.includes('host_archive'));
+});

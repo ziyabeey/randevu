@@ -156,12 +156,15 @@ function seedFixture(execute) {
   ]));
 }
 
-function cleanupFixture(execute) {
-  run(execute, 'psql', argsForPsql(SOURCE_DB, ['-f', 'supabase/seeds/staging_reset.sql']));
-  run(execute, 'psql', argsForPsql(SOURCE_DB, ['-c', `
+function cleanupFixture(execute, attempt) {
+  attempt('source_fixture', () => run(execute, 'psql', argsForPsql(SOURCE_DB, [
+    '-f', 'supabase/seeds/staging_reset.sql',
+  ])));
+  // User cleanup is still attempted when the fixture reset fails.
+  attempt('source_users', () => run(execute, 'psql', argsForPsql(SOURCE_DB, ['-c', `
     delete from auth.users
     where id in ('${OWNER_A}'::uuid, '${OWNER_B}'::uuid);
-  `]));
+  `])));
 }
 
 function dropTarget(execute) {
@@ -185,12 +188,24 @@ export function runF17DatabaseRestoreDrill({
   const dumpPath = toolContainer
     ? `/tmp/randevu-f17-restore-${process.pid}.dump`
     : path.join(temp, 'randevu.dump');
-  let seeded = false;
+  let seedStarted = false;
+  let outcome;
+  let failed = false;
+  let failure;
+  const cleanupErrors = [];
+  const attemptCleanup = (step, action) => {
+    try {
+      action();
+    } catch (cause) {
+      cleanupErrors.push(new Error(`F17 restore drill cleanup failed: ${step}`, { cause }));
+    }
+  };
 
   try {
     dropTarget(execute);
+    // Both seed commands can leave partial state before returning a failure.
+    seedStarted = true;
     seedFixture(execute);
-    seeded = true;
 
     const sourceFingerprint = readFingerprint(execute, SOURCE_DB);
     assertFingerprint(sourceFingerprint, 'source');
@@ -249,26 +264,38 @@ export function runF17DatabaseRestoreDrill({
       throw new Error('F17 restore drill source/restored fingerprints differ');
     }
 
-    log(
-      `F17_DB_RESTORE_DRILL environment=ci_disposable_same_cluster ` +
-      `businesses=2 memberships=2 services=2 linked_businesses=2 ` +
-      `dump_ms=${dumpMs} restore_ms=${restoreMs} storage_bytes=NOT_COVERED`
-    );
-
-    return { sourceFingerprint, restoredFingerprint, dumpMs, restoreMs };
+    outcome = { sourceFingerprint, restoredFingerprint, dumpMs, restoreMs };
+  } catch (error) {
+    failed = true;
+    failure = error;
   } finally {
-    if (seeded) {
-      try { cleanupFixture(execute); } catch (error) { log(`F17 restore source cleanup failed: ${error.message}`); }
-    }
-    try { dropTarget(execute); } catch (error) { log(`F17 restore target cleanup failed: ${error.message}`); }
+    if (seedStarted) cleanupFixture(execute, attemptCleanup);
+    attemptCleanup('target_database', () => dropTarget(execute));
     if (toolContainer) {
-      try {
+      attemptCleanup('container_archive', () => {
         run(execute, 'docker', ['exec', toolContainer, 'rm', '-f', dumpPath], { capture: true });
-      } catch (error) {
-        log(`F17 restore archive cleanup failed: ${error.message}`);
-      }
+      });
     } else {
-      remove(temp, { recursive: true, force: true });
+      attemptCleanup('host_archive', () => remove(temp, { recursive: true, force: true }));
     }
   }
+
+  if (cleanupErrors.length) {
+    const errors = failed ? [failure, ...cleanupErrors] : cleanupErrors;
+    const primary = failed ? `${failure instanceof Error ? failure.message : 'F17 restore drill operation failed'}; ` : '';
+    throw new AggregateError(
+      errors,
+      primary + cleanupErrors.map((error) => error.message).join('; '),
+      failed ? { cause: failure } : {},
+    );
+  }
+  if (failed) throw failure;
+
+  // A PASS receipt must not survive failed source, target or archive cleanup.
+  log(
+    `F17_DB_RESTORE_DRILL environment=ci_disposable_same_cluster ` +
+    `businesses=2 memberships=2 services=2 linked_businesses=2 ` +
+    `dump_ms=${outcome.dumpMs} restore_ms=${outcome.restoreMs} storage_bytes=NOT_COVERED`
+  );
+  return outcome;
 }
