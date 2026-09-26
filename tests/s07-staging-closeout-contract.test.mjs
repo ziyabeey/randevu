@@ -69,7 +69,9 @@ await test('S07 C4 runner has a fixed SQL allowlist, bounded psql and redacted f
   assert.match(runner, /stdio: \['ignore', 'pipe', 'pipe'\]/);
   assert.match(runner, /timeout: 10 \* 60 \* 1000/);
   assert.match(runner, /maxBuffer: 4 \* 1024 \* 1024/);
-  assert.match(runner, /S07 staging database acceptance failed/);
+  // Failure semantics are behavior-tested in s07-staging-runner-diagnostics.test.mjs.
+  // This contract only verifies that the runner delegates failures to that bounded diagnostic path.
+  assert.match(runner, /describeS07PsqlFailure\(name, result/);
   assert.doesNotMatch(runner, /stdio: 'inherit'/);
   assert.doesNotMatch(runner, /console\.log\([^\n]*databaseUrl/);
   assert.match(runner, /metrics\.length !== 2/);
