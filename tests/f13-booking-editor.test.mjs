@@ -45,6 +45,22 @@ test('F13-03 close-time stays adjacent while F14-04 owns the live ticket connect
   assert.match(css, /\.booking-detail-tabs/);
 });
 
+
+test('F13-03 create and close defaults use the active business-local day without resetting same-business edits', () => {
+  assert.match(booking, /const dateDefaultsBusinessId = useRef<string \| null>\(null\)/);
+  assert.match(booking, /if \(dateDefaultsBusinessId\.current !== activeBusinessId\)/);
+  assert.match(booking, /const businessToday = dateInZone\(new Date\(\)\.toISOString\(\), nextSetup\.timezone\)/);
+  assert.match(booking, /dateDefaultsBusinessId\.current = activeBusinessId;\s*setDate\(businessToday\);\s*setCloseDate\(businessToday\);/);
+
+  const staleGuard = booking.indexOf('if (controller.signal.aborted || generation !== loadGeneration.current) return;');
+  const tenantGuard = booking.indexOf('if (nextCatalog.membership.business_id !== activeBusinessId)');
+  const businessDateReset = booking.indexOf('const businessToday = dateInZone(new Date().toISOString(), nextSetup.timezone);');
+  assert.ok(staleGuard >= 0 && staleGuard < tenantGuard && tenantGuard < businessDateReset);
+
+  assert.equal((booking.match(/dateDefaultsBusinessId\.current !== activeBusinessId/g) ?? []).length, 1);
+  assert.equal((booking.match(/setCloseDate\(businessToday\)/g) ?? []).length, 1);
+});
+
 test('F13-03 native lifecycle is one CAS/idempotent group mutation, never N client line writes', () => {
   assert.match(worker, /\/bookings\/groups\/:groupId\/status/);
   assert.match(worker, /set_appointment_group_status/);
