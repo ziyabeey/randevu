@@ -1,0 +1,1878 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-repository-file-closure",
+  "profile": "repository-file-inputs-v1",
+  "inventorySha256": "68a7608ab16442112263d477b25dec5cb3fd48e5d2caa345c2828c81f965b541",
+  "snapshotSha256": "153958b516547d5e9854c62356a704f5b10a2819b6391aed20725a31d2c95c32",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "gitTreeSha": "e85fd3faf26671b2a5137d99b1be7765f06bb13c",
+  "parser": {
+    "packageVersion": "6.0.2",
+    "compilerVersion": "6.0.3"
+  },
+  "commonContextBindings": {
+    "package-lock.json": "1068309e42edcb5d99e9a72534319515849e94ae",
+    "package.json": "85d69437b8d9a307f7d78a13bec6795a65de7ccb",
+    "tsconfig.app.json": "0859e863d98d4c002ba5e48762801bc7a7ff6360",
+    "tsconfig.json": "837b1e9a4be69b4df745f0e9c92b7dff5bec8e20",
+    "tsconfig.node.json": "ab207ce4d47c2257da59b876e3e19f47f333157d",
+    "tsconfig.worker.json": "376ef2045dd27ff1dc0d20cc2f942b9fd81066b5",
+    "vite.config.ts": "947eff05b0e283b648237c4c87c3292faac801cc",
+    "wrangler.jsonc": "af05552db4c6344e00f94afd7f6295a020ac2979"
+  },
+  "runtimeContext": {
+    "nodeVersion": "v24.19.0"
+  },
+  "sourceBindings": {
+    "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+    "shared/customer-notification-status.ts": "bd963a809a2a09825ba74dbf577b7ec884c72315",
+    "shared/public-booking-intent.ts": "aadb31a3817c7faeb55afb523c28e1622f45f218",
+    "src/AppointmentPhotos.tsx": "88f471588e659772d18e9cf4c7e3969c17b2c814",
+    "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+    "src/CatalogSettingsPanel.tsx": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc",
+    "src/PublicBookingInformation.tsx": "b654e5b73acbc05ca609c451ba7ba525f57c98d6",
+    "src/PublicBookingPage.tsx": "d0831db2b55ab8cc7d2d1cee66945ca5dc37c8bf",
+    "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+    "src/PublicNotificationStatus.tsx": "2c873447c0440fe60f4d67290535866c146cc6e3",
+    "src/PublicReviews.tsx": "b03c02af8c998931acb67da3512d58003e1ba0aa",
+    "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+    "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+    "src/calendar-refresh.ts": "d0c2698e2bc4669f0016558052bf5a2b3d9bf99b",
+    "src/catalog-settings.css": "5106d1b22497671f5e09cc750d8d000780c9c5b9",
+    "src/private-media.css": "3351d46503dda7ed43f156fcda131f776005ce7a",
+    "src/public-booking-pending.ts": "41f2dd89794a2e592d0f86832a07c5adc4eb64cd",
+    "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+    "src/publicMedia.ts": "82b3cfbe008427d9b67017a86834c9d76dc31378",
+    "src/workspace-context.tsx": "5a435f84d8f295e2475b034e90d42dc106aeaa3a",
+    "src/workspace-route.ts": "23fb5ada0d3afb3121911d13c909a0e313020d73",
+    "supabase/migrations/20260915150000_f12_service_price_range.sql": "39a018189ae682395e9dce3de4665b125863d9cd",
+    "tests/f12-notification-status.test.mjs": "6b5574bc1661d8e1ba647c9d7a491406e1ec9ad8",
+    "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+    "tests/f12-service-price-range-client.test.mjs": "99723fb4a92419a68e7f78651b5180b6589f206f",
+    "tests/f13-calendar-refresh.test.mjs": "70a6e21ceb7b23e9dee99de4c861ff3b6e51619b",
+    "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+    "tests/s07-runtime-budgets.test.mjs": "a942457f1854c676ad6e63bfbc7246ada49d9156",
+    "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+    "worker/auth-routes.ts": "a568f7fd994ac07273bdc896e6644e63db193fbb",
+    "worker/auth.ts": "004678bd3ede27ce5e741c5a7ed9d689e6cda4f5",
+    "worker/availability.ts": "28cc297d5b68c365b4b698f12d860c1e83830aa9",
+    "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+    "worker/calendar.ts": "5a02a07186bd830bcde13ac888b5dbf824a81ff6",
+    "worker/catalog-management.ts": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8",
+    "worker/customer-manage.ts": "484e884ccfe65ffea455ce1a98de3481f71ef5c5",
+    "worker/customers.ts": "1fd9eaadee3aa1fc22d9ee0edf43ddf33fc1c499",
+    "worker/deployment-health.ts": "cbc098ff51102e6dd722bf85910205d2557d4ac6",
+    "worker/entry.ts": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38",
+    "worker/expenses.ts": "4ec4c864809ee289032c662480c3309932fe1620",
+    "worker/f11-group-consumer-reads.ts": "ac36db9e2e02f8b23a8b609167f2fe75172a2127",
+    "worker/f11-group-http.ts": "485f452b06b557e5f92274701e52e42d197be7c5",
+    "worker/f11-group-line-management-http.ts": "1144c94232563fd11f8f11649211a80f68bb928b",
+    "worker/f11-group-management-http.ts": "282c61c7309e6cbb51929835f3c2b3e10c9db711",
+    "worker/f16-feedback-http.ts": "bc4620bbef3b914355ac82d75730d257b36a35fc",
+    "worker/f16-packages-http.ts": "dfb7294f9d1fa029dcfa3b502a0692a3aebe72f9",
+    "worker/f16-private-media-http.ts": "e109bbc2e6e5dfc5b89199e6eb62fba611629d83",
+    "worker/f16-series-http.ts": "d560d0f48c936e4afacc3d2483de8f266baf6671",
+    "worker/index.ts": "420f40bdfa1a6e37bec30de6302343891def97bf",
+    "worker/notification-maintenance.ts": "1149288fb2fc690aed0602009aac66252fc1a141",
+    "worker/notifications.ts": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+    "worker/onboarding.ts": "8500ca412757dc83854208ee6a55d6569a6dadd4",
+    "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+    "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+    "worker/products.ts": "b048ec595a6e225e1c9b4a5c9377fd08fd915c4f",
+    "worker/public-abuse.ts": "792d83c6b0e0d64c4d3eb6a8a1aafd1df8bd6718",
+    "worker/public-booking-information.ts": "98c9b34e6e90d856e9150fcdb65d522b7c844e9d",
+    "worker/public-booking-recovery.ts": "25844aecdc2fe10b230bfe02a83d6a6924973e96",
+    "worker/public-booking.ts": "42cd726413d00eaae42546687f5134839881fc58",
+    "worker/public-profile.ts": "71984a061c12ccff63a61059cf1a824979fe0ee6",
+    "worker/public-rpc.ts": "c9b1d5eb8f6c9a7987dee498ebb77a0832e9c99f",
+    "worker/reports.ts": "ee04b8ec1982b7842355d88e9f7242311fe2cfa9",
+    "worker/snapshot-bounds.ts": "fcf13934bde7fc4a691a508904fa0c1c300f72f7",
+    "worker/snapshot-reads.ts": "e41e01b209a7f44046a819b8d6cb46cf87a04492",
+    "worker/team.ts": "7ab33ab5631f832e58e809147a47bcc56c795b27",
+    "worker/tickets.ts": "66a57cdb9af8a795f993742db1d77837f6cfc273"
+  },
+  "edges": [
+    {
+      "fromPath": "worker/tickets.ts",
+      "toPath": "worker/pagination.ts",
+      "kind": "static-import",
+      "line": 9,
+      "specifier": "./pagination.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f16-private-media-http.ts",
+      "kind": "static-import",
+      "line": 22,
+      "specifier": "./f16-private-media-http.ts"
+    },
+    {
+      "fromPath": "worker/f16-packages-http.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "tests/f12-service-price-range-client.test.mjs",
+      "toPath": "supabase/migrations/20260915150000_f12_service_price_range.sql",
+      "kind": "file-url",
+      "line": 9,
+      "specifier": "../supabase/migrations/20260915150000_f12_service_price_range.sql"
+    },
+    {
+      "fromPath": "worker/onboarding.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/team.ts",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "../shared/base64.ts"
+    },
+    {
+      "fromPath": "worker/expenses.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/notifications.ts",
+      "toPath": "worker/outbound-request.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./outbound-request.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-consumer-reads.ts",
+      "toPath": "worker/snapshot-bounds.ts",
+      "kind": "static-import",
+      "line": 12,
+      "specifier": "./snapshot-bounds.ts"
+    },
+    {
+      "fromPath": "tests/f12-public-multi-selection.test.mjs",
+      "toPath": "src/PublicMultiServiceSelection.tsx",
+      "kind": "file-url",
+      "line": 5,
+      "specifier": "../src/PublicMultiServiceSelection.tsx"
+    },
+    {
+      "fromPath": "worker/public-booking.ts",
+      "toPath": "worker/public-rpc.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "./public-rpc.ts"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "worker/public-rpc.ts",
+      "kind": "static-import",
+      "line": 22,
+      "specifier": "./public-rpc.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/onboarding.ts",
+      "kind": "static-import",
+      "line": 25,
+      "specifier": "./onboarding.ts"
+    },
+    {
+      "fromPath": "worker/f16-feedback-http.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/PublicReviews.tsx",
+      "kind": "static-import",
+      "line": 7,
+      "specifier": "./PublicReviews"
+    },
+    {
+      "fromPath": "worker/products.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/notification-maintenance.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./notification-maintenance.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-management-http.ts",
+      "toPath": "shared/customer-notification-status.ts",
+      "kind": "static-import",
+      "line": 10,
+      "specifier": "../shared/customer-notification-status.ts"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 5,
+      "specifier": "../shared/base64.ts"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "worker/snapshot-bounds.ts",
+      "kind": "static-import",
+      "line": 24,
+      "specifier": "./snapshot-bounds.ts"
+    },
+    {
+      "fromPath": "src/BookingPage.tsx",
+      "toPath": "src/workspace-context.tsx",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "./workspace-context"
+    },
+    {
+      "fromPath": "src/public-booking-pending.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "../shared/public-booking-intent.ts"
+    },
+    {
+      "fromPath": "worker/notifications.ts",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "../shared/base64.ts"
+    },
+    {
+      "fromPath": "src/CatalogSettingsPanel.tsx",
+      "toPath": "src/api.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./api"
+    },
+    {
+      "fromPath": "src/PublicMultiServiceSelection.tsx",
+      "toPath": "src/api.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./api"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "kind": "static-import",
+      "line": 23,
+      "specifier": "../shared/public-booking-intent.ts"
+    },
+    {
+      "fromPath": "tests/f12-notification-status.test.mjs",
+      "toPath": "worker/app.ts",
+      "kind": "file-url",
+      "line": 24,
+      "specifier": "../worker/app.ts"
+    },
+    {
+      "fromPath": "tests/f12-service-price-range-client.test.mjs",
+      "toPath": "worker/catalog-management.ts",
+      "kind": "file-url",
+      "line": 7,
+      "specifier": "../worker/catalog-management.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/public-booking.ts",
+      "kind": "static-import",
+      "line": 10,
+      "specifier": "./public-booking.ts"
+    },
+    {
+      "fromPath": "src/PublicReviews.tsx",
+      "toPath": "src/api.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./api"
+    },
+    {
+      "fromPath": "worker/tickets.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/snapshot-reads.ts",
+      "kind": "static-import",
+      "line": 15,
+      "specifier": "./snapshot-reads.ts"
+    },
+    {
+      "fromPath": "worker/bookings.ts",
+      "toPath": "worker/pagination.ts",
+      "kind": "static-import",
+      "line": 10,
+      "specifier": "./pagination.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "worker/public-booking-information.ts",
+      "kind": "static-import",
+      "line": 11,
+      "specifier": "./public-booking-information.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/catalog-management.ts",
+      "kind": "static-import",
+      "line": 5,
+      "specifier": "./catalog-management.ts"
+    },
+    {
+      "fromPath": "src/PublicNotificationStatus.tsx",
+      "toPath": "shared/customer-notification-status.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "../shared/customer-notification-status"
+    },
+    {
+      "fromPath": "tests/f12-notification-status.test.mjs",
+      "toPath": "worker/f11-group-management-http.ts",
+      "kind": "file-url",
+      "line": 23,
+      "specifier": "../worker/f11-group-management-http.ts"
+    },
+    {
+      "fromPath": "worker/expenses.ts",
+      "toPath": "worker/pagination.ts",
+      "kind": "static-import",
+      "line": 9,
+      "specifier": "./pagination.ts"
+    },
+    {
+      "fromPath": "tests/f12-service-price-range-client.test.mjs",
+      "toPath": "src/CatalogSettingsPanel.tsx",
+      "kind": "file-url",
+      "line": 5,
+      "specifier": "../src/CatalogSettingsPanel.tsx"
+    },
+    {
+      "fromPath": "tests/f12-notification-status.test.mjs",
+      "toPath": "shared/customer-notification-status.ts",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "../shared/customer-notification-status.ts"
+    },
+    {
+      "fromPath": "worker/public-abuse.ts",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "../shared/base64.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-line-management-http.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/bookings.ts",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "./bookings.ts"
+    },
+    {
+      "fromPath": "worker/customers.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "src/AppointmentPhotos.tsx",
+      "toPath": "src/private-media.css",
+      "kind": "static-import",
+      "line": 5,
+      "specifier": "./private-media.css"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/tickets.ts",
+      "kind": "static-import",
+      "line": 17,
+      "specifier": "./tickets.ts"
+    },
+    {
+      "fromPath": "worker/team.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "tests/f12-notification-status.test.mjs",
+      "toPath": "worker/f11-group-http.ts",
+      "kind": "file-url",
+      "line": 22,
+      "specifier": "../worker/f11-group-http.ts"
+    },
+    {
+      "fromPath": "src/BookingPage.tsx",
+      "toPath": "src/workspace-route.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./workspace-route"
+    },
+    {
+      "fromPath": "worker/public-booking.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/public-rpc.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/products.ts",
+      "toPath": "worker/pagination.ts",
+      "kind": "static-import",
+      "line": 9,
+      "specifier": "./pagination.ts"
+    },
+    {
+      "fromPath": "worker/customer-manage.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "worker/f16-series-http.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/f16-feedback-http.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 26,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/team.ts",
+      "kind": "static-import",
+      "line": 16,
+      "specifier": "./team.ts"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/public-multi-service.css",
+      "kind": "static-import",
+      "line": 6,
+      "specifier": "./public-multi-service.css"
+    },
+    {
+      "fromPath": "worker/f16-feedback-http.ts",
+      "toPath": "worker/public-rpc.ts",
+      "kind": "static-import",
+      "line": 10,
+      "specifier": "./public-rpc.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-management-http.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/f16-private-media-http.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/f16-packages-http.ts",
+      "toPath": "worker/tickets.ts",
+      "kind": "static-import",
+      "line": 8,
+      "specifier": "./tickets.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 13,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "worker/bookings.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/public-booking.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "kind": "static-import",
+      "line": 19,
+      "specifier": "../shared/public-booking-intent.ts"
+    },
+    {
+      "fromPath": "worker/public-profile.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/public-profile.ts",
+      "kind": "static-import",
+      "line": 11,
+      "specifier": "./public-profile.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-consumer-reads.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "shared/public-booking-intent.ts",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "./base64.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/index.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./index.ts"
+    },
+    {
+      "fromPath": "worker/availability.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/public-booking-pending.ts",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "./public-booking-pending"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f16-series-http.ts",
+      "kind": "static-import",
+      "line": 21,
+      "specifier": "./f16-series-http.ts"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/PublicMultiServiceSelection.tsx",
+      "kind": "static-import",
+      "line": 5,
+      "specifier": "./PublicMultiServiceSelection"
+    },
+    {
+      "fromPath": "worker/notification-maintenance.ts",
+      "toPath": "worker/outbound-request.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./outbound-request.ts"
+    },
+    {
+      "fromPath": "worker/customers.ts",
+      "toPath": "worker/pagination.ts",
+      "kind": "static-import",
+      "line": 10,
+      "specifier": "./pagination.ts"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/api.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./api"
+    },
+    {
+      "fromPath": "tests/f12-notification-status.test.mjs",
+      "toPath": "worker/public-booking-recovery.ts",
+      "kind": "file-url",
+      "line": 21,
+      "specifier": "../worker/public-booking-recovery.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/customers.ts",
+      "kind": "static-import",
+      "line": 13,
+      "specifier": "./customers.ts"
+    },
+    {
+      "fromPath": "tests/f12-service-price-range-client.test.mjs",
+      "toPath": "worker/bookings.ts",
+      "kind": "file-url",
+      "line": 8,
+      "specifier": "../worker/bookings.ts"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 6,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f11-group-http.ts",
+      "kind": "static-import",
+      "line": 5,
+      "specifier": "./f11-group-http.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/deployment-health.ts",
+      "kind": "static-import",
+      "line": 31,
+      "specifier": "./deployment-health.ts"
+    },
+    {
+      "fromPath": "worker/f16-private-media-http.ts",
+      "toPath": "worker/public-profile.ts",
+      "kind": "static-import",
+      "line": 11,
+      "specifier": "./public-profile.ts"
+    },
+    {
+      "fromPath": "worker/catalog-management.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "tests/s07-runtime-budgets.test.mjs",
+      "toPath": "worker/entry.ts",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "../worker/entry.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-management-http.ts",
+      "toPath": "worker/public-rpc.ts",
+      "kind": "static-import",
+      "line": 9,
+      "specifier": "./public-rpc.ts"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/deployment-health.ts",
+      "kind": "static-import",
+      "line": 5,
+      "specifier": "./deployment-health.ts"
+    },
+    {
+      "fromPath": "tests/f13-calendar-refresh.test.mjs",
+      "toPath": "src/calendar-refresh.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "../src/calendar-refresh.ts"
+    },
+    {
+      "fromPath": "worker/public-rpc.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/products.ts",
+      "kind": "static-import",
+      "line": 18,
+      "specifier": "./products.ts"
+    },
+    {
+      "fromPath": "src/CatalogSettingsPanel.tsx",
+      "toPath": "src/catalog-settings.css",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./catalog-settings.css"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 15,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "worker/public-profile.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 11,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/PublicNotificationStatus.tsx",
+      "kind": "static-import",
+      "line": 21,
+      "specifier": "./PublicNotificationStatus"
+    },
+    {
+      "fromPath": "worker/f11-group-management-http.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 11,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/customer-manage.ts",
+      "kind": "static-import",
+      "line": 12,
+      "specifier": "./customer-manage.ts"
+    },
+    {
+      "fromPath": "src/AppointmentPhotos.tsx",
+      "toPath": "src/publicMedia.ts",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "./publicMedia"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "shared/customer-notification-status.ts",
+      "kind": "static-import",
+      "line": 22,
+      "specifier": "../shared/customer-notification-status"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "shared/customer-notification-status.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "../shared/customer-notification-status.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "../shared/base64.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f16-packages-http.ts",
+      "kind": "static-import",
+      "line": 23,
+      "specifier": "./f16-packages-http.ts"
+    },
+    {
+      "fromPath": "tests/s07-runtime-budgets.test.mjs",
+      "toPath": "worker/outbound-request.ts",
+      "kind": "static-import",
+      "line": 6,
+      "specifier": "../worker/outbound-request.ts"
+    },
+    {
+      "fromPath": "tests/s07-pagination.test.mjs",
+      "toPath": "worker/pagination.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "../worker/pagination.ts"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "shared/public-booking-intent.ts",
+      "kind": "static-import",
+      "line": 18,
+      "specifier": "../shared/public-booking-intent"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/PublicBookingInformation.tsx",
+      "kind": "static-import",
+      "line": 20,
+      "specifier": "./PublicBookingInformation"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/calendar.ts",
+      "kind": "static-import",
+      "line": 14,
+      "specifier": "./calendar.ts"
+    },
+    {
+      "fromPath": "worker/customer-manage.ts",
+      "toPath": "worker/public-rpc.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "./public-rpc.ts"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "kind": "static-import",
+      "line": 13,
+      "specifier": "../shared/public-booking-intent.ts"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/PublicMultiServiceSelection.tsx",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "./PublicMultiServiceSelection"
+    },
+    {
+      "fromPath": "tests/f12-public-multi-selection.test.mjs",
+      "toPath": "src/public-multi-service.css",
+      "kind": "file-url",
+      "line": 7,
+      "specifier": "../src/public-multi-service.css"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/public-rpc.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "./public-rpc.ts"
+    },
+    {
+      "fromPath": "worker/auth-routes.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/auth.ts",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "../shared/base64.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 30,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "tests/f12-service-price-range-client.test.mjs",
+      "toPath": "src/BookingPage.tsx",
+      "kind": "file-url",
+      "line": 6,
+      "specifier": "../src/BookingPage.tsx"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/reports.ts",
+      "kind": "static-import",
+      "line": 20,
+      "specifier": "./reports.ts"
+    },
+    {
+      "fromPath": "src/BookingPage.tsx",
+      "toPath": "src/AppointmentPhotos.tsx",
+      "kind": "static-import",
+      "line": 5,
+      "specifier": "./AppointmentPhotos"
+    },
+    {
+      "fromPath": "worker/calendar.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "worker/public-rpc.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "./public-rpc.ts"
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "toPath": "worker/public-booking-information.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./public-booking-information.ts"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/notifications.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./notifications.ts"
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/deployment-health.ts",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "../shared/base64.ts"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/PublicBookingPage.tsx",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./PublicBookingPage"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f11-group-management-http.ts",
+      "kind": "static-import",
+      "line": 6,
+      "specifier": "./f11-group-management-http.ts"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/app.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "./app.ts"
+    },
+    {
+      "fromPath": "worker/auth.ts",
+      "toPath": "worker/outbound-request.ts",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "./outbound-request.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/public-booking-recovery.ts",
+      "kind": "static-import",
+      "line": 9,
+      "specifier": "./public-booking-recovery.ts"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/auth-routes.ts",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "./auth-routes.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f16-feedback-http.ts",
+      "kind": "static-import",
+      "line": 24,
+      "specifier": "./f16-feedback-http.ts"
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "toPath": "src/api.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./api"
+    },
+    {
+      "fromPath": "src/BookingPage.tsx",
+      "toPath": "src/api.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./api"
+    },
+    {
+      "fromPath": "worker/customer-manage.ts",
+      "toPath": "shared/customer-notification-status.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "../shared/customer-notification-status.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f11-group-consumer-reads.ts",
+      "kind": "static-import",
+      "line": 8,
+      "specifier": "./f11-group-consumer-reads.ts"
+    },
+    {
+      "fromPath": "worker/reports.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 2,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/public-booking-pending.ts",
+      "kind": "static-import",
+      "line": 16,
+      "specifier": "./public-booking-pending"
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "toPath": "worker/auth.ts",
+      "kind": "static-import",
+      "line": 6,
+      "specifier": "./auth.ts"
+    },
+    {
+      "fromPath": "worker/pagination.ts",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "../shared/base64.ts"
+    },
+    {
+      "fromPath": "tests/f12-public-multi-selection.test.mjs",
+      "toPath": "src/PublicSalonPage.tsx",
+      "kind": "file-url",
+      "line": 6,
+      "specifier": "../src/PublicSalonPage.tsx"
+    },
+    {
+      "fromPath": "worker/f11-group-consumer-reads.ts",
+      "toPath": "worker/pagination.ts",
+      "kind": "static-import",
+      "line": 7,
+      "specifier": "./pagination.ts"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/f11-group-line-management-http.ts",
+      "kind": "static-import",
+      "line": 7,
+      "specifier": "./f11-group-line-management-http.ts"
+    },
+    {
+      "fromPath": "worker/public-booking.ts",
+      "toPath": "worker/public-abuse.ts",
+      "kind": "static-import",
+      "line": 12,
+      "specifier": "./public-abuse.ts"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "src/PublicMultiServiceSelection.tsx",
+      "kind": "static-import",
+      "line": 19,
+      "specifier": "./PublicMultiServiceSelection"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/expenses.ts",
+      "kind": "static-import",
+      "line": 19,
+      "specifier": "./expenses.ts"
+    },
+    {
+      "fromPath": "worker/entry.ts",
+      "toPath": "worker/notifications.ts",
+      "kind": "static-import",
+      "line": 4,
+      "specifier": "./notifications.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "worker/public-rpc.ts",
+      "kind": "static-import",
+      "line": 10,
+      "specifier": "./public-rpc.ts"
+    },
+    {
+      "fromPath": "src/AppointmentPhotos.tsx",
+      "toPath": "src/api.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./api"
+    },
+    {
+      "fromPath": "worker/public-profile.ts",
+      "toPath": "worker/public-rpc.ts",
+      "kind": "static-import",
+      "line": 16,
+      "specifier": "./public-rpc.ts"
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "toPath": "shared/base64.ts",
+      "kind": "static-import",
+      "line": 17,
+      "specifier": "../shared/base64.ts"
+    },
+    {
+      "fromPath": "tests/s07-runtime-budgets.test.mjs",
+      "toPath": "worker/notifications.ts",
+      "kind": "static-import",
+      "line": 5,
+      "specifier": "../worker/notifications.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "shared/public-booking-intent.ts",
+      "kind": "static-import",
+      "line": 20,
+      "specifier": "../shared/public-booking-intent.ts"
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "toPath": "shared/customer-notification-status.ts",
+      "kind": "static-import",
+      "line": 12,
+      "specifier": "../shared/customer-notification-status.ts"
+    },
+    {
+      "fromPath": "worker/notification-maintenance.ts",
+      "toPath": "worker/notifications.ts",
+      "kind": "static-import",
+      "line": 1,
+      "specifier": "./notifications"
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "toPath": "worker/availability.ts",
+      "kind": "static-import",
+      "line": 3,
+      "specifier": "./availability.ts"
+    }
+  ],
+  "externalInputs": [
+    {
+      "fromPath": "tests/f12-public-multi-selection.test.mjs",
+      "specifier": "node:test",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "worker/reports.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/team.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "src/PublicSalonPage.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "worker/snapshot-reads.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "src/PublicBookingPage.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "src/BookingPage.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "worker/f16-series-http.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "tests/f12-notification-status.test.mjs",
+      "specifier": "node:assert/strict",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "worker/auth-routes.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/availability.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/expenses.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "tests/f12-public-multi-selection.test.mjs",
+      "specifier": "node:fs/promises",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "tests/f13-calendar-refresh.test.mjs",
+      "specifier": "node:assert/strict",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "worker/f16-private-media-http.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "tests/s07-runtime-budgets.test.mjs",
+      "specifier": "node:test",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "tests/s07-pagination.test.mjs",
+      "specifier": "node:assert/strict",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "worker/public-abuse.ts",
+      "specifier": "hono/cookie",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/public-booking-recovery.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/tickets.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "tests/f12-notification-status.test.mjs",
+      "specifier": "node:fs",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "tests/s07-pagination.test.mjs",
+      "specifier": "node:test",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "tests/f12-notification-status.test.mjs",
+      "specifier": "node:test",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "tests/f12-service-price-range-client.test.mjs",
+      "specifier": "node:assert/strict",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "worker/calendar.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/onboarding.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "src/CatalogSettingsPanel.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "worker/f16-packages-http.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "tests/s07-runtime-budgets.test.mjs",
+      "specifier": "node:http",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "tests/s07-runtime-budgets.test.mjs",
+      "specifier": "node:assert/strict",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "worker/public-profile.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/f11-group-management-http.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/public-booking.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/f11-group-consumer-reads.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/customer-manage.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/bookings.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/auth.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/index.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "tests/f12-service-price-range-client.test.mjs",
+      "specifier": "node:test",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "tests/f12-public-multi-selection.test.mjs",
+      "specifier": "node:assert/strict",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "worker/public-abuse.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/catalog-management.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/f11-group-line-management-http.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "tests/f12-service-price-range-client.test.mjs",
+      "specifier": "node:fs",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "src/workspace-context.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "src/workspace-context.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "tests/f13-calendar-refresh.test.mjs",
+      "specifier": "node:test",
+      "boundary": "node-builtin"
+    },
+    {
+      "fromPath": "src/AppointmentPhotos.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "src/AppointmentPhotos.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "worker/customers.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "src/PublicMultiServiceSelection.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "src/PublicReviews.tsx",
+      "specifier": "react",
+      "boundary": "locked-package",
+      "packageName": "react",
+      "version": "19.3.0",
+      "integrity": "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="
+    },
+    {
+      "fromPath": "worker/f16-feedback-http.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/app.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/products.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/f11-group-http.ts",
+      "specifier": "hono",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    },
+    {
+      "fromPath": "worker/auth.ts",
+      "specifier": "hono/cookie",
+      "boundary": "locked-package",
+      "packageName": "hono",
+      "version": "4.13.8",
+      "integrity": "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="
+    }
+  ],
+  "unknowns": [],
+  "clusters": [
+    {
+      "cluster": "calendar-refresh",
+      "originalSplit": "evaluation",
+      "roots": [
+        "src/calendar-refresh.ts",
+        "tests/f13-calendar-refresh.test.mjs"
+      ],
+      "sourceBindings": {
+        "src/calendar-refresh.ts": "d0c2698e2bc4669f0016558052bf5a2b3d9bf99b",
+        "tests/f13-calendar-refresh.test.mjs": "70a6e21ceb7b23e9dee99de4c861ff3b6e51619b"
+      }
+    },
+    {
+      "cluster": "catalog-price-projection",
+      "originalSplit": "evaluation",
+      "roots": [
+        "src/BookingPage.tsx",
+        "src/CatalogSettingsPanel.tsx",
+        "tests/f12-service-price-range-client.test.mjs",
+        "worker/bookings.ts",
+        "worker/catalog-management.ts"
+      ],
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "src/AppointmentPhotos.tsx": "88f471588e659772d18e9cf4c7e3969c17b2c814",
+        "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+        "src/CatalogSettingsPanel.tsx": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc",
+        "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+        "src/catalog-settings.css": "5106d1b22497671f5e09cc750d8d000780c9c5b9",
+        "src/private-media.css": "3351d46503dda7ed43f156fcda131f776005ce7a",
+        "src/publicMedia.ts": "82b3cfbe008427d9b67017a86834c9d76dc31378",
+        "src/workspace-context.tsx": "5a435f84d8f295e2475b034e90d42dc106aeaa3a",
+        "src/workspace-route.ts": "23fb5ada0d3afb3121911d13c909a0e313020d73",
+        "supabase/migrations/20260915150000_f12_service_price_range.sql": "39a018189ae682395e9dce3de4665b125863d9cd",
+        "tests/f12-service-price-range-client.test.mjs": "99723fb4a92419a68e7f78651b5180b6589f206f",
+        "worker/auth.ts": "004678bd3ede27ce5e741c5a7ed9d689e6cda4f5",
+        "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+        "worker/catalog-management.ts": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8",
+        "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+        "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+      }
+    },
+    {
+      "cluster": "pagination",
+      "originalSplit": "development",
+      "roots": [
+        "tests/s07-pagination.test.mjs",
+        "worker/pagination.ts"
+      ],
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+        "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+      }
+    },
+    {
+      "cluster": "public-selection",
+      "originalSplit": "development",
+      "roots": [
+        "src/PublicMultiServiceSelection.tsx",
+        "src/PublicSalonPage.tsx",
+        "src/public-multi-service.css",
+        "tests/f12-public-multi-selection.test.mjs"
+      ],
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "shared/customer-notification-status.ts": "bd963a809a2a09825ba74dbf577b7ec884c72315",
+        "shared/public-booking-intent.ts": "aadb31a3817c7faeb55afb523c28e1622f45f218",
+        "src/PublicBookingInformation.tsx": "b654e5b73acbc05ca609c451ba7ba525f57c98d6",
+        "src/PublicBookingPage.tsx": "d0831db2b55ab8cc7d2d1cee66945ca5dc37c8bf",
+        "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+        "src/PublicNotificationStatus.tsx": "2c873447c0440fe60f4d67290535866c146cc6e3",
+        "src/PublicReviews.tsx": "b03c02af8c998931acb67da3512d58003e1ba0aa",
+        "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+        "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+        "src/public-booking-pending.ts": "41f2dd89794a2e592d0f86832a07c5adc4eb64cd",
+        "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+        "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11"
+      }
+    },
+    {
+      "cluster": "runtime-notification",
+      "originalSplit": "evaluation",
+      "roots": [
+        "shared/customer-notification-status.ts",
+        "tests/f12-notification-status.test.mjs",
+        "tests/s07-runtime-budgets.test.mjs",
+        "worker/app.ts",
+        "worker/entry.ts",
+        "worker/f11-group-http.ts",
+        "worker/f11-group-management-http.ts",
+        "worker/notifications.ts",
+        "worker/outbound-request.ts",
+        "worker/public-booking-recovery.ts"
+      ],
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "shared/customer-notification-status.ts": "bd963a809a2a09825ba74dbf577b7ec884c72315",
+        "shared/public-booking-intent.ts": "aadb31a3817c7faeb55afb523c28e1622f45f218",
+        "tests/f12-notification-status.test.mjs": "6b5574bc1661d8e1ba647c9d7a491406e1ec9ad8",
+        "tests/s07-runtime-budgets.test.mjs": "a942457f1854c676ad6e63bfbc7246ada49d9156",
+        "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+        "worker/auth-routes.ts": "a568f7fd994ac07273bdc896e6644e63db193fbb",
+        "worker/auth.ts": "004678bd3ede27ce5e741c5a7ed9d689e6cda4f5",
+        "worker/availability.ts": "28cc297d5b68c365b4b698f12d860c1e83830aa9",
+        "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+        "worker/calendar.ts": "5a02a07186bd830bcde13ac888b5dbf824a81ff6",
+        "worker/catalog-management.ts": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8",
+        "worker/customer-manage.ts": "484e884ccfe65ffea455ce1a98de3481f71ef5c5",
+        "worker/customers.ts": "1fd9eaadee3aa1fc22d9ee0edf43ddf33fc1c499",
+        "worker/deployment-health.ts": "cbc098ff51102e6dd722bf85910205d2557d4ac6",
+        "worker/entry.ts": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38",
+        "worker/expenses.ts": "4ec4c864809ee289032c662480c3309932fe1620",
+        "worker/f11-group-consumer-reads.ts": "ac36db9e2e02f8b23a8b609167f2fe75172a2127",
+        "worker/f11-group-http.ts": "485f452b06b557e5f92274701e52e42d197be7c5",
+        "worker/f11-group-line-management-http.ts": "1144c94232563fd11f8f11649211a80f68bb928b",
+        "worker/f11-group-management-http.ts": "282c61c7309e6cbb51929835f3c2b3e10c9db711",
+        "worker/f16-feedback-http.ts": "bc4620bbef3b914355ac82d75730d257b36a35fc",
+        "worker/f16-packages-http.ts": "dfb7294f9d1fa029dcfa3b502a0692a3aebe72f9",
+        "worker/f16-private-media-http.ts": "e109bbc2e6e5dfc5b89199e6eb62fba611629d83",
+        "worker/f16-series-http.ts": "d560d0f48c936e4afacc3d2483de8f266baf6671",
+        "worker/index.ts": "420f40bdfa1a6e37bec30de6302343891def97bf",
+        "worker/notification-maintenance.ts": "1149288fb2fc690aed0602009aac66252fc1a141",
+        "worker/notifications.ts": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+        "worker/onboarding.ts": "8500ca412757dc83854208ee6a55d6569a6dadd4",
+        "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+        "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+        "worker/products.ts": "b048ec595a6e225e1c9b4a5c9377fd08fd915c4f",
+        "worker/public-abuse.ts": "792d83c6b0e0d64c4d3eb6a8a1aafd1df8bd6718",
+        "worker/public-booking-information.ts": "98c9b34e6e90d856e9150fcdb65d522b7c844e9d",
+        "worker/public-booking-recovery.ts": "25844aecdc2fe10b230bfe02a83d6a6924973e96",
+        "worker/public-booking.ts": "42cd726413d00eaae42546687f5134839881fc58",
+        "worker/public-profile.ts": "71984a061c12ccff63a61059cf1a824979fe0ee6",
+        "worker/public-rpc.ts": "c9b1d5eb8f6c9a7987dee498ebb77a0832e9c99f",
+        "worker/reports.ts": "ee04b8ec1982b7842355d88e9f7242311fe2cfa9",
+        "worker/snapshot-bounds.ts": "fcf13934bde7fc4a691a508904fa0c1c300f72f7",
+        "worker/snapshot-reads.ts": "e41e01b209a7f44046a819b8d6cb46cf87a04492",
+        "worker/team.ts": "7ab33ab5631f832e58e809147a47bcc56c795b27",
+        "worker/tickets.ts": "66a57cdb9af8a795f993742db1d77837f6cfc273"
+      }
+    }
+  ],
+  "components": [
+    {
+      "component": "M11-COMP-9f7d7c75d819",
+      "originalClusters": [
+        "calendar-refresh"
+      ],
+      "split": "evaluation",
+      "anchorIds": [
+        "M11-PILOT-006",
+        "M11-PILOT-007"
+      ],
+      "sourceBindings": {
+        "src/calendar-refresh.ts": "d0c2698e2bc4669f0016558052bf5a2b3d9bf99b",
+        "tests/f13-calendar-refresh.test.mjs": "70a6e21ceb7b23e9dee99de4c861ff3b6e51619b"
+      }
+    },
+    {
+      "component": "M11-COMP-a8c7b4f25226",
+      "originalClusters": [
+        "catalog-price-projection",
+        "pagination",
+        "public-selection",
+        "runtime-notification"
+      ],
+      "split": "development",
+      "anchorIds": [
+        "M11-PILOT-001",
+        "M11-PILOT-002",
+        "M11-PILOT-003",
+        "M11-PILOT-004",
+        "M11-PILOT-005",
+        "M11-PILOT-008",
+        "M11-PILOT-009",
+        "M11-PILOT-010",
+        "M11-PILOT-011",
+        "M11-PILOT-012",
+        "M11-PILOT-013",
+        "M11-PILOT-014",
+        "M11-PILOT-015",
+        "M11-PILOT-016",
+        "M11-PILOT-017",
+        "M11-PILOT-018",
+        "M11-PILOT-019",
+        "M11-PILOT-020",
+        "M11-PILOT-021",
+        "M11-PILOT-022",
+        "M11-PILOT-023",
+        "M11-PILOT-024"
+      ],
+      "sourceBindings": {
+        "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+        "shared/customer-notification-status.ts": "bd963a809a2a09825ba74dbf577b7ec884c72315",
+        "shared/public-booking-intent.ts": "aadb31a3817c7faeb55afb523c28e1622f45f218",
+        "src/AppointmentPhotos.tsx": "88f471588e659772d18e9cf4c7e3969c17b2c814",
+        "src/BookingPage.tsx": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4",
+        "src/CatalogSettingsPanel.tsx": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc",
+        "src/PublicBookingInformation.tsx": "b654e5b73acbc05ca609c451ba7ba525f57c98d6",
+        "src/PublicBookingPage.tsx": "d0831db2b55ab8cc7d2d1cee66945ca5dc37c8bf",
+        "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+        "src/PublicNotificationStatus.tsx": "2c873447c0440fe60f4d67290535866c146cc6e3",
+        "src/PublicReviews.tsx": "b03c02af8c998931acb67da3512d58003e1ba0aa",
+        "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+        "src/api.ts": "d49223e0e291e69c7f2eb1ea1902898a80e870cc",
+        "src/catalog-settings.css": "5106d1b22497671f5e09cc750d8d000780c9c5b9",
+        "src/private-media.css": "3351d46503dda7ed43f156fcda131f776005ce7a",
+        "src/public-booking-pending.ts": "41f2dd89794a2e592d0f86832a07c5adc4eb64cd",
+        "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+        "src/publicMedia.ts": "82b3cfbe008427d9b67017a86834c9d76dc31378",
+        "src/workspace-context.tsx": "5a435f84d8f295e2475b034e90d42dc106aeaa3a",
+        "src/workspace-route.ts": "23fb5ada0d3afb3121911d13c909a0e313020d73",
+        "supabase/migrations/20260915150000_f12_service_price_range.sql": "39a018189ae682395e9dce3de4665b125863d9cd",
+        "tests/f12-notification-status.test.mjs": "6b5574bc1661d8e1ba647c9d7a491406e1ec9ad8",
+        "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+        "tests/f12-service-price-range-client.test.mjs": "99723fb4a92419a68e7f78651b5180b6589f206f",
+        "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+        "tests/s07-runtime-budgets.test.mjs": "a942457f1854c676ad6e63bfbc7246ada49d9156",
+        "worker/app.ts": "e75204978ce1abf02fccc30298c2281377cec2c3",
+        "worker/auth-routes.ts": "a568f7fd994ac07273bdc896e6644e63db193fbb",
+        "worker/auth.ts": "004678bd3ede27ce5e741c5a7ed9d689e6cda4f5",
+        "worker/availability.ts": "28cc297d5b68c365b4b698f12d860c1e83830aa9",
+        "worker/bookings.ts": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731",
+        "worker/calendar.ts": "5a02a07186bd830bcde13ac888b5dbf824a81ff6",
+        "worker/catalog-management.ts": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8",
+        "worker/customer-manage.ts": "484e884ccfe65ffea455ce1a98de3481f71ef5c5",
+        "worker/customers.ts": "1fd9eaadee3aa1fc22d9ee0edf43ddf33fc1c499",
+        "worker/deployment-health.ts": "cbc098ff51102e6dd722bf85910205d2557d4ac6",
+        "worker/entry.ts": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38",
+        "worker/expenses.ts": "4ec4c864809ee289032c662480c3309932fe1620",
+        "worker/f11-group-consumer-reads.ts": "ac36db9e2e02f8b23a8b609167f2fe75172a2127",
+        "worker/f11-group-http.ts": "485f452b06b557e5f92274701e52e42d197be7c5",
+        "worker/f11-group-line-management-http.ts": "1144c94232563fd11f8f11649211a80f68bb928b",
+        "worker/f11-group-management-http.ts": "282c61c7309e6cbb51929835f3c2b3e10c9db711",
+        "worker/f16-feedback-http.ts": "bc4620bbef3b914355ac82d75730d257b36a35fc",
+        "worker/f16-packages-http.ts": "dfb7294f9d1fa029dcfa3b502a0692a3aebe72f9",
+        "worker/f16-private-media-http.ts": "e109bbc2e6e5dfc5b89199e6eb62fba611629d83",
+        "worker/f16-series-http.ts": "d560d0f48c936e4afacc3d2483de8f266baf6671",
+        "worker/index.ts": "420f40bdfa1a6e37bec30de6302343891def97bf",
+        "worker/notification-maintenance.ts": "1149288fb2fc690aed0602009aac66252fc1a141",
+        "worker/notifications.ts": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+        "worker/onboarding.ts": "8500ca412757dc83854208ee6a55d6569a6dadd4",
+        "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d",
+        "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826",
+        "worker/products.ts": "b048ec595a6e225e1c9b4a5c9377fd08fd915c4f",
+        "worker/public-abuse.ts": "792d83c6b0e0d64c4d3eb6a8a1aafd1df8bd6718",
+        "worker/public-booking-information.ts": "98c9b34e6e90d856e9150fcdb65d522b7c844e9d",
+        "worker/public-booking-recovery.ts": "25844aecdc2fe10b230bfe02a83d6a6924973e96",
+        "worker/public-booking.ts": "42cd726413d00eaae42546687f5134839881fc58",
+        "worker/public-profile.ts": "71984a061c12ccff63a61059cf1a824979fe0ee6",
+        "worker/public-rpc.ts": "c9b1d5eb8f6c9a7987dee498ebb77a0832e9c99f",
+        "worker/reports.ts": "ee04b8ec1982b7842355d88e9f7242311fe2cfa9",
+        "worker/snapshot-bounds.ts": "fcf13934bde7fc4a691a508904fa0c1c300f72f7",
+        "worker/snapshot-reads.ts": "e41e01b209a7f44046a819b8d6cb46cf87a04492",
+        "worker/team.ts": "7ab33ab5631f832e58e809147a47bcc56c795b27",
+        "worker/tickets.ts": "66a57cdb9af8a795f993742db1d77837f6cfc273"
+      }
+    }
+  ],
+  "repositoryFileClosureComplete": true,
+  "futureObservationLineageComplete": false,
+  "boundary": "Repository file dependencies for source/coverage inputs; packages and Node are pinned common context. Remote service behavior and future fact roots require separate receipts.",
+  "closureSha256": "55a9fc202bb79e809d991beef4af83260f335fa7fde40eb402db668f6069b7ea"
+}

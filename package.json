@@ -27,7 +27,8 @@
     "staging:s07-acceptance": "node scripts/staging-s07-acceptance.mjs",
     "build:ci": "vite build",
     "build:staging:ci": "CLOUDFLARE_ENV=staging vite build",
-    "test:docs": "node scripts/ci-docs.mjs"
+    "test:docs": "node scripts/ci-docs.mjs",
+    "test:h19-kit": "node tools/h19-kit/test/smoke.mjs"
   },
   "dependencies": {
     "hono": "4.13.8",

@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/jev-relational-judgment.v0.1.schema.json",
+  "title": "H19 Jev Relational Judgment v0.1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "caseSha256",
+    "provider",
+    "model",
+    "questionId",
+    "questionVersion",
+    "inputSha256",
+    "status",
+    "choice",
+    "providerConfidence",
+    "errorCode",
+    "judgmentSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "caseSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "questionId": {
+      "const": "RELATION_DIRECTION"
+    },
+    "questionVersion": {
+      "const": "0.1"
+    },
+    "inputSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "status": {
+      "enum": [
+        "answered",
+        "error"
+      ]
+    },
+    "choice": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "strengthens",
+        "weakens",
+        "unrelated",
+        "insufficient",
+        null
+      ]
+    },
+    "providerConfidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "errorCode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "judgmentSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "answered"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "choice": {
+            "enum": [
+              "strengthens",
+              "weakens",
+              "unrelated",
+              "insufficient"
+            ]
+          },
+          "providerConfidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "errorCode": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "choice": {
+            "type": "null"
+          },
+          "providerConfidence": {
+            "type": "null"
+          },
+          "errorCode": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

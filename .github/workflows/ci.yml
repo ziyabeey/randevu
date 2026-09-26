@@ -193,6 +193,202 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: node scripts/ci-code.mjs
+      - name: Run H19 Kit foundation smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm run test:h19-kit
+      - name: Install H19 Kit M1 parser dependency
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm install --prefix tools/h19-kit --ignore-scripts --no-audit --no-fund --install-strategy=linked
+      - name: Run H19 Kit M1 repository-intelligence smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m1
+      - name: Run H19 Kit M2 static-evidence smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m2
+      - name: Run H19 Kit M3 experiment-engine smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m3
+      - name: Run H19 Kit M3.5 impact-graph smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35
+      - name: Run H19 Kit M3.5 SCIP cache smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35-cache
+      - name: Run H19 Kit M3.5 affected-project smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35-affected
+      - name: Run H19 Kit M3.5 normalized graph-cache smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35-graph-cache
+      - name: Run H19 Kit M3.5 Tree-sitter fallback smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35-tree-sitter
+      - name: Run H19 Kit M3.5 unit-symbol mapping smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m35-unit-symbol
+      - name: Run H19 Kit M4 change-impact orchestrator smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m4-change-impact
+      - name: Run H19 Kit M5 coverage-discovery smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m5-coverage-discovery
+      - name: Run H19 Kit M5 coverage validation-packet smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m5-validation-packet
+      - name: Run H19 Kit M6 minimal test-spec smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m6-test-spec
+      - name: Run H19 Kit M7 executable test-candidate smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m7-test-candidate
+      - name: Run H19 Kit M8 relational evidence smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m8-relational
+      - name: Run H19 Kit M9 relational case-composer smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m9-relational-composer
+      - name: Run H19 Kit M10 relational judgment-batch smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m10-relational-judgment-batch
+      - name: Run H19 Kit M11 offline materializer smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-materializer
+      - name: Run H19 Kit M11 observation collection smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-collection
+      - name: Run H19 Kit M11 dependency closure smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-closure
+      - name: Run H19 Kit M11 saved-observation bridge smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-bridge
+      - name: Run H19 Kit M11 targeted-validation receipt smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-validation
+      - name: Run H19 Kit M11 development-supplement receipt smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-supplement
+      - name: Run H19 Kit M11 notification-validation freeze smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-notification-freeze
+      - name: Run H19 Kit M11 notification saved-result replay
+        if: ${{ steps.scope.outputs.mode == 'code' && hashFiles('tools/h19-kit/experiments/m11/notification-validation-001/RESULT.json') != '' }}
+        run: npm --prefix tools/h19-kit run test:m11-notification-result
+      - name: Run H19 Kit M11 independent-assessment freeze smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-independent-assessment-freeze
+      - name: Run H19 Kit M11 independent-assessment receipt smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:m11-independent-assessment-receipts
+      - name: Run H19 Kit M11 notification empirical validation once
+        id: h19_m11_notification_validation
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-m11-notification-behavioral-validation' && hashFiles('tools/h19-kit/experiments/m11/notification-validation-001/RESULT.json') == '' }}
+        env:
+          H19_M11_NOTIFICATION_SOURCE_REVISION: 07688ae08ef5c834bcadf5dc6a23c4e42e4621dd
+          H19_M11_NOTIFICATION_PLAN_SHA256: 9478ae5199235075f1b142fab20de20222aa150a29a68c856239da1008855e3c
+        run: |
+          set -euo pipefail
+          source_root="${RUNNER_TEMP}/h19-m11-notification-source"
+          result="${RUNNER_TEMP}/h19-m11-notification-result.json"
+          rm -rf "${source_root}"
+          mkdir -p "${source_root}"
+          git archive "${H19_M11_NOTIFICATION_SOURCE_REVISION}" | tar -x -C "${source_root}"
+          node tools/h19-kit/bin/h19-m11-validate-notification.mjs \
+            tools/h19-kit/experiments/m11 \
+            tools/h19-kit/experiments/m11/notification-validation-001/PLAN.json \
+            "${H19_M11_NOTIFICATION_PLAN_SHA256}" \
+            "${source_root}" > "${result}"
+          test -s "${result}"
+      - name: Upload H19 Kit M11 notification empirical validation
+        if: ${{ always() && steps.h19_m11_notification_validation.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-m11-notification-validation-001
+          path: ${{ runner.temp }}/h19-m11-notification-result.json
+          if-no-files-found: error
+      - name: Run H19 Kit performance-baseline smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:perf-baseline
+      - name: Run H19 Kit TypeScript shard resolver smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:ts-shards
+      - name: Run H19 Kit graph-equivalence smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:graph-equivalence
+      - name: Run H19 Kit TypeScript evidence-graph adoption smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:ts-evidence-graph
+      - name: Run H19 Kit public entrypoint smoke
+        if: ${{ steps.scope.outputs.mode == 'code' }}
+        run: npm --prefix tools/h19-kit run test:public-entrypoint
+      - name: Install pinned SCIP TypeScript for performance baseline
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
+        run: npm install --global @sourcegraph/scip-typescript@0.4.0
+      - name: Set up Go for pinned SCIP decoder
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' || github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption') }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache: false
+      - name: Build pinned SCIP decoder
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' || github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption') }}
+        run: |
+          set -euo pipefail
+          repo_dir="${RUNNER_TEMP}/scip-code"
+          mkdir -p "${repo_dir}"
+          git -C "${repo_dir}" init
+          git -C "${repo_dir}" remote add origin https://github.com/scip-code/scip.git
+          git -C "${repo_dir}" fetch --depth=1 origin db62094c7f9d464d0a6d9fd7815fcf3c9214b4c2
+          git -C "${repo_dir}" checkout --detach FETCH_HEAD
+          (
+            cd "${repo_dir}"
+            go build -o "${RUNNER_TEMP}/scip-h19" ./cmd/scip
+          )
+          "${RUNNER_TEMP}/scip-h19" --version
+      - name: Measure H19 Kit performance baseline
+        id: h19_perf_baseline
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'h19-kit-performance-') }}
+        run: npm --prefix tools/h19-kit run perf:baseline -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-perf-baseline.json" --require-scip
+      - name: Upload H19 Kit performance baseline
+        if: ${{ always() && steps.h19_perf_baseline.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-performance-baseline
+          path: ${{ runner.temp }}/h19-perf-baseline.json
+          if-no-files-found: error
+      - name: Measure H19 Kit SCIP graph equivalence
+        id: h19_graph_equivalence
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && (github.event.pull_request.head.ref == 'h19-kit-performance-graph-equivalence' || github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption') }}
+        run: npm --prefix tools/h19-kit run perf:graph-equivalence -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-graph-equivalence.json" --scip "${RUNNER_TEMP}/scip-h19" --scip-typescript-version 0.4.0
+      - name: Upload H19 Kit SCIP graph equivalence
+        if: ${{ always() && steps.h19_graph_equivalence.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-graph-equivalence
+          path: ${{ runner.temp }}/h19-graph-equivalence.json
+          if-no-files-found: error
+      - name: Measure H19 Kit project-shard adoption
+        id: h19_project_shard_adoption
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-project-shard-adoption' }}
+        run: npm --prefix tools/h19-kit run perf:project-shard-adoption -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-project-shard-adoption.json" --scip "${RUNNER_TEMP}/scip-h19" --decoder-id db62094c7f9d464d0a6d9fd7815fcf3c9214b4c2 --scip-typescript-version 0.4.0
+      - name: Upload H19 Kit project-shard adoption
+        if: ${{ always() && steps.h19_project_shard_adoption.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-project-shard-adoption
+          path: ${{ runner.temp }}/h19-project-shard-adoption.json
+          if-no-files-found: error
+      - name: Measure H19 Kit TypeScript shard performance
+        id: h19_ts_shard_performance
+        if: ${{ steps.scope.outputs.mode == 'code' && github.event_name == 'pull_request' && github.event.pull_request.head.ref == 'h19-kit-performance-tsconfig-shards' }}
+        run: npm --prefix tools/h19-kit run perf:ts-shards -- --repo "${GITHUB_WORKSPACE}" --out "${RUNNER_TEMP}/h19-ts-shard-performance.json" --scip-version 0.4.0
+      - name: Upload H19 Kit TypeScript shard performance
+        if: ${{ always() && steps.h19_ts_shard_performance.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: h19-ts-shard-performance
+          path: ${{ runner.temp }}/h19-ts-shard-performance.json
+          if-no-files-found: error
       - name: Require the selected checks to complete
         if: ${{ always() }}
         env:

@@ -1,0 +1,3409 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-repository-snapshot",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "gitTreeSha": "e85fd3faf26671b2a5137d99b1be7765f06bb13c",
+  "entries": [
+    {
+      "path": ".dev.vars.example",
+      "mode": "100644",
+      "gitBlobSha": "c874f4a9ddc5d99ec1e22206e9942541beaae296"
+    },
+    {
+      "path": ".github/codex/prompts/ci-observer.md",
+      "mode": "100644",
+      "gitBlobSha": "5c0d3505ad36d8e2e50ee53cf14c90d2f5614df3"
+    },
+    {
+      "path": ".github/copilot-instructions.md",
+      "mode": "100644",
+      "gitBlobSha": "74cf113b4807902acc69451ab008685a4ee935e1"
+    },
+    {
+      "path": ".github/instructions/browser-integration.instructions.md",
+      "mode": "100644",
+      "gitBlobSha": "5601accc97d89aca25bd6044e134db3f31109f1f"
+    },
+    {
+      "path": ".github/instructions/db-security.instructions.md",
+      "mode": "100644",
+      "gitBlobSha": "84c6523689a4a9bd45ba2327facde2369ceeb1a3"
+    },
+    {
+      "path": ".github/instructions/implementation.instructions.md",
+      "mode": "100644",
+      "gitBlobSha": "c48ae4568bbe7888eee7cf02b38080c89fd6ebe4"
+    },
+    {
+      "path": ".github/main-ruleset.json",
+      "mode": "100644",
+      "gitBlobSha": "f6f0e6c8176bc04b17e84486f0b9a04adfa64c7f"
+    },
+    {
+      "path": ".github/skills/development-telemetry-review/SKILL.md",
+      "mode": "100644",
+      "gitBlobSha": "ba746990c7de8f817840eda0912c3e1e432ba5f8"
+    },
+    {
+      "path": ".github/skills/effective-state-audit/SKILL.md",
+      "mode": "100644",
+      "gitBlobSha": "6fa5a7888ac3e806d5f47556c8c6f6d3e9f5d50d"
+    },
+    {
+      "path": ".github/skills/kepenk-implementer/SKILL.md",
+      "mode": "100644",
+      "gitBlobSha": "4bebf43d4ba0af968c12291c73dba534ca99354f"
+    },
+    {
+      "path": ".github/skills/r1-db-security-review/SKILL.md",
+      "mode": "100644",
+      "gitBlobSha": "b2eb90fcb0901f43e6ae757cfe6c628b342c03c1"
+    },
+    {
+      "path": ".github/skills/r2-browser-integration-review/SKILL.md",
+      "mode": "100644",
+      "gitBlobSha": "c79944c1b203b78913d8b610fbd09afbc8da02f9"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "mode": "100644",
+      "gitBlobSha": "726c0382cb07718d68c497aac3d18bc71744f6ed"
+    },
+    {
+      "path": ".github/workflows/codex-ci-observer.yml",
+      "mode": "100644",
+      "gitBlobSha": "b8e7a83223cc624579596b221aed1518384aee81"
+    },
+    {
+      "path": ".github/workflows/development-audits.yml",
+      "mode": "100644",
+      "gitBlobSha": "9e2111d28d33552de2202f9484cfe244e4298a38"
+    },
+    {
+      "path": ".github/workflows/development-escalation-router.yml",
+      "mode": "100644",
+      "gitBlobSha": "954acdcd9ed6624d578c00384d3abeac94054cd2"
+    },
+    {
+      "path": ".github/workflows/development-review-automation.yml",
+      "mode": "100644",
+      "gitBlobSha": "e1deda58d5439b86b85d928eb772818da7958147"
+    },
+    {
+      "path": ".github/workflows/development-review-router.yml",
+      "mode": "100644",
+      "gitBlobSha": "864c40a47a0fb2ccfab8b4842329d00a29244312"
+    },
+    {
+      "path": ".github/workflows/gemini-scout.yml",
+      "mode": "100644",
+      "gitBlobSha": "d6b3e1e435e2ba4fac9799afdfb3b000f268ebea"
+    },
+    {
+      "path": ".github/workflows/kepenk-root-site.yml",
+      "mode": "100644",
+      "gitBlobSha": "9a673b5edb66f6ec5987a2108c9b369f52634009"
+    },
+    {
+      "path": ".github/workflows/qwen-implement.yml",
+      "mode": "100644",
+      "gitBlobSha": "4a155aaf16c21aba02505384c8ae907dddc48fca"
+    },
+    {
+      "path": ".github/workflows/staging.yml",
+      "mode": "100644",
+      "gitBlobSha": "80b324fb1c18da9b54f85c2742ce15a9b03463bf"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "gitBlobSha": "9ef363cd9a42115add494a965d646ff695fbe4cc"
+    },
+    {
+      "path": ".nvmrc",
+      "mode": "100644",
+      "gitBlobSha": "a45fd52cc5891570d6299fab38643103c3955474"
+    },
+    {
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "gitBlobSha": "81abda54dab56afc471c1c12922853f5132b134d"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "mode": "100644",
+      "gitBlobSha": "97d56658ee4dad1967fdaa4155e4a427b6b10c29"
+    },
+    {
+      "path": "CLAUDE.md",
+      "mode": "100644",
+      "gitBlobSha": "2e61ecb03b3c1b1ab628b75b81fe2275826634a4"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "100644",
+      "gitBlobSha": "86636a1c47a147c908e3a9061e31e971ea12f9f6"
+    },
+    {
+      "path": "DECISIONS.md",
+      "mode": "100644",
+      "gitBlobSha": "eeb1b36de832a7be655140053eab30c9bd1e5370"
+    },
+    {
+      "path": "MVP_ACCEPTANCE.md",
+      "mode": "100644",
+      "gitBlobSha": "143d42cbd68f9c1bac11e7f646656e7472515236"
+    },
+    {
+      "path": "PRODUCT_SPEC.md",
+      "mode": "100644",
+      "gitBlobSha": "eb1103837adaf61f0deb9dba6ce980944a7c3df4"
+    },
+    {
+      "path": "PROJECT_STATE.md",
+      "mode": "100644",
+      "gitBlobSha": "f5a5703d032312dfb4ba7188d87617a14468b678"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "gitBlobSha": "9eaeba6301d44957010b0af8a9a91c5e29eb5d07"
+    },
+    {
+      "path": "ROADMAP.md",
+      "mode": "100644",
+      "gitBlobSha": "d7177518b111fb681af3b82920b40e78db04045a"
+    },
+    {
+      "path": "TASKS.md",
+      "mode": "100644",
+      "gitBlobSha": "eb9e092105aa53d73ae88d753ea131d1cad39cd6"
+    },
+    {
+      "path": "docs/brand/README.md",
+      "mode": "100644",
+      "gitBlobSha": "22205b44d78afe96cb511f8f29b8d3f14eaea2a9"
+    },
+    {
+      "path": "docs/brand/randevu-3d-scrollytelling-implementation-blueprint.md",
+      "mode": "100644",
+      "gitBlobSha": "7968e5959bef8edf1529318f5c71f2475bcb8b30"
+    },
+    {
+      "path": "docs/brand/randevu-branding.md",
+      "mode": "100644",
+      "gitBlobSha": "c3ed3e31a8026a8fd300309432d7298ddc7a0fee"
+    },
+    {
+      "path": "docs/brand/randevu-homepage-art-direction.md",
+      "mode": "100644",
+      "gitBlobSha": "e8ba39bdaaa540aa111eddf42e92ec6c128f2963"
+    },
+    {
+      "path": "docs/brand/randevu-homepage-copy.md",
+      "mode": "100644",
+      "gitBlobSha": "e9ef1dc41ac59503f371b01f8d2457af050797e6"
+    },
+    {
+      "path": "docs/brand/randevu-homepage-implementation-handoff.md",
+      "mode": "100644",
+      "gitBlobSha": "b33ccbc5cfd8560fa3781fa04555f455d6b1ff02"
+    },
+    {
+      "path": "docs/brand/randevu-lookdev-master-decision.md",
+      "mode": "100644",
+      "gitBlobSha": "416333bf02582628ef9e690b1b34c6e8b5f36f6c"
+    },
+    {
+      "path": "docs/brand/randevu-lookdev-selection-criteria.md",
+      "mode": "100644",
+      "gitBlobSha": "7fc3f5e1b4951f2f5e134e575a44f7894d2a76bc"
+    },
+    {
+      "path": "docs/brand/randevu-motion-blueprint-frame06-07.md",
+      "mode": "100644",
+      "gitBlobSha": "ae66545b9ae85f24bc16d8a0fe98658ff79ce74f"
+    },
+    {
+      "path": "docs/brand/randevu-site-copy-card-system.md",
+      "mode": "100644",
+      "gitBlobSha": "b54d6b5b730527096ebab6aa41d2263571fbbe21"
+    },
+    {
+      "path": "docs/brand/randevu-transformation-asset-direction.md",
+      "mode": "100644",
+      "gitBlobSha": "855377752267656e8b651249efa8d67087aab674"
+    },
+    {
+      "path": "docs/brand/randevu-transformation-scrollytelling-storyboard.md",
+      "mode": "100644",
+      "gitBlobSha": "6ecd33fef0ea4e935edd351da5aa7ab9638ab884"
+    },
+    {
+      "path": "docs/brand/randevu-transformation-shotlist-05-08-revised.md",
+      "mode": "100644",
+      "gitBlobSha": "a1946aad8ec096759796c10d20d2fe331496a4f7"
+    },
+    {
+      "path": "docs/brand/randevu-transformation-shotlist.md",
+      "mode": "100644",
+      "gitBlobSha": "5f44a9afcfb5ab23b33875e6bd9106aefe2a014a"
+    },
+    {
+      "path": "docs/brand/randevu-video-scroll-implementation-blueprint.md",
+      "mode": "100644",
+      "gitBlobSha": "7808135d2a1e0207a1144017746c64322e095274"
+    },
+    {
+      "path": "docs/development-engine/README.md",
+      "mode": "100644",
+      "gitBlobSha": "6b4d0e725c7fd64445dbb1262c462a2210b0c71b"
+    },
+    {
+      "path": "docs/development-engine/ai-model-routing.md",
+      "mode": "100644",
+      "gitBlobSha": "3f7ab3fe268f2d4bd73737e9d27517f2904dafed"
+    },
+    {
+      "path": "docs/development-engine/automations/development-telemetry-review.md",
+      "mode": "100644",
+      "gitBlobSha": "81c395a00ffa437cc65a0ae62dc0775e59225c5d"
+    },
+    {
+      "path": "docs/development-engine/automations/effective-state-audit.md",
+      "mode": "100644",
+      "gitBlobSha": "12e5df8df834b2d24ea7dc652dbb55686aa92380"
+    },
+    {
+      "path": "docs/development-engine/automations/hourly-writers.md",
+      "mode": "100644",
+      "gitBlobSha": "91b0ab822f5f9030e934ea10b934847e61d23266"
+    },
+    {
+      "path": "docs/development-engine/automations/r0-review.md",
+      "mode": "100644",
+      "gitBlobSha": "95b1130ff15d3fc929440be0ecff8b5fae09873d"
+    },
+    {
+      "path": "docs/development-engine/automations/r3-r4-review.md",
+      "mode": "100644",
+      "gitBlobSha": "463e7588b47bb5ea62867e05ba250b5d6e5217b5"
+    },
+    {
+      "path": "docs/development-engine/automations/rnd-lab.md",
+      "mode": "100644",
+      "gitBlobSha": "c0396c73ee1faca6a87c3f29e7915adb05d42d8b"
+    },
+    {
+      "path": "docs/development-engine/automations/stale-review-detector.md",
+      "mode": "100644",
+      "gitBlobSha": "f47d9b28a3e21cbcf72e5ae0089860225a7cbf9e"
+    },
+    {
+      "path": "docs/development-engine/automations/support-teams.md",
+      "mode": "100644",
+      "gitBlobSha": "87b1b29d055cc1c283693f94ab0a31793de15d27"
+    },
+    {
+      "path": "docs/development-engine/escalation-delivery.md",
+      "mode": "100644",
+      "gitBlobSha": "ecbf4854e4367decd2f46a7f39ae7aaf164eba90"
+    },
+    {
+      "path": "docs/development-engine/examples/evidence-manifest.v0.1.json",
+      "mode": "100644",
+      "gitBlobSha": "0d72d1cf6aea4bad94077631f880ab71905cf369"
+    },
+    {
+      "path": "docs/development-engine/examples/task-manifest.v0.1.json",
+      "mode": "100644",
+      "gitBlobSha": "cb9cfa3e4fdf5870fa546e32b37f6205b420394f"
+    },
+    {
+      "path": "docs/development-engine/schemas/evidence-manifest.v0.1.schema.json",
+      "mode": "100644",
+      "gitBlobSha": "5a1e723dd12425150f6eca6a0f64faa002280b3d"
+    },
+    {
+      "path": "docs/development-engine/schemas/task-manifest.v0.1.schema.json",
+      "mode": "100644",
+      "gitBlobSha": "f3f8cd634f8cbc0fa6667feb0fcae74f32ccde7a"
+    },
+    {
+      "path": "docs/handoffs/DEV-ENGINE-06.md",
+      "mode": "100644",
+      "gitBlobSha": "bad2b2b22ac91af013d045c81aea207ed183dafb"
+    },
+    {
+      "path": "docs/handoffs/DEV-ENGINE-07.md",
+      "mode": "100644",
+      "gitBlobSha": "7c0687fa9e8365ef41525ce1dabfe4e25018030b"
+    },
+    {
+      "path": "docs/handoffs/DEV-ENGINE-08.md",
+      "mode": "100644",
+      "gitBlobSha": "4e85dad49bda054ff1bdafd1872c41e5a2811811"
+    },
+    {
+      "path": "docs/handoffs/F09-02.md",
+      "mode": "100644",
+      "gitBlobSha": "6beb0008a717db70bc9113636a4697b8fa52f82b"
+    },
+    {
+      "path": "docs/handoffs/F09-03.md",
+      "mode": "100644",
+      "gitBlobSha": "b4a63b2bd1c948b7b3d70f3d42255d1a7d8ba96e"
+    },
+    {
+      "path": "docs/handoffs/F09-04.md",
+      "mode": "100644",
+      "gitBlobSha": "886b07b33163db533af578eace54c45abd0eb19d"
+    },
+    {
+      "path": "docs/handoffs/F09-05.md",
+      "mode": "100644",
+      "gitBlobSha": "684bcaa96b797d8a85673bfbec5bfb4d76dda62a"
+    },
+    {
+      "path": "docs/handoffs/F10-01.md",
+      "mode": "100644",
+      "gitBlobSha": "634eae344766645c7b007b73b769898c89d9a2f4"
+    },
+    {
+      "path": "docs/handoffs/F10-02.md",
+      "mode": "100644",
+      "gitBlobSha": "85bd84e830d977ee7dc659cc435c6135d0c099df"
+    },
+    {
+      "path": "docs/handoffs/F10-03.md",
+      "mode": "100644",
+      "gitBlobSha": "d95356301cc9179d0d5dbe2086fb4b1305e39025"
+    },
+    {
+      "path": "docs/handoffs/F10-04.md",
+      "mode": "100644",
+      "gitBlobSha": "b394c322793915a29a030656962474dc972ef534"
+    },
+    {
+      "path": "docs/handoffs/F10-05-repair.md",
+      "mode": "100644",
+      "gitBlobSha": "e8c5c8df0c4a6c426751e857eb7793b02490851c"
+    },
+    {
+      "path": "docs/handoffs/F10-05.md",
+      "mode": "100644",
+      "gitBlobSha": "902075e2f1fc14ed4a32e12370c405f7e357c20b"
+    },
+    {
+      "path": "docs/handoffs/F10-06.md",
+      "mode": "100644",
+      "gitBlobSha": "6febf6c4ebe51b108f91eb9aa4400fd242a41f91"
+    },
+    {
+      "path": "docs/handoffs/F11-01.md",
+      "mode": "100644",
+      "gitBlobSha": "28d2e51e35abaad24ec1a2b100ade3e9f40cf61f"
+    },
+    {
+      "path": "docs/handoffs/F11-02.md",
+      "mode": "100644",
+      "gitBlobSha": "cba24f4d6e796e51ef6065fcc1d50befcba2906e"
+    },
+    {
+      "path": "docs/handoffs/F11-03.md",
+      "mode": "100644",
+      "gitBlobSha": "0b0545b3c1ee664bce38936b8d52c53c892f4381"
+    },
+    {
+      "path": "docs/handoffs/F11-04.md",
+      "mode": "100644",
+      "gitBlobSha": "93617c770f50aa58966a659a18598f2ee0e6f982"
+    },
+    {
+      "path": "docs/handoffs/F12-01.md",
+      "mode": "100644",
+      "gitBlobSha": "57c1031d096afe91114ea3ee96c4dfd0708e1f12"
+    },
+    {
+      "path": "docs/handoffs/F12-02.md",
+      "mode": "100644",
+      "gitBlobSha": "00f28c20600e6d406ac00fa3406b9138e563f307"
+    },
+    {
+      "path": "docs/handoffs/F12-03.md",
+      "mode": "100644",
+      "gitBlobSha": "1b8f85a70ce47fdd111c69dd9bc0a5ef48082b48"
+    },
+    {
+      "path": "docs/handoffs/F12-04.md",
+      "mode": "100644",
+      "gitBlobSha": "852d2507dd71d3af8c632799f585a9052fb01d95"
+    },
+    {
+      "path": "docs/handoffs/F12-05.md",
+      "mode": "100644",
+      "gitBlobSha": "99a49d1ebafbefe986ee13ebd12eb068ab739d2c"
+    },
+    {
+      "path": "docs/handoffs/F13-01.md",
+      "mode": "100644",
+      "gitBlobSha": "c4b04c2d72434b91b774070794267bf928c7e0b9"
+    },
+    {
+      "path": "docs/handoffs/F13-02.md",
+      "mode": "100644",
+      "gitBlobSha": "8d53a553c780bd2b9e9d5d81565adda3537dfb37"
+    },
+    {
+      "path": "docs/handoffs/F13-03.md",
+      "mode": "100644",
+      "gitBlobSha": "11ed92726fc1133f44e0f906ce36a70d8bcf5c77"
+    },
+    {
+      "path": "docs/handoffs/F14-01.md",
+      "mode": "100644",
+      "gitBlobSha": "642432e1d12c4090d2e7d6762d66701a1f43898e"
+    },
+    {
+      "path": "docs/handoffs/F14-02.md",
+      "mode": "100644",
+      "gitBlobSha": "3e58dcfa79b941b10f488f205ab2efd6829b16d9"
+    },
+    {
+      "path": "docs/handoffs/F14-03.md",
+      "mode": "100644",
+      "gitBlobSha": "3a4f57926e8628a0e0b445080f6f0276ad5034cb"
+    },
+    {
+      "path": "docs/handoffs/F17-01-readiness-note.md",
+      "mode": "100644",
+      "gitBlobSha": "dae69aab49a245cef75863b9871334abfe71d9cc"
+    },
+    {
+      "path": "docs/handoffs/F17-01.md",
+      "mode": "100644",
+      "gitBlobSha": "6327705d5948bdab5bb45f54b66081894edebb64"
+    },
+    {
+      "path": "docs/handoffs/F17-02.md",
+      "mode": "100644",
+      "gitBlobSha": "026c05dbccec58cb1831843377d270d732ce1637"
+    },
+    {
+      "path": "docs/handoffs/GS.md",
+      "mode": "100644",
+      "gitBlobSha": "5b0e584e47e62e716ee98c7df465b3d9bab0b905"
+    },
+    {
+      "path": "docs/handoffs/PLAN-V3.md",
+      "mode": "100644",
+      "gitBlobSha": "cf56254462f937b1a448096208841aadd616e8f0"
+    },
+    {
+      "path": "docs/handoffs/S01.md",
+      "mode": "100644",
+      "gitBlobSha": "893d883a2de845f0dafd7fe07d27051ea874accd"
+    },
+    {
+      "path": "docs/handoffs/S02.md",
+      "mode": "100644",
+      "gitBlobSha": "4073f5b2b09c84aa3e390042db022de1b1c27284"
+    },
+    {
+      "path": "docs/handoffs/S03.md",
+      "mode": "100644",
+      "gitBlobSha": "8fd6d78971938e0ab4315d3ec4e825aa26970c39"
+    },
+    {
+      "path": "docs/handoffs/S04.md",
+      "mode": "100644",
+      "gitBlobSha": "5828b324d38bfaf04ab75113b95ecb937419272f"
+    },
+    {
+      "path": "docs/handoffs/S05.md",
+      "mode": "100644",
+      "gitBlobSha": "660b2d84e42d2a1ceb97907b5735969deed09aca"
+    },
+    {
+      "path": "docs/handoffs/S06.md",
+      "mode": "100644",
+      "gitBlobSha": "109b574f179e6d7844a7f728d8996d35230cccd8"
+    },
+    {
+      "path": "docs/handoffs/S07.md",
+      "mode": "100644",
+      "gitBlobSha": "4d90aab6a61f0f5e086925de385f92c46f4dd1ee"
+    },
+    {
+      "path": "docs/handoffs/S08.md",
+      "mode": "100644",
+      "gitBlobSha": "0b115446f8d6d885896b1881d951366323d3c501"
+    },
+    {
+      "path": "docs/plan/agent-workflow.md",
+      "mode": "100644",
+      "gitBlobSha": "96d7eacacae17a974045dd2ff24000f0c1de9122"
+    },
+    {
+      "path": "docs/plan/architecture-contracts.md",
+      "mode": "100644",
+      "gitBlobSha": "b1dee813cd950907ecd87a0195c3c4d46fc998f6"
+    },
+    {
+      "path": "docs/plan/context-packs.md",
+      "mode": "100644",
+      "gitBlobSha": "8838eb351be2825571ff1fca50b231143c085ad1"
+    },
+    {
+      "path": "docs/plan/f09-01-recovery-contract.md",
+      "mode": "100644",
+      "gitBlobSha": "c34e076eb0e11036c4ba1bea75fea14a8cd0b82d"
+    },
+    {
+      "path": "docs/plan/f12-01-visual-flow-contract.md",
+      "mode": "100644",
+      "gitBlobSha": "073dc611d1468c9df3e1735e47f835787cd5dfae"
+    },
+    {
+      "path": "docs/plan/k04-platform-core-contract.md",
+      "mode": "100644",
+      "gitBlobSha": "6e7b5359fd0ede94e1e43e96a3d0c530565b64a4"
+    },
+    {
+      "path": "docs/plan/kepenk-core-migration-plan.md",
+      "mode": "100644",
+      "gitBlobSha": "8b2d3cf6897c3e6518a18f635311d4caa17c534d"
+    },
+    {
+      "path": "docs/plan/kolayapp-name-decision.md",
+      "mode": "100644",
+      "gitBlobSha": "f046e98c4deff98d2a81d33434361028ac29f4f1"
+    },
+    {
+      "path": "docs/plan/mkt-01-integration-contract.md",
+      "mode": "100644",
+      "gitBlobSha": "8c97b5959064c06275add2f867ccc63e279c7084"
+    },
+    {
+      "path": "docs/plan/phase-09.md",
+      "mode": "100644",
+      "gitBlobSha": "0f389f0f80ca455b2744d857e0a6306c774d4a8e"
+    },
+    {
+      "path": "docs/plan/phase-10.md",
+      "mode": "100644",
+      "gitBlobSha": "47d969bc030a3707c6fbe885eeff7b99d929656c"
+    },
+    {
+      "path": "docs/plan/phase-11.md",
+      "mode": "100644",
+      "gitBlobSha": "2d4214d5b5439fa672702260465d5f78183d49e8"
+    },
+    {
+      "path": "docs/plan/phase-12.md",
+      "mode": "100644",
+      "gitBlobSha": "47aa57efd2d5618d23425dadb514670d87399fca"
+    },
+    {
+      "path": "docs/plan/phase-13.md",
+      "mode": "100644",
+      "gitBlobSha": "f92b050cdae8fa3977621186a31afef194caf054"
+    },
+    {
+      "path": "docs/plan/phase-14.md",
+      "mode": "100644",
+      "gitBlobSha": "4fad019efb4da128f4fd435d0017cafa76b9e8ca"
+    },
+    {
+      "path": "docs/plan/phase-15.md",
+      "mode": "100644",
+      "gitBlobSha": "66b7f6ea1bdf01b9a92052c5f91ad22382700c1a"
+    },
+    {
+      "path": "docs/plan/phase-16.md",
+      "mode": "100644",
+      "gitBlobSha": "60f1231216eb4c2043ad364b26418bec3d5164de"
+    },
+    {
+      "path": "docs/plan/phase-17.md",
+      "mode": "100644",
+      "gitBlobSha": "f2d0d268a847fe4d0d6af49e3cf47b0cc8709b19"
+    },
+    {
+      "path": "docs/plan/randevu-kolay-domain-contract.md",
+      "mode": "100644",
+      "gitBlobSha": "e727f1cbad4273a70c34edcbb5894d95391a4ad1"
+    },
+    {
+      "path": "docs/plan/s07-c-safety-contract.md",
+      "mode": "100644",
+      "gitBlobSha": "61704104549c2159d39855d7bb4084741dac655c"
+    },
+    {
+      "path": "docs/plan/s07-c2-pagination-budgets.md",
+      "mode": "100644",
+      "gitBlobSha": "2c47655de380a1a9577a0a551d3289f8385c6c75"
+    },
+    {
+      "path": "docs/plan/s07-c3-load-measurement.md",
+      "mode": "100644",
+      "gitBlobSha": "6f28de4d20e2995f1f8c5ac6f7537a9b04ea3fa2"
+    },
+    {
+      "path": "docs/plan/s07-c4-staging-acceptance.md",
+      "mode": "100644",
+      "gitBlobSha": "65e187838e1f51ad0dedae16c25202ab42058351"
+    },
+    {
+      "path": "docs/plan/s07-recovery-resolution.md",
+      "mode": "100644",
+      "gitBlobSha": "06470bb42baf8a63218b1a4628b47a16fa4c6c6b"
+    },
+    {
+      "path": "docs/plan/shadow-validation-mode.md",
+      "mode": "100644",
+      "gitBlobSha": "839f3436ad303f870d6799173cbade4dfac79630"
+    },
+    {
+      "path": "docs/plan/stabilization.md",
+      "mode": "100644",
+      "gitBlobSha": "83d42a2300560a2218bd6b52844696bccaba07c8"
+    },
+    {
+      "path": "docs/references/README.md",
+      "mode": "100644",
+      "gitBlobSha": "c2d116a2721a5f8b6e5da4cbbc935053d34da44a"
+    },
+    {
+      "path": "docs/references/mobil-diger-1.png",
+      "mode": "100644",
+      "gitBlobSha": "19f29ee4801a8b15c49693aed58d51f0f27196a7"
+    },
+    {
+      "path": "docs/references/mobil-diger-2.png",
+      "mode": "100644",
+      "gitBlobSha": "9e57b800621b38c639cea1dc9ad6d4d101661595"
+    },
+    {
+      "path": "docs/references/mobil-diger-3.png",
+      "mode": "100644",
+      "gitBlobSha": "deee4ae2719dfdd396b1f88bf1b97d7be187f71c"
+    },
+    {
+      "path": "docs/references/mobil-online-randevu-1.png",
+      "mode": "100644",
+      "gitBlobSha": "a7cfd628d4ba5f80646e4fbe881f79f708c60035"
+    },
+    {
+      "path": "docs/references/mobil-online-randevu-2.png",
+      "mode": "100644",
+      "gitBlobSha": "3dd4b20d952deb9ecc7eb5577565cdbb16e28523"
+    },
+    {
+      "path": "docs/references/mobil-online-randevu-3.png",
+      "mode": "100644",
+      "gitBlobSha": "d21cf6ff372adb80c9dc14eba2417b7dc7eb6edb"
+    },
+    {
+      "path": "docs/references/mobil-randevu-detay.png",
+      "mode": "100644",
+      "gitBlobSha": "643acc315849b8b3b8ecbcf15fdad521ea863fac"
+    },
+    {
+      "path": "docs/references/mobil-takvim-gun.png",
+      "mode": "100644",
+      "gitBlobSha": "129b1d2c2077696de031350a5045ba9b8ac8bd59"
+    },
+    {
+      "path": "docs/references/mobil-takvim-liste.png",
+      "mode": "100644",
+      "gitBlobSha": "9b4cbc29d5a0c8fbd03033dc2bd30dc6711d1da4"
+    },
+    {
+      "path": "docs/references/mobil-yeni-randevu.png",
+      "mode": "100644",
+      "gitBlobSha": "d45c65428e1b8a39a064c1a32a6942eb0d75f4b0"
+    },
+    {
+      "path": "docs/references/mobil-yeni.png",
+      "mode": "100644",
+      "gitBlobSha": "e171165924448c20b044b3294e47c8f426054938"
+    },
+    {
+      "path": "docs/research/apprandevu-competitive-analysis-2026-09-14.md",
+      "mode": "100644",
+      "gitBlobSha": "7bdb5ac973c914f97464914a78bf865270e7bc04"
+    },
+    {
+      "path": "docs/research/h19-v1/METHODS.md",
+      "mode": "100644",
+      "gitBlobSha": "1e566333f8a29337a657999f06f5ee83c82f2329"
+    },
+    {
+      "path": "docs/research/h19-v1/README.md",
+      "mode": "100644",
+      "gitBlobSha": "e26b4e122beba8a1c17fe9df8660ff67bb335b64"
+    },
+    {
+      "path": "docs/research/h19-v1/ZENODO_DEPOSIT.md",
+      "mode": "100644",
+      "gitBlobSha": "d7d34fd817ec85970037ae6d9eed50881a5dc9f5"
+    },
+    {
+      "path": "docs/research/h19-v1/benchmark-v1.csv",
+      "mode": "100644",
+      "gitBlobSha": "678eb873354b2881ff3368a9e9f60b2e5cda9433"
+    },
+    {
+      "path": "docs/research/h19-v1/evidence-manifest.json",
+      "mode": "100644",
+      "gitBlobSha": "01e6ec1fb255b04b59392a8a1444f91685498a8d"
+    },
+    {
+      "path": "docs/research/h19-v1/h19_geometry.py",
+      "mode": "100644",
+      "gitBlobSha": "d58dacab95a457b285a5fffd639cedf5787e08f7"
+    },
+    {
+      "path": "docs/research/h19-v1/zenodo-metadata-draft.json",
+      "mode": "100644",
+      "gitBlobSha": "b864be0d72c765d0fda0cb6e18819fec0da06905"
+    },
+    {
+      "path": "docs/research/randevapp-competitive-analysis-2026-09-14.md",
+      "mode": "100644",
+      "gitBlobSha": "1305332d5a5ff1584b5390042c90fcf089ecc195"
+    },
+    {
+      "path": "docs/research/randu-competitive-analysis-2026-09-14.md",
+      "mode": "100644",
+      "gitBlobSha": "d0e66276f0b2d787033ad4674af8a720688e4a40"
+    },
+    {
+      "path": "docs/research/reservio-competitive-analysis-2026-09-14.md",
+      "mode": "100644",
+      "gitBlobSha": "2fcb2cd04c6df1efa2fe0ad543d5e9ae7f7ace07"
+    },
+    {
+      "path": "docs/research/salonrandevu-competitive-analysis-2026-09-14.md",
+      "mode": "100644",
+      "gitBlobSha": "d3373bd38b4e99710feb47121b70cb98622662ba"
+    },
+    {
+      "path": "docs/runbooks/ci.md",
+      "mode": "100644",
+      "gitBlobSha": "38e99612d299aa478e871d3ffd456b3f38ae726c"
+    },
+    {
+      "path": "docs/runbooks/qwen-coordinator.md",
+      "mode": "100644",
+      "gitBlobSha": "1ca48e24335c925edcbce6aa54d2eadb0841999e"
+    },
+    {
+      "path": "docs/runbooks/staging.md",
+      "mode": "100644",
+      "gitBlobSha": "df13e77097313c5b52d7230975c30a40b478180e"
+    },
+    {
+      "path": "index.html",
+      "mode": "100644",
+      "gitBlobSha": "5e9c46eb884f422162b939cb72070556774ae51d"
+    },
+    {
+      "path": "package-lock.json",
+      "mode": "100644",
+      "gitBlobSha": "1068309e42edcb5d99e9a72534319515849e94ae"
+    },
+    {
+      "path": "package.json",
+      "mode": "100644",
+      "gitBlobSha": "85d69437b8d9a307f7d78a13bec6795a65de7ccb"
+    },
+    {
+      "path": "public/favicon.svg",
+      "mode": "100644",
+      "gitBlobSha": "002ed0da7c32252049741bc97b25d77be1f54acb"
+    },
+    {
+      "path": "public/kolayapp-192.png",
+      "mode": "100644",
+      "gitBlobSha": "4915ad8494cfbbd5c964dacc8d2d31ef8d31bea0"
+    },
+    {
+      "path": "public/kolayapp-512.png",
+      "mode": "100644",
+      "gitBlobSha": "9320ea6a00b537cab052f53fb8597ea8ebc9e40e"
+    },
+    {
+      "path": "public/manifest.webmanifest",
+      "mode": "100644",
+      "gitBlobSha": "7042d80938c1420d5c68475c8e5053a50263736b"
+    },
+    {
+      "path": "scripts/browser-booking-recovery.mjs",
+      "mode": "100644",
+      "gitBlobSha": "553021fedd78f1dcfdf1e14be876f4c7e4cdde39"
+    },
+    {
+      "path": "scripts/browser-f10-catalog-settings-review.mjs",
+      "mode": "100644",
+      "gitBlobSha": "0a85f1d4a2d217931cf4110df8e60a7ec1e79a86"
+    },
+    {
+      "path": "scripts/browser-f10-catalog-settings.mjs",
+      "mode": "100644",
+      "gitBlobSha": "a0022a93f2e9f03b5ed25706be5b5abe37ca44ef"
+    },
+    {
+      "path": "scripts/browser-f10-customers-conflict.mjs",
+      "mode": "100644",
+      "gitBlobSha": "be01ac514170a27e674a30659f3c27903748a7b1"
+    },
+    {
+      "path": "scripts/browser-f10-customers.mjs",
+      "mode": "100644",
+      "gitBlobSha": "80bd2f0870ad5e750656316d1e852527cedcee09"
+    },
+    {
+      "path": "scripts/browser-f10-management-acceptance.mjs",
+      "mode": "100644",
+      "gitBlobSha": "6370b4dcf4dd4d287ea3fb1225566b49970e1db0"
+    },
+    {
+      "path": "scripts/browser-f10-onboarding.mjs",
+      "mode": "100644",
+      "gitBlobSha": "74a79c3db3534749bed9d656a8f74ec7ec5f3c68"
+    },
+    {
+      "path": "scripts/browser-f11-group-consumers.mjs",
+      "mode": "100644",
+      "gitBlobSha": "c56fc0b1509f74b61a4e3920aa6d96b99ba92871"
+    },
+    {
+      "path": "scripts/browser-f11-group-management.mjs",
+      "mode": "100644",
+      "gitBlobSha": "ba7fc304603fcdea5784d93522b942ea51c4e8bb"
+    },
+    {
+      "path": "scripts/browser-f12-public-group-booking.mjs",
+      "mode": "100644",
+      "gitBlobSha": "a9a831bb397987f18434bde85be71de41e87cc4b"
+    },
+    {
+      "path": "scripts/browser-f12-public-operator.mjs",
+      "mode": "100644",
+      "gitBlobSha": "be7f61493ac53710dba180c86d3ca732455a966a"
+    },
+    {
+      "path": "scripts/browser-f12-public-profile.mjs",
+      "mode": "100644",
+      "gitBlobSha": "69920e6e8bf21e945b2d4a49997c53be2534c31c"
+    },
+    {
+      "path": "scripts/browser-f13-booking-production.mjs",
+      "mode": "100644",
+      "gitBlobSha": "02404c3b023c85e6d60fcea9cdd3538b15cb8ac2"
+    },
+    {
+      "path": "scripts/browser-f13-workspace-shell.mjs",
+      "mode": "100644",
+      "gitBlobSha": "3f1403a994488657b83f8208117d71e0ca836e88"
+    },
+    {
+      "path": "scripts/browser-f16-feedback.mjs",
+      "mode": "100644",
+      "gitBlobSha": "e7958c64ca11119a0e1c2fa92b95ae955a3f1085"
+    },
+    {
+      "path": "scripts/browser-f16-packages.mjs",
+      "mode": "100644",
+      "gitBlobSha": "8fceaa112083513dbf430667b51f052c1fbe35ff"
+    },
+    {
+      "path": "scripts/browser-f16-private-media.mjs",
+      "mode": "100644",
+      "gitBlobSha": "c570618467ae769913877b7a3365b9d3d9681ad1"
+    },
+    {
+      "path": "scripts/browser-smoke.sh",
+      "mode": "100755",
+      "gitBlobSha": "e0a1176190950a69aaed5b27dc2b8def4365421f"
+    },
+    {
+      "path": "scripts/check-public-bundle-budget.mjs",
+      "mode": "100644",
+      "gitBlobSha": "afbef99b0f7619de96dff41983ec5ab45716b485"
+    },
+    {
+      "path": "scripts/ci-code.mjs",
+      "mode": "100644",
+      "gitBlobSha": "73ca789d26bf5afd8bf086517e23aa9a478b6464"
+    },
+    {
+      "path": "scripts/ci-docs.mjs",
+      "mode": "100644",
+      "gitBlobSha": "5954eb9580c0394a5b6b8c9564291405030d95c2"
+    },
+    {
+      "path": "scripts/ci-files.mjs",
+      "mode": "100644",
+      "gitBlobSha": "465eac45285e3a25fa2a7ca64ba44e79870e813f"
+    },
+    {
+      "path": "scripts/ci-observer.mjs",
+      "mode": "100644",
+      "gitBlobSha": "5141bb2f92b73f0287dd49fe6d6bd60afb0906e8"
+    },
+    {
+      "path": "scripts/ci-postgres-plan.json",
+      "mode": "100644",
+      "gitBlobSha": "79eca83b3446c14b8db50639a425feb3ee71e1d8"
+    },
+    {
+      "path": "scripts/ci-postgres.mjs",
+      "mode": "100644",
+      "gitBlobSha": "58968286059231ee4365655c307bd2e8c28694de"
+    },
+    {
+      "path": "scripts/ci-result.mjs",
+      "mode": "100644",
+      "gitBlobSha": "e16a911b50bbd61ebc89c1245e327c2a8846d7ef"
+    },
+    {
+      "path": "scripts/ci-scope.mjs",
+      "mode": "100644",
+      "gitBlobSha": "bdf1600eecb23c2b699058e65cb55aede0225adb"
+    },
+    {
+      "path": "scripts/development-audit-gate.mjs",
+      "mode": "100644",
+      "gitBlobSha": "64b82714e64bbacc5e805969c07597ddc1cd9b75"
+    },
+    {
+      "path": "scripts/development-dispatcher.mjs",
+      "mode": "100644",
+      "gitBlobSha": "03fbae5dd03073859322fe93a0a8c6393ffc4ef0"
+    },
+    {
+      "path": "scripts/development-escalation-envelope.mjs",
+      "mode": "100644",
+      "gitBlobSha": "865989378c465f17d96da025a839a93c3f88df19"
+    },
+    {
+      "path": "scripts/development-review-request.mjs",
+      "mode": "100644",
+      "gitBlobSha": "4a69c47eda2be0f51174f0056914d922294aa8eb"
+    },
+    {
+      "path": "scripts/development-review-reservation.mjs",
+      "mode": "100644",
+      "gitBlobSha": "1175934d4e674932490d6f64d888eb5a12345957"
+    },
+    {
+      "path": "scripts/fire-claude-routine.mjs",
+      "mode": "100644",
+      "gitBlobSha": "09582b38f43206eee891e46192ba868a83157c6f"
+    },
+    {
+      "path": "scripts/fire-opus-escalation.mjs",
+      "mode": "100644",
+      "gitBlobSha": "b0243ffa71e1760abf3ac4889efb96302d0cde28"
+    },
+    {
+      "path": "scripts/prepare-development-review-observation.mjs",
+      "mode": "100644",
+      "gitBlobSha": "e2231c08989c3da39dc725f2b1b088c0520f3c95"
+    },
+    {
+      "path": "scripts/prepare-development-review-request.mjs",
+      "mode": "100644",
+      "gitBlobSha": "a6945d4b654e2887ea5471075028423aac74a3f9"
+    },
+    {
+      "path": "scripts/prepare-haiku-escalation-request.mjs",
+      "mode": "100644",
+      "gitBlobSha": "95c4f8e3ef60c9b6e6db64bfd71a281d7f7768b0"
+    },
+    {
+      "path": "scripts/qwen-coordinator/README.md",
+      "mode": "100644",
+      "gitBlobSha": "771fadcdd5561e38ca02eea5a2f7c29f5727cecc"
+    },
+    {
+      "path": "scripts/qwen-coordinator/build-ci-image.mjs",
+      "mode": "100644",
+      "gitBlobSha": "9a9d5a17b2ae15904c709cbf44dc1279f97607a5"
+    },
+    {
+      "path": "scripts/qwen-coordinator/config.example.json",
+      "mode": "100644",
+      "gitBlobSha": "86a69c4990232df382e4d8d19cde5e185d72060c"
+    },
+    {
+      "path": "scripts/qwen-coordinator/depot-build-ci-image.yml",
+      "mode": "100644",
+      "gitBlobSha": "9c2fe4094425f2f6d11aa15fc2943f7a48600caa"
+    },
+    {
+      "path": "scripts/qwen-coordinator/depot-full-ci.yml",
+      "mode": "100644",
+      "gitBlobSha": "e9132dc4e5aa94a36cca78c57999ae0b1e89ece1"
+    },
+    {
+      "path": "scripts/qwen-coordinator/depot.mjs",
+      "mode": "100644",
+      "gitBlobSha": "bfafd295189ba55cecc28b32ea56005884d8cccb"
+    },
+    {
+      "path": "scripts/qwen-coordinator/install-local.mjs",
+      "mode": "100644",
+      "gitBlobSha": "9dc773a8dbc1118068bee04cb53606646af24a55"
+    },
+    {
+      "path": "scripts/qwen-coordinator/janitor.mjs",
+      "mode": "100644",
+      "gitBlobSha": "50ece3ea402430be44cea3220b7f7fa35fb5ffbb"
+    },
+    {
+      "path": "scripts/qwen-coordinator/lease.mjs",
+      "mode": "100644",
+      "gitBlobSha": "857462f3b7e3eebcbc991b0bef673622bd819243"
+    },
+    {
+      "path": "scripts/qwen-coordinator/policy.mjs",
+      "mode": "100644",
+      "gitBlobSha": "5833ea45400603a4c5ed717f43416fda99fbc00d"
+    },
+    {
+      "path": "scripts/qwen-coordinator/run-once.mjs",
+      "mode": "100644",
+      "gitBlobSha": "e0117b033e35bbbdc5e7e07d9af43245b47befd9"
+    },
+    {
+      "path": "scripts/report-npm-audit.mjs",
+      "mode": "100644",
+      "gitBlobSha": "39d121ad1c7491c02979032e391689d9df29e525"
+    },
+    {
+      "path": "scripts/run-ci-observer.mjs",
+      "mode": "100644",
+      "gitBlobSha": "0328d4c48b54d205d31f35f675b9c9d602a251c4"
+    },
+    {
+      "path": "scripts/run-development-audit-gate.mjs",
+      "mode": "100644",
+      "gitBlobSha": "04bfed7e1c04c9e61901b8110a467005b70e877b"
+    },
+    {
+      "path": "scripts/run-development-dispatcher.mjs",
+      "mode": "100644",
+      "gitBlobSha": "f33fb66eb9bb9a2d35836d1bc8bccea0db62d6a5"
+    },
+    {
+      "path": "scripts/run-development-escalation-envelope.mjs",
+      "mode": "100644",
+      "gitBlobSha": "022080c639ae518fa333f247fcf145fa29047463"
+    },
+    {
+      "path": "scripts/run-http-tests.mjs",
+      "mode": "100644",
+      "gitBlobSha": "f2495560190b4b85dedffc9636726d2a9a7b1ea6"
+    },
+    {
+      "path": "scripts/staging-control-db.mjs",
+      "mode": "100644",
+      "gitBlobSha": "14d916a5433c52e6bf9f0e1dddb66edd93dbb9a4"
+    },
+    {
+      "path": "scripts/staging-db.mjs",
+      "mode": "100644",
+      "gitBlobSha": "b59b1cae3185c253f02deb47f447b1c9823f5378"
+    },
+    {
+      "path": "scripts/staging-deploy.mjs",
+      "mode": "100644",
+      "gitBlobSha": "401e0ebf868ecac371b3260cf6800165eaafe9ef"
+    },
+    {
+      "path": "scripts/staging-deployment.mjs",
+      "mode": "100644",
+      "gitBlobSha": "857b5f48aec16bb5afdbf8e7feb1bf618cbcc225"
+    },
+    {
+      "path": "scripts/staging-ensure-users.mjs",
+      "mode": "100644",
+      "gitBlobSha": "19e539b1aae7a0cf5902e9e8beb1ed585d6c2b31"
+    },
+    {
+      "path": "scripts/staging-f09-acceptance-runner.mjs",
+      "mode": "100644",
+      "gitBlobSha": "8d5d1cc3c33beb4f8639806d7b188d2c4922cc94"
+    },
+    {
+      "path": "scripts/staging-f09-acceptance.mjs",
+      "mode": "100644",
+      "gitBlobSha": "580dcdf106d8650ade7b9bcbc5ff5ab94a106572"
+    },
+    {
+      "path": "scripts/staging-f10-auth-acceptance.mjs",
+      "mode": "100644",
+      "gitBlobSha": "3364d2f87e4f8c2dd3e996a519e5a0b14bd26a5d"
+    },
+    {
+      "path": "scripts/staging-f10-team-acceptance.mjs",
+      "mode": "100644",
+      "gitBlobSha": "2b1624a2e925e348333f1958f18777232f15cdc3"
+    },
+    {
+      "path": "scripts/staging-s01-recovery-acceptance-runner.mjs",
+      "mode": "100644",
+      "gitBlobSha": "045a895204418258aef1b8170c6cb26683303464"
+    },
+    {
+      "path": "scripts/staging-s01-recovery-acceptance.mjs",
+      "mode": "100644",
+      "gitBlobSha": "0d1cd2328f3b45529ea2a9568031b6f8a8ff78cc"
+    },
+    {
+      "path": "scripts/staging-s07-acceptance.mjs",
+      "mode": "100644",
+      "gitBlobSha": "b148dc90d89f339b2925dfbb6886f1d09cad8efb"
+    },
+    {
+      "path": "scripts/staging-smoke.mjs",
+      "mode": "100644",
+      "gitBlobSha": "0138525991d5f2398f15e615e3a8489ae60b87ae"
+    },
+    {
+      "path": "scripts/test-staging-control-db.mjs",
+      "mode": "100644",
+      "gitBlobSha": "2c8d551ec01425ffd5d969490411d3829ae0f1c5"
+    },
+    {
+      "path": "scripts/validate-development-engine.mjs",
+      "mode": "100644",
+      "gitBlobSha": "61b08ded49fa093a5aa80a3bec616ab38e5c0f11"
+    },
+    {
+      "path": "scripts/verify-ci-coverage.mjs",
+      "mode": "100644",
+      "gitBlobSha": "ddd8d0ea0fb28a0b23df43a4d1817d9b8109ca57"
+    },
+    {
+      "path": "scripts/verify-development-review-live-state.mjs",
+      "mode": "100644",
+      "gitBlobSha": "5d5075d71d5f81ea6be8f1ef6d78ed85b29ae7e8"
+    },
+    {
+      "path": "shared/base64.ts",
+      "mode": "100644",
+      "gitBlobSha": "6b2cc95af3216c101c7a8d04f673377b0041e17f"
+    },
+    {
+      "path": "shared/customer-notification-status.ts",
+      "mode": "100644",
+      "gitBlobSha": "bd963a809a2a09825ba74dbf577b7ec884c72315"
+    },
+    {
+      "path": "shared/public-booking-intent.ts",
+      "mode": "100644",
+      "gitBlobSha": "aadb31a3817c7faeb55afb523c28e1622f45f218"
+    },
+    {
+      "path": "src/App.tsx",
+      "mode": "100644",
+      "gitBlobSha": "559836e8cb65ed1ee2965686bda0a32029ee4743"
+    },
+    {
+      "path": "src/AppRouter.tsx",
+      "mode": "100644",
+      "gitBlobSha": "8df1eacea6ed8fd88d99b2f11957f0444259a2e9"
+    },
+    {
+      "path": "src/AppointmentPhotos.tsx",
+      "mode": "100644",
+      "gitBlobSha": "88f471588e659772d18e9cf4c7e3969c17b2c814"
+    },
+    {
+      "path": "src/AvailabilityPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "1c7c50de8a3cc5a10d47fdb5726049c348a2567f"
+    },
+    {
+      "path": "src/BookingPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4"
+    },
+    {
+      "path": "src/CalendarPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "95e7944971cc764b9408629376dfa681d1bed96c"
+    },
+    {
+      "path": "src/CatalogSettingsPanel.tsx",
+      "mode": "100644",
+      "gitBlobSha": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc"
+    },
+    {
+      "path": "src/CustomersPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "974f2ad1aa527bf745ef061dbb349ecef1c7861c"
+    },
+    {
+      "path": "src/ExpensesPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "b75d1db50fa1d2e31baeec60f237f05aebf88b7c"
+    },
+    {
+      "path": "src/FeedbackPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "3c048292ba41e6cfa5e0c41f66b13a5652be07b7"
+    },
+    {
+      "path": "src/FinancialReportsPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "57f7904c37981818b075af2954645ed896d9f4ef"
+    },
+    {
+      "path": "src/InvitePage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "0c17cb8ccc0b3cae5a750275365192eb55169802"
+    },
+    {
+      "path": "src/ManageAppointmentPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "31027b62fc1c4b051d72fbc35f6f9df793b2290a"
+    },
+    {
+      "path": "src/ManageFeedback.tsx",
+      "mode": "100644",
+      "gitBlobSha": "ca6eae9972b25cce847e1f8780dcb90f9a923425"
+    },
+    {
+      "path": "src/OnboardingPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "4289c96c64a1522952b558657b8839e2801dd6ef"
+    },
+    {
+      "path": "src/PrivatePhotoArchive.tsx",
+      "mode": "100644",
+      "gitBlobSha": "0bdc7ffe33ad9647ff361e3dc1ee4176d885aaf7"
+    },
+    {
+      "path": "src/ProductsPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "95a9d172fbd9c295735a6aee0f2deaf4e8bd067f"
+    },
+    {
+      "path": "src/PublicBookingInformation.tsx",
+      "mode": "100644",
+      "gitBlobSha": "b654e5b73acbc05ca609c451ba7ba525f57c98d6"
+    },
+    {
+      "path": "src/PublicBookingPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "d0831db2b55ab8cc7d2d1cee66945ca5dc37c8bf"
+    },
+    {
+      "path": "src/PublicBookingSettingsPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "71dc2f6483406bbbd7bcefbae6803a333655c7ba"
+    },
+    {
+      "path": "src/PublicMultiServiceSelection.tsx",
+      "mode": "100644",
+      "gitBlobSha": "6760c2d480341e075db63c64b83aa4647b6fa043"
+    },
+    {
+      "path": "src/PublicNotificationStatus.tsx",
+      "mode": "100644",
+      "gitBlobSha": "2c873447c0440fe60f4d67290535866c146cc6e3"
+    },
+    {
+      "path": "src/PublicReviews.tsx",
+      "mode": "100644",
+      "gitBlobSha": "b03c02af8c998931acb67da3512d58003e1ba0aa"
+    },
+    {
+      "path": "src/PublicSalonPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "a8e45383e8cac6ac081fa9acfb601f15f39c164e"
+    },
+    {
+      "path": "src/ServicePackagesPanel.tsx",
+      "mode": "100644",
+      "gitBlobSha": "702ba9782e0d4e1baf591316d75edb96221e5024"
+    },
+    {
+      "path": "src/ServicesPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "42787d0ec47fc7913b3ce633afecdf28d1ceba90"
+    },
+    {
+      "path": "src/TeamPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "add7a6190feda06d384a5f1bc6da7671339a0081"
+    },
+    {
+      "path": "src/WorkspaceShell.tsx",
+      "mode": "100644",
+      "gitBlobSha": "2948f2a4e5cdd052c0e3164f5025c62c3a7b6320"
+    },
+    {
+      "path": "src/api.ts",
+      "mode": "100644",
+      "gitBlobSha": "d49223e0e291e69c7f2eb1ea1902898a80e870cc"
+    },
+    {
+      "path": "src/calendar-refresh.ts",
+      "mode": "100644",
+      "gitBlobSha": "d0c2698e2bc4669f0016558052bf5a2b3d9bf99b"
+    },
+    {
+      "path": "src/calendar.css",
+      "mode": "100644",
+      "gitBlobSha": "3208c6a58c4532193b620c6860bc36f5116627dc"
+    },
+    {
+      "path": "src/catalog-settings.css",
+      "mode": "100644",
+      "gitBlobSha": "5106d1b22497671f5e09cc750d8d000780c9c5b9"
+    },
+    {
+      "path": "src/customer-manage.css",
+      "mode": "100644",
+      "gitBlobSha": "2a7629d51b36d9a2ea46c5b5c30ee8eb5063a3bf"
+    },
+    {
+      "path": "src/customers.css",
+      "mode": "100644",
+      "gitBlobSha": "083c2d9d68c6792072b93f008bbde080273d5ec0"
+    },
+    {
+      "path": "src/expenses.css",
+      "mode": "100644",
+      "gitBlobSha": "2ef2ed0e08fc9f5d8575ff98e1792a77bc039efd"
+    },
+    {
+      "path": "src/feedback.css",
+      "mode": "100644",
+      "gitBlobSha": "149234ce864819b8a605c46eac5a88eb663fc8d3"
+    },
+    {
+      "path": "src/financial-reports.css",
+      "mode": "100644",
+      "gitBlobSha": "e12c98736b9ed99786713e2b16138b7c1fb7bd54"
+    },
+    {
+      "path": "src/kolayapp/KolayAppShell.tsx",
+      "mode": "100644",
+      "gitBlobSha": "b407cbac965444c41bdb7123f01193a32bbc0802"
+    },
+    {
+      "path": "src/kolayapp/KolayAppSpikePreview.tsx",
+      "mode": "100644",
+      "gitBlobSha": "c8f174704e0e79688aa0d8d0a333c1a2e2e3e073"
+    },
+    {
+      "path": "src/kolayapp/KolayAppSurface.tsx",
+      "mode": "100644",
+      "gitBlobSha": "4050339ca9a2d2a25b6895c3d493fc99766653c2"
+    },
+    {
+      "path": "src/kolayapp/KolayAppointmentsHome.tsx",
+      "mode": "100644",
+      "gitBlobSha": "1d241e6d1bebc9434e9b8f9d0c527bfc44db200e"
+    },
+    {
+      "path": "src/kolayapp/KolayBottomNav.tsx",
+      "mode": "100644",
+      "gitBlobSha": "b11f7ed8e76f0893f758ce8045ff851c38de5aa1"
+    },
+    {
+      "path": "src/kolayapp/KolayUnavailablePanel.tsx",
+      "mode": "100644",
+      "gitBlobSha": "ccc8cb23a05248e8dd47c7d814efab3e68a81fda"
+    },
+    {
+      "path": "src/kolayapp/TicketCashierPage.tsx",
+      "mode": "100644",
+      "gitBlobSha": "e9fe17b2c7dcaed9745667dd620d85a8c8c370d2"
+    },
+    {
+      "path": "src/kolayapp/index.ts",
+      "mode": "100644",
+      "gitBlobSha": "0eb5aa57bf6173f3e6c37c22734bff1843c85526"
+    },
+    {
+      "path": "src/kolayapp/kolayapp.css",
+      "mode": "100644",
+      "gitBlobSha": "48f40270620c3f6dbd150ea54f3076849a51995e"
+    },
+    {
+      "path": "src/kolayapp/model.ts",
+      "mode": "100644",
+      "gitBlobSha": "b972a6b89768dd1b722200c2b2050c6447e32ce5"
+    },
+    {
+      "path": "src/kolayapp/ticket-cashier.css",
+      "mode": "100644",
+      "gitBlobSha": "d48df67691f30e19769434118fffc351cddeb9b4"
+    },
+    {
+      "path": "src/main.tsx",
+      "mode": "100644",
+      "gitBlobSha": "48fffba200d526b38b3974c5ce45ebf0291992d0"
+    },
+    {
+      "path": "src/onboarding.css",
+      "mode": "100644",
+      "gitBlobSha": "7800985bb6fc039c430850ab4c643336b003d83e"
+    },
+    {
+      "path": "src/onboardingLocale.ts",
+      "mode": "100644",
+      "gitBlobSha": "84284f6a83de139d3abf9c6d5846dcf6f0ddbe6a"
+    },
+    {
+      "path": "src/phase4.css",
+      "mode": "100644",
+      "gitBlobSha": "818ec5fcaac020972c21e652cdcd78092a7c1446"
+    },
+    {
+      "path": "src/phase5.css",
+      "mode": "100644",
+      "gitBlobSha": "bab64d5cedebabb0b3f65b8b1e985c507cc9ce16"
+    },
+    {
+      "path": "src/private-media.css",
+      "mode": "100644",
+      "gitBlobSha": "3351d46503dda7ed43f156fcda131f776005ce7a"
+    },
+    {
+      "path": "src/products.css",
+      "mode": "100644",
+      "gitBlobSha": "4e663dfba3e9c3f9eadbe9eb098d3ca380d33efe"
+    },
+    {
+      "path": "src/public-booking-pending.ts",
+      "mode": "100644",
+      "gitBlobSha": "41f2dd89794a2e592d0f86832a07c5adc4eb64cd"
+    },
+    {
+      "path": "src/public-booking.css",
+      "mode": "100644",
+      "gitBlobSha": "fe4f1510d99b5c492fea4a34b58df5a23ee7eedb"
+    },
+    {
+      "path": "src/public-multi-service.css",
+      "mode": "100644",
+      "gitBlobSha": "09268959132c77e44260e6a1b62db4a1e8ce6222"
+    },
+    {
+      "path": "src/public-profile.css",
+      "mode": "100644",
+      "gitBlobSha": "73b49a2de09dcd7dc1697f177f7bb3c098196788"
+    },
+    {
+      "path": "src/publicMedia.ts",
+      "mode": "100644",
+      "gitBlobSha": "82b3cfbe008427d9b67017a86834c9d76dc31378"
+    },
+    {
+      "path": "src/service-packages.css",
+      "mode": "100644",
+      "gitBlobSha": "3662dc676f08940c71ac7d3b0d81dbdfac7c9023"
+    },
+    {
+      "path": "src/styles.css",
+      "mode": "100644",
+      "gitBlobSha": "cd6882064a19afebd86ce80c9bd2eefcae9add5c"
+    },
+    {
+      "path": "src/team.css",
+      "mode": "100644",
+      "gitBlobSha": "2aa77728f0f6303ca045aefa45569bdb7a84de6f"
+    },
+    {
+      "path": "src/teamInvite.ts",
+      "mode": "100644",
+      "gitBlobSha": "371db35251ca0330452a61307b78f8526eda08de"
+    },
+    {
+      "path": "src/workspace-coherence.ts",
+      "mode": "100644",
+      "gitBlobSha": "e21063cf3794392c553be4a1893274bf99ef4853"
+    },
+    {
+      "path": "src/workspace-context.tsx",
+      "mode": "100644",
+      "gitBlobSha": "5a435f84d8f295e2475b034e90d42dc106aeaa3a"
+    },
+    {
+      "path": "src/workspace-route.ts",
+      "mode": "100644",
+      "gitBlobSha": "23fb5ada0d3afb3121911d13c909a0e313020d73"
+    },
+    {
+      "path": "supabase/migrations/20260911090000_phase2_auth_tenancy.sql",
+      "mode": "100644",
+      "gitBlobSha": "975557da259c0e397d4511792212d3ed26ed1076"
+    },
+    {
+      "path": "supabase/migrations/20260911100000_phase3_services_team.sql",
+      "mode": "100644",
+      "gitBlobSha": "c5feb38aeeae2aea2b06c402cc09d9a575a739cc"
+    },
+    {
+      "path": "supabase/migrations/20260911110000_phase4_availability.sql",
+      "mode": "100644",
+      "gitBlobSha": "1675fb462dc9e08c83d6fa09e05c6105c247e8cd"
+    },
+    {
+      "path": "supabase/migrations/20260911120000_phase5_booking_core.sql",
+      "mode": "100644",
+      "gitBlobSha": "e03052806e6da5538ac61e03edf0ee9015ca9ed7"
+    },
+    {
+      "path": "supabase/migrations/20260911121000_phase5_booking_hardening.sql",
+      "mode": "100644",
+      "gitBlobSha": "5cd8a0ab7735224d0f5796f32fe3d400b77b0c1b"
+    },
+    {
+      "path": "supabase/migrations/20260911130000_phase6_public_booking.sql",
+      "mode": "100644",
+      "gitBlobSha": "c8b05bc5f435a8ca13d5daeca209b6f417dcd81f"
+    },
+    {
+      "path": "supabase/migrations/20260911140000_phase7_customer_manage.sql",
+      "mode": "100644",
+      "gitBlobSha": "c4a4c32c7b97634481a595f9950dbe7c214c4f0b"
+    },
+    {
+      "path": "supabase/migrations/20260911150000_phase8_calendar.sql",
+      "mode": "100644",
+      "gitBlobSha": "865255cbd0a5635b2e0cc43cdca7343dafc0c8a5"
+    },
+    {
+      "path": "supabase/migrations/20260911160000_phase9_booking_recovery.sql",
+      "mode": "100644",
+      "gitBlobSha": "29e134ce2d36c3aab8fa56cb33e002213a77568f"
+    },
+    {
+      "path": "supabase/migrations/20260911170000_phase9_notification_outbox.sql",
+      "mode": "100644",
+      "gitBlobSha": "6330ff52e2d82eb73acb50cc254c698f19184abe"
+    },
+    {
+      "path": "supabase/migrations/20260911170100_phase9_notification_maintenance.sql",
+      "mode": "100644",
+      "gitBlobSha": "3bdf3f0a4a65db8d79f01cb6c5a03a7dfaf5ca65"
+    },
+    {
+      "path": "supabase/migrations/20260911180000_phase9_public_abuse_control.sql",
+      "mode": "100644",
+      "gitBlobSha": "7d81c944b22c327e3a46ebb70c34d387b8416f91"
+    },
+    {
+      "path": "supabase/migrations/20260911180100_phase9_public_abuse_hardening.sql",
+      "mode": "100644",
+      "gitBlobSha": "6b1f031a41d4dc9200fe5d1ad51d3b414c946b28"
+    },
+    {
+      "path": "supabase/migrations/20260911180200_phase9_public_abuse_retention.sql",
+      "mode": "100644",
+      "gitBlobSha": "4f9e9f62de3b2ac1f8faf9a834fd5252f1c27c13"
+    },
+    {
+      "path": "supabase/migrations/20260912030000_f17_hosted_acl_hardening.sql",
+      "mode": "100644",
+      "gitBlobSha": "723ec8884a3351b7f12d8903bb85ce71cb88ee5c"
+    },
+    {
+      "path": "supabase/migrations/20260912123000_s03_notification_consistency.sql",
+      "mode": "100644",
+      "gitBlobSha": "da4f9351bb28b63e20574b5ae85bec9569a25cd5"
+    },
+    {
+      "path": "supabase/migrations/20260913030912_s04_resource_limits.sql",
+      "mode": "100644",
+      "gitBlobSha": "adf7a72216fd381892536610492773e2c8066af4"
+    },
+    {
+      "path": "supabase/migrations/20260913042902_s05_deploy_consistency.sql",
+      "mode": "100644",
+      "gitBlobSha": "311b9f3760a2244a9e5b93d6f7b5c2a8e620fb1f"
+    },
+    {
+      "path": "supabase/migrations/20260913120601_s07_public_booking_resolution.sql",
+      "mode": "100644",
+      "gitBlobSha": "b56d3cf49f09541cfafb24318778105376c430e7"
+    },
+    {
+      "path": "supabase/migrations/20260913141830_s07_client_cutover.sql",
+      "mode": "100644",
+      "gitBlobSha": "ec19547c0e189aee7ce588c01bcb191ace4952ec"
+    },
+    {
+      "path": "supabase/migrations/20260913151500_s07_terminal_pii_retention.sql",
+      "mode": "100644",
+      "gitBlobSha": "1fe4f75f90b7d506062700068225546733365ac3"
+    },
+    {
+      "path": "supabase/migrations/20260913163000_s07_list_pagination_budgets.sql",
+      "mode": "100644",
+      "gitBlobSha": "06adbd7c9c88feb91f176d5943fce4ffff7ec4fc"
+    },
+    {
+      "path": "supabase/migrations/20260913184500_s07_snapshot_overflow.sql",
+      "mode": "100644",
+      "gitBlobSha": "83477c43d0c0902e0b9afc751d92bdcea90164ab"
+    },
+    {
+      "path": "supabase/migrations/20260913201500_s08_db_object_access_gate.sql",
+      "mode": "100644",
+      "gitBlobSha": "3bf07007c51aabc94c0874d5bb1f78e9bf3369b2"
+    },
+    {
+      "path": "supabase/migrations/20260914033000_f10_team_access.sql",
+      "mode": "100644",
+      "gitBlobSha": "52623301ab78648c188218b3b2fbcb5be2f5f468"
+    },
+    {
+      "path": "supabase/migrations/20260914043000_f10_team_snapshot.sql",
+      "mode": "100644",
+      "gitBlobSha": "43fc7f5a32ad46ea13ba8670baf89cc922697e2c"
+    },
+    {
+      "path": "supabase/migrations/20260914060000_f10_team_security_hardening.sql",
+      "mode": "100644",
+      "gitBlobSha": "47193baabb5dc69452934d05556e2abc18aa41bf"
+    },
+    {
+      "path": "supabase/migrations/20260914090000_f10_onboarding_readiness.sql",
+      "mode": "100644",
+      "gitBlobSha": "9024aae037b7e85e84e0b2e1edf20010673863ec"
+    },
+    {
+      "path": "supabase/migrations/20260914110000_f10_customer_records.sql",
+      "mode": "100644",
+      "gitBlobSha": "77d250e3e079c55263453cfed3da0eb1ac4897fb"
+    },
+    {
+      "path": "supabase/migrations/20260914110200_f10_customer_authority_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "8c560ed535bf42595f55fd78b26d7881bf098e37"
+    },
+    {
+      "path": "supabase/migrations/20260914110300_f10_customer_read_recovery_guard.sql",
+      "mode": "100644",
+      "gitBlobSha": "a156b81751a523fec72063e14456a89c9c333bf5"
+    },
+    {
+      "path": "supabase/migrations/20260914110500_f12_salon_profile_media.sql",
+      "mode": "100644",
+      "gitBlobSha": "449bf72bfcc183deea2deda03f0a35fc823efc46"
+    },
+    {
+      "path": "supabase/migrations/20260914110600_f12_media_lifecycle_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "a1425a0adf52c409d78c7540ed2790a90f38d5fa"
+    },
+    {
+      "path": "supabase/migrations/20260914111500_f10_catalog_hours_management.sql",
+      "mode": "100644",
+      "gitBlobSha": "00db69a3d3de92e8ae1a35bb86e0c06b137eb884"
+    },
+    {
+      "path": "supabase/migrations/20260914111600_f10_catalog_hours_limits.sql",
+      "mode": "100644",
+      "gitBlobSha": "c8301a99d5ff99dd8a3fc14f84c61cbe8fbeb2f7"
+    },
+    {
+      "path": "supabase/migrations/20260914111700_f10_catalog_stale_hardening.sql",
+      "mode": "100644",
+      "gitBlobSha": "cd437fded61ada91e63d69d15e307a3a274a479f"
+    },
+    {
+      "path": "supabase/migrations/20260914111800_f10_catalog_snapshot_session_guard.sql",
+      "mode": "100644",
+      "gitBlobSha": "5bab66778b2986fde22f59d8277e2ac2085fc961"
+    },
+    {
+      "path": "supabase/migrations/20260914111900_f10_catalog_read_session_guard.sql",
+      "mode": "100644",
+      "gitBlobSha": "2d8f923275d77435208e23fec3644378b592bdac"
+    },
+    {
+      "path": "supabase/migrations/20260915150000_f12_service_price_range.sql",
+      "mode": "100644",
+      "gitBlobSha": "39a018189ae682395e9dce3de4665b125863d9cd"
+    },
+    {
+      "path": "supabase/migrations/20260915160000_f11_group_line_contract.sql",
+      "mode": "100644",
+      "gitBlobSha": "d4fb26d26a87e0293f78206724af6c2597bcad1c"
+    },
+    {
+      "path": "supabase/migrations/20260915160200_f11_notification_group_version_backfill.sql",
+      "mode": "100644",
+      "gitBlobSha": "6cc788f9cdf9f4875bf6a70c607acfc5733a700d"
+    },
+    {
+      "path": "supabase/migrations/20260915160300_f11_partial_line_lifecycle.sql",
+      "mode": "100644",
+      "gitBlobSha": "1ccc890c248e6b292db3b903764b08ae0c64b849"
+    },
+    {
+      "path": "supabase/migrations/20260916190000_kc01_core_platform_schema.sql",
+      "mode": "100644",
+      "gitBlobSha": "8d7ce15654a18c0852178ad05f74c9318b2bd011"
+    },
+    {
+      "path": "supabase/migrations/20260917120000_f11_multi_service_group_booking.sql",
+      "mode": "100644",
+      "gitBlobSha": "6a62b05e46dfddb789af243d04eb127e5c4ef930"
+    },
+    {
+      "path": "supabase/migrations/20260917133000_f11_multi_service_final_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "b6fac05619f94315ae86631af70271e63f25401b"
+    },
+    {
+      "path": "supabase/migrations/20260917143000_f11_group_notification_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "5e88c00735ae831a4364893e1d9f0672c2b03f9a"
+    },
+    {
+      "path": "supabase/migrations/20260917150000_f11_business_hours_final_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "922c40e87164ff395ae16bc3dc4b3934ab01944d"
+    },
+    {
+      "path": "supabase/migrations/20260917150100_f11_group_recovery_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "af84d2418a9d867dc8f654674ba4eb73843e7a5c"
+    },
+    {
+      "path": "supabase/migrations/20260917160000_f11_group_management_compat.sql",
+      "mode": "100644",
+      "gitBlobSha": "3c3d10927f7dfc8c2f06baf68ccf3d8430cfb82a"
+    },
+    {
+      "path": "supabase/migrations/20260917160100_f11_public_group_management.sql",
+      "mode": "100644",
+      "gitBlobSha": "f7dd88121d9b930d55ca948ddebc711f29dba8c4"
+    },
+    {
+      "path": "supabase/migrations/20260917160200_f11_group_management_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "149c0f41a2d6ff394837c5b6f13d72b65e3c0df6"
+    },
+    {
+      "path": "supabase/migrations/20260917160300_f11_group_consumer_reads.sql",
+      "mode": "100644",
+      "gitBlobSha": "aa5b6a63533b8f45cd73783a4cd5d059f5cda495"
+    },
+    {
+      "path": "supabase/migrations/20260917160400_f11_public_group_error_vocabulary.sql",
+      "mode": "100644",
+      "gitBlobSha": "8e01dfe0463cec66ba100be83f04868b87e291ff"
+    },
+    {
+      "path": "supabase/migrations/20260917160500_f11_group_integration_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "eb8dadfc85c5d1c1c98f8d10a4d142b4311874a8"
+    },
+    {
+      "path": "supabase/migrations/20260917170000_f11_schedule_authority_race_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "d2d40e5b3c2a6e0499f26bbe9ea342723de3294a"
+    },
+    {
+      "path": "supabase/migrations/20260917171000_f11_schedule_authority_lock_order.sql",
+      "mode": "100644",
+      "gitBlobSha": "8f107f92014833d3438aeb1eb7a1f36862937e12"
+    },
+    {
+      "path": "supabase/migrations/20260918070000_f11_lock_order_final_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "253d452c1c517426766191a54bbeedf46af02564"
+    },
+    {
+      "path": "supabase/migrations/20260919070000_f12_public_catalog_v2.sql",
+      "mode": "100644",
+      "gitBlobSha": "7dc8e157ecaa188c5201a8e3436318fc570e2309"
+    },
+    {
+      "path": "supabase/migrations/20260920200000_f13_appointment_page_revision.sql",
+      "mode": "100644",
+      "gitBlobSha": "79113ca81f91c409077178ddb298389746f270bb"
+    },
+    {
+      "path": "supabase/migrations/20260921013000_f13_booking_date_range.sql",
+      "mode": "100644",
+      "gitBlobSha": "0e00e885fbc2808357731b506c23f43422e83da6"
+    },
+    {
+      "path": "supabase/migrations/20260921023000_f13_group_lifecycle.sql",
+      "mode": "100644",
+      "gitBlobSha": "710d29b3e6fcec25aa13874b6b81c7484f47f8dd"
+    },
+    {
+      "path": "supabase/migrations/20260921043000_f13_group_lifecycle_partial_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "b1c63bc1c6162bf017aac2fe3a8663d29667551a"
+    },
+    {
+      "path": "supabase/migrations/20260921083000_f12_booking_information_links.sql",
+      "mode": "100644",
+      "gitBlobSha": "cc2e77a98c9b79ae8080526537bcdf49ffc2a220"
+    },
+    {
+      "path": "supabase/migrations/20260921114500_f12_booking_information_owner_content.sql",
+      "mode": "100644",
+      "gitBlobSha": "5dd76c94c9a526a93eec724a7e0220c992a302f6"
+    },
+    {
+      "path": "supabase/migrations/20260921133000_f12_notification_status_projection.sql",
+      "mode": "100644",
+      "gitBlobSha": "f7e3cc5580aab727b6adb39cd50ba3890c4e2adc"
+    },
+    {
+      "path": "supabase/migrations/20260922111500_f14_ticket_model.sql",
+      "mode": "100644",
+      "gitBlobSha": "30a07569333ce52f03ad91eaf5a8d273ec0e92f2"
+    },
+    {
+      "path": "supabase/migrations/20260922144500_f14_payment_ledger.sql",
+      "mode": "100644",
+      "gitBlobSha": "1d19c6a6edb27f8f6fe22cab1a2d72dae6ebeeb5"
+    },
+    {
+      "path": "supabase/migrations/20260922213000_f14_ticket_list_projection.sql",
+      "mode": "100644",
+      "gitBlobSha": "2bfcd052fa0e991f7b3cb9af0d828dcdc9bb6306"
+    },
+    {
+      "path": "supabase/migrations/20260923051000_f15_product_stock_ledger.sql",
+      "mode": "100644",
+      "gitBlobSha": "79a98b7e25f4ded57fce5fce6c460a0ea506f201"
+    },
+    {
+      "path": "supabase/migrations/20260923074000_f15_expense_ledger.sql",
+      "mode": "100644",
+      "gitBlobSha": "8796111f7dca02c8121d05445b03c1afe839734c"
+    },
+    {
+      "path": "supabase/migrations/20260923113500_f15_product_sale_stock_kinds.sql",
+      "mode": "100644",
+      "gitBlobSha": "3f9e5781568f754d56801bcd495d47deddf1e13f"
+    },
+    {
+      "path": "supabase/migrations/20260923113600_f15_product_sale_atomicity.sql",
+      "mode": "100644",
+      "gitBlobSha": "732c16cbb40693cdb6efa8af0c5597f943eecbf6"
+    },
+    {
+      "path": "supabase/migrations/20260923170000_f15_day_report.sql",
+      "mode": "100644",
+      "gitBlobSha": "8a7edc637ae4732f45a6a47593cca5306fd8f224"
+    },
+    {
+      "path": "supabase/migrations/20260924023800_f16_recurring_series.sql",
+      "mode": "100644",
+      "gitBlobSha": "4d703504b24b4eca9d979d4e4c971c2bf62e02f8"
+    },
+    {
+      "path": "supabase/migrations/20260924170000_f16_private_media.sql",
+      "mode": "100644",
+      "gitBlobSha": "da9872af76e29b64a8b778f06848bdb5cbddd56e"
+    },
+    {
+      "path": "supabase/migrations/20260924180000_f16_feedback_reviews.sql",
+      "mode": "100644",
+      "gitBlobSha": "ffe32b3ba72a1e26f93f3f44386d39106ef7a705"
+    },
+    {
+      "path": "supabase/migrations/20260924190000_f16_service_packages.sql",
+      "mode": "100644",
+      "gitBlobSha": "54670113959f4361d93e14eca3d5a3342ce92b69"
+    },
+    {
+      "path": "supabase/seeds/staging_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "767838cb379d3d946aba5b6910ad6cc6dcf5c350"
+    },
+    {
+      "path": "supabase/seeds/staging_reset.sql",
+      "mode": "100644",
+      "gitBlobSha": "f9b81563104c96fc92b7bc6bc824dff2b9cbbf81"
+    },
+    {
+      "path": "supabase/tests/bootstrap.sql",
+      "mode": "100644",
+      "gitBlobSha": "5e206a6fce53dcfe1b56dc3c7bde451cebbffddd"
+    },
+    {
+      "path": "supabase/tests/f10_catalog_hours_limits.sql",
+      "mode": "100644",
+      "gitBlobSha": "d420d2cfd170d7e394b08ba01156dbeacc51718b"
+    },
+    {
+      "path": "supabase/tests/f10_catalog_hours_management.sql",
+      "mode": "100644",
+      "gitBlobSha": "87168cdf80c8e96e4dc59de538238c8d4d8c4849"
+    },
+    {
+      "path": "supabase/tests/f10_catalog_read_session_guard.sql",
+      "mode": "100644",
+      "gitBlobSha": "0e1ef00fe0d9966fbfae013ecefe63a3a5c78581"
+    },
+    {
+      "path": "supabase/tests/f10_customer_authority_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "461d306870dc68e236245f19ebbe6c88bfe5617d"
+    },
+    {
+      "path": "supabase/tests/f10_customer_authority_repair_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "1c5a5d2bc513db51b429a1eff20c29e9efd49483"
+    },
+    {
+      "path": "supabase/tests/f10_customer_read_recovery_guard.sql",
+      "mode": "100644",
+      "gitBlobSha": "2187781e7bf7923a231041e59b22ff01079d4b24"
+    },
+    {
+      "path": "supabase/tests/f10_customer_records.sql",
+      "mode": "100644",
+      "gitBlobSha": "af0f51ead81cb2ef2c2e0aa674e15f565577ef1f"
+    },
+    {
+      "path": "supabase/tests/f10_customer_records_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "4ef8080526e3aa03e2bd17eee6a560231b9775cd"
+    },
+    {
+      "path": "supabase/tests/f10_onboarding_readiness.sql",
+      "mode": "100644",
+      "gitBlobSha": "03c78b37e10b472c74c6c6a58a9709ca8662de0e"
+    },
+    {
+      "path": "supabase/tests/f10_team_access.sql",
+      "mode": "100644",
+      "gitBlobSha": "7138f6b7f3f01e2dde394930ef0402cc1302adba"
+    },
+    {
+      "path": "supabase/tests/f10_team_access_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "6e0577e53de64bd462eb8c247d850be855f3f34c"
+    },
+    {
+      "path": "supabase/tests/f10_team_security_hardening.sql",
+      "mode": "100644",
+      "gitBlobSha": "cbefcb96ad1b720d4110023a3055bc024c7863b4"
+    },
+    {
+      "path": "supabase/tests/f10_team_snapshot.sql",
+      "mode": "100644",
+      "gitBlobSha": "4e600faea1b837c231e413d079c50d0f443b2492"
+    },
+    {
+      "path": "supabase/tests/f11_final_binding.sql",
+      "mode": "100644",
+      "gitBlobSha": "362e4d9d07d5b045e2c6b483c13c485f1d3786e1"
+    },
+    {
+      "path": "supabase/tests/f11_group_availability.sql",
+      "mode": "100644",
+      "gitBlobSha": "812ec80b6ad7b52c4b6ef41085598a4447c76771"
+    },
+    {
+      "path": "supabase/tests/f11_group_create_atomicity.sql",
+      "mode": "100644",
+      "gitBlobSha": "8b087fb69966cf307dbd413f732dc58514213bdc"
+    },
+    {
+      "path": "supabase/tests/f11_group_create_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "9d0d185e26f910a0f843f1ea4ef281e2f71da96a"
+    },
+    {
+      "path": "supabase/tests/f11_group_integration_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "d2108aa10cda171f1b464e4588fc663bb63c2e8b"
+    },
+    {
+      "path": "supabase/tests/f11_group_line_contract.sql",
+      "mode": "100644",
+      "gitBlobSha": "fa5457e1a90ad60a51ba98e34683d3b3ab53bd9c"
+    },
+    {
+      "path": "supabase/tests/f11_group_line_upgrade_assert.sql",
+      "mode": "100644",
+      "gitBlobSha": "c688d15c105058f1b32ccc142f905102186dacd1"
+    },
+    {
+      "path": "supabase/tests/f11_group_line_upgrade_cleanup.sql",
+      "mode": "100644",
+      "gitBlobSha": "6a40eb70baf554b669874c2e264bc0a6aceb465a"
+    },
+    {
+      "path": "supabase/tests/f11_group_line_upgrade_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "080e411cf3602357ede88c77bf790983fec905f7"
+    },
+    {
+      "path": "supabase/tests/f11_group_management.sql",
+      "mode": "100644",
+      "gitBlobSha": "fdeb8846c3c8c5d3528cce7265cae3ff43db4b0f"
+    },
+    {
+      "path": "supabase/tests/f11_group_management_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "4b54e31246c7b24ad75d00d070a2eec04a13bbcb"
+    },
+    {
+      "path": "supabase/tests/f11_group_notification_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "a78447fb62e04a15d4667596604714b28cf10b8a"
+    },
+    {
+      "path": "supabase/tests/f11_group_recovery_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "20080733594805e159f8bea6a0417878c0b967bb"
+    },
+    {
+      "path": "supabase/tests/f11_k03_group_slot_measurement.sql",
+      "mode": "100644",
+      "gitBlobSha": "5ef0725a1c3e6f4b6ecb8d26dfc8c8d53925315f"
+    },
+    {
+      "path": "supabase/tests/f11_legacy_consumers.sql",
+      "mode": "100644",
+      "gitBlobSha": "d4e0240d7b697ecfd1c41f2501f83812f59acafd"
+    },
+    {
+      "path": "supabase/tests/f11_partial_line_lifecycle.sql",
+      "mode": "100644",
+      "gitBlobSha": "62525b99cace7fd2764b56abcfa6e2062fddabb0"
+    },
+    {
+      "path": "supabase/tests/f11_price_snapshot_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "06a076b06ecbfc56fbe6b466e5c258a1c53e71e8"
+    },
+    {
+      "path": "supabase/tests/f11_public_group_management.sql",
+      "mode": "100644",
+      "gitBlobSha": "d31c7c7e84b88bd3b3eab2ded3a20a5a5e3d4118"
+    },
+    {
+      "path": "supabase/tests/f11_schedule_authority_races.sql",
+      "mode": "100644",
+      "gitBlobSha": "4d28119e95ca9a31c1d17c765c9458550dd68a8d"
+    },
+    {
+      "path": "supabase/tests/f12_booking_information.sql",
+      "mode": "100644",
+      "gitBlobSha": "1a7ca2f69a6a538f6c2783b2e619813a8c8ecb95"
+    },
+    {
+      "path": "supabase/tests/f12_booking_information_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "19b1e0f54de6508869679773918dbbaf3a8dc8bb"
+    },
+    {
+      "path": "supabase/tests/f12_notification_status.sql",
+      "mode": "100644",
+      "gitBlobSha": "60cafb85858a12b1157a3063f747a3da9c26256d"
+    },
+    {
+      "path": "supabase/tests/f12_public_catalog_v2.sql",
+      "mode": "100644",
+      "gitBlobSha": "7af391fc9595d3e301655050a444d3ecbaf17e69"
+    },
+    {
+      "path": "supabase/tests/f12_public_media_lifecycle_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "91b2c9ecbeb328dd81e6c54ca869b709a2924453"
+    },
+    {
+      "path": "supabase/tests/f12_public_media_lifecycle_repair.sql",
+      "mode": "100644",
+      "gitBlobSha": "d569ff1ae448dfc2548afa5da21df7437adb4e6c"
+    },
+    {
+      "path": "supabase/tests/f12_public_profile_media.sql",
+      "mode": "100644",
+      "gitBlobSha": "04f67c6f3b582933848b118bf669bdee82fcaeba"
+    },
+    {
+      "path": "supabase/tests/f12_service_price_range.sql",
+      "mode": "100644",
+      "gitBlobSha": "162340e3434b14dfedf5509a8411ec37f7d0ec18"
+    },
+    {
+      "path": "supabase/tests/f12_service_price_range_upgrade_assert.sql",
+      "mode": "100644",
+      "gitBlobSha": "657ca42f50fb91b1c33c5dd4345df4ec5c1e58f7"
+    },
+    {
+      "path": "supabase/tests/f12_service_price_range_upgrade_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "4b877bda64daab16551c8d96406c7f95a3416fb1"
+    },
+    {
+      "path": "supabase/tests/f12_storage_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "94aa33d527ae043b025174eacdc96cc2db95c6b5"
+    },
+    {
+      "path": "supabase/tests/f13_booking_date_range.sql",
+      "mode": "100644",
+      "gitBlobSha": "58001762403eab2b6466fdcd4c95d2ce21a1690a"
+    },
+    {
+      "path": "supabase/tests/f13_group_lifecycle.sql",
+      "mode": "100644",
+      "gitBlobSha": "f669f3533aad83944e00b2112ffc6eaffb468a9e"
+    },
+    {
+      "path": "supabase/tests/f13_starts_at_pagination_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "aaf06b4d883bf7f508037ca1cfe1da1d7f8f566a"
+    },
+    {
+      "path": "supabase/tests/f14_payment_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "b5efa964bdec4d28038b932aa74a6c1960fd177d"
+    },
+    {
+      "path": "supabase/tests/f14_payment_ledger.sql",
+      "mode": "100644",
+      "gitBlobSha": "9bc5b48e88614b203084e49801ea8f8edbdbf145"
+    },
+    {
+      "path": "supabase/tests/f14_ticket_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "241e2013f4c3a549b994fff209b02e1e295692c4"
+    },
+    {
+      "path": "supabase/tests/f14_ticket_list_projection.sql",
+      "mode": "100644",
+      "gitBlobSha": "40caf917f9f7d7d5d6ad7de94aa2eae66138c5c6"
+    },
+    {
+      "path": "supabase/tests/f14_ticket_model.sql",
+      "mode": "100644",
+      "gitBlobSha": "8e8a002b4eafb17f3a96d5210616f2e091817b36"
+    },
+    {
+      "path": "supabase/tests/f15_day_report.sql",
+      "mode": "100644",
+      "gitBlobSha": "874c4f50a8a38981de4fff0a59891e9b5ccc5fba"
+    },
+    {
+      "path": "supabase/tests/f15_expense_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "905dcb3a80216e7d3d4c1d9b00e4958f178eaa5b"
+    },
+    {
+      "path": "supabase/tests/f15_expense_ledger.sql",
+      "mode": "100644",
+      "gitBlobSha": "16825ab2e0f80365e92d0e423f2b4fc587f2a92c"
+    },
+    {
+      "path": "supabase/tests/f15_product_sale_atomicity.sql",
+      "mode": "100644",
+      "gitBlobSha": "bcf01f445ed2ad83dabf9fb91e2477b0f8015222"
+    },
+    {
+      "path": "supabase/tests/f15_product_sale_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "7f86dc2c6aea5bb22f4b74e36f026e471709c47f"
+    },
+    {
+      "path": "supabase/tests/f15_product_stock_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "b7ae187d52f4c66655caef09d741b4c8ebc4f807"
+    },
+    {
+      "path": "supabase/tests/f15_product_stock_ledger.sql",
+      "mode": "100644",
+      "gitBlobSha": "943198029e461cddf0bafafb2bbaffd25d26ddc2"
+    },
+    {
+      "path": "supabase/tests/f16_feedback_reviews.sql",
+      "mode": "100644",
+      "gitBlobSha": "6d1744823f479ca52f90dab383140e43d362271a"
+    },
+    {
+      "path": "supabase/tests/f16_private_media.sql",
+      "mode": "100644",
+      "gitBlobSha": "8460977521db8ce3a6f586f63f34389cd33bd4a7"
+    },
+    {
+      "path": "supabase/tests/f16_recurring_series.sql",
+      "mode": "100644",
+      "gitBlobSha": "72b70298d07618d1e8ec5d72a50a3c5b5988eedd"
+    },
+    {
+      "path": "supabase/tests/f16_recurring_series_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "7b2976c54d9c9cd258573800d5f33b0c233bb920"
+    },
+    {
+      "path": "supabase/tests/f16_service_packages.sql",
+      "mode": "100644",
+      "gitBlobSha": "3811703c621ee0d40c0f8f55ec7c019c14373199"
+    },
+    {
+      "path": "supabase/tests/f16_service_packages_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "c61ee1634dbb800345a407d738f6aad23083cb3a"
+    },
+    {
+      "path": "supabase/tests/f17_hosted_acl_hardening.sql",
+      "mode": "100644",
+      "gitBlobSha": "414956becb28a4e36a48cc6091cbf9e65d33672f"
+    },
+    {
+      "path": "supabase/tests/f17_staging_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "0463b0ac20f9f5c4d615081cd9c70851bc2e3e1c"
+    },
+    {
+      "path": "supabase/tests/h19_bench_customers_d0_d5.sql",
+      "mode": "100644",
+      "gitBlobSha": "f5b7cc131fa8d8282c7b7f6549a03783cfd5bf77"
+    },
+    {
+      "path": "supabase/tests/h19_bench_customers_d1_d5.sql",
+      "mode": "100644",
+      "gitBlobSha": "9bb2c00bf4d20c6796629de15ca0c979f8276f26"
+    },
+    {
+      "path": "supabase/tests/h19_bench_expenses_d1_d2.sql",
+      "mode": "100644",
+      "gitBlobSha": "b34faf48bac790f9ffba9ac1d820ac2a8652c010"
+    },
+    {
+      "path": "supabase/tests/h19_bench_product_sales_d0_d2.sql",
+      "mode": "100644",
+      "gitBlobSha": "0bf184b73aa511a30277aca9d71cd1f3c02a4d89"
+    },
+    {
+      "path": "supabase/tests/h19_bench_reporting_d2_d4.sql",
+      "mode": "100644",
+      "gitBlobSha": "a0f5a769897c445b80744b8de863fd97b301a23a"
+    },
+    {
+      "path": "supabase/tests/h19_calendar_d4_d5_range_revision.sql",
+      "mode": "100644",
+      "gitBlobSha": "bfb5436b6e0bb5f9c78ff997511d3364763675b6"
+    },
+    {
+      "path": "supabase/tests/h19_catalog_d0_d2_history_scope.sql",
+      "mode": "100644",
+      "gitBlobSha": "eca33fbc75d507ae31cea645a6f0f63e4caf7e66"
+    },
+    {
+      "path": "supabase/tests/h19_d0_d1_tenant_idempotency.sql",
+      "mode": "100644",
+      "gitBlobSha": "141e86037a3de3c25753f50e41586e23cd65d605"
+    },
+    {
+      "path": "supabase/tests/h19_d0_d3_tenant_capacity.sql",
+      "mode": "100644",
+      "gitBlobSha": "f566921564dba92a06870d8615e34c06bbc876f9"
+    },
+    {
+      "path": "supabase/tests/h19_d0_d4_tenant_time_boundary.sql",
+      "mode": "100644",
+      "gitBlobSha": "791080da64f8b810365a38b35436ca0c92d921db"
+    },
+    {
+      "path": "supabase/tests/h19_d0_d5_tenant_lock_isolation.sql",
+      "mode": "100644",
+      "gitBlobSha": "012a2e24e969927ab358e0ccba108f48c8815b68"
+    },
+    {
+      "path": "supabase/tests/h19_d1_d5_idempotency_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "c71d36e1f0df6c86f8030942926ef361bc60c514"
+    },
+    {
+      "path": "supabase/tests/h19_d2_d3_snapshot_staff_coherence.sql",
+      "mode": "100644",
+      "gitBlobSha": "d8d85c25dd601170acbb1104860daf1fdaa5cff2"
+    },
+    {
+      "path": "supabase/tests/h19_d3_d4_staff_hours_fallback.sql",
+      "mode": "100644",
+      "gitBlobSha": "69bc29ab2e0397626375eb4b0339f4229f4753c3"
+    },
+    {
+      "path": "supabase/tests/h19_d4_d5_cross_day_authority.sql",
+      "mode": "100644",
+      "gitBlobSha": "cffa3ec59252ccd2f83a6808ce14ac445828fbf0"
+    },
+    {
+      "path": "supabase/tests/h19_f14_d1_d2_replay_snapshot.sql",
+      "mode": "100644",
+      "gitBlobSha": "8adaab05a90481a3a374ebd2c7d619ee4ba08ff2"
+    },
+    {
+      "path": "supabase/tests/h19_f14_d2_d5_snapshot_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "14c098680d8f7bddae4aad403356c8644006c223"
+    },
+    {
+      "path": "supabase/tests/h19_f15_d0_d1_actor_idempotency.sql",
+      "mode": "100644",
+      "gitBlobSha": "c46c089537a67f10817d70c244d350a3a39706e8"
+    },
+    {
+      "path": "supabase/tests/h19_integrity_gate.sql",
+      "mode": "100644",
+      "gitBlobSha": "b40002ab7cf572eba47f42d9dec4710842c5ade2"
+    },
+    {
+      "path": "supabase/tests/h19_inventory_d1_d5_idempotency_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "a77e003498ca0f1717cce33ee5275b083a5a536f"
+    },
+    {
+      "path": "supabase/tests/h19_public_booking_d0_d4_slot_scope.sql",
+      "mode": "100644",
+      "gitBlobSha": "edbd8ad0f401f6acd2e95caf48426d7fd83cb1d7"
+    },
+    {
+      "path": "supabase/tests/h19_team_d0_d1_invite_scope.sql",
+      "mode": "100644",
+      "gitBlobSha": "13e0366afa8ab918853009a66094901d87368096"
+    },
+    {
+      "path": "supabase/tests/h19_test_support.sql",
+      "mode": "100644",
+      "gitBlobSha": "f6483e56301421fbe4daf9469b74ce9743f88463"
+    },
+    {
+      "path": "supabase/tests/kc01_core_platform.sql",
+      "mode": "100644",
+      "gitBlobSha": "fdc97bd4827683146b56241b9bb50286acd532c2"
+    },
+    {
+      "path": "supabase/tests/kc01_core_platform_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "ec8cd05880d64c2b6ca21a16c1d4692dbce6f995"
+    },
+    {
+      "path": "supabase/tests/phase3_services_team.sql",
+      "mode": "100644",
+      "gitBlobSha": "8e4194a352e3b808ede8957a6e57c38404ce8398"
+    },
+    {
+      "path": "supabase/tests/phase4_availability.sql",
+      "mode": "100644",
+      "gitBlobSha": "e6cf4e9d848d26293195657d0a92b94c977989bf"
+    },
+    {
+      "path": "supabase/tests/phase5_booking_core.sql",
+      "mode": "100644",
+      "gitBlobSha": "90568ce05722944c28e9a2d8cdf9ca1df329bd44"
+    },
+    {
+      "path": "supabase/tests/phase6_public_booking.sql",
+      "mode": "100644",
+      "gitBlobSha": "65eaf86ccebf25a189abea2dd76175ec1f006929"
+    },
+    {
+      "path": "supabase/tests/phase7_customer_manage.sql",
+      "mode": "100644",
+      "gitBlobSha": "a61c5babe13709888572bd269e1592a6bc493cf2"
+    },
+    {
+      "path": "supabase/tests/phase8_calendar.sql",
+      "mode": "100644",
+      "gitBlobSha": "0785e27f304722c48883af5365c07837507e7092"
+    },
+    {
+      "path": "supabase/tests/phase9_booking_recovery.sql",
+      "mode": "100644",
+      "gitBlobSha": "3ab8ae89fc96c9e76d58b6f94212ca22ed207907"
+    },
+    {
+      "path": "supabase/tests/phase9_booking_recovery_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "ffb4707dad150d12c4470aa8e03ec5ac3da39af4"
+    },
+    {
+      "path": "supabase/tests/phase9_notification_outbox.sql",
+      "mode": "100644",
+      "gitBlobSha": "dd0ee5b8021cd6d2bd8d243c20b3182fbc8ccc9a"
+    },
+    {
+      "path": "supabase/tests/phase9_notification_outbox_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "032589b750bbb716d3193d201c09cad2487ec088"
+    },
+    {
+      "path": "supabase/tests/phase9_notification_upgrade_assert.sql",
+      "mode": "100644",
+      "gitBlobSha": "2c50b06f27574ef98ab8e9a9523c98ee4b7e4c81"
+    },
+    {
+      "path": "supabase/tests/phase9_notification_upgrade_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "61374378f573bf10cda122f4ba320abdb94681d1"
+    },
+    {
+      "path": "supabase/tests/phase9_public_abuse_control.sql",
+      "mode": "100644",
+      "gitBlobSha": "44e77bfc190cf507c34d87a9954e18ac18add81d"
+    },
+    {
+      "path": "supabase/tests/phase9_public_abuse_recovery_probe.sql",
+      "mode": "100644",
+      "gitBlobSha": "4d8b26520dd45861932bb2c8eb081d390aa6855d"
+    },
+    {
+      "path": "supabase/tests/phase9_public_abuse_retention.sql",
+      "mode": "100644",
+      "gitBlobSha": "8683e535fd2f61e1fd4d2b85de175edd64e5975a"
+    },
+    {
+      "path": "supabase/tests/s03_notification_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "73d898667199c12a7b12f4c053000623e71cbf3f"
+    },
+    {
+      "path": "supabase/tests/s03_notification_consistency.sql",
+      "mode": "100644",
+      "gitBlobSha": "75b44fcb664c088358ecb822286c9381176cc6f7"
+    },
+    {
+      "path": "supabase/tests/s03_notification_upgrade_assert.sql",
+      "mode": "100644",
+      "gitBlobSha": "965d2920c13525d10ae4de643626d4be0a3a6c88"
+    },
+    {
+      "path": "supabase/tests/s03_notification_upgrade_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "0d91b32e2228c38019f4121075dca30043ec0bbb"
+    },
+    {
+      "path": "supabase/tests/s04_resource_limits.sql",
+      "mode": "100644",
+      "gitBlobSha": "0939404e3b12546efca1f7704de66d8779374763"
+    },
+    {
+      "path": "supabase/tests/s04_resource_limits_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "51da52857fe9393eac1b38dc063e9637c99e5394"
+    },
+    {
+      "path": "supabase/tests/s05_deploy_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "b957ba6458e080dd776645c324259527de0a08c3"
+    },
+    {
+      "path": "supabase/tests/s05_deploy_consistency.sql",
+      "mode": "100644",
+      "gitBlobSha": "ac7196686badf6040e7576db0e93466e5af1a964"
+    },
+    {
+      "path": "supabase/tests/s05_upgrade_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "3288d60efd6b6aab3bbfa7dbf44e783d27bf30c5"
+    },
+    {
+      "path": "supabase/tests/s07_booking_resolution.sql",
+      "mode": "100644",
+      "gitBlobSha": "65ad793adb804081570411bce675b44bd558eb3b"
+    },
+    {
+      "path": "supabase/tests/s07_booking_resolution_concurrency.sql",
+      "mode": "100644",
+      "gitBlobSha": "dad87eafc113d8e143d986fb78d3cd8982e5b315"
+    },
+    {
+      "path": "supabase/tests/s07_client_cutover.sql",
+      "mode": "100644",
+      "gitBlobSha": "d29c4a705062d3a0cea7909dcf0bced014e70554"
+    },
+    {
+      "path": "supabase/tests/s07_client_cutover_pre_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "44646efddc495ae931146a342515c4716967da4f"
+    },
+    {
+      "path": "supabase/tests/s07_list_pagination.sql",
+      "mode": "100644",
+      "gitBlobSha": "b8c04242b0abed2d1e419b033026334fe7902866"
+    },
+    {
+      "path": "supabase/tests/s07_load_measurement.sql",
+      "mode": "100644",
+      "gitBlobSha": "eed1c47d3ac9643942b77f0bea5700ae2ca37115"
+    },
+    {
+      "path": "supabase/tests/s07_resolution_upgrade_assert.sql",
+      "mode": "100644",
+      "gitBlobSha": "9a2d5380260cf0ca840d4bf0ed3c2131d0302420"
+    },
+    {
+      "path": "supabase/tests/s07_resolution_upgrade_fixture.sql",
+      "mode": "100644",
+      "gitBlobSha": "d587288bb86ec073ae6da1a918a1be23cb615e20"
+    },
+    {
+      "path": "supabase/tests/s07_snapshot_overflow.sql",
+      "mode": "100644",
+      "gitBlobSha": "3b801987696403be1290502d98154e5c36260e97"
+    },
+    {
+      "path": "supabase/tests/s07_terminal_pii_retention.sql",
+      "mode": "100644",
+      "gitBlobSha": "ad4de90c4d87c0c01b60ea0edf1c25010cdc4e7f"
+    },
+    {
+      "path": "supabase/tests/s08_db_object_access_gate.sql",
+      "mode": "100644",
+      "gitBlobSha": "f1038a4532e46d72f4e43efd75941ef96856b2a2"
+    },
+    {
+      "path": "supabase/tests/s08_post_s04_acl_regression.sql",
+      "mode": "100644",
+      "gitBlobSha": "32c2486c0260ba9af02f149897c671816cc35d13"
+    },
+    {
+      "path": "tests/auth-session.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "342d47b27bdfd3f75b81d7d86408745c322e7544"
+    },
+    {
+      "path": "tests/browser/f10-catalog-settings-review.tsx",
+      "mode": "100644",
+      "gitBlobSha": "59a8e3b02e4ed836b20e5cdbab055ccfb47dd9a2"
+    },
+    {
+      "path": "tests/browser/f10-catalog-settings.tsx",
+      "mode": "100644",
+      "gitBlobSha": "9a6f4368263cfe4c3d022163443157b07487ccfa"
+    },
+    {
+      "path": "tests/browser/f10-customers.tsx",
+      "mode": "100644",
+      "gitBlobSha": "461f0c595c654564b829513ff0fcf5f266ef3faf"
+    },
+    {
+      "path": "tests/browser/f10-onboarding.tsx",
+      "mode": "100644",
+      "gitBlobSha": "772e9e91c22ea36084b47825a24eb66c2d73cc3d"
+    },
+    {
+      "path": "tests/browser/f11-group-consumers.tsx",
+      "mode": "100644",
+      "gitBlobSha": "098612318ef4b2d8f2154bc65313029bd997b39b"
+    },
+    {
+      "path": "tests/browser/f11-group-management.tsx",
+      "mode": "100644",
+      "gitBlobSha": "fd8f0848b8c0dc7e1055fcaa3ad17790184f5a7e"
+    },
+    {
+      "path": "tests/browser/f12-public-group-booking.tsx",
+      "mode": "100644",
+      "gitBlobSha": "4c67709aca249de67532a388fcd4bf8138f68922"
+    },
+    {
+      "path": "tests/browser/f12-public-operator.tsx",
+      "mode": "100644",
+      "gitBlobSha": "4f5aa9ae5785309df28b2369319a7f3fd4b732af"
+    },
+    {
+      "path": "tests/browser/f12-public-profile.tsx",
+      "mode": "100644",
+      "gitBlobSha": "7923cae139618ccfd78aae97fc85ace086758ae7"
+    },
+    {
+      "path": "tests/browser/f16-feedback.tsx",
+      "mode": "100644",
+      "gitBlobSha": "c8688c334d7f9822b742967d1f1509ae57e713c7"
+    },
+    {
+      "path": "tests/browser/f16-packages.tsx",
+      "mode": "100644",
+      "gitBlobSha": "d11867bd3d7d9bb813dfcbca540069a2736505de"
+    },
+    {
+      "path": "tests/browser/f16-private-media.tsx",
+      "mode": "100644",
+      "gitBlobSha": "ea5fd954dac07d01c5cae7ac54a67280f2a00029"
+    },
+    {
+      "path": "tests/browser/kolayapp-shell-render.tsx",
+      "mode": "100644",
+      "gitBlobSha": "7a1c82b3cc387287db93e3daf03c0ee3c8e91c51"
+    },
+    {
+      "path": "tests/browser/s07-booking-recovery.ts",
+      "mode": "100644",
+      "gitBlobSha": "a198526a3d838039cb782ab82fd224ac423cabf6"
+    },
+    {
+      "path": "tests/browser/workspace-provider.tsx",
+      "mode": "100644",
+      "gitBlobSha": "43f3b45f9814cb2ef03f5e0c4fe3623b164d4735"
+    },
+    {
+      "path": "tests/ci-control.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "baff79974938a8891fe9cf6bd5c67503d17fa395"
+    },
+    {
+      "path": "tests/ci-coverage.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "b34cbe1ee9d32f8b87472dc9482d20b9650585cc"
+    },
+    {
+      "path": "tests/ci-docs.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "66a580ff3c506c1450b4e5b36b27593ede71cd5e"
+    },
+    {
+      "path": "tests/ci-observer.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "0e0ffd3eaf6ab12a0660d4cd125a906113a9d0b0"
+    },
+    {
+      "path": "tests/critical-booking-calendar-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "70cabb250ccec84d3c24b6a381efec5b683cf8f3"
+    },
+    {
+      "path": "tests/customer-manage-surface.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "f2582f04274ee409c56fac7fdd80e6cc548be0f8"
+    },
+    {
+      "path": "tests/development-audit-gate.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "907c4cad419913694d0b7050b90c02d072513b54"
+    },
+    {
+      "path": "tests/development-dispatcher.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "052170f3d7927e95361f3213a2058410d88e254b"
+    },
+    {
+      "path": "tests/development-engine.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "5c2c453a74fa3b618b39b3fd1a4dfb233788dee0"
+    },
+    {
+      "path": "tests/development-escalation-envelope.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "b8b2f2386d2e3b3a29d3b45c8c413173bca4e534"
+    },
+    {
+      "path": "tests/development-review-follow-up.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "8d0096fa20de115d9af94d52740209cb43201a55"
+    },
+    {
+      "path": "tests/development-review-live-state.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "a546f2b61ca80c0ca3bcf11c5f905db511aac742"
+    },
+    {
+      "path": "tests/development-review-observation.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "28215a4a727db8f3ddffc6fd5abcbd8479300598"
+    },
+    {
+      "path": "tests/development-review-request.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "8a46b4225aded7e6dd332276a2adbe4f15e247f1"
+    },
+    {
+      "path": "tests/development-review-reservation.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "bf14a9d525624b32c2ef6c61e511a5738247dc46"
+    },
+    {
+      "path": "tests/development-review-workflow.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "23cf559ef4d1e155d5fec241d0413e8a2c64b3b5"
+    },
+    {
+      "path": "tests/f10-catalog-settings-client.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "aa4a424c0b5cb58d72b2b6ce2209473022baa3a8"
+    },
+    {
+      "path": "tests/f10-catalog-settings-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "e3eacea46cb372f5d5fda407548801f40da35e28"
+    },
+    {
+      "path": "tests/f10-customer-authority-repair.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "01903e5b2c2d9436f61b34f29f19cc96db7d356f"
+    },
+    {
+      "path": "tests/f10-customers-client.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "df0d252679f2ce453c721fe909a3736465926373"
+    },
+    {
+      "path": "tests/f10-customers-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "92dde9902ab198d0940f615e7c1520bad67b94ec"
+    },
+    {
+      "path": "tests/f10-management-acceptance.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "a87e2128c1df599cda5b7847d68eee6d929091d7"
+    },
+    {
+      "path": "tests/f10-onboarding-client.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "8f5a44e648df19172154a1287f9333024baee696"
+    },
+    {
+      "path": "tests/f10-onboarding-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "4b01250e7c13a7f8086edfaea0f8a23347df1363"
+    },
+    {
+      "path": "tests/f10-team-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "f0cebcd8cb20a614542a3335bcbf35a62bc95fba"
+    },
+    {
+      "path": "tests/f10-team-invite-client.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "97544e2d356f6ef3ec57d7cfc2890ce92abe4333"
+    },
+    {
+      "path": "tests/f10-workspace-coherence.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "e3a46d1b78869cdba2ca703e8523c3fd4edc1031"
+    },
+    {
+      "path": "tests/f10-workspace-context-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "086fb824ad5ff70e4ab1d8507de0b038b8432d73"
+    },
+    {
+      "path": "tests/f11-group-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "47da8af51efbd1df9890b43b86511054a53c9f41"
+    },
+    {
+      "path": "tests/f11-group-integration-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "1d75adaf5a821b3af6ff650f611b677d639b10cf"
+    },
+    {
+      "path": "tests/f11-group-management-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "ae6fb695dd55b6c68cc50565350a51108d5ff30e"
+    },
+    {
+      "path": "tests/f11-group-notifications.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "19b8d3dcca7cc23c916682c0ae5b3f26ddf59d68"
+    },
+    {
+      "path": "tests/f11-group-recovery.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "26adfc14018a2b98e777cdf6d54a141035f7df35"
+    },
+    {
+      "path": "tests/f12-media-lifecycle-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "facbd3cfcb61e526458d27cfa3b27a69d65a20d7"
+    },
+    {
+      "path": "tests/f12-notification-status.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "6b5574bc1661d8e1ba647c9d7a491406e1ec9ad8"
+    },
+    {
+      "path": "tests/f12-public-catalog-v2-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "507a794c0ee5e0b28d181983ec730b551d683823"
+    },
+    {
+      "path": "tests/f12-public-group-booking.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "92bdeda4857f20c54ce2b310212fc3e005557d31"
+    },
+    {
+      "path": "tests/f12-public-information.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "14ddb9430ab2b7cbe25c819c7fc65521da271b91"
+    },
+    {
+      "path": "tests/f12-public-multi-selection.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11"
+    },
+    {
+      "path": "tests/f12-public-phone-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "59cb988d74a551dbc41788041e901e876cce82ae"
+    },
+    {
+      "path": "tests/f12-public-profile-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "05cd07123b07a38a1e947b8cac90a5f1de6d2a9a"
+    },
+    {
+      "path": "tests/f12-service-price-range-client.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "99723fb4a92419a68e7f78651b5180b6589f206f"
+    },
+    {
+      "path": "tests/f12-service-price-range-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "219e9b0fcaa3c223e6d0dd571292421f583573dd"
+    },
+    {
+      "path": "tests/f13-booking-editor.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "4faaaf56a1d0d8ad574e973723eb3c3db527427a"
+    },
+    {
+      "path": "tests/f13-calendar-refresh.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "70a6e21ceb7b23e9dee99de4c861ff3b6e51619b"
+    },
+    {
+      "path": "tests/f13-calendar-views.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "d49fff51a7ca5957d46ebd8b947d52cadfa88691"
+    },
+    {
+      "path": "tests/f13-workspace-shell.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "4e23792a8e7781751577db04570e15a8f00f33e1"
+    },
+    {
+      "path": "tests/f14-payment-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "d3e17897625a8c3d38f5068e0dfe51cdf54a082d"
+    },
+    {
+      "path": "tests/f14-pwa-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "8eb88033362e73cfcb9687f158949206b740db31"
+    },
+    {
+      "path": "tests/f14-ticket-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "059fdf64359a0878a695a97b28c02af7bc9f63f4"
+    },
+    {
+      "path": "tests/f14-ticket-list-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "9bc17d51be6f168563b78050cb1593ad3ea5c447"
+    },
+    {
+      "path": "tests/f15-day-report-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "80edc1eb935930fa7559674ab5d4fcc30211ce17"
+    },
+    {
+      "path": "tests/f15-day-report-source-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "4d34825c1ee4ead69c7933314953a08631af42a2"
+    },
+    {
+      "path": "tests/f15-expense-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "59d03779a9c2f0ac467a1fdb2c3b6ad582a9d970"
+    },
+    {
+      "path": "tests/f15-expense-source-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "0924ce69dd7f5c1295eac91e81aab1a14f0fbad3"
+    },
+    {
+      "path": "tests/f15-product-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "90521029dda5716676863610508cf312624855b3"
+    },
+    {
+      "path": "tests/f15-product-sale-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "aad80e2d28267297df41d20ee6615c0f72b19532"
+    },
+    {
+      "path": "tests/f15-product-sale-source-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "7a8606e8243c6140dea2520a08ad7da85ad9524e"
+    },
+    {
+      "path": "tests/f15-products-source-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "3ca45217eab3cb92e0edcf3e7dc3cf538fcf0e9d"
+    },
+    {
+      "path": "tests/f16-feedback-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "919c8aa141fe1336211066ae6732df4e3d1f5c4b"
+    },
+    {
+      "path": "tests/f16-feedback-ui-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "74ca507534b58014c2cae80b77004cb852e98256"
+    },
+    {
+      "path": "tests/f16-packages-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "5e48466cdb72492ead4dd6d89e9970f87bc07ac7"
+    },
+    {
+      "path": "tests/f16-private-media-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "0742809632c153bc6a57aa28ed111dc1ed4ce29b"
+    },
+    {
+      "path": "tests/f16-private-media-ui-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "4ce9067b8954e16bd2ea14c02e7e4d2c5d1e6f4a"
+    },
+    {
+      "path": "tests/f16-series-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "48fa412128eabe67f94b5590cdd5d428b469f0ad"
+    },
+    {
+      "path": "tests/f16-series-ui-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "b9ad26991b95b5b6374972d6ea85354a2b9eaf02"
+    },
+    {
+      "path": "tests/fire-opus-escalation.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "b96dc745d800582a4e27821eebfd5823540cd9e9"
+    },
+    {
+      "path": "tests/kolayapp-shell.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "c0f599877f937024a7b521f2ab7b1ff9ed6a37de"
+    },
+    {
+      "path": "tests/notification-dispatcher.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "08153c13464249578aa0406ff6b463082903540b"
+    },
+    {
+      "path": "tests/password-recovery-boundary.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "570d866c2313848709145361c7063c1bfa3799e5"
+    },
+    {
+      "path": "tests/public-booking-abuse.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "a1050e810738e9c6a17a0241edc1a6f0a9c1abf6"
+    },
+    {
+      "path": "tests/public-booking-recovery.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "8ebad07a1ef5457b4fba14f9d7633aa196fd4c01"
+    },
+    {
+      "path": "tests/qwen-coordinator-depot.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "268e9b06a7646832b1b55dbd4e5dad3db332d690"
+    },
+    {
+      "path": "tests/qwen-coordinator-install.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "543a1311d239eaca6b287cb58d50ab1d24e666ab"
+    },
+    {
+      "path": "tests/qwen-coordinator-janitor.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "a895ffdd94d6c11bdee9349d8d86e5083b45540b"
+    },
+    {
+      "path": "tests/qwen-coordinator-lease.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "6b9f8c0640505355e3dc2acf15ce6787c173ab50"
+    },
+    {
+      "path": "tests/qwen-coordinator-policy.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "bbbb0e2c0f9b545be07e079dcce463af6d6c6420"
+    },
+    {
+      "path": "tests/s01-recovery-marker-corruption.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "8f58e0de3f0c1fefe325128591c0ad3a56ed7f3c"
+    },
+    {
+      "path": "tests/s01-recovery-session-boundary.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "3522c6e83146185799313d6af776edb5dac6a9f4"
+    },
+    {
+      "path": "tests/s02-client-api.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "b2a0f184de655fc77360598355424f3459594e31"
+    },
+    {
+      "path": "tests/s02-common-auth-mutation.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "db867194fb8144bf74c75e0e961c21bdd83e8ad4"
+    },
+    {
+      "path": "tests/s02-staging-smoke.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "cc5c2ffbaeb8500ab8e0cb38cc4c1de8973fc652"
+    },
+    {
+      "path": "tests/s03-notification-consistency.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "188848a5a47c1192ddc4c760818b18ba5753750f"
+    },
+    {
+      "path": "tests/s04-resource-limits.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "469fd0eda2cb9162c8f77528f1444b5bd90cafbf"
+    },
+    {
+      "path": "tests/s05-candidate.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "35f13dd5a3405ca15d779e517476cd8713507bdf"
+    },
+    {
+      "path": "tests/s05-control-db.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "161275a66456ec75384fb9f627b5a3871c92f1cd"
+    },
+    {
+      "path": "tests/s05-deploy-consistency.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "ad30afaeb00d5fd7c3197e9e6bc22aeff9929ed0"
+    },
+    {
+      "path": "tests/s05-wrangler-inheritance.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "c17e610415a536041a9a7004a036dd87aa1d6125"
+    },
+    {
+      "path": "tests/s07-booking-client.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "9f3e333cbcac82344de176cd511b99d7178b29e4"
+    },
+    {
+      "path": "tests/s07-booking-resolution.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "2c56fdc7624771f10c33f44a4ac11ed460b67f36"
+    },
+    {
+      "path": "tests/s07-common-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "bb179005840018edaec2f14a63940201a9175457"
+    },
+    {
+      "path": "tests/s07-pagination-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "30e46c0058728a331dc50a5d2cac6111517922c6"
+    },
+    {
+      "path": "tests/s07-pagination.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "2556824adc76376ab480d58cbcaf3f6d4b0e4366"
+    },
+    {
+      "path": "tests/s07-runtime-budgets.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "a942457f1854c676ad6e63bfbc7246ada49d9156"
+    },
+    {
+      "path": "tests/s07-snapshot-overflow-http.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "fa2966c967b63b82e92e9c0eb4101742ff1f07bc"
+    },
+    {
+      "path": "tests/s07-staging-closeout-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "7c3809c646f31f0abdcf3ecd62aeb70e36b2badc"
+    },
+    {
+      "path": "tests/session-membership-embed.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "fc9782e8719ee9823e8c0aac06c628678cb504e0"
+    },
+    {
+      "path": "tests/staging-f09-acceptance-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "b21908d81ce83dcaabc21ccf0360ebf0f51f84e7"
+    },
+    {
+      "path": "tests/staging-f10-auth-acceptance-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "12eca605fd3be4f3405a6dcd87d41eb369020d0f"
+    },
+    {
+      "path": "tests/staging-f10-team-acceptance-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "5b14108dabab93907ce119d2cb20aa929cd8cff5"
+    },
+    {
+      "path": "tests/staging-s01-recovery-acceptance-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "5897244f00219047ab98d2e579e9281cd6bc2dbf"
+    },
+    {
+      "path": "tests/staging-smoke-readiness.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "34c1c571eecf7e396075ff0e752ee1935074625a"
+    },
+    {
+      "path": "tests/staging-workflow-contract.test.mjs",
+      "mode": "100644",
+      "gitBlobSha": "d1ad1e9448978df3132216e1d2e6d98cc07e325c"
+    },
+    {
+      "path": "tsconfig.app.json",
+      "mode": "100644",
+      "gitBlobSha": "0859e863d98d4c002ba5e48762801bc7a7ff6360"
+    },
+    {
+      "path": "tsconfig.json",
+      "mode": "100644",
+      "gitBlobSha": "837b1e9a4be69b4df745f0e9c92b7dff5bec8e20"
+    },
+    {
+      "path": "tsconfig.node.json",
+      "mode": "100644",
+      "gitBlobSha": "ab207ce4d47c2257da59b876e3e19f47f333157d"
+    },
+    {
+      "path": "tsconfig.worker.json",
+      "mode": "100644",
+      "gitBlobSha": "376ef2045dd27ff1dc0d20cc2f942b9fd81066b5"
+    },
+    {
+      "path": "vite.config.ts",
+      "mode": "100644",
+      "gitBlobSha": "947eff05b0e283b648237c4c87c3292faac801cc"
+    },
+    {
+      "path": "worker/app.ts",
+      "mode": "100644",
+      "gitBlobSha": "e75204978ce1abf02fccc30298c2281377cec2c3"
+    },
+    {
+      "path": "worker/auth-routes.ts",
+      "mode": "100644",
+      "gitBlobSha": "a568f7fd994ac07273bdc896e6644e63db193fbb"
+    },
+    {
+      "path": "worker/auth.ts",
+      "mode": "100644",
+      "gitBlobSha": "004678bd3ede27ce5e741c5a7ed9d689e6cda4f5"
+    },
+    {
+      "path": "worker/availability.ts",
+      "mode": "100644",
+      "gitBlobSha": "28cc297d5b68c365b4b698f12d860c1e83830aa9"
+    },
+    {
+      "path": "worker/bookings.ts",
+      "mode": "100644",
+      "gitBlobSha": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731"
+    },
+    {
+      "path": "worker/calendar.ts",
+      "mode": "100644",
+      "gitBlobSha": "5a02a07186bd830bcde13ac888b5dbf824a81ff6"
+    },
+    {
+      "path": "worker/catalog-management.ts",
+      "mode": "100644",
+      "gitBlobSha": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8"
+    },
+    {
+      "path": "worker/customer-manage.ts",
+      "mode": "100644",
+      "gitBlobSha": "484e884ccfe65ffea455ce1a98de3481f71ef5c5"
+    },
+    {
+      "path": "worker/customers.ts",
+      "mode": "100644",
+      "gitBlobSha": "1fd9eaadee3aa1fc22d9ee0edf43ddf33fc1c499"
+    },
+    {
+      "path": "worker/deployment-health.ts",
+      "mode": "100644",
+      "gitBlobSha": "cbc098ff51102e6dd722bf85910205d2557d4ac6"
+    },
+    {
+      "path": "worker/entry.ts",
+      "mode": "100644",
+      "gitBlobSha": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38"
+    },
+    {
+      "path": "worker/expenses.ts",
+      "mode": "100644",
+      "gitBlobSha": "4ec4c864809ee289032c662480c3309932fe1620"
+    },
+    {
+      "path": "worker/f11-group-consumer-reads.ts",
+      "mode": "100644",
+      "gitBlobSha": "ac36db9e2e02f8b23a8b609167f2fe75172a2127"
+    },
+    {
+      "path": "worker/f11-group-http.ts",
+      "mode": "100644",
+      "gitBlobSha": "485f452b06b557e5f92274701e52e42d197be7c5"
+    },
+    {
+      "path": "worker/f11-group-line-management-http.ts",
+      "mode": "100644",
+      "gitBlobSha": "1144c94232563fd11f8f11649211a80f68bb928b"
+    },
+    {
+      "path": "worker/f11-group-management-http.ts",
+      "mode": "100644",
+      "gitBlobSha": "282c61c7309e6cbb51929835f3c2b3e10c9db711"
+    },
+    {
+      "path": "worker/f16-feedback-http.ts",
+      "mode": "100644",
+      "gitBlobSha": "bc4620bbef3b914355ac82d75730d257b36a35fc"
+    },
+    {
+      "path": "worker/f16-packages-http.ts",
+      "mode": "100644",
+      "gitBlobSha": "dfb7294f9d1fa029dcfa3b502a0692a3aebe72f9"
+    },
+    {
+      "path": "worker/f16-private-media-http.ts",
+      "mode": "100644",
+      "gitBlobSha": "e109bbc2e6e5dfc5b89199e6eb62fba611629d83"
+    },
+    {
+      "path": "worker/f16-series-http.ts",
+      "mode": "100644",
+      "gitBlobSha": "d560d0f48c936e4afacc3d2483de8f266baf6671"
+    },
+    {
+      "path": "worker/index.ts",
+      "mode": "100644",
+      "gitBlobSha": "420f40bdfa1a6e37bec30de6302343891def97bf"
+    },
+    {
+      "path": "worker/notification-maintenance.ts",
+      "mode": "100644",
+      "gitBlobSha": "1149288fb2fc690aed0602009aac66252fc1a141"
+    },
+    {
+      "path": "worker/notifications.ts",
+      "mode": "100644",
+      "gitBlobSha": "1adbfb9a194e2020ceb6fcb861a2cafab5573801"
+    },
+    {
+      "path": "worker/onboarding.ts",
+      "mode": "100644",
+      "gitBlobSha": "8500ca412757dc83854208ee6a55d6569a6dadd4"
+    },
+    {
+      "path": "worker/outbound-request.ts",
+      "mode": "100644",
+      "gitBlobSha": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d"
+    },
+    {
+      "path": "worker/pagination.ts",
+      "mode": "100644",
+      "gitBlobSha": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+    },
+    {
+      "path": "worker/products.ts",
+      "mode": "100644",
+      "gitBlobSha": "b048ec595a6e225e1c9b4a5c9377fd08fd915c4f"
+    },
+    {
+      "path": "worker/public-abuse.ts",
+      "mode": "100644",
+      "gitBlobSha": "792d83c6b0e0d64c4d3eb6a8a1aafd1df8bd6718"
+    },
+    {
+      "path": "worker/public-booking-information.ts",
+      "mode": "100644",
+      "gitBlobSha": "98c9b34e6e90d856e9150fcdb65d522b7c844e9d"
+    },
+    {
+      "path": "worker/public-booking-recovery.ts",
+      "mode": "100644",
+      "gitBlobSha": "25844aecdc2fe10b230bfe02a83d6a6924973e96"
+    },
+    {
+      "path": "worker/public-booking.ts",
+      "mode": "100644",
+      "gitBlobSha": "42cd726413d00eaae42546687f5134839881fc58"
+    },
+    {
+      "path": "worker/public-profile.ts",
+      "mode": "100644",
+      "gitBlobSha": "71984a061c12ccff63a61059cf1a824979fe0ee6"
+    },
+    {
+      "path": "worker/public-rpc.ts",
+      "mode": "100644",
+      "gitBlobSha": "c9b1d5eb8f6c9a7987dee498ebb77a0832e9c99f"
+    },
+    {
+      "path": "worker/reports.ts",
+      "mode": "100644",
+      "gitBlobSha": "ee04b8ec1982b7842355d88e9f7242311fe2cfa9"
+    },
+    {
+      "path": "worker/snapshot-bounds.ts",
+      "mode": "100644",
+      "gitBlobSha": "fcf13934bde7fc4a691a508904fa0c1c300f72f7"
+    },
+    {
+      "path": "worker/snapshot-reads.ts",
+      "mode": "100644",
+      "gitBlobSha": "e41e01b209a7f44046a819b8d6cb46cf87a04492"
+    },
+    {
+      "path": "worker/team.ts",
+      "mode": "100644",
+      "gitBlobSha": "7ab33ab5631f832e58e809147a47bcc56c795b27"
+    },
+    {
+      "path": "worker/tickets.ts",
+      "mode": "100644",
+      "gitBlobSha": "66a57cdb9af8a795f993742db1d77837f6cfc273"
+    },
+    {
+      "path": "workers/kepenk-site/worker.mjs",
+      "mode": "100644",
+      "gitBlobSha": "35393d97ab29b161d4f59d4ae5a4efa4cd3c486a"
+    },
+    {
+      "path": "workers/kepenk-site/wrangler.jsonc",
+      "mode": "100644",
+      "gitBlobSha": "2a7926dda5d8977d086125762ab78c64585549c3"
+    },
+    {
+      "path": "wrangler.jsonc",
+      "mode": "100644",
+      "gitBlobSha": "af05552db4c6344e00f94afd7f6295a020ac2979"
+    }
+  ],
+  "snapshotSha256": "153958b516547d5e9854c62356a704f5b10a2819b6391aed20725a31d2c95c32"
+}

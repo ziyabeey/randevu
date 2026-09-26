@@ -1,0 +1,57 @@
+{
+  "name": "@h19/kit",
+  "version": "0.0.1-alpha.0",
+  "private": true,
+  "type": "module",
+  "description": "H19 change-intelligence toolkit incubator",
+  "bin": {
+    "h19-kit": "./bin/h19-kit.mjs"
+  },
+  "scripts": {
+    "test": "node test/smoke.mjs",
+    "doctor": "node bin/h19-kit.mjs doctor",
+    "test:m1": "node test/m1.mjs",
+    "test:m2": "node test/m2.mjs",
+    "test:m3": "node test/m3.mjs",
+    "test:m35": "node test/m35.mjs",
+    "test:m35-cache": "node test/m35-cache.mjs",
+    "test:m35-affected": "node test/m35-affected.mjs",
+    "test:m35-graph-cache": "node test/m35-graph-cache.mjs",
+    "test:m35-tree-sitter": "node test/m35-tree-sitter.mjs",
+    "test:m35-unit-symbol": "node test/m35-unit-symbol-map.mjs",
+    "test:m4-change-impact": "node test/m4-change-impact.mjs",
+    "test:m5-coverage-discovery": "node test/m5-coverage-discovery.mjs",
+    "test:m5-validation-packet": "node test/m5-validation-packet.mjs",
+    "test:m6-test-spec": "node test/m6-test-spec.mjs",
+    "test:m7-test-candidate": "node test/m7-test-candidate.mjs",
+    "test:m8-relational": "node test/m8-relational-evidence.mjs",
+    "test:m9-relational-composer": "node test/m9-relational-case-composer.mjs",
+    "test:m10-relational-judgment-batch": "node test/m10-relational-judgment-batch.mjs",
+    "test:m11-materializer": "node test/m11-materializer.mjs",
+    "test:perf-baseline": "node test/perf-baseline.mjs",
+    "perf:baseline": "node perf/run-baseline.mjs",
+    "test:ts-shards": "node test/typescript-project-shards.mjs",
+    "perf:ts-shards": "node perf/run-shard-baseline.mjs",
+    "test:graph-equivalence": "node test/graph-equivalence.mjs",
+    "perf:graph-equivalence": "node perf/run-graph-equivalence.mjs",
+    "test:ts-evidence-graph": "node test/typescript-evidence-graph.mjs",
+    "test:public-entrypoint": "node test/public-entrypoint.mjs",
+    "perf:project-shard-adoption": "node perf/run-project-shard-adoption.mjs",
+    "test:m11-collection": "node test/m11-collection.mjs",
+    "test:m11-closure": "node test/m11-closure.mjs",
+    "test:m11-bridge": "node test/m11-observation-bridge.mjs",
+    "test:m11-validation": "node test/m11-targeted-validation.mjs",
+    "test:m11-supplement": "node test/m11-supplement.mjs",
+    "test:m11-notification-freeze": "node test/m11-notification-validation-freeze.mjs",
+    "test:m11-notification-result": "node test/m11-notification-validation-result.mjs",
+    "test:m11-independent-assessment-freeze": "node test/m11-independent-assessment-freeze.mjs",
+    "test:m11-independent-assessment-receipts": "node test/m11-independent-assessment-receipts.mjs"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@typescript/typescript6": "6.0.2"
+  }
+}

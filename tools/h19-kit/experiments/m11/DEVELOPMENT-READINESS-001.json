@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-development-materialization",
+  "materializerVersion": "0.1",
+  "authority": "advisory",
+  "split": "development",
+  "inventorySha256": "68a7608ab16442112263d477b25dec5cb3fd48e5d2caa345c2828c81f965b541",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "evidenceEngineRevision": "6a37baebca749482465d3dd302f9bae56d3ff2e0",
+  "observationsSha256": null,
+  "lineageClosure": "not-supplied",
+  "sourceBindings": {
+    "src/public-multi-service.css": "09268959132c77e44260e6a1b62db4a1e8ce6222",
+    "src/PublicMultiServiceSelection.tsx": "6760c2d480341e075db63c64b83aa4647b6fa043",
+    "src/PublicSalonPage.tsx": "a8e45383e8cac6ac081fa9acfb601f15f39c164e",
+    "tests/f12-public-multi-selection.test.mjs": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11",
+    "tests/s07-pagination.test.mjs": "2556824adc76376ab480d58cbcaf3f6d4b0e4366",
+    "worker/pagination.ts": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+  },
+  "rows": [
+    {
+      "anchorId": "M11-PILOT-001",
+      "cluster": "pagination",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-002",
+      "cluster": "pagination",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-003",
+      "cluster": "pagination",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-004",
+      "cluster": "pagination",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-005",
+      "cluster": "pagination",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-008",
+      "cluster": "public-selection",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-009",
+      "cluster": "public-selection",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-010",
+      "cluster": "public-selection",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-011",
+      "cluster": "public-selection",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-012",
+      "cluster": "public-selection",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-013",
+      "cluster": "public-selection",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    },
+    {
+      "anchorId": "M11-PILOT-014",
+      "cluster": "public-selection",
+      "status": "skipped",
+      "reason": "missing-observations",
+      "packetSha256": null,
+      "batchSha256": null,
+      "caseSha256s": [],
+      "hypothesisSkips": [],
+      "artifactDigests": []
+    }
+  ],
+  "packets": [],
+  "batches": [],
+  "relationalCases": [],
+  "counts": {
+    "anchors": 12,
+    "materializedAnchors": 0,
+    "skippedAnchors": 12,
+    "uniquePackets": 0,
+    "uniqueBatches": 0,
+    "uniqueCases": 0
+  },
+  "manifestSha256": "9c997264cf46981980543ea65ae189deb5e32fe3db2d492c5f463027f22f009d"
+}

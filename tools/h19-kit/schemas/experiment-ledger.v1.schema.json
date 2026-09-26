@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/experiment-ledger.v1.schema.json",
+  "title": "H19 Experiment Ledger v1",
+  "type": "object",
+  "required": [
+    "version",
+    "method",
+    "experiments"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "method": {
+      "type": "string",
+      "minLength": 1
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "experiments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "planned",
+              "preregistered",
+              "measurement-ready",
+              "running",
+              "passed",
+              "failed",
+              "incomparable",
+              "locked",
+              "superseded"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": false
+}

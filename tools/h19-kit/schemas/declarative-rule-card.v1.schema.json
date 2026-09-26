@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/declarative-rule-card.v1.schema.json",
+  "title": "H19 Declarative Rule Card v1",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "when",
+    "emit"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "consumes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "when": {
+      "type": "object",
+      "properties": {
+        "all": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clause"
+          }
+        },
+        "any": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clause"
+          }
+        },
+        "none": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clause"
+          }
+        }
+      }
+    },
+    "emit": {
+      "type": "object",
+      "required": [
+        "id",
+        "title"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "note",
+            "warning",
+            "error"
+          ]
+        },
+        "action": {
+          "enum": [
+            "observe",
+            "targeted-test",
+            "escalate"
+          ]
+        },
+        "metadata": {
+          "type": "object"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "clause": {
+      "type": "object",
+      "required": [
+        "evidence"
+      ],
+      "properties": {
+        "evidence": {
+          "type": "string"
+        },
+        "state": {
+          "oneOf": [
+            {
+              "enum": [
+                "present",
+                "absent",
+                "unknown"
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "present",
+                  "absent",
+                  "unknown"
+                ]
+              }
+            }
+          ]
+        },
+        "detail": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "equals": {},
+            "gte": {
+              "type": "number"
+            },
+            "lte": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,442 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-independent-relation-assessment-freeze",
+  "version": "0.1",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "bridgeSha256": "24fc94cbbe6aa2e1491f25c3ba593859a2476fe3e25b24b6f0b1d749bf44c50d",
+  "question": {
+    "id": "RELATION_DIRECTION",
+    "version": "0.1",
+    "type": "choice",
+    "instructions": "Given one frozen hypothesis, 2–4 normalized facts and deterministic features, decide how considering the facts together changes support for the frozen hypothesis compared with considering the supplied facts independently. Do not infer missing facts. Do not calculate new metrics. Do not treat shared-lineage facts as independent confirmation.",
+    "criteria": {
+      "strengthens": "The supplied combination adds mutually reinforcing support beyond the facts considered independently.",
+      "weakens": "The combination introduces a contradiction or materially undercuts support.",
+      "unrelated": "The relationship does not materially change support for the hypothesis.",
+      "insufficient": "Unknowns, incompatible metrics, lineage ambiguity or missing evidence prevent a justified relation judgment."
+    }
+  },
+  "assessorContract": {
+    "requiredIndependentAssessmentsPerCase": 2,
+    "labels": [
+      "strengthens",
+      "weakens",
+      "unrelated",
+      "insufficient"
+    ],
+    "assessOnePacketAtATime": true,
+    "allowedEvidence": [
+      "packet.relationalCase",
+      "freeze.question"
+    ],
+    "forbiddenExposure": [
+      "Jev/provider judgments or probabilities for the case",
+      "later functional outcomes or validation results for the case",
+      "other assessor labels or rationales before sealing own receipt",
+      "evaluation-split observations"
+    ],
+    "disagreementPolicy": "retain both sealed receipts; adjudicate separately without rewriting either receipt",
+    "unresolvedPolicy": "unresolved is an adjudication state, not a fifth relation label"
+  },
+  "receiptContract": {
+    "schemaVersion": 1,
+    "requiredFields": [
+      "packetId",
+      "caseSha256",
+      "assessorId",
+      "assessorKind",
+      "rubricId",
+      "rubricVersion",
+      "label",
+      "rationale",
+      "exposure",
+      "sealedAt"
+    ],
+    "exposure": {
+      "jevOutputSeen": false,
+      "laterFunctionalOutcomeSeen": false,
+      "peerAssessmentSeen": false,
+      "evaluationObservationSeen": false
+    },
+    "rationaleRule": "brief case-bound explanation using only supplied facts/features; do not infer missing evidence or compute new metrics"
+  },
+  "packets": [
+    {
+      "packetId": "M11-BLIND-001",
+      "relationalCase": {
+        "schemaVersion": 1,
+        "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+        "hypothesis": {
+          "packetSha256": "be406e7e8826694b77414b88095d01251be3e7b56e1cfd66b546e7272521a757",
+          "hypothesisId": "coverage:explicit-runtime-coverage-gap:worker_notifications.ts",
+          "reason": "explicit-runtime-coverage-gap",
+          "priority": "high"
+        },
+        "facts": [
+          {
+            "factId": "coverage:worker/notifications.ts",
+            "family": "coverage",
+            "state": "present",
+            "metricId": "suite-uncalled-named-v8-entry-count",
+            "value": 2,
+            "unit": "named-v8-entries",
+            "denominator": 21,
+            "sampleSize": null,
+            "baseline": null,
+            "lineageIds": [
+              "214d580bf795bef2f6b3b21923d76ce5208032c22434eff549fd0414bc27e848"
+            ],
+            "provenance": {
+              "producer": "h19-m11-supplement-bridge",
+              "producerVersion": "0.1",
+              "inputDigest": "77f1815d7badcbff8bc7ec652027d148ca54061ff57caa2ad9dd2b5a62a6d099",
+              "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+              "evidenceIds": [],
+              "provenanceDigest": "9fff3ff23426c56764b300bb66058d57a70433951ce55907ba24234b81dd76ec"
+            }
+          },
+          {
+            "factId": "dependency:worker/notifications.ts",
+            "family": "dependency",
+            "state": "present",
+            "metricId": "bounded-production-importer-witness-count",
+            "value": 2,
+            "unit": "source-files",
+            "denominator": null,
+            "sampleSize": null,
+            "baseline": null,
+            "lineageIds": [
+              "1144245a19655183dbbd002ba7e3552369cbb9e6bb769542060e41ac48d6a14a"
+            ],
+            "provenance": {
+              "producer": "h19-m11-supplement-bridge",
+              "producerVersion": "0.1",
+              "inputDigest": "76137b5cc0158d7f6f18b7e14f6b7aa9f5f0b679118d16e56da6b81e88eb23ea",
+              "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+              "evidenceIds": [],
+              "provenanceDigest": "b18697958c0c10b6bcbc7f698a565fae88a49b29b2242d8854741464c3b07b6b"
+            }
+          }
+        ],
+        "deterministicFeatures": [
+          {
+            "featureId": "baseline-delta:coverage:worker/notifications.ts",
+            "kind": "baseline-delta",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/notifications.ts"
+            ]
+          },
+          {
+            "featureId": "baseline-delta:dependency:worker/notifications.ts",
+            "kind": "baseline-delta",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "dependency:worker/notifications.ts"
+            ]
+          },
+          {
+            "featureId": "independent-family-count:coverage:worker/notifications.ts+dependency:worker/notifications.ts",
+            "kind": "independent-family-count",
+            "state": "known",
+            "value": 2,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/notifications.ts",
+              "dependency:worker/notifications.ts"
+            ]
+          },
+          {
+            "featureId": "lift:coverage:worker/notifications.ts",
+            "kind": "lift",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/notifications.ts"
+            ]
+          },
+          {
+            "featureId": "lift:dependency:worker/notifications.ts",
+            "kind": "lift",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "dependency:worker/notifications.ts"
+            ]
+          },
+          {
+            "featureId": "lineage-overlap:coverage:worker/notifications.ts+dependency:worker/notifications.ts",
+            "kind": "lineage-overlap",
+            "state": "known",
+            "value": false,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/notifications.ts",
+              "dependency:worker/notifications.ts"
+            ]
+          }
+        ],
+        "authority": "advisory",
+        "caseSha256": "2b924bfe4d9dc5e15d40199189b6b8070bee47d2cca3dc68eb24357f660e33f2"
+      }
+    },
+    {
+      "packetId": "M11-BLIND-002",
+      "relationalCase": {
+        "schemaVersion": 1,
+        "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+        "hypothesis": {
+          "packetSha256": "be406e7e8826694b77414b88095d01251be3e7b56e1cfd66b546e7272521a757",
+          "hypothesisId": "coverage:explicit-runtime-coverage-gap:worker_outbound-request.ts",
+          "reason": "explicit-runtime-coverage-gap",
+          "priority": "high"
+        },
+        "facts": [
+          {
+            "factId": "coverage:worker/outbound-request.ts",
+            "family": "coverage",
+            "state": "present",
+            "metricId": "suite-uncalled-named-v8-entry-count",
+            "value": 1,
+            "unit": "named-v8-entries",
+            "denominator": 6,
+            "sampleSize": null,
+            "baseline": null,
+            "lineageIds": [
+              "214d580bf795bef2f6b3b21923d76ce5208032c22434eff549fd0414bc27e848"
+            ],
+            "provenance": {
+              "producer": "h19-m11-supplement-bridge",
+              "producerVersion": "0.1",
+              "inputDigest": "ddf58dd2dd74f76e2e344b97cb6e6c4c921d9b24b8aa0489523911612313d090",
+              "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+              "evidenceIds": [],
+              "provenanceDigest": "4a1b3047555a3ec7f54a85b92d09ef1fd72259d14a4f7f6706a71b6257f4b3e8"
+            }
+          },
+          {
+            "factId": "dependency:worker/outbound-request.ts",
+            "family": "dependency",
+            "state": "present",
+            "metricId": "bounded-production-importer-witness-count",
+            "value": 3,
+            "unit": "source-files",
+            "denominator": null,
+            "sampleSize": null,
+            "baseline": null,
+            "lineageIds": [
+              "1144245a19655183dbbd002ba7e3552369cbb9e6bb769542060e41ac48d6a14a"
+            ],
+            "provenance": {
+              "producer": "h19-m11-supplement-bridge",
+              "producerVersion": "0.1",
+              "inputDigest": "83b98ed5f9535863afb5a0314dfb3b84e0616b2c75efef85e8c39aa35db83000",
+              "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+              "evidenceIds": [],
+              "provenanceDigest": "6504d8b326313b1a672144584897478f8765dbe1ec8869ffafebb131bafb2136"
+            }
+          }
+        ],
+        "deterministicFeatures": [
+          {
+            "featureId": "baseline-delta:coverage:worker/outbound-request.ts",
+            "kind": "baseline-delta",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/outbound-request.ts"
+            ]
+          },
+          {
+            "featureId": "baseline-delta:dependency:worker/outbound-request.ts",
+            "kind": "baseline-delta",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "dependency:worker/outbound-request.ts"
+            ]
+          },
+          {
+            "featureId": "independent-family-count:coverage:worker/outbound-request.ts+dependency:worker/outbound-request.ts",
+            "kind": "independent-family-count",
+            "state": "known",
+            "value": 2,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/outbound-request.ts",
+              "dependency:worker/outbound-request.ts"
+            ]
+          },
+          {
+            "featureId": "lift:coverage:worker/outbound-request.ts",
+            "kind": "lift",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/outbound-request.ts"
+            ]
+          },
+          {
+            "featureId": "lift:dependency:worker/outbound-request.ts",
+            "kind": "lift",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "dependency:worker/outbound-request.ts"
+            ]
+          },
+          {
+            "featureId": "lineage-overlap:coverage:worker/outbound-request.ts+dependency:worker/outbound-request.ts",
+            "kind": "lineage-overlap",
+            "state": "known",
+            "value": false,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/outbound-request.ts",
+              "dependency:worker/outbound-request.ts"
+            ]
+          }
+        ],
+        "authority": "advisory",
+        "caseSha256": "998d3c0f62199184d8f9c8b86474d6af8f9177db471d06fe2bfc654ffef75113"
+      }
+    },
+    {
+      "packetId": "M11-BLIND-003",
+      "relationalCase": {
+        "schemaVersion": 1,
+        "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+        "hypothesis": {
+          "packetSha256": "0097982773a46898385aa055450172087e33fc5312f967f2eff3b9da8988d168",
+          "hypothesisId": "coverage:explicit-runtime-coverage-gap:worker_pagination.ts",
+          "reason": "explicit-runtime-coverage-gap",
+          "priority": "high"
+        },
+        "facts": [
+          {
+            "factId": "coverage:worker/pagination.ts",
+            "family": "coverage",
+            "state": "present",
+            "metricId": "suite-uncalled-named-v8-entry-count",
+            "value": 4,
+            "unit": "named-v8-entries",
+            "denominator": 9,
+            "sampleSize": null,
+            "baseline": null,
+            "lineageIds": [
+              "d9eb3eadd88976b959ab42a877d31240c60e5913ff8b8eda8ce357986b99a5c1"
+            ],
+            "provenance": {
+              "producer": "h19-m11-observation-bridge",
+              "producerVersion": "0.1",
+              "inputDigest": "dfae70b5adadb5b345c883f48efc10f2d4b1d345f392b128dd6a55f298f745df",
+              "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+              "evidenceIds": [],
+              "provenanceDigest": "c8911acd08e4d107b9d7ab98265144e809842e1dddc45aa37a012422124e748b"
+            }
+          },
+          {
+            "factId": "dependency:worker/pagination.ts",
+            "family": "dependency",
+            "state": "present",
+            "metricId": "bounded-production-importer-witness-count",
+            "value": 1,
+            "unit": "source-files",
+            "denominator": null,
+            "sampleSize": null,
+            "baseline": null,
+            "lineageIds": [
+              "217919514180516470f6c2c121ce8b31c3f80ec46d15168aa7a0d002e3a5dc3e"
+            ],
+            "provenance": {
+              "producer": "h19-m11-observation-bridge",
+              "producerVersion": "0.1",
+              "inputDigest": "82f6ca0ce14bec97344269c9e8172098243485901d5f2fd159c73ccd59f27337",
+              "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+              "evidenceIds": [],
+              "provenanceDigest": "e39864fbb429d3eb296c3f708c258dd688bcd8aad6196ad95f6156d72db0825a"
+            }
+          }
+        ],
+        "deterministicFeatures": [
+          {
+            "featureId": "baseline-delta:coverage:worker/pagination.ts",
+            "kind": "baseline-delta",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/pagination.ts"
+            ]
+          },
+          {
+            "featureId": "baseline-delta:dependency:worker/pagination.ts",
+            "kind": "baseline-delta",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "dependency:worker/pagination.ts"
+            ]
+          },
+          {
+            "featureId": "independent-family-count:coverage:worker/pagination.ts+dependency:worker/pagination.ts",
+            "kind": "independent-family-count",
+            "state": "known",
+            "value": 2,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/pagination.ts",
+              "dependency:worker/pagination.ts"
+            ]
+          },
+          {
+            "featureId": "lift:coverage:worker/pagination.ts",
+            "kind": "lift",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/pagination.ts"
+            ]
+          },
+          {
+            "featureId": "lift:dependency:worker/pagination.ts",
+            "kind": "lift",
+            "state": "unknown",
+            "value": null,
+            "sampleSize": null,
+            "factIds": [
+              "dependency:worker/pagination.ts"
+            ]
+          },
+          {
+            "featureId": "lineage-overlap:coverage:worker/pagination.ts+dependency:worker/pagination.ts",
+            "kind": "lineage-overlap",
+            "state": "known",
+            "value": false,
+            "sampleSize": null,
+            "factIds": [
+              "coverage:worker/pagination.ts",
+              "dependency:worker/pagination.ts"
+            ]
+          }
+        ],
+        "authority": "advisory",
+        "caseSha256": "bf214c9fa35b06b906c149fb8415549040131aa33b91a1c1c9b582ad915c39ad"
+      }
+    }
+  ],
+  "labelsCollected": 0,
+  "status": "frozen-inputs-labels-pending"
+}

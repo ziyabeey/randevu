@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/run-manifest.v1.schema.json",
+  "title": "H19 Run Manifest v1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "tool",
+    "repository",
+    "configDigest",
+    "adapters",
+    "units"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "startedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tool": {
+      "type": "object"
+    },
+    "repository": {
+      "type": "object"
+    },
+    "configDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "adapters": {
+      "type": "array"
+    },
+    "units": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,83 @@
+{
+  "benchmarkId": "M9-REPAIR-001",
+  "baselineCommit": "3ca0c03693023b605caac59c11fad8a9cbad52a3",
+  "environment": {
+    "node": "v24.19.0",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "fixture": {
+    "seed": 41,
+    "normalizedFacts": 24,
+    "repeats": 5,
+    "warmupPerLane": 1,
+    "alternatingOrder": true
+  },
+  "runs": [
+    {
+      "baseline": {
+        "ms": 523.319413,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      },
+      "repaired": {
+        "ms": 23.229007000000138,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      }
+    },
+    {
+      "baseline": {
+        "ms": 571.0505,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      },
+      "repaired": {
+        "ms": 22.239074999999957,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      }
+    },
+    {
+      "baseline": {
+        "ms": 507.53730399999995,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      },
+      "repaired": {
+        "ms": 12.622473999999784,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      }
+    },
+    {
+      "baseline": {
+        "ms": 432.9390020000001,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      },
+      "repaired": {
+        "ms": 13.403751000000284,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      }
+    },
+    {
+      "baseline": {
+        "ms": 470.5513470000001,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      },
+      "repaired": {
+        "ms": 18.8239709999998,
+        "batchSha256": "56c4c18553e3811e480334be98fe4d2350b624f8b25a702bbbeb4e0b44101df7"
+      }
+    }
+  ],
+  "medians": {
+    "baselineMs": 507.53730399999995,
+    "repairedMs": 18.8239709999998,
+    "speedup": 26.962286756604403
+  },
+  "widePool": {
+    "eligibleFacts": 101,
+    "ms": 12.704056000000037,
+    "batchSha256": "8612e02231a51e016ddce30fe824cf2c87422cae0e8a7ba9589b5ebbc5600ae6"
+  },
+  "limits": [
+    "Synthetic local selector-only measurement; no provider or end-to-end CI claim.",
+    "Exact search retains worst-case combinatorial CPU cost; candidate arrays are no longer materialized.",
+    "Overflow uses existence search; invalid overflow reasons remain unchanged."
+  ]
+}

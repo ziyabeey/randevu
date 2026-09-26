@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/relational-evidence-case.v0.1.schema.json",
+  "title": "H19 Relational Evidence Case v0.1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "sourceRevision",
+    "hypothesis",
+    "facts",
+    "deterministicFeatures",
+    "authority",
+    "caseSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "sourceRevision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "hypothesis": {
+      "type": "object",
+      "required": [
+        "packetSha256",
+        "hypothesisId",
+        "reason",
+        "priority"
+      ],
+      "properties": {
+        "packetSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "hypothesisId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "priority": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "facts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/fact"
+      }
+    },
+    "deterministicFeatures": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/feature"
+      }
+    },
+    "authority": {
+      "const": "advisory"
+    },
+    "caseSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "fact": {
+      "type": "object",
+      "required": [
+        "factId",
+        "family",
+        "state",
+        "metricId",
+        "value",
+        "unit",
+        "denominator",
+        "sampleSize",
+        "baseline",
+        "lineageIds",
+        "provenance"
+      ],
+      "properties": {
+        "factId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family": {
+          "enum": [
+            "mutation",
+            "coverage",
+            "history",
+            "dependency",
+            "test",
+            "test-candidate",
+            "validation",
+            "performance",
+            "repository"
+          ]
+        },
+        "state": {
+          "enum": [
+            "present",
+            "absent",
+            "unknown"
+          ]
+        },
+        "metricId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": [
+            "number",
+            "string",
+            "boolean",
+            "null"
+          ]
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "denominator": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sampleSize": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "baseline": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "sampleSize": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sourceId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "value",
+            "sampleSize",
+            "sourceId"
+          ],
+          "additionalProperties": false
+        },
+        "lineageIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "required": [
+            "producer",
+            "producerVersion",
+            "inputDigest",
+            "sourceRevision",
+            "evidenceIds",
+            "provenanceDigest"
+          ],
+          "properties": {
+            "producer": {
+              "type": "string",
+              "minLength": 1
+            },
+            "producerVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "inputDigest": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sourceRevision": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "evidenceIds": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "provenanceDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "feature": {
+      "type": "object",
+      "required": [
+        "featureId",
+        "kind",
+        "state",
+        "value",
+        "sampleSize",
+        "factIds"
+      ],
+      "properties": {
+        "featureId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "rate",
+            "ratio",
+            "lift",
+            "baseline-delta",
+            "agreement-count",
+            "contradiction-count",
+            "independent-family-count",
+            "lineage-overlap"
+          ]
+        },
+        "state": {
+          "enum": [
+            "known",
+            "unknown"
+          ]
+        },
+        "value": {
+          "type": [
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        "sampleSize": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "factIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

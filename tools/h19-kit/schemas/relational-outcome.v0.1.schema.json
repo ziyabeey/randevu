@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://h19.dev/schemas/relational-outcome.v0.1.schema.json",
+  "title": "H19 Relational Outcome v0.1",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "caseSha256",
+    "judgmentSha256",
+    "observedRevision",
+    "kind",
+    "value",
+    "sourceDigest",
+    "outcomeSha256"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "caseSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "judgmentSha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "observedRevision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "kind": {
+      "enum": [
+        "m5-validation",
+        "mutation-run",
+        "test-run",
+        "manual-review"
+      ]
+    },
+    "value": {
+      "enum": [
+        "confirmed",
+        "rejected",
+        "inconclusive",
+        "mutant-killed",
+        "mutant-survived",
+        "test-pass",
+        "test-fail",
+        "regression-found",
+        "no-regression"
+      ]
+    },
+    "sourceDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "outcomeSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "additionalProperties": false
+}

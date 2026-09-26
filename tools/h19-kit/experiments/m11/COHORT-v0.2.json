@@ -1,0 +1,574 @@
+{
+  "schema_version": 1,
+  "experiment_id": "H19-KIT-M11-PILOT-001",
+  "protocol_version": "0.2-draft",
+  "metadata": {
+    "manifestRole": "scenario-anchor-inventory",
+    "status": "refrozen-source-split-only",
+    "repository": "ziyabeey/randevu",
+    "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+    "toolRevision": "6a37baebca749482465d3dd302f9bae56d3ff2e0",
+    "cohortType": "purposive-pilot",
+    "selectionRule": "All named controls in the listed suites except nested subtests in runtime-budgets; selected before any M11 model response or independent outcome.",
+    "splitRule": "Entire shared-repository-file components remain together. Any component with a prior development anchor remains development; all other components remain evaluation. No outcome-based reassignment.",
+    "referenceSuitesAreGroundTruth": false,
+    "sources": {
+      "tests/s07-pagination.test.mjs": {
+        "gitBlobSha": "2556824adc76376ab480d58cbcaf3f6d4b0e4366"
+      },
+      "worker/pagination.ts": {
+        "gitBlobSha": "b0dfe4aae0d0994d5af21f84d439d4da037b9826"
+      },
+      "tests/f13-calendar-refresh.test.mjs": {
+        "gitBlobSha": "70a6e21ceb7b23e9dee99de4c861ff3b6e51619b"
+      },
+      "src/calendar-refresh.ts": {
+        "gitBlobSha": "d0c2698e2bc4669f0016558052bf5a2b3d9bf99b"
+      },
+      "tests/f12-public-multi-selection.test.mjs": {
+        "gitBlobSha": "9b6ae8d3435071cd7ee1cfe26aa85b8c75214c11"
+      },
+      "src/PublicMultiServiceSelection.tsx": {
+        "gitBlobSha": "6760c2d480341e075db63c64b83aa4647b6fa043"
+      },
+      "src/PublicSalonPage.tsx": {
+        "gitBlobSha": "a8e45383e8cac6ac081fa9acfb601f15f39c164e"
+      },
+      "src/public-multi-service.css": {
+        "gitBlobSha": "09268959132c77e44260e6a1b62db4a1e8ce6222"
+      },
+      "tests/f12-service-price-range-client.test.mjs": {
+        "gitBlobSha": "99723fb4a92419a68e7f78651b5180b6589f206f"
+      },
+      "src/CatalogSettingsPanel.tsx": {
+        "gitBlobSha": "58ce724b6549abd1d7f44bd64c67e1f68b0cf9cc"
+      },
+      "src/BookingPage.tsx": {
+        "gitBlobSha": "25e5833ca0d0955da2350f3cd17596c07e5ccfc4"
+      },
+      "worker/catalog-management.ts": {
+        "gitBlobSha": "a5234aa9e810617e1a22588b8dcbd0c1372c98e8"
+      },
+      "worker/bookings.ts": {
+        "gitBlobSha": "51c709d7d45ef6d358ad1ed0abfa09f2464fb731"
+      },
+      "tests/s07-runtime-budgets.test.mjs": {
+        "gitBlobSha": "a942457f1854c676ad6e63bfbc7246ada49d9156"
+      },
+      "worker/outbound-request.ts": {
+        "gitBlobSha": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d"
+      },
+      "worker/entry.ts": {
+        "gitBlobSha": "d58e953ce93ae930fbe8d7086e4fe94b15ba4e38"
+      },
+      "worker/notifications.ts": {
+        "gitBlobSha": "1adbfb9a194e2020ceb6fcb861a2cafab5573801"
+      },
+      "tests/f12-notification-status.test.mjs": {
+        "gitBlobSha": "6b5574bc1661d8e1ba647c9d7a491406e1ec9ad8"
+      },
+      "shared/customer-notification-status.ts": {
+        "gitBlobSha": "bd963a809a2a09825ba74dbf577b7ec884c72315"
+      },
+      "worker/public-booking-recovery.ts": {
+        "gitBlobSha": "25844aecdc2fe10b230bfe02a83d6a6924973e96"
+      },
+      "worker/f11-group-http.ts": {
+        "gitBlobSha": "485f452b06b557e5f92274701e52e42d197be7c5"
+      },
+      "worker/f11-group-management-http.ts": {
+        "gitBlobSha": "282c61c7309e6cbb51929835f3c2b3e10c9db711"
+      },
+      "worker/app.ts": {
+        "gitBlobSha": "e75204978ce1abf02fccc30298c2281377cec2c3"
+      }
+    },
+    "sourceInventoryScope": "Primary source identities retained; full repository-file membership is bound by the closure artifact. Future observation lineage must be checked separately.",
+    "supersedesInventorySha256": "68a7608ab16442112263d477b25dec5cb3fd48e5d2caa345c2828c81f965b541",
+    "repositoryClosureSha256": "55a9fc202bb79e809d991beef4af83260f335fa7fde40eb402db668f6069b7ea",
+    "closureProfile": "repository-file-inputs-v1",
+    "independentRepositoryComponents": {
+      "development": 1,
+      "evaluation": 1
+    },
+    "evaluationReadiness": "descriptive-feasibility-only"
+  },
+  "cases": [
+    {
+      "case_id": "M11-PILOT-001",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/s07-pagination.test.mjs",
+      "referenceTest": "S07 pagination enforces K03 default 25 and max 100",
+      "referenceEvidenceKind": "unit-runtime",
+      "targets": [
+        "worker/pagination.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "pagination"
+    },
+    {
+      "case_id": "M11-PILOT-002",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/s07-pagination.test.mjs",
+      "referenceTest": "S07 opaque cursors are versioned, scoped by endpoint and round-trip stable keys",
+      "referenceEvidenceKind": "unit-runtime",
+      "targets": [
+        "worker/pagination.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "pagination"
+    },
+    {
+      "case_id": "M11-PILOT-003",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/s07-pagination.test.mjs",
+      "referenceTest": "S07 malformed or semantically invalid cursors fail closed",
+      "referenceEvidenceKind": "unit-runtime",
+      "targets": [
+        "worker/pagination.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "pagination"
+    },
+    {
+      "case_id": "M11-PILOT-004",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/s07-pagination.test.mjs",
+      "referenceTest": "S07 limit+1 response exposes continuation without silently returning the probe row",
+      "referenceEvidenceKind": "unit-runtime",
+      "targets": [
+        "worker/pagination.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "pagination"
+    },
+    {
+      "case_id": "M11-PILOT-005",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/s07-pagination.test.mjs",
+      "referenceTest": "S07 final page has no continuation cursor",
+      "referenceEvidenceKind": "unit-runtime",
+      "targets": [
+        "worker/pagination.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "pagination"
+    },
+    {
+      "case_id": "M11-PILOT-006",
+      "cluster": "M11-COMP-9f7d7c75d819",
+      "split": "evaluation",
+      "referenceSuite": "tests/f13-calendar-refresh.test.mjs",
+      "referenceTest": "F13 calendar request gate aborts and rejects an older generation",
+      "referenceEvidenceKind": "unit-runtime",
+      "targets": [
+        "src/calendar-refresh.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "calendar-refresh"
+    },
+    {
+      "case_id": "M11-PILOT-007",
+      "cluster": "M11-COMP-9f7d7c75d819",
+      "split": "evaluation",
+      "referenceSuite": "tests/f13-calendar-refresh.test.mjs",
+      "referenceTest": "F13 calendar refresh polls visibly, pauses while hidden, and refreshes once on return",
+      "referenceEvidenceKind": "unit-runtime",
+      "targets": [
+        "src/calendar-refresh.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "calendar-refresh"
+    },
+    {
+      "case_id": "M11-PILOT-008",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-public-multi-selection.test.mjs",
+      "referenceTest": "F12-04 consumes the additive range-aware catalog and real group-slot endpoint without advancing into group create",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/PublicMultiServiceSelection.tsx",
+        "src/PublicSalonPage.tsx",
+        "src/public-multi-service.css"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "public-selection"
+    },
+    {
+      "case_id": "M11-PILOT-009",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-public-multi-selection.test.mjs",
+      "referenceTest": "F12-04 keeps stale catalog, staff and slot responses from overwriting newer selection",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/PublicMultiServiceSelection.tsx",
+        "src/PublicSalonPage.tsx",
+        "src/public-multi-service.css"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "public-selection"
+    },
+    {
+      "case_id": "M11-PILOT-010",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-public-multi-selection.test.mjs",
+      "referenceTest": "F12-04 gives recoverable catalog, staff and slot failures an explicit retry action",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/PublicMultiServiceSelection.tsx",
+        "src/PublicSalonPage.tsx",
+        "src/public-multi-service.css"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "public-selection"
+    },
+    {
+      "case_id": "M11-PILOT-011",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-public-multi-selection.test.mjs",
+      "referenceTest": "F12-04 exposes an explicit handoff state and server-authoritative estimate copy",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/PublicMultiServiceSelection.tsx",
+        "src/PublicSalonPage.tsx",
+        "src/public-multi-service.css"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "public-selection"
+    },
+    {
+      "case_id": "M11-PILOT-012",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-public-multi-selection.test.mjs",
+      "referenceTest": "F12-04 is mounted only on the public salon surface and hands its state to the single booking owner",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/PublicMultiServiceSelection.tsx",
+        "src/PublicSalonPage.tsx",
+        "src/public-multi-service.css"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "public-selection"
+    },
+    {
+      "case_id": "M11-PILOT-013",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-public-multi-selection.test.mjs",
+      "referenceTest": "F12-04 mobile controls retain 44px touch targets and narrow layouts",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/PublicMultiServiceSelection.tsx",
+        "src/PublicSalonPage.tsx",
+        "src/public-multi-service.css"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "public-selection"
+    },
+    {
+      "case_id": "M11-PILOT-014",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-public-multi-selection.test.mjs",
+      "referenceTest": "F12-04 keeps favorite device-local and shares only the safe public salon URL",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/PublicMultiServiceSelection.tsx",
+        "src/PublicSalonPage.tsx",
+        "src/public-multi-service.css"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "public-selection"
+    },
+    {
+      "case_id": "M11-PILOT-015",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-service-price-range-client.test.mjs",
+      "referenceTest": "F12-03 catalog editor carries canonical category/order/range fields",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/CatalogSettingsPanel.tsx",
+        "src/BookingPage.tsx",
+        "worker/catalog-management.ts",
+        "worker/bookings.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "catalog-price-projection"
+    },
+    {
+      "case_id": "M11-PILOT-016",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-service-price-range-client.test.mjs",
+      "referenceTest": "F12-03 operator booking never presents a range lower-bound as a fixed price",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/CatalogSettingsPanel.tsx",
+        "src/BookingPage.tsx",
+        "worker/catalog-management.ts",
+        "worker/bookings.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "catalog-price-projection"
+    },
+    {
+      "case_id": "M11-PILOT-017",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-service-price-range-client.test.mjs",
+      "referenceTest": "F12-03 money authority remains integer minor-unit on the Worker/DB boundary",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/CatalogSettingsPanel.tsx",
+        "src/BookingPage.tsx",
+        "worker/catalog-management.ts",
+        "worker/bookings.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "catalog-price-projection"
+    },
+    {
+      "case_id": "M11-PILOT-018",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-service-price-range-client.test.mjs",
+      "referenceTest": "F12-03 public legacy projection and appointment snapshot fail closed for range services",
+      "referenceEvidenceKind": "source-contract",
+      "targets": [
+        "src/CatalogSettingsPanel.tsx",
+        "src/BookingPage.tsx",
+        "worker/catalog-management.ts",
+        "worker/bookings.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "catalog-price-projection"
+    },
+    {
+      "case_id": "M11-PILOT-019",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/s07-runtime-budgets.test.mjs",
+      "referenceTest": "S07 outbound request timeout covers native fetch headers and body consumption",
+      "referenceEvidenceKind": "mocked-runtime",
+      "targets": [
+        "worker/outbound-request.ts",
+        "worker/entry.ts",
+        "worker/notifications.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "runtime-notification"
+    },
+    {
+      "case_id": "M11-PILOT-020",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/s07-runtime-budgets.test.mjs",
+      "referenceTest": "S07 outbound request preserves caller abort and cleans its caller listener",
+      "referenceEvidenceKind": "mocked-runtime",
+      "targets": [
+        "worker/outbound-request.ts",
+        "worker/entry.ts",
+        "worker/notifications.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "runtime-notification"
+    },
+    {
+      "case_id": "M11-PILOT-021",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/s07-runtime-budgets.test.mjs",
+      "referenceTest": "S07 notification DB deadlines prevent unsafe or unbounded provider progress",
+      "referenceEvidenceKind": "mocked-runtime",
+      "targets": [
+        "worker/outbound-request.ts",
+        "worker/entry.ts",
+        "worker/notifications.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "runtime-notification"
+    },
+    {
+      "case_id": "M11-PILOT-022",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/s07-runtime-budgets.test.mjs",
+      "referenceTest": "S07 scheduled work starts maintenance, dispatch and heartbeat independently",
+      "referenceEvidenceKind": "mocked-runtime",
+      "targets": [
+        "worker/outbound-request.ts",
+        "worker/entry.ts",
+        "worker/notifications.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "runtime-notification"
+    },
+    {
+      "case_id": "M11-PILOT-023",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-notification-status.test.mjs",
+      "referenceTest": "F12 notification status vocabulary is bounded and strips untrusted extras",
+      "referenceEvidenceKind": "mixed-unit-and-source-contract",
+      "targets": [
+        "shared/customer-notification-status.ts",
+        "worker/public-booking-recovery.ts",
+        "worker/f11-group-http.ts",
+        "worker/f11-group-management-http.ts",
+        "worker/app.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "runtime-notification"
+    },
+    {
+      "case_id": "M11-PILOT-024",
+      "cluster": "M11-COMP-a8c7b4f25226",
+      "split": "development",
+      "referenceSuite": "tests/f12-notification-status.test.mjs",
+      "referenceTest": "F12 C04/C05 workers expose normalized notification status",
+      "referenceEvidenceKind": "mixed-unit-and-source-contract",
+      "targets": [
+        "shared/customer-notification-status.ts",
+        "worker/public-booking-recovery.ts",
+        "worker/f11-group-http.ts",
+        "worker/f11-group-management-http.ts",
+        "worker/app.ts"
+      ],
+      "inputStatus": "pending-materialization",
+      "packetSha256": null,
+      "relationalCaseSha256": null,
+      "relationLabel": null,
+      "independentOutcome": null,
+      "changeArtifactSha256": null,
+      "originalCluster": "runtime-notification"
+    }
+  ],
+  "cases_sha256": "64614db4d838a0fe5fc72af26de72e6f490b9b413f1e49a59b7579ee50d49619",
+  "manifest_sha256": "79b802f95f6612a628ea23d8d7cb2cf6719465124a35743fa956eff4784ff662"
+}

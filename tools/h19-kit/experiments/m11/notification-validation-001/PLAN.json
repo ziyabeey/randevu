@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "kind": "m11-notification-behavioral-validation-plan",
+  "version": "0.1",
+  "frozenAt": "2026-09-25T15:25:38.266Z",
+  "sourceRevision": "07688ae08ef5c834bcadf5dc6a23c4e42e4621dd",
+  "inventorySha256": "79b802f95f6612a628ea23d8d7cb2cf6719465124a35743fa956eff4784ff662",
+  "bridgeSha256": "24fc94cbbe6aa2e1491f25c3ba593859a2476fe3e25b24b6f0b1d749bf44c50d",
+  "baselineCollectionSha256": "f611762898cee59b00888ca5bda484f5c901b2fa95652ca35fe75b403de88ddf",
+  "caseSha256": "2b924bfe4d9dc5e15d40199189b6b8070bee47d2cca3dc68eb24357f660e33f2",
+  "packetSha256": "be406e7e8826694b77414b88095d01251be3e7b56e1cfd66b546e7272521a757",
+  "hypothesisId": "coverage:explicit-runtime-coverage-gap:worker_notifications.ts",
+  "baselineObservationSha256": "214d580bf795bef2f6b3b21923d76ce5208032c22434eff549fd0414bc27e848",
+  "targetPath": "worker/notifications.ts",
+  "sourceBindings": {
+    "shared/base64.ts": "6b2cc95af3216c101c7a8d04f673377b0041e17f",
+    "worker/notifications.ts": "1adbfb9a194e2020ceb6fcb861a2cafab5573801",
+    "worker/outbound-request.ts": "f75aea0e20f9c1b85ce58f0caef0a8568ccb180d"
+  },
+  "oracleBindings": {
+    "docs/plan/phase-11.md": "2d4214d5b5439fa672702260465d5f78183d49e8",
+    "supabase/migrations/20260917143000_f11_group_notification_repair.sql": "5e88c00735ae831a4364893e1d9f0672c2b03f9a",
+    "tests/f11-group-notifications.test.mjs": "19b8d3dcca7cc23c916682c0ae5b3f26ddf59d68"
+  },
+  "producerBindings": {
+    "bin/h19-m11-validate-notification.mjs": "d67b45a11ea65ebebb842594c12260f65a9417bd",
+    "src/experiments/m11-notification-validation.mjs": "2551b0a34db95e773caab051daca32328a65351e"
+  },
+  "runtime": "v24.21.0",
+  "candidate": {
+    "path": "notification-validation-001/notification-template.test.mjs",
+    "gitBlobSha": "749c7d34980f4a9b24a7222ef2a5fff09c264d5f",
+    "authorship": "OpenAI Codex; separate development behavioral validation; not an automatic M7 candidate"
+  },
+  "scenarios": [
+    {
+      "id": "N1",
+      "name": "N1 one-line range render is bounded and singular",
+      "oraclePaths": [
+        "docs/plan/phase-11.md",
+        "supabase/migrations/20260917143000_f11_group_notification_repair.sql",
+        "tests/f11-group-notifications.test.mjs"
+      ]
+    },
+    {
+      "id": "N2",
+      "name": "N2 multi-line render preserves order and fixed/range semantics",
+      "oraclePaths": [
+        "docs/plan/phase-11.md",
+        "supabase/migrations/20260917143000_f11_group_notification_repair.sql",
+        "tests/f11-group-notifications.test.mjs"
+      ]
+    },
+    {
+      "id": "N3",
+      "name": "N3 invalid summary matrix fails before lock and provider send",
+      "oraclePaths": [
+        "supabase/migrations/20260917143000_f11_group_notification_repair.sql",
+        "tests/f11-group-notifications.test.mjs"
+      ]
+    },
+    {
+      "id": "N4",
+      "name": "N4 text stays readable while HTML escapes untrusted snapshot fields",
+      "oraclePaths": [
+        "worker/notifications.ts"
+      ]
+    },
+    {
+      "id": "N5",
+      "name": "N5 timezone snapshot renders the frozen Istanbul local time",
+      "oraclePaths": [
+        "worker/notifications.ts"
+      ]
+    },
+    {
+      "id": "N6",
+      "name": "N6 request fingerprint is stable for identical input and changes with rendered body",
+      "oraclePaths": [
+        "worker/notifications.ts"
+      ]
+    }
+  ],
+  "requiredEntries": [
+    {
+      "name": "validGroupSummary",
+      "startOffset": 9694,
+      "endOffset": 10933
+    },
+    {
+      "name": "renderTemplateV2",
+      "startOffset": 10935,
+      "endOffset": 14322
+    }
+  ],
+  "decisionRule": "six-passing-controls-and-two-original-gaps-called-v1",
+  "limits": [
+    "This is one M9 case regardless of anchor count or six internal controls.",
+    "Existing F11 tests are prior contract evidence only and are not executed as the new outcome.",
+    "A behavioral assertion failure makes this M5 validation inconclusive until separately interpreted.",
+    "The same implementer authored this development validation; it is not a blinded independent relation assessor.",
+    "No real provider delivery, evaluation execution, Jev call or M12 authority is part of this run."
+  ],
+  "planSha256": "9478ae5199235075f1b142fab20de20222aa150a29a68c856239da1008855e3c"
+}

@@ -1,0 +1,32 @@
+rules:
+  - id: h19.sql.row-lock-present
+    languages: [generic]
+    paths:
+      include: ["*.sql", "**/*.sql"]
+    message: SQL routine contains an explicit row-lock clause.
+    severity: INFO
+    pattern-regex: '(?i)\\bfor\\s+(?:update|no\\s+key\\s+update|share|key\\s+share)\\b'
+
+  - id: h19.sql.advisory-lock-present
+    languages: [generic]
+    paths:
+      include: ["*.sql", "**/*.sql"]
+    message: SQL routine contains a PostgreSQL advisory transaction lock.
+    severity: INFO
+    pattern-regex: '(?i)\\bpg_advisory_xact_lock\\s*\\('
+
+  - id: h19.sql.optimistic-version-present
+    languages: [generic]
+    paths:
+      include: ["*.sql", "**/*.sql"]
+    message: SQL text contains an expected-version or stale-write style guard.
+    severity: INFO
+    pattern-regex: '(?i)(expected[_ ]?version|stale[_ ]?(?:write|version)|version[_ ]?conflict)'
+
+  - id: h19.sql.idempotency-present
+    languages: [generic]
+    paths:
+      include: ["*.sql", "**/*.sql"]
+    message: SQL text contains explicit idempotency or replay identity machinery.
+    severity: INFO
+    pattern-regex: '(?i)(idempotenc|request_hash|request[_ ]?hash|replay|receipt)'
