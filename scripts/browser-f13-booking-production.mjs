@@ -20,7 +20,9 @@ let server;
 
 const USER = 'f3000000-0000-4000-8000-000000000001';
 const BUSINESS = 'f3010000-0000-4000-8000-000000000001';
+const BUSINESS_B = 'f3010000-0000-4000-8000-000000000002';
 const MEMBERSHIP = 'f3020000-0000-4000-8000-000000000001';
+const MEMBERSHIP_B = 'f3020000-0000-4000-8000-000000000002';
 const SERVICE = 'f3030000-0000-4000-8000-000000000001';
 const STAFF = 'f3040000-0000-4000-8000-000000000001';
 const CSRF = 'F'.repeat(43);
@@ -33,6 +35,7 @@ const SERIES_GROUPS = [
 let recurringBookings = [];
 let seriesVersion = 1;
 let availabilitySetupReads = 0;
+let currentActiveBusinessId = BUSINESS;
 
 function seriesGroup(ordinal, startsAt) {
   const end = new Date(new Date(startsAt).getTime() + 30 * 60_000).toISOString();
@@ -272,18 +275,30 @@ try {
     if (request.method === 'GET' && url.pathname === '/api/session') {
       return sendJson(response, 200, {
         user: { id: USER, email: 'f13-prod@example.test', fullName: 'F13 Prod' },
-        memberships: [{
-          id: MEMBERSHIP, business_id: BUSINESS, role: 'owner', active: true,
-          businesses: { id: BUSINESS, name: 'F13 Production Salon', slug: 'f13-prod', timezone: 'Europe/Istanbul' },
-        }],
-        activeBusinessId: BUSINESS,
+        memberships: [
+          {
+            id: MEMBERSHIP, business_id: BUSINESS, role: 'owner', active: true,
+            businesses: { id: BUSINESS, name: 'F13 Production Salon', slug: 'f13-prod', timezone: 'Europe/Istanbul' },
+          },
+          {
+            id: MEMBERSHIP_B, business_id: BUSINESS_B, role: 'owner', active: true,
+            businesses: { id: BUSINESS_B, name: 'F13 Pacific Salon', slug: 'f13-pacific', timezone: 'Pacific/Pago_Pago' },
+          },
+        ],
+        activeBusinessId: currentActiveBusinessId,
         passwordRecovery: false,
         csrfToken: CSRF,
       });
     }
+    if (request.method === 'POST' && url.pathname === '/api/businesses/select') {
+      assert.ok(body.businessId === BUSINESS || body.businessId === BUSINESS_B, 'unexpected business switch');
+      currentActiveBusinessId = body.businessId;
+      return sendJson(response, 200, { activeBusinessId: currentActiveBusinessId, csrfToken: CSRF });
+    }
     if (request.method === 'GET' && url.pathname === '/api/catalog') {
+      const membershipId = currentActiveBusinessId === BUSINESS ? MEMBERSHIP : MEMBERSHIP_B;
       return sendJson(response, 200, {
-        membership: { id: MEMBERSHIP, business_id: BUSINESS, role: 'owner', active: true },
+        membership: { id: membershipId, business_id: currentActiveBusinessId, role: 'owner', active: true },
         services: [{
           id: SERVICE, name: 'Kesim', duration_minutes: 30, buffer_before_minutes: 0,
           buffer_after_minutes: 0, price_minor: 10000, currency: 'TRY', active: true,
@@ -295,7 +310,28 @@ try {
     }
     if (request.method === 'GET' && url.pathname === '/api/availability/setup') {
       availabilitySetupReads += 1;
-      return sendJson(response, 200, { timezone: 'Europe/Istanbul' });
+      return sendJson(response, 200, {
+        timezone: currentActiveBusinessId === BUSINESS ? 'Europe/Istanbul' : 'Pacific/Pago_Pago',
+      });
+    }
+    if (request.method === 'GET' && url.pathname === '/api/calendar') {
+      const primary = currentActiveBusinessId === BUSINESS;
+      const membershipId = primary ? MEMBERSHIP : MEMBERSHIP_B;
+      const timezone = primary ? 'Europe/Istanbul' : 'Pacific/Pago_Pago';
+      const localDate = primary ? '2026-09-26' : '2026-09-25';
+      return sendJson(response, 200, {
+        membership: { id: membershipId, business_id: currentActiveBusinessId, role: 'owner' },
+        business: {
+          id: currentActiveBusinessId,
+          name: primary ? 'F13 Production Salon' : 'F13 Pacific Salon',
+          timezone,
+        },
+        localDate,
+        date: localDate,
+        days: 1,
+        staff: [{ id: STAFF, name: 'Ada', active: true }],
+        appointments: [],
+      });
     }
     if (request.method === 'POST' && url.pathname === '/api/availability/group-slots') {
       assert.deepEqual(body.lines, [{ serviceId: SERVICE, staffId: null }]);
@@ -430,9 +466,15 @@ try {
       return sendJson(response, 200, { series: seriesPayload() });
     }
     if (request.method === 'GET' && url.pathname === '/api/bookings/groups') {
+      const primary = currentActiveBusinessId === BUSINESS;
       return sendJson(response, 200, {
-        membership: { id: MEMBERSHIP, business_id: BUSINESS, role: 'owner', active: true },
-        bookings: recurringBookings,
+        membership: {
+          id: primary ? MEMBERSHIP : MEMBERSHIP_B,
+          business_id: currentActiveBusinessId,
+          role: 'owner',
+          active: true,
+        },
+        bookings: primary ? recurringBookings : [],
         page: { limit: 25, hasMore: false, nextCursor: null },
       });
     }
@@ -627,11 +669,53 @@ try {
   assert.equal(recurringBookings[0].status, 'scheduled', 'F16-01 future cancel rewrote the preserved first occurrence');
   assert.deepEqual(recurringBookings.slice(1).map((booking) => booking.status), ['cancelled', 'cancelled']);
 
+  const switchBusiness = async (businessId) => page.evaluate(`(() => {
+    const select = document.querySelector('.workspace-business select');
+    if (!select) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+    setter.call(select, ${JSON.stringify(businessId)});
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  })()`);
+
+  assert.equal(await switchBusiness(BUSINESS_B), true, 'F13-03 business selector missing for Pacific switch');
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar'
+      && document.querySelector('.workspace-business select')?.value === ${JSON.stringify(BUSINESS_B)}`),
+    'F13-03 business switch did not settle on the Pacific business',
+  );
+  await page.send('Page.navigate', { url: `${origin}/app/bookings` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/bookings'
+      && document.querySelector('.workspace-business select')?.value === ${JSON.stringify(BUSINESS_B)}
+      && document.querySelector('.booking-composer input[type="date"]')?.value === '2026-09-25'`),
+    'F13-03 booking date did not rebind to the switched Pacific business day',
+  );
+  await page.evaluate(`document.querySelector('.booking-inline-action button').click()`);
+  await waitFor(
+    () => page.evaluate(`document.querySelector('.booking-close-panel input[type="date"]')?.value === '2026-09-25'`),
+    'F13-03 close-time date did not rebind to the switched Pacific business day',
+  );
+
+  assert.equal(await switchBusiness(BUSINESS), true, 'F13-03 business selector missing for Istanbul switch-back');
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/calendar'
+      && document.querySelector('.workspace-business select')?.value === ${JSON.stringify(BUSINESS)}`),
+    'F13-03 business switch did not settle back on the Istanbul business',
+  );
+  await page.send('Page.navigate', { url: `${origin}/app/bookings` });
+  await waitFor(
+    () => page.evaluate(`location.pathname === '/app/bookings'
+      && document.querySelector('.workspace-business select')?.value === ${JSON.stringify(BUSINESS)}
+      && document.querySelector('.booking-composer input[type="date"]')?.value === '2026-09-26'`),
+    'F13-03 booking date did not rebind back to the Istanbul business day',
+  );
+
   assert.deepEqual(page.diagnostics, []);
   page.close();
 
   console.log('F16-01 production Chrome acceptance passed: weekly preview/create, exact future scope, atomic reschedule/cancel and 390px.');
-  console.log('F13-03 business-date acceptance passed: business-local default beats browser-local day and same-business reload preserves user edits.');
+  console.log('F13-03 business-date acceptance passed: business-local default beats browser-local day, same-business reload preserves edits, and serial business switches rebind create/close dates.');
   console.log('F13-03 production-entry browser passed: src/main.tsx /app/bookings route requested BookingPage lazy chunk and rendered workspace UI.');
 } catch (error) {
   let diagnostics = '';
