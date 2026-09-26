@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { describeS07PsqlFailure } from './staging-s07-diagnostics.mjs';
 
 const databaseUrl = process.env.STAGING_DATABASE_URL?.trim() ?? '';
 if (!databaseUrl) throw new Error('Missing STAGING_DATABASE_URL for S07 staging acceptance');
@@ -30,7 +31,13 @@ for (const file of files) {
     maxBuffer: 4 * 1024 * 1024,
   });
   if (result.error || result.status !== 0) {
-    throw new Error(`S07 staging database acceptance failed: ${name}`);
+    throw new Error(describeS07PsqlFailure(name, result, {
+      secrets: [
+        databaseUrl,
+        process.env.SUPABASE_DB_PASSWORD,
+        process.env.SUPABASE_ADMIN_KEY,
+      ],
+    }));
   }
 
   for (const line of `${result.stdout ?? ''}\n${result.stderr ?? ''}`.split(/\r?\n/)) {
