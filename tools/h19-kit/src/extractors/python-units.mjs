@@ -71,7 +71,8 @@ if not out:
         executable.append(node)
 
     if executable:
-        definition = "\n".join(source_segment(node) for node in executable if source_segment(node))
+        segments = [ast.get_source_segment(text, node) or "" for node in executable]
+        definition = "\n".join(segment for segment in segments if segment)
         start_line = min(node.lineno for node in executable)
         end_line = max(getattr(node, "end_lineno", node.lineno) for node in executable)
         out.append({
