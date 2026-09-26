@@ -3,6 +3,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { assertSafeRelativePath } from './ci-files.mjs';
+import { runF17DatabaseRestoreDrill } from './f17-db-restore-drill.mjs';
 
 const modulePath = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(modulePath), '..');
@@ -145,6 +146,7 @@ if (isMain()) {
   try {
     const completed = runPostgresPlan(readPostgresPlan());
     console.log(`PostgreSQL plan passed (${completed} steps).`);
+    runF17DatabaseRestoreDrill();
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = error?.exitCode ?? 1;
