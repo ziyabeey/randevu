@@ -39,6 +39,22 @@ export function symbolsForSemanticUnits(graph, units = [], {
     const candidates = [];
 
     for (const node of graph?.nodes ?? []) {
+      if (
+        unit.language === 'python'
+        && unit.kind === 'Module'
+        && unit.symbol === '<module>'
+        && node.kind === 'module'
+        && (node.definitions ?? []).some((definition) => normalizePath(definition.path) === path)
+      ) {
+        const definition = (node.definitions ?? []).find((item) => normalizePath(item.path) === path);
+        candidates.push({
+          symbol: node.symbol,
+          mode: 'python-module',
+          rank: -1,
+          span: 0,
+          definition,
+        });
+      }
       for (const definition of node.definitions ?? []) {
         if (normalizePath(definition.path) !== path) continue;
 
