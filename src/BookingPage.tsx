@@ -239,6 +239,7 @@ export default function BookingPage() {
   const loadGeneration = useRef(0);
   const loadController = useRef<AbortController | null>(null);
   const workspaceGeneration = useRef(0);
+  const dateDefaultsBusinessId = useRef<string | null>(null);
   const [createKey, setCreateKey] = useState(commandKey);
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<'none' | 'daily' | 'weekly'>('none');
   const [recurrenceCount, setRecurrenceCount] = useState(2);
@@ -302,6 +303,12 @@ export default function BookingPage() {
       }
       setCatalog(nextCatalog);
       setTimezone(nextSetup.timezone);
+      if (dateDefaultsBusinessId.current !== activeBusinessId) {
+        const businessToday = dateInZone(new Date().toISOString(), nextSetup.timezone);
+        dateDefaultsBusinessId.current = activeBusinessId;
+        setDate(businessToday);
+        setCloseDate(businessToday);
+      }
       setBookings(nextBookings.bookings);
       setBookingsNextCursor(nextBookings.page.nextCursor);
       setCreateLines((current) => {
