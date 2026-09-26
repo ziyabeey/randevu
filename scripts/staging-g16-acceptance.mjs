@@ -190,6 +190,7 @@ async function zernioMessages(conversationId) {
 
 async function verifyZernioDelivery() {
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+  const sentAfterMs = Date.now() - 5_000;
   const sent = await sendWhatsappVerificationCode(process.env, acceptancePhone, code);
   if (sent.status !== 'sent') {
     throw new Error(`Zernio verified-recipient send failed: ${sent.errorClass}`);
@@ -199,12 +200,15 @@ async function verifyZernioDelivery() {
   let lastStatus = 'missing';
   while (Date.now() < deadline) {
     const messages = await zernioMessages(sent.conversationId);
-    const message = messages.find((item) => {
-      const providerId = String(item?.platformMessageId ?? item?.id ?? '');
-      const rendered = typeof item?.message === 'string' ? item.message : '';
-      return providerId === sent.providerMessageId
-        || (String(item?.direction ?? '').toLowerCase() === 'outgoing' && rendered.includes(code));
+    const outbound = messages.filter((item) => {
+      const createdAt = Date.parse(String(item?.createdAt ?? ''));
+      return String(item?.direction ?? '').toLowerCase() === 'outgoing'
+        && Number.isFinite(createdAt)
+        && createdAt >= sentAfterMs;
     });
+    const message = outbound.find((item) => (
+      typeof item?.message === 'string' && item.message.includes(code)
+    )) ?? (outbound.length === 1 ? outbound[0] : null);
     if (message) {
       lastStatus = String(message.deliveryStatus ?? 'unknown').toLowerCase();
       if (lastStatus === 'delivered' || lastStatus === 'read') {
@@ -271,7 +275,9 @@ async function verifyHostedPrivateStorage() {
     const foreignRead = await appRequest(ownerB.jar, `/api/private-media/${mediaId}/content`, {
       headers: readHeaders(businessB),
     });
-    if (foreignRead.response.ok) throw new Error('Cross-tenant Worker read unexpectedly succeeded');
+    if (foreignRead.response.ok || foreignRead.response.status < 400 || foreignRead.response.status >= 500) {
+      throw new Error(`Cross-tenant Worker denial was not a fail-closed 4xx (HTTP ${foreignRead.response.status})`);
+    }
 
     const [ownerAToken, ownerBToken] = await Promise.all([
       supabasePasswordToken(process.env.STAGING_OWNER_A_EMAIL, process.env.STAGING_OWNER_A_PASSWORD),
@@ -284,10 +290,14 @@ async function verifyHostedPrivateStorage() {
     }
 
     const directForeign = await storageRead(storagePath, ownerBToken);
-    if (directForeign.ok) throw new Error('Hosted Storage cross-tenant RLS read unexpectedly succeeded');
+    if (directForeign.ok || directForeign.status < 400 || directForeign.status >= 500) {
+      throw new Error(`Hosted Storage cross-tenant RLS denial was not a fail-closed 4xx (HTTP ${directForeign.status})`);
+    }
 
     const directAnon = await storageRead(storagePath, anonKey);
-    if (directAnon.ok) throw new Error('Hosted Storage anonymous private-object read unexpectedly succeeded');
+    if (directAnon.ok || directAnon.status < 400 || directAnon.status >= 500) {
+      throw new Error(`Hosted Storage anonymous denial was not a fail-closed 4xx (HTTP ${directAnon.status})`);
+    }
 
     const deleted = await appRequest(ownerA.jar, `/api/private-media/${mediaId}`, {
       method: 'DELETE',
@@ -299,7 +309,9 @@ async function verifyHostedPrivateStorage() {
     mediaId = null;
 
     const afterDelete = await storageRead(storagePath, ownerAToken);
-    if (afterDelete.ok) throw new Error('Hosted Storage object remained readable after delete');
+    if (afterDelete.ok || afterDelete.status < 400 || afterDelete.status >= 500) {
+      throw new Error(`Hosted Storage post-delete read was not a fail-closed 4xx (HTTP ${afterDelete.status})`);
+    }
 
     console.log('G16 hosted private-media Storage smoke passed: owner read, tenant/anon denial, delete.');
   } finally {
