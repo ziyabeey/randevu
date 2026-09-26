@@ -1,4 +1,5 @@
-const SQL_ASSERTION_PATTERN = /\b(?:S07 C1|S07 C2a|C2b|S07 C3)\b/i;
+// Only an ERROR message is assertion evidence; progress and CONTEXT are not.
+const SQL_ASSERTION_PATTERN = /\bERROR:\s*(?:[0-9A-Z]{5}:\s*)?(?:S07 C1|S07 C2a|C2b|S07 C3)\b/i;
 const DEFAULT_MAX_LINES = 12;
 const DEFAULT_MAX_CHARS = 2400;
 
@@ -25,18 +26,29 @@ export function classifyS07PsqlResult(result = {}) {
 export function redactS07Diagnostic(value, secrets = []) {
   let text = textOf(value);
 
-  for (const secret of secrets) {
-    const exact = textOf(secret);
-    if (exact) text = text.split(exact).join('[REDACTED]');
+  // Match once, longest first: masking a prefix must not expose a longer secret's suffix.
+  const exactSecrets = [...new Set(secrets.map(textOf).filter(Boolean))]
+    .sort((a, b) => b.length - a.length);
+  if (exactSecrets.length) {
+    const pattern = exactSecrets.map((secret) => secret.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    text = text.replace(new RegExp(pattern, 'g'), '[REDACTED]');
   }
 
   text = text
     .replace(/\bpostgres(?:ql)?:\/\/[^\s"'<>]+/gi, '[REDACTED_DATABASE_URI]')
     .replace(/\b(Bearer)\s+[A-Za-z0-9._~+\/-]+=*/gi, '$1 [REDACTED]')
-    .replace(/\b((?:password|passwd|token|api[_-]?key|secret)\s*[=:]\s*)[^\s,;]+/gi, '$1[REDACTED]')
+    // Consume entire quoted values, including escapes/newlines. A truncated quote
+    // masks the remainder rather than allowing part of a credential into the tail.
+    // Do not retry at each hyphen inside a long non-credential identifier.
+    .replace(/(?<![\w-])((?:[a-z][a-z0-9]*[_-])*(?:password|passwd|token|api[_-]?key|secret|admin[_-]?key|service[_-]?role(?:[_-]?key)?)["']?\s*[=:]\s*)(?:"(?:\\[\s\S]|[^"\\])*"?|'(?:\\[\s\S]|[^'\\])*'?|[^\s,;]+)/gi, '$1[REDACTED]')
     .replace(/\bsb_(?:secret|publishable)_[A-Za-z0-9_-]+/g, 'sb_[REDACTED]');
 
   return text;
+}
+
+function diagnosticLimit(value, ceiling) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return ceiling;
+  return Math.min(ceiling, Math.max(1, Math.floor(value)));
 }
 
 export function boundedS07DiagnosticTail(result = {}, {
@@ -44,18 +56,21 @@ export function boundedS07DiagnosticTail(result = {}, {
   maxLines = DEFAULT_MAX_LINES,
   maxChars = DEFAULT_MAX_CHARS,
 } = {}) {
+  const lineLimit = diagnosticLimit(maxLines, DEFAULT_MAX_LINES);
+  const charLimit = diagnosticLimit(maxChars, DEFAULT_MAX_CHARS);
   const raw = `${textOf(result.stdout)}\n${textOf(result.stderr)}`;
   const lines = redactS07Diagnostic(raw, secrets)
     .split(/\r?\n/)
     .map((line) => line.trimEnd())
     .filter((line) => line.trim().length > 0)
-    .slice(-Math.max(1, maxLines));
+    .slice(-lineLimit);
 
   if (!lines.length) return '';
 
   const joined = lines.join('\n');
-  if (joined.length <= maxChars) return joined;
-  return `…${joined.slice(-(maxChars - 1))}`;
+  if (joined.length <= charLimit) return joined;
+  if (charLimit === 1) return '…';
+  return `…${joined.slice(-(charLimit - 1))}`;
 }
 
 export function describeS07PsqlFailure(name, result = {}, options = {}) {
