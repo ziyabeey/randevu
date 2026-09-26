@@ -42,11 +42,56 @@ function sqlLiteral(value) {
 }
 
 function psql(sql) {
-  return execFileSync(
-    'psql',
-    [dbUrl, '-v', 'ON_ERROR_STOP=1', '-Atqc', sql],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-  ).trim();
+  try {
+    return execFileSync(
+      'psql',
+      ['--no-psqlrc', dbUrl, '-v', 'ON_ERROR_STOP=1', '-Atqc', sql],
+      {
+        encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 30_000, maxBuffer: 128 * 1024,
+        env: { ...process.env, PGCONNECT_TIMEOUT: '15' },
+      },
+    ).trim();
+  } catch (error) {
+    // Do not attach the original error: it can carry SQL, URI, stdout and stderr.
+    const kind = error?.code === 'ETIMEDOUT' ? 'timeout'
+      : error?.code === 'ENOBUFS' ? 'buffer_limit'
+        : Number.isInteger(error?.status) ? `exit_${error.status}` : 'spawn_error';
+    throw new Error(`G16 database command failed: ${kind}`);
+  }
+}
+
+async function request(url, init = {}) {
+  try {
+    return await fetch(url, { ...init, redirect: 'manual', signal: AbortSignal.timeout(20_000) });
+  } catch {
+    throw new Error('G16 HTTP request failed');
+  }
+}
+
+async function responseBytes(response) {
+  try { return new Uint8Array(await response.arrayBuffer()); }
+  catch { throw new Error('G16 HTTP response read failed'); }
+}
+
+async function responseText(response) {
+  try { return await response.text(); }
+  catch { throw new Error('G16 HTTP response read failed'); }
+}
+
+async function requireStorageDenial(response, label, missingOnly = false) {
+  const data = jsonBody(await responseText(response));
+  const code = data?.code ?? data?.error;
+  const status = Number(data?.statusCode ?? data?.httpStatusCode ?? response.status);
+  // A legacy HTTP 400 can wrap object-not-found 404. Never accept a bare 400,
+  // InvalidJWT, NoSuchBucket, throttling, an HTML proxy response or an outage.
+  const missing = [400, 404].includes(response.status) && status === 404
+    && ['NoSuchKey', 'not_found'].includes(code);
+  const denied = response.status === 403 && status === 403
+    && ['AccessDenied', 'unauthorized'].includes(code);
+  if (!missing && !(denied && !missingOnly)) {
+    throw new Error(`${label} with expected Storage semantics (HTTP ${response.status})`);
+  }
 }
 
 function setCookieValues(response) {
@@ -74,14 +119,14 @@ function cookieHeader(jar) {
 async function appRequest(jar, path, init = {}) {
   const headers = new Headers(init.headers);
   if (jar.size) headers.set('Cookie', cookieHeader(jar));
-  const response = await fetch(`${origin}${path}`, { ...init, headers, redirect: 'manual' });
+  const response = await request(`${origin}${path}`, { ...init, headers });
   absorbCookies(jar, response);
   const contentType = response.headers.get('content-type') ?? '';
   if (contentType.includes('application/json')) {
-    const text = await response.text();
+    const text = await responseText(response);
     return { response, text, data: jsonBody(text), bytes: null };
   }
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  const bytes = await responseBytes(response);
   return { response, text: '', data: null, bytes };
 }
 
@@ -124,42 +169,39 @@ async function login(email, password, businessId) {
 }
 
 async function supabasePasswordToken(email, password) {
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+  const response = await request(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: {
       apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
     body: JSON.stringify({ email, password }),
   });
-  const text = await response.text();
+  const text = await responseText(response);
   const data = jsonBody(text);
   const token = String(data?.access_token ?? '');
   if (!response.ok || !token) throw new Error(`G16 Supabase password auth failed with HTTP ${response.status}`);
   return token;
 }
 
-async function storageRead(path, bearer) {
-  return fetch(`${supabaseUrl}/storage/v1/object/appointment-private-media/${path}`, {
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${bearer}`,
-      Accept: 'image/webp',
-    },
-  });
+async function storageRead(path, bearer = null) {
+  const headers = { apikey: anonKey, Accept: 'image/webp' };
+  if (bearer) headers.Authorization = `Bearer ${bearer}`;
+  return request(`${supabaseUrl}/storage/v1/object/appointment-private-media/${path}`, { headers });
 }
 
 function validWebp() {
-  const bytes = new Uint8Array(30);
-  bytes.set(Buffer.from('RIFF'), 0);
-  bytes.set(Buffer.from('WEBP'), 8);
-  bytes.set(Buffer.from('VP8X'), 12);
-  bytes[16] = 10;
-  bytes[24] = 0x1f; bytes[25] = 0x03; bytes[26] = 0x00;
-  bytes[27] = 0x57; bytes[28] = 0x02; bytes[29] = 0x00;
-  return bytes;
+  // Complete 1x1 lossless WebP, not merely a dimensions header.
+  return Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQkEY0qP+BiOh/AAA=', 'base64');
+}
+
+function requireExactImage(response, bytes, expected, label) {
+  if (response.status !== 200
+      || response.headers.get('content-type')?.split(';', 1)[0].trim() !== 'image/webp'
+      || !Buffer.from(bytes ?? []).equals(expected)) {
+    throw new Error(`${label} failed with HTTP ${response.status}: image bytes/type mismatch`);
+  }
 }
 
 function resolveAcceptancePhone() {
@@ -175,7 +217,8 @@ async function verifyNetgsmOtpSend() {
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
   const sent = await sendWhatsappVerificationCode(process.env, acceptancePhone, code);
   if (sent.status !== 'sent' || sent.providerCode !== '00') {
-    const errorClass = sent.status === 'failed' ? sent.errorClass : 'unexpected_provider_code';
+    // The provider helper can contain remote response text; never echo it here.
+    const errorClass = sent.status === 'failed' ? 'provider_request_failed' : 'unexpected_provider_code';
     throw new Error(`Netgsm verified-recipient OTP send failed: ${errorClass}`);
   }
   console.log('G16 Netgsm verified-recipient OTP send accepted by provider: code 00.');
@@ -184,20 +227,42 @@ async function verifyNetgsmOtpSend() {
 async function verifyHostedPrivateStorage() {
   const customerId = randomUUID();
   const groupId = randomUUID();
+  const image = validWebp();
   let mediaId = null;
   let storagePath = null;
   let ownerA = null;
+  let uploadStarted = false;
+  let mediaRemoved = false;
+  let primaryFailure = null;
+  const cleanupFailures = [];
 
-  psql(`
-    begin;
-    insert into public.customers(id, business_id, name, created_by)
-    values (${sqlLiteral(customerId)}::uuid, ${sqlLiteral(businessA)}::uuid, 'G16 Hosted Smoke', null);
-    insert into public.appointment_groups(id, business_id, customer_id, status, source, version, created_by)
-    values (${sqlLiteral(groupId)}::uuid, ${sqlLiteral(businessA)}::uuid, ${sqlLiteral(customerId)}::uuid, 'scheduled', 'operator', 1, null);
-    commit;
-  `);
+  async function deleteMedia() {
+    const deleted = await appRequest(ownerA.jar, `/api/private-media/${mediaId}`, {
+      method: 'DELETE',
+      headers: browserMutationHeaders(ownerA.csrfToken, businessA),
+    });
+    if (!deleted.response.ok || deleted.data?.deleted !== true) {
+      throw new Error(`Hosted private-media cleanup delete failed with HTTP ${deleted.response.status}`);
+    }
+    // A failed read alone may reflect RLS rather than deletion. Check the exact
+    // object metadata too. This is not a claim about provider backup retention.
+    const remaining = psql(`select count(*) from storage.objects
+      where bucket_id = 'appointment-private-media' and name = ${sqlLiteral(storagePath)};`);
+    if (remaining !== '0') throw new Error('G16 Storage metadata remains after delete');
+    mediaRemoved = true;
+    mediaId = null;
+  }
 
   try {
+    // Cleanup is armed before seeding, including a lost response after COMMIT.
+    psql(`
+      begin;
+      insert into public.customers(id, business_id, name, created_by)
+      values (${sqlLiteral(customerId)}::uuid, ${sqlLiteral(businessA)}::uuid, 'G16 Hosted Smoke', null);
+      insert into public.appointment_groups(id, business_id, customer_id, status, source, version, created_by)
+      values (${sqlLiteral(groupId)}::uuid, ${sqlLiteral(businessA)}::uuid, ${sqlLiteral(customerId)}::uuid, 'scheduled', 'operator', 1, null);
+      commit;
+    `);
     ownerA = await login(
       process.env.STAGING_OWNER_A_EMAIL.trim().toLowerCase(),
       process.env.STAGING_OWNER_A_PASSWORD,
@@ -209,30 +274,32 @@ async function verifyHostedPrivateStorage() {
       businessB,
     );
 
+    uploadStarted = true;
     const upload = await appRequest(ownerA.jar, `/api/bookings/groups/${groupId}/photos?caption=G16%20hosted%20smoke`, {
       method: 'POST',
       headers: browserMutationHeaders(ownerA.csrfToken, businessA, 'image/webp'),
-      body: validWebp(),
+      body: image,
     });
-    mediaId = String(upload.data?.photo?.id ?? '');
-    if (upload.response.status !== 201 || !/^[0-9a-f-]{36}$/i.test(mediaId)) {
+    const uploadedId = String(upload.data?.photo?.id ?? '');
+    if (upload.response.status !== 201 || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(uploadedId)) {
       throw new Error(`Hosted private-media upload failed with HTTP ${upload.response.status}`);
     }
+    mediaId = uploadedId;
     storagePath = `${businessA}/${groupId}/${mediaId}.webp`;
 
     const workerRead = await appRequest(ownerA.jar, `/api/private-media/${mediaId}/content`, {
       headers: { 'X-YZT-Business': businessA, Accept: 'image/webp' },
     });
-    if (!workerRead.response.ok || workerRead.bytes?.byteLength !== 30
-        || workerRead.response.headers.get('cache-control') !== 'private, no-store') {
-      throw new Error(`Hosted private-media Worker read failed with HTTP ${workerRead.response.status}`);
+    requireExactImage(workerRead.response, workerRead.bytes, image, 'Hosted private-media Worker read');
+    if (workerRead.response.headers.get('cache-control') !== 'private, no-store') {
+      throw new Error('Hosted private-media Worker read failed: private cache policy missing');
     }
 
     const foreignRead = await appRequest(ownerB.jar, `/api/private-media/${mediaId}/content`, {
       headers: readHeaders(businessB),
     });
-    if (foreignRead.response.ok || foreignRead.response.status < 400 || foreignRead.response.status >= 500) {
-      throw new Error(`Cross-tenant Worker denial was not a fail-closed 4xx (HTTP ${foreignRead.response.status})`);
+    if (![403, 404].includes(foreignRead.response.status)) {
+      throw new Error(`Cross-tenant Worker denial was not a fail-closed 4xx with expected denial status (HTTP ${foreignRead.response.status})`);
     }
 
     const [ownerAToken, ownerBToken] = await Promise.all([
@@ -241,56 +308,46 @@ async function verifyHostedPrivateStorage() {
     ]);
 
     const directOwner = await storageRead(storagePath, ownerAToken);
-    if (!directOwner.ok || (await directOwner.arrayBuffer()).byteLength !== 30) {
-      throw new Error(`Hosted Storage owner RLS read failed with HTTP ${directOwner.status}`);
-    }
+    requireExactImage(directOwner, await responseBytes(directOwner), image, 'Hosted Storage owner RLS read');
 
-    const directForeign = await storageRead(storagePath, ownerBToken);
-    if (directForeign.ok || directForeign.status < 400 || directForeign.status >= 500) {
-      throw new Error(`Hosted Storage cross-tenant RLS denial was not a fail-closed 4xx (HTTP ${directForeign.status})`);
-    }
+    await requireStorageDenial(await storageRead(storagePath, ownerBToken), 'Hosted Storage cross-tenant RLS denial was not a fail-closed 4xx');
+    await requireStorageDenial(await storageRead(storagePath), 'Hosted Storage anonymous denial was not a fail-closed 4xx');
 
-    const directAnon = await storageRead(storagePath, anonKey);
-    if (directAnon.ok || directAnon.status < 400 || directAnon.status >= 500) {
-      throw new Error(`Hosted Storage anonymous denial was not a fail-closed 4xx (HTTP ${directAnon.status})`);
-    }
-
-    const deleted = await appRequest(ownerA.jar, `/api/private-media/${mediaId}`, {
-      method: 'DELETE',
-      headers: browserMutationHeaders(ownerA.csrfToken, businessA),
-    });
-    if (!deleted.response.ok || deleted.data?.deleted !== true) {
-      throw new Error(`Hosted private-media cleanup delete failed with HTTP ${deleted.response.status}`);
-    }
-    mediaId = null;
-
-    const afterDelete = await storageRead(storagePath, ownerAToken);
-    if (afterDelete.ok || afterDelete.status < 400 || afterDelete.status >= 500) {
-      throw new Error(`Hosted Storage post-delete read was not a fail-closed 4xx (HTTP ${afterDelete.status})`);
-    }
-
-    console.log('G16 hosted private-media Storage smoke passed: owner read, tenant/anon denial, delete.');
+    await deleteMedia();
+    await requireStorageDenial(await storageRead(storagePath, ownerAToken), 'Hosted Storage post-delete read was not a fail-closed 4xx', true);
+  } catch (error) {
+    primaryFailure = error;
   } finally {
-    if (mediaId && ownerA) {
-      try {
-        const cleanup = await appRequest(ownerA.jar, `/api/private-media/${mediaId}`, {
-          method: 'DELETE',
-          headers: browserMutationHeaders(ownerA.csrfToken, businessA),
-        });
-        if (cleanup.response.ok && cleanup.data?.deleted === true) mediaId = null;
-      } catch {}
+    if (mediaId && ownerA && !mediaRemoved) {
+      try { await deleteMedia(); }
+      catch { cleanupFailures.push(new Error('G16 private-media cleanup failed')); }
     }
-    if (!mediaId) {
-      psql(`
-        delete from public.appointment_groups
-        where business_id = ${sqlLiteral(businessA)}::uuid and id = ${sqlLiteral(groupId)}::uuid;
-        delete from public.customers
-        where business_id = ${sqlLiteral(businessA)}::uuid and id = ${sqlLiteral(customerId)}::uuid;
-      `);
+    if (!uploadStarted || mediaRemoved) {
+      try {
+        psql(`
+          begin;
+          delete from public.appointment_groups
+          where business_id = ${sqlLiteral(businessA)}::uuid and id = ${sqlLiteral(groupId)}::uuid;
+          delete from public.customers
+          where business_id = ${sqlLiteral(businessA)}::uuid and id = ${sqlLiteral(customerId)}::uuid;
+          commit;
+        `);
+      } catch {
+        cleanupFailures.push(new Error('G16 fixture cleanup failed'));
+      }
     } else {
-      console.error('G16 cleanup left the temporary group in place so the private Storage object remains authorizable for recovery.');
+      // Unknown upload outcome: preserve the group that authorizes object recovery.
+      cleanupFailures.push(new Error(`G16 recovery required: temporary group ${groupId} and customer ${customerId} retained`));
     }
   }
+  if (cleanupFailures.length) {
+    throw new AggregateError(
+      [primaryFailure, ...cleanupFailures].filter(Boolean),
+      'G16 hosted Storage acceptance/cleanup failed',
+    );
+  }
+  if (primaryFailure) throw primaryFailure;
+  console.log('G16 hosted private-media Storage smoke passed: byte equality, tenant/anon denial, API delete, metadata absence and fixture cleanup.');
 }
 
 await verifyNetgsmOtpSend();
