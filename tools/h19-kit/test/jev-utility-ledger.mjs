@@ -94,7 +94,7 @@ const pending = freezeFakeJevExecutionObservation({
 });
 validateFakeJevExecutionObservation(pending, { decision: singleDecision });
 
-const pendingLedger = buildJevUtilityLedger([pending]);
+const pendingLedger = buildJevUtilityLedger([pending], { decisions: [singleDecision] });
 assert.equal(pendingLedger.counts.providerRequests, 1);
 assert.equal(pendingLedger.counts.answered, 1);
 assert.equal(pendingLedger.counts.resolvedEvaluableQuestions, 0);
@@ -178,7 +178,10 @@ const deterministic = freezeFakeJevExecutionObservation({
 });
 assert.equal(deterministic.evaluation.status, 'not-applicable');
 
-const ledger = buildJevUtilityLedger([confirmed, fanout, deterministic]);
+const ledger = buildJevUtilityLedger(
+  [confirmed, fanout, deterministic],
+  { decisions: [singleDecision, fanoutDecision, deterministicDecision] },
+);
 assert.equal(ledger.counts.observations, 3);
 assert.equal(ledger.counts.deterministic, 1);
 assert.equal(ledger.counts.singleLive, 1);
@@ -231,8 +234,34 @@ assert.throws(
 );
 
 assert.throws(
-  () => buildJevUtilityLedger([confirmed, confirmed]),
+  () => buildJevUtilityLedger(
+    [confirmed, confirmed],
+    { decisions: [singleDecision] },
+  ),
   /duplicate Jev utility observation/,
 );
 
-console.log('Jev utility ledger: fake route execution, provider-budget enforcement, evaluation-gated resolution and exact utility denominators PASS');
+const forgedBody = {
+  ...structuredClone(confirmed),
+  attempts: [{
+    ...structuredClone(confirmed.attempts[0]),
+    inputTokens: singleDecision.providerBudget.maxInputTokens + 1,
+  }],
+};
+delete forgedBody.observationSha256;
+const { cacheKey } = await import('../src/core/cache.mjs');
+const forged = {
+  ...forgedBody,
+  observationSha256: cacheKey('h19-jev-utility-observation:v1', forgedBody),
+};
+assert.throws(
+  () => buildJevUtilityLedger([forged], { decisions: [singleDecision] }),
+  /input token budget exceeded/,
+);
+
+assert.throws(
+  () => buildJevUtilityLedger([confirmed], { decisions: [] }),
+  /missing exact route decision/,
+);
+
+console.log('Jev utility ledger: fake route execution, exact decision replay, provider-budget enforcement, evaluation-gated resolution and exact utility denominators PASS');
