@@ -199,7 +199,12 @@ async function verifyZernioDelivery() {
   let lastStatus = 'missing';
   while (Date.now() < deadline) {
     const messages = await zernioMessages(sent.conversationId);
-    const message = messages.find((item) => String(item?.id ?? '') === sent.providerMessageId);
+    const message = messages.find((item) => {
+      const providerId = String(item?.platformMessageId ?? item?.id ?? '');
+      const rendered = typeof item?.message === 'string' ? item.message : '';
+      return providerId === sent.providerMessageId
+        || (String(item?.direction ?? '').toLowerCase() === 'outgoing' && rendered.includes(code));
+    });
     if (message) {
       lastStatus = String(message.deliveryStatus ?? 'unknown').toLowerCase();
       if (lastStatus === 'delivered' || lastStatus === 'read') {
@@ -300,18 +305,23 @@ async function verifyHostedPrivateStorage() {
   } finally {
     if (mediaId && ownerA) {
       try {
-        await appRequest(ownerA.jar, `/api/private-media/${mediaId}`, {
+        const cleanup = await appRequest(ownerA.jar, `/api/private-media/${mediaId}`, {
           method: 'DELETE',
           headers: browserMutationHeaders(ownerA.csrfToken, businessA),
         });
+        if (cleanup.response.ok && cleanup.data?.deleted === true) mediaId = null;
       } catch {}
     }
-    psql(`
-      delete from public.appointment_groups
-      where business_id = ${sqlLiteral(businessA)}::uuid and id = ${sqlLiteral(groupId)}::uuid;
-      delete from public.customers
-      where business_id = ${sqlLiteral(businessA)}::uuid and id = ${sqlLiteral(customerId)}::uuid;
-    `);
+    if (!mediaId) {
+      psql(`
+        delete from public.appointment_groups
+        where business_id = ${sqlLiteral(businessA)}::uuid and id = ${sqlLiteral(groupId)}::uuid;
+        delete from public.customers
+        where business_id = ${sqlLiteral(businessA)}::uuid and id = ${sqlLiteral(customerId)}::uuid;
+      `);
+    } else {
+      console.error('G16 cleanup left the temporary group in place so the private Storage object remains authorizable for recovery.');
+    }
   }
 }
 
