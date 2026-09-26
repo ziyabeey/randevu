@@ -18,8 +18,6 @@ const required = [
   'ZERNIO_API_KEY',
   'ZERNIO_WHATSAPP_ACCOUNT_ID',
   'ZERNIO_WHATSAPP_TEMPLATE_NAME',
-  'ZERNIO_WHATSAPP_TEMPLATE_LANGUAGE',
-  'ZERNIO_ACCEPTANCE_PHONE',
 ];
 for (const name of required) {
   if (!process.env[name]) throw new Error(`Missing required G16 staging environment variable: ${name}`);
@@ -31,9 +29,8 @@ const supabaseUrl = process.env.SUPABASE_URL.replace(/\/$/, '');
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const businessA = 'f1700000-0000-4000-8000-000000000001';
 const businessB = 'f1700000-0000-4000-8000-000000000002';
-const acceptancePhone = normalizeWhatsappPhone(process.env.ZERNIO_ACCEPTANCE_PHONE);
 const zernioConfig = zernioWhatsappConfigured(process.env);
-if (!acceptancePhone || !zernioConfig) throw new Error('G16 Zernio acceptance configuration is invalid');
+if (!zernioConfig) throw new Error('G16 Zernio acceptance configuration is invalid');
 
 const DELIVERY_TIMEOUT_MS = 120_000;
 const POLL_INTERVAL_MS = 2_000;
@@ -172,6 +169,39 @@ function validWebp() {
   return bytes;
 }
 
+async function resolveAcceptancePhone() {
+  const explicit = String(process.env.ZERNIO_ACCEPTANCE_PHONE ?? '').trim();
+  if (explicit) {
+    const normalized = normalizeWhatsappPhone(explicit);
+    if (!normalized) throw new Error('G16 explicit acceptance phone is not a supported Turkish mobile number');
+    return normalized;
+  }
+
+  const response = await fetch('https://zernio.com/api/v1/whatsapp/sandbox/sessions', {
+    headers: { Authorization: `Bearer ${zernioConfig.apiKey}`, Accept: 'application/json' },
+  });
+  const text = await response.text();
+  const data = jsonBody(text);
+  if (!response.ok) {
+    throw new Error(`G16 could not discover a verified sandbox recipient (HTTP ${response.status}); configure ZERNIO_ACCEPTANCE_PHONE instead`);
+  }
+
+  const now = Date.now();
+  const active = (Array.isArray(data?.sessions) ? data.sessions : [])
+    .filter((session) => String(session?.status ?? '').toLowerCase() === 'active')
+    .filter((session) => {
+      const expiresAt = Date.parse(String(session?.expiresAt ?? ''));
+      return !Number.isFinite(expiresAt) || expiresAt > now;
+    })
+    .map((session) => normalizeWhatsappPhone(String(session?.phoneE164 ?? '')))
+    .filter(Boolean);
+
+  if (active.length !== 1) {
+    throw new Error('G16 requires exactly one active verified Zernio sandbox recipient or ZERNIO_ACCEPTANCE_PHONE');
+  }
+  return active[0];
+}
+
 async function zernioMessages(conversationId) {
   const params = new URLSearchParams({
     accountId: zernioConfig.accountId,
@@ -189,6 +219,7 @@ async function zernioMessages(conversationId) {
 }
 
 async function verifyZernioDelivery() {
+  const acceptancePhone = await resolveAcceptancePhone();
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
   const sentAfterMs = Date.now() - 5_000;
   const sent = await sendWhatsappVerificationCode(process.env, acceptancePhone, code);
