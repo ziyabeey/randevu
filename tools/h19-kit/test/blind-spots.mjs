@@ -91,6 +91,7 @@ assert.equal(before.counts.total, 5);
 assert.deepEqual(before.counts.byCategory, {
   'extraction-error': 0,
   'impact-unknown': 2,
+  'runtime-coverage-unknown-path': 0,
   'semantic-unit-absence': 1,
   'semantic-unit-symbol-unmatched': 2,
 });
@@ -282,15 +283,19 @@ try {
   assert.ok(!realAfter.spots.some((spot) =>
     spot.category === 'impact-unknown'
     && spot.subject.unknown === 'symbol-graph'));
-  assert.ok(realAfter.spots.some((spot) =>
-    spot.category === 'impact-unknown'
-    && spot.subject.unknown === 'runtime-coverage'));
+  const runtimeCoverageSpots = realAfter.spots.filter((spot) =>
+    spot.category === 'runtime-coverage-unknown-path');
+  assert.equal(runtimeCoverageSpots.length, 2);
+  assert.deepEqual(
+    runtimeCoverageSpots.map((spot) => spot.subject.path).sort(),
+    ['app.py', 'tests/test_app.py'],
+  );
 
   const realComparison = compareH19BlindSpotLedgers(realBefore, realAfter);
   assert.equal(realComparison.comparable, true);
   assert.ok(realComparison.counts.resolved >= 4);
   assert.equal(realComparison.counts.persistent, 2);
-  assert.equal(realComparison.counts.introduced, 1);
+  assert.equal(realComparison.counts.introduced, 2);
   assert.ok(realComparison.blindSpotReductionRate > 0);
 } finally {
   await rm(integrationRoot, { recursive: true, force: true });
