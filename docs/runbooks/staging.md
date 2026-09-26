@@ -288,9 +288,7 @@ F17-01 base environment kabulü `34679959999`, F09-05 gerçek provider delivery 
 
 G16'nın iki hosted-only kanıtı aynı açık opt-in staging gate'inde kapanır. Normal deploy bu gate'i çalıştırmaz.
 
-GitHub Environment `staging` üzerinde runtime Zernio sözleşmesine ek olarak şu acceptance-only secret gerekir:
-
-- `ZERNIO_ACCEPTANCE_PHONE`: mesaj almayı kabul eden doğrulama telefonu. Workflow input'u değildir ve loglanmaz.
+GitHub Environment `staging` üzerinde `ZERNIO_ACCEPTANCE_PHONE` acceptance-only secret'ı **opsiyoneldir**. Varsa mesaj almayı kabul eden doğrulama telefonu olarak kullanılır; workflow input'u değildir ve loglanmaz. Yoksa gate, aynı Zernio hesabındaki reply ile doğrulanmış ve süresi dolmamış tek aktif WhatsApp sandbox session telefonunu API'den keşfeder. Hiç veya birden fazla uygun session varsa fail-closed durur.
 
 Runtime Zernio değerleri mevcut sözleşmeyi kullanır:
 
@@ -301,7 +299,7 @@ Kabul koşusu: **Staging deploy** → `operation=deploy` → `run_g16_acceptance
 
 `staging:g16-acceptance` base smoke sonrasında iki bağımsız gerçek-ortam kanıtı üretir:
 
-1. F16-02: production transport helper'ı ile onaylı numeric-OTP template'i gerçek alıcıya yollar; Zernio conversation mesajlarını aynı `messageId` ile geri okur ve yalnız `delivered` veya `read` durumunda geçer. Telefon ve üretilen OTP loglanmaz.
+1. F16-02: açık acceptance secret'ı veya reply ile doğrulanmış aktif Zernio sandbox session'ından gerçek alıcıyı seçer; production transport helper'ı ile onaylı numeric-OTP template'i yollar. Zernio conversation mesajlarında yalnız gönderim anından sonraki outbound mesajı OTP içeriğiyle eşler ve `deliveryStatus` yalnız `delivered` veya `read` olduğunda geçer. Telefon ve üretilen OTP loglanmaz.
 2. F16-03: fixture Salon A altında geçici müşteri/grup oluşturur, gerçek Worker yoluyla WebP'yi private `appointment-private-media` bucket'ına yükler; owner A read, owner B tenant denial ve anon direct-Storage denial kanıtlarını alır; Worker üzerinden siler ve geçici DB fixture'ını temizler.
 
 Gate eksik credential, provider teslim hatası, private bucket/policy uyumsuzluğu, cross-tenant/anon okunabilirlik veya silinmeyen obje durumunda fail-closed'dur. Başarılı run'ın exact `GITHUB_SHA`, run/job kimliği ve iki PASS satırı G16 closeout receipt'ine yazılır; ancak o gerçek run'dan sonra TASKS'taki F16-02/F16-03 hosted residual notları kaldırılır.
