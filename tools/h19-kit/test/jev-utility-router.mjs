@@ -118,6 +118,10 @@ const noMoney = baseCandidate();
 noMoney.live.monetaryCeiling = null;
 assert.equal(routeJevQuestion(noMoney).reasonCode, 'monetary-ceiling-missing');
 
+const zeroMoney = baseCandidate();
+zeroMoney.live.monetaryCeiling.amount = 0;
+assert.equal(routeJevQuestion(zeroMoney).reasonCode, 'monetary-ceiling-zero');
+
 const fanout = baseCandidate();
 fanout.live.maxLiveQuestions = 4;
 fanout.live.fanout = {
@@ -156,6 +160,15 @@ assert.equal(degenerateDecision.reasonCode, 'fanout-degenerate-single');
 const replayA = routeJevQuestion(baseCandidate());
 const replayB = routeJevQuestion(structuredClone(baseCandidate()));
 assert.deepEqual(replayA, replayB);
+assert.match(replayA.candidateSha256, /^[a-f0-9]{64}$/);
+
+const candidateDrift = baseCandidate();
+candidateDrift.evidence.unknownCount = 2;
+assert.notEqual(
+  routeJevQuestion(candidateDrift).candidateSha256,
+  replayA.candidateSha256,
+  'candidate identity must change when routing evidence changes',
+);
 
 const tampered = structuredClone(replayA);
 tampered.reasonCode = 'tampered';
