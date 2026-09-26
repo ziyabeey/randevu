@@ -238,3 +238,33 @@ H19 Kit bundle work must not:
 - change H19s routing thresholds or questions;
 - run Jev before the H19s blind-label sequence authorizes it;
 - treat H19s synthetic/real-traffic evidence as equivalent to H19 Kit integration progress.
+
+## Next control-plane preparation — Information Acquisition Router
+
+The proposed gate in
+[`specs/INFORMATION_ACQUISITION_ROUTER_GATE-v0.1.md`](specs/INFORMATION_ACQUISITION_ROUTER_GATE-v0.1.md)
+moves the control-plane question one level above Jev.
+
+For an exact engineering uncertainty H19 first checks deterministic derivation and exact
+content-addressed replay. If uncertainty remains, the planner may recommend one bounded
+acquisition route:
+
+`observe | experiment | jev-single | jev-fanout | escalate | abstain`.
+
+Jev is therefore a semantic sensor inside the router, not the router itself. A cheap runtime
+observation or prospective test/probe may be preferable to a model call when it discriminates
+the uncertainty more directly.
+
+The gate also freezes these boundaries:
+
+- repeated Jev votes are stability evidence, not independent truth;
+- decision relevance is recorded separately from raw question resolution;
+- no arbitrary weighted utility score or learned threshold is authorized;
+- entropy reduction is not called information gain without a preregistered probabilistic update;
+- M11's real blind relation labels are still pending and cannot be invented by this router;
+- the first child is a pure deterministic planner with fake fixtures only;
+- no live provider, command execution, product mutation, M12 selection authority or online self-modification.
+
+This preparation is stacked on the exact-green path-granular runtime-coverage parent
+#630 at `fb5ffbee59b52e4d0e5cfd4a1d0d42247fe2a78e`. It does not advance M11 or replace the future independent
+measurement/shadow cohort needed for calibration.
