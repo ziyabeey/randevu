@@ -13,7 +13,7 @@ const procedural = [
   'import sys',
   'from pathlib import Path',
   '',
-  'ROOT = Path(sys.argv[1])',
+  'ROOT = Path(sys.argv[1]); OUT = Path(sys.argv[2])',
   'result = {}',
   'for item in ROOT.iterdir():',
   '    result[item.name] = item.is_file()',
@@ -31,6 +31,9 @@ assert.equal(moduleUnits[0].path, 'preflight/check.py');
 assert.equal(moduleUnits[0].startLine, 6);
 assert.equal(moduleUnits[0].endLine, 11);
 assert.ok(moduleUnits[0].definition.includes('ROOT = Path(sys.argv[1])'));
+assert.ok(moduleUnits[0].definition.includes('OUT = Path(sys.argv[2])'));
+assert.equal((moduleUnits[0].definition.match(/ROOT = Path\(sys\.argv\[1\]\)/g) ?? []).length, 1);
+assert.equal((moduleUnits[0].definition.match(/OUT = Path\(sys\.argv\[2\]\)/g) ?? []).length, 1);
 assert.ok(moduleUnits[0].definition.includes('sys.exit(0)'));
 assert.ok(!moduleUnits[0].definition.includes('import sys'));
 assert.match(moduleUnits[0].digest, /^[a-f0-9]{64}$/);
