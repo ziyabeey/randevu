@@ -52,6 +52,41 @@ class V(ast.NodeVisitor):
         self._function(node, "AsyncFunctionDef")
 
 V().visit(tree)
+
+# Conservative module-level fallback: only emit a pseudo-unit when the file has
+# no function/async-function units at all, but does contain executable top-level
+# statements. Imports and a leading module docstring alone do not create a unit.
+if not out:
+    executable = []
+    for index, node in enumerate(tree.body):
+        if isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if (
+            index == 0
+            and isinstance(node, ast.Expr)
+            and isinstance(getattr(node, "value", None), ast.Constant)
+            and isinstance(node.value.value, str)
+        ):
+            continue
+        executable.append(node)
+
+    if executable:
+        definition = "\n".join(source_segment(node) for node in executable if source_segment(node))
+        start_line = min(node.lineno for node in executable)
+        end_line = max(getattr(node, "end_lineno", node.lineno) for node in executable)
+        out.append({
+            "id": f"{path}::<module>@{start_line}",
+            "language": "python",
+            "kind": "Module",
+            "path": path,
+            "symbol": "<module>",
+            "startLine": start_line,
+            "endLine": end_line,
+            "definition": definition,
+            "body": definition,
+            "digest": hashlib.sha256(definition.encode()).hexdigest(),
+        })
+
 print(json.dumps(out))
 `;
 
